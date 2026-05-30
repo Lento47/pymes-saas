@@ -1,4 +1,4 @@
-import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Bot, Loader2, PauseCircle, ChevronDown } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Bot, Loader2, PauseCircle, ChevronDown, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,6 +29,7 @@ interface ConversationHeaderProps {
   onInvoice?: () => void;
   onDelete?: () => void;
   onAddContact?: () => void;
+  onCreateTask?: () => void;
   members?: Array<{ user?: { id: string; name?: string }; id: string; name?: string; email?: string }>;
   canResolve?: boolean;
   canSendInvoice?: boolean;
@@ -71,6 +72,7 @@ export function ConversationHeader({
   isPausingAi,
   currentStatus,
   onStatusChange,
+  onCreateTask,
   className,
 }: ConversationHeaderProps) {
   return (
@@ -224,6 +226,12 @@ export function ConversationHeader({
                 <DropdownMenuItem onClick={onAddContact}>
                   <UserPlus className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
                   Agregar contacto
+                </DropdownMenuItem>
+              )}
+              {onCreateTask && (
+                <DropdownMenuItem onClick={onCreateTask}>
+                  <CheckSquare className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Crear tarea
                 </DropdownMenuItem>
               )}
               {onRefresh && (

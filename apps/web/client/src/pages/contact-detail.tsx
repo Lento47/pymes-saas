@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, RefreshCw, Brain, Clock, PlusCircle } from "lucide-react";
+import { TaskSheet, type TaskFormData } from "@/components/tasks/TaskSheet";
+import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, RefreshCw, Brain, Clock, PlusCircle, Receipt, Plus } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -215,15 +216,57 @@ function AiProfileCard({ contactId }: { contactId: string }) {
   );
 }
 
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Borrador", SENT: "Enviada", PAID: "Pagada",
+  OVERDUE: "Vencida", CANCELLED: "Cancelada", PARTIALLY_PAID: "Abonada",
+  PENDING_APPROVAL: "Pend. aprob.", PENDING_SUBMISSION: "Pend. envío",
+};
+
 export default function ContactDetailPage() {
   useRequireAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const [, params] = useRoute("/contacts/:id");
   const id = params?.id || "";
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   const { data: contact, isLoading } = useQuery({
     queryKey: ["/api/contacts", id],
     queryFn: () => api.getContact(id),
     enabled: !!id,
+  });
+
+  const { data: invoicesRaw } = useQuery({
+    queryKey: ["/api/invoices", "contact", id],
+    queryFn: () => api.getInvoices({ contact_id: id }),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+
+  const { data: membersRaw } = useQuery({
+    queryKey: ["workspace-members"],
+    queryFn: () => api.getMembers(),
+    staleTime: 5 * 60_000,
+  });
+
+  const members = Array.isArray(membersRaw) ? membersRaw : (membersRaw as any)?.data || [];
+
+  const createTaskMut = useMutation({
+    mutationFn: (form: TaskFormData) => {
+      const body: Record<string, string> = { title: form.title.trim(), contact_id: id };
+      if (form.description?.trim()) body.description = form.description.trim();
+      if (form.priority) body.priority = form.priority;
+      if (form.dueDate) body.due_at = `${form.dueDate}T12:00:00.000Z`;
+      if (form.assignedUserId) body.assigned_user_id = form.assignedUserId;
+      return api.createTask(body);
+    },
+    onSuccess: () => {
+      setShowCreateTask(false);
+      toast({ title: "Tarea creada" });
+      qc.invalidateQueries({ queryKey: ["/api/contacts", id] });
+      qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   if (isLoading) return <PageLoader />;
@@ -232,6 +275,7 @@ export default function ContactDetailPage() {
   const conversations = contact.conversations || [];
   const tasks = contact.tasks || [];
   const documents = contact.documents || [];
+  const invoices = Array.isArray(invoicesRaw) ? invoicesRaw : (invoicesRaw as any)?.data || [];
 
   const contactName = contact.name
     || `${contact.firstName || ""} ${contact.lastName || ""}`.trim()
@@ -242,16 +286,35 @@ export default function ContactDetailPage() {
 
   return (
     <div>
-      {/* Back */}
-      <div className="flex items-center gap-2 mb-5">
-        <Link href="/contacts">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid="button-back">
-            <ArrowLeft className="w-4 h-4" />
+      {/* Back + quick actions */}
+      <div className="flex items-center justify-between gap-2 mb-5 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Link href="/contacts">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid="button-back">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
+          <span className="text-xs text-muted-foreground">Contactos</span>
+          <span className="text-xs text-muted-foreground">/</span>
+          <span className="text-xs text-foreground truncate">{contactName}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setShowCreateTask(true)}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Tarea
           </Button>
-        </Link>
-        <span className="text-xs text-muted-foreground">Contactos</span>
-        <span className="text-xs text-muted-foreground">/</span>
-        <span className="text-xs text-foreground truncate">{contactName}</span>
+          <Link href={`/invoices?contact_id=${id}`}>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+              <Receipt className="w-3.5 h-3.5" />
+              Factura
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-5">
@@ -320,6 +383,10 @@ export default function ContactDetailPage() {
                 <span className="text-[11px] font-medium text-foreground">{conversations.length}</span>
               </div>
               <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">Facturas</span>
+                <span className="text-[11px] font-medium text-foreground">{invoices.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">Tareas</span>
                 <span className="text-[11px] font-medium text-foreground">{tasks.length}</span>
               </div>
@@ -340,6 +407,9 @@ export default function ContactDetailPage() {
             <TabsList className="bg-muted/50 h-8">
               <TabsTrigger value="conversations" className="text-xs h-7 data-[state=active]:bg-card" data-testid="tab-conversations">
                 Conversaciones {conversations.length > 0 && `(${conversations.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="invoices" className="text-xs h-7 data-[state=active]:bg-card" data-testid="tab-invoices">
+                Facturas {invoices.length > 0 && `(${invoices.length})`}
               </TabsTrigger>
               <TabsTrigger value="tasks" className="text-xs h-7 data-[state=active]:bg-card" data-testid="tab-tasks">
                 Tareas {tasks.length > 0 && `(${tasks.length})`}
@@ -376,6 +446,41 @@ export default function ContactDetailPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <StatusBadge status={conv.status} type="conversation" />
+                            <ExternalLink className="w-3 h-3 text-muted-foreground/80" />
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Invoices */}
+            <TabsContent value="invoices">
+              {invoices.length === 0 ? (
+                <EmptyState icon={Receipt} title="Sin facturas" description="No hay facturas asociadas a este contacto." />
+              ) : (
+                <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
+                  {invoices.map((inv: any) => {
+                    const total = Number(inv.total_amount ?? inv.amount ?? 0);
+                    const pending = Number(inv.balance_due ?? 0);
+                    const statusKey = inv.status ?? "DRAFT";
+                    return (
+                      <Link key={inv.id} href={`/invoices/${inv.id}`}>
+                        <div className="px-4 py-3 hover:bg-foreground/[0.015] cursor-pointer transition-colors flex items-center gap-3">
+                          <Receipt className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-foreground truncate">
+                              {inv.number ? `#${inv.number}` : inv.id?.slice(0, 8)}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5">
+                              ₡{total.toLocaleString("es-CR")}
+                              {pending > 0 && pending < total && ` · ₡${pending.toLocaleString("es-CR")} pendiente`}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <StatusBadge status={statusKey} type="invoice" />
                             <ExternalLink className="w-3 h-3 text-muted-foreground/80" />
                           </div>
                         </div>
@@ -457,6 +562,16 @@ export default function ContactDetailPage() {
           </Tabs>
         </div>
       </div>
+
+      <TaskSheet
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
+        editingId={null}
+        initialData={{ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" }}
+        onSave={(form) => createTaskMut.mutate(form)}
+        isSaving={createTaskMut.isPending}
+        members={members}
+      />
     </div>
   );
 }
