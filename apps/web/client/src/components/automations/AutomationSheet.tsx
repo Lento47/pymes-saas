@@ -99,7 +99,7 @@ export function AutomationSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-[570px] sm:max-w-[570px] p-0 gap-0 flex flex-col h-full"
+        className="w-full sm:w-[570px] sm:max-w-[570px] p-0 gap-0 flex flex-col h-full"
         onInteractOutside={(e) => { if (isSaving) e.preventDefault(); }}
       >
         {/* Header */}
