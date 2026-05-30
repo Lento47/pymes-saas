@@ -1,10 +1,18 @@
-import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Bot, Loader2, PauseCircle } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Bot, Loader2, PauseCircle, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChannelBadge } from "@/components/shared/channel-badge";
 import { SensitiveText } from "@/components/shared/sensitive-text";
+
+const STATUS_TRANSITIONS: Array<{ value: string; label: string }> = [
+  { value: "OPEN",           label: "Abierto" },
+  { value: "IN_PROGRESS",    label: "En progreso" },
+  { value: "WAITING_CLIENT", label: "Esp. cliente" },
+  { value: "REQUIRES_HUMAN", label: "Req. humano" },
+  { value: "SPAM",           label: "Spam" },
+];
 
 interface ConversationHeaderProps {
   contactName: string;
@@ -31,6 +39,8 @@ interface ConversationHeaderProps {
   isStartingAgent?: boolean;
   onPauseAi?: () => void;
   isPausingAi?: boolean;
+  currentStatus?: string;
+  onStatusChange?: (status: string) => void;
   className?: string;
 }
 
@@ -59,6 +69,8 @@ export function ConversationHeader({
   isStartingAgent,
   onPauseAi,
   isPausingAi,
+  currentStatus,
+  onStatusChange,
   className,
 }: ConversationHeaderProps) {
   return (
@@ -161,7 +173,32 @@ export function ConversationHeader({
           </TooltipProvider>
         )}
 
-        {onResolve && (
+        {onStatusChange && currentStatus && currentStatus !== "RESOLVED" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 rounded-md px-2 gap-1 text-muted-foreground hover:text-foreground" aria-label="Cambiar estado">
+                <span className="hidden text-xs font-medium sm:inline">
+                  {STATUS_TRANSITIONS.find(s => s.value === currentStatus)?.label ?? currentStatus}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {STATUS_TRANSITIONS.filter(s => s.value !== currentStatus).map((s) => (
+                <DropdownMenuItem key={s.value} onClick={() => onStatusChange(s.value)}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onStatusChange("RESOLVED")} className="text-emerald-600 focus:text-emerald-600">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                Resolver
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {onResolve && !onStatusChange && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

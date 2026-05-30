@@ -23,7 +23,16 @@ const CHANNEL_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  OPEN: "Abierto", RESOLVED: "Resuelto", PENDING: "Pendiente",
+  NEW:             "Nuevo",
+  OPEN:            "Abierto",
+  PENDING:         "Pendiente",
+  IN_PROGRESS:     "En progreso",
+  WAITING_CLIENT:  "Esp. cliente",
+  REQUIRES_HUMAN:  "Req. humano",
+  IA_ATTENDING:    "IA activa",
+  BLOCKED:         "Bloqueado",
+  RESOLVED:        "Resuelto",
+  SPAM:            "Spam",
 };
 
 function getInitials(name: string) {
@@ -213,6 +222,17 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const resolveMut = useMutation({
     mutationFn: () => api.resolveConversation(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
+  });
+
+  const statusChangeMut = useMutation({
+    mutationFn: (status: string) =>
+      status === "RESOLVED"
+        ? api.resolveConversation(id)
+        : api.updateConversation(id, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/conversations", id] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+    },
   });
 
   const assignMut = useMutation({
@@ -491,6 +511,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         onBack={onBack}
         onAssign={(userId) => assignMut.mutate(userId)}
         onResolve={() => resolveMut.mutate()}
+        currentStatus={conversation?.status}
+        onStatusChange={(status) => statusChangeMut.mutate(status)}
         onRefresh={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}
         onInvoice={() => setShowInvoice(true)}
         onDelete={() => setShowDelete(true)}

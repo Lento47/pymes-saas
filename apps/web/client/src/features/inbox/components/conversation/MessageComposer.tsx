@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, ShoppingBag, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,10 +61,22 @@ export function MessageComposer({
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [templateSearch, setTemplateSearch] = useState("");
+  const [slashOpen, setSlashOpen] = useState(false);
 
   const isWhatsApp = channelType?.toUpperCase() === "WHATSAPP";
   const windowClosed = isWhatsApp && !isServiceWindowOpen;
   const freeFormDisabled = windowClosed || disabled;
+  const WA_CHAR_LIMIT = 4096;
+
+  // Slash-command: open template picker when message starts with "/"
+  useEffect(() => {
+    if (value.startsWith("/") && availableTemplates && availableTemplates.length > 0 && onInsertTemplate) {
+      setSlashOpen(true);
+      setTemplateSearch(value.slice(1));
+    } else {
+      setSlashOpen(false);
+    }
+  }, [value, availableTemplates, onInsertTemplate]);
 
   const handleSend = () => {
     if (isPending || uploading) return;
@@ -170,6 +182,30 @@ export function MessageComposer({
           onClose={() => setInteractive({ type: null })}
           disabled={isPending}
         />
+      )}
+
+      {/* Slash command template picker */}
+      {slashOpen && filteredTemplates.length > 0 && (
+        <div className="mx-3 mb-1 rounded-lg border border-border bg-card shadow-md overflow-hidden">
+          <div className="max-h-48 overflow-y-auto">
+            {filteredTemplates.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/50 last:border-0"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onInsertTemplate!(tpl.body);
+                  setSlashOpen(false);
+                  setTemplateSearch("");
+                }}
+              >
+                <div className="text-xs font-medium text-foreground">/{tpl.name}</div>
+                <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{tpl.body}</div>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Composer row */}
@@ -358,6 +394,13 @@ export function MessageComposer({
             )}
           </Button>
         </div>
+        {isWhatsApp && value.length > 0 && (
+          <div className="flex justify-end mt-1 pr-1">
+            <span className={`text-[10px] tabular-nums ${value.length > WA_CHAR_LIMIT ? "text-destructive" : "text-muted-foreground/50"}`}>
+              {value.length}/{WA_CHAR_LIMIT}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
