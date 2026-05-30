@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
+import { SetupChecklist } from "@/components/shared/setup-checklist";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -574,6 +575,7 @@ export default function DashboardPage() {
           </div>
 
           <aside className="space-y-5">
+            <SetupChecklist />
             <DashboardSection title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
               <AttentionList
                 isEmpty={priorityInvoices.length === 0}

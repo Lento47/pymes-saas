@@ -56,6 +56,16 @@ export class WorkspacesController {
     return this.features.getEffectiveFeatures(workspaceId);
   }
 
+  @Get("current/setup")
+  getSetupChecklist(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.service.getSetupChecklist(workspaceId);
+  }
+
+  @Post("current/setup/dismiss")
+  dismissSetupChecklist(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.service.dismissSetupChecklist(workspaceId);
+  }
+
   @Get("current/stats")
   getStats(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getStats(workspaceId);
