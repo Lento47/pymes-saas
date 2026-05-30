@@ -551,4 +551,66 @@ Propone un fix concreto y seguro.`;
       return null;
     }
   }
+
+  /**
+   * Generate the FULL updated content of a single file to fix an issue.
+   *
+   * `generateFixProposal` only returns a textual `diff_suggestion`, which can't
+   * be committed. This method takes the file's current content plus the fix
+   * context and returns the complete rewritten file, ready to commit via
+   * GitHubService.applyFileChanges. Returns null if generation fails or the
+   * model declines to change the file.
+   */
+  async generateFileFix(
+    workspaceId: string,
+    params: {
+      filePath: string;
+      currentContent: string;
+      diagnosticTitle: string;
+      fixSummary: string;
+      reason: string;
+      diffSuggestion?: string;
+    },
+  ): Promise<string | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un ingeniero de software senior trabajando en el SaaS "PymesHub" (NestJS + TypeScript + Prisma en apps/api, React/Vite en apps/web).
+
+Te dan el CONTENIDO ACTUAL de un archivo y el contexto de un bug. Tu trabajo es devolver el CONTENIDO COMPLETO y FINAL del archivo ya corregido.
+
+Reglas estrictas:
+- Devuelve ÚNICAMENTE el contenido completo del archivo corregido. SIN bloques de código markdown, SIN explicaciones, SIN comentarios fuera del código.
+- Aplica el cambio MÍNIMO necesario para arreglar el problema. No reescribas ni reformatees código no relacionado.
+- Conserva los imports, el estilo, la indentación y las convenciones existentes.
+- NUNCA introduzcas secretos, credenciales, ni cambios destructivos.
+- Si el archivo NO necesita cambios para este fix, responde exactamente con la palabra: NO_CHANGE`;
+
+    const user = `Archivo: ${params.filePath}
+Bug: ${params.diagnosticTitle}
+Resumen del fix: ${params.fixSummary}
+Por qué este archivo: ${params.reason}
+${params.diffSuggestion ? `Cambio sugerido: ${params.diffSuggestion}` : ""}
+
+--- CONTENIDO ACTUAL DEL ARCHIVO ---
+${params.currentContent}
+--- FIN DEL CONTENIDO ACTUAL ---
+
+Devuelve el contenido COMPLETO del archivo ya corregido (o NO_CHANGE si no aplica).`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 6000, 0.2);
+      const clean = text
+        .replace(/^```[a-zA-Z]*\s*/m, "")
+        .replace(/```\s*$/m, "")
+        .trim();
+      if (!clean || clean === "NO_CHANGE" || clean.startsWith("NO_CHANGE")) return null;
+      // Guard against the model returning the suggestion text instead of code.
+      if (clean === params.currentContent.trim()) return null;
+      return clean;
+    } catch (err) {
+      this.logger.error(`Error generando contenido de fix para ${params.filePath}: ${(err as Error).message}`);
+      return null;
+    }
+  }
 }
