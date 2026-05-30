@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
-import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map, MessageSquare, Send, Loader2, Bot, CheckCircle2, AlertCircle, SkipForward, History } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map, MessageSquare, Send, Loader2, Bot, CheckCircle2, AlertCircle, SkipForward, History, Zap } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { getSocket } from "@/hooks/use-socket";
 import { PlaygroundBoard } from "@/components/playground/PlaygroundBoard";
 
 const RISK_ICONS: Record<string, any> = {
@@ -79,6 +80,46 @@ const STAGE_LABELS: Record<string, string> = {
   "security-compliance": "Seguridad",
   "human-handoff": "Handoff humano",
 };
+
+/** Shows a live pipeline while an orchestration run is in progress. */
+function LivePipeline({ runId, stages, tier }: { runId: string; stages: any[]; tier?: string }) {
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 mb-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Zap className="w-3 h-3 text-primary animate-pulse shrink-0" />
+        <span className="text-[11px] font-medium text-primary">Pipeline en ejecución</span>
+        {tier && <span className="text-[10px] text-muted-foreground ml-auto">{tier}</span>}
+      </div>
+      {stages.length === 0 ? (
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <Loader2 className="w-3 h-3 animate-spin" /> Iniciando agentes…
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {stages.map((stage: any, i: number) => (
+            <div key={`${runId}-${i}`} className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border/40 bg-background/60">
+              {stage.allowed === false ? (
+                <SkipForward className="w-3 h-3 shrink-0 text-muted-foreground/50" />
+              ) : stage.error ? (
+                <AlertCircle className="w-3 h-3 shrink-0 text-red-400" />
+              ) : (
+                <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-500" />
+              )}
+              <span className="flex-1 text-[11px] text-foreground/80">{STAGE_LABELS[stage.agent_slug] ?? stage.agent_slug}</span>
+              {stage.duration_ms != null && (
+                <span className="text-[10px] text-muted-foreground/60">{stage.duration_ms}ms</span>
+              )}
+            </div>
+          ))}
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-primary/20 bg-primary/5">
+            <Loader2 className="w-3 h-3 shrink-0 text-primary animate-spin" />
+            <span className="text-[11px] text-primary/80">Ejecutando siguiente etapa…</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function OrchestrationResult({ result }: { result: Record<string, any> }) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
@@ -208,7 +249,11 @@ export default function SupportPage() {
   const [newComment, setNewComment] = useState("");
   const [orchestrationResults, setOrchestrationResults] = useState<Record<string, any>>({});
   const [showRunHistory, setShowRunHistory] = useState<string | null>(null);
+  // caseId → { runId, tier, stages[] } for active (in-progress) runs
+  const [liveRuns, setLiveRuns] = useState<Record<string, { runId: string; tier?: string; stages: any[] }>>({});
   const queryClient = useQueryClient();
+  const liveRunsRef = useRef(liveRuns);
+  liveRunsRef.current = liveRuns;
 
   // Deep-link from API-error toasts: ApiError appends "Ticket #abc abierto"
   // and a future link can navigate to /support?case=<id> to expand it.
@@ -217,6 +262,61 @@ export default function SupportPage() {
     const caseId = url.searchParams.get("case");
     if (caseId) setExpandedId(caseId);
   }, []);
+
+  // Subscribe to real-time orchestration progress over WebSocket.
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const onStarted = (payload: any) => {
+      const caseId: string | undefined = payload.diagnostic_case_id;
+      if (!caseId) return;
+      setLiveRuns(prev => ({ ...prev, [caseId]: { runId: payload.run_id, tier: payload.tier, stages: [] } }));
+      // Expand the case so the user can see the live pipeline.
+      setExpandedId(prev => prev ?? caseId);
+    };
+
+    const onStageComplete = (payload: any) => {
+      const caseId = Object.keys(liveRunsRef.current).find(
+        id => liveRunsRef.current[id].runId === payload.run_id,
+      );
+      if (!caseId || !payload.stage) return;
+      setLiveRuns(prev => {
+        const run = prev[caseId];
+        if (!run) return prev;
+        return { ...prev, [caseId]: { ...run, stages: [...run.stages, payload.stage] } };
+      });
+    };
+
+    const onDone = (payload: any) => {
+      const caseId = Object.keys(liveRunsRef.current).find(
+        id => liveRunsRef.current[id].runId === payload.run_id,
+      );
+      if (!caseId) return;
+      // Replace live pipeline with the completed result.
+      if (payload.result) {
+        setOrchestrationResults(prev => ({ ...prev, [caseId]: payload.result }));
+      }
+      setLiveRuns(prev => {
+        const next = { ...prev };
+        delete next[caseId];
+        return next;
+      });
+      // Refresh the case list so status badges update.
+      queryClient.invalidateQueries({ queryKey: ["diagnostic-cases"] });
+      queryClient.invalidateQueries({ queryKey: ["case-runs", caseId] });
+    };
+
+    socket.on("orchestration:started", onStarted);
+    socket.on("orchestration:stage-complete", onStageComplete);
+    socket.on("orchestration:done", onDone);
+
+    return () => {
+      socket.off("orchestration:started", onStarted);
+      socket.off("orchestration:stage-complete", onStageComplete);
+      socket.off("orchestration:done", onDone);
+    };
+  }, [queryClient]);
 
   const { data: cases, isLoading } = useQuery({
     queryKey: ["diagnostic-cases"],
@@ -528,10 +628,10 @@ export default function SupportPage() {
                               </button>
                               <button
                                 onClick={() => orchestrateMut.mutate(c.id)}
-                                disabled={orchestrateMut.isPending && orchestrateMut.variables === c.id}
+                                disabled={(orchestrateMut.isPending && orchestrateMut.variables === c.id) || !!liveRuns[c.id]}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
                               >
-                                {orchestrateMut.isPending && orchestrateMut.variables === c.id ? (
+                                {(orchestrateMut.isPending && orchestrateMut.variables === c.id) || liveRuns[c.id] ? (
                                   <><Loader2 className="w-3 h-3 animate-spin" /> Analizando...</>
                                 ) : (
                                   <><Bot className="w-3 h-3" /> Analizar con IA</>
@@ -545,8 +645,17 @@ export default function SupportPage() {
                             <CaseRunHistory caseId={c.id} />
                           )}
 
-                          {/* Latest orchestration result */}
-                          {orchestrationResults[c.id] && (
+                          {/* Live pipeline (auto-triggered or manually started) */}
+                          {liveRuns[c.id] && (
+                            <LivePipeline
+                              runId={liveRuns[c.id].runId}
+                              stages={liveRuns[c.id].stages}
+                              tier={liveRuns[c.id].tier}
+                            />
+                          )}
+
+                          {/* Latest orchestration result (shown once run completes) */}
+                          {!liveRuns[c.id] && orchestrationResults[c.id] && (
                             <OrchestrationResult result={orchestrationResults[c.id]} />
                           )}
                         </div>

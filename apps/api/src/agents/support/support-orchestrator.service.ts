@@ -10,7 +10,7 @@
  * Flowise flow via the create_github_pr tool, which is independently gated by
  * PrCreationPolicyService. Stages the tier may not use are skipped.
  */
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -18,6 +18,7 @@ import { FlowiseClient } from "../flowise/flowise.client";
 import { FlowiseSetupService, PLAN_TO_TIER } from "../flowise-setup.service";
 import { AgentGuardrailsService } from "../runtime/agent-guardrails.service";
 import { NotificationsService } from "../../notifications/notifications.service";
+import { EventsGateway } from "../../gateways/events.gateway";
 import { getSupportAgent } from "./support-agents.catalog";
 import { buildPipeline } from "./support-pipeline";
 import type {
@@ -71,6 +72,7 @@ export class SupportOrchestratorService {
     private readonly flowiseSetup: FlowiseSetupService,
     private readonly guardrails: AgentGuardrailsService,
     private readonly notifications: NotificationsService,
+    @Optional() private readonly events?: EventsGateway,
   ) {}
 
   async orchestrate(input: OrchestrateInput): Promise<OrchestrateResult> {
@@ -94,13 +96,21 @@ export class SupportOrchestratorService {
     let severity: SupportSeverity | undefined;
     let needsHuman = false;
 
+    // Notify connected clients that a pipeline started.
+    this.events?.emitOrchestrationProgress(input.workspace_id, {
+      event: "orchestration:started",
+      run_id: run.id,
+      diagnostic_case_id: input.diagnostic_case_id,
+      tier,
+    });
+
     try {
       // Pre-fetch workspace context so stage flows don't need Flowise Tool nodes.
       const wsCtx = await this.fetchWorkspaceContext(input.workspace_id, tier);
 
       // ── Stage 0: triage (all tiers) ──
       const triageCtx = `${wsCtx}\n\nMensaje del usuario:\n${input.message}`;
-      const triage = await this.runStage("intake-triage", tier, triageCtx, sessionId, stages);
+      const triage = await this.runStage("intake-triage", tier, triageCtx, sessionId, stages, input.workspace_id, run.id);
       const triageOut = this.parseDiagnostic(triage?.structured);
       caseType = triageOut?.case_type ?? "unknown";
       severity = triageOut?.severity ?? "medium";
@@ -130,7 +140,7 @@ export class SupportOrchestratorService {
           continue;
         }
 
-        const stage = await this.runStage(slug, tier, carriedContext, sessionId, stages);
+        const stage = await this.runStage(slug, tier, carriedContext, sessionId, stages, input.workspace_id, run.id);
         if (!stage) continue;
 
         // Track security signoff for downstream gating.
@@ -172,7 +182,7 @@ export class SupportOrchestratorService {
         );
       }
 
-      return {
+      const result: OrchestrateResult = {
         run_id: run.id,
         tier,
         case_type: caseType,
@@ -182,8 +192,28 @@ export class SupportOrchestratorService {
         stages,
         summary,
       };
+
+      this.events?.emitOrchestrationProgress(input.workspace_id, {
+        event: "orchestration:done",
+        run_id: run.id,
+        diagnostic_case_id: input.diagnostic_case_id,
+        tier,
+        result,
+      });
+
+      return result;
     } catch (err: any) {
       this.logger.error(`[orchestrator] run ${run.id} failed: ${err?.message}`);
+      const failedResult: OrchestrateResult = {
+        run_id: run.id,
+        tier,
+        case_type: caseType,
+        severity,
+        status: "FAILED",
+        needs_human_review: true,
+        stages,
+        summary: `La orquestación falló: ${err?.message ?? "error desconocido"}. Escalado a revisión humana.`,
+      };
       await this.prisma.supportOrchestrationRun
         .update({
           where: { id: run.id },
@@ -197,16 +227,16 @@ export class SupportOrchestratorService {
           },
         })
         .catch(() => undefined);
-      return {
+
+      this.events?.emitOrchestrationProgress(input.workspace_id, {
+        event: "orchestration:done",
         run_id: run.id,
+        diagnostic_case_id: input.diagnostic_case_id,
         tier,
-        case_type: caseType,
-        severity,
-        status: "FAILED",
-        needs_human_review: true,
-        stages,
-        summary: `La orquestación falló: ${err?.message ?? "error desconocido"}. Escalado a revisión humana.`,
-      };
+        result: failedResult,
+      });
+
+      return failedResult;
     }
   }
 
@@ -277,6 +307,8 @@ export class SupportOrchestratorService {
     context: string,
     sessionId: string,
     stages: StageRecord[],
+    workspaceId?: string,
+    runId?: string,
   ): Promise<StageRecord | null> {
     const def = getSupportAgent(slug);
     if (!def || !def.tierAccess.includes(tier)) {
@@ -286,6 +318,9 @@ export class SupportOrchestratorService {
         skipped_reason: `Tier ${tier} no puede usar ${slug}`,
       };
       stages.push(rec);
+      if (workspaceId && runId) {
+        this.events?.emitOrchestrationProgress(workspaceId, { event: "orchestration:stage-complete", run_id: runId, stage: rec });
+      }
       return null;
     }
 
@@ -297,6 +332,9 @@ export class SupportOrchestratorService {
         skipped_reason: chatflowId ? "Flowise deshabilitado" : "Flow no provisionado",
       };
       stages.push(rec);
+      if (workspaceId && runId) {
+        this.events?.emitOrchestrationProgress(workspaceId, { event: "orchestration:stage-complete", run_id: runId, stage: rec });
+      }
       return null;
     }
 
@@ -333,6 +371,9 @@ export class SupportOrchestratorService {
         duration_ms: Date.now() - started,
       };
       stages.push(rec);
+      if (workspaceId && runId) {
+        this.events?.emitOrchestrationProgress(workspaceId, { event: "orchestration:stage-complete", run_id: runId, stage: rec });
+      }
       return rec;
     } catch (err: any) {
       const rec: StageRecord = {
@@ -342,6 +383,9 @@ export class SupportOrchestratorService {
         duration_ms: Date.now() - started,
       };
       stages.push(rec);
+      if (workspaceId && runId) {
+        this.events?.emitOrchestrationProgress(workspaceId, { event: "orchestration:stage-complete", run_id: runId, stage: rec });
+      }
       this.logger.warn(`[orchestrator] stage ${slug} error: ${err?.message}`);
       return rec;
     }

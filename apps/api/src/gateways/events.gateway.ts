@@ -222,4 +222,28 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       run,
     });
   }
+
+  /** Emit support orchestration lifecycle events to the workspace room. */
+  emitOrchestrationProgress(
+    workspaceId: string,
+    payload: {
+      event: "orchestration:started" | "orchestration:stage-complete" | "orchestration:done";
+      run_id: string;
+      diagnostic_case_id?: string | null;
+      tier?: string;
+      /** Present on stage-complete */
+      stage?: {
+        agent_slug: string;
+        allowed: boolean;
+        skipped_reason?: string;
+        output_preview?: string;
+        duration_ms?: number;
+        error?: string;
+      };
+      /** Present on done */
+      result?: unknown;
+    },
+  ) {
+    this.server.to(`workspace:${workspaceId}`).emit(payload.event, payload);
+  }
 }

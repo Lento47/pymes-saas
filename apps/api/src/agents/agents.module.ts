@@ -14,9 +14,10 @@ import { PrCreationPolicyService } from "./support/pr-creation-policy.service";
 import { SupportOrchestratorService } from "./support/support-orchestrator.service";
 import { PrismaModule } from "../common/prisma/prisma.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { EventsModule } from "../gateways/events.module";
 
 @Module({
-  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule],
+  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule, EventsModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,
