@@ -556,8 +556,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <button
             onClick={logout}
             className={cn(
-              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
-              "text-muted-foreground/80 hover:text-destructive hover:bg-destructive/10"
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/60 transition-colors",
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
             )}
           >
             <LogOut className="w-[15px] h-[15px] shrink-0" strokeWidth={1.7} />
