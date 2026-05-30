@@ -533,15 +533,19 @@ html.light .dash-card {
 }
 
 .landing-badge {
-  background: rgba(124, 58, 237, 0.06);
-  border: 1px solid rgba(124, 58, 237, 0.18);
-  color: #6D28D9;
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  color: #4B5563;
 }
 
 .landing-eyebrow {
-  color: #7C3AED;
+  color: #9CA3AF;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
+}
+
+.font-display {
+  font-family: 'Instrument Serif', Georgia, serif;
 }
