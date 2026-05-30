@@ -332,13 +332,11 @@ export class DiagnosticService {
         );
     }
 
-    // Auto-analyze and create fix case based on workspace support tier (fire-and-forget)
-    const AUTO_TRIGGER_CATEGORIES = ["PRODUCT_BUG", "PLATFORM_INCIDENT"];
-    const AUTO_TRIGGER_RISKS = ["critical", "high", "CRITICAL", "HIGH"];
-    if (
-      AUTO_TRIGGER_CATEGORIES.includes(classification.category) &&
-      AUTO_TRIGGER_RISKS.includes(classification.risk_level)
-    ) {
+    // Auto-analyze and attempt a fix for EVERY reported case (fire-and-forget).
+    // The pipeline produces a code fix when the issue is code-fixable; for
+    // config/user-error cases the AI returns no files and no PR is opened.
+    // Tier gating still governs whether a PR is actually created.
+    {
       // Get workspace plan to determine support tier
       const workspace = await this.prisma.workspace.findUnique({
         where: { id: input.workspaceId },

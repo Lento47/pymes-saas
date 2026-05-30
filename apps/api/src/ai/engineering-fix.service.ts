@@ -4,6 +4,14 @@ import { AiService } from "./ai.service";
 import { GitHubService } from "../platform/github.service";
 import { PlatformSettingsService } from "../platform/platform-settings.service";
 import { FixApprovalService } from "./fix-approval.service";
+import { PrCreationPolicyService } from "../agents/support/pr-creation-policy.service";
+import { PLAN_TO_TIER } from "../agents/flowise-setup.service";
+import type { SupportTier } from "../agents/support/support-agent.types";
+
+/** Most files we'll attempt to rewrite for a single fix (keeps the PR reviewable). */
+const MAX_FILES_PER_FIX = 5;
+/** Skip files larger than this — the model can't reliably rewrite them without truncating. */
+const MAX_FILE_BYTES = 16_000;
 
 interface RbacActor {
   workspaceId: string;
@@ -21,6 +29,7 @@ export class EngineeringFixService {
     @Optional() private readonly platformSettings?: PlatformSettingsService,
     @Optional() @Inject(forwardRef(() => FixApprovalService))
     private readonly fixApproval?: FixApprovalService,
+    @Optional() private readonly prPolicy?: PrCreationPolicyService,
   ) {}
 
   /**
@@ -31,7 +40,18 @@ export class EngineeringFixService {
   private async assertFixCaseAccessible(fixCaseId: string, actor: RbacActor) {
     const fixCase = await (this.prisma as any).engineeringFixCase.findUnique({
       where: { id: fixCaseId },
-      include: { diagnosticCase: { select: { workspace_id: true } } },
+      include: {
+        diagnosticCase: {
+          select: {
+            workspace_id: true,
+            title: true,
+            module: true,
+            error_code: true,
+            category: true,
+            risk_level: true,
+          },
+        },
+      },
     });
     if (!fixCase) throw new NotFoundException("Fix case not found");
     if (!actor.isPlatformAdmin && fixCase.diagnosticCase?.workspace_id !== actor.workspaceId) {
@@ -196,14 +216,149 @@ export class EngineeringFixService {
 
     const updated = await this.updateFixStatus(fixCaseId, { status: "PR_OPENED" });
 
-    // Fire-and-forget: create GitHub PR if GitHub is configured
-    this.createGitHubPRForFix(fixCase).catch((err: unknown) => {
+    // Fire-and-forget: open a draft PR with REAL committed code. Falls back to a
+    // description-only PR if code can't be generated or policy blocks the change.
+    this.openPrForFix(fixCase).catch((err: unknown) => {
       this.logger.error(
         `[github] PR creation failed for fix ${fixCaseId}: ${err instanceof Error ? err.message : String(err)}`,
       );
     });
 
     return updated;
+  }
+
+  /**
+   * Open a draft PR for an approved fix case, committing actual code.
+   *
+   * Pipeline:
+   *   1. Resolve the workspace tier (PR creation is tier-gated).
+   *   2. For each proposed file, read its current content from GitHub and ask
+   *      the AI to return the full corrected file.
+   *   3. Run the proposal through PrCreationPolicyService (blocks prohibited
+   *      paths, secrets, destructive migrations; forces draft + review labels).
+   *   4. Commit the files and open a DRAFT PR via applyFileChanges.
+   *
+   * If no code could be generated, or the policy blocks the change, fall back to
+   * a description-only PR so a human still gets a reviewable starting point.
+   * The agent never merges or approves — humans do, per CLAUDE.md.
+   */
+  private async openPrForFix(fixCase: any): Promise<void> {
+    if (!this.github || !this.platformSettings) return;
+
+    const cfg = await this.platformSettings.getDecrypted();
+    if (!cfg.github_token || !cfg.github_repo_owner || !cfg.github_repo_name) {
+      this.logger.warn("[github] PR skipped — GitHub not configured in platform settings");
+      return;
+    }
+    const creds = { token: cfg.github_token, owner: cfg.github_repo_owner, repo: cfg.github_repo_name };
+
+    const diagnostic = fixCase.diagnosticCase ?? {};
+    const proposed: Array<{ file: string; reason: string; diff_suggestion?: string }> =
+      Array.isArray(fixCase.files_changed_json) ? fixCase.files_changed_json : [];
+
+    // Resolve tier from the owning workspace's plan.
+    const workspaceId: string | undefined = diagnostic.workspace_id;
+    let tier: SupportTier = "TIER_1";
+    if (workspaceId) {
+      const ws = await this.prisma.workspace
+        .findUnique({ where: { id: workspaceId }, select: { plan: true } })
+        .catch(() => null);
+      tier = (PLAN_TO_TIER[ws?.plan ?? "FREE"] as SupportTier) ?? "TIER_1";
+    }
+
+    // Generate full file contents for each proposed file.
+    const files: Array<{ path: string; content: string }> = [];
+    for (const item of proposed.slice(0, MAX_FILES_PER_FIX)) {
+      const path = (item.file ?? "").trim();
+      if (!path) continue;
+      const existing = await this.github
+        .readFile({ ...creds, path, ref: "master" })
+        .catch(() => null);
+      const currentContent = existing?.content ?? "";
+      if (currentContent.length > MAX_FILE_BYTES) {
+        this.logger.warn(`[github] Skipping ${path} — too large to rewrite safely (${currentContent.length} bytes)`);
+        continue;
+      }
+      const newContent = workspaceId
+        ? await this.aiService.generateFileFix(workspaceId, {
+            filePath: path,
+            currentContent,
+            diagnosticTitle: diagnostic.title ?? "Error de plataforma",
+            fixSummary: fixCase.fix_summary ?? "Fix generado por IA",
+            reason: item.reason ?? "",
+            diffSuggestion: item.diff_suggestion,
+          })
+        : null;
+      if (newContent && newContent !== currentContent) {
+        files.push({ path, content: newContent });
+      }
+    }
+
+    // No code generated → fall back to a description-only PR.
+    if (files.length === 0) {
+      this.logger.warn(`[github] No code generated for fix ${fixCase.id} — opening description-only PR`);
+      await this.createGitHubPRForFix(fixCase);
+      return;
+    }
+
+    // Policy gate. Branch must match fix/ai/<area>/<timestamp>.
+    const area = (diagnostic.module ?? "general").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-+|-+$/g, "") || "general";
+    const branchName = `fix/ai/${area}/${Date.now()}`;
+    const baseBranch = "master";
+
+    if (this.prPolicy) {
+      const decision = this.prPolicy.validateProposal({
+        tier,
+        securityReviewPassed: false,
+        branch_name: branchName,
+        base_branch: baseBranch,
+        files,
+      });
+      if (!decision.allowed) {
+        this.logger.warn(
+          `[github] Code PR blocked by policy for fix ${fixCase.id} (${tier}): ${decision.violations.join("; ")} — falling back to description PR`,
+        );
+        await this.createGitHubPRForFix(fixCase);
+        return;
+      }
+
+      const prBody =
+        this.github.buildPRBody({
+          fixSummary: fixCase.fix_summary ?? "Propuesta de fix generada por IA",
+          diagnosticTitle: diagnostic.title ?? "Error de plataforma",
+          category: diagnostic.category ?? "PRODUCT_BUG",
+          riskLevel: diagnostic.risk_level ?? "HIGH",
+          module: diagnostic.module ?? null,
+          errorCode: diagnostic.error_code ?? null,
+          filesChanged: proposed,
+        }) +
+        "\n\n---\n_PR generado por el agente de soporte — DRAFT. Requiere revisión y merge manual por un humano. El agente no puede mergear, aprobar ni desplegar._";
+
+      const result = await this.github.applyFileChanges({
+        ...creds,
+        branchName,
+        baseBranch,
+        files,
+        prTitle: `fix: ${diagnostic.title ?? fixCase.id} [AI]`,
+        prBody,
+        labels: decision.labels,
+      });
+
+      await this.prisma.engineeringFixCase.update({
+        where: { id: fixCase.id },
+        data: {
+          pr_url: result.prUrl,
+          pr_number: result.prNumber,
+          branch_name: branchName,
+        },
+      });
+      this.logger.log(`[github] Real-code draft PR #${result.prNumber} created for fix ${fixCase.id}: ${result.prUrl}`);
+      return;
+    }
+
+    // No policy service available — refuse to push code; description PR only.
+    this.logger.warn(`[github] PrCreationPolicyService unavailable — description-only PR for fix ${fixCase.id}`);
+    await this.createGitHubPRForFix(fixCase);
   }
 
   /** Create a GitHub description PR from an approved fix case */
