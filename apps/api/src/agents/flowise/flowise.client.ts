@@ -1238,69 +1238,31 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
   buildSupportFlowData(opts: {
     modelName: string;
     systemPrompt: string;
-    toolIds: string[];
+    toolIds?: string[];
     toolNames?: string[];
     basepath?: string;
     temperature?: number;
     credentialId?: string;
   }): string {
-    // Build a deterministic chain: Start → Tool_0 → ... → Tool_n → LLM.
+    // Stage flows are Start → LLM only. No Tool nodes.
     //
-    // WHY Tool nodes instead of an Agent node with agentTools:
-    // Flowise's Agent node pre-initialises ALL referenced tools during
-    // buildChatflow (at prediction request time), before any node runs.
-    // If even one tool ID no longer exists in Flowise (e.g. after a DB
-    // reset or a re-deploy that recreated tools with new IDs), the Agent
-    // node throws "Cannot read properties of undefined (reading 'filePath')"
-    // and the entire chatflow refuses to start.
+    // Flowise validates ALL Tool node references (by ID) at buildChatflow
+    // time — before any node executes. If the stored ID doesn't match a
+    // registered tool, the entire flow fails with "Tool not selected".
+    // Neither names nor IDs are reliable across Flowise DB resets.
     //
-    // Tool nodes are executed lazily — they are only resolved when that
-    // specific node is reached during the flow run. This matches the
-    // pattern used by the Tier 2/3/4 flows, which work correctly.
-    // Tool outputs are accumulated in the "toolContext" flow-state key
-    // so the terminal LLM node can reference them in its system prompt.
-
-    const validTools = opts.toolIds
-      .map((id, i) => ({ id, name: opts.toolNames?.[i] ?? `tool_${i}` }))
-      .filter((t): t is { id: string; name: string } => !!t.id);
-
-    const stateKeys = [{ key: "toolContext", value: "" }];
-    const start = FlowiseClient.buildStartNode(stateKeys);
-    const nodes: unknown[] = [start];
-    const edges: unknown[] = [];
-
-    let prevId = "startAgentflow_0";
-    let prevHandle = "startAgentflow_0-output-startAgentflow";
-
-    for (let i = 0; i < validTools.length; i++) {
-      const { id: toolId, name: toolName } = validTools[i];
-      const nodeId = `toolAgentflow_${i}`;
-      const toolNode = FlowiseClient.buildToolNode({
-        id: nodeId,
-        label: toolName,
-        toolId: toolName,
-        inputValue: "{}",
-        updateState: JSON.stringify([{
-          key: "toolContext",
-          value: `{{ $flow.state.toolContext }}${i > 0 ? "\n---\n" : ""}[${toolName}]:\n{{ ${nodeId}.output }}`,
-        }]),
-        position: { x: 250 + i * 280, y: 250 },
-      });
-      nodes.push(toolNode);
-      edges.push(FlowiseClient.buildEdge(prevId, prevHandle, nodeId, nodeId, "#7EE787", "#4CAF50"));
-      prevId = nodeId;
-      prevHandle = `${nodeId}-output-toolAgentflow`;
-    }
-
+    // Instead, SupportOrchestratorService pre-fetches workspace context
+    // directly from Prisma and injects it into the question string before
+    // calling Flowise. The LLM receives full context without needing to
+    // call any Flowise-side tools. This is the correct separation:
+    //   Orchestrator → data fetching / sequencing
+    //   Flowise      → LLM reasoning only
     const llmId = "llmAgentflow_0";
-    const systemContent = validTools.length > 0
-      ? `${opts.systemPrompt}\n\n---\nContexto recopilado:\n{{ $flow.state.toolContext }}`
-      : opts.systemPrompt;
-
+    const start = FlowiseClient.buildStartNode();
     const llm = FlowiseClient.buildLLMNode({
       id: llmId,
       label: "Stage Agent",
-      messages: [{ role: "system", content: systemContent }],
+      messages: [{ role: "system", content: opts.systemPrompt }],
       model: {
         credentialId: opts.credentialId,
         modelName: opts.modelName,
@@ -1308,12 +1270,17 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
         basepath: opts.basepath,
       },
       returnResponseAs: "assistantMessage",
-      position: { x: 250 + validTools.length * 280, y: 250 },
+      position: { x: 300, y: 250 },
     });
-    nodes.push(llm);
-    edges.push(FlowiseClient.buildEdge(prevId, prevHandle, llmId, llmId, "#7EE787", "#64B5F6"));
-
-    return JSON.stringify({ nodes, edges });
+    const edges = [
+      FlowiseClient.buildEdge(
+        "startAgentflow_0",
+        "startAgentflow_0-output-startAgentflow",
+        llmId,
+        llmId,
+      ),
+    ];
+    return JSON.stringify({ nodes: [start, llm], edges });
   }
 
   // ── Chatflow CRUD ──────────────────────────────────────────────────────────

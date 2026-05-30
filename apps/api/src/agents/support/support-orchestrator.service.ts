@@ -95,8 +95,11 @@ export class SupportOrchestratorService {
     let needsHuman = false;
 
     try {
+      // Pre-fetch workspace context so stage flows don't need Flowise Tool nodes.
+      const wsCtx = await this.fetchWorkspaceContext(input.workspace_id, tier);
+
       // ── Stage 0: triage (all tiers) ──
-      const triageCtx = `Mensaje del usuario:\n${input.message}`;
+      const triageCtx = `${wsCtx}\n\nMensaje del usuario:\n${input.message}`;
       const triage = await this.runStage("intake-triage", tier, triageCtx, sessionId, stages);
       const triageOut = this.parseDiagnostic(triage?.structured);
       caseType = triageOut?.case_type ?? "unknown";
@@ -227,6 +230,34 @@ export class SupportOrchestratorService {
   }
 
   // ── Internals ──────────────────────────────────────────────────────────────
+
+  private async fetchWorkspaceContext(workspaceId: string, tier: SupportTier): Promise<string> {
+    try {
+      const [ws, counts] = await Promise.all([
+        this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { id: true, name: true, slug: true, plan: true, status: true, locale: true, timezone: true },
+        }),
+        Promise.all([
+          this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
+          this.prisma.conversation.count({ where: { workspace_id: workspaceId } }),
+          this.prisma.task.count({ where: { workspace_id: workspaceId } }),
+        ]),
+      ]);
+      const [contacts, conversations, tasks] = counts;
+      return [
+        `[Contexto del Workspace]`,
+        `ID: ${ws?.id ?? workspaceId}`,
+        `Nombre: ${ws?.name ?? "—"}`,
+        `Plan: ${ws?.plan ?? "FREE"} | Tier: ${tier}`,
+        `Estado: ${ws?.status ?? "—"}`,
+        `Zona horaria: ${ws?.timezone ?? "UTC"} | Locale: ${ws?.locale ?? "es"}`,
+        `Estadísticas: ${contacts} contactos, ${conversations} conversaciones, ${tasks} tareas`,
+      ].join("\n");
+    } catch {
+      return `[Contexto del Workspace]\nID: ${workspaceId} | Tier: ${tier}`;
+    }
+  }
 
   private async resolveTier(workspaceId: string): Promise<SupportTier> {
     const ws = await this.prisma.workspace.findUnique({
