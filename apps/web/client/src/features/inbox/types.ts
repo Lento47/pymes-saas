@@ -12,7 +12,13 @@ export type ConversationStatusFilter =
   | "NEW"
   | "OPEN"
   | "PENDING"
-  | "RESOLVED";
+  | "IA_ATTENDING"
+  | "REQUIRES_HUMAN"
+  | "WAITING_CLIENT"
+  | "IN_PROGRESS"
+  | "BLOCKED"
+  | "RESOLVED"
+  | "SPAM";
 
 export type ConversationPriority =
   | "LOW"
@@ -64,4 +70,16 @@ export interface InboxConversation {
   }>;
 }
 
-export const STATUS_OPTIONS = ["ALL", "NEW", "OPEN", "PENDING", "RESOLVED"] as const;
+export const STATUS_OPTIONS = [
+  "ALL",
+  "NEW",
+  "IA_ATTENDING",
+  "REQUIRES_HUMAN",
+  "IN_PROGRESS",
+  "WAITING_CLIENT",
+  "BLOCKED",
+  "PENDING",
+  "OPEN",
+  "RESOLVED",
+  "SPAM",
+] as const;

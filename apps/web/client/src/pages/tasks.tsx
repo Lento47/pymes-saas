@@ -52,7 +52,8 @@ function toCreateTaskPayload(form: { title: string; description: string; priorit
 }
 
 const PRIORITY_LABELS: Record<string, string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", URGENT: "Urgente" };
-const STATUS_OPTIONS = ["ALL", "TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
+const STATUS_LABELS: Record<string, string> = { ALL: "Todos", TODO: "Por hacer", IN_PROGRESS: "En progreso", BLOCKED: "Bloqueado", DONE: "Listo", OVERDUE: "Vencida", CANCELLED: "Cancelada" };
+const STATUS_OPTIONS = ["ALL", "TODO", "IN_PROGRESS", "BLOCKED", "DONE", "OVERDUE", "CANCELLED"];
 const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"];
 
 function TaskDescription({ text }: { text: string }) {
@@ -238,7 +239,7 @@ export default function TasksPage() {
             <SelectContent>
               {STATUS_OPTIONS.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s === "ALL" ? "Todo estado" : s.replace("_", " ")}
+                  {STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
                 </SelectItem>
               ))}
             </SelectContent>

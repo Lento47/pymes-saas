@@ -106,6 +106,12 @@ enum ConversationStatus {
   PENDING
   RESOLVED
   ARCHIVED
+  IA_ATTENDING
+  REQUIRES_HUMAN
+  WAITING_CLIENT
+  IN_PROGRESS
+  BLOCKED
+  SPAM
 }
 
 enum Priority {
@@ -181,6 +187,8 @@ enum TaskStatus {
   BLOCKED
   DONE
   ARCHIVED
+  OVERDUE
+  CANCELLED
 }
 
 enum TaskSource {
@@ -2450,6 +2458,7 @@ enum AgentStatus {
   INACTIVE
   ERROR
   DRAFT
+  TESTING
 }
 
 enum AgentChannelScope {
