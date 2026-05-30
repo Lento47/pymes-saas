@@ -8,9 +8,10 @@ import { PrismaModule } from "../common/prisma/prisma.module";
 import { CryptoModule } from "../common/crypto/crypto.module";
 import { FeaturesModule } from "../features/features.module";
 import { AuditModule } from "../audit/audit.module";
+import { AgentsModule } from "../agents/agents.module";
 
 @Module({
-  imports: [PrismaModule, CryptoModule, FeaturesModule, AuditModule],
+  imports: [PrismaModule, CryptoModule, FeaturesModule, AuditModule, AgentsModule],
   controllers: [PlatformController],
   providers: [PlatformService, PlatformSettingsService, GitHubService, RailwayService],
   exports: [PlatformSettingsService, GitHubService, RailwayService],

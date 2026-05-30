@@ -6,6 +6,7 @@ import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { FlowiseClient } from "../agents/flowise/flowise.client";
 import { FlowiseSetupService } from "../agents/flowise-setup.service";
 import type { ContextEnrichment } from "./message-router/types";
+import { toWhatsAppMarkdown, toTelegramHtml } from "./whatsapp-markdown.util";
 
 export interface FlowiseDispatchOptions {
   systemPromptAddendum?: string;
@@ -163,7 +164,7 @@ export class FlowiseAutoReplyService {
         message_type: "TEXT",
         has_media: false,
         media_status: "NONE",
-        raw_payload_json: { source } as Record<string, unknown>,
+        raw_payload_json: { source },
       },
     });
 
@@ -173,16 +174,14 @@ export class FlowiseAutoReplyService {
     if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
       const to = conv.contact.phone.replace(/\D/g, "");
       if (to) {
-        const result = await this.whatsapp.sendMessage(conv.channel, to, replyText);
+        const waText = toWhatsAppMarkdown(replyText);
+        const result = await this.whatsapp.sendMessage(conv.channel, to, waText);
         providerMsgId = result.message_id ?? null;
         sent = true;
       }
     } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
-      await this.telegram.sendMessage(
-        conv.channel.id,
-        conv.contact.telegram_chat_id,
-        replyText,
-      );
+      const tgText = toTelegramHtml(replyText);
+      await this.telegram.sendMessage(conv.channel.id, conv.contact.telegram_chat_id, tgText);
       sent = true;
     }
 

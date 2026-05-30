@@ -77,6 +77,7 @@ import AdminUsers from "@/pages/admin/users";
 import AdminPlanLimits from "@/pages/admin/plan-limits";
 import AdminLogin from "@/pages/admin/login";
 import AdminLandingEditor from "@/pages/admin/landing-editor";
+import AdminRouterMetrics from "@/pages/admin/router-metrics";
 import BusinessProfilePage from "@/pages/business-profile";
 
 function ScrollToTop() {
@@ -338,6 +339,9 @@ function AppRouter() {
       </Route>
       <Route path="/admin/support">
         {() => <PlatformAdminLayout><AdminSupportPage /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/router-metrics">
+        {() => <PlatformAdminLayout><AdminRouterMetrics /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
