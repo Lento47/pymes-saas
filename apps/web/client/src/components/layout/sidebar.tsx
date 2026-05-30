@@ -17,6 +17,7 @@ import {
   Settings, CircleHelp, LifeBuoy, LogOut, ChevronDown, Check, Shield,
   Sun, Moon, Search, Menu, X, Loader2,
   ShieldCheck, LayoutTemplate, Bot, Plug, BarChart3,
+  Building2, PlugZap, Layers, BrainCircuit, Coins,
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "invoices" | "pipeline" | "agents" | "automations" | "integrations" | "documents" | "inventory" | "notifications" | "settings" | "help" | "support";
@@ -66,9 +67,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "automation",
     items: [
-      { path: "/agents",            icon: Bot,    key: "agents" },
-      { path: "/automations",       icon: Zap,    key: "automations" },
-      { path: "/settings/channels", icon: Plug,   key: "integrations" },
+      { path: "/agents",      icon: Bot, key: "agents" },
+      { path: "/automations", icon: Zap, key: "automations" },
     ],
   },
   {
@@ -88,6 +88,17 @@ const ADMIN_ITEMS = [
   { href: "/admin/landing", icon: LayoutTemplate, key: "adminLanding" as const },
   { href: "/admin/support", icon: LifeBuoy, key: "adminSupport" as const },
   { href: "/admin/router-metrics", icon: BarChart3, key: "adminRouterMetrics" as const },
+] as const;
+
+const SETTINGS_ITEMS = [
+  { path: "/settings/workspace",    icon: Building2,    label: "Workspace" },
+  { path: "/settings/members",      icon: Users,        label: "Miembros" },
+  { path: "/settings/channels",     icon: PlugZap,      label: "Canales" },
+  { path: "/settings/departments",  icon: Layers,       label: "Departamentos" },
+  { path: "/settings/integrations", icon: Plug,         label: "Integraciones" },
+  { path: "/settings/ai",           icon: BrainCircuit, label: "Inteligencia Artificial" },
+  { path: "/settings/credits",      icon: Coins,        label: "Créditos IA" },
+  { path: "/settings/templates",    icon: FileText,     label: "Plantillas" },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -409,6 +420,38 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           ))}
 
+          <div className="space-y-1 border-t border-border/40 pt-2">
+            <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
+              {copy.settingsButton}
+            </div>
+            <div className="space-y-0.5">
+              {SETTINGS_ITEMS.map(({ path, icon: Icon, label }) => {
+                const active = location === path || location.startsWith(path + "/");
+                return (
+                  <Link key={path} href={path}>
+                    <div
+                      className={cn(
+                        "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
+                        active
+                          ? "bg-primary/[0.16] text-foreground font-medium"
+                          : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
+                      )}
+                    >
+                      {active && (
+                        <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+                      )}
+                      <Icon
+                        className={cn("w-[15px] h-[15px] shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")}
+                        strokeWidth={active ? 2.2 : 1.7}
+                      />
+                      <span className="flex-1 text-[13px]">{label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
           {user?.is_platform_admin && (
             <div className="space-y-1 border-t border-border/40 pt-2">
               <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
@@ -447,28 +490,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </nav>
-
-        <div className="shrink-0 px-3 pb-2">
-          <Link to="/settings/workspace">
-            <div
-              className={cn(
-                "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
-                location.startsWith("/settings")
-                  ? "bg-primary/[0.16] text-foreground font-medium"
-                  : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
-              )}
-            >
-              {location.startsWith("/settings") && (
-                <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-              )}
-              <Settings
-                className={cn("w-[15px] h-[15px] shrink-0 transition-colors", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")}
-                strokeWidth={location.startsWith("/settings") ? 2.2 : 1.7}
-              />
-              <span className="flex-1 text-[13px] text-left">{copy.settingsButton}</span>
-            </div>
-          </Link>
-        </div>
 
         <div className="shrink-0 px-3 pb-1">
           <button
