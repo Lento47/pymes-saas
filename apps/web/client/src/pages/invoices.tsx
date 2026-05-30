@@ -12,6 +12,7 @@ import {
   FileUp,
   Info,
   Loader2,
+  MessageSquare,
   Pencil,
   Plus,
   RefreshCw,
@@ -20,6 +21,7 @@ import {
   Send,
   Trash2,
   Upload,
+  XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { apiErrorDescription } from "@/lib/api-error";
@@ -323,6 +325,18 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura eliminada" });
     },
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => api.approveInvoice(id),
+    onSuccess: () => { invalidateInvoices(); toast({ title: "Borrador aprobado — lista para enviar" }); },
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => api.rejectInvoice(id, "Descartado por revisión"),
+    onSuccess: () => { invalidateInvoices(); toast({ title: "Borrador descartado" }); },
     onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
@@ -697,7 +711,42 @@ export default function InvoicesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          {invoice.status === "PENDING_APPROVAL" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs text-emerald-600 border-emerald-600/30 hover:bg-emerald-600/10"
+                                onClick={() => approveMutation.mutate(invoice.id)}
+                                disabled={approveMutation.isPending}
+                              >
+                                {approveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                                Aprobar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs text-destructive hover:text-destructive"
+                                onClick={() => rejectMutation.mutate(invoice.id)}
+                                disabled={rejectMutation.isPending}
+                              >
+                                {rejectMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
+                                Descartar
+                              </Button>
+                            </>
+                          )}
+                          {invoice.conversation_id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-muted-foreground"
+                              title="Ver conversación original"
+                              onClick={() => window.location.hash = `#/inbox/${invoice.conversation_id}`}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
