@@ -541,7 +541,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-sidebar-accent/30 px-2.5 py-2">
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-sidebar-accent/30 px-2.5 py-2">
             <div className="w-7 h-7 rounded-lg border border-primary/30 bg-primary/20 flex items-center justify-center shrink-0 text-[11px] font-bold text-primary">
               {initials}
             </div>
@@ -549,17 +549,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <p className="text-xs font-medium text-foreground truncate">{name}</p>
               <p className="text-[10px] text-muted-foreground/60 truncate capitalize">{user?.role?.toLowerCase()}</p>
             </div>
+            <button
+              onClick={logout}
+              title={copy.logout}
+              className="p-2 rounded-lg bg-muted/40 text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors shrink-0"
+            >
+              <LogOut className="w-4 h-4" strokeWidth={1.75} />
+            </button>
           </div>
-          <button
-            onClick={logout}
-            className={cn(
-              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/60 transition-colors",
-              "text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
-            )}
-          >
-            <LogOut className="w-[15px] h-[15px] shrink-0" strokeWidth={1.7} />
-            <span className="text-[13px]">{copy.logout}</span>
-          </button>
         </div>
       </aside>
 
