@@ -10,16 +10,16 @@ import { MessageBubble } from "./MessageBubble";
 
 function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   const msg = messages[idx];
-  if (!msg?.mediaType) return 60;
+  if (!msg?.mediaType) return 58;
   switch (msg.mediaType) {
-    case "sticker": return 120;
+    case "sticker": return 112;
     case "image":
-    case "video": return 280;
-    case "audio": return 80;
+    case "video": return 240;
+    case "audio": return 76;
     case "document":
     case "location":
-    case "contact": return 100;
-    default: return 60;
+    case "contact": return 96;
+    default: return 58;
   }
 }
 
@@ -63,7 +63,7 @@ export function MessageTimeline({
 
   if (isLoading) {
     return (
-      <div className={`relative flex-1 min-h-0 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
         <EmptyConversationState isLoading />
       </div>
     );
@@ -71,19 +71,19 @@ export function MessageTimeline({
 
   if (messages.length === 0) {
     return (
-      <div className={`relative flex-1 min-h-0 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
         <EmptyConversationState isLoading={false} contactName={contactName} />
       </div>
     );
   }
 
   return (
-    <div className={`relative flex-1 min-h-0 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+    <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto px-3 py-4 sm:px-4 sm:py-5"
+        className="h-full overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-4 sm:py-5"
         onScroll={onScroll}
-        style={{ scrollbarWidth: "thin" }}
+        style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" }}
       >
         <div
           style={{
@@ -128,14 +128,13 @@ export function MessageTimeline({
             );
           })}
         </div>
-        {/* Typing indicator */}
         {isUserTyping && (
-          <div className="flex items-center gap-1.5 px-3 py-2 ml-10">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-muted/40 rounded-bl-md">
+          <div className="ml-8 flex items-center gap-1.5 px-2 py-2 sm:ml-10 sm:px-3">
+            <div className="flex items-center gap-3 rounded-2xl rounded-bl-md bg-muted/40 px-3 py-2">
               <span className="flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:300ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:300ms]" />
               </span>
               <span className="text-[11px] text-muted-foreground/70">escribiendo...</span>
             </div>
@@ -145,13 +144,13 @@ export function MessageTimeline({
       </div>
 
       {!nearBottom && messages.length > 0 && (
-        <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center pointer-events-none">
+        <div className="pointer-events-none absolute bottom-3 left-0 right-0 z-10 flex justify-center sm:bottom-4">
           <button
             onClick={onScrollToBottom}
             aria-label="Ir al final de la conversación"
             className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-background/95 px-3 py-1.5 text-[11px] font-medium text-foreground shadow-lg shadow-black/10 backdrop-blur transition-all duration-200 hover:border-primary/30 hover:text-primary active:scale-95"
           >
-            <ArrowDown className="w-3 h-3" /> Nuevos mensajes
+            <ArrowDown className="h-3 w-3" /> Nuevos mensajes
           </button>
         </div>
       )}
