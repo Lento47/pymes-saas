@@ -1,7 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { CheckSquare, LayoutDashboard, Inbox, Receipt, Menu } from "lucide-react";
+import { CheckSquare, LayoutDashboard, Inbox, Receipt, Menu, LogOut } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type BadgeKind = "unread" | "overdue" | null;
 
@@ -14,12 +21,14 @@ const TABS: ReadonlyArray<{ path: string; icon: React.ElementType; label: string
 
 export function MobileBottomNav({
   onMenuClick,
+  onLogout,
   isItemVisible,
   unreadCount = 0,
   overdueCount = 0,
   hidden = false,
 }: {
   onMenuClick: () => void;
+  onLogout?: () => void;
   isItemVisible?: (key: string) => boolean;
   unreadCount?: number;
   overdueCount?: number;
@@ -39,6 +48,13 @@ export function MobileBottomNav({
     if (badge === "overdue") return overdueCount;
     return 0;
   };
+
+  const moreButtonClasses = cn(
+    "relative flex flex-1 flex-col items-center justify-center gap-[3px]",
+    "min-h-[48px] rounded-xl px-1 py-1",
+    "text-muted-foreground transition-colors duration-150",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+  );
 
   return (
     <nav
@@ -106,21 +122,38 @@ export function MobileBottomNav({
           );
         })}
 
-        {/* More / open sidebar */}
-        <button
-          type="button"
-          onClick={onMenuClick}
-          className={cn(
-            "relative flex flex-1 flex-col items-center justify-center gap-[3px]",
-            "min-h-[48px] rounded-xl px-1 py-1",
-            "text-muted-foreground transition-colors duration-150",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          )}
-          aria-label={copy.mobileNav.more}
-        >
-          <Menu className="h-[19px] w-[19px]" strokeWidth={1.8} />
-          <span className="text-[10px] font-medium leading-none">{copy.mobileNav.more}</span>
-        </button>
+        {/* More — opens sidebar or logout */}
+        {onLogout ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className={moreButtonClasses} aria-label={copy.mobileNav.more}>
+                <Menu className="h-[19px] w-[19px]" strokeWidth={1.8} />
+                <span className="text-[10px] font-medium leading-none">{copy.mobileNav.more}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" sideOffset={8} className="w-44">
+              <DropdownMenuItem onClick={onMenuClick}>
+                <Menu className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                Abrir menú
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="w-3.5 h-3.5 mr-2" />
+                Cerrar sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className={moreButtonClasses}
+            aria-label={copy.mobileNav.more}
+          >
+            <Menu className="h-[19px] w-[19px]" strokeWidth={1.8} />
+            <span className="text-[10px] font-medium leading-none">{copy.mobileNav.more}</span>
+          </button>
+        )}
       </div>
     </nav>
   );

@@ -366,7 +366,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="auth-ui flex h-screen overflow-hidden bg-background premium-ambient">
+    <div className="auth-ui flex h-[100dvh] overflow-hidden bg-background premium-ambient">
       {isMobile && sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 will-change-opacity lg:hidden"
@@ -688,6 +688,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <p className="truncate text-[10px] capitalize text-muted-foreground/60">{user?.role?.toLowerCase()}</p>
               </div>
             )}
+            {!isCollapsed && (
+              <button
+                onClick={logout}
+                title={copy.logout}
+                className="p-2 rounded-lg bg-muted/60 text-foreground/70 hover:bg-destructive/15 hover:text-destructive transition-colors shrink-0"
+              >
+                <LogOut className="w-4 h-4" strokeWidth={1.75} />
+              </button>
+            )}
           </div>
 
           <button
@@ -744,13 +753,17 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto pb-[52px] minimal-scrollbar lg:pb-0">
+        <div
+          ref={scrollRef}
+          className={`flex-1 overflow-y-auto minimal-scrollbar lg:pb-0 ${/^\/inbox\/.+/.test(location) ? "pb-0" : "pb-nav-safe"}`}
+        >
           {children}
         </div>
       </main>
 
       <MobileBottomNav
         onMenuClick={() => setSidebarOpen(true)}
+        onLogout={logout}
         isItemVisible={canShowNavItem}
         unreadCount={unreadCount}
         overdueCount={overdueCount}
