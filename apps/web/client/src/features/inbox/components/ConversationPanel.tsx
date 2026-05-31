@@ -12,6 +12,7 @@ import { AgentRunCard, type AgentRun } from "./conversation/AgentRunCard";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
 import { ContactFromConversationDialog } from "./ContactFromConversationDialog";
+import { TaskSheet, type TaskFormData } from "@/components/tasks/TaskSheet";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 import { normalizeMessage } from "@/features/inbox/message-adapters";
 import type { UiMessage } from "@/features/inbox/message-types";
@@ -23,7 +24,16 @@ const CHANNEL_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  OPEN: "Abierto", RESOLVED: "Resuelto", PENDING: "Pendiente",
+  NEW:             "Nuevo",
+  OPEN:            "Abierto",
+  PENDING:         "Pendiente",
+  IN_PROGRESS:     "En progreso",
+  WAITING_CLIENT:  "Esp. cliente",
+  REQUIRES_HUMAN:  "Req. humano",
+  IA_ATTENDING:    "IA activa",
+  BLOCKED:         "Bloqueado",
+  RESOLVED:        "Resuelto",
+  SPAM:            "Spam",
 };
 
 function getInitials(name: string) {
@@ -49,6 +59,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const emptyTask: TaskFormData = { title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" };
   const [isUserTyping, setIsUserTyping] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -215,9 +227,39 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
   });
 
+  const statusChangeMut = useMutation({
+    mutationFn: (status: string) =>
+      status === "RESOLVED"
+        ? api.resolveConversation(id)
+        : api.updateConversation(id, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/conversations", id] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+
   const assignMut = useMutation({
     mutationFn: (userId: string) => api.assignConversation(id, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
+  });
+
+  const createTaskMut = useMutation({
+    mutationFn: (form: TaskFormData) => {
+      const body: Record<string, string> = { title: form.title.trim() };
+      if (form.description?.trim()) body.description = form.description.trim();
+      if (form.priority) body.priority = form.priority;
+      if (form.dueDate) body.due_at = `${form.dueDate}T12:00:00.000Z`;
+      if (form.assignedUserId) body.assigned_user_id = form.assignedUserId;
+      if (id) body.conversation_id = id;
+      if (conversation?.contact?.id) body.contact_id = conversation.contact.id;
+      return api.createTask(body);
+    },
+    onSuccess: () => {
+      setShowCreateTask(false);
+      toast({ title: "Tarea creada" });
+      qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const createInvMut = useMutation({
@@ -491,6 +533,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         onBack={onBack}
         onAssign={(userId) => assignMut.mutate(userId)}
         onResolve={() => resolveMut.mutate()}
+        currentStatus={conversation?.status}
+        onStatusChange={(status) => statusChangeMut.mutate(status)}
         onRefresh={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}
         onInvoice={() => setShowInvoice(true)}
         onDelete={() => setShowDelete(true)}
@@ -499,6 +543,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         canResolve={conversation?.status !== "RESOLVED"}
         canSendInvoice={canSendInvoice}
         canAddContact={!conversation?.contact?.id}
+        onCreateTask={() => setShowCreateTask(true)}
         onDelegateToAi={isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
         isDelegatingToAi={delegateToAiMut.isPending}
         onPauseAi={isEmprendePlus && aiState === "AI_ACTIVE" ? () => stopAiMut.mutate() : undefined}
@@ -571,6 +616,19 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         onOpenChange={setShowAddContact}
         conversationId={id}
         conversation={conversation ?? null}
+      />
+
+      <TaskSheet
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
+        editingId={null}
+        initialData={{
+          ...emptyTask,
+          description: contactName !== "Desconocido" ? `Seguimiento con ${contactName}` : "",
+        }}
+        onSave={(form) => createTaskMut.mutate(form)}
+        isSaving={createTaskMut.isPending}
+        members={memberList}
       />
     </div>
   );

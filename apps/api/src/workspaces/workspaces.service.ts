@@ -908,6 +908,61 @@ export class WorkspacesService {
     });
   }
 
+  async getSetupChecklist(workspaceId: string) {
+    const [workspace, channelCount, memberCount, departmentCount, agentCount, templateCount] =
+      await Promise.all([
+        this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { settings_json: true, created_at: true },
+        }),
+        this.prisma.channel.count({ where: { workspace_id: workspaceId } }),
+        this.prisma.workspaceUser.count({
+          where: { workspace_id: workspaceId, role: { not: "OWNER" } },
+        }),
+        this.prisma.department.count({ where: { workspace_id: workspaceId } }),
+        this.prisma.agentInstance.count({
+          where: { workspace_id: workspaceId, status: "ACTIVE" },
+        }),
+        this.prisma.messageTemplate.count({ where: { workspace_id: workspaceId } }),
+      ]);
+
+    if (!workspace) return null;
+
+    const settings = (workspace.settings_json as Record<string, any>) ?? {};
+    const dismissedAt: string | null = settings.setup_dismissed_at ?? null;
+
+    const items = [
+      { key: "channel_connected", label: "Conectar primer canal",        href: "/settings/channels",    required: true,  done: channelCount > 0 },
+      { key: "member_invited",    label: "Invitar al menos un miembro",   href: "/settings/members",     required: true,  done: memberCount > 0 },
+      { key: "department_created",label: "Configurar departamento",       href: "/settings/departments", required: true,  done: departmentCount > 0 },
+      { key: "agent_activated",   label: "Activar agente IA",             href: "/agents",               required: false, done: agentCount > 0 },
+      { key: "template_created",  label: "Crear plantilla de respuesta",  href: "/settings/templates",   required: false, done: templateCount > 0 },
+    ];
+
+    const completedCount = items.filter((i) => i.done).length;
+    const ageMs = Date.now() - new Date(workspace.created_at).getTime();
+    const isNew = ageMs < 30 * 24 * 60 * 60 * 1000;
+    const shouldShow = !dismissedAt && (isNew || completedCount < 3);
+
+    return { items, dismissed: !!dismissedAt, should_show: shouldShow, completed_count: completedCount };
+  }
+
+  async dismissSetupChecklist(workspaceId: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings: Record<string, any> =
+      ws?.settings_json && typeof ws.settings_json === "object"
+        ? (ws.settings_json as Record<string, any>)
+        : {};
+    settings.setup_dismissed_at = new Date().toISOString();
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: settings },
+    });
+  }
+
   async getBusinessProfile(workspaceId: string) {
     return this.prisma.workspaceBusinessProfile.findUnique({
       where: { workspace_id: workspaceId },

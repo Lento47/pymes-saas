@@ -24,14 +24,30 @@ const PII_PATTERNS: RegExp[] = [
  * Heuristics for prompt-injection attempts embedded in external content.
  * We do not block on these (false positives are common) — we flag them so the
  * runtime can audit and the agent prompt can be reminded to treat them as data.
+ * Patterns cover both English and Spanish variants (the product's primary locale).
  */
 const INJECTION_PATTERNS: RegExp[] = [
+  // English
   /ignore (?:all |any |the )?(?:previous|above|prior) instructions/i,
   /disregard (?:all |the )?(?:previous|above|system) (?:instructions|prompt)/i,
   /you are now (?:a |an )?[a-z]/i,
   /system prompt/i,
   /reveal (?:your |the )?(?:prompt|instructions|system)/i,
   /\b(?:override|bypass) (?:the )?(?:rules|guardrails|policy|security)\b/i,
+  /act as (?:a |an )?(?:different|new|unrestricted|jailbroken|dan)/i,
+  /pretend (?:you are|to be) (?:a |an )?[a-z]/i,
+  /new (?:persona|role|mode|instructions)/i,
+  // Spanish
+  /ignora(?:r)? (?:todas? )?(?:las |tus )?(?:instrucciones|reglas|restricciones)/i,
+  /olvida(?:r)? (?:todo|tus instrucciones|las instrucciones)/i,
+  /ahora eres(?: un| una)?/i,
+  /act[uú]a(?:r)? como(?: un| una)?/i,
+  /pretende(?:r)? (?:que eres|ser)(?: un| una)?/i,
+  /nuevo (?:rol|modo|sistema|prompt|instrucciones)/i,
+  /\[(?:system|instrucciones|sistema)\]/i,
+  /revela(?:r)? (?:tu(?:s)? )?(?:instrucciones|prompt|sistema)/i,
+  /sin (?:filtros|restricciones|límites|limitaciones)/i,
+  /eres (?:ahora )?(?:un|una) (?:asistente )?(?:sin restricciones|libre|autónomo)/i,
 ];
 
 @Injectable()

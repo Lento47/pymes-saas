@@ -17,6 +17,7 @@ import { TtsService } from "../../tts/tts.service";
 import { CustomerMemoryService } from "../../learning/customer-memory.service";
 import { BusinessMemoryService } from "../../learning/business-memory.service";
 import { ConversationInsightService } from "../../learning/conversation-insight.service";
+import { AuditService } from "../../audit/audit.service";
 
 export interface AgentRunOptions {
   agent_instance_id: string;
@@ -52,6 +53,7 @@ export class AgentRuntimeService {
     private readonly customerMemory: CustomerMemoryService,
     private readonly businessMemory: BusinessMemoryService,
     private readonly conversationInsight: ConversationInsightService,
+    private readonly audit: AuditService,
   ) {
     this.maxOutputChars =
       this.config.get<number>("FLOWISE_MAX_OUTPUT_CHARS") ?? 4000;
@@ -163,8 +165,30 @@ export class AgentRuntimeService {
       this.guardrails.detectPromptInjectionAttempt(opts.question);
     if (injectionMarker) {
       this.logger.warn(
-        `Possible prompt-injection marker in input for agent ${instance.id}: "${injectionMarker}"`,
+        `Possible prompt-injection in agent ${instance.id} conv=${opts.conversation_id}: "${injectionMarker}"`,
       );
+      // Audit — non-blocking
+      void this.audit.log(opts.workspace_id, {
+        action: "prompt_injection_detected",
+        entity_type: "conversation",
+        entity_id: opts.conversation_id ?? "unknown",
+        after: { marker: injectionMarker, agent_instance_id: instance.id },
+      });
+      // Escalate: mark conversation as requiring human review
+      if (opts.conversation_id) {
+        await this.prisma.conversation.updateMany({
+          where: { id: opts.conversation_id, workspace_id: opts.workspace_id },
+          data: {
+            status: "REQUIRES_HUMAN",
+            metadata_json: { ai_state: "HUMAN_ACTIVE" },
+          },
+        }).catch(() => {/* non-fatal */});
+      }
+      return {
+        text: "Nuestro equipo te contactará pronto.",
+        flowise_session_id: session.flowise_session_id,
+        session_id: session.id,
+      };
     }
 
     // System message is baked into the AgentFlow at creation time.

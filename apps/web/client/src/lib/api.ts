@@ -398,6 +398,8 @@ export const api = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<Record<string, any>>("GET", `/api/audit${qs}`);
   },
+  getSetupChecklist: () => request<Record<string, any>>("GET", "/api/workspaces/current/setup"),
+  dismissSetupChecklist: () => request<Record<string, any>>("POST", "/api/workspaces/current/setup/dismiss"),
   getDashboard: () => request<Record<string, any>>("GET", "/api/workspaces/current/dashboard"),
   getWorkspaceStats: () => request<Record<string, any>>("GET", "/api/workspaces/current/stats"),
   getTodayStats: () => request<Record<string, any>>("GET", "/api/workspaces/current/stats/today"),
