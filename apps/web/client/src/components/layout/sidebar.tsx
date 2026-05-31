@@ -13,14 +13,57 @@ import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
-  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
-  Settings, CircleHelp, LifeBuoy, LogOut, ChevronDown, Check, Shield,
-  Sun, Moon, Search, Menu, X,
-  ShieldCheck, LayoutTemplate, Bot, Plug, BarChart3,
-  Building2, PlugZap, Layers, BrainCircuit, Coins, ClipboardList,
+  BarChart3,
+  Bot,
+  BrainCircuit,
+  Building2,
+  Check,
+  CheckSquare,
+  ChevronDown,
+  ClipboardList,
+  Coins,
+  FileText,
+  Inbox,
+  KanbanSquare,
+  Layers,
+  LayoutDashboard,
+  LayoutTemplate,
+  LifeBuoy,
+  LogOut,
+  Menu,
+  Moon,
+  Package,
+  Plug,
+  PlugZap,
+  Receipt,
+  Search,
+  Settings,
+  Shield,
+  ShieldCheck,
+  Sun,
+  Users,
+  X,
+  Zap,
 } from "lucide-react";
 
-type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "invoices" | "pipeline" | "agents" | "automations" | "integrations" | "documents" | "inventory" | "notifications" | "settings" | "help" | "support";
+type NavKey =
+  | "dashboard"
+  | "inbox"
+  | "contacts"
+  | "tasks"
+  | "invoices"
+  | "pipeline"
+  | "agents"
+  | "automations"
+  | "integrations"
+  | "documents"
+  | "inventory"
+  | "notifications"
+  | "settings"
+  | "help"
+  | "support";
+
+type NavGroupKey = "principal" | "automation" | "operations";
 type NavItem = { path: string; icon: React.ElementType; key: NavKey; badge?: "unread" | "overdue" };
 
 const BETA_LABELS: Partial<Record<NavKey, string>> = {
@@ -43,40 +86,40 @@ function navLabel(copy: Record<string, any>, key: NavKey, isBeta?: boolean): str
 }
 
 interface NavGroup {
-  key: "principal" | "automation" | "operations";
+  key: NavGroupKey;
   items: NavItem[];
 }
 
 const PLAN_MIN: Record<string, string> = {
-  pipeline: 'STARTER',
-  agents:   'EMPRENDE',
+  pipeline: "STARTER",
+  agents: "EMPRENDE",
 };
 
 const NAV_GROUPS: NavGroup[] = [
   {
     key: "principal",
     items: [
-      { path: "/",              icon: LayoutDashboard, key: "dashboard" },
-      { path: "/inbox",         icon: Inbox,           key: "inbox",       badge: "unread" },
-      { path: "/contacts",      icon: Users,           key: "contacts" },
-      { path: "/tasks",         icon: CheckSquare,     key: "tasks",       badge: "overdue" },
-      { path: "/pipeline",      icon: KanbanSquare,    key: "pipeline" },
-      { path: "/invoices",      icon: Receipt,         key: "invoices" },
+      { path: "/", icon: LayoutDashboard, key: "dashboard" },
+      { path: "/inbox", icon: Inbox, key: "inbox", badge: "unread" },
+      { path: "/contacts", icon: Users, key: "contacts" },
+      { path: "/tasks", icon: CheckSquare, key: "tasks", badge: "overdue" },
+      { path: "/pipeline", icon: KanbanSquare, key: "pipeline" },
+      { path: "/invoices", icon: Receipt, key: "invoices" },
     ],
   },
   {
     key: "automation",
     items: [
-      { path: "/agents",      icon: Bot, key: "agents" },
+      { path: "/agents", icon: Bot, key: "agents" },
       { path: "/automations", icon: Zap, key: "automations" },
     ],
   },
   {
     key: "operations",
     items: [
-      { path: "/documents",     icon: FileText,  key: "documents" },
-      { path: "/inventory",     icon: Package,   key: "inventory" },
-      { path: "/support",       icon: LifeBuoy,  key: "support" },
+      { path: "/documents", icon: FileText, key: "documents" },
+      { path: "/inventory", icon: Package, key: "inventory" },
+      { path: "/support", icon: LifeBuoy, key: "support" },
     ],
   },
 ];
@@ -91,15 +134,15 @@ const ADMIN_ITEMS = [
 ] as const;
 
 const SETTINGS_ITEMS = [
-  { path: "/settings/workspace",    icon: Building2,    label: "Workspace" },
-  { path: "/settings/members",      icon: Users,        label: "Miembros" },
-  { path: "/settings/channels",     icon: PlugZap,      label: "Canales" },
-  { path: "/settings/departments",  icon: Layers,       label: "Departamentos" },
-  { path: "/settings/integrations", icon: Plug,         label: "Integraciones" },
-  { path: "/settings/ai",           icon: BrainCircuit, label: "Inteligencia Artificial" },
-  { path: "/settings/credits",      icon: Coins,        label: "Créditos IA" },
-  { path: "/settings/templates",    icon: FileText,      label: "Plantillas" },
-  { path: "/settings/audit",        icon: ClipboardList, label: "Auditoría" },
+  { path: "/settings/workspace", icon: Building2, label: "Workspace" },
+  { path: "/settings/members", icon: Users, label: "Miembros" },
+  { path: "/settings/channels", icon: PlugZap, label: "Canales" },
+  { path: "/settings/departments", icon: Layers, label: "Departamentos" },
+  { path: "/settings/integrations", icon: Plug, label: "Integraciones" },
+  { path: "/settings/ai", icon: BrainCircuit, label: "Inteligencia Artificial" },
+  { path: "/settings/credits", icon: Coins, label: "Créditos IA" },
+  { path: "/settings/templates", icon: FileText, label: "Plantillas" },
+  { path: "/settings/audit", icon: ClipboardList, label: "Auditoría" },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -109,14 +152,19 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(
-    () => typeof window !== 'undefined' && location.startsWith("/settings"),
+    () => typeof window !== "undefined" && location.startsWith("/settings"),
   );
+  const [groupOpen, setGroupOpen] = useState<Record<NavGroupKey, boolean>>({
+    principal: true,
+    automation: true,
+    operations: true,
+  });
   const [sidebarOpen, setSidebarOpen] = useState(
-    () => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+    () => (typeof window !== "undefined" ? window.innerWidth >= 1024 : true),
   );
   const [searchOpen, setSearchOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+    () => typeof window !== "undefined" && window.innerWidth < 1024,
   );
   const wsMenuRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -126,39 +174,27 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   useNotificationsSocket();
 
   const { data: myWorkspaces } = useQuery({
-    queryKey: ["/api/auth/my-workspaces"], queryFn: api.getMyWorkspaces, staleTime: 60_000,
+    queryKey: ["/api/auth/my-workspaces"],
+    queryFn: api.getMyWorkspaces,
+    staleTime: 60_000,
   });
   const { data: unreadData } = useQuery({
-    queryKey: ["/api/notifications/unread-count"], queryFn: api.getUnreadCount, refetchInterval: 30000,
+    queryKey: ["/api/notifications/unread-count"],
+    queryFn: api.getUnreadCount,
+    refetchInterval: 30000,
   });
   const { data: features } = useQuery({
-    queryKey: ["/api/workspaces/current/features"], queryFn: api.getCurrentFeatures, staleTime: 120_000,
+    queryKey: ["/api/workspaces/current/features"],
+    queryFn: api.getCurrentFeatures,
+    staleTime: 120_000,
   });
-  const isBeta = features?.plan === "BETA_INFORMAL";
-  const isFeatureEnabled = (key: string): boolean => {
-    const map: Record<string, string> = {
-      inbox: "whatsapp_inbox", tasks: "orders", pipeline: "contacts",
-      contacts: "contacts", documents: "contacts", invoices: "billing",
-      automations: "automations", inventory: "orders",
-      agents: "ai_assistant", notifications: "conversations",
-      integrations: "whatsapp_inbox",
-    };
-    const fk = map[key] || key;
-    return features?.features?.[fk] !== false;
-  };
-  const canShowNavItem = (key: string): boolean => {
-    const minPlan = PLAN_MIN[key];
-    if (minPlan) {
-      const plan = user?.workspace?.plan ?? 'FREE';
-      const order = ['FREE', 'EMPRENDE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
-      if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
-    }
-    return isFeatureEnabled(key);
-  };
   const { data: overdueData } = useQuery({
-    queryKey: ["/api/tasks/overdue"], queryFn: api.getOverdueTasks, refetchInterval: 60000,
+    queryKey: ["/api/tasks/overdue"],
+    queryFn: api.getOverdueTasks,
+    refetchInterval: 60000,
   });
 
+  const isBeta = features?.plan === "BETA_INFORMAL";
   const unreadCount = unreadData?.count ?? 0;
   const overdueCount = Array.isArray(overdueData) ? overdueData.length : 0;
   const ws = user?.workspace?.name ?? copy.workspaceFallback;
@@ -166,8 +202,38 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const initials = name.slice(0, 2).toUpperCase();
   const workspaceInitial = ws.trim().charAt(0).toUpperCase() || "P";
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
-  const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
-  const badgeVal = (bk?: string) => bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0;
+  const isCollapsed = !isMobile && !sidebarOpen;
+
+  const isFeatureEnabled = (key: string): boolean => {
+    const map: Record<string, string> = {
+      inbox: "whatsapp_inbox",
+      tasks: "orders",
+      pipeline: "contacts",
+      contacts: "contacts",
+      documents: "contacts",
+      invoices: "billing",
+      automations: "automations",
+      inventory: "orders",
+      agents: "ai_assistant",
+      notifications: "conversations",
+      integrations: "whatsapp_inbox",
+    };
+    const fk = map[key] || key;
+    return features?.features?.[fk] !== false;
+  };
+
+  const canShowNavItem = (key: string): boolean => {
+    const minPlan = PLAN_MIN[key];
+    if (minPlan) {
+      const plan = user?.workspace?.plan ?? "FREE";
+      const order = ["FREE", "EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+      if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
+    }
+    return isFeatureEnabled(key);
+  };
+
+  const isActive = (p: string) => (p === "/" ? location === "/" : location.startsWith(p));
+  const badgeVal = (bk?: string) => (bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0);
 
   useEffect(() => {
     const handleResize = () => {
@@ -183,17 +249,17 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     if (isMobile) setSidebarOpen(false);
   }, [location, isMobile]);
 
-  // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     if (isMobile && sidebarOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isMobile, sidebarOpen]);
 
-  // Hide bottom nav on scroll-down, show on scroll-up
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -211,15 +277,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Always show bottom nav on route change
-  useEffect(() => { setBottomNavHidden(false); }, [location]);
+  useEffect(() => {
+    setBottomNavHidden(false);
+  }, [location]);
 
-  // Auto-expand settings section when navigating into /settings
   useEffect(() => {
     if (location.startsWith("/settings")) setSettingsOpen(true);
   }, [location]);
 
-  // Close workspace menu on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) {
@@ -232,12 +297,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     }
   }, [wsMenuOpen]);
 
-  // Ctrl+K / Cmd+K to open search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        if (!isMobile) setSidebarOpen((open) => !open);
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
@@ -245,7 +313,57 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, []);
+  }, [isMobile]);
+
+  const renderNavItem = ({ path, icon: Icon, key, badge: bk }: NavItem) => {
+    const active = isActive(path);
+    const b = badgeVal(bk);
+    const label = navLabel(copy, key, isBeta);
+
+    return (
+      <Link key={path} href={path}>
+        <div
+          title={isCollapsed ? label : undefined}
+          className={cn(
+            "group relative flex items-center rounded-lg cursor-pointer transition-all duration-150",
+            isCollapsed ? "mx-2 h-9 justify-center px-0" : "gap-2.5 px-3 py-[7px]",
+            active
+              ? "bg-primary/[0.14] text-foreground font-medium shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.12)]"
+              : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50",
+          )}
+        >
+          {active && !isCollapsed && (
+            <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+          )}
+          <Icon
+            className={cn(
+              "shrink-0 transition-colors",
+              isCollapsed ? "h-[17px] w-[17px]" : "h-[15px] w-[15px]",
+              active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+            )}
+            strokeWidth={active ? 2.2 : 1.7}
+          />
+          {!isCollapsed && <span className="flex-1 text-[13px]">{label}</span>}
+          {b > 0 && (
+            <span
+              className={cn(
+                isCollapsed
+                  ? "absolute right-1.5 top-1.5 h-2 w-2 rounded-full p-0 text-[0px]"
+                  : "min-w-[20px] rounded-md px-1.5 py-0.5 text-center text-[11px] font-semibold leading-none",
+                bk === "overdue"
+                  ? "bg-destructive text-destructive-foreground"
+                  : active
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted-foreground/10 text-muted-foreground",
+              )}
+            >
+              {!isCollapsed && b}
+            </span>
+          )}
+        </div>
+      </Link>
+    );
+  };
 
   return (
     <div className="auth-ui flex h-screen overflow-hidden bg-background premium-ambient">
@@ -258,82 +376,92 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 overflow-hidden bg-sidebar border-r border-border",
-          // Desktop: animate via width (pushes main content)
-          !isMobile && "transition-all duration-200 ease-out",
-          !isMobile && (sidebarOpen ? "w-[260px]" : "w-0 border-r-0"),
-          // Mobile: fixed overlay, GPU-composited translate
-          isMobile && "fixed left-0 top-0 z-50 h-[100dvh] w-[260px]",
+          "flex flex-col shrink-0 overflow-hidden border-r border-sidebar-border/80 bg-sidebar text-sidebar-foreground",
+          !isMobile && "transition-[width] duration-200 ease-out",
+          !isMobile && (sidebarOpen ? "w-[272px]" : "w-[72px]"),
+          isMobile && "fixed left-0 top-0 z-50 h-[100dvh] w-[272px]",
           isMobile && (sidebarOpen ? "sidebar-slide-in" : "sidebar-slide-out"),
         )}
       >
         {isMobile && (
-          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border pt-safe">
+          <div className="shrink-0 flex justify-end border-b border-sidebar-border/70 px-3 py-3 pt-safe">
             <button
               onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "p-2 rounded-md transition-colors",
-                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
-              )}
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-foreground"
+              aria-label="Cerrar menú"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         )}
 
-        <div className="shrink-0 border-b border-border px-3 pb-3 pt-3">
-          <Link href="/" className="mb-3 flex items-center rounded-md px-1.5 py-1.5 text-foreground hover:bg-sidebar-accent/25">
-            <BrandLockup compact markClassName="h-6 w-6" textClassName="text-[13px]" />
-          </Link>
+        <div className={cn("shrink-0 border-b border-sidebar-border/70", isCollapsed ? "px-2 py-3" : "px-3 pb-3 pt-3")}>
+          {!isCollapsed && (
+            <Link href="/" className="mb-3 flex items-center rounded-md px-1.5 py-1.5 text-foreground hover:bg-sidebar-accent/25">
+              <BrandLockup compact markClassName="h-6 w-6" textClassName="text-[13px]" />
+            </Link>
+          )}
+
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
-                "group w-full flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-all duration-200",
+                "group flex w-full items-center rounded-xl border text-left transition-all duration-200",
+                isCollapsed ? "h-11 justify-center px-0" : "gap-3 px-3 py-2.5",
                 wsMenuOpen
-                  ? "bg-primary/[0.08] border-primary/30"
-                  : "bg-primary/[0.04] border-primary/20 hover:bg-primary/[0.07]"
+                  ? "border-primary/35 bg-primary/[0.10]"
+                  : "border-primary/20 bg-primary/[0.05] hover:bg-primary/[0.08]",
               )}
               style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
               data-open={wsMenuOpen || undefined}
-              onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
+              onClick={() => multipleWorkspaces && setWsMenuOpen((o) => !o)}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
+              title={isCollapsed ? ws : undefined}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/70 bg-sidebar-accent/40">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-primary/25 bg-primary/[0.12] text-primary shadow-sm">
                 {user?.workspace?.logo_url ? (
                   <img src={user.workspace.logo_url} alt={ws} className="h-6 w-6 object-contain" />
                 ) : (
-                  <span className="text-xs font-semibold text-muted-foreground">{workspaceInitial}</span>
+                  <span className="text-xs font-semibold">{workspaceInitial}</span>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold leading-tight text-foreground">{ws}</p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {multipleWorkspaces ? copy.wsAvailable(myWorkspaces?.length ?? 0) : user?.workspace?.plan ?? user?.role}
-                </p>
-              </div>
-              {multipleWorkspaces && (
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                    wsMenuOpen && "rotate-180 text-foreground"
+              {!isCollapsed && (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold leading-tight text-foreground">{ws}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {multipleWorkspaces ? copy.wsAvailable(myWorkspaces?.length ?? 0) : user?.workspace?.plan ?? user?.role}
+                    </p>
+                  </div>
+                  {multipleWorkspaces && (
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                        wsMenuOpen && "rotate-180 text-foreground",
+                      )}
+                    />
                   )}
-                />
+                </>
               )}
             </button>
 
             {wsMenuOpen && multipleWorkspaces && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-2 overflow-hidden rounded-lg border border-border bg-popover shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="p-1.5 max-h-[280px] overflow-y-auto minimal-scrollbar">
+              <div
+                className={cn(
+                  "absolute top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-popover shadow-xl animate-in fade-in slide-in-from-top-2 duration-150",
+                  isCollapsed ? "left-0 w-64" : "left-0 right-0",
+                )}
+              >
+                <div className="max-h-[280px] overflow-y-auto p-1.5 minimal-scrollbar">
                   {(myWorkspaces as any[]).map((m) => {
                     const isCurrent = m.workspace.id === user?.workspace?.id;
                     return (
                       <button
                         key={m.workspace.id}
                         className={cn(
-                          "group w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left",
+                          "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
                           isCurrent
-                            ? "bg-sidebar-accent/55 text-foreground"
-                            : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground"
+                            ? "bg-sidebar-accent/60 text-foreground"
+                            : "text-muted-foreground hover:bg-sidebar-accent/45 hover:text-foreground",
                         )}
                         onClick={() => {
                           setWsMenuOpen(false);
@@ -344,105 +472,96 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                           {m.workspace.logo_url ? (
                             <img src={m.workspace.logo_url} alt={m.workspace.name} className="h-4 w-4 object-contain" />
                           ) : (
-                            <span className="text-[10px] font-semibold text-muted-foreground">{m.workspace.name.trim().charAt(0).toUpperCase() || "W"}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground">
+                              {m.workspace.name.trim().charAt(0).toUpperCase() || "W"}
+                            </span>
                           )}
                         </div>
-                        <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
-                        {isCurrent && (
-                          <Check className="w-4 h-4 text-muted-foreground shrink-0" />
-                        )}
+                        <span className="flex-1 truncate text-sm font-medium">{m.workspace.name}</span>
+                        {isCurrent && <Check className="h-4 w-4 shrink-0 text-primary" />}
                       </button>
                     );
                   })}
                 </div>
-                {multipleWorkspaces && (
-                  <div className="border-t border-border px-3 py-2 bg-sidebar-accent/15">
-                    <p className="text-xs text-muted-foreground/80">{copy.wsAvailable(myWorkspaces?.length ?? 0)}</p>
-                  </div>
-                )}
+                <div className="border-t border-border bg-sidebar-accent/15 px-3 py-2">
+                  <p className="text-xs text-muted-foreground/80">{copy.wsAvailable(myWorkspaces?.length ?? 0)}</p>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 minimal-scrollbar">
-          {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && (
-            <div className="mx-2 rounded-md border border-border bg-sidebar-accent/25 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+        <nav className={cn("flex-1 overflow-y-auto minimal-scrollbar", isCollapsed ? "px-0 py-3" : "space-y-3 px-3 py-3")}>
+          {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && !isCollapsed && (
+            <div className="mx-2 rounded-lg border border-border bg-sidebar-accent/25 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
               {copy.adminHint}
             </div>
           )}
-          {NAV_GROUPS.map((group) => (
-            <div key={group.key} className="space-y-1">
-              <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
-                {(copy.groups as any)[group.key]}
+
+          {NAV_GROUPS.map((group) => {
+            const visibleItems = group.items.filter(({ key }) => canShowNavItem(key));
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={group.key} className={cn(isCollapsed ? "mb-2" : "space-y-1")}>
+                {!isCollapsed && (
+                  <button
+                    onClick={() => setGroupOpen((prev) => ({ ...prev, [group.key]: !prev[group.key] }))}
+                    className="flex w-full items-center gap-2 rounded-md px-3 pb-1 pt-0.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+                  >
+                    <span className="flex-1">{(copy.groups as any)[group.key]}</span>
+                    <ChevronDown className={cn("h-3 w-3 transition-transform", groupOpen[group.key] && "rotate-180")} />
+                  </button>
+                )}
+
+                {(isCollapsed || groupOpen[group.key]) && (
+                  <div className={cn(isCollapsed ? "space-y-1" : "space-y-0.5")}>{visibleItems.map(renderNavItem)}</div>
+                )}
               </div>
-              <div className="space-y-0.5">
-                {group.items.filter(({ key }) => canShowNavItem(key)).map(({ path, icon: Icon, key, badge: bk }) => {
-                  const active = isActive(path);
-                  const b = badgeVal(bk);
-                  return (
-                    <Link key={path} href={path}>
-                      <div
-                        className={cn(
-                          "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
-                          active
-                            ? "bg-primary/[0.16] text-foreground font-medium"
-                            : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
-                        )}
-                      >
-                        {active && (
-                          <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-                        )}
+            );
+          })}
 
-                        <Icon
-                          className={cn(
-                            "w-[15px] h-[15px] shrink-0 transition-colors",
-                            active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground"
-                          )}
-                          strokeWidth={active ? 2.2 : 1.7}
-                        />
-
-                        <span className="flex-1 text-[13px]">{navLabel(copy, key, isBeta)}</span>
-
-                        {b > 0 && (
-                          <span
-                            className={cn(
-                              "text-[11px] font-semibold min-w-[20px] text-center px-1.5 py-0.5 rounded-md leading-none transition-colors",
-                              bk === "overdue"
-                                ? "bg-destructive/15 text-destructive"
-                                : active
-                                  ? "bg-primary/20 text-primary"
-                                  : "bg-muted-foreground/10 text-muted-foreground"
-                            )}
-                          >
-                            {b}
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          <div className="space-y-0.5 border-t border-border/40 pt-2">
+          <div className={cn("border-t border-sidebar-border/60", isCollapsed ? "mt-2 pt-2" : "space-y-0.5 pt-2")}>
             <button
-              onClick={() => setSettingsOpen(o => !o)}
-              className="w-full flex items-center gap-2 px-3 py-1 text-left"
+              onClick={() => {
+                if (isCollapsed) {
+                  setSidebarOpen(true);
+                  setSettingsOpen(true);
+                } else {
+                  setSettingsOpen((o) => !o);
+                }
+              }}
+              className={cn(
+                "flex w-full items-center rounded-lg text-left transition-colors",
+                isCollapsed
+                  ? "mx-2 h-9 justify-center px-0 text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
+                  : "gap-2 px-3 py-1.5",
+              )}
+              title={isCollapsed ? copy.settingsButton : undefined}
             >
               <Settings
-                className={cn("w-[15px] h-[15px] shrink-0", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground/60")}
+                className={cn(
+                  "shrink-0",
+                  isCollapsed ? "h-[17px] w-[17px]" : "h-[15px] w-[15px]",
+                  location.startsWith("/settings") ? "text-primary" : "text-muted-foreground/60",
+                )}
                 strokeWidth={1.7}
               />
-              <span className={cn("flex-1 text-[10px] font-semibold uppercase tracking-[0.1em]", location.startsWith("/settings") ? "text-primary/80" : "text-muted-foreground/45")}>
-                {copy.settingsButton}
-              </span>
-              <ChevronDown
-                className={cn("w-3 h-3 text-muted-foreground/40 transition-transform duration-200", settingsOpen && "rotate-180")}
-              />
+              {!isCollapsed && (
+                <>
+                  <span
+                    className={cn(
+                      "flex-1 text-[10px] font-semibold uppercase tracking-[0.1em]",
+                      location.startsWith("/settings") ? "text-primary/80" : "text-muted-foreground/50",
+                    )}
+                  >
+                    {copy.settingsButton}
+                  </span>
+                  <ChevronDown className={cn("h-3 w-3 text-muted-foreground/40 transition-transform duration-200", settingsOpen && "rotate-180")} />
+                </>
+              )}
             </button>
-            {settingsOpen && (
+            {!isCollapsed && settingsOpen && (
               <div className="space-y-0.5 pb-1">
                 {SETTINGS_ITEMS.map(({ path, icon: Icon, label }) => {
                   const active = location === path || location.startsWith(path + "/");
@@ -450,17 +569,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     <Link key={path} href={path}>
                       <div
                         className={cn(
-                          "group relative flex items-center gap-2.5 pl-7 pr-3 py-[6px] rounded-lg cursor-pointer transition-all duration-150",
+                          "group relative flex items-center gap-2.5 rounded-lg py-[6px] pl-7 pr-3 cursor-pointer transition-all duration-150",
                           active
-                            ? "bg-primary/[0.16] text-foreground font-medium"
-                            : "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50"
+                            ? "bg-primary/[0.14] text-foreground font-medium shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.12)]"
+                            : "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
                         )}
                       >
-                        {active && (
-                          <div className="absolute left-0 top-1/2 h-[16px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-                        )}
+                        {active && <div className="absolute left-0 top-1/2 h-[16px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />}
                         <Icon
-                          className={cn("w-[14px] h-[14px] shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground")}
+                          className={cn(
+                            "h-[14px] w-[14px] shrink-0 transition-colors",
+                            active ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground",
+                          )}
                           strokeWidth={active ? 2.2 : 1.7}
                         />
                         <span className="flex-1 text-[12.5px]">{label}</span>
@@ -473,35 +593,49 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
 
           {user?.is_platform_admin && (
-            <div className="space-y-1 border-t border-border/40 pt-2">
-              <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
-                {copy.admin}
-              </div>
-              <div className="space-y-0.5">
+            <div className={cn("border-t border-sidebar-border/60 pt-2", isCollapsed ? "mt-2 space-y-1" : "space-y-1")}>
+              {!isCollapsed && (
+                <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50">
+                  {copy.admin}
+                </div>
+              )}
+              <div className={cn(isCollapsed ? "space-y-1" : "space-y-0.5")}>
                 {ADMIN_ITEMS.map(({ href, icon: Icon, key }) => {
                   const active = isActive(href);
                   const label =
-                    key === "adminDashboard" ? copy.adminDashboard :
-                    key === "adminWorkspaces" ? copy.adminWorkspaces :
-                    key === "adminLanding" ? "Landing Page" :
-                    key === "adminRouterMetrics" ? "Router IA" :
-                    key === "adminSupport" ? "Soporte" :
-                    copy.adminPlanLimits;
+                    key === "adminDashboard"
+                      ? copy.adminDashboard
+                      : key === "adminWorkspaces"
+                        ? copy.adminWorkspaces
+                        : key === "adminLanding"
+                          ? "Landing Page"
+                          : key === "adminRouterMetrics"
+                            ? "Router IA"
+                            : key === "adminSupport"
+                              ? "Soporte"
+                              : copy.adminPlanLimits;
                   return (
-                    <Link key={href} to={href}>
+                    <Link key={href} href={href}>
                       <div
+                        title={isCollapsed ? label : undefined}
                         className={cn(
-                          "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
+                          "group relative flex items-center rounded-lg cursor-pointer transition-all duration-150",
+                          isCollapsed ? "mx-2 h-9 justify-center px-0" : "gap-2.5 px-3 py-[7px]",
                           active
-                            ? "bg-primary/[0.16] text-foreground font-medium"
-                            : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
+                            ? "bg-primary/[0.14] text-foreground font-medium shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.12)]"
+                            : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50",
                         )}
                       >
-                        {active && (
-                          <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-                        )}
-                        <Icon className={cn("w-[15px] h-[15px] shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")} strokeWidth={active ? 2.2 : 1.7} />
-                        <span className="flex-1 text-[13px]">{label}</span>
+                        {active && !isCollapsed && <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />}
+                        <Icon
+                          className={cn(
+                            "shrink-0 transition-colors",
+                            isCollapsed ? "h-[17px] w-[17px]" : "h-[15px] w-[15px]",
+                            active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+                          )}
+                          strokeWidth={active ? 2.2 : 1.7}
+                        />
+                        {!isCollapsed && <span className="flex-1 text-[13px]">{label}</span>}
                       </div>
                     </Link>
                   );
@@ -511,72 +645,71 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        <div className="shrink-0 px-3 pb-1">
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
-            className="w-full text-center text-[10px] text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
-          >
-            Preferencias de cookies
-          </button>
-        </div>
-
-        <div className="shrink-0 space-y-2 border-t border-border/50 bg-sidebar px-3 py-3 pb-safe">
-          <div className="grid grid-cols-2 gap-1.5">
+        {!isCollapsed && (
+          <div className="shrink-0 px-3 pb-1">
             <button
-              onClick={toggle}
-              className={cn(
-                "h-8 rounded-lg transition-colors flex items-center justify-center gap-1.5",
-                "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50 text-[11px]"
-              )}
-              aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
-              title={theme === "dark" ? copy.lightMode : copy.darkMode}
+              onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
+              className="w-full text-center text-[10px] text-muted-foreground/50 transition-colors hover:text-muted-foreground/80"
             >
-              {theme === "dark" ? (
-                <Sun className="w-3.5 h-3.5" />
-              ) : (
-                <Moon className="w-3.5 h-3.5" />
-              )}
+              Preferencias de cookies
             </button>
-            <div className="h-8">
-              <LanguageSwitcher />
-            </div>
           </div>
+        )}
 
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-sidebar-accent/30 px-2.5 py-2">
-            <div className="w-7 h-7 rounded-lg border border-primary/30 bg-primary/20 flex items-center justify-center shrink-0 text-[11px] font-bold text-primary">
+        <div className={cn("shrink-0 border-t border-sidebar-border/70 bg-sidebar pb-safe", isCollapsed ? "px-2 py-3" : "space-y-2 px-3 py-3")}>
+          {!isCollapsed && (
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={toggle}
+                className="flex h-8 items-center justify-center gap-1.5 rounded-lg text-[11px] text-muted-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-foreground"
+                aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
+                title={theme === "dark" ? copy.lightMode : copy.darkMode}
+              >
+                {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              </button>
+              <div className="h-8">
+                <LanguageSwitcher />
+              </div>
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "flex items-center rounded-xl border border-border/70 bg-sidebar-accent/30",
+              isCollapsed ? "justify-center p-1.5" : "gap-2 px-2.5 py-2",
+            )}
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/20 text-[11px] font-bold text-primary">
               {initials}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">{name}</p>
-              <p className="text-[10px] text-muted-foreground/60 truncate capitalize">{user?.role?.toLowerCase()}</p>
-            </div>
-            <button
-              onClick={logout}
-              title={copy.logout}
-              className="p-2 rounded-lg bg-muted/40 text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors shrink-0"
-            >
-              <LogOut className="w-4 h-4" strokeWidth={1.75} />
-            </button>
+            {!isCollapsed && (
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-foreground">{name}</p>
+                  <p className="truncate text-[10px] capitalize text-muted-foreground/60">{user?.role?.toLowerCase()}</p>
+                </div>
+                <button
+                  onClick={logout}
+                  title={copy.logout}
+                  className="shrink-0 rounded-lg bg-muted/40 p-2 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" strokeWidth={1.75} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-hidden">
         <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-primary/15 bg-[hsl(var(--bg-sidebar))] px-3 py-2.5 pt-safe lg:px-5">
-          {/* Only show sidebar toggle in header on desktop — mobile uses bottom nav "More" button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={cn(
-              "hidden lg:flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
-              "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-            )}
+            className="hidden min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground lg:flex"
             title={sidebarOpen ? copy.closeMenu : copy.openMenu}
+            aria-label={sidebarOpen ? copy.closeMenu : copy.openMenu}
           >
-            {sidebarOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
           <button
@@ -584,20 +717,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-primary/20 bg-white/[0.04] px-3 text-left text-xs text-muted-foreground transition-all duration-200 hover:text-foreground md:flex"
             title="Buscar (Ctrl+K)"
           >
-            <Search className="w-3.5 h-3.5" />
+            <Search className="h-3.5 w-3.5" />
             <span className="flex-1">{copy.searchPlaceholder}</span>
             <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">Ctrl K</kbd>
           </button>
 
           <button
             onClick={() => setSearchOpen(true)}
-            className={cn(
-              "p-2 rounded-md transition-colors md:hidden",
-              "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-            )}
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground md:hidden"
             title="Buscar (Ctrl+K)"
+            aria-label="Buscar"
           >
-            <Search className="w-4 h-4" />
+            <Search className="h-4 w-4" />
           </button>
 
           <NotificationBell />
@@ -609,10 +740,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto minimal-scrollbar pb-[52px] lg:pb-0"
-        >
+        <div ref={scrollRef} className="flex-1 overflow-y-auto pb-[52px] minimal-scrollbar lg:pb-0">
           {children}
         </div>
       </main>
@@ -624,7 +752,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         overdueCount={overdueCount}
         hidden={bottomNavHidden}
       />
-
     </div>
   );
 }
