@@ -656,7 +656,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <div className={cn("shrink-0 border-t border-sidebar-border/70 bg-sidebar pb-safe", isCollapsed ? "px-2 py-3" : "space-y-2 px-3 py-3")}>
+        <div className={cn("shrink-0 border-t border-sidebar-border/70 bg-sidebar pb-safe", isCollapsed ? "px-2 py-3" : "space-y-2 px-3 py-3")}> 
           {!isCollapsed && (
             <div className="grid grid-cols-2 gap-1.5">
               <button
@@ -683,21 +683,25 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               {initials}
             </div>
             {!isCollapsed && (
-              <>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-foreground">{name}</p>
-                  <p className="truncate text-[10px] capitalize text-muted-foreground/60">{user?.role?.toLowerCase()}</p>
-                </div>
-                <button
-                  onClick={logout}
-                  title={copy.logout}
-                  className="shrink-0 rounded-lg bg-muted/40 p-2 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                </button>
-              </>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">{name}</p>
+                <p className="truncate text-[10px] capitalize text-muted-foreground/60">{user?.role?.toLowerCase()}</p>
+              </div>
             )}
           </div>
+
+          <button
+            onClick={logout}
+            title={copy.logout}
+            aria-label={copy.logout}
+            className={cn(
+              "flex w-full items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/15 hover:text-destructive",
+              isCollapsed ? "h-9 px-0" : "gap-2 px-3 py-2 text-xs font-semibold",
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            {!isCollapsed && <span>{copy.logout ?? "Logout"}</span>}
+          </button>
         </div>
       </aside>
 
