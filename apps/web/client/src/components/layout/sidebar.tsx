@@ -688,15 +688,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <p className="truncate text-[10px] capitalize text-muted-foreground/60">{user?.role?.toLowerCase()}</p>
               </div>
             )}
-            {!isCollapsed && (
-              <button
-                onClick={logout}
-                title={copy.logout}
-                className="p-2 rounded-lg bg-muted/60 text-foreground/70 hover:bg-destructive/15 hover:text-destructive transition-colors shrink-0"
-              >
-                <LogOut className="w-4 h-4" strokeWidth={1.75} />
-              </button>
-            )}
           </div>
 
           <button
@@ -745,6 +736,16 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </button>
 
           <NotificationBell />
+
+          {/* Logout — always visible on mobile, hidden on desktop (desktop uses sidebar button) */}
+          <button
+            onClick={logout}
+            title={copy.logout}
+            aria-label={copy.logout}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive lg:hidden"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.75} />
+          </button>
 
           <span className="hidden rounded-md border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-xs font-medium text-primary/80 lg:inline-block">
             {user?.role}
