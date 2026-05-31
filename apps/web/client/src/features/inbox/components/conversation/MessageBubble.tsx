@@ -46,7 +46,7 @@ function renderTextWithLinks(text: string) {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline break-all"
+          className="break-all text-primary hover:underline"
         >
           {part}
         </a>
@@ -88,10 +88,10 @@ function getBubbleVariant(message: UiMessage): BubbleVariant {
 }
 
 function bubbleRadius(isOutbound: boolean, isConsecutive: boolean, loose = false) {
-  if (!isConsecutive) return loose ? "rounded-[18px]" : "rounded-2xl";
+  if (!isConsecutive) return loose ? "rounded-[17px] sm:rounded-[18px]" : "rounded-[17px] sm:rounded-2xl";
   return isOutbound
-    ? loose ? "rounded-[18px] rounded-tr-md" : "rounded-2xl rounded-tr-md"
-    : loose ? "rounded-[18px] rounded-tl-md" : "rounded-2xl rounded-tl-md";
+    ? loose ? "rounded-[17px] rounded-tr-md sm:rounded-[18px]" : "rounded-[17px] rounded-tr-md sm:rounded-2xl"
+    : loose ? "rounded-[17px] rounded-tl-md sm:rounded-[18px]" : "rounded-[17px] rounded-tl-md sm:rounded-2xl";
 }
 
 export const MessageBubble = function MessageBubble({
@@ -115,28 +115,28 @@ export const MessageBubble = function MessageBubble({
   const senderLabel = isOutbound ? "Tú" : (contactName || "Contacto");
 
   const bubbleClasses = useMemo(() => {
-    const spacing = isConsecutive ? "mt-0.5" : "mt-2.5";
+    const spacing = isConsecutive ? "mt-0.5" : "mt-2";
     const surface = isOutbound
-      ? "bg-primary/[0.075] border border-primary/[0.14]"
-      : "bg-card border border-border/55 shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
+      ? "border border-primary/[0.14] bg-primary/[0.075]"
+      : "border border-border/55 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
     switch (variant) {
       case "sticker":
-        return `max-w-[180px] ${spacing} bg-transparent border-0 shadow-none px-0 py-0`;
+        return `max-w-[160px] sm:max-w-[180px] ${spacing} border-0 bg-transparent px-0 py-0 shadow-none`;
       case "media":
-        return `relative max-w-[78%] sm:max-w-[360px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} p-1 overflow-hidden`;
+        return `relative max-w-[84%] sm:max-w-[360px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} overflow-hidden p-1`;
       case "audio":
-        return `max-w-[82%] sm:max-w-[340px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} px-2.5 py-2`;
+        return `max-w-[86%] sm:max-w-[340px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} px-2.5 py-2`;
       case "document":
       case "location":
       case "contact":
       case "interactive":
-        return `max-w-[82%] sm:max-w-[360px] ${spacing} bg-transparent border-0 shadow-none p-0`;
+        return `max-w-[86%] sm:max-w-[360px] ${spacing} border-0 bg-transparent p-0 shadow-none`;
       case "system":
-        return `max-w-[82%] ${spacing} rounded-full bg-muted/45 border border-border/40 px-3 py-1.5`;
+        return `max-w-[88%] ${spacing} rounded-full border border-border/40 bg-muted/45 px-3 py-1.5`;
       case "text":
       default:
-        return `max-w-[78%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3 py-2" : "px-3.5 py-2.5"}`;
+        return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3 py-2" : "px-3.5 py-2.5"}`;
     }
   }, [variant, isConsecutive, isOutbound, isShort]);
 
@@ -182,7 +182,7 @@ export const MessageBubble = function MessageBubble({
       }
       default:
         return (
-          <div className={`text-sm ${isShort ? "leading-snug" : "leading-relaxed"} text-foreground whitespace-pre-wrap break-words overflow-hidden`}>
+          <div className={`whitespace-pre-wrap break-words text-[13.5px] text-foreground sm:text-sm ${isShort ? "leading-snug" : "leading-relaxed"} overflow-hidden`}>
             {renderTextWithLinks(message.bodyText)}
           </div>
         );
@@ -198,20 +198,20 @@ export const MessageBubble = function MessageBubble({
     : "";
 
   return (
-    <div className={`flex gap-2 px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
+    <div className={`flex gap-1.5 px-0.5 sm:gap-2 sm:px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
-        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50 overflow-hidden" aria-label={`Avatar de ${senderLabel}`}>
+        <div className="mt-auto flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/50 sm:h-6 sm:w-6" aria-label={`Avatar de ${senderLabel}`}>
           {contactAvatarUrl ? (
-            <img src={contactAvatarUrl} alt="" className="w-full h-full object-cover" />
+            <img src={contactAvatarUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-[10px] font-semibold text-muted-foreground">
+            <span className="text-[9px] font-semibold text-muted-foreground sm:text-[10px]">
               {contactAvatarInitials || getInitials(contactName || "")}
             </span>
           )}
         </div>
       )}
       {!isOutbound && isConsecutive && (
-        <div className="w-6 shrink-0" aria-hidden="true" />
+        <div className="w-5 shrink-0 sm:w-6" aria-hidden="true" />
       )}
       <div className={bubbleClasses}>
         {renderContent()}
