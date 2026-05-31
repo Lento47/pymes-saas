@@ -1,0 +1,37 @@
+@media (max-width: 1023px) {
+  .auth-ui aside button:has(svg.lucide-log-out) {
+    position: fixed;
+    left: 12px;
+    bottom: max(env(safe-area-inset-bottom), 12px);
+    z-index: 90;
+    width: 248px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 14px;
+    color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.14);
+    border: 1px solid hsl(var(--destructive) / 0.26);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.22);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .auth-ui aside button:has(svg.lucide-log-out)::after {
+    content: "Logout";
+    display: inline-block;
+    margin-left: 0;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .auth-ui aside button:has(svg.lucide-log-out):hover,
+  .auth-ui aside button:has(svg.lucide-log-out):active {
+    color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.20);
+    border-color: hsl(var(--destructive) / 0.34);
+  }
+}
