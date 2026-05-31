@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 // SSO: SAML auto-detect on login — see handleSubmit
 import {
-  ArrowLeft,
   Building2,
   ChevronDown,
   ChevronUp,
@@ -178,6 +177,11 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
+    document.documentElement.classList.add('marketing-page');
+    return () => document.documentElement.classList.remove('marketing-page');
+  }, []);
+
+  useEffect(() => {
     (window as any).handleFbLogin = (accessToken?: string) => {
       if (typeof FB === 'undefined' && !accessToken) return;
       if (accessToken) { loginWithFbToken(accessToken); return; }
@@ -231,12 +235,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#F7F8FC]">
+    <div className="auth-bg marketing-light-theme flex h-dvh flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between px-6 py-3">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] transition hover:text-[#111827]">
-          <ArrowLeft className="h-4 w-4" />
-          {copy.back}
+      <div className="flex shrink-0 items-center justify-between px-6 pb-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))' }}>
+        <Link href="/">
+          <a className="rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/40">
+            <BrandLockup compact />
+          </a>
         </Link>
         <LanguageSwitcher variant="marketing" />
       </div>
