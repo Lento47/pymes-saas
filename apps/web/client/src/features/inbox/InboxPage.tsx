@@ -40,19 +40,40 @@ export default function InboxPage() {
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <InboxToolbar
-        search={search}
-        onSearchChange={setSearch}
-        channelTab={channelTab}
-        onChannelTabChange={setChannelTab}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-      />
+    <div className="flex h-full flex-col bg-background">
+      {!selectedId && (
+        <InboxToolbar
+          search={search}
+          onSearchChange={setSearch}
+          channelTab={channelTab}
+          onChannelTabChange={setChannelTab}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          conversations={conversations}
+          isLoading={conversationsQuery.isLoading}
+        />
+      )}
+
+      {selectedId && (
+        <div className="hidden md:block">
+          <InboxToolbar
+            search={search}
+            onSearchChange={setSearch}
+            channelTab={channelTab}
+            onChannelTabChange={setChannelTab}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            conversations={conversations}
+            isLoading={conversationsQuery.isLoading}
+          />
+        </div>
+      )}
 
       {/* Desktop layout */}
-      <div className="hidden md:grid flex-1 min-h-0 divide-x divide-border"
-        style={{ gridTemplateColumns: "380px minmax(0,1fr) 320px" }}>
+      <div
+        className="hidden min-h-0 flex-1 divide-x divide-border md:grid"
+        style={{ gridTemplateColumns: "380px minmax(0,1fr) 320px" }}
+      >
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
@@ -64,7 +85,7 @@ export default function InboxPage() {
           <ConversationPanel conversationId={selectedId} embedded />
         ) : (
           <section className="flex items-center justify-center bg-card">
-            <div className="text-center px-8 max-w-[280px]">
+            <div className="max-w-[280px] px-8 text-center">
               <InboxIcon className="mx-auto h-10 w-10 text-muted-foreground/25" />
               <p className="mt-3 text-sm text-muted-foreground/60">Seleccioná una conversación para ver los mensajes</p>
             </div>
@@ -76,8 +97,8 @@ export default function InboxPage() {
         />
       </div>
 
-      {/* Mobile: list or conversation detail */}
-      <div className="md:hidden flex-1 min-h-0">
+      {/* Mobile: queue or conversation detail */}
+      <div className="min-h-0 flex-1 md:hidden">
         {selectedId ? (
           <ConversationPanel
             conversationId={selectedId}
@@ -93,6 +114,7 @@ export default function InboxPage() {
           />
         )}
       </div>
+
       {selectedId && (
         <ContactFromConversationDialog
           open={showAddContact}
