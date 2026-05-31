@@ -426,6 +426,8 @@ html.light .dash-card {
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Bottom nav clearance: 52px nav height + home-indicator safe area (0 on older phones, 21–34px on iPhone X+) */
+.pb-nav-safe { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
 
 /* Minimal scrollbars for app shell surfaces */
 * {

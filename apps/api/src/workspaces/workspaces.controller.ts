@@ -66,6 +66,21 @@ export class WorkspacesController {
     return this.service.dismissSetupChecklist(workspaceId);
   }
 
+  @Get("current/automation-recipes")
+  getAutomationRecipes(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.service.getAutomationRecipes(workspaceId);
+  }
+
+  @Patch("current/automation-recipes/:slug")
+  @Roles(WorkspaceUserRole.ADMIN)
+  toggleAutomationRecipe(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("slug") slug: string,
+    @Body() dto: { config?: Record<string, string> },
+  ) {
+    return this.service.toggleAutomationRecipe(workspaceId, slug, dto.config);
+  }
+
   @Get("current/stats")
   getStats(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getStats(workspaceId);

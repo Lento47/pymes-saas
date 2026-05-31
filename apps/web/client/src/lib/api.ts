@@ -400,6 +400,8 @@ export const api = {
   },
   getSetupChecklist: () => request<Record<string, any>>("GET", "/api/workspaces/current/setup"),
   dismissSetupChecklist: () => request<Record<string, any>>("POST", "/api/workspaces/current/setup/dismiss"),
+  getAutomationRecipes: () => request<Record<string, any>[]>("GET", "/api/workspaces/current/automation-recipes"),
+  toggleAutomationRecipe: (slug: string, config?: Record<string, string>) => request<Record<string, any>>("PATCH", `/api/workspaces/current/automation-recipes/${slug}`, { config }),
   getDashboard: () => request<Record<string, any>>("GET", "/api/workspaces/current/dashboard"),
   getWorkspaceStats: () => request<Record<string, any>>("GET", "/api/workspaces/current/stats"),
   getTodayStats: () => request<Record<string, any>>("GET", "/api/workspaces/current/stats/today"),
