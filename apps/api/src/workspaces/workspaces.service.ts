@@ -963,6 +963,136 @@ export class WorkspacesService {
     });
   }
 
+  // ── Automation Recipes ──────────────────────────────────────────────────────
+
+  private readonly RECIPE_CATALOG = [
+    {
+      slug: "welcome-message",
+      category: "communication",
+      name: "Bienvenida automática",
+      description: "Envía un mensaje cuando un cliente inicia una nueva conversación.",
+      config_schema: [{ key: "message", label: "Mensaje de bienvenida", type: "textarea", default: "¡Hola! Gracias por contactarnos. En breve te atenderemos." }],
+    },
+    {
+      slug: "out-of-hours",
+      category: "communication",
+      name: "Mensaje fuera de horario",
+      description: "Responde automáticamente cuando llega un mensaje fuera del horario de atención.",
+      config_schema: [
+        { key: "message", label: "Mensaje fuera de horario", type: "textarea", default: "Gracias por escribirnos. Nuestro horario es de lunes a viernes 8am–6pm. Te responderemos pronto." },
+        { key: "start_hour", label: "Inicio de horario (hora)", type: "number", default: "8" },
+        { key: "end_hour", label: "Fin de horario (hora)", type: "number", default: "18" },
+      ],
+    },
+    {
+      slug: "no-reply-followup",
+      category: "communication",
+      name: "Seguimiento sin respuesta",
+      description: "Envía un recordatorio si el cliente no responde en X horas.",
+      config_schema: [
+        { key: "hours", label: "Horas sin respuesta", type: "number", default: "24" },
+        { key: "message", label: "Mensaje de seguimiento", type: "textarea", default: "Hola, ¿pudiste revisar mi última respuesta? Estamos aquí para ayudarte." },
+      ],
+    },
+    {
+      slug: "keyword-assignment",
+      category: "operations",
+      name: "Asignación por palabra clave",
+      description: "Asigna la conversación a un departamento cuando el mensaje contiene ciertas palabras.",
+      config_schema: [
+        { key: "keywords", label: "Palabras clave (separadas por coma)", type: "text", default: "factura, pago, cobro" },
+        { key: "department", label: "Departamento destino", type: "text", default: "" },
+      ],
+    },
+    {
+      slug: "unattended-alert",
+      category: "operations",
+      name: "Alerta de conversación sin atender",
+      description: "Notifica al supervisor cuando una conversación lleva más de N minutos sin respuesta.",
+      config_schema: [{ key: "minutes", label: "Minutos sin atender", type: "number", default: "30" }],
+    },
+    {
+      slug: "payment-reminder",
+      category: "billing",
+      name: "Recordatorio de pago",
+      description: "Envía un mensaje al cliente cuando su factura está próxima a vencer.",
+      config_schema: [{ key: "days_before", label: "Días antes del vencimiento", type: "number", default: "3" }],
+    },
+    {
+      slug: "overdue-team-alert",
+      category: "billing",
+      name: "Alerta de factura vencida",
+      description: "Notifica al equipo de cobranza cuando una factura vence hoy.",
+      config_schema: [],
+    },
+  ] as const;
+
+  async getAutomationRecipes(workspaceId: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings = (ws?.settings_json as Record<string, any>) ?? {};
+    const activeRecipes: Record<string, { is_active: boolean; config: Record<string, string> }> =
+      settings.automation_recipes ?? {};
+
+    return this.RECIPE_CATALOG.map((recipe) => ({
+      ...recipe,
+      is_active: activeRecipes[recipe.slug]?.is_active ?? false,
+      config: activeRecipes[recipe.slug]?.config ?? {},
+    }));
+  }
+
+  async toggleAutomationRecipe(workspaceId: string, slug: string, config?: Record<string, string>) {
+    const recipe = this.RECIPE_CATALOG.find((r) => r.slug === slug);
+    if (!recipe) return { ok: false, error: "Recipe not found" };
+
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings: Record<string, any> =
+      ws?.settings_json && typeof ws.settings_json === "object"
+        ? (ws.settings_json as Record<string, any>)
+        : {};
+    const current: Record<string, any> = settings.automation_recipes ?? {};
+    const existing = current[slug] ?? { is_active: false, config: {} };
+    current[slug] = {
+      is_active: !existing.is_active,
+      config: config ?? existing.config ?? {},
+    };
+    settings.automation_recipes = current;
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: settings },
+    });
+    return { ok: true, is_active: current[slug].is_active };
+  }
+
+  async updateAutomationRecipeConfig(workspaceId: string, slug: string, config: Record<string, string>) {
+    const recipe = this.RECIPE_CATALOG.find((r) => r.slug === slug);
+    if (!recipe) return { ok: false, error: "Recipe not found" };
+
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings: Record<string, any> =
+      ws?.settings_json && typeof ws.settings_json === "object"
+        ? (ws.settings_json as Record<string, any>)
+        : {};
+    const current: Record<string, any> = settings.automation_recipes ?? {};
+    current[slug] = { ...(current[slug] ?? {}), config };
+    settings.automation_recipes = current;
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: settings },
+    });
+    return { ok: true };
+  }
+
   async getBusinessProfile(workspaceId: string) {
     return this.prisma.workspaceBusinessProfile.findUnique({
       where: { workspace_id: workspaceId },
