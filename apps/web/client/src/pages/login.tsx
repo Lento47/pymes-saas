@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 // SSO: SAML auto-detect on login — see handleSubmit
 import {
-  ArrowLeft,
   Building2,
   ChevronDown,
   ChevronUp,
@@ -16,9 +15,8 @@ import {
   LockKeyhole,
   Mail,
 } from "lucide-react";
-import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { MarketingTopBar } from "@/components/marketing/marketing-top-bar";
 import { useI18n } from "@/components/providers/i18n-provider";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 function parseError(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
@@ -231,14 +229,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#F7F8FC]">
+    <div className="marketing-light-theme flex h-dvh flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between px-6 py-3">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] transition hover:text-[#111827]">
-          <ArrowLeft className="h-4 w-4" />
-          {copy.back}
-        </Link>
-        <LanguageSwitcher variant="marketing" />
+      <div className="shrink-0 px-4 pt-4 sm:px-6">
+        <MarketingTopBar
+          secondaryHref="/register"
+          secondaryLabel={copy.createAccount}
+        />
       </div>
 
       {/* Center content — scrollable if content taller than screen */}
@@ -246,13 +243,11 @@ export default function LoginPage() {
         <div className="w-full max-w-[22rem]">
 
           {/* Card */}
-          <div className="rounded-xl border border-[#E5E7EB] bg-white p-8 shadow-sm">
-
-            <BrandLockup className="justify-center" />
+          <div className="landing-card rounded-2xl p-8">
 
             {/* Expired session banner */}
             {expired && (
-              <div className="mt-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
+              <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                 <div>
                   <p className="text-sm font-semibold text-amber-700">Tu sesión ha expirado</p>
@@ -265,8 +260,8 @@ export default function LoginPage() {
 
             {/* Workspace picker */}
             {workspaceOptions.length > 0 ? (
-              <div className="mt-6">
-                <h2 className="text-center text-lg font-semibold text-[#111827]">
+              <div>
+                <h2 className="font-marketing text-center text-lg font-semibold text-[#111827]">
                   {copy.workspacePickerTitle}
                 </h2>
                 <p className="mt-1.5 text-center text-sm text-[#6B7280]">
@@ -300,8 +295,8 @@ export default function LoginPage() {
             ) : (
               <>
                 {/* Heading */}
-                <div className="mt-6">
-                  <h1 className="text-xl font-semibold text-[#111827]">{copy.welcome}</h1>
+                <div className={expired ? "mt-5" : ""}>
+                  <h1 className="font-marketing text-xl font-semibold text-[#111827]">{copy.welcome}</h1>
                   <p className="mt-1 text-sm text-[#6B7280]">{copy.description}</p>
                 </div>
 
