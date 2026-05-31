@@ -12,10 +12,10 @@ import { AgentRunCard, type AgentRun } from "./conversation/AgentRunCard";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
 import { ContactFromConversationDialog } from "./ContactFromConversationDialog";
-import { TaskSheet, type TaskFormData } from "@/components/tasks/TaskSheet";
+import { TaskSheet } from "@/components/tasks/TaskSheet";
+import { emptyTask, type TaskFormData } from "@/lib/task-utils";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 import { normalizeMessage } from "@/features/inbox/message-adapters";
-import type { UiMessage } from "@/features/inbox/message-types";
 import type { InteractiveState } from "./composer/InteractiveToolbar";
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -24,16 +24,16 @@ const CHANNEL_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  NEW:             "Nuevo",
-  OPEN:            "Abierto",
-  PENDING:         "Pendiente",
-  IN_PROGRESS:     "En progreso",
-  WAITING_CLIENT:  "Esp. cliente",
-  REQUIRES_HUMAN:  "Req. humano",
-  IA_ATTENDING:    "IA activa",
-  BLOCKED:         "Bloqueado",
-  RESOLVED:        "Resuelto",
-  SPAM:            "Spam",
+  OPEN: "Abierto",
+  RESOLVED: "Resuelto",
+  PENDING: "Pendiente",
+  NEW: "Nuevo",
+  IN_PROGRESS: "En progreso",
+  WAITING_CLIENT: "Esperando cliente",
+  REQUIRES_HUMAN: "Requiere humano",
+  IA_ATTENDING: "IA activa",
+  BLOCKED: "Bloqueado",
+  SPAM: "Spam",
 };
 
 function getInitials(name: string) {
@@ -60,7 +60,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [showInvoice, setShowInvoice] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const emptyTask: TaskFormData = { title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" };
   const [isUserTyping, setIsUserTyping] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,13 +81,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     staleTime: 5 * 60_000,
   });
 
-  // ── Read receipt when conversation opens ──
   useEffect(() => {
     if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
     api.sendReadReceipt(id).catch(() => { /* best-effort */ });
   }, [id, conv?.channel?.type]);
 
-  // ── Typing indicator with debounce ──
   useEffect(() => {
     if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
 
@@ -105,7 +102,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     };
   }, [id, message, conv?.channel?.type]);
 
-  // ── Listen for WhatsApp user typing ──
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !id) return;
@@ -114,7 +110,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       if (data.conversationId !== id) return;
       setIsUserTyping(true);
       if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
-      // Auto-clear after 5s if no message arrives
       userTypingTimerRef.current = setTimeout(() => setIsUserTyping(false), 5000);
     };
 
@@ -143,13 +138,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const sendMut = useMutation({
     mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
     onMutate: async (newMessage) => {
-      // Cancel refetches so they don't overwrite our optimistic update
       await qc.cancelQueries({ queryKey: ["/api/conversations", id, "messages"] });
-
-      // Snapshot for rollback
       const previousMessages = qc.getQueryData(["/api/conversations", id, "messages"]);
-
-      // Optimistic insert
       const optimisticId = `temp-${Date.now()}`;
       const optimistic = {
         id: optimisticId,
@@ -175,10 +165,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           : { ...old, data: [...dataArray, optimistic], meta: { ...old?.meta, total: (old?.meta?.total ?? 0) + 1 } };
       });
 
-      // Clear input immediately
       setMessage("");
       setAttachment(null);
-
       return { previousMessages, optimisticId };
     },
     onSuccess: (serverMessage: Record<string, any>, _newMessage, context: any) => {
@@ -189,9 +177,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         const replaced = dataArray.map((m: any) =>
           m.id === context.optimisticId ? serverMessage : m,
         );
-        if (!replaced.some((m: any) => m.id === serverMessage.id)) {
-          replaced.push(serverMessage);
-        }
+        if (!replaced.some((m: any) => m.id === serverMessage.id)) replaced.push(serverMessage);
         const byId = new Map<string, any>();
         for (const item of replaced) byId.set(String(item.id), item);
         const deduped = Array.from(byId.values());
@@ -199,18 +185,16 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       });
     },
     onError: (err: any, _newMessage, context: any) => {
-      // Rollback on failure
-      if (context?.previousMessages) {
-        qc.setQueryData(["/api/conversations", id, "messages"], context.previousMessages);
-      }
+      if (context?.previousMessages) qc.setQueryData(["/api/conversations", id, "messages"], context.previousMessages);
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     },
     onSettled: () => {
-      // Replace optimistic with real data from server
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
+
+  const conversation = conv;
 
   const deleteMut = useMutation({
     mutationFn: () => api.deleteConversation(id),
@@ -309,7 +293,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
     if (interactive) {
       basePayload.body_text = message;
-
       if (interactive.type === "buttons") {
         basePayload.interactive = {
           type: "button",
@@ -360,9 +343,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     }
   }, [toast]);
 
-  const msgList = useMemo(() => {
-    return Array.isArray(messages) ? messages : messages?.data || [];
-  }, [messages]);
+  const msgList = useMemo(() => Array.isArray(messages) ? messages : messages?.data || [], [messages]);
 
   const EMPRENDE_PLANS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
   const plan = (workspace as any)?.plan ?? "FREE";
@@ -416,8 +397,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e: any) => toast({ title: "Error al iniciar agente", description: e.message, variant: "destructive" }),
   });
 
-  // Clear typing indicator when a new inbound message arrives
-  // NOTE: must come AFTER msgList declaration (TDZ constraint in JS)
   useEffect(() => {
     if (msgList.length > 0) {
       const last = msgList[msgList.length - 1];
@@ -428,21 +407,16 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     }
   }, [msgList.length]);
 
-  const memberList = useMemo(() => {
-    return Array.isArray(members) ? members : members?.data || [];
-  }, [members]);
-
-  const conversation = conv;
+  const memberList = useMemo(() => Array.isArray(members) ? members : members?.data || [], [members]);
   const contact = conversation?.contact;
   const contactName = contact?.full_name || "Desconocido";
   const contactIdentity = contact?.email ?? contact?.phone ?? contact?.id ?? contactName;
   const contactAvatarUrl = useAvatarUrl(contactIdentity);
   const channelType = conversation?.channel?.type || "";
 
-  // Compute service window status
   const isServiceWindowOpen = conversation?.service_window_expires_at
     ? new Date(conversation.service_window_expires_at).getTime() > Date.now()
-    : true; // default to open for non-WhatsApp or when field is null
+    : true;
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType?.toUpperCase() ?? "");
 
   const [nearBottom, setNearBottom] = useState(true);
@@ -482,27 +456,20 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     if (newMessages > 0) {
       const lastNew = msgList[msgList.length - 1];
       if (lastNew?.id) {
-        if (animationTimerRef.current) {
-          clearTimeout(animationTimerRef.current);
-        }
+        if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
         setAnimatingMsgId(lastNew.id);
         animationTimerRef.current = setTimeout(() => {
           setAnimatingMsgId(null);
           animationTimerRef.current = null;
         }, 520);
       }
-      // Always scroll for outbound (user sent it), or if already near bottom
-      if (lastNew?.direction === "OUTBOUND" || nearBottom) {
-        scrollToBottom(true);
-      }
+      if (lastNew?.direction === "OUTBOUND" || nearBottom) scrollToBottom(true);
     }
   }, [msgsLoading, msgList.length, initialLoaded, nearBottom, scrollToBottom]);
 
   useEffect(() => {
     return () => {
-      if (animationTimerRef.current) {
-        clearTimeout(animationTimerRef.current);
-      }
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
     };
   }, []);
 
@@ -517,11 +484,15 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     ? "bg-emerald-400"
     : conversation?.status === "PENDING"
       ? "bg-amber-400"
-      : "bg-blue-400/50";
+      : conversation?.status === "REQUIRES_HUMAN" || conversation?.status === "BLOCKED"
+        ? "bg-red-500"
+        : conversation?.status === "IA_ATTENDING"
+          ? "bg-violet-500"
+          : "bg-blue-400/50";
   const statusDotSize = "w-1.5 h-1.5 rounded-full";
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background md:h-full">
       <ConversationHeader
         contactName={contactName}
         contactAvatarInitials={getInitials(contactName)}
@@ -553,7 +524,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       />
 
       {agentRun && (agentRun as AgentRun).status !== "CANCELLED" && (
-        <AgentRunCard run={agentRun as AgentRun} conversationId={id} />
+        <div className="shrink-0">
+          <AgentRunCard run={agentRun as AgentRun} conversationId={id} />
+        </div>
       )}
 
       <MessageTimeline
