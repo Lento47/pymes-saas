@@ -28,6 +28,7 @@ import { EmrendeAiController } from "./emprende-ai.controller";
 import { AgentRunService } from "./agent-run.service";
 import { AiConversationControlService } from "./ai-conversation-control.service";
 import { AiProviderBalancerService } from "./ai-provider-balancer.service";
+import { AiPrivacyModule } from "../ai-privacy/ai-privacy.module";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { TelegramModule } from "../telegram/telegram.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
@@ -79,6 +80,7 @@ import { PlatformModule } from "../platform/platform.module";
     AiTokensModule,
     StorageModule,
     ProductMetricsModule,
+    AiPrivacyModule,
     forwardRef(() => AgentsModule),
     forwardRef(() => PlatformModule),
   ],
@@ -134,6 +136,7 @@ import { PlatformModule } from "../platform/platform.module";
     CloudflareAiService,
     AiGatewayService,
     AiProviderBalancerService,
+    AiPrivacyModule,
     AiTriageService,
     EmrendeAiService,
     AgentRunService,
