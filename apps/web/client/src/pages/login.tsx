@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 // SSO: SAML auto-detect on login — see handleSubmit
 import {
   Building2,
+  Check,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -14,9 +15,11 @@ import {
   Loader2,
   LockKeyhole,
   Mail,
+  ShieldCheck,
 } from "lucide-react";
-import { MarketingTopBar } from "@/components/marketing/marketing-top-bar";
+import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useI18n } from "@/components/providers/i18n-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 function parseError(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
@@ -60,7 +63,7 @@ function Field({
       <label htmlFor={id} className="block text-sm font-medium text-[#111827]">
         {label}
       </label>
-      <div className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2.5 transition-all focus-within:border-[#4F46E5]/40 focus-within:ring-2 focus-within:ring-[#4F46E5]/10">
+      <div className="flex items-center gap-2 rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 py-3 transition-all focus-within:border-[#4F46E5]/40 focus-within:ring-2 focus-within:ring-[#4F46E5]/10">
         <span className="text-[#9CA3AF]">{icon}</span>
         <input
           id={id}
@@ -75,6 +78,20 @@ function Field({
         {rightAdornment}
       </div>
       {hint && <p className="text-xs leading-relaxed text-[#6B7280]">{hint}</p>}
+    </div>
+  );
+}
+
+function TrustItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#EEF2FF]">
+        <Check className="h-3 w-3 text-[#4F46E5]" strokeWidth={2.5} />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-[#111827]">{label}</p>
+        <p className="text-xs leading-relaxed text-[#6B7280]">{value}</p>
+      </div>
     </div>
   );
 }
@@ -230,180 +247,250 @@ export default function LoginPage() {
 
   return (
     <div className="marketing-light-theme flex h-dvh flex-col overflow-hidden">
-      {/* Top bar */}
-      <div className="shrink-0 px-4 pt-4 sm:px-6">
-        <MarketingTopBar
-          secondaryHref="/register"
-          secondaryLabel={copy.createAccount}
-        />
+
+      {/* Top bar — simple, calm, not pill-style */}
+      <div className="flex shrink-0 items-center justify-between px-6 py-4">
+        <Link href="/">
+          <a className="rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/40">
+            <BrandLockup compact />
+          </a>
+        </Link>
+        <div className="flex items-center gap-4">
+          <LanguageSwitcher variant="marketing" />
+          <Link href="/register">
+            <a className="text-sm font-medium text-[#6B7280] transition hover:text-[#111827]">
+              {copy.createAccount}
+            </a>
+          </Link>
+        </div>
       </div>
 
-      {/* Center content — scrollable if content taller than screen */}
-      <div className="flex flex-1 items-center justify-center overflow-y-auto px-4 py-4 min-h-0">
-        <div className="w-full max-w-[22rem]">
+      {/* Main content — split layout on desktop */}
+      <div className="flex flex-1 items-center justify-center overflow-y-auto px-4 py-8 min-h-0">
+        <div className="grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
 
-          {/* Card */}
-          <div className="landing-card rounded-2xl p-8">
+          {/* Left — product trust panel, desktop only */}
+          <section className="hidden lg:flex lg:flex-col lg:justify-center lg:px-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+              Workspace para PYMEs
+            </p>
+            <h2 className="mt-5 font-marketing text-[2.6rem] font-semibold leading-[1.1] tracking-[-0.04em] text-[#111827]">
+              Conversaciones,<br />clientes y facturación<br />en un solo lugar.
+            </h2>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-[#6B7280]">
+              Ingresá a tu operación diaria para responder mensajes, dar seguimiento comercial y mantener tus procesos en orden.
+            </p>
+            <div className="mt-8 grid gap-4">
+              <TrustItem
+                label="Canales conectados"
+                value="WhatsApp, correo, Telegram y más"
+              />
+              <TrustItem
+                label="Operación comercial"
+                value="CRM, tareas, ventas y soporte"
+              />
+              <TrustItem
+                label="Facturación"
+                value="Comprobantes electrónicos y control interno"
+              />
+              <TrustItem
+                label="Automatización e IA"
+                value="Flujos de trabajo y agentes asistidos"
+              />
+            </div>
+          </section>
 
-            {/* Expired session banner */}
-            {expired && (
-              <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
-                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          {/* Right — auth card */}
+          <section className="mx-auto w-full max-w-[26rem]">
+            <div className="auth-card rounded-[1.25rem] p-8">
+
+              {/* Expired session banner */}
+              {expired && (
+                <div className="mb-5 flex items-start gap-3 rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-700">Tu sesión ha expirado</p>
+                    <p className="mt-0.5 text-xs leading-5 text-amber-600">
+                      Por seguridad, la sesión se cierra después de 30 minutos de inactividad.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Workspace picker */}
+              {workspaceOptions.length > 0 ? (
                 <div>
-                  <p className="text-sm font-semibold text-amber-700">Tu sesión ha expirado</p>
-                  <p className="mt-0.5 text-xs leading-5 text-amber-600">
-                    Por seguridad, la sesión se cierra después de 30 minutos de inactividad.
+                  <h2 className="font-marketing text-center text-lg font-semibold text-[#111827]">
+                    {copy.workspacePickerTitle}
+                  </h2>
+                  <p className="mt-1.5 text-center text-sm text-[#6B7280]">
+                    {copy.workspacePickerDescription}
                   </p>
-                </div>
-              </div>
-            )}
-
-            {/* Workspace picker */}
-            {workspaceOptions.length > 0 ? (
-              <div>
-                <h2 className="font-marketing text-center text-lg font-semibold text-[#111827]">
-                  {copy.workspacePickerTitle}
-                </h2>
-                <p className="mt-1.5 text-center text-sm text-[#6B7280]">
-                  {copy.workspacePickerDescription}
-                </p>
-                <div className="mt-5 space-y-2">
-                  {workspaceOptions.map((ws) => (
-                    <button
-                      key={ws.slug}
-                      onClick={(e) => { setWorkspaceOptions([]); handleSubmit(e, ws.slug); }}
-                      disabled={loading}
-                      className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-3 text-left transition hover:border-[#D1D5DB] hover:bg-[#F7F8FC] disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-4 w-4 shrink-0 text-[#6B7280]" />
-                        <div>
-                          <p className="text-sm font-medium text-[#111827]">{ws.name}</p>
-                          <p className="text-xs text-[#6B7280]">{ws.slug}</p>
+                  <div className="mt-5 space-y-2">
+                    {workspaceOptions.map((ws) => (
+                      <button
+                        key={ws.slug}
+                        onClick={(e) => { setWorkspaceOptions([]); handleSubmit(e, ws.slug); }}
+                        disabled={loading}
+                        className="w-full rounded-[10px] border border-[#E5E7EB] bg-white px-3 py-3 text-left transition hover:border-[#D1D5DB] hover:bg-[#F7F8FC] disabled:opacity-50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-4 w-4 shrink-0 text-[#6B7280]" />
+                          <div>
+                            <p className="text-sm font-medium text-[#111827]">{ws.name}</p>
+                            <p className="text-xs text-[#6B7280]">{ws.slug}</p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setWorkspaceOptions([])}
-                  className="mt-4 w-full text-center text-xs text-[#6B7280] transition hover:text-[#111827]"
-                >
-                  {copy.cancel}
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Heading */}
-                <div className={expired ? "mt-5" : ""}>
-                  <h1 className="font-marketing text-xl font-semibold text-[#111827]">{copy.welcome}</h1>
-                  <p className="mt-1 text-sm text-[#6B7280]">{copy.description}</p>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-                  <Field
-                    id="email"
-                    label={copy.email}
-                    type="email"
-                    placeholder={copy.placeholders.email}
-                    value={email}
-                    onChange={setEmail}
-                    required
-                    icon={<Mail className="h-4 w-4" />}
-                  />
-                  <Field
-                    id="password"
-                    label={copy.password}
-                    type={showPassword ? "text" : "password"}
-                    placeholder={copy.placeholders.password}
-                    value={pass}
-                    onChange={setPass}
-                    required
-                    icon={<LockKeyhole className="h-4 w-4" />}
-                    rightAdornment={
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                        className="text-[#9CA3AF] transition hover:text-[#6B7280]"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
-                    }
-                  />
-
+                    ))}
+                  </div>
                   <button
-                    type="submit"
-                    disabled={loading}
-                    data-testid="button-login"
-                    className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-[#4F46E5] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4338CA] disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => setWorkspaceOptions([])}
+                    className="mt-4 w-full text-center text-xs text-[#6B7280] transition hover:text-[#111827]"
                   >
-                    {loading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      copy.logIn
-                    )}
+                    {copy.cancel}
                   </button>
-                </form>
+                </div>
+              ) : (
+                <>
+                  {/* Heading */}
+                  <div>
+                    <h1 className="font-marketing text-2xl font-semibold tracking-[-0.02em] text-[#111827]">
+                      {copy.welcome}
+                    </h1>
+                    <p className="mt-1.5 text-sm text-[#6B7280]">{copy.description}</p>
+                  </div>
 
-                {/* SSO section */}
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => setSsoExpanded((v) => !v)}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] px-4 py-2.5 text-sm font-medium text-[#6B7280] transition hover:border-[#D1D5DB] hover:text-[#111827]"
-                  >
-                    {ssoExpanded ? (
-                      <>
-                        {copy.hideSso ?? "Ocultar opciones"}
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      </>
-                    ) : (
-                      <>
-                        {copy.ssoButton ?? "Continuar con SSO"}
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      </>
-                    )}
-                  </button>
-
-                  {ssoExpanded && (
-                    <div className="mt-2 space-y-2">
-                      {/* Facebook */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (typeof FB === 'undefined') return;
-                          FB.login((resp: Record<string, any>) => {
-                            if (resp?.authResponse?.accessToken) (window as any).handleFbLogin(resp.authResponse.accessToken);
-                          }, { config_id: '1375303354406780', scope: 'public_profile' });
-                        }}
-                        className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-[#E5E7EB] px-4 py-2.5 text-sm font-medium text-[#374151] transition hover:bg-[#F7F8FC]"
-                      >
-                        <svg className="h-4 w-4" style={{ color: "#1877F2" }} viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                        </svg>
-                        {copy.facebookLogin}
-                      </button>
-
-                      {/* Telegram */}
-                      <div className="flex justify-center">
-                        <div id="telegram-login-btn" className="w-full" />
+                  {/* Form */}
+                  <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                    <Field
+                      id="email"
+                      label={copy.email}
+                      type="email"
+                      placeholder={copy.placeholders.email}
+                      value={email}
+                      onChange={setEmail}
+                      required
+                      icon={<Mail className="h-4 w-4" />}
+                    />
+                    <div className="space-y-1.5">
+                      <Field
+                        id="password"
+                        label={copy.password}
+                        type={showPassword ? "text" : "password"}
+                        placeholder={copy.placeholders.password}
+                        value={pass}
+                        onChange={setPass}
+                        required
+                        icon={<LockKeyhole className="h-4 w-4" />}
+                        rightAdornment={
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? copy.hidePassword : copy.showPassword}
+                            className="text-[#9CA3AF] transition hover:text-[#6B7280]"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        }
+                      />
+                      <div className="flex justify-end">
+                        <Link href="/forgot-password">
+                          <a className="text-xs font-medium text-[#4F46E5] transition hover:text-[#4338CA]">
+                            ¿Olvidaste tu contraseña?
+                          </a>
+                        </Link>
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Footer */}
-                <p className="mt-6 text-center text-sm text-[#6B7280]">
-                  {copy.noWorkspace}{" "}
-                  <Link href="/register" className="font-medium text-[#4F46E5] transition hover:text-[#4338CA]">
-                    {copy.createAccount}
-                  </Link>
-                </p>
-              </>
-            )}
-          </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      data-testid="button-login"
+                      className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#4F46E5] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4338CA] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        copy.logIn
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Divider */}
+                  <div className="mt-5 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-[#E5E7EB]" />
+                    <span className="text-xs text-[#9CA3AF]">o continuá con</span>
+                    <div className="h-px flex-1 bg-[#E5E7EB]" />
+                  </div>
+
+                  {/* Social / SSO options */}
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setSsoExpanded((v) => !v)}
+                      className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-[#E5E7EB] px-4 py-2.5 text-sm font-medium text-[#6B7280] transition hover:border-[#D1D5DB] hover:text-[#111827]"
+                    >
+                      {ssoExpanded ? (
+                        <>
+                          Ocultar opciones
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </>
+                      ) : (
+                        <>
+                          Más opciones de acceso
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </>
+                      )}
+                    </button>
+
+                    {ssoExpanded && (
+                      <div className="mt-2 space-y-2">
+                        {/* Facebook */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof FB === 'undefined') return;
+                            FB.login((resp: Record<string, any>) => {
+                              if (resp?.authResponse?.accessToken) (window as any).handleFbLogin(resp.authResponse.accessToken);
+                            }, { config_id: '1375303354406780', scope: 'public_profile' });
+                          }}
+                          className="inline-flex w-full items-center justify-center gap-3 rounded-[10px] border border-[#E5E7EB] px-4 py-2.5 text-sm font-medium text-[#374151] transition hover:bg-[#F7F8FC]"
+                        >
+                          <svg className="h-4 w-4" style={{ color: "#1877F2" }} viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                          </svg>
+                          {copy.facebookLogin}
+                        </button>
+
+                        {/* Telegram */}
+                        <div className="flex justify-center">
+                          <div id="telegram-login-btn" className="w-full" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Register link */}
+                  <p className="mt-6 text-center text-xs text-[#9CA3AF]">
+                    ¿No tenés cuenta?{" "}
+                    <Link href="/register">
+                      <a className="font-medium text-[#4F46E5] transition hover:text-[#4338CA]">
+                        {copy.createAccount}
+                      </a>
+                    </Link>
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Security note */}
+            <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-[#9CA3AF]">
+              <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Protegemos el acceso a tu workspace. Nunca compartas tus credenciales.
+            </p>
+          </section>
+
         </div>
       </div>
     </div>

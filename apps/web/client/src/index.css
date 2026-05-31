@@ -568,6 +568,14 @@ html.light .dash-card {
   color: #4B5563;
 }
 
+.auth-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 24px 80px rgba(15, 23, 42, 0.06),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
 .landing-eyebrow {
   color: #9CA3AF;
   font-size: 11px;
