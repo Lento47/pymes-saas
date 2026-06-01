@@ -143,7 +143,7 @@ export default function InventoryPage() {
               <Upload className="h-4 w-4 mr-1" />Importar CSV
             </Button>
           </div>
-        </div>
+        </PageHeader>
 
         {/* Filters */}
         <div className="space-y-3 mb-6">
@@ -192,24 +192,24 @@ export default function InventoryPage() {
           </div>
         ) : viewMode === "table" ? (
           <div className="rounded-xl border border-border overflow-hidden bg-card/40">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Producto</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Categoría</th>
-                  <th className="text-right px-4 py-3 text-[11px] font-medium text-muted-foreground">Precio</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Stock</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-right px-4 py-3 text-[11px] font-medium text-muted-foreground w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((p) => (
-                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
++            <Table>
++              <TableHeader>
++                <TableRow>
++                  <TableHead>Producto</TableHead>
++                  <TableHead>Categoría</TableHead>
++                  <TableHead className="text-right">Precio</TableHead>
++                  <TableHead>Stock</TableHead>
++                  <TableHead>Tipo</TableHead>
++                  <TableHead className="text-right w-20"></TableHead>
++                </TableRow>
++              </TableHeader>
++              <TableBody>
++                {sorted.map((p) => (
++                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
++                ))}
++              </TableBody>
++            </Table>
++          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {sorted.map((p) => (

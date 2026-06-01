@@ -544,45 +544,55 @@ export default function ChannelsSettingsPage() {
 
                   <div className="flex items-center gap-1 shrink-0">
                     {needsConfig && (
-                      <button
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors text-xs font-medium text-foreground"
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1.5 text-xs"
                         title="Configurar canal" onClick={() => setConfigChannel(ch)}
                       >
                         <PlugZap className="h-3.5 w-3.5" />Configurar
-                      </button>
+                      </Button>
                     )}
                     {canConnect && (
-                      <button
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors text-xs font-medium text-foreground"
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1.5 text-xs"
                         title="Conectar canal"
                         onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
                       >
                         <Plug className="h-3.5 w-3.5" />Conectar
-                      </button>
+                      </Button>
                     )}
                     {canEdit && (
-                      <button
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors text-xs font-medium text-foreground"
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1.5 text-xs"
                         title="Editar canal" onClick={() => setConfigChannel(ch)}
                       >
                         <Pencil className="h-3.5 w-3.5" />Editar
-                      </button>
+                      </Button>
                     )}
                     {isActive && (
-                      <button
-                        className="p-1.5 rounded-md border border-border hover:bg-orange-500/10 hover:border-orange-500/30 transition-colors text-muted-foreground hover:text-orange-400"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-orange-500/10 hover:border-orange-500/30 text-muted-foreground hover:text-orange-400"
                         title="Desactivar canal" disabled={disconnect.isPending}
                         onClick={() => disconnect.mutate(ch.id)}
                       >
                         <PowerOff className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     )}
-                    <button
-                      className="p-1.5 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-colors text-muted-foreground hover:text-destructive"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:border-destructive/30 text-muted-foreground hover:text-destructive"
                       title="Eliminar canal" onClick={() => setDeleteChannel(ch)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               );
