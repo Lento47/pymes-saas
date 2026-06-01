@@ -856,6 +856,14 @@ export class SupportOrchestratorService {
             question: safeContext,
             sessionId: `${sessionId}:${slug}`,
           });
+        } else if ((predictErr?.message as string | undefined)?.includes("Tool not selected")) {
+          this.logger.warn(`[orchestrator] missing tools detected — running full Flowise setup`);
+          await this.flowiseSetup.reprovisionAllFlows();
+          // Retry once after reprovisioning all tools and flows
+          res = await this.flowise.predict(activeId, {
+            question: safeContext,
+            sessionId: `${sessionId}:${slug}`,
+          });
         } else {
           throw predictErr;
         }
