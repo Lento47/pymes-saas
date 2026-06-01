@@ -206,7 +206,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             </button>
           )}
           {escalated && (
-            <span className="flex items-center gap-1 text-[11px] text-emerald-600">
+            <span className="flex items-center gap-1 text-[11px] text-success">
               <CheckCircle2 className="w-3 h-3" /> Caso abierto
             </span>
           )}
@@ -230,7 +230,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
               )}
               <div className={`max-w-[80%] rounded-lg px-3 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-[#4F46E5] text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : msg.role === 'system'
                     ? 'border border-destructive/20 bg-destructive/5 text-destructive'
                     : 'border border-border bg-card text-foreground'
@@ -279,13 +279,13 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             disabled={isStreaming}
             placeholder="Describí tu problema..."
             rows={1}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-[#4F46E5]/40 disabled:opacity-50"
+            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
             style={{ minHeight: 36, maxHeight: 120 }}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isStreaming}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4F46E5] text-white hover:bg-[#4338CA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
@@ -332,9 +332,9 @@ export default function SupportPage() {
               <button
                 key={agent.id}
                 onClick={() => setSelectedAgent(agent)}
-                className="group flex items-start gap-4 rounded-lg border border-border bg-card px-5 py-4 text-left transition-colors hover:border-[#4F46E5]/30 hover:bg-[#EEF2FF]/40"
+                className="group flex items-start gap-4 rounded-lg border border-border bg-card px-5 py-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
               >
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:border-[#4F46E5]/30 group-hover:text-[#4F46E5] transition-colors">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:border-primary/30 group-hover:text-primary transition-colors">
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
@@ -353,7 +353,7 @@ export default function SupportPage() {
               <p className="text-[13px] font-medium text-foreground">¿Ya abriste un caso antes?</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Podés ver el historial de tickets en{' '}
-                <Link href="/admin/support" className="text-[#4F46E5] hover:underline">
+                <Link href="/admin/support" className="text-primary hover:underline">
                   panel de administración
                 </Link>
                 .
