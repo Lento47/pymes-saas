@@ -226,6 +226,18 @@ export class MessagesService {
       return { ok: false, reason: "No active channel for provider" };
     }
 
+    // Respect workspace setting: by default the AI takes control of new conversations.
+    // Workspaces can set settings_json.ai_delegated_by_default = false to opt out.
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const wsSettings = (ws?.settings_json as Record<string, unknown>) ?? {};
+    const aiDelegatedByDefault = wsSettings.ai_delegated_by_default !== false; // default: true
+    const initialMetadata = aiDelegatedByDefault
+      ? { ai_state: "AI_ACTIVE", delegated_at: new Date().toISOString() }
+      : { ai_state: "IDLE" };
+
     const senderRef = payload.sender_ref ?? payload.from ?? payload.sender ?? "unknown";
     const senderName = payload.sender_name ?? payload.name ?? senderRef;
     const bodyText = payload.body_text ?? payload.text ?? payload.body ?? payload.content ?? "";
@@ -323,6 +335,7 @@ export class MessagesService {
           subject: subject ?? `Mensaje de ${senderName}`,
           status: "NEW",
           priority: "MEDIUM",
+          metadata_json: initialMetadata,
         },
         select: {
           id: true,
@@ -569,6 +582,18 @@ export class MessagesService {
       );
     }
 
+    // Respect workspace setting: by default the AI takes control of new conversations.
+    // Workspaces can set settings_json.ai_delegated_by_default = false to opt out.
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const wsSettings = (ws?.settings_json as Record<string, unknown>) ?? {};
+    const aiDelegatedByDefault = wsSettings.ai_delegated_by_default !== false; // default: true
+    const initialMetadata = aiDelegatedByDefault
+      ? { ai_state: "AI_ACTIVE", delegated_at: new Date().toISOString() }
+      : { ai_state: "IDLE" };
+
     const result = await this.prisma.$transaction(async (tx) => {
       let contact = await tx.contact.findFirst({
         where: {
@@ -607,6 +632,7 @@ export class MessagesService {
             subject: `Mensaje de ${senderName}`,
             status: "NEW",
             priority: "MEDIUM",
+            metadata_json: initialMetadata,
           },
         });
       }
