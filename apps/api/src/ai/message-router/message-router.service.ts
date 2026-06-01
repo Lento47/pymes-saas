@@ -307,6 +307,11 @@ export class MessageRouterService {
           : "IDLE",
       human_handover_at: meta.human_handover_at as string | undefined,
       workspacePlan: workspace?.plan ?? "FREE",
+      aiSettings: {
+        ai_always_respond: wsSettings.ai_always_respond === true,
+        human_handover_timeout_ms: typeof wsSettings.human_handover_timeout_ms === "number"
+          ? wsSettings.human_handover_timeout_ms : undefined,
+      },
       aiAgentAutoActive: wsSettings.ai_agent_auto_active === true,
       contact: conv?.contact
         ? {

@@ -9,7 +9,7 @@ import { AgentRunService } from "../ai/agent-run.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { MessageRouterService } from "../ai/message-router/message-router.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
-import { isAiBlockedByHuman } from "../ai/ai-gating";
+import { isAiBlockedByHuman, parseAiSettings } from "../ai/ai-gating";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -1259,8 +1259,9 @@ export class MessagesService {
     if (!conv) return;
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-    // Only skip AI when a human recently took over (3 min timeout, then AI resumes)
-    if (isAiBlockedByHuman(meta)) {
+    const aiSettings = parseAiSettings(workspace.settings_json);
+    // Only skip AI when a human recently took over (respects workspace settings)
+    if (isAiBlockedByHuman(meta, aiSettings)) {
       this.logger.debug(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
       return;
     }

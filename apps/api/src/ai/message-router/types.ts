@@ -43,6 +43,7 @@ export interface ConversationContext {
   human_handover_at?: string | null;
   workspacePlan: string;
   aiAgentAutoActive: boolean;
+  aiSettings?: { ai_always_respond?: boolean; human_handover_timeout_ms?: number };
   contact?: {
     name?: string;
     email?: string;

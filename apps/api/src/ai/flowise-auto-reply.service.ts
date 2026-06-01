@@ -6,7 +6,7 @@ import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { FlowiseClient } from "../agents/flowise/flowise.client";
 import { FlowiseSetupService } from "../agents/flowise-setup.service";
 import { AgentGuardrailsService } from "../agents/runtime/agent-guardrails.service";
-import { isAiBlockedByHuman } from "./ai-gating";
+import { isAiBlockedByHuman, parseAiSettings } from "./ai-gating";
 import type { ContextEnrichment } from "./message-router/types";
 import { toWhatsAppMarkdown, toTelegramHtml } from "./whatsapp-markdown.util";
 
@@ -65,8 +65,9 @@ export class FlowiseAutoReplyService {
       if (!workspace || !conv) return false;
 
       const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-      // Only skip AI when a human recently took over (3 min timeout, then AI resumes)
-      if (isAiBlockedByHuman(meta)) return false;
+      const aiSettings = parseAiSettings(workspace.settings_json);
+      // Only skip AI when a human recently took over (respects workspace settings)
+      if (isAiBlockedByHuman(meta, aiSettings)) return false;
 
       const chatflowId = await this.flowiseSetup.getChatflowIdForPlan(workspace.plan);
       if (!chatflowId) {
