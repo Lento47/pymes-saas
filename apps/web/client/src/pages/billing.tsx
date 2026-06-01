@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
 // Maps the ?plan= URL param value to a tier planKey
@@ -121,7 +121,7 @@ export default function BillingPage() {
 
     const priceId = prices?.[`${tier.planKey}_monthly`];
     if (!priceId) {
-      setCheckoutError('Plan pricing is not configured yet. Please contact support.');
+      setCheckoutError('El precio del plan no está configurado. Contactá a soporte.');
       return;
     }
 
@@ -133,10 +133,10 @@ export default function BillingPage() {
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
       } else {
-        setCheckoutError('Could not create checkout session. Please try again.');
+        setCheckoutError('No se pudo crear la sesión de pago. Intentá de nuevo.');
       }
     } catch (err: any) {
-      setCheckoutError(err?.message ?? 'Checkout failed. Please try again.');
+      setCheckoutError(err?.message ?? 'Error en el pago. Intentá de nuevo.');
     } finally {
       setCheckoutLoading(null);
     }
@@ -145,7 +145,7 @@ export default function BillingPage() {
   if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Please log in to view billing information.</p>
+        <p className="text-muted-foreground">Iniciá sesión para ver tu facturación.</p>
       </div>
     );
   }
@@ -158,61 +158,61 @@ export default function BillingPage() {
       </div>
 
       {success && (
-        <Alert className="bg-green-50 border-green-200">
-          <AlertDescription className="text-green-800">
-            Payment successful! Your subscription has been updated.
+        <Alert className="bg-emerald-500/10 border-emerald-500/20">
+          <AlertDescription className="text-emerald-600">
+            ¡Pago exitoso! Tu suscripción fue actualizada.
           </AlertDescription>
         </Alert>
       )}
 
       {canceled && (
-        <Alert className="bg-yellow-50 border-yellow-200">
-          <AlertDescription className="text-yellow-800">
-            Payment was canceled. Your subscription remains unchanged.
+        <Alert className="bg-amber-500/10 border-amber-500/20">
+          <AlertDescription className="text-amber-600">
+            El pago fue cancelado. Tu suscripción no cambió.
           </AlertDescription>
         </Alert>
       )}
 
       {checkoutError && (
-        <Alert className="bg-red-50 border-red-200">
-          <AlertDescription className="text-red-800">{checkoutError}</AlertDescription>
+        <Alert className="bg-destructive/10 border-destructive/20">
+          <AlertDescription className="text-destructive">{checkoutError}</AlertDescription>
         </Alert>
       )}
 
-      {/* Current Plan */}
+      {/* Plan actual */}
       <Card>
         <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-          <CardDescription>Your active subscription</CardDescription>
+          <CardTitle>Plan actual</CardTitle>
+          <CardDescription>Tu suscripción activa</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {subscriptionLoading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading subscription info...</span>
+              <span className="text-muted-foreground">Cargando información...</span>
             </div>
           ) : subscription ? (
             <>
               <div className="flex justify-between items-center">
                 <span className="font-semibold capitalize">{subscription.plan || 'Starter'}</span>
                 <span className="text-sm text-muted-foreground">
-                  ${subscription.monthly_price || 0}/month
+                  ${subscription.monthly_price || 0}/mes
                 </span>
               </div>
               <div className="text-sm text-muted-foreground">
-                Billing period: {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
+                Período de facturación: {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
                 {new Date(subscription.current_period_end).toLocaleDateString()}
               </div>
               {subscription.trial_ends_at && (
-                <div className="text-sm text-blue-600">
-                  Trial ends: {new Date(subscription.trial_ends_at).toLocaleDateString()}
+                <div className="text-sm text-primary">
+                  Prueba termina: {new Date(subscription.trial_ends_at).toLocaleDateString()}
                 </div>
               )}
               <div className="flex gap-2">
                 {portalLoading ? (
                   <Button disabled>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
+                    Cargando...
                   </Button>
                 ) : (
                   <>
@@ -221,11 +221,11 @@ export default function BillingPage() {
                         onClick={() => window.open(portalLink.url, '_blank')}
                         variant="outline"
                       >
-                        Manage Subscription
+                        Administrar suscripción
                       </Button>
                     )}
                     <Button onClick={() => window.scrollTo(0, document.getElementById('upgrade-plans')?.offsetTop || 0)}>
-                      View Plans
+                      Ver planes
                     </Button>
                   </>
                 )}
@@ -237,16 +237,16 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Available Plans */}
+      {/* Planes disponibles */}
       <div id="upgrade-plans" className="space-y-4">
-        <h2 className="text-2xl font-bold">Available Plans</h2>
+        <h2 className="text-2xl font-bold">Planes disponibles</h2>
         {!isEmprendeEligible && (
           <p className="text-sm text-muted-foreground">
             PymesHub Emprende está disponible para clientes aprobados. Si aplica para tu negocio,
             contactá a soporte para revisar elegibilidad.
           </p>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {visiblePricingTiers.map((tier) => {
             const isCurrentPlan =
               subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ||
@@ -261,10 +261,10 @@ export default function BillingPage() {
                   <CardDescription>
                     <div className="text-2xl font-bold text-foreground mt-2">
                       ${tier.monthlyUSD}
-                      <span className="text-sm text-muted-foreground font-normal">/month</span>
+                      <span className="text-sm text-muted-foreground font-normal">/mes</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      ₡{tier.monthlyCRC.toLocaleString()}/month
+                      ₡{tier.monthlyCRC.toLocaleString()}/mes
                     </div>
                   </CardDescription>
                 </CardHeader>
@@ -272,7 +272,7 @@ export default function BillingPage() {
                   <ul className="space-y-2">
                     {tier.features.map((feature) => (
                       <li key={feature} className="text-sm text-muted-foreground flex items-start">
-                        <span className="text-green-600 mr-2">✓</span>
+                        <Check className="w-4 h-4 text-emerald-500 mr-2 shrink-0" />
                         {feature}
                       </li>
                     ))}
@@ -282,17 +282,17 @@ export default function BillingPage() {
                     variant={isCurrentPlan ? 'outline' : 'default'}
                     disabled={isCurrentPlan || isLoading || !hasPriceId}
                     onClick={() => handleUpgrade(tier)}
-                    title={!hasPriceId ? 'Pricing not configured' : undefined}
+                    title={!hasPriceId ? 'Precio no configurado' : undefined}
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Redirecting...
+                        Redirigiendo...
                       </>
                     ) : isCurrentPlan ? (
-                      'Current Plan'
+                      'Plan actual'
                     ) : (
-                      'Upgrade'
+                      'Elegir plan'
                     )}
                   </Button>
                 </CardContent>
@@ -302,11 +302,11 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Billing History */}
+      {/* Historial de facturación */}
       <Card>
         <CardHeader>
-          <CardTitle>Billing History</CardTitle>
-          <CardDescription>Your recent invoices and payments</CardDescription>
+          <CardTitle>Historial de facturación</CardTitle>
+          <CardDescription>Tus facturas y pagos recientes</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">No hay facturas aún. La primera aparecerá después del primer pago.</p>
