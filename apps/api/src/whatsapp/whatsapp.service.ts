@@ -3,7 +3,7 @@ import * as crypto from "node:crypto";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
 import { StorageService } from "../common/storage/storage.service";
-import { extractWhatsAppMediaFromMessage } from "../common/whatsapp-media.helper";
+import { extractWhatsAppMediaFromMessage, extractInteractiveContent } from "../common/whatsapp-media.helper";
 import { parseJsonValue } from "../common/prisma/json";
 import { MessagesService } from "../conversations/messages.service";
 import { WebhookEventsService } from "../webhooks/webhook-events.service";
@@ -1119,6 +1119,10 @@ export class WhatsAppService {
           bodyText = ir.button_reply.title ?? ir.button_reply.id ?? "📩 Botón";
         } else if (ir?.list_reply) {
           bodyText = ir.list_reply.title ?? ir.list_reply.id ?? "📩 Opción";
+        } else if (ir?.nfm_reply) {
+          bodyText = ir.nfm_reply.response_json
+            ? JSON.stringify(ir.nfm_reply.response_json)
+            : ir.nfm_reply.name ?? "📩 Flow";
         } else {
           bodyText = "📩 Mensaje interactivo";
         }
@@ -1133,6 +1137,7 @@ export class WhatsAppService {
       const senderName = value.contacts?.[0]?.profile?.name ?? from;
       const providerMessageId = msg.id;
       const whatsappMedia = extractWhatsAppMediaFromMessage(msg);
+      const interactiveContent = extractInteractiveContent(msg);
 
       // NOTE: receiveProviderInbound runs inside an interactive transaction
       // (upsert contact + find-or-create conversation + insert message). This
@@ -1150,6 +1155,7 @@ export class WhatsAppService {
         timestamp: msg.timestamp,
         rawPayload: payload,
         whatsappMedia,
+        interactiveContent: interactiveContent as unknown as Record<string, unknown> | null,
       });
 
       if (result.status === "duplicate") {

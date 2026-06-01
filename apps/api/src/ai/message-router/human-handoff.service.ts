@@ -34,7 +34,7 @@ export class HumanHandoffService {
       const meta = ((conv.metadata_json as Record<string, unknown>) ?? {});
       await this.prisma.conversation.update({
         where: { id: conversationId },
-        data: { metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE" } },
+        data: { metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE", human_handover_at: new Date().toISOString() } },
       });
 
       // Notify workspace agents

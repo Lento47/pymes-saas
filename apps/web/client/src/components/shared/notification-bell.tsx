@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -8,7 +9,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Link } from "wouter";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -21,6 +21,8 @@ type Notification = {
   title?: string;
   type?: string;
   created_at?: string;
+  related_entity_type?: string;
+  related_entity_id?: string;
 };
 
 const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
@@ -40,6 +42,18 @@ const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string
 
 function getTypeConfig(type?: string) {
   return (type && TYPE_CONFIG[type]) || { icon: Bell, color: "text-muted-foreground", bg: "bg-muted" };
+}
+
+/** Resolve navigation target from a notification's related entity */
+function resolveLink(n: Notification): string | null {
+  if (!n.related_entity_type || !n.related_entity_id) return null;
+  const t = n.related_entity_type.toLowerCase();
+  if (t === "conversation" || t === "conversations") return `/inbox/${n.related_entity_id}`;
+  if (t === "task") return `/tasks`;
+  if (t === "contact") return `/contacts/${n.related_entity_id}`;
+  if (t === "deal") return `/pipeline`;
+  if (t === "invoice") return `/invoices`;
+  return null;
 }
 
 export function NotificationBell() {
@@ -131,6 +145,7 @@ export function NotificationBell() {
                   key={n.id}
                   notification={n}
                   onMarkRead={() => markRead.mutate([n.id])}
+                  onNavigate={() => setOpen(false)}
                 />
               ))}
             </div>
@@ -159,26 +174,36 @@ export function NotificationBell() {
 function NotifItem({
   notification: n,
   onMarkRead,
+  onNavigate,
 }: {
   notification: Notification;
   onMarkRead: () => void;
+  onNavigate: () => void;
 }) {
   const [hovering, setHovering] = useState(false);
   const isUnread = !n.read_at;
   const cfg = getTypeConfig(n.type);
   const Icon = cfg.icon;
+  const link = resolveLink(n);
   const timeAgo = n.created_at
     ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
     : "";
 
-  return (
+  const handleClick = () => {
+    if (isUnread) onMarkRead();
+    if (link) onNavigate();
+  };
+
+  const body = (
     <div
       className={cn(
         "flex items-start gap-3 border-b border-border/50 px-4 py-3 last:border-0",
         isUnread && "bg-accent/5",
+        link && "cursor-pointer hover:bg-muted/50",
       )}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
+      onClick={handleClick}
     >
       {/* Unread dot */}
       <div className="mt-2 flex w-2 shrink-0 items-center justify-center">
@@ -218,4 +243,6 @@ function NotifItem({
       </div>
     </div>
   );
+
+  return link ? <Link href={link}>{body}</Link> : body;
 }

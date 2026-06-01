@@ -9,6 +9,7 @@ import { AgentRunService } from "../ai/agent-run.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { MessageRouterService } from "../ai/message-router/message-router.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
+import { isAiBlockedByHuman, parseAiSettings } from "../ai/ai-gating";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -204,7 +205,7 @@ export class MessagesService {
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE" },
+        metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE", human_handover_at: new Date().toISOString() },
         updated_at: new Date(),
       },
       select: { id: true },
@@ -224,6 +225,18 @@ export class MessagesService {
     if (!channel) {
       return { ok: false, reason: "No active channel for provider" };
     }
+
+    // Respect workspace setting: by default the AI takes control of new conversations.
+    // Workspaces can set settings_json.ai_delegated_by_default = false to opt out.
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const wsSettings = (ws?.settings_json as Record<string, unknown>) ?? {};
+    const aiDelegatedByDefault = wsSettings.ai_delegated_by_default !== false; // default: true
+    const initialMetadata = aiDelegatedByDefault
+      ? { ai_state: "AI_ACTIVE", delegated_at: new Date().toISOString() }
+      : { ai_state: "IDLE" };
 
     const senderRef = payload.sender_ref ?? payload.from ?? payload.sender ?? "unknown";
     const senderName = payload.sender_name ?? payload.name ?? senderRef;
@@ -309,9 +322,16 @@ export class MessagesService {
       if (!["NEW", "OPEN", "PENDING"].includes(conversation.status)) {
         await this.prisma.conversation.update({
           where: { id: conversation.id },
-          data: { status: "NEW", updated_at: new Date() },
+          data: { status: "NEW", is_service_window_open: true, updated_at: new Date() },
         });
         conversation.status = "NEW";
+      } else {
+        // Re-open service window on every inbound message
+        await this.prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { is_service_window_open: true },
+          select: { id: true },
+        });
       }
     } else {
       conversation = await this.prisma.conversation.create({
@@ -322,6 +342,8 @@ export class MessagesService {
           subject: subject ?? `Mensaje de ${senderName}`,
           status: "NEW",
           priority: "MEDIUM",
+          is_service_window_open: true,
+          metadata_json: initialMetadata,
         },
         select: {
           id: true,
@@ -462,7 +484,7 @@ export class MessagesService {
         .create(workspaceId, {
           user_id: member.user_id,
           type: "new_message",
-          title: "📩 Nuevo mensaje recibido",
+          title: "Nuevo mensaje recibido",
           body: `Nuevo mensaje de ${senderName}${conversation.subject ? ' en "' + conversation.subject + '"' : ""}: "${bodyText.slice(0, 100)}${bodyText.length > 100 ? "..." : ""}"`,
           related_entity_type: "conversation",
           related_entity_id: conversation.id,
@@ -512,6 +534,7 @@ export class MessagesService {
     timestamp?: string;
     rawPayload?: Record<string, any>;
     whatsappMedia?: Record<string, any> | null;
+    interactiveContent?: Record<string, unknown> | null;
   }): Promise<{
     status: "created" | "duplicate";
     messageId?: string;
@@ -568,6 +591,18 @@ export class MessagesService {
       );
     }
 
+    // Respect workspace setting: by default the AI takes control of new conversations.
+    // Workspaces can set settings_json.ai_delegated_by_default = false to opt out.
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const wsSettings = (ws?.settings_json as Record<string, unknown>) ?? {};
+    const aiDelegatedByDefault = wsSettings.ai_delegated_by_default !== false; // default: true
+    const initialMetadata = aiDelegatedByDefault
+      ? { ai_state: "AI_ACTIVE", delegated_at: new Date().toISOString() }
+      : { ai_state: "IDLE" };
+
     const result = await this.prisma.$transaction(async (tx) => {
       let contact = await tx.contact.findFirst({
         where: {
@@ -606,7 +641,16 @@ export class MessagesService {
             subject: `Mensaje de ${senderName}`,
             status: "NEW",
             priority: "MEDIUM",
+            is_service_window_open: true, // WhatsApp 24h window opens on inbound message
+            metadata_json: initialMetadata,
           },
+        });
+      } else {
+        // Re-open the WhatsApp 24h service window on every inbound message
+        await tx.conversation.update({
+          where: { id: conversation.id },
+          data: { is_service_window_open: true },
+          select: { id: true },
         });
       }
 
@@ -621,7 +665,8 @@ export class MessagesService {
           raw_payload_json: {
             ...(typeof params.rawPayload === "object" ? params.rawPayload : {}),
             ...(params.whatsappMedia ? { whatsapp_media: params.whatsappMedia } : {}),
-          },
+            ...(params.interactiveContent ? { whatsapp_interactive: params.interactiveContent } : {}),
+          } as any,
           sent_at: params.timestamp ? new Date(Number(params.timestamp) * 1000) : new Date(),
           provider,
           provider_message_id: providerMessageId,
@@ -706,7 +751,7 @@ export class MessagesService {
     this.agentRunService
       .processMessage(workspaceId, conversationId, bodyText)
       .then(async (consumedByAgent) => {
-        if (consumedByAgent) return;
+        if (consumedByAgent) { this.logger.log(`[emit-notify] agent consumed message conv=${conversationId}`); return; }
 
         const router = this.messageRouter;
         const flowise = this.flowiseAutoReply;
@@ -724,6 +769,7 @@ export class MessagesService {
               receivedAt: new Date(),
               isInteractive,
             });
+            this.logger.log(`[emit-notify] router decision conv=${conversationId} intent=${decision.intent} shouldCallAi=${decision.shouldCallAi} quickReply=${!!decision.quickReplyText}`);
           } catch (err) {
             this.logger.error("Error en router.evaluate", err);
             // Fall through to AI chain on router failure
@@ -745,46 +791,20 @@ export class MessagesService {
               return;
             }
 
-            // AI chain with agent persona + context enrichment
-            const dispatchOpts = {
-              systemPromptAddendum: decision.systemPromptAddendum,
-              contextEnrichment: decision.contextEnrichment,
-            };
-
-            if (flowise) {
-              flowise
-                .dispatch(workspaceId, conversationId, bodyText, dispatchOpts)
-                .then(async (handled) => {
-                  router.recordOutcome(workspaceId, decision, handled).catch(() => undefined);
-                  if (handled) return;
-                  await this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive);
-                })
-                .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
-            } else {
-              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
-                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-              );
-            }
+            // AI auto-reply: direct gateway (fast), skip Flowise for general auto-replies
+            this.logger.log(`[emit-notify] router direct trigger conv=${conversationId} intent=${decision.intent}`);
+            this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+              (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+            );
             return;
           }
         }
 
-        // Fallback when router is absent: original chain
-        if (flowise) {
-          flowise
-            .dispatch(workspaceId, conversationId, bodyText)
-            .then((handled) => {
-              if (handled) return;
-              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
-                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-              );
-            })
-            .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
-        } else {
-          this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
-            (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-          );
-        }
+        // Fallback when router is absent: direct gateway
+        this.logger.log(`[emit-notify] no router, direct trigger conv=${conversationId}`);
+        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+          (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+        );
       })
       .catch((err) => this.logger.error("Error en agent run processMessage", err?.stack ?? err));
   }
@@ -1171,7 +1191,7 @@ export class MessagesService {
     inboundText: string,
     isInteractive?: boolean,
   ): Promise<void> {
-    this.logger.debug(`[ai-auto] triggered — workspace=${workspaceId} conv=${conversationId}`);
+    this.logger.log(`[ai-auto] triggered — workspace=${workspaceId} conv=${conversationId} planCheck=pending`);
 
     // ── Platform admin fast-path ────────────────────────────────────────────
     // If the sender is a platform admin, bypass all workspace logic entirely.
@@ -1213,10 +1233,24 @@ export class MessagesService {
     });
     if (!workspace) return;
 
-    // Only EMPRENDE+ plans
-    const EMPRENDE_PLUS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
-    if (!EMPRENDE_PLUS.includes(workspace.plan)) {
-      this.logger.warn(`[ai-auto] workspace ${workspaceId} plan=${workspace.plan} no permite IA — requiere EMPRENDE+`);
+    // ── FREE tier rate limit: max 10 AI replies per month ──────────────────
+    const settings = (workspace.settings_json as Record<string, any>) ?? {};
+    const monthKey = new Date().toISOString().slice(0, 7); // "2026-06"
+    const replyPeriod = settings.monthly_ai_reply_period as string | undefined;
+    const replyCount = (replyPeriod === monthKey ? settings.monthly_ai_reply_count as number : 0) ?? 0;
+
+    if (workspace.plan === "FREE" && replyCount >= 10) {
+      this.logger.warn(`[ai-auto] FREE tier limit reached — workspace=${workspaceId} replies=${replyCount}/10`);
+      // Send a WhatsApp message informing the user they hit the limit
+      const limitMsg = "Has alcanzado el límite de 10 respuestas automáticas de IA este mes. Actualizá tu plan para acceder a respuestas ilimitadas. 🚀";
+      const convLimit = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { channel: { select: { type: true, config_json: true } }, contact: { select: { phone: true } } },
+      });
+      if (convLimit?.channel?.type === "WHATSAPP" && convLimit?.contact?.phone) {
+        const to = convLimit.contact.phone.replace(/\D/g, "");
+        if (to) this.whatsappService.sendMessage(convLimit.channel, to, limitMsg).catch(() => {});
+      }
       return;
     }
 
@@ -1232,14 +1266,10 @@ export class MessagesService {
     if (!conv) return;
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-    if (meta.ai_state === "HUMAN_ACTIVE") {
-      this.logger.debug(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
-      return;
-    }
-    const wsSettings = (workspace.settings_json as Record<string, any>) ?? {};
-    const wsAutoActive = wsSettings.ai_agent_auto_active === true;
-    if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") {
-      this.logger.warn(`[ai-auto] conv ${conversationId} wsAutoActive=${wsAutoActive} ai_state=${meta.ai_state ?? "IDLE"} — skip`);
+    const aiSettings = parseAiSettings(workspace.settings_json);
+    // Only skip AI when a human recently took over (respects workspace settings)
+    if (isAiBlockedByHuman(meta, aiSettings)) {
+      this.logger.log(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
       return;
     }
 
@@ -1247,7 +1277,7 @@ export class MessagesService {
     // 30s was causing legitimate follow-up messages to be silently dropped.
     const lastAiReply = meta.last_ai_reply_at as string | undefined;
     if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 3_000) {
-      this.logger.debug(`[ai-auto] conv ${conversationId} throttled (3s)`);
+      this.logger.log(`[ai-auto] conv ${conversationId} throttled (3s)`);
       return;
     }
 
@@ -1255,7 +1285,7 @@ export class MessagesService {
       workspaceId,
       conversationId,
       inboundText,
-      { source: "auto_reply", activate: wsAutoActive },
+      { source: "auto_reply", activate: true },
     );
     if (!result.ok) {
       this.logger.warn(`AI control auto-reply skipped: ${result.error ?? "unknown"}`);
@@ -1263,5 +1293,19 @@ export class MessagesService {
     }
 
     this.logger.log(`AI control auto-reply sent to conversation ${conversationId}`);
+
+    // ── Increment FREE tier monthly counter ──────────────────────────────
+    const newCount = (replyPeriod === monthKey ? (settings.monthly_ai_reply_count as number) : 0) + 1;
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: {
+        settings_json: {
+          ...settings,
+          monthly_ai_reply_period: monthKey,
+          monthly_ai_reply_count: newCount,
+        },
+      },
+      select: { id: true },
+    }).catch(() => {/* non-fatal */});
   }
 }

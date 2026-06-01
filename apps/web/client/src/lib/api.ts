@@ -146,7 +146,7 @@ async function request<T>(
   method: string,
   path: string,
   data?: unknown,
-  options?: { isFormData?: boolean }
+  options?: { isFormData?: boolean; timeout?: number }
 ): Promise<T> {
   const buildHeaders = (): Record<string, string> => {
     const h: Record<string, string> = {};
@@ -158,7 +158,8 @@ async function request<T>(
 
   const body = options?.isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeoutMs = options?.timeout ?? 30_000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
 
@@ -524,6 +525,14 @@ export const api = {
   startAgentRun: (id: string, triggerText?: string) => request<{ ok: boolean; run: any }>("POST", `/api/conversations/${id}/start-agent`, { trigger_text: triggerText }),
   stopAgentRun: (id: string) => request<{ ok: boolean }>("DELETE", `/api/conversations/${id}/agent-run`, {}),
   createAgentStream: (message: string, conversationId?: string) => request<Record<string, any>>("POST", "/api/agent/stream", { message, conversationId }),
+  orchestrateSupport: (message: string, diagnostic_case_id?: string, allow_pr_creation?: boolean) =>
+    request<Record<string, any>>("POST", "/api/agents/support/orchestrate", { message, diagnostic_case_id, allow_pr_creation }, { timeout: 120_000 }),
+  listSupportRuns: (limit?: number) =>
+    request<Array<Record<string, any>>>(`GET`, `/api/agents/support/runs${limit ? `?limit=${limit}` : ""}`),
+  getSupportRun: (id: string) =>
+    request<Record<string, any>>("GET", `/api/agents/support/runs/${id}`),
+  continueSupport: (runId: string, answer: string) =>
+    request<Record<string, any>>("POST", `/api/agents/support/orchestrate/${runId}/continue`, { answer }, { timeout: 180_000 }),
   executeAgentTool: (tool: string, args?: any) => request<Record<string, any>>("POST", "/api/agent/tool", { tool, args }),
   escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
     request<Record<string, any>>("POST", "/api/agent/escalate", { summary, severity, evidence }),

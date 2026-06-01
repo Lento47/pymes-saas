@@ -5,6 +5,9 @@ import { SetupChecklist } from "@/components/shared/setup-checklist";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Link } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -23,6 +26,8 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
+
+/* ── Types ── */
 
 interface StageDeal {
   id: string;
@@ -43,6 +48,8 @@ interface PipelineStage {
 type Tone = "neutral" | "danger" | "warning" | "success";
 
 const ACTIVE_STAGES = ["Ganado", "Perdido"];
+
+/* ── Helpers ── */
 
 function crc(n: number): string {
   return n >= 1_000_000
@@ -71,110 +78,34 @@ function greeting() {
   return "Buenas noches";
 }
 
-function toneConfig(tone: Tone) {
-  switch (tone) {
-    case "danger":
-      return {
-        dot: "bg-red-500",
-        text: "text-red-400",
-        accent: "hsl(var(--muted-foreground))",
-        cardBg: "hsl(var(--card))",
-        cardBorder: "hsl(var(--border))",
-        pillBg: "rgba(239,68,68,0.08)",
-        pillBorder: "rgba(239,68,68,0.25)",
-        pillText: "#ef4444",
-      };
-    case "warning":
-      return {
-        dot: "bg-orange-400",
-        text: "text-orange-400",
-        accent: "hsl(var(--muted-foreground))",
-        cardBg: "hsl(var(--card))",
-        cardBorder: "hsl(var(--border))",
-        pillBg: "rgba(251,146,60,0.08)",
-        pillBorder: "rgba(251,146,60,0.25)",
-        pillText: "#fb923c",
-      };
-    case "success":
-      return {
-        dot: "bg-gray-400",
-        text: "text-gray-500",
-        accent: "hsl(var(--muted-foreground))",
-        cardBg: "hsl(var(--card))",
-        cardBorder: "hsl(var(--border))",
-        pillBg: "rgba(0,0,0,0.05)",
-        pillBorder: "rgba(0,0,0,0.1)",
-        pillText: "#6B7280",
-      };
-    default:
-      return {
-        dot: "bg-gray-400",
-        text: "text-gray-500",
-        accent: "hsl(var(--muted-foreground))",
-        cardBg: "hsl(var(--card))",
-        cardBorder: "hsl(var(--border))",
-        pillBg: "rgba(0,0,0,0.05)",
-        pillBorder: "rgba(0,0,0,0.1)",
-        pillText: "#6B7280",
-      };
-  }
-}
+/* ── Tone → Badge variant ── */
 
-function StatusPill({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
-  const t = toneConfig(tone);
+const toneVariant: Record<Tone, "default" | "destructive" | "secondary" | "outline"> = {
+  danger: "destructive",
+  warning: "outline",
+  success: "secondary",
+  neutral: "secondary",
+};
+
+const toneDotClass: Record<Tone, string> = {
+  danger: "bg-destructive",
+  warning: "bg-warning",
+  success: "bg-success",
+  neutral: "bg-muted-foreground/40",
+};
+
+/* ── Shared Sub-components ── */
+
+function StatusBadge({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
   return (
-    <span
-      className="inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium"
-      style={{ background: t.pillBg, borderColor: t.pillBorder, color: t.pillText }}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+    <Badge variant={toneVariant[tone]} className="gap-1.5 h-5 text-[11px] font-medium px-2">
+      <span className={`h-1.5 w-1.5 rounded-full ${toneDotClass[tone]}`} />
       {label}
-    </span>
+    </Badge>
   );
 }
 
-function DashboardSection({
-  title,
-  count,
-  linkTo,
-  children,
-  className = "",
-}: {
-  title: string;
-  count?: number;
-  linkTo?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const header = (
-    <div className="flex items-center justify-between gap-3 border-b border-primary/[0.12] bg-primary/[0.03] px-4 py-3">
-      <h2 className="text-xs font-semibold text-foreground/60">
-        {title}
-        {count != null && (
-          <span className="ml-2 font-normal text-primary/40">{count}</span>
-        )}
-      </h2>
-      {linkTo && <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-primary/50" />}
-    </div>
-  );
-
-  return (
-    <section
-      className={`overflow-hidden rounded-card border border-primary/[0.14] bg-[hsl(var(--bg-card))] ${className}`}
-    >
-      {linkTo ? (
-        <Link href={linkTo} className="block transition-colors" style={{ display: "block" }}>
-          {header}
-        </Link>
-      ) : (
-        header
-      )}
-      {children}
-    </section>
-  );
-}
-
-function OperationalMetric({
+function MetricCard({
   label,
   value,
   detail,
@@ -191,96 +122,125 @@ function OperationalMetric({
   icon?: React.ElementType;
   linkTo?: string;
 }) {
-  const t = toneConfig(tone);
+  const dotClass = toneDotClass[tone];
 
   const inner = (
-    <div
-      className="rounded-card px-4 py-4 transition-all duration-200 h-full"
-      style={{
-        border: `1px solid ${t.cardBorder}`,
-        background: t.cardBg,
-        cursor: linkTo ? "pointer" : undefined,
-      }}
-    >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {label}
-        </span>
-        {Icon && (
-          <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: t.accent, opacity: 0.7 }} />
+    <Card className="group h-full transition-colors hover:bg-accent/50 cursor-pointer">
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {label}
+          </span>
+          {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />}
+        </div>
+
+        {loading ? (
+          <Skeleton className="h-8 w-24" />
+        ) : (
+          <div className="text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums text-foreground">
+            {value}
+          </div>
         )}
-      </div>
 
-      {loading ? (
-        <Skeleton className="h-8 w-24" />
-      ) : (
-        <div
-          className="text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums text-foreground"
-        >
-          {value}
-        </div>
-      )}
+        {detail && (
+          <p className="mt-2 truncate text-xs text-muted-foreground">{detail}</p>
+        )}
 
-      {detail && (
-        <p className="mt-2 truncate text-xs text-muted-foreground/60">
-          {detail}
-        </p>
-      )}
-
-      {linkTo && (
-        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowUpRight className="h-3 w-3 text-muted-foreground/40" />
-        </div>
-      )}
-    </div>
+        {linkTo && (
+          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ArrowUpRight className="h-3 w-3 text-muted-foreground/40" />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 
-  return linkTo ? (
-    <Link href={linkTo} className="block group">{inner}</Link>
-  ) : (
-    inner
+  return linkTo ? <Link href={linkTo}>{inner}</Link> : inner;
+}
+
+function SectionCard({
+  title,
+  count,
+  linkTo,
+  children,
+  className = "",
+}: {
+  title: string;
+  count?: number;
+  linkTo?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={className}>
+      {linkTo ? (
+        <Link href={linkTo}>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-primary/[0.12] bg-primary/[0.03] px-4 py-3 cursor-pointer transition-colors hover:bg-primary/[0.06]">
+            <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+              {title}
+              {count != null && (
+                <span className="font-normal text-primary/40">{count}</span>
+              )}
+            </CardTitle>
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-primary/50" />
+          </CardHeader>
+        </Link>
+      ) : (
+        <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-primary/[0.12] bg-primary/[0.03] px-4 py-3">
+          <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+            {title}
+            {count != null && (
+              <span className="font-normal text-primary/40">{count}</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+      )}
+      {children}
+    </Card>
   );
 }
 
-function AttentionList({
-  children,
-  emptyIcon: Icon,
-  emptyText,
-  emptyCta,
-  emptyHref,
-  isEmpty,
+function EmptyState({
+  icon: Icon,
+  text,
+  cta,
+  href,
 }: {
-  children: React.ReactNode;
-  emptyIcon: React.ElementType;
-  emptyText: string;
-  emptyCta?: string;
-  emptyHref?: string;
-  isEmpty: boolean;
+  icon: React.ElementType;
+  text: string;
+  cta?: string;
+  href?: string;
 }) {
-  if (isEmpty) {
-    return (
-      <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-        <Icon className="h-5 w-5 text-primary/40" />
-        <span className="text-sm text-muted-foreground">{emptyText}</span>
-        {emptyCta && emptyHref && (
-          <Link href={emptyHref} className="text-xs font-medium text-primary hover:text-primary/80">
-            {emptyCta}
-          </Link>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="divide-y divide-primary/[0.08]">
+    <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+      <Icon className="h-5 w-5 text-primary/40" />
+      <span className="text-sm text-muted-foreground">{text}</span>
+      {cta && href && (
+        <Link href={href} className="text-xs font-medium text-primary hover:text-primary/80">
+          {cta}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function RowItem({ children, href }: { children: React.ReactNode; href?: string }) {
+  const content = (
+    <div className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-accent/50">
       {children}
     </div>
   );
+  return href ? <Link href={href}>{content}</Link> : content;
 }
 
-function RowStatus(_props: { tone: Tone }) {
-  return null;
-}
+const CONV_STATUS: Record<string, string> = {
+  NEW: "Nuevo",
+  OPEN: "Abierto",
+  PENDING: "Pendiente",
+  RESOLVED: "Resuelto",
+};
+
+/* ── Pipeline Band ── */
 
 function PipelineBand({ stages }: { stages: PipelineStage[] }) {
   if (stages.length === 0) return null;
@@ -288,7 +248,7 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
   const maxDeals = Math.max(...stages.map((stage) => stage.deals.length), 1);
 
   return (
-    <DashboardSection
+    <SectionCard
       title="Pipeline abierto"
       count={stages.reduce((sum, stage) => sum + stage.deals.length, 0)}
       linkTo="/pipeline"
@@ -301,7 +261,7 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
 
           return (
             <Link key={stage.id} href="/pipeline">
-              <div className="px-4 py-3 transition-colors duration-150 cursor-pointer bg-[hsl(var(--bg-card))] hover:bg-primary/[0.04]">
+              <div className="px-4 py-3 transition-colors duration-150 cursor-pointer bg-card hover:bg-accent/50">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -316,7 +276,7 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
                 </div>
                 <div className="mt-3 h-1 overflow-hidden rounded-full bg-primary/[0.12]">
                   <div
-                    className="h-full rounded-full bg-primary/70"
+                    className="h-full rounded-full bg-primary/70 transition-all duration-500"
                     style={{ width }}
                   />
                 </div>
@@ -325,16 +285,11 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
           );
         })}
       </div>
-    </DashboardSection>
+    </SectionCard>
   );
 }
 
-const CONV_STATUS: Record<string, string> = {
-  NEW: "Nuevo",
-  OPEN: "Abierto",
-  PENDING: "Pendiente",
-  RESOLVED: "Resuelto",
-};
+/* ── Dashboard Page ── */
 
 export default function DashboardPage() {
   useRequireAuth();
@@ -388,6 +343,7 @@ export default function DashboardPage() {
     refetchInterval: 120000,
   });
 
+  /* ── Data processing (unchanged) ── */
   const t = (todayStats as any) ?? {};
   const pipelineStages: PipelineStage[] = Array.isArray(pipeline) ? pipeline : [];
   const activeStages = pipelineStages.filter((stage) => !ACTIVE_STAGES.includes(stage.name));
@@ -400,15 +356,11 @@ export default function DashboardPage() {
   const upcomingInvoices = [...outstandingInvoices].sort(
     (a: any, b: any) => new Date(a.due_date ?? 0).getTime() - new Date(b.due_date ?? 0).getTime()
   );
-
   const overdueInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "overdue");
   const soonInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "soon");
   const priorityInvoices = [...overdueInvoices, ...soonInvoices, ...upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "ok")];
   const urgentTasks = taskList.filter((task: any) => task.priority === "HIGH");
-  const attentionTasks = [
-    ...urgentTasks,
-    ...taskList.filter((task: any) => task.priority !== "HIGH"),
-  ];
+  const attentionTasks = [...urgentTasks, ...taskList.filter((task: any) => task.priority !== "HIGH")];
   const pipelineTotalDeals = activeStages.reduce((sum, stage) => sum + stage.deals.length, 0);
   const pipelineTotalValue = activeStages.reduce(
     (sum, stage) => sum + stage.deals.reduce((stageSum, deal) => stageSum + (Number(deal.value) || 0), 0),
@@ -422,8 +374,8 @@ export default function DashboardPage() {
     <div className="min-h-full bg-background">
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6 lg:px-8">
 
-        {/* Header */}
-        <header className="flex flex-col gap-4 border-b border-primary/[0.12] pb-5 md:flex-row md:items-end md:justify-between">
+        {/* ── Header ── */}
+        <header className="flex flex-col gap-4 pb-5 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-bold tracking-[-0.03em] text-foreground md:text-2xl">
@@ -433,7 +385,7 @@ export default function DashboardPage() {
                 </span>
               </h1>
               {(operatingTone === "danger" || operatingTone === "warning") && (
-                <StatusPill
+                <StatusBadge
                   label={operatingTone === "danger" ? "Tenés facturas vencidas" : "Mensajes sin responder"}
                   tone={operatingTone}
                 />
@@ -460,33 +412,37 @@ export default function DashboardPage() {
           </Button>
         </header>
 
-        {/* AI Summary card */}
+        <Separator className="mb-1" />
+
+        {/* ── AI Summary card ── */}
         {(summaryLoading || statsLoading || todaySummary?.generated_text || generateMutation.isPending) && (
-          <section className="rounded-card border border-border bg-card px-4 py-3">
-            {summaryLoading || statsLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-3.5 w-full" />
-                <Skeleton className="h-3.5 w-2/3" />
-              </div>
-            ) : todaySummary?.generated_text ? (
-              <div className="flex gap-3">
-                <BrainCircuit className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />
-                <p className="text-sm leading-relaxed text-foreground/80">
-                  {todaySummary.generated_text}
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 text-sm text-primary/80">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Preparando el resumen...
-              </div>
-            )}
-          </section>
+          <Card>
+            <CardContent className="px-4 py-3">
+              {summaryLoading || statsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-3.5 w-full" />
+                  <Skeleton className="h-3.5 w-2/3" />
+                </div>
+              ) : todaySummary?.generated_text ? (
+                <div className="flex gap-3">
+                  <BrainCircuit className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />
+                  <p className="text-sm leading-relaxed text-foreground/80">
+                    {todaySummary.generated_text}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 text-sm text-primary/80">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Preparando el resumen...
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
-        {/* Metrics strip */}
+        {/* ── Metrics strip ── */}
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <OperationalMetric
+          <MetricCard
             label="Por cobrar"
             value={crc(totalOutstanding)}
             detail={outstandingInvoices.length > 0 ? `${outstandingInvoices.length} facturas abiertas` : "Nada pendiente de cobro"}
@@ -495,7 +451,7 @@ export default function DashboardPage() {
             icon={Wallet}
             linkTo="/invoices"
           />
-          <OperationalMetric
+          <MetricCard
             label="Vencidas"
             value={String(overdueInvoices.length)}
             detail={overdueInvoices.length > 0
@@ -506,7 +462,7 @@ export default function DashboardPage() {
             icon={Receipt}
             linkTo="/invoices"
           />
-          <OperationalMetric
+          <MetricCard
             label="Ventas abiertas"
             value={String(pipelineTotalDeals)}
             detail={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin tratos en el pipeline"}
@@ -515,7 +471,7 @@ export default function DashboardPage() {
             icon={KanbanSquare}
             linkTo="/pipeline"
           />
-          <OperationalMetric
+          <MetricCard
             label="Sin atender"
             value={String(unreadCount)}
             detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Todo atendido"}
@@ -526,29 +482,27 @@ export default function DashboardPage() {
           />
         </section>
 
-        {/* Pipeline band */}
+        {/* ── Pipeline band ── */}
         {!pipelineLoading && activeStages.length > 0 && <PipelineBand stages={activeStages} />}
 
-        {/* Main grid */}
+        {/* ── Main grid ── */}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.85fr)]">
           <div className="space-y-5">
-            <DashboardSection title="Actividad reciente" count={convList.length} linkTo="/inbox">
-              <AttentionList
-                isEmpty={convList.length === 0}
-                emptyIcon={MessageCircle}
-                emptyText="Ningún mensaje nuevo por ahora"
-                emptyCta="Conectar un canal"
-                emptyHref="/settings?tab=channels"
-              >
-                {convList.slice(0, 7).map((conv: any) => {
-                  const statusTone: Tone = conv.status === "NEW" || conv.status === "OPEN" ? "warning" : conv.status === "PENDING" ? "neutral" : "success";
-                  return (
-                    <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                      <div
-                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-primary/[0.06]"
-                      >
-                        <RowStatus tone={statusTone} />
-                        <div className="min-w-0">
+            <SectionCard title="Actividad reciente" count={convList.length} linkTo="/inbox">
+              {convList.length === 0 ? (
+                <EmptyState
+                  icon={MessageCircle}
+                  text="Ningún mensaje nuevo por ahora"
+                  cta="Conectar un canal"
+                  href="/settings?tab=channels"
+                />
+              ) : (
+                <div className="divide-y divide-primary/[0.08]">
+                  {convList.slice(0, 7).map((conv: any) => {
+                    const statusTone: Tone = conv.status === "NEW" || conv.status === "OPEN" ? "warning" : conv.status === "PENDING" ? "neutral" : "success";
+                    return (
+                      <RowItem key={conv.id} href={`/inbox/${conv.id}`}>
+                        <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 items-center gap-2">
                             <p className="truncate text-sm font-medium text-foreground">
                               {conv.contact?.full_name || "Sin nombre"}
@@ -566,73 +520,81 @@ export default function DashboardPage() {
                             {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })}
                           </span>
                         )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </AttentionList>
-            </DashboardSection>
+                      </RowItem>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
           </div>
 
           <aside className="space-y-5">
             <SetupChecklist />
-            <DashboardSection title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
-              <AttentionList
-                isEmpty={priorityInvoices.length === 0}
-                emptyIcon={Receipt}
-                emptyText="No hay facturas por vencer esta semana"
-                emptyCta="Ir a facturación"
-                emptyHref="/invoices"
-              >
-                {priorityInvoices.slice(0, 6).map((inv: any) => {
-                  const state = invoiceUrgency(inv);
-                  const tone: Tone = state === "overdue" ? "danger" : state === "soon" ? "warning" : "neutral";
-                  return (
-                    <Link key={inv.id} href="/invoices">
-                      <div
-                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-primary/[0.06]"
-                      >
-                        <RowStatus tone={tone} />
+
+            <SectionCard title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
+              {priorityInvoices.length === 0 ? (
+                <EmptyState
+                  icon={Receipt}
+                  text="No hay facturas por vencer esta semana"
+                  cta="Ir a facturación"
+                  href="/invoices"
+                />
+              ) : (
+                <div className="divide-y divide-primary/[0.08]">
+                  {priorityInvoices.slice(0, 6).map((inv: any) => {
+                    const state = invoiceUrgency(inv);
+                    const tone: Tone = state === "overdue" ? "danger" : state === "soon" ? "warning" : "neutral";
+                    return (
+                      <RowItem key={inv.id} href="/invoices">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {inv.client_name || `#${inv.id?.slice(0, 8)}`}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <StatusBadge
+                              label={state === "overdue" ? "Vencida" : state === "soon" ? "Próxima" : "Pendiente"}
+                              tone={tone}
+                            />
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {inv.client_name || `#${inv.id?.slice(0, 8)}`}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {dueText(inv.due_date, state === "overdue")}
                           </p>
                         </div>
                         <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                           {crc(Number(inv.balance_due ?? inv.amount) || 0)}
                         </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </AttentionList>
-            </DashboardSection>
+                      </RowItem>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
 
-            <DashboardSection
+            <SectionCard
               title={urgentTasks.length > 0 ? "Tareas urgentes" : "Tareas pendientes"}
               count={urgentTasks.length || taskList.length}
               linkTo="/tasks"
             >
-              <AttentionList
-                isEmpty={attentionTasks.length === 0}
-                emptyIcon={CheckSquare}
-                emptyText="Sin tareas asignadas por ahora"
-                emptyCta="Crear primera tarea"
-                emptyHref="/tasks"
-              >
-                {attentionTasks.slice(0, 7).map((task: any) => {
-                  const tone: Tone = task.priority === "HIGH" ? "danger" : task.priority === "MEDIUM" ? "warning" : "neutral";
-                  return (
-                    <Link key={task.id} href="/tasks">
-                      <div
-                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-primary/[0.06]"
-                      >
-                        <RowStatus tone={tone} />
+              {attentionTasks.length === 0 ? (
+                <EmptyState
+                  icon={CheckSquare}
+                  text="Sin tareas asignadas por ahora"
+                  cta="Crear primera tarea"
+                  href="/tasks"
+                />
+              ) : (
+                <div className="divide-y divide-primary/[0.08]">
+                  {attentionTasks.slice(0, 7).map((task: any) => {
+                    const tone: Tone = task.priority === "HIGH" ? "danger" : task.priority === "MEDIUM" ? "warning" : "neutral";
+                    return (
+                      <RowItem key={task.id} href="/tasks">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
+                          <div className="flex items-center gap-2">
+                            {task.priority === "HIGH" && (
+                              <AlertTriangle className="h-3 w-3 shrink-0 text-destructive" />
+                            )}
+                            <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
+                          </div>
                           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                             <Clock3 className="h-3 w-3" />
                             <span className="truncate">
@@ -643,14 +605,14 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         {task.priority === "HIGH" && (
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                          <StatusBadge label="Urgente" tone="danger" />
                         )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </AttentionList>
-            </DashboardSection>
+                      </RowItem>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
           </aside>
         </div>
       </main>

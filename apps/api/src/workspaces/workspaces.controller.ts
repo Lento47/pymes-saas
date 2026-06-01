@@ -143,6 +143,21 @@ export class WorkspacesController {
     return landing_config;
   }
 
+  @Get("current/ai-settings")
+  async getAiSettings(@CurrentUser("workspace_id") workspaceId: string) {
+    const workspace = await this.service.getCurrent(workspaceId);
+    const settings =
+      workspace.settings_json && typeof workspace.settings_json === "object"
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    return {
+      ai_delegated_by_default: settings.ai_delegated_by_default !== false,
+      ai_always_respond: settings.ai_always_respond === true,
+      human_handover_timeout_ms: settings.human_handover_timeout_ms ?? 180000,
+    };
+  }
+
   @Patch("current")
   @Roles(WorkspaceUserRole.ADMIN)
   updateCurrent(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: UpdateWorkspaceDto) {

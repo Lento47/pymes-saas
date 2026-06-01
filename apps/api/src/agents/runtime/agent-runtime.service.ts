@@ -180,7 +180,7 @@ export class AgentRuntimeService {
           where: { id: opts.conversation_id, workspace_id: opts.workspace_id },
           data: {
             status: "REQUIRES_HUMAN",
-            metadata_json: { ai_state: "HUMAN_ACTIVE" },
+            metadata_json: { ai_state: "HUMAN_ACTIVE", human_handover_at: new Date().toISOString() },
           },
         }).catch(() => {/* non-fatal */});
       }

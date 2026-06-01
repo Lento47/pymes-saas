@@ -15,10 +15,10 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const PRIORITIES = [
-  { value: "LOW", label: "Baja", color: "bg-slate-500" },
-  { value: "MEDIUM", label: "Media", color: "bg-yellow-500" },
-  { value: "HIGH", label: "Alta", color: "bg-orange-500" },
-  { value: "URGENT", label: "Urgente", color: "bg-red-500" },
+  { value: "LOW", label: "Baja", color: "bg-muted-foreground" },
+  { value: "MEDIUM", label: "Media", color: "bg-warning" },
+  { value: "HIGH", label: "Alta", color: "bg-warning" },
+  { value: "URGENT", label: "Urgente", color: "bg-destructive" },
 ] as const;
 
 interface DealSheetProps {

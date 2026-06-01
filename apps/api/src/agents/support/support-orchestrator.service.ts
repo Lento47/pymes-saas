@@ -2,29 +2,38 @@
  * SupportOrchestratorService
  *
  * Drives the multi-agent support pipeline:
- *   triage → (route) → diagnostic → fix-proposal → security → pr-review
+ *   triage → feature router → agent council → consensus → communication
  * with a human-handoff terminal for sensitive cases.
  *
  * The orchestrator only SEQUENCES agents and records an audit trail. It never
  * performs a privileged action itself — PR creation happens inside an agent's
  * Flowise flow via the create_github_pr tool, which is independently gated by
- * PrCreationPolicyService. Stages the tier may not use are skipped.
+ * PrCreationPolicyService. Agents the profile may not use are skipped.
  */
 import { Injectable, Logger, Optional } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { FlowiseClient } from "../flowise/flowise.client";
-import { FlowiseSetupService, PLAN_TO_TIER } from "../flowise-setup.service";
+import { FlowiseSetupService } from "../flowise-setup.service";
 import { AgentGuardrailsService } from "../runtime/agent-guardrails.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { EventsGateway } from "../../gateways/events.gateway";
-import { getSupportAgent } from "./support-agents.catalog";
-import { buildPipeline } from "./support-pipeline";
+import { CreditsService } from "../../memory/credits.service";
+import {
+  getSupportAgent,
+  planToProfile,
+  profileCanUseAgent,
+  getProfilePolicy,
+  caseTypeToFeature,
+} from "./support-agents.catalog";
+import { buildPipelineByFeature } from "./support-pipeline";
 import type {
   DiagnosticOutput,
   SupportAgentSlug,
   SupportCaseType,
+  SupportFeature,
+  SupportProfile,
   SupportSeverity,
   SupportTier,
 } from "./support-agent.types";
@@ -39,7 +48,7 @@ export interface OrchestrateInput {
   triggered_by_user_id?: string;
 }
 
-interface StageRecord {
+export interface StageRecord {
   agent_slug: SupportAgentSlug;
   allowed: boolean;
   skipped_reason?: string;
@@ -47,20 +56,28 @@ interface StageRecord {
   structured?: unknown;
   duration_ms?: number;
   error?: string;
+  /** Estimated credit cost for this stage, based on input/output size. */
+  cost_credits?: number;
+  /** Characters of input context sent to the stage. */
+  input_chars?: number;
+  /** Characters of output received from the stage. */
+  output_chars?: number;
 }
 
 export interface OrchestrateResult {
   run_id: string;
-  tier: SupportTier;
+  tier: string; // SupportProfile name (stored in legacy tier column)
   case_type?: SupportCaseType;
   severity?: SupportSeverity;
   status: "COMPLETED" | "NEEDS_HUMAN" | "FAILED";
   needs_human_review: boolean;
   stages: StageRecord[];
   summary: string;
+  /** Total estimated credit cost for this case. */
+  total_cost_credits?: number;
 }
 
-const MAX_PREVIEW = 2000;
+const MAX_PREVIEW = 8000;
 
 @Injectable()
 export class SupportOrchestratorService {
@@ -73,10 +90,23 @@ export class SupportOrchestratorService {
     private readonly guardrails: AgentGuardrailsService,
     private readonly notifications: NotificationsService,
     @Optional() private readonly events?: EventsGateway,
+    @Optional() private readonly credits?: CreditsService,
   ) {}
 
+  /** Cost model: estimate credits from LLM usage per stage. */
+  private estimateStageCredits(inputChars: number, outputChars: number): number {
+    // Approximation: 3 chars ≈ 1 token for Spanish mixed with code/JSON
+    const inputTokens = Math.ceil(inputChars / 3);
+    const outputTokens = Math.ceil(outputChars / 3);
+    // DeepSeek pricing: ~$0.14/1M input, ~$0.28/1M output
+    const costUSD = (inputTokens / 1_000_000) * 0.14 + (outputTokens / 1_000_000) * 0.28;
+    // 1 credit ≈ $0.001
+    return Math.round(costUSD * 1000 * 100) / 100;
+  }
+
   async orchestrate(input: OrchestrateInput): Promise<OrchestrateResult> {
-    const tier = await this.resolveTier(input.workspace_id);
+    const profile = await this.resolveProfile(input.workspace_id);
+    const policy = getProfilePolicy(profile);
     const sessionId = randomUUID();
     const stages: StageRecord[] = [];
 
@@ -85,7 +115,7 @@ export class SupportOrchestratorService {
       data: {
         workspace_id: input.workspace_id,
         diagnostic_case_id: input.diagnostic_case_id ?? null,
-        tier,
+        tier: profile, // store profile in tier column (backward compat)
         status: "RUNNING",
         stages_json: [],
       },
@@ -101,63 +131,177 @@ export class SupportOrchestratorService {
       event: "orchestration:started",
       run_id: run.id,
       diagnostic_case_id: input.diagnostic_case_id,
-      tier,
+      tier: profile,
     });
 
     try {
-      // Pre-fetch workspace context so stage flows don't need Flowise Tool nodes.
-      const wsCtx = await this.fetchWorkspaceContext(input.workspace_id, tier);
+      // Pre-fetch workspace and diagnostic case context so stage flows don't
+      // depend on Flowise Tool nodes to understand what case is being analyzed.
+      const [wsCtx, caseCtx] = await Promise.all([
+        this.fetchWorkspaceContext(input.workspace_id, profile),
+        this.fetchDiagnosticCaseContext(input.workspace_id, input.diagnostic_case_id),
+      ]);
 
-      // ── Stage 0: triage (all tiers) ──
-      const triageCtx = `${wsCtx}\n\nMensaje del usuario:\n${input.message}`;
-      const triage = await this.runStage("intake-triage", tier, triageCtx, sessionId, stages, input.workspace_id, run.id);
+      // ── Stage 0: triage (all profiles) ──
+      const triageCtx = [wsCtx, caseCtx, `Mensaje del usuario:\n${input.message}`]
+        .filter(Boolean)
+        .join("\n\n");
+      const triage = await this.runStage("intake-triage", profile, triageCtx, sessionId, stages, input.workspace_id, run.id);
       const triageOut = this.parseDiagnostic(triage?.structured);
       caseType = triageOut?.case_type ?? "unknown";
       severity = triageOut?.severity ?? "medium";
       if (triageOut?.needs_human_review) needsHuman = true;
 
-      // ── Routed pipeline ──
-      const pipeline = buildPipeline({
-        tier,
-        caseType,
-        severity,
-        allowPrOverride: input.allow_pr_creation,
+      // If triage needs clarification from the user, stop here and return questions
+      if (triageOut?.clarification_needed && triageOut?.questions?.length) {
+        const summary = triageOut.summary || "Se necesita más información para diagnosticar el problema.";
+        const clarificationResult: OrchestrateResult = {
+          run_id: run.id,
+          tier: profile as any,
+          case_type: caseType,
+          severity,
+          status: "NEEDS_CLARIFICATION" as any,
+          needs_human_review: false,
+          stages,
+          summary,
+          total_cost_credits: stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0),
+        };
+
+        await this.prisma.supportOrchestrationRun.update({
+          where: { id: run.id },
+          data: {
+            status: "NEEDS_CLARIFICATION",
+            case_type: caseType,
+            severity,
+            stages_json: stages as unknown as Prisma.InputJsonValue,
+            summary,
+            clarification_questions: triageOut.questions as unknown as Prisma.InputJsonValue,
+          },
+        });
+
+        // Store the questions in the run for the follow-up to use
+        (clarificationResult as any).questions = triageOut.questions;
+
+        this.events?.emitOrchestrationProgress(input.workspace_id, {
+          event: "orchestration:done",
+          run_id: run.id,
+          diagnostic_case_id: input.diagnostic_case_id,
+          tier: profile,
+          result: clarificationResult,
+        });
+
+        return clarificationResult;
+      }
+
+      // ── Routed pipeline (feature-based, council phases) ──
+      const feature = caseTypeToFeature(caseType);
+      const pipeline = buildPipelineByFeature({
+        profile,
+        feature,
+        needsHuman,
       });
 
-      let carriedContext = `${triageCtx}\n\nClasificación triage: ${JSON.stringify(triageOut ?? {})}`;
+      // Phase separation: council agents run around domain specialists
+      const PRE_SPECIALISTS = new Set<SupportAgentSlug>(["evidence-collector", "support-supervisor"]);
+      const POST_SPECIALISTS = new Set<SupportAgentSlug>([
+        "consensus-arbiter", "user-communication", "human-handoff",
+      ]);
+      const SECURITY_FIX = new Set<SupportAgentSlug>([
+        "code-fix-proposal", "security-compliance", "pr-review",
+      ]);
+
+      const preStages = pipeline.filter((s) => PRE_SPECIALISTS.has(s));
+      const specialistStages = pipeline.filter(
+        (s) => !PRE_SPECIALISTS.has(s) && !POST_SPECIALISTS.has(s) && !SECURITY_FIX.has(s),
+      );
+      const postStages = pipeline.filter((s) => POST_SPECIALISTS.has(s));
+      const secFixStages = pipeline.filter((s) => SECURITY_FIX.has(s));
+
+      let carriedContext = `${triageCtx}\n\nClasificación triage: ${JSON.stringify(triageOut ?? {})}\nFeature: ${feature}`;
       let securityPassed = false;
 
-      for (const slug of pipeline) {
-        // Hard gate: never run the PR-review stage unless a prior security
-        // stage explicitly passed.
+      // ── Phase 1: Evidence Collection ──
+      for (const slug of preStages) {
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
+        if (stage?.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // ── Phase 2: Domain Specialists (parallel council) ──
+      const allFindings: string[] = [];
+      if (specialistStages.length > 0) {
+        const parallelResults = await this.runParallelStages(
+          specialistStages, profile, carriedContext, sessionId,
+          stages, input.workspace_id, run.id,
+        );
+        for (const rec of parallelResults) {
+          if (rec.output_preview) {
+            allFindings.push(`[${rec.agent_slug}]: ${rec.output_preview}`);
+          }
+          const diag = this.parseDiagnostic(rec.structured);
+          if (diag?.needs_human_review) needsHuman = true;
+        }
+      }
+
+      // ── Phase 3: Consensus / Arbiter ──
+      if (postStages.includes("consensus-arbiter") && allFindings.length > 0) {
+        const findingsCtx = [carriedContext, `\n[FINDINGS DE LOS AGENTES]`, ...allFindings].join("\n");
+        const arbiter = await this.runStage(
+          "consensus-arbiter", profile, findingsCtx,
+          `${sessionId}:council`, stages, input.workspace_id, run.id,
+        );
+        if (arbiter?.output_preview) {
+          carriedContext += `\n\n[consensus-arbiter] ${arbiter.output_preview}`.slice(0, 8000);
+        }
+        const aDiag = this.parseDiagnostic(arbiter?.structured);
+        if (aDiag?.needs_human_review) needsHuman = true;
+      } else if (allFindings.length > 0) {
+        carriedContext += `\n\n[Specialist Findings]\n${allFindings.join("\n")}`;
+      }
+
+      // ── Phase 4: Security + Fix stages (sequential) ──
+      for (const slug of secFixStages) {
         if (slug === "pr-review" && !securityPassed) {
-          stages.push({
-            agent_slug: slug,
-            allowed: false,
-            skipped_reason: "security-compliance no aprobó; PR no se revisa",
-          });
+          stages.push({ agent_slug: slug, allowed: false, skipped_reason: "security-compliance no aprobó; PR no se revisa" });
           needsHuman = true;
           continue;
         }
-
-        const stage = await this.runStage(slug, tier, carriedContext, sessionId, stages, input.workspace_id, run.id);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
         if (!stage) continue;
-
-        // Track security signoff for downstream gating.
         if (slug === "security-compliance") {
           securityPassed = this.securityApproved(stage.output_preview ?? "");
           if (!securityPassed) needsHuman = true;
         }
-
+        if (stage.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
         const diag = this.parseDiagnostic(stage.structured);
         if (diag?.needs_human_review) needsHuman = true;
+      }
 
-        // Carry a compact summary of this stage into the next one.
-        carriedContext += `\n\n[${slug}] ${stage.output_preview ?? ""}`.slice(0, 8000);
+      // ── Phase 5: User Communication ──
+      if (postStages.includes("user-communication")) {
+        const comm = await this.runStage(
+          "user-communication", profile, carriedContext,
+          `${sessionId}:comm`, stages, input.workspace_id, run.id,
+        );
+        if (comm?.output_preview) {
+          carriedContext += `\n\n[user-communication] ${comm.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // ── Phase 6: Human Handoff (if needed) ──
+      if (needsHuman && postStages.includes("human-handoff")) {
+        await this.runStage(
+          "human-handoff", profile,
+          `${carriedContext}\n\n⚠️ Requiere revisión humana. Prepará resumen ejecutivo.`,
+          `${sessionId}:handoff`, stages, input.workspace_id, run.id,
+        );
       }
 
       const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
-      const summary = this.buildSummary(tier, caseType, severity, stages, needsHuman);
+      const summary = this.buildSummary(profile, caseType, severity, stages, needsHuman);
 
       await this.prisma.supportOrchestrationRun.update({
         where: { id: run.id },
@@ -182,31 +326,39 @@ export class SupportOrchestratorService {
         );
       }
 
+      const totalCost = stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0);
+
       const result: OrchestrateResult = {
         run_id: run.id,
-        tier,
+        tier: profile,
         case_type: caseType,
         severity,
         status,
         needs_human_review: needsHuman,
         stages,
         summary,
+        total_cost_credits: totalCost,
       };
 
       this.events?.emitOrchestrationProgress(input.workspace_id, {
         event: "orchestration:done",
         run_id: run.id,
         diagnostic_case_id: input.diagnostic_case_id,
-        tier,
+        tier: profile,
         result,
       });
+
+      // Deduct credits for the support case (non-fatal)
+      this.deductCreditsForCase(input.workspace_id, run.id, caseType ?? "unknown", totalCost).catch((err) =>
+        this.logger.error(`[orchestrator] credit deduction failed: ${err?.message}`)
+      );
 
       return result;
     } catch (err: any) {
       this.logger.error(`[orchestrator] run ${run.id} failed: ${err?.message}`);
       const failedResult: OrchestrateResult = {
         run_id: run.id,
-        tier,
+        tier: profile,
         case_type: caseType,
         severity,
         status: "FAILED",
@@ -232,7 +384,7 @@ export class SupportOrchestratorService {
         event: "orchestration:done",
         run_id: run.id,
         diagnostic_case_id: input.diagnostic_case_id,
-        tier,
+        tier: profile,
         result: failedResult,
       });
 
@@ -240,9 +392,220 @@ export class SupportOrchestratorService {
     }
   }
 
-  /** List recent orchestration runs for a workspace (audit view). */
-  listRuns(workspaceId: string, limit = 20) {
-    return this.prisma.supportOrchestrationRun.findMany({
+  /** Continue a run that was paused waiting for user clarification. */
+  async continueWithClarification(
+    workspaceId: string,
+    runId: string,
+    userAnswer: string,
+  ): Promise<OrchestrateResult> {
+    const run = await this.prisma.supportOrchestrationRun.findFirst({
+      where: { id: runId, workspace_id: workspaceId, status: "NEEDS_CLARIFICATION" },
+    });
+    if (!run) throw new Error("No se encontró un caso pendiente de clarificación con ese ID.");
+
+    const profile = (run.tier as SupportProfile) ?? "FREE_GUIDED";
+    const sessionId = randomUUID();
+    const stages: StageRecord[] = (run.stages_json as unknown as StageRecord[]) ?? [];
+    const caseType = (run.case_type as SupportCaseType) ?? "unknown";
+    const severity = (run.severity as SupportSeverity) ?? "medium";
+
+    let needsHuman = false;
+    let securityPassed = false;
+
+    try {
+      const [wsCtx, caseCtx] = await Promise.all([
+        this.fetchWorkspaceContext(workspaceId, profile),
+        this.fetchDiagnosticCaseContext(workspaceId, run.diagnostic_case_id ?? undefined),
+      ]);
+
+      // Build context with the original triage + user's answer + case context
+      const clarificationCtx = [
+        wsCtx,
+        caseCtx,
+        `[RESPUESTA DEL USUARIO A LAS PREGUNTAS DE CLARIFICACIÓN]\n${userAnswer}`,
+        `[Clasificación previa: ${caseType}, severidad: ${severity}]`,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      // ── Routed pipeline (feature-based, skip triage, council phases) ──
+      const feature = caseTypeToFeature(caseType);
+      const pipeline = buildPipelineByFeature({
+        profile,
+        feature,
+        needsHuman,
+      });
+
+      // Skip triage since it already ran
+      const filteredPipeline = pipeline.filter(s => s !== "intake-triage");
+
+      // Phase separation (same as main orchestrator)
+      const PRE_SPECIALISTS2 = new Set<SupportAgentSlug>(["evidence-collector", "support-supervisor"]);
+      const POST_SPECIALISTS2 = new Set<SupportAgentSlug>([
+        "consensus-arbiter", "user-communication", "human-handoff",
+      ]);
+      const SECURITY_FIX2 = new Set<SupportAgentSlug>([
+        "code-fix-proposal", "security-compliance", "pr-review",
+      ]);
+
+      const preStages2 = filteredPipeline.filter((s) => PRE_SPECIALISTS2.has(s));
+      const specialistStages2 = filteredPipeline.filter(
+        (s) => !PRE_SPECIALISTS2.has(s) && !POST_SPECIALISTS2.has(s) && !SECURITY_FIX2.has(s),
+      );
+      const postStages2 = filteredPipeline.filter((s) => POST_SPECIALISTS2.has(s));
+      const secFixStages2 = filteredPipeline.filter((s) => SECURITY_FIX2.has(s));
+
+      let carriedContext = clarificationCtx;
+
+      // Phase 1: Evidence + Supervisor
+      for (const slug of preStages2) {
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
+        if (stage?.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // Phase 2: Domain Specialists (parallel)
+      const allFindings2: string[] = [];
+      if (specialistStages2.length > 0) {
+        const parallelResults = await this.runParallelStages(
+          specialistStages2, profile, carriedContext, sessionId,
+          stages, workspaceId, runId,
+        );
+        for (const rec of parallelResults) {
+          if (rec.output_preview) {
+            allFindings2.push(`[${rec.agent_slug}]: ${rec.output_preview}`);
+          }
+          const diag = this.parseDiagnostic(rec.structured);
+          if (diag?.needs_human_review) needsHuman = true;
+        }
+      }
+
+      // Phase 3: Consensus / Arbiter
+      if (postStages2.includes("consensus-arbiter") && allFindings2.length > 0) {
+        const findingsCtx = [carriedContext, `\n[FINDINGS DE LOS AGENTES]`, ...allFindings2].join("\n");
+        const arbiter = await this.runStage(
+          "consensus-arbiter", profile, findingsCtx,
+          `${sessionId}:council`, stages, workspaceId, runId,
+        );
+        if (arbiter?.output_preview) {
+          carriedContext += `\n\n[consensus-arbiter] ${arbiter.output_preview}`.slice(0, 8000);
+        }
+        const aDiag = this.parseDiagnostic(arbiter?.structured);
+        if (aDiag?.needs_human_review) needsHuman = true;
+      }
+
+      // Phase 4: Security + Fix
+      for (const slug of secFixStages2) {
+        if (slug === "pr-review" && !securityPassed) {
+          stages.push({ agent_slug: slug, allowed: false, skipped_reason: "security-compliance no aprobó; PR no se revisa" });
+          needsHuman = true;
+          continue;
+        }
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
+        if (!stage) continue;
+        if (slug === "security-compliance") {
+          securityPassed = this.securityApproved(stage.output_preview ?? "");
+          if (!securityPassed) needsHuman = true;
+        }
+        if (stage.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
+        const diag = this.parseDiagnostic(stage.structured);
+        if (diag?.needs_human_review) needsHuman = true;
+      }
+
+      // Phase 5: User Communication
+      if (postStages2.includes("user-communication")) {
+        const comm = await this.runStage(
+          "user-communication", profile, carriedContext,
+          `${sessionId}:comm`, stages, workspaceId, runId,
+        );
+        if (comm?.output_preview) {
+          carriedContext += `\n\n[user-communication] ${comm.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // Phase 6: Human Handoff
+      if (needsHuman && postStages2.includes("human-handoff")) {
+        await this.runStage(
+          "human-handoff", profile,
+          `${carriedContext}\n\n⚠️ Requiere revisión humana. Prepará resumen ejecutivo.`,
+          `${sessionId}:handoff`, stages, workspaceId, runId,
+        );
+      }
+
+      const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
+      const summary = this.buildSummary(profile, caseType, severity, stages, needsHuman);
+
+      await this.prisma.supportOrchestrationRun.update({
+        where: { id: runId },
+        data: {
+          status,
+          needs_human_review: needsHuman,
+          stages_json: stages as unknown as Prisma.InputJsonValue,
+          summary,
+        },
+      });
+
+      if (needsHuman) {
+        this.notifyHumanEscalation(workspaceId, runId, summary).catch((err) =>
+          this.logger.error(`[orchestrator] escalation notification failed: ${err?.message}`)
+        );
+      }
+
+      const totalCost = stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0);
+
+      const result: OrchestrateResult = {
+        run_id: runId,
+        tier: profile,
+        case_type: caseType,
+        severity,
+        status,
+        needs_human_review: needsHuman,
+        stages,
+        summary,
+        total_cost_credits: totalCost,
+      };
+
+      this.events?.emitOrchestrationProgress(workspaceId, {
+        event: "orchestration:done",
+        run_id: runId,
+        tier: profile,
+        result,
+      });
+
+      this.deductCreditsForCase(workspaceId, runId, caseType, totalCost).catch((err) =>
+        this.logger.error(`[orchestrator] credit deduction failed: ${err?.message}`)
+      );
+
+      return result;
+    } catch (err: any) {
+      this.logger.error(`[orchestrator] continue run ${runId} failed: ${err?.message}`);
+      const failedResult: OrchestrateResult = {
+        run_id: runId,
+        tier: profile,
+        case_type: caseType,
+        severity,
+        status: "FAILED",
+        needs_human_review: true,
+        stages,
+        summary: `La orquestación falló al continuar: ${err?.message ?? "error desconocido"}.`,
+      };
+      await this.prisma.supportOrchestrationRun.update({
+        where: { id: runId },
+        data: { status: "FAILED", summary: failedResult.summary },
+      }).catch(() => undefined);
+      return failedResult;
+    }
+  }
+
+  /** List recent orchestration runs for a workspace (user-facing history). */
+  async listRuns(workspaceId: string, limit = 20) {
+    // Auto-close stale cases before returning the list
+    await this.autoCloseStaleRuns(workspaceId);
+
+    const runs = await this.prisma.supportOrchestrationRun.findMany({
       where: { workspace_id: workspaceId },
       orderBy: { created_at: "desc" },
       take: Math.min(limit, 100),
@@ -254,14 +617,72 @@ export class SupportOrchestratorService {
         severity: true,
         needs_human_review: true,
         summary: true,
+        stages_json: true,
         created_at: true,
+        updated_at: true,
       },
     });
+
+    return runs.map((r) => ({
+      ...r,
+      total_cost_credits: this.sumStagesCost(r.stages_json),
+    }));
+  }
+
+  /** Get a single run detail with full stage data. */
+  async getRun(workspaceId: string, runId: string) {
+    const run = await this.prisma.supportOrchestrationRun.findFirst({
+      where: { id: runId, workspace_id: workspaceId },
+    });
+    if (!run) return null;
+
+    const stages = run.stages_json as unknown as StageRecord[];
+    const totalCost = stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0);
+
+    return {
+      run_id: run.id,
+      tier: run.tier,
+      case_type: run.case_type ?? undefined,
+      severity: run.severity ?? undefined,
+      status: run.status,
+      needs_human_review: run.needs_human_review,
+      stages,
+      summary: run.summary ?? "",
+      total_cost_credits: totalCost,
+      created_at: run.created_at,
+      updated_at: run.updated_at,
+    };
+  }
+
+  /** Auto-close runs that are > 3 days stale with no follow-up. */
+  async autoCloseStaleRuns(workspaceId: string): Promise<number> {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const result = await this.prisma.supportOrchestrationRun.updateMany({
+      where: {
+        workspace_id: workspaceId,
+        status: { in: ["RUNNING", "NEEDS_HUMAN"] },
+        updated_at: { lt: threeDaysAgo },
+      },
+      data: {
+        status: "CLOSED",
+      },
+    });
+    if (result.count > 0) {
+      this.logger.log(
+        `Auto-closed ${result.count} stale support run(s) for workspace ${workspaceId} (no follow-up in 3d)`,
+      );
+    }
+    return result.count;
+  }
+
+  private sumStagesCost(stagesJson: unknown): number {
+    if (!Array.isArray(stagesJson)) return 0;
+    return stagesJson.reduce((sum, s) => sum + (s?.cost_credits ?? 0), 0);
   }
 
   // ── Internals ──────────────────────────────────────────────────────────────
 
-  private async fetchWorkspaceContext(workspaceId: string, tier: SupportTier): Promise<string> {
+  private async fetchWorkspaceContext(workspaceId: string, profile: string): Promise<string> {
     try {
       const [ws, counts] = await Promise.all([
         this.prisma.workspace.findUnique({
@@ -279,22 +700,99 @@ export class SupportOrchestratorService {
         `[Contexto del Workspace]`,
         `ID: ${ws?.id ?? workspaceId}`,
         `Nombre: ${ws?.name ?? "—"}`,
-        `Plan: ${ws?.plan ?? "FREE"} | Tier: ${tier}`,
+        `Plan: ${ws?.plan ?? "FREE"} | Perfil: ${profile}`,
         `Estado: ${ws?.status ?? "—"}`,
         `Zona horaria: ${ws?.timezone ?? "UTC"} | Locale: ${ws?.locale ?? "es"}`,
         `Estadísticas: ${contacts} contactos, ${conversations} conversaciones, ${tasks} tareas`,
       ].join("\n");
     } catch {
-      return `[Contexto del Workspace]\nID: ${workspaceId} | Tier: ${tier}`;
+      return `[Contexto del Workspace]\nID: ${workspaceId} | Perfil: ${profile}`;
     }
   }
 
-  private async resolveTier(workspaceId: string): Promise<SupportTier> {
+  /**
+   * Load the diagnostic case context so agents understand what they're analyzing.
+   * When no case_id is provided (standalone messages), returns empty string.
+   */
+  private async fetchDiagnosticCaseContext(
+    workspaceId: string,
+    diagnosticCaseId?: string,
+  ): Promise<string> {
+    if (!diagnosticCaseId) return "";
+
+    try {
+      const dCase = await this.prisma.supportDiagnosticCase.findFirst({
+        where: {
+          id: diagnosticCaseId,
+          workspace_id: workspaceId,
+        },
+        select: {
+          id: true,
+          module: true,
+          error_code: true,
+          trace_id: true,
+          category: true,
+          risk_level: true,
+          status: true,
+          title: true,
+          user_description: true,
+          safe_summary: true,
+          evidence_json: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      if (!dCase) {
+        return [
+          `[Caso de diagnóstico]`,
+          `ID: ${diagnosticCaseId}`,
+          `Estado: no encontrado o no pertenece al workspace actual`,
+        ].join("\n");
+      }
+
+      const evidencePreview = dCase.evidence_json
+        ? JSON.stringify(dCase.evidence_json).slice(0, 4000)
+        : "";
+
+      return [
+        `[Caso de diagnóstico]`,
+        `ID: ${dCase.id}`,
+        `Estado: ${dCase.status}`,
+        `Módulo: ${dCase.module ?? "unknown"}`,
+        `Categoría: ${dCase.category}`,
+        `Riesgo: ${dCase.risk_level}`,
+        dCase.error_code ? `Código de error: ${dCase.error_code}` : "",
+        dCase.trace_id ? `Trace ID: ${dCase.trace_id}` : "",
+        `Título: ${dCase.title}`,
+        dCase.user_description
+          ? `Descripción del usuario:\n${dCase.user_description}`
+          : "",
+        dCase.safe_summary ? `Resumen seguro:\n${dCase.safe_summary}` : "",
+        evidencePreview ? `Evidencia registrada:\n${evidencePreview}` : "",
+        `Creado: ${dCase.created_at.toISOString()}`,
+        `Actualizado: ${dCase.updated_at.toISOString()}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    } catch (err: any) {
+      this.logger.warn(
+        `[orchestrator] failed to fetch diagnostic case ${diagnosticCaseId}: ${err?.message}`,
+      );
+      return [
+        `[Caso de diagnóstico]`,
+        `ID: ${diagnosticCaseId}`,
+        `(no se pudo cargar — ${err?.message ?? "error"})`,
+      ].join("\n");
+    }
+  }
+
+  private async resolveProfile(workspaceId: string): Promise<SupportProfile> {
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true },
     });
-    return (PLAN_TO_TIER[ws?.plan ?? "FREE"] ?? "TIER_1") as SupportTier;
+    return planToProfile(ws?.plan ?? "FREE");
   }
 
   /**
@@ -303,7 +801,7 @@ export class SupportOrchestratorService {
    */
   private async runStage(
     slug: SupportAgentSlug,
-    tier: SupportTier,
+    profile: SupportProfile,
     context: string,
     sessionId: string,
     stages: StageRecord[],
@@ -311,11 +809,11 @@ export class SupportOrchestratorService {
     runId?: string,
   ): Promise<StageRecord | null> {
     const def = getSupportAgent(slug);
-    if (!def || !def.tierAccess.includes(tier)) {
+    if (!def || !profileCanUseAgent(profile, slug)) {
       const rec: StageRecord = {
         agent_slug: slug,
         allowed: false,
-        skipped_reason: `Tier ${tier} no puede usar ${slug}`,
+        skipped_reason: `Perfil ${profile} no puede usar ${slug}`,
       };
       stages.push(rec);
       if (workspaceId && runId) {
@@ -363,12 +861,18 @@ export class SupportOrchestratorService {
         }
       }
       const safeText = this.guardrails.sanitizeOutputAfterModel(res.text ?? "", MAX_PREVIEW);
+      const inputChars = safeContext.length;
+      const outputChars = (res.text ?? "").length;
+      const costCredits = this.estimateStageCredits(inputChars, outputChars);
       const rec: StageRecord = {
         agent_slug: slug,
         allowed: true,
         output_preview: safeText,
         structured: this.tryParseJson(res.text ?? ""),
         duration_ms: Date.now() - started,
+        input_chars: inputChars,
+        output_chars: outputChars,
+        cost_credits: costCredits,
       };
       stages.push(rec);
       if (workspaceId && runId) {
@@ -391,6 +895,38 @@ export class SupportOrchestratorService {
     }
   }
 
+  /**
+   * Run multiple specialist agents in parallel.
+   * Each gets the same context and session prefix. Non-fatal per-agent —
+   * individual failures are recorded and the others continue.
+   */
+  private async runParallelStages(
+    slugs: SupportAgentSlug[],
+    profile: SupportProfile,
+    context: string,
+    sessionId: string,
+    stages: StageRecord[],
+    workspaceId?: string,
+    runId?: string,
+  ): Promise<StageRecord[]> {
+    const results = await Promise.all(
+      slugs.map((slug) =>
+        this.runStage(slug, profile, context, `${sessionId}:${slug}`, stages, workspaceId, runId)
+          .then((rec) => rec ?? {
+            agent_slug: slug,
+            allowed: true,
+            error: "stage returned null",
+          } as StageRecord)
+          .catch((err) => ({
+            agent_slug: slug,
+            allowed: true,
+            error: err?.message ?? "parallel execution failed",
+          } as StageRecord)),
+      ),
+    );
+    return results;
+  }
+
   private tryParseJson(text: string): unknown {
     // Agents are asked to return JSON; tolerate fenced code blocks / prose.
     const match = text.match(/\{[\s\S]*\}/);
@@ -410,33 +946,78 @@ export class SupportOrchestratorService {
   }
 
   private securityApproved(text: string): boolean {
-    // Conservative: only treat as approved on an explicit positive signal,
-    // and never if a block/critical signal is present.
     const t = text.toLowerCase();
-    if (/(bloque|block|riesgo cr[ií]tico|critical risk|denegad|denied)/.test(t)) return false;
-    return /(aprobad|approved|sin riesgos|no risks|ok para|safe to proceed)/.test(t);
+    // Only block on explicit denial or critical risk
+    if (/(bloque|block|riesgo cr[ií]tico|critical risk|denegad|denied|no aprobado)/.test(t)) return false;
+    // Accept explicit approval OR no issues found
+    return /(aprobad|approved|sin riesgos|no risks|ok|safe|sin problemas|no issues|correcto)/.test(t);
   }
 
   private buildSummary(
-    tier: SupportTier,
+    profile: string,
     caseType: SupportCaseType | undefined,
     severity: SupportSeverity | undefined,
     stages: StageRecord[],
     needsHuman: boolean,
   ): string {
-    const ran = stages.filter((s) => s.allowed && !s.skipped_reason && !s.error).map((s) => s.agent_slug);
-    const skipped = stages.filter((s) => s.skipped_reason).map((s) => s.agent_slug);
-    const parts = [
-      `Tier ${tier} · caso ${caseType ?? "?"} · severidad ${severity ?? "?"}.`,
-      ran.length ? `Agentes ejecutados: ${ran.join(" → ")}.` : "No se ejecutó ningún agente.",
-    ];
-    if (skipped.length) parts.push(`Omitidos: ${skipped.join(", ")}.`);
-    parts.push(
-      needsHuman
-        ? "Requiere revisión humana antes de cualquier acción."
-        : "Pipeline completado sin acciones sensibles pendientes.",
-    );
-    return parts.join(" ");
+    const ran = stages.filter((s) => s.allowed && !s.skipped_reason && !s.error);
+    const errored = stages.filter((s) => s.error);
+    const skipped = stages.filter((s) => s.skipped_reason);
+
+    // Extract diagnostic content from stage outputs
+    const triageStage = ran.find((s) => s.agent_slug === "intake-triage");
+    const diagnosticStage = ran.find((s) => s.agent_slug === "technical-diagnostic");
+    const fixStage = ran.find((s) => s.agent_slug === "code-fix-proposal");
+
+    const triageDiag = triageStage?.output_preview
+      ? (() => { try { const m = triageStage.output_preview!.match(/\{[^}]*"root_cause"[^}]*\}|\{[^}]*"likely_root_cause"[^}]*\}/); return m ? m[0] : null; } catch { return null; }})()
+      : null;
+
+    const rootCauseText = fixStage?.output_preview
+      ? (() => { try { const m = fixStage.output_preview!.match(/"root_cause"\s*:\s*"([^"]+)"/); return m?.[1]; } catch { return null; }})()
+      : null;
+
+    const parts: string[] = [];
+
+    // Header
+    parts.push(`### ${caseType ? (caseType.charAt(0).toUpperCase() + caseType.slice(1)).replace(/_/g, ' ') : 'Soporte'}`);
+    parts.push(`**Severidad:** ${severity ?? "—"} · **Perfil:** ${profile}`);
+
+    // Diagnosis
+    if (triageStage?.output_preview) {
+      const preview = triageStage.output_preview.slice(0, 500).trim();
+      if (preview && !preview.startsWith("{")) {
+        parts.push(`\n**Diagnóstico:** ${preview}`);
+      }
+    }
+
+    // Root cause
+    if (rootCauseText) {
+      parts.push(`\n**Causa raíz:** ${rootCauseText}`);
+    } else if (diagnosticStage?.output_preview) {
+      const diagPreview = diagnosticStage.output_preview.slice(0, 400).trim();
+      if (diagPreview && !diagPreview.startsWith("{")) {
+        parts.push(`\n**Análisis técnico:** ${diagPreview}`);
+      }
+    }
+
+    // Pipeline info
+    if (ran.length > 0) {
+      parts.push(`\n**Agentes:** ${ran.map((s) => s.agent_slug.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())).join(" → ")}`);
+    }
+    if (skipped.length > 0) {
+      parts.push(`*Omitidos: ${skipped.map((s) => s.agent_slug).join(", ")}*`);
+    }
+    if (errored.length > 0) {
+      parts.push(`*Errores: ${errored.map((s) => `${s.agent_slug}: ${s.error}`).join("; ")}*`);
+    }
+
+    // Status
+    if (needsHuman) {
+      parts.push(`\n⚠️ **Requiere revisión humana** antes de continuar.`);
+    }
+
+    return parts.join("\n");
   }
 
   private async notifyHumanEscalation(
@@ -471,6 +1052,29 @@ export class SupportOrchestratorService {
         related_entity_type: "support_run",
         related_entity_id: runId,
       });
+    }
+  }
+
+  private async deductCreditsForCase(
+    workspaceId: string,
+    runId: string,
+    caseType: string,
+    totalCost: number,
+  ): Promise<void> {
+    if (!this.credits || totalCost <= 0) return;
+    const result = await this.credits.deductCredits(
+      workspaceId,
+      Math.ceil(totalCost),
+      `Soporte ${caseType} — caso #${runId.slice(0, 8)}`,
+    );
+    if (result.success) {
+      this.logger.log(
+        `Workspace ${workspaceId}: deducted ${Math.ceil(totalCost)} credits for support case ${runId.slice(0, 8)}. Balance: ${result.newBalance}`,
+      );
+    } else {
+      this.logger.warn(
+        `Workspace ${workspaceId}: insufficient credits for support case ${runId.slice(0, 8)} (balance: ${result.newBalance}, needed: ${Math.ceil(totalCost)})`,
+      );
     }
   }
 }

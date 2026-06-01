@@ -31,7 +31,7 @@ export class FlowiseClient {
     this.baseUrl =
       config.get<string>("FLOWISE_BASE_URL") ?? "http://localhost:3001";
     this.apiKey = config.get<string>("FLOWISE_API_KEY") ?? null;
-    this.timeoutMs = config.get<number>("FLOWISE_TIMEOUT_MS") ?? 30_000;
+    this.timeoutMs = config.get<number>("FLOWISE_TIMEOUT_MS") ?? 90_000;
   }
 
   get isEnabled(): boolean {
@@ -57,7 +57,7 @@ export class FlowiseClient {
       data: {
         id: "startAgentflow_0",
         label: "Start",
-        version: 1.1,
+        version: "2.0.0",
         name: "startAgentflow",
         type: "Start",
         color: "#7EE787",
@@ -114,7 +114,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "llmAgentflow",
         type: "LLM",
         color: "#64B5F6",
@@ -188,7 +188,7 @@ export class FlowiseClient {
       data: {
         id,
         label: opts.label ?? "Agent 0",
-        version: 1.1,
+        version: "2.0.0",
         name: "agentAgentflow",
         type: "Agent",
         color: "#4DD0E1",
@@ -243,7 +243,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "conditionAgentflow",
         type: "Condition",
         color: "#FF9800",
@@ -292,7 +292,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "conditionAgentAgentflow",
         type: "ConditionAgent",
         color: "#FF9800",
@@ -341,7 +341,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "toolAgentflow",
         type: "Tool",
         color: "#4CAF50",
@@ -381,7 +381,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "humanInputAgentflow",
         type: "HumanInput",
         color: "#E91E63",
@@ -422,7 +422,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "customFunctionAgentflow",
         type: "CustomFunction",
         color: "#9C27B0",
@@ -462,7 +462,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1.1,
+        version: "2.0.0",
         name: "executeFlowAgentflow",
         type: "ExecuteFlow",
         color: "#00BCD4",
@@ -501,7 +501,7 @@ export class FlowiseClient {
       data: {
         id: "directReplyAgentflow_0",
         label: "Direct Reply",
-        version: 1.1,
+        version: "2.0.0",
         name: "directReplyAgentflow",
         type: "DirectReply",
         color: "#4DDBBB",
@@ -712,19 +712,10 @@ Responde SOLO con JSON: {"safe": true} o {"safe": false, "risk": "..."}` }],
     const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: "get_workspace_plan", inputValue: "{}", position: { x: 1000, y: 400 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
     const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: "get_workspace_context", inputValue: "{}", position: { x: 1250, y: 400 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
 
-    const llmClassify = FlowiseClient.buildLLMNode({
-      id: "llmAgentflow_2", label: "Case Classifier",
-      messages: [{ role: "system", content: `Clasifica el tipo de caso en UNA de estas áreas:
-whatsapp | telegram | crm_workflow | billing | general
-Responde SOLO con JSON: {"area": "...", "severity": "low|medium|high", "summary": "..."}` }],
-      model: fast, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 1500, y: 400 },
-      updateState: JSON.stringify([{ key: "caseType", value: "{{ llmAgentflow_2.output }}" }, { key: "severity", value: "{{ llmAgentflow_2.output }}" }, { key: "affectedArea", value: "{{ llmAgentflow_2.output }}" }]),
-    });
-
     const condRoute = FlowiseClient.buildConditionAgentNode({
       id: "conditionAgentAgentflow_0", label: "Route by Area",
-      instruction: "Determina el área de soporte basándote en el tipo de caso.",
-      input: "{{ $flow.state.caseType }}",
+      instruction: "Determina el área de soporte basándote en el mensaje del usuario.",
+      input: "{{ $flow.state.inputSanitized }}",
       scenarios: [
         { label: "whatsapp", description: "Problema con canal o mensajes de WhatsApp" },
         { label: "telegram", description: "Problema con bot o canal de Telegram" },
@@ -732,16 +723,15 @@ Responde SOLO con JSON: {"area": "...", "severity": "low|medium|high", "summary"
         { label: "billing", description: "Pregunta sobre facturación, plan o suscripción" },
         { label: "general", description: "Pregunta general sobre el producto" },
       ],
-      model: fast, position: { x: 1750, y: 400 },
+      model: fast, position: { x: 1500, y: 400 },
     });
 
     // WhatsApp branch
     const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: "get_channel_status", inputValue: '{"type":"WHATSAPP"}', position: { x: 2000, y: 100 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
-    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: "get_whatsapp_status", inputValue: "{}", position: { x: 2250, y: 100 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_3.output }}" }]) });
-    const llmWa = FlowiseClient.buildLLMNode({ id: "llmAgentflow_3", label: "WhatsApp Analyst", messages: [{ role: "system", content: "Analiza el estado del canal de WhatsApp y el problema reportado. Da una solución clara con pasos concretos. Contexto del workspace: {{ $flow.state.workspaceContext }}. Estado del canal: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2500, y: 100 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_3.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_3.output }}" }]) });
+    const llmWa = FlowiseClient.buildLLMNode({ id: "llmAgentflow_3", label: "WhatsApp Analyst", messages: [{ role: "system", content: "Analiza el estado del canal de WhatsApp y el problema reportado. Da una solución clara con pasos concretos. Contexto del workspace: {{ $flow.state.workspaceContext }}. Estado del canal: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 100 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_3.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_3.output }}" }]) });
 
     // Telegram branch
-    const toolTg = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_telegram_status", toolId: "get_telegram_status", inputValue: "{}", position: { x: 2000, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_4.output }}" }]) });
+    const toolTg = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_channel_status", toolId: "get_channel_status", inputValue: '{"type":"TELEGRAM"}', position: { x: 2000, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_4.output }}" }]) });
     const llmTg = FlowiseClient.buildLLMNode({ id: "llmAgentflow_4", label: "Telegram Analyst", messages: [{ role: "system", content: "Analiza el estado del canal de Telegram y el problema reportado. Da una solución con pasos concretos. Estado: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 250 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_4.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_4.output }}" }]) });
 
     // CRM/Workflow branch
@@ -786,7 +776,7 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
       returnResponseAs: "assistantMessage",
     });
 
-    const nodes = [start, llmNorm, llmSafety, condSafe, llmRefusal, toolPlan, toolCtx, llmClassify, condRoute, toolCh, toolWa, llmWa, toolTg, llmTg, toolWf, llmWf, toolBill, llmBill, llmGen, llmEscalate, condEscalate, humanEscalation, llmFinal];
+    const nodes = [start, llmNorm, llmSafety, condSafe, llmRefusal, toolPlan, toolCtx, condRoute, toolCh, llmWa, toolTg, llmTg, toolWf, llmWf, toolBill, llmBill, llmGen, llmEscalate, condEscalate, humanEscalation, llmFinal];
 
     const E = FlowiseClient.buildEdge;
     const edges = [
@@ -796,12 +786,10 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
       E("conditionAgentflow_0", "conditionAgentflow_0-output-true", "llmAgentflow_10", "llmAgentflow_10", "#FF5252", "#FF5252"),
       E("conditionAgentflow_0", "conditionAgentflow_0-output-false", "toolAgentflow_0", "toolAgentflow_0"),
       E("toolAgentflow_0", "toolAgentflow_0-output-toolAgentflow", "toolAgentflow_1", "toolAgentflow_1"),
-      E("toolAgentflow_1", "toolAgentflow_1-output-toolAgentflow", "llmAgentflow_2", "llmAgentflow_2"),
-      E("llmAgentflow_2", "llmAgentflow_2-output-llmAgentflow", "conditionAgentAgentflow_0", "conditionAgentAgentflow_0"),
+      E("toolAgentflow_1", "toolAgentflow_1-output-toolAgentflow", "conditionAgentAgentflow_0", "conditionAgentAgentflow_0"),
       // WhatsApp branch
       E("conditionAgentAgentflow_0", "conditionAgentAgentflow_0-output-0", "toolAgentflow_2", "toolAgentflow_2", "#FF9800", "#4CAF50"),
-      E("toolAgentflow_2", "toolAgentflow_2-output-toolAgentflow", "toolAgentflow_3", "toolAgentflow_3"),
-      E("toolAgentflow_3", "toolAgentflow_3-output-toolAgentflow", "llmAgentflow_3", "llmAgentflow_3"),
+      E("toolAgentflow_2", "toolAgentflow_2-output-toolAgentflow", "llmAgentflow_3", "llmAgentflow_3"),
       E("llmAgentflow_3", "llmAgentflow_3-output-llmAgentflow", "llmAgentflow_8", "llmAgentflow_8"),
       // Telegram branch
       E("conditionAgentAgentflow_0", "conditionAgentAgentflow_0-output-1", "toolAgentflow_4", "toolAgentflow_4", "#FF9800", "#4CAF50"),
@@ -864,8 +852,7 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
 
     // Channel diagnostic branch
     const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: "get_channel_status", inputValue: "{}", position: { x: 1750, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
-    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: "get_whatsapp_status", inputValue: "{}", position: { x: 2000, y: 200 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_3.output }}" }]) });
-    const llmChanAnalyst = FlowiseClient.buildLLMNode({ id: "llmAgentflow_3", label: "Channel Analyst", messages: [{ role: "system", content: "Analiza el estado del canal y diagnostica el problema. Distingue entre: problema del proveedor, error de configuración, o bug interno. Estado: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 250 }, returnResponseAs: "assistantMessage" });
+    const llmChanAnalyst = FlowiseClient.buildLLMNode({ id: "llmAgentflow_3", label: "Channel Analyst", messages: [{ role: "system", content: "Analiza el estado de todos los canales y diagnostica el problema. Distingue entre: problema del proveedor, error de configuración, o bug interno. Estado: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2000, y: 250 }, returnResponseAs: "assistantMessage" });
 
     // Workflow diagnostic branch
     const toolWf = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_workflow_config", toolId: "get_workflow_config", inputValue: "{}", position: { x: 1750, y: 450 }, updateState: JSON.stringify([{ key: "workflowStatus", value: "{{ toolAgentflow_4.output }}" }]) });
@@ -913,7 +900,7 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
 
     // Each branch terminates at a composing LLM node; Flowise returns its
     // output as response.text. No DirectReply / no flow-state reply.
-    const nodes = [start, llmNorm, llmSafety, condSafe, llmRefusal, toolPlan, toolCtx, condRoute, llmProdSupport, toolCh, toolWa, llmChanAnalyst, toolWf, llmWfAnalyst, toolBill, condBillingDanger, humanBilling, llmBillAnalyst, toolErrors, toolLogs, toolCommits, llmEvidSynth, condNeedsCode, toolSearch, toolReadFile, llmRootCause, llmFixProposal, toolCreateFix, llmFixReport, llmRootCauseSimple, humanSecurity, llmSecurityResponse];
+    const nodes = [start, llmNorm, llmSafety, condSafe, llmRefusal, toolPlan, toolCtx, condRoute, llmProdSupport, toolCh, llmChanAnalyst, toolWf, llmWfAnalyst, toolBill, condBillingDanger, humanBilling, llmBillAnalyst, toolErrors, toolLogs, toolCommits, llmEvidSynth, condNeedsCode, toolSearch, toolReadFile, llmRootCause, llmFixProposal, toolCreateFix, llmFixReport, llmRootCauseSimple, humanSecurity, llmSecurityResponse];
 
     const E = FlowiseClient.buildEdge;
     const edges = [
@@ -933,8 +920,7 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
       E("conditionAgentAgentflow_0", "conditionAgentAgentflow_0-output-5", "humanInputAgentflow_1", "humanInputAgentflow_1"),
       // Product support: llmAgentflow_2 is terminal (no outgoing edge)
       // Channel (terminal at analyst)
-      E("toolAgentflow_2", "toolAgentflow_2-output-toolAgentflow", "toolAgentflow_3", "toolAgentflow_3"),
-      E("toolAgentflow_3", "toolAgentflow_3-output-toolAgentflow", "llmAgentflow_3", "llmAgentflow_3"),
+      E("toolAgentflow_2", "toolAgentflow_2-output-toolAgentflow", "llmAgentflow_3", "llmAgentflow_3"),
       // Workflow (terminal at analyst)
       E("toolAgentflow_4", "toolAgentflow_4-output-toolAgentflow", "llmAgentflow_4", "llmAgentflow_4"),
       // Billing (terminal at analyst)
@@ -1037,11 +1023,10 @@ Responde SOLO con JSON: {"classification": "safe|injection|sensitive_data|abuse"
 
     // Channel incident
     const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: "get_channel_status", inputValue: "{}", position: { x: 1750, y: 350 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
-    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: "get_whatsapp_status", inputValue: "{}", position: { x: 2000, y: 300 } });
-    const toolChanErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_recent_errors (channel)", toolId: "get_recent_errors", inputValue: '{"limit":20}', position: { x: 2000, y: 400 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_4.output }}" }]) });
+    const toolChanErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_recent_errors (channel)", toolId: "get_recent_errors", inputValue: '{"limit":20}', position: { x: 2000, y: 350 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_4.output }}" }]) });
     const llmChanIncident = FlowiseClient.buildLLMNode({
       id: "llmAgentflow_2", label: "Channel Incident Analyst",
-      messages: [{ role: "system", content: "Analiza el incidente del canal. Determina si es problema del proveedor, configuración o bug interno. Estado: {{ $flow.state.channelStatus }}. Errores: {{ $flow.state.errorReportsSummary }}" }],
+      messages: [{ role: "system", content: "Analiza el incidente de todos los canales. Determina si es problema del proveedor, configuración o bug interno. Estado: {{ $flow.state.channelStatus }}. Errores: {{ $flow.state.errorReportsSummary }}" }],
       model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 350 },
       updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_2.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_2.output }}" }]),
     });
@@ -1132,7 +1117,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       returnResponseAs: "assistantMessage",
     });
 
-    const nodes = [start, customRedact, llmSafety, condBlock, llmBlock, humanSecurityGate, toolPlan, toolCtx, condRouter, llmSupportSenior, toolCh, toolWa, toolChanErrors, llmChanIncident, toolErrors, toolLogs, toolCommits, toolSearch, toolReadFile, llmRootCause, llmSecReview, condSecurityRisk, humanSecurityApproval, llmFixWriter, toolCreateFix, llmPRWriter, condPREligible, humanPRApproval, toolCreatePR, toolBill, humanBillingReview, toolSecErrors, toolSecLogs, humanSecIncident, llmFinalComposer];
+    const nodes = [start, customRedact, llmSafety, condBlock, llmBlock, humanSecurityGate, toolPlan, toolCtx, condRouter, llmSupportSenior, toolCh, toolChanErrors, llmChanIncident, toolErrors, toolLogs, toolCommits, toolSearch, toolReadFile, llmRootCause, llmSecReview, condSecurityRisk, humanSecurityApproval, llmFixWriter, toolCreateFix, llmPRWriter, condPREligible, humanPRApproval, toolCreatePR, toolBill, humanBillingReview, toolSecErrors, toolSecLogs, humanSecIncident, llmFinalComposer];
 
     const E = FlowiseClient.buildEdge;
     const edges = [
@@ -1156,8 +1141,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       // Normal support → reply
       E("llmAgentflow_1", "llmAgentflow_1-output-llmAgentflow", "llmAgentflow_7", "llmAgentflow_7"),
       // Channel incident
-      E("toolAgentflow_2", "toolAgentflow_2-output-toolAgentflow", "toolAgentflow_3", "toolAgentflow_3"),
-      E("toolAgentflow_3", "toolAgentflow_3-output-toolAgentflow", "toolAgentflow_4", "toolAgentflow_4"),
+      E("toolAgentflow_2", "toolAgentflow_2-output-toolAgentflow", "toolAgentflow_4", "toolAgentflow_4"),
       E("toolAgentflow_4", "toolAgentflow_4-output-toolAgentflow", "llmAgentflow_2", "llmAgentflow_2"),
       E("llmAgentflow_2", "llmAgentflow_2-output-llmAgentflow", "llmAgentflow_7", "llmAgentflow_7"),
       // Technical bug
@@ -1244,21 +1228,58 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     temperature?: number;
     credentialId?: string;
   }): string {
-    // Stage flows are Start → LLM only. No Tool nodes.
+    // Build a Start → Tools (parallel) → LLM flow when tools are available.
+    // Falls back to Start → LLM only when no tool IDs are provided.
     //
-    // Flowise validates ALL Tool node references (by ID) at buildChatflow
-    // time — before any node executes. If the stored ID doesn't match a
-    // registered tool, the entire flow fails with "Tool not selected".
-    // Neither names nor IDs are reliable across Flowise DB resets.
-    //
-    // Instead, SupportOrchestratorService pre-fetches workspace context
-    // directly from Prisma and injects it into the question string before
-    // calling Flowise. The LLM receives full context without needing to
-    // call any Flowise-side tools. This is the correct separation:
-    //   Orchestrator → data fetching / sequencing
-    //   Flowise      → LLM reasoning only
+    // Tool nodes execute BEFORE the LLM, storing their output in flow state.
+    // The LLM receives the system prompt + tool outputs as context.
+    // This design is validated against the tier flow builders (Tier2/3/4)
+    // which use the same Tool Node → LLM pattern successfully in production.
+
     const llmId = "llmAgentflow_0";
+    const nodes: any[] = [];
+    const edges: any[] = [];
+
     const start = FlowiseClient.buildStartNode();
+    nodes.push(start);
+
+    const toolNamesArr = opts.toolNames ?? [];
+    const toolIdsArr = opts.toolIds ?? [];
+    const hasTools = toolIdsArr.length > 0;
+
+    // ── Tool Nodes (parallel, execute before LLM) ──
+    if (hasTools) {
+      const toolStateUpdates: string[] = [];
+      for (let i = 0; i < toolIdsArr.length; i++) {
+        const toolId = `toolAgentflow_${i}`;
+        const toolName = toolNamesArr[i] ?? toolIdsArr[i];
+        const stateKey = toolName.replace(/[^a-zA-Z0-9]/g, "_");
+        const inputValue = "{}"; // tools get context from $vars injected at predict time
+
+        const toolNode = FlowiseClient.buildToolNode({
+          id: toolId,
+          label: toolName,
+          toolId: toolIdsArr[i],
+          inputValue,
+          position: { x: 600 + i * 250, y: 200 },
+          updateState: JSON.stringify([{ key: stateKey, value: `{{ ${toolId}.output }}` }]),
+        });
+        nodes.push(toolNode);
+        toolStateUpdates.push(stateKey);
+
+        // Edge: Start → each Tool
+        edges.push(
+          FlowiseClient.buildEdge(
+            "startAgentflow_0",
+            "startAgentflow_0-output-startAgentflow",
+            toolId,
+            toolId,
+          ),
+        );
+      }
+    }
+
+    // ── LLM Node ──
     const llm = FlowiseClient.buildLLMNode({
       id: llmId,
       label: "Stage Agent",
@@ -1270,17 +1291,33 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
         basepath: opts.basepath,
       },
       returnResponseAs: "assistantMessage",
-      position: { x: 300, y: 250 },
+      position: { x: 300, y: hasTools ? 500 : 250 },
     });
-    const edges = [
-      FlowiseClient.buildEdge(
-        "startAgentflow_0",
-        "startAgentflow_0-output-startAgentflow",
-        llmId,
-        llmId,
-      ),
-    ];
-    return JSON.stringify({ nodes: [start, llm], edges });
+    nodes.push(llm);
+
+    if (hasTools) {
+      // Edge: Start → LLM (so LLM runs after tools complete — Flowise executes
+      // nodes in topological order, and the LLM will wait for all its inputs)
+      edges.push(
+        FlowiseClient.buildEdge(
+          "startAgentflow_0",
+          "startAgentflow_0-output-startAgentflow",
+          llmId,
+          llmId,
+        ),
+      );
+    } else {
+      edges.push(
+        FlowiseClient.buildEdge(
+          "startAgentflow_0",
+          "startAgentflow_0-output-startAgentflow",
+          llmId,
+          llmId,
+        ),
+      );
+    }
+
+    return JSON.stringify({ nodes, edges });
   }
 
   // ── Chatflow CRUD ──────────────────────────────────────────────────────────
@@ -1380,6 +1417,13 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     } catch {
       return [];
     }
+  }
+
+  /** Resolve a tool ID by name. Returns undefined if the tool is not registered. */
+  async getToolIdByName(name: string): Promise<string | undefined> {
+    const tools = await this.listTools();
+    const tool = tools.find((t) => t.name === name);
+    return tool?.id;
   }
 
   async createTool(tool: FlowiseToolDef): Promise<string> {

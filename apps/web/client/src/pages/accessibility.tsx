@@ -7,27 +7,27 @@ const ACCENT = "#6757E8";
 
 export default function AccessibilityPage() {
   return (
-    <div className="min-h-screen bg-[#F7F8FC]">
-      <header className="border-b border-[#E6E8EF] bg-white px-4 py-4 md:px-8">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card px-4 py-4 md:px-8">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <Link href="/"><BrandLockup compact /></Link>
-          <Link href="/legal" className="text-sm text-gray-500 hover:text-gray-900 transition">Centro Legal</Link>
+          <Link href="/legal" className="text-sm text-muted-foreground hover:text-foreground transition">Centro Legal</Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-16 md:px-8">
         <div className="mb-10">
           <p className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: ACCENT }}>Accesibilidad</p>
-          <h1 className="font-marketing text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl mb-4">
+          <h1 className="font-marketing text-2xl font-bold tracking-tight text-foreground sm:text-3xl mb-4">
             Declaración de Accesibilidad
           </h1>
-          <p className="text-sm text-gray-400">Última actualización: {new Date().toLocaleDateString("es-CR", { year: "numeric", month: "long", day: "numeric" })}</p>
+          <p className="text-sm text-muted-foreground">Última actualización: {new Date().toLocaleDateString("es-CR", { year: "numeric", month: "long", day: "numeric" })}</p>
         </div>
 
-        <div className="space-y-6 text-sm leading-7 text-gray-600">
+        <div className="space-y-6 text-sm leading-7 text-muted-foreground">
 
-          <div className="rounded-2xl border border-[#E6E8EF] bg-white p-6">
-            <h2 className="font-marketing text-base font-semibold text-gray-900 mb-3">Nuestro compromiso</h2>
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-marketing text-base font-semibold text-foreground mb-3">Nuestro compromiso</h2>
             <p>
               PymesHub trabaja para que su sitio web y aplicación sean accesibles para la mayor cantidad de personas posible, independientemente de sus capacidades, tecnología asistiva utilizada o contexto de uso.
             </p>
@@ -36,11 +36,11 @@ export default function AccessibilityPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#E6E8EF] bg-white p-6">
-            <h2 className="font-marketing text-base font-semibold text-gray-900 mb-4">Estado actual</h2>
-            <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />
-              <p className="text-sm text-amber-800">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-marketing text-base font-semibold text-foreground mb-4">Estado actual</h2>
+            <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 mb-4">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 text-warning mt-0.5" />
+              <p className="text-sm text-warning">
                 PymesHub se encuentra en proceso activo de mejora de accesibilidad. Aún no hemos completado una auditoría formal completa bajo WCAG 2.2. Esta declaración refleja nuestro compromiso y progreso actual.
               </p>
             </div>
@@ -56,17 +56,17 @@ export default function AccessibilityPage() {
               ].map(({ done, item }) => (
                 <div key={item} className="flex items-start gap-2.5">
                   {done
-                    ? <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-emerald-500" />
-                    : <div className="h-4 w-4 flex-shrink-0 mt-0.5 rounded-full border-2 border-gray-300" />
+                    ? <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-success" />
+                    : <div className="h-4 w-4 flex-shrink-0 mt-0.5 rounded-full border-2 border-border" />
                   }
-                  <span className={done ? "text-gray-700" : "text-gray-500"}>{item}</span>
+                  <span className={done ? "text-foreground" : "text-muted-foreground"}>{item}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#E6E8EF] bg-white p-6">
-            <h2 className="font-marketing text-base font-semibold text-gray-900 mb-3">Tecnologías asistivas compatibles</h2>
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-marketing text-base font-semibold text-foreground mb-3">Tecnologías asistivas compatibles</h2>
             <p className="mb-3">Trabajamos para que PymesHub sea compatible con las siguientes tecnologías:</p>
             <ul className="space-y-1.5">
               {["Lectores de pantalla (NVDA, JAWS, VoiceOver, TalkBack)","Navegación por teclado","Ampliación de pantalla (hasta 200%)","Modo de alto contraste del sistema operativo","Control por voz"].map(t => (
@@ -78,8 +78,8 @@ export default function AccessibilityPage() {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-[#E6E8EF] bg-white p-6">
-            <h2 className="font-marketing text-base font-semibold text-gray-900 mb-3">Marco legal — Costa Rica</h2>
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-marketing text-base font-semibold text-foreground mb-3">Marco legal — Costa Rica</h2>
             <p>Esta declaración hace referencia a las siguientes normativas:</p>
             <ul className="mt-3 space-y-2">
               {[
@@ -88,18 +88,18 @@ export default function AccessibilityPage() {
                 { name: "WCAG 2.2", desc: "Web Content Accessibility Guidelines del W3C" },
               ].map(({ name, desc }) => (
                 <li key={name} className="flex items-start gap-2">
-                  <span className="font-semibold text-gray-800 flex-shrink-0">{name}:</span>
-                  <span className="text-gray-500">{desc}</span>
+                  <span className="font-semibold text-foreground flex-shrink-0">{name}:</span>
+                  <span className="text-muted-foreground">{desc}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-6">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
             <div className="flex items-start gap-3">
               <Mail className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: ACCENT }} />
               <div>
-                <h2 className="font-marketing text-base font-semibold text-gray-900 mb-2">Reportar un problema de accesibilidad</h2>
+                <h2 className="font-marketing text-base font-semibold text-foreground mb-2">Reportar un problema de accesibilidad</h2>
                 <p className="mb-3">
                   Si encontrás una barrera de accesibilidad en PymesHub, por favor informanos. Tu reporte nos ayuda a mejorar la experiencia para todos.
                 </p>
@@ -109,7 +109,7 @@ export default function AccessibilityPage() {
                   <Mail className="h-4 w-4" />
                   accesibilidad@pymeshub.com
                 </a>
-                <p className="mt-3 text-xs text-gray-500">
+                <p className="mt-3 text-xs text-muted-foreground">
                   Intentamos responder a reportes de accesibilidad dentro de <strong>5 días hábiles</strong>.
                 </p>
               </div>

@@ -111,7 +111,7 @@ export default function ContactSalesModal({ open, onClose }: Props) {
             onClick={() => mutation.mutate()}
             disabled={!form.business_name || !form.email || mutation.isPending}
             size="sm"
-            className="w-full gap-1.5 bg-yellow-600 hover:bg-yellow-700 text-white"
+            className="w-full gap-1.5 bg-warning hover:bg-warning/90 text-warning-foreground"
           >
             {mutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             Enviar solicitud

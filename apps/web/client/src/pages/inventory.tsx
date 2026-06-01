@@ -16,6 +16,10 @@ import { CategoryChips } from "@/components/inventory/CategoryChips";
 import { StockBar } from "@/components/inventory/StockBar";
 import { cn } from "@/lib/utils";
 import CsvImportModal from "@/components/import/csv-import-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { PageHeader } from "@/components/shared/page-header";
 
 type SortKey = "name" | "price" | "stock" | "created";
 
@@ -110,29 +114,25 @@ export default function InventoryPage() {
   return (
     <div className="min-h-full bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Inventario</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {total} producto{total !== 1 ? "s" : ""}
-            </p>
-          </div>
+        <PageHeader
+          title="Inventario"
+          description={`${total} producto${total !== 1 ? "s" : ""}`}
+        >
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-              >
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(v) => { if (v) setViewMode(v as "grid" | "table"); }}
+              variant="outline"
+              size="sm"
+            >
+              <ToggleGroupItem value="grid" aria-label="Vista cuadrícula">
                 <Grid3X3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("table")}
-                className={cn("p-1.5 rounded-md transition-colors", viewMode === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-              >
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Vista tabla">
                 <List className="w-4 h-4" />
-              </button>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
             <Link href="/inventory/movements">
               <Button variant="outline" size="sm" className="h-9"><ChevronDown className="h-4 w-4 mr-1" />Movimientos</Button>
             </Link>
@@ -143,7 +143,7 @@ export default function InventoryPage() {
               <Upload className="h-4 w-4 mr-1" />Importar CSV
             </Button>
           </div>
-        </div>
+        </PageHeader>
 
         {/* Filters */}
         <div className="space-y-3 mb-6">
@@ -192,23 +192,23 @@ export default function InventoryPage() {
           </div>
         ) : viewMode === "table" ? (
           <div className="rounded-xl border border-border overflow-hidden bg-card/40">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Producto</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Categoría</th>
-                  <th className="text-right px-4 py-3 text-[11px] font-medium text-muted-foreground">Precio</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Stock</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-right px-4 py-3 text-[11px] font-medium text-muted-foreground w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead className="text-right">Precio</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {sorted.map((p) => (
                   <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -229,12 +229,13 @@ export default function InventoryPage() {
       </div>
 
       {/* FAB mobile */}
-      <button
+      <Button
+        size="icon"
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg md:hidden"
         onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-110 md:hidden flex items-center justify-center"
       >
         <Plus className="w-6 h-6" />
-      </button>
+      </Button>
 
       {/* Drawer */}
       <ProductDrawer
@@ -253,33 +254,32 @@ export default function InventoryPage() {
         onCategoryCreated={() => qc.invalidateQueries({ queryKey: ["inventory-categories"] })}
       />
 
-      {/* Stock adjust dialog */}
-      {adjusting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Ajustar stock — {adjusting.name}</h3>
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Stock actual: <span className="text-foreground font-semibold">{adjusting.current_stock}</span></p>
-              <div className="space-y-1.5">
-                <Label className="text-[11px]">Cantidad (+ entrada, − salida)</Label>
-                <Input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)} className="h-9 text-xs bg-background border-border" autoFocus />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px]">Motivo</Label>
-                <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} placeholder="Conteo físico, merma..." className="h-9 text-xs bg-background border-border" />
-              </div>
-              <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground font-semibold">{(adjusting.current_stock || 0) + adjustQty}</span></p>
+      <Dialog open={!!adjusting} onOpenChange={(open) => { if (!open) { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ajustar stock — {adjusting?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Stock actual: <span className="text-foreground font-semibold">{adjusting?.current_stock}</span></p>
+            <div className="space-y-1.5">
+              <Label className="text-[11px]">Cantidad (+ entrada, − salida)</Label>
+              <Input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)} className="h-9 text-xs bg-background border-border" autoFocus />
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
-              <Button size="sm" className="flex-1 h-8 text-xs" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
-                {adjustMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
-                Ajustar
-              </Button>
+            <div className="space-y-1.5">
+              <Label className="text-[11px]">Motivo</Label>
+              <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} placeholder="Conteo físico, merma..." className="h-9 text-xs bg-background border-border" />
             </div>
+            <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground font-semibold">{(adjusting?.current_stock || 0) + adjustQty}</span></p>
           </div>
-        </div>
-      )}
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
+            <Button size="sm" className="flex-1 h-8 text-xs" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjusting && adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
+              {adjustMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              Ajustar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="products" />
     </div>

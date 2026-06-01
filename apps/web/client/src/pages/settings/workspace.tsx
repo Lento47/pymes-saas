@@ -361,17 +361,18 @@ export default function WorkspaceSettingsPage() {
 
               <div className="space-y-2">
                 {taxSteps.map((step, index) => (
-                  <button
+                  <Button
                     key={step.key}
                     type="button"
+                    variant="outline"
                     onClick={() => setTaxStep(index)}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                    className={`w-full rounded-xl border px-4 py-3 h-auto text-left transition-colors ${
                       taxStep === index
                         ? "border-sky-500/40 bg-sky-500/10"
                         : "border-border bg-[hsl(var(--elevated))] hover:bg-[hsl(var(--elevated))]/80"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3 w-full">
                       <div className="flex items-center gap-3">
                         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium ${
                           taxStep === index ? "border-sky-400/40 text-sky-200" : "border-border text-muted-foreground"
@@ -389,7 +390,7 @@ export default function WorkspaceSettingsPage() {
                         <AlertTriangle className="h-4 w-4 text-amber-400" />
                       )}
                     </div>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </aside>

@@ -13,12 +13,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 10,
+      max: 15,
       idleTimeoutMillis: 60000,
-      connectionTimeoutMillis: 15000,
+      connectionTimeoutMillis: 30000,
+      acquireTimeoutMillis: 30000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 30000,
-      ssl: isProduction ? { rejectUnauthorized: false } : false,
+      application_name: `pymeshub-api-${process.pid}`,
+      ssl: isProduction
+        ? { rejectUnauthorized: false }
+        : false,
     });
 
     // Log pool errors and let pg-pool handle reconnection automatically

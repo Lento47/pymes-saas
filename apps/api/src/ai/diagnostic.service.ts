@@ -448,10 +448,16 @@ export class DiagnosticService {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (flowiseApiKey) headers["Authorization"] = `Bearer ${flowiseApiKey}`;
 
+      const vars = this.flowiseSetup?.getPredictionVars?.(workspaceId) ?? {};
+      // Fetch workspace slug for PymesHub API tools that need $vars.WORKSPACE_SLUG
+      try {
+        const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { slug: true } });
+        if (ws?.slug) vars.WORKSPACE_SLUG = ws.slug;
+      } catch { /* non-fatal */ }
       const res = await fetch(`${flowiseBaseUrl}/api/v1/prediction/${chatflowId}`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ question, overrideConfig: { sessionId: diagnosticCaseId } }),
+        body: JSON.stringify({ question, overrideConfig: { sessionId: diagnosticCaseId, vars } }),
       });
 
       const raw = res.ok ? ((await res.json()) as any)?.text ?? "" : "";

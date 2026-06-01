@@ -406,9 +406,12 @@ export class AiGatewayService {
 
     const json = (await res.json()) as any;
     // MiMo thinking models may return reasoning separately in reasoning_content;
-    // the final answer is always in choices[0].message.content
+    // the final answer is in choices[0].message.content, but if that's empty
+    // (model spent all tokens on reasoning), fall back to reasoning_content.
+    const msg = json.choices?.[0]?.message;
     const text =
-      json.choices?.[0]?.message?.content?.trim() ??
+      msg?.content?.trim() ??
+      msg?.reasoning_content?.trim() ??
       json.result?.choices?.[0]?.message?.content?.trim() ??
       "";
 

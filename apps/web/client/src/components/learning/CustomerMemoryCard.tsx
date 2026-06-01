@@ -51,7 +51,7 @@ export function CustomerMemoryCard({ contactId }: Props) {
       )}
 
       {memory.next_best_action && (
-        <div className="bg-blue-50 border border-blue-100 rounded p-2 text-xs text-blue-800">
+        <div className="bg-info/5 border border-info/20 rounded p-2 text-xs text-info">
           <TrendingUp className="inline h-3 w-3 mr-1" />
           {memory.next_best_action}
         </div>

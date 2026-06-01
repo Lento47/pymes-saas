@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   Bell, BellOff, Check, CheckCheck,
   MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, Bot,
+  ExternalLink,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -21,7 +23,7 @@ const TYPE_BADGE: Record<string, { label: string; bg: string; color: string; ico
   task_completed:        { label: "Tarea completada", bg: "bg-emerald-500/10", color: "text-emerald-500", icon: CheckSquare  },
   task_overdue:          { label: "Tarea vencida",    bg: "bg-red-500/10",     color: "text-red-500",     icon: AlertTriangle },
   new_message:           { label: "Nuevo mensaje",    bg: "bg-blue-500/10",    color: "text-blue-500",    icon: MessageCircle },
-  AI_TASK_CREATED:       { label: "Tarea sugerida",   bg: "bg-muted",          color: "text-muted-foreground", icon: Bot   },
+  AI_TASK_CREATED:       { label: "Tarea IA",         bg: "bg-muted",          color: "text-muted-foreground", icon: Bot   },
   deal_created:          { label: "Negocio creado",   bg: "bg-amber-500/10",   color: "text-amber-500",   icon: KanbanSquare  },
   deal_stage_changed:    { label: "Etapa cambiada",   bg: "bg-sky-500/10",     color: "text-sky-500",     icon: KanbanSquare  },
   deal_won:              { label: "Negocio ganado",   bg: "bg-emerald-500/10", color: "text-emerald-500", icon: KanbanSquare  },
@@ -31,6 +33,18 @@ const TYPE_BADGE: Record<string, { label: string; bg: string; color: string; ico
   automation:            { label: "Automatización",   bg: "bg-muted",          color: "text-muted-foreground", icon: Zap   },
   conversation_no_reply: { label: "Sin respuesta",    bg: "bg-amber-500/10",   color: "text-amber-500",   icon: MessageCircle },
 };
+
+/** Resolve navigation target from a notification's related entity */
+function resolveLink(n: any): string | null {
+  if (!n.related_entity_type || !n.related_entity_id) return null;
+  const t = n.related_entity_type.toLowerCase();
+  if (t === "conversation" || t === "conversations") return `/inbox/${n.related_entity_id}`;
+  if (t === "task") return `/tasks`;
+  if (t === "contact") return `/contacts/${n.related_entity_id}`;
+  if (t === "deal") return `/pipeline`;
+  if (t === "invoice") return `/invoices`;
+  return null;
+}
 
 function NotificationSkeleton() {
   return (
@@ -145,15 +159,16 @@ export default function NotificationsPage() {
               const time = n.created_at
                 ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
                 : "";
+              const link = resolveLink(n);
 
-              return (
+              const card = (
                 <div
-                  key={n.id}
                   className={cn(
                     "rounded-lg border p-4 transition-colors",
                     isUnread
                       ? "border-accent/20 bg-accent/5"
                       : "border-border bg-card/40",
+                    link && "cursor-pointer hover:border-accent/30 hover:bg-muted/30",
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -172,14 +187,19 @@ export default function NotificationsPage() {
                         {isUnread && (
                           <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
                         )}
+                        {link && <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">{n.body}</p>
+                      <p className="line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
                       <div className="mt-2 flex items-center gap-3">
                         <span className="text-[10px] text-muted-foreground">{time}</span>
                         {isUnread && (
                           <button
                             className="flex items-center gap-1 text-[10px] font-medium text-accent transition-colors hover:text-accent/80"
-                            onClick={() => handleMarkRead([n.id])}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleMarkRead([n.id]);
+                            }}
                           >
                             <Check className="h-3 w-3" />
                             Marcar leída
@@ -189,6 +209,19 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                 </div>
+              );
+
+              return link ? (
+                <Link
+                  key={n.id}
+                  href={link}
+                  className="block"
+                  onClick={() => isUnread && handleMarkRead([n.id])}
+                >
+                  {card}
+                </Link>
+              ) : (
+                <div key={n.id}>{card}</div>
               );
             })}
           </div>

@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { WorkspaceUserRole, AgentChannelScope } from "@prisma/client";
@@ -55,6 +56,21 @@ export class AgentsController {
     });
   }
 
+  @Post("support/orchestrate/:id/continue")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  continueOrchestration(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body("answer") answer: string,
+  ) {
+    return this.orchestrator.continueWithClarification(user.workspace_id, id, answer);
+  }
+
   @Get("support/runs")
   @Roles(
     WorkspaceUserRole.VIEWER,
@@ -62,8 +78,25 @@ export class AgentsController {
     WorkspaceUserRole.ADMIN,
     WorkspaceUserRole.OWNER,
   )
-  listSupportRuns(@CurrentUser("workspace_id") workspaceId: string) {
-    return this.orchestrator.listRuns(workspaceId);
+  listSupportRuns(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.orchestrator.listRuns(workspaceId, limit ? Number(limit) : undefined);
+  }
+
+  @Get("support/runs/:id")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  getSupportRun(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id") id: string,
+  ) {
+    return this.orchestrator.getRun(workspaceId, id);
   }
 
   @Get()

@@ -108,14 +108,16 @@ function AiProfileCard({ contactId }: { contactId: string }) {
         </div>
         <div className="flex items-center gap-1">
           {aiProfile && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setOpen((v) => !v)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground transition-colors"
               aria-label={open ? "Colapsar" : "Expandir"}
             >
               {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
+            </Button>
           )}
           <Button
             size="sm"
@@ -200,16 +202,18 @@ function AiProfileCard({ contactId }: { contactId: string }) {
           )}
         </div>
         {memoryStatus?.status === "PAUSED" && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => extendMemory.mutate(30)}
             disabled={extendMemory.isPending}
-            className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+            className="h-6 px-2 flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
             title="Extender 30 días (consume 30 créditos)"
           >
             <PlusCircle className="w-3 h-3" />
             +30 días
-          </button>
+          </Button>
         )}
       </div>
     </div>

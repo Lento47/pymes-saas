@@ -40,7 +40,10 @@ Return ONLY valid JSON: {"intent": "<category>", "confidence": "high"|"medium"|"
 
 /** Tokens used by the classification system prompt + response. */
 const CLASSIFY_SYSTEM_TOKENS = Math.ceil(SYSTEM_PROMPT.length / 3);
-const CLASSIFY_MAX_COMPLETION = 120;
+/** Increased from 120 to 500 — MiMo thinking models (v2.5-pro) spend tokens on
+ *  reasoning_content before producing the final answer. 120 tokens was enough
+ *  for non-reasoning models but left MiMo with empty content. */
+const CLASSIFY_MAX_COMPLETION = 500;
 const LLM_TIMEOUT_MS = 3000;
 
 @Injectable()

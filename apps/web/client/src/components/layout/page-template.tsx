@@ -148,10 +148,10 @@ export function MetricCard({
 }: MetricCardProps) {
   const colorMap = {
     blue: "text-primary",
-    orange: "text-orange-500",
+    orange: "text-warning",
     red: "text-destructive",
-    purple: "text-purple-500",
-    green: "text-emerald-500",
+    purple: "text-primary",
+    green: "text-success",
   };
 
   return (
@@ -175,10 +175,10 @@ export function MetricCard({
           {trend !== undefined && (
             <p
               className={`text-sm mt-2 flex items-center gap-1 ${
-                trend >= 0 ? "text-emerald-500" : "text-destructive"
+                trend >= 0 ? "text-success" : "text-destructive"
               }`}
             >
-              <span className={trend >= 0 ? "text-emerald-500" : "text-destructive"}>
+              <span className={trend >= 0 ? "text-success" : "text-destructive"}>
                 {trend >= 0 ? "↑" : "↓"}
               </span>
               {Math.abs(trend)}% {trendLabel || "vs. mes anterior"}
