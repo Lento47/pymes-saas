@@ -96,6 +96,7 @@ export class AgentToolsService {
         return this.rejectFix(workspaceId, args);
       // ── Support multi-agent: read-only context tools ──
       case "get_workspace_context":
+      case "get_workspace_data":
         return this.getWorkspaceContext(workspaceId);
       case "get_workspace_plan":
         return this.getWorkspacePlan(workspaceId);

@@ -673,6 +673,13 @@ export class FlowiseSetupService {
         "/api/admin/workspace/" + "$wsSlug" + "/full-context",
         "// wsSlug from $vars",
       ),
+      get_workspace_data: pymesHubApi(
+        "get_workspace_data",
+        "Datos completos del workspace (contexto, plan, tier, conteos). Args: {}",
+        JSON.stringify({ type: "object", properties: {}, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/full-context",
+        "// Alias de get_workspace_context — usado por agentes de soporte",
+      ),
       get_workspace_plan: pymesHubApi(
         "get_workspace_plan",
         "Plan y estado del workspace. Args: {}",
