@@ -526,6 +526,10 @@ export const api = {
   createAgentStream: (message: string, conversationId?: string) => request<Record<string, any>>("POST", "/api/agent/stream", { message, conversationId }),
   orchestrateSupport: (message: string, diagnostic_case_id?: string, allow_pr_creation?: boolean) =>
     request<Record<string, any>>("POST", "/api/agents/support/orchestrate", { message, diagnostic_case_id, allow_pr_creation }),
+  listSupportRuns: (limit?: number) =>
+    request<Array<Record<string, any>>>(`GET`, `/api/agents/support/runs${limit ? `?limit=${limit}` : ""}`),
+  getSupportRun: (id: string) =>
+    request<Record<string, any>>("GET", `/api/agents/support/runs/${id}`),
   executeAgentTool: (tool: string, args?: any) => request<Record<string, any>>("POST", "/api/agent/tool", { tool, args }),
   escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
     request<Record<string, any>>("POST", "/api/agent/escalate", { summary, severity, evidence }),

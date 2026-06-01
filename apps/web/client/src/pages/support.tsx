@@ -16,11 +16,19 @@ import {
   Cog,
   ShieldCheck,
   Stethoscope,
+  Clock,
+  History,
+  ChevronRight,
+  XCircle,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/use-auth';
+import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 type SupportAgent = {
   id: string;
@@ -403,6 +411,70 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   );
 }
 
+function SupportHistorySection() {
+  const { data: runs, isLoading } = useQuery({
+    queryKey: ["supportRuns"],
+    queryFn: () => api.listSupportRuns(10),
+    staleTime: 30_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        Cargando historial...
+      </div>
+    );
+  }
+
+  const items = Array.isArray(runs) ? runs : (runs as any)?.data ?? [];
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-3">
+        <History className="w-4 h-4 text-muted-foreground" />
+        <h2 className="text-sm font-medium text-foreground">Casos recientes</h2>
+      </div>
+      <div className="space-y-2">
+        {items.slice(0, 5).map((run: any) => (
+          <Link
+            key={run.id}
+            href={`/support?agent=${run.case_type || 'whatsapp'}`}
+            className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/20 hover:bg-primary/5"
+          >
+            <div className={`flex-shrink-0 w-2 h-2 rounded-full ${
+              run.status === 'COMPLETED' ? 'bg-emerald-500' :
+              run.status === 'NEEDS_HUMAN' ? 'bg-amber-500' :
+              run.status === 'CLOSED' ? 'bg-muted-foreground/40' :
+              run.status === 'FAILED' ? 'bg-destructive' :
+              'bg-blue-500'
+            }`} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-foreground truncate">
+                {run.case_type ?? 'Soporte'} · {run.severity ?? '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                {run.summary?.slice(0, 120) ?? 'Sin resumen'}
+              </p>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <p className="text-[11px] text-muted-foreground">
+                {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true, locale: es }) : ''}
+              </p>
+              {run.total_cost_credits != null && run.total_cost_credits > 0 && (
+                <p className="text-[10px] text-muted-foreground/60">{run.total_cost_credits.toFixed(2)} créd.</p>
+              )}
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SupportPage() {
   useRequireAuth();
   const [location] = useLocation();
@@ -453,6 +525,8 @@ export default function SupportPage() {
             );
           })}
         </div>
+
+        <SupportHistorySection />
 
         <div className="mt-8 rounded-lg border border-border bg-card px-5 py-4">
           <div className="flex items-center gap-3">

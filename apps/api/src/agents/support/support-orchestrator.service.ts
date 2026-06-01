@@ -269,9 +269,12 @@ export class SupportOrchestratorService {
     }
   }
 
-  /** List recent orchestration runs for a workspace (audit view). */
-  listRuns(workspaceId: string, limit = 20) {
-    return this.prisma.supportOrchestrationRun.findMany({
+  /** List recent orchestration runs for a workspace (user-facing history). */
+  async listRuns(workspaceId: string, limit = 20) {
+    // Auto-close stale cases before returning the list
+    await this.autoCloseStaleRuns(workspaceId);
+
+    const runs = await this.prisma.supportOrchestrationRun.findMany({
       where: { workspace_id: workspaceId },
       orderBy: { created_at: "desc" },
       take: Math.min(limit, 100),
@@ -283,9 +286,67 @@ export class SupportOrchestratorService {
         severity: true,
         needs_human_review: true,
         summary: true,
+        stages_json: true,
         created_at: true,
+        updated_at: true,
       },
     });
+
+    return runs.map((r) => ({
+      ...r,
+      total_cost_credits: this.sumStagesCost(r.stages_json),
+    }));
+  }
+
+  /** Get a single run detail with full stage data. */
+  async getRun(workspaceId: string, runId: string) {
+    const run = await this.prisma.supportOrchestrationRun.findFirst({
+      where: { id: runId, workspace_id: workspaceId },
+    });
+    if (!run) return null;
+
+    const stages = run.stages_json as unknown as StageRecord[];
+    const totalCost = stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0);
+
+    return {
+      run_id: run.id,
+      tier: run.tier,
+      case_type: run.case_type ?? undefined,
+      severity: run.severity ?? undefined,
+      status: run.status,
+      needs_human_review: run.needs_human_review,
+      stages,
+      summary: run.summary ?? "",
+      total_cost_credits: totalCost,
+      created_at: run.created_at,
+      updated_at: run.updated_at,
+    };
+  }
+
+  /** Auto-close runs that are > 1 hour stale with no follow-up. */
+  async autoCloseStaleRuns(workspaceId: string): Promise<number> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const result = await this.prisma.supportOrchestrationRun.updateMany({
+      where: {
+        workspace_id: workspaceId,
+        status: { in: ["RUNNING", "NEEDS_HUMAN"] },
+        updated_at: { lt: oneHourAgo },
+      },
+      data: {
+        status: "CLOSED",
+      },
+    });
+    if (result.count > 0) {
+      this.logger.log(
+        `Auto-closed ${result.count} stale support run(s) for workspace ${workspaceId} (no follow-up in 1h)`,
+      );
+    }
+    return result.count;
+  }
+
+  private sumStagesCost(stagesJson: unknown): number {
+    if (!Array.isArray(stagesJson)) return 0;
+    return stagesJson.reduce((sum, s) => sum + (s?.cost_credits ?? 0), 0);
   }
 
   // ── Internals ──────────────────────────────────────────────────────────────
