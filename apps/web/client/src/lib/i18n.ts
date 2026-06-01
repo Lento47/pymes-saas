@@ -943,6 +943,151 @@ export const translations = {
         ctaHeadline: "See your business clearly",
       },
     },
+    site: {
+      nav: {
+        platform: "Platform",
+        aiAgents: "AI agents",
+        billing: "Billing",
+        security: "Security",
+        pricing: "Pricing",
+        logIn: "Log in",
+        startFree: "Start free",
+      },
+      cta: {
+        startFree: "Start free",
+        viewDemo: "View demo workspace",
+        viewPricing: "View pricing",
+        backHome: "Back to home",
+        talkToTeam: "Talk to the team",
+      },
+      hero: {
+        badge: "Conversational operations · AI agents · Billing workflows",
+        title: "Run your business from every conversation.",
+        subtitle:
+          "Centralize WhatsApp, Telegram, email, customers, tasks, billing and controlled AI agents in one secure workspace built for SMEs.",
+      },
+      trust: {
+        text: "Built for WhatsApp-first SMEs, service teams and businesses that need operational traceability.",
+        chips: {
+          isolation: "Tenant isolation",
+          guardrails: "AI guardrails",
+          audit: "Audit logs",
+          review: "Human review",
+        },
+      },
+      platform: {
+        eyebrow: "Platform",
+        title: "One workspace for the work behind every message.",
+        subtitle:
+          "PymesHub turns conversations into customers, tasks, opportunities, support cases, billing drafts and safe automations.",
+        page: {
+          badge: "Platform",
+          title: "One operational workspace for your whole team.",
+          subtitle:
+            "Permissions, customer context, billing and automations in one place — structured for businesses that handle real customer data.",
+        },
+        pillars: {
+          inbox: { title: "Omnichannel inbox", body: "WhatsApp, Telegram, email and support conversations in one operational queue.", meta: "Queue · SLA · assignment" },
+          context: { title: "Customer context", body: "Every message connects to customers, notes, tasks, invoices and history.", meta: "CRM · timeline · tasks" },
+          agents: { title: "AI agents", body: "Reception, sales, support and billing assistants with clear boundaries.", meta: "Suggest · prepare · escalate" },
+          billing: { title: "Billing workflows", body: "Prepare invoice drafts, review details and track delivery from the conversation.", meta: "Draft · review · send" },
+          automation: { title: "Automation recipes", body: "Respond after hours, create follow-ups and escalate urgent cases automatically.", meta: "Trigger · condition · action" },
+          control: { title: "Operational control", body: "Role permissions, audit logs, workspace isolation and review for sensitive steps.", meta: "RBAC · audit · privacy" },
+        },
+      },
+      flow: {
+        eyebrow: "Message to action",
+        title: "A customer message should never end as just a message.",
+        subtitle: "Understand the request, load context, prepare the action, then keep sensitive steps under human control.",
+        steps: {
+          message: { title: "Message arrives", body: "WhatsApp, Telegram or email" },
+          intent: { title: "Intent detected", body: "Sales, support or billing" },
+          context: { title: "Context loaded", body: "Customer and history" },
+          draft: { title: "Draft prepared", body: "Invoice, task or case" },
+          review: { title: "Team reviews", body: "Permissioned final action" },
+        },
+      },
+      agents: {
+        eyebrow: "AI agents",
+        title: "AI that prepares work, not risk.",
+        subtitle: "Agents classify, summarize, suggest, prepare and escalate. Business-critical steps stay permissioned.",
+        guardrail: "Sensitive steps require permissions and review. AI prepares the work; your team controls the final action.",
+        controlled: "Controlled AI for business workflows",
+        page: {
+          badge: "AI agents",
+          title: "Assistants with clear limits, not autonomous bots.",
+          subtitle:
+            "Each agent has a defined role, visible boundaries and an escalation path. Your team always controls sensitive actions.",
+        },
+        list: {
+          reception: { name: "Reception agent", status: "Classifying", body: "Routes new conversations and asks for missing context before a human joins.", checks: { a: "Classifies intent", b: "Applies business hours", c: "Escalates sensitive requests" } },
+          sales: { name: "Sales agent", status: "Monitoring", body: "Helps answer sales questions and prepare opportunities or follow-up tasks.", checks: { a: "Detects buying intent", b: "Creates follow-ups", c: "Uses configured business data" } },
+          support: { name: "Support agent", status: "Ready", body: "Suggests support replies, summarizes issues and prepares cases for the team.", checks: { a: "Reads knowledge base", b: "Summarizes context", c: "Escalates when unsure" } },
+          billing: { name: "Billing agent", status: "Review required", body: "Collects missing billing details and prepares drafts for review.", checks: { a: "Checks missing fields", b: "Prepares draft", c: "Requires user review" } },
+        },
+      },
+      billing: {
+        eyebrow: "Billing",
+        title: "Billing flows with review, status and traceability.",
+        subtitle: "Collect missing details, prepare a draft, review the customer and keep a visible timeline from conversation to delivery.",
+        tracked: "Tracked in PymesHub",
+        page: {
+          badge: "Billing",
+          title: "From conversation to invoice, with a visible trail.",
+          subtitle:
+            "Prepare drafts from the conversation, review every detail and follow each invoice through delivery — with audit and review on sensitive steps.",
+        },
+        stages: {
+          draft: "Draft",
+          review: "Review required",
+          ready: "Ready to send",
+          delivered: "Delivered to customer",
+        },
+      },
+      automation: {
+        eyebrow: "Automation",
+        title: "Automations that are understandable before they are powerful.",
+        subtitle: "Start with safe recipes: after-hours replies, invoice requests, missed follow-ups and support escalation.",
+        recipeName: "Invoice request follow-up",
+        active: "Active recipe",
+        rows: {
+          when: { key: "When", value: "message arrives after hours" },
+          if: { key: "If", value: "customer asks for invoice" },
+          then: { key: "Then", value: "request missing details" },
+          and: { key: "And", value: "create follow-up task" },
+        },
+      },
+      security: {
+        eyebrow: "Security",
+        title: "Built for real customer data, not demos.",
+        subtitle: "Conversations, customer records, billing data and AI actions need privacy controls from the start.",
+        page: {
+          badge: "Security",
+          title: "Privacy and control built in from the first message.",
+          subtitle:
+            "Tenant isolation, role-based access, audit trails and AI guardrails protect customer data across every workflow.",
+        },
+        cards: {
+          isolation: { title: "Tenant isolation", body: "Workspace data stays separated." },
+          rbac: { title: "Role-based access", body: "Users only access what they need." },
+          audit: { title: "Audit trail", body: "Track changes, actions and reviews." },
+          guardrails: { title: "AI guardrails", body: "Sensitive flows stay controlled." },
+        },
+      },
+      faq: {
+        eyebrow: "Questions",
+        title: "Designed to be clear before you connect your channels.",
+        items: {
+          whatsapp: { q: "Does PymesHub replace WhatsApp Business?", a: "No. PymesHub connects to business channels and centralizes operations around them. WhatsApp Business access depends on Meta Business configuration." },
+          billing: { q: "Can AI run billing actions automatically?", a: "The recommended setup is controlled. AI can collect information and prepare drafts, while important actions require user permissions and review." },
+          crm: { q: "What makes this different from a normal CRM?", a: "PymesHub starts from the conversation. Messages become customers, tasks, cases, opportunities and billing workflows without forcing the team to update a separate CRM manually." },
+        },
+      },
+      finalCta: {
+        title: "Convert every conversation into the next right action.",
+        subtitle: "Start with the inbox. Add customers, tasks, billing, AI agents and automations as your operation grows.",
+      },
+    },
   },
   es: {
     language: {
@@ -1868,6 +2013,151 @@ export const translations = {
         quote: "Por primera vez pude ver que WhatsApp genera el 70% de nuestras ventas. Eso cambió todo.",
         quoteAuthor: "Dueño, negocio retail",
         ctaHeadline: "Mirá tu negocio con claridad",
+      },
+    },
+    site: {
+      nav: {
+        platform: "Plataforma",
+        aiAgents: "Agentes IA",
+        billing: "Facturación",
+        security: "Seguridad",
+        pricing: "Precios",
+        logIn: "Iniciar sesión",
+        startFree: "Empezar gratis",
+      },
+      cta: {
+        startFree: "Empezar gratis",
+        viewDemo: "Ver workspace demo",
+        viewPricing: "Ver precios",
+        backHome: "Volver al inicio",
+        talkToTeam: "Hablar con el equipo",
+      },
+      hero: {
+        badge: "Operación conversacional · Agentes IA · Flujos de facturación",
+        title: "Operá tu negocio desde cada conversación.",
+        subtitle:
+          "Centralizá WhatsApp, Telegram, email, clientes, tareas, facturación y agentes de IA controlados en un solo workspace seguro hecho para PYMEs.",
+      },
+      trust: {
+        text: "Hecho para PYMEs que viven en WhatsApp, equipos de servicio y negocios que necesitan trazabilidad operativa.",
+        chips: {
+          isolation: "Aislamiento por tenant",
+          guardrails: "Límites de IA",
+          audit: "Registros de auditoría",
+          review: "Revisión humana",
+        },
+      },
+      platform: {
+        eyebrow: "Plataforma",
+        title: "Un solo workspace para el trabajo detrás de cada mensaje.",
+        subtitle:
+          "PymesHub convierte conversaciones en clientes, tareas, oportunidades, casos de soporte, borradores de factura y automatizaciones seguras.",
+        page: {
+          badge: "Plataforma",
+          title: "Un workspace operativo para todo tu equipo.",
+          subtitle:
+            "Permisos, contexto del cliente, facturación y automatizaciones en un solo lugar — estructurado para negocios que manejan datos reales de clientes.",
+        },
+        pillars: {
+          inbox: { title: "Bandeja omnicanal", body: "WhatsApp, Telegram, email y conversaciones de soporte en una sola cola operativa.", meta: "Cola · SLA · asignación" },
+          context: { title: "Contexto del cliente", body: "Cada mensaje se conecta con clientes, notas, tareas, facturas e historial.", meta: "CRM · línea de tiempo · tareas" },
+          agents: { title: "Agentes IA", body: "Asistentes de recepción, ventas, soporte y facturación con límites claros.", meta: "Sugerir · preparar · escalar" },
+          billing: { title: "Flujos de facturación", body: "Prepará borradores de factura, revisá detalles y seguí la entrega desde la conversación.", meta: "Borrador · revisión · envío" },
+          automation: { title: "Recetas de automatización", body: "Respondé fuera de horario, creá seguimientos y escalá casos urgentes automáticamente.", meta: "Disparador · condición · acción" },
+          control: { title: "Control operativo", body: "Permisos por rol, registros de auditoría, aislamiento de workspace y revisión en pasos sensibles.", meta: "RBAC · auditoría · privacidad" },
+        },
+      },
+      flow: {
+        eyebrow: "Del mensaje a la acción",
+        title: "Un mensaje de un cliente nunca debería quedar solo en un mensaje.",
+        subtitle: "Entendé la solicitud, cargá el contexto, prepará la acción y mantené los pasos sensibles bajo control humano.",
+        steps: {
+          message: { title: "Llega el mensaje", body: "WhatsApp, Telegram o email" },
+          intent: { title: "Intención detectada", body: "Ventas, soporte o facturación" },
+          context: { title: "Contexto cargado", body: "Cliente e historial" },
+          draft: { title: "Borrador preparado", body: "Factura, tarea o caso" },
+          review: { title: "El equipo revisa", body: "Acción final con permisos" },
+        },
+      },
+      agents: {
+        eyebrow: "Agentes IA",
+        title: "IA que prepara trabajo, no riesgo.",
+        subtitle: "Los agentes clasifican, resumen, sugieren, preparan y escalan. Los pasos críticos siguen requiriendo permisos.",
+        guardrail: "Los pasos sensibles requieren permisos y revisión. La IA prepara el trabajo; tu equipo controla la acción final.",
+        controlled: "IA controlada para flujos de negocio",
+        page: {
+          badge: "Agentes IA",
+          title: "Asistentes con límites claros, no bots autónomos.",
+          subtitle:
+            "Cada agente tiene un rol definido, límites visibles y una ruta de escalamiento. Tu equipo siempre controla las acciones sensibles.",
+        },
+        list: {
+          reception: { name: "Agente de recepción", status: "Clasificando", body: "Encamina nuevas conversaciones y pide el contexto que falta antes de que entre una persona.", checks: { a: "Clasifica la intención", b: "Aplica el horario de atención", c: "Escala solicitudes sensibles" } },
+          sales: { name: "Agente de ventas", status: "Monitoreando", body: "Ayuda a responder consultas de venta y a preparar oportunidades o tareas de seguimiento.", checks: { a: "Detecta intención de compra", b: "Crea seguimientos", c: "Usa los datos configurados del negocio" } },
+          support: { name: "Agente de soporte", status: "Listo", body: "Sugiere respuestas de soporte, resume problemas y prepara casos para el equipo.", checks: { a: "Lee la base de conocimiento", b: "Resume el contexto", c: "Escala cuando hay dudas" } },
+          billing: { name: "Agente de facturación", status: "Requiere revisión", body: "Recoge los datos de facturación que faltan y prepara borradores para revisar.", checks: { a: "Revisa campos faltantes", b: "Prepara el borrador", c: "Requiere revisión del usuario" } },
+        },
+      },
+      billing: {
+        eyebrow: "Facturación",
+        title: "Facturación con revisión, estado y trazabilidad.",
+        subtitle: "Recogé los datos que faltan, prepará un borrador, revisá al cliente y mantené una línea de tiempo visible desde la conversación hasta la entrega.",
+        tracked: "Registrado en PymesHub",
+        page: {
+          badge: "Facturación",
+          title: "De la conversación a la factura, con rastro visible.",
+          subtitle:
+            "Prepará borradores desde la conversación, revisá cada detalle y seguí cada factura hasta la entrega — con auditoría y revisión en los pasos sensibles.",
+        },
+        stages: {
+          draft: "Borrador",
+          review: "Requiere revisión",
+          ready: "Lista para enviar",
+          delivered: "Entregada al cliente",
+        },
+      },
+      automation: {
+        eyebrow: "Automatización",
+        title: "Automatizaciones que se entienden antes de ser potentes.",
+        subtitle: "Empezá con recetas seguras: respuestas fuera de horario, solicitudes de factura, seguimientos perdidos y escalamiento de soporte.",
+        recipeName: "Seguimiento de solicitud de factura",
+        active: "Receta activa",
+        rows: {
+          when: { key: "Cuando", value: "llega un mensaje fuera de horario" },
+          if: { key: "Si", value: "el cliente pide una factura" },
+          then: { key: "Entonces", value: "solicitar los datos faltantes" },
+          and: { key: "Y", value: "crear una tarea de seguimiento" },
+        },
+      },
+      security: {
+        eyebrow: "Seguridad",
+        title: "Hecho para datos reales de clientes, no para demos.",
+        subtitle: "Las conversaciones, los registros de clientes, los datos de facturación y las acciones de IA necesitan controles de privacidad desde el inicio.",
+        page: {
+          badge: "Seguridad",
+          title: "Privacidad y control desde el primer mensaje.",
+          subtitle:
+            "El aislamiento por tenant, el acceso por rol, los registros de auditoría y los límites de IA protegen los datos de tus clientes en cada flujo.",
+        },
+        cards: {
+          isolation: { title: "Aislamiento por tenant", body: "Los datos de cada workspace quedan separados." },
+          rbac: { title: "Acceso por rol", body: "Cada usuario accede solo a lo que necesita." },
+          audit: { title: "Rastro de auditoría", body: "Seguí cambios, acciones y revisiones." },
+          guardrails: { title: "Límites de IA", body: "Los flujos sensibles quedan bajo control." },
+        },
+      },
+      faq: {
+        eyebrow: "Preguntas",
+        title: "Pensado para ser claro antes de conectar tus canales.",
+        items: {
+          whatsapp: { q: "¿PymesHub reemplaza WhatsApp Business?", a: "No. PymesHub se conecta con los canales del negocio y centraliza la operación alrededor de ellos. El acceso a WhatsApp Business depende de la configuración de Meta Business." },
+          billing: { q: "¿La IA puede ejecutar acciones de facturación automáticamente?", a: "La configuración recomendada es controlada. La IA puede recoger información y preparar borradores, mientras que las acciones importantes requieren permisos y revisión del usuario." },
+          crm: { q: "¿En qué se diferencia de un CRM normal?", a: "PymesHub parte de la conversación. Los mensajes se convierten en clientes, tareas, casos, oportunidades y flujos de facturación sin obligar al equipo a actualizar un CRM aparte de forma manual." },
+        },
+      },
+      finalCta: {
+        title: "Convertí cada conversación en la siguiente acción correcta.",
+        subtitle: "Empezá por la bandeja. Sumá clientes, tareas, facturación, agentes de IA y automatizaciones a medida que tu operación crece.",
       },
     },
   },

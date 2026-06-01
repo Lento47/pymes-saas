@@ -556,6 +556,17 @@ html.light .dash-card {
   color: hsl(var(--fg));
 }
 
+/* Body safe-area extensions (iPhone notch top / home indicator bottom) inherit the dark
+   app default unless we override here. A useEffect adds/removes this class on <html>. */
+html.marketing-page body {
+  background-color: #F8F9FF;
+}
+
+/* Faint indigo radial for auth pages — applied to the login root div */
+.auth-bg {
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79, 70, 229, 0.05) 0%, transparent 70%);
+}
+
 .landing-card {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.07);

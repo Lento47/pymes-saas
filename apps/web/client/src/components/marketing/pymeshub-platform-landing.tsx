@@ -1,108 +1,177 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "wouter";
-import {
-  AlertTriangle,
-  ArrowRight,
-  Bot,
-  BrainCircuit,
-  CheckCircle2,
-  ChevronDown,
-  Clock3,
-  FileText,
-  Inbox,
-  Layers3,
-  LifeBuoy,
-  LockKeyhole,
-  Menu,
-  MessageCircle,
-  Receipt,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-  Users,
-  Workflow,
-  X,
-  Zap,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/marketing/footer";
+import {
+  AgentConsole,
+  AutomationRecipe,
+  Badge,
+  BillingFlow,
+  FaqSection,
+  FinalCta,
+  MarketingHeader,
+  MessageFlow,
+  PlatformPillars,
+  ProductMockup,
+  SecurityGrid,
+  SectionLabel,
+  useMarketingPage,
+} from "@/components/marketing/marketing-site";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { applySeoMetadata, buildSoftwareSchema } from "@/lib/seo";
-import { cn } from "@/lib/utils";
-
-const nav = [
-  ["Platform", "#platform"],
-  ["AI Agents", "#agents"],
-  ["Billing", "#billing"],
-  ["Security", "#security"],
-  ["Pricing", "/pricing"],
-] as const;
-
-const pillars: Array<{ icon: LucideIcon; title: string; body: string; meta: string }> = [
-  { icon: Inbox, title: "Omnichannel inbox", body: "WhatsApp, Telegram, email and support conversations in one operational queue.", meta: "Queue · SLA · assignment" },
-  { icon: Users, title: "Customer context", body: "Every message connects to customers, notes, tasks, invoices and history.", meta: "CRM · timeline · tasks" },
-  { icon: Bot, title: "AI agents", body: "Reception, sales, support and billing assistants with clear boundaries.", meta: "Suggest · prepare · escalate" },
-  { icon: Receipt, title: "Billing workflows", body: "Prepare invoice drafts, review details and track delivery from the conversation.", meta: "Draft · review · send" },
-  { icon: Workflow, title: "Automation recipes", body: "Respond after hours, create follow-ups and escalate urgent cases automatically.", meta: "Trigger · condition · action" },
-  { icon: ShieldCheck, title: "Operational control", body: "Role permissions, audit logs, workspace isolation and review for sensitive steps.", meta: "RBAC · audit · privacy" },
-];
-
-const agents: Array<{ id: string; icon: LucideIcon; name: string; status: string; body: string; checks: string[] }> = [
-  { id: "reception", icon: MessageCircle, name: "Reception Agent", status: "Classifying", body: "Routes new conversations and asks for missing context before a human joins.", checks: ["Classifies intent", "Applies business hours", "Escalates sensitive requests"] },
-  { id: "sales", icon: Sparkles, name: "Sales Agent", status: "Monitoring", body: "Helps answer sales questions and prepare opportunities or follow-up tasks.", checks: ["Detects buying intent", "Creates follow-ups", "Uses configured business data"] },
-  { id: "support", icon: LifeBuoy, name: "Support Agent", status: "Ready", body: "Suggests support replies, summarizes issues and prepares cases for the team.", checks: ["Reads knowledge base", "Summarizes context", "Escalates when unsure"] },
-  { id: "billing", icon: Receipt, name: "Billing Agent", status: "Review required", body: "Collects missing billing details and prepares drafts for review.", checks: ["Checks missing fields", "Prepares draft", "Requires user review"] },
-];
-
-function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "primary" | "success" | "warning" }) {
-  return <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium leading-none", tone === "primary" && "border-indigo-200 bg-indigo-50 text-indigo-700", tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-700", tone === "warning" && "border-amber-200 bg-amber-50 text-amber-700", tone === "neutral" && "border-slate-200 bg-white text-slate-600")}>{children}</span>;
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <div className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-600">{children}</div>;
-}
-
-function ProductMockup() {
-  const rows = [
-    ["María Rodríguez", "WhatsApp · Invoice request", "Needs human", "2m", true],
-    ["Café Nube", "Telegram · Support", "AI active", "14m", false],
-    ["Carlos Ríos", "Email · Sales", "Waiting client", "1h", false],
-  ] as const;
-  return <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_32px_120px_rgba(15,23,42,0.16)]"><div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3"><div className="flex items-center gap-2"><div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white"><Layers3 className="h-4 w-4" /></div><div><p className="text-xs font-semibold text-slate-900">PymesHub Command Center</p><p className="text-[10px] text-slate-500">Inbox · Customer context · AI · Billing</p></div></div><div className="hidden gap-2 sm:flex"><Badge>12 open</Badge><Badge tone="warning">4 need human</Badge><Badge tone="success">Online</Badge></div></div><div className="grid min-h-[430px] grid-cols-1 md:grid-cols-[270px_minmax(0,1fr)_300px]"><aside className="border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-r"><div className="border-b border-slate-200 p-3"><div className="flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-400"><Search className="h-3.5 w-3.5" />Search conversations</div><div className="mt-2 flex gap-1"><Badge tone="primary">Mine</Badge><Badge>Unread</Badge><Badge>Invoices</Badge></div></div>{rows.map(([name, meta, status, time, active]) => <div key={name} className={cn("border-b border-slate-200 p-3", active ? "bg-indigo-50" : "bg-white/50")}><div className="flex gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600 ring-1 ring-slate-200">{name.split(" ").map(p => p[0]).join("").slice(0,2)}</div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="truncate text-xs font-semibold text-slate-900">{name}</p><span className="text-[10px] text-slate-400">{time}</span></div><p className="mt-1 truncate text-[11px] text-slate-500">{meta}</p><p className="mt-1 text-[10px] font-medium text-indigo-600">{status}</p></div></div></div>)}</aside><section className="flex min-h-[430px] flex-col bg-white"><div className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">MR</div><div><p className="text-sm font-semibold text-slate-900">María Rodríguez</p><p className="text-xs text-slate-500">WhatsApp · Needs human · Daniel</p></div></div><Badge tone="primary">AI ready</Badge></div><div className="flex-1 space-y-4 bg-[linear-gradient(to_bottom,#ffffff,#F8FAFC)] p-4"><div className="text-center text-[11px] text-slate-400">Today</div><div className="flex gap-2"><div className="mt-auto h-6 w-6 rounded-full bg-slate-100" /><div className="max-w-[76%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm">Hola, necesito factura del servicio de instalación de ayer.</div></div><div className="mx-auto max-w-sm rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-center text-[11px] font-medium text-indigo-700">AI detected invoice request · 2 details missing</div><div className="flex justify-end"><div className="max-w-[76%] rounded-2xl rounded-br-md border border-indigo-100 bg-indigo-50 px-3.5 py-2.5 text-sm text-slate-800">Con gusto. Para prepararla, ¿me confirmás el servicio y el monto?</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-900">Invoice draft prepared</p><Badge tone="warning">Review required</Badge></div><p className="mt-1 text-xs text-slate-500">The team reviews details before final actions.</p></div></div><div className="border-t border-slate-200 bg-slate-50 p-3"><div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"><button className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500">+</button><div className="flex-1 text-sm text-slate-400">Write a reply...</div><button className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white"><ArrowRight className="h-4 w-4" /></button></div></div></section><aside className="border-t border-slate-200 bg-slate-50 p-4 md:border-l md:border-t-0"><div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Customer context</p><p className="mt-4 text-sm font-semibold text-slate-900">María Rodríguez</p><p className="mt-1 text-xs text-slate-500">New customer · WhatsApp · Billing intent</p><div className="mt-4 space-y-3">{[["Intent","Invoice request"],["Missing","Product, amount"],["Next step","Ask for details"]].map(([k,v]) => <div key={k} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0"><span className="text-xs text-slate-500">{k}</span><span className="text-right text-xs font-medium text-slate-800">{v}</span></div>)}</div></div><div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Actions</p><div className="mt-3 grid gap-2"><button className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">Prepare invoice</button><button className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">Create task</button></div></div></aside></div></div>;
-}
-
-function PlatformCard({ icon: Icon, title, body, meta }: { icon: LucideIcon; title: string; body: string; meta: string }) {
-  return <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/70"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><Icon className="h-5 w-5" /></div><h3 className="mt-6 text-xl font-semibold tracking-[-0.03em] text-slate-950">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-500">{body}</p><p className="mt-6 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{meta}</p></div>;
-}
-
-function AgentConsole() {
-  const [active, setActive] = useState(agents[0].id);
-  const selected = agents.find(a => a.id === active) ?? agents[0];
-  const Icon = selected.icon;
-  return <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]"><div className="space-y-2">{agents.map(agent => <button key={agent.id} type="button" onClick={() => setActive(agent.id)} className={cn("w-full rounded-2xl border p-4 text-left transition", active === agent.id ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white hover:bg-slate-50")}><div className="flex items-center gap-3"><div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl", active === agent.id ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500")}><agent.icon className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-950">{agent.name}</p><p className="text-xs text-slate-500">{agent.status}</p></div></div></button>)}</div><div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70"><div className="flex items-start justify-between gap-4"><div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white"><Icon className="h-5 w-5" /></div><div><p className="text-xl font-semibold tracking-[-0.03em] text-slate-950">{selected.name}</p><p className="text-sm text-slate-500">Controlled AI for business workflows</p></div></div><Badge tone="primary">{selected.status}</Badge></div><p className="mt-6 text-sm leading-7 text-slate-600">{selected.body}</p><div className="mt-6 grid gap-3 sm:grid-cols-3">{selected.checks.map(check => <div key={check} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><CheckCircle2 className="h-4 w-4 text-emerald-600" /><p className="mt-3 text-xs leading-5 text-slate-600">{check}</p></div>)}</div><div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex gap-3"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /><p className="text-xs leading-5 text-amber-800">Sensitive steps require permissions and review. AI prepares the work; your team controls the final action.</p></div></div></div></div>;
-}
-
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false);
-  return <div className="border-b border-slate-200 py-5"><button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-4 text-left"><span className="text-base font-semibold text-slate-950">{question}</span><ChevronDown className={cn("h-5 w-5 shrink-0 text-slate-400 transition", open && "rotate-180")} /></button>{open && <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600">{answer}</p>}</div>;
-}
 
 export function PymesHubPlatformLanding() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const { messages } = useI18n();
+  const t = messages.site;
+
+  useMarketingPage();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const description = t.hero.subtitle;
+    applySeoMetadata({
+      canonicalPath: "/",
+      description,
+      title: "PymesHub | " + t.hero.title,
+      jsonLd: buildSoftwareSchema("/", "PymesHub", description),
+    });
+  }, [t]);
 
-  useEffect(() => {
-    const description = "PymesHub centralizes WhatsApp, Telegram, email, customers, tasks, AI agents, automations and billing workflows in one secure workspace for SMEs.";
-    applySeoMetadata({ canonicalPath: "/", description, title: "PymesHub | Conversational operations for SMEs", jsonLd: buildSoftwareSchema("/", "PymesHub", description) });
-  }, []);
+  return (
+    <div className="marketing-light-theme min-h-dvh overflow-hidden bg-[#F8F9FF] text-slate-950">
+      <MarketingHeader />
 
-  return <div className="marketing-light-theme min-h-screen overflow-hidden bg-[#F8F9FF] text-slate-950"><header className={cn("fixed inset-x-0 top-0 z-50 border-b transition-all", scrolled ? "border-slate-200 bg-white/90 shadow-sm backdrop-blur" : "border-transparent bg-transparent")}><div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"><Link href="/"><BrandLockup compact markClassName="h-8 w-8" textClassName="text-sm text-slate-950" /></Link><nav className="hidden items-center gap-7 lg:flex">{nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-medium text-slate-600 hover:text-slate-950">{label}</a>)}</nav><div className="hidden items-center gap-2 lg:flex"><Link href="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Log in</Link><Link href="/register" className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Start free</Link></div><button type="button" onClick={() => setMobileOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 lg:hidden" aria-label="Open menu"><Menu className="h-5 w-5" /></button></div></header>{mobileOpen && <div className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)}><div className="ml-auto flex h-full w-[min(22rem,90vw)] flex-col bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between"><BrandLockup compact markClassName="h-8 w-8" textClassName="text-sm text-slate-950" /><button type="button" onClick={() => setMobileOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600" aria-label="Close menu"><X className="h-5 w-5" /></button></div><nav className="mt-8 grid gap-2">{nav.map(([label, href]) => <a key={href} href={href} onClick={() => setMobileOpen(false)} className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-800 hover:bg-slate-50">{label}</a>)}</nav><div className="mt-auto grid gap-2"><Link href="/login" className="rounded-full border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700">Log in</Link><Link href="/register" className="rounded-full bg-slate-950 px-4 py-3 text-center text-sm font-semibold text-white">Start free</Link></div></div></div>}<main><section className="relative px-4 pb-20 pt-32 sm:px-6 sm:pb-28 sm:pt-36 lg:px-8"><div className="absolute inset-x-0 top-0 -z-10 h-[700px] bg-[radial-gradient(circle_at_50%_0%,rgba(79,70,229,0.16),transparent_58%)]" /><div className="mx-auto max-w-7xl text-center"><div className="mb-7 flex justify-center"><Badge tone="primary">Conversational operations · AI agents · Billing workflows</Badge></div><h1 className="mx-auto max-w-5xl text-balance text-5xl font-semibold tracking-[-0.07em] text-slate-950 sm:text-7xl lg:text-[88px] lg:leading-[0.92]">Run your business from every conversation.</h1><p className="mx-auto mt-7 max-w-3xl text-balance text-lg leading-8 text-slate-600 sm:text-xl">Centralize WhatsApp, Telegram, email, customers, tasks, billing and controlled AI agents in one secure workspace built for SMEs.</p><div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"><Link href="/register" className="group inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white hover:bg-indigo-700">Start free <ArrowRight className="ml-2 h-4 w-4" /></Link><Link href="/login" className="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-800 hover:bg-slate-50">View demo workspace</Link></div></div><div className="mx-auto mt-14 max-w-7xl"><ProductMockup /></div></section><section className="border-y border-slate-200 bg-white px-4 py-6 sm:px-6 lg:px-8"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left"><p className="text-sm font-medium text-slate-500">Built for WhatsApp-first SMEs, service teams and businesses that need operational traceability.</p><div className="flex flex-wrap justify-center gap-2"><Badge>Tenant isolation</Badge><Badge>AI guardrails</Badge><Badge>Audit logs</Badge><Badge>Human review</Badge></div></div></section><section id="platform" className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto max-w-7xl"><div className="max-w-3xl"><Label>Platform</Label><h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">One workspace for the work behind every message.</h2><p className="mt-6 text-lg leading-8 text-slate-600">PymesHub turns conversations into customers, tasks, opportunities, support cases, billing drafts and safe automations.</p></div><div className="mt-12 grid gap-4 md:grid-cols-3">{pillars.map(p => <PlatformCard key={p.title} {...p} />)}</div></div></section><section className="bg-slate-950 px-4 py-24 text-white sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto max-w-7xl"><div className="mb-12 max-w-3xl"><div className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-300">Message to action</div><h2 className="text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">A customer message should never end as just a message.</h2><p className="mt-6 text-lg leading-8 text-slate-300">Understand the request, load context, prepare the action, then keep sensitive steps under human control.</p></div><div className="grid gap-3 lg:grid-cols-5">{[[MessageCircle,"Message arrives","WhatsApp, Telegram or email"],[BrainCircuit,"Intent detected","Sales, support or billing"],[Users,"Context loaded","Customer and history"],[Receipt,"Draft prepared","Invoice, task or case"],[ShieldCheck,"Team reviews","Permissioned final action"]].map(([Icon,title,body],i) => { const I = Icon as LucideIcon; return <div key={String(title)} className="rounded-[22px] border border-white/10 bg-white/[0.06] p-5"><div className="mb-5 flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-indigo-200"><I className="h-4 w-4" /></div><span className="text-xs font-semibold text-white/30">0{i+1}</span></div><h3 className="text-sm font-semibold text-white">{String(title)}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{String(body)}</p></div> })}</div></div></section><section id="agents" className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto max-w-7xl"><div className="mb-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end"><div><Label>AI Agents</Label><h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">AI that prepares work, not risk.</h2></div><p className="text-lg leading-8 text-slate-600">Agents classify, summarize, suggest, prepare and escalate. Business-critical steps stay permissioned.</p></div><AgentConsole /></div></section><section id="billing" className="border-y border-slate-200 bg-white px-4 py-24 sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center"><div><Label>Billing</Label><h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">Billing flows with review, status and traceability.</h2><p className="mt-6 text-lg leading-8 text-slate-600">Collect missing details, prepare a draft, review the customer and keep a visible timeline from conversation to delivery.</p></div><div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70">{["Draft","Review required","Ready to send","Delivered to customer"].map((s,i) => <div key={s} className="flex items-center gap-4 border-b border-slate-100 py-4 last:border-0"><div className={cn("flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold", i < 2 ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-400")}>{i+1}</div><div><p className="text-sm font-medium text-slate-800">{s}</p><p className="text-xs text-slate-500">Tracked in PymesHub</p></div></div>)}</div></div></section><section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center"><div><Label>Automation</Label><h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">Automations that are understandable before they are powerful.</h2><p className="mt-6 text-lg leading-8 text-slate-600">Start with safe recipes: after-hours replies, invoice requests, missed follow-ups and support escalation.</p></div><div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70"><div className="flex items-center justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><Zap className="h-5 w-5" /></div><Badge tone="success">Active recipe</Badge></div><h3 className="mt-6 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Invoice request follow-up</h3><div className="mt-6 space-y-3">{[["When","message arrives after hours"],["If","customer asks for invoice"],["Then","request missing details"],["And","create follow-up task"]].map(([a,b]) => <div key={a} className="grid grid-cols-[72px_1fr] gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"><span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">{a}</span><span className="text-sm text-slate-700">{b}</span></div>)}</div></div></div></section><section id="security" className="bg-white px-4 py-24 sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto max-w-7xl"><div className="mb-12 max-w-3xl"><Label>Security</Label><h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">Built for real customer data, not demos.</h2><p className="mt-6 text-lg leading-8 text-slate-600">Conversations, customer records, billing data and AI actions need privacy controls from the start.</p></div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">{[[LockKeyhole,"Tenant isolation","Workspace data stays separated."],[UserRound,"Role-based access","Users only access what they need."],[FileText,"Audit trail","Track changes, actions and reviews."],[ShieldCheck,"AI guardrails","Sensitive flows stay controlled."]].map(([Icon,title,body]) => { const I = Icon as LucideIcon; return <div key={String(title)} className="rounded-[24px] border border-slate-200 bg-slate-50 p-6"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-indigo-600 shadow-sm"><I className="h-5 w-5" /></div><h3 className="mt-6 text-lg font-semibold tracking-[-0.03em] text-slate-950">{String(title)}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{String(body)}</p></div> })}</div></div></section><section className="border-y border-slate-200 bg-white px-4 py-24 sm:px-6 lg:px-8"><div className="mx-auto max-w-4xl"><Label>Questions</Label><h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-5xl">Designed to be clear before you connect your channels.</h2><div className="mt-10"><FaqItem question="Does PymesHub replace WhatsApp Business?" answer="No. PymesHub connects to business channels and centralizes operations around them. WhatsApp Business access depends on Meta Business configuration." /><FaqItem question="Can AI run billing actions automatically?" answer="The recommended setup is controlled. AI can collect information and prepare drafts, while important actions require user permissions and review." /><FaqItem question="What makes this different from a normal CRM?" answer="PymesHub starts from the conversation. Messages become customers, tasks, cases, opportunities and billing workflows without forcing the team to update a separate CRM manually." /></div></div></section><section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32"><div className="mx-auto max-w-6xl overflow-hidden rounded-[36px] bg-slate-950 px-6 py-16 text-center text-white shadow-2xl shadow-slate-300/60 sm:px-12"><div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-indigo-200 ring-1 ring-white/10"><Clock3 className="h-6 w-6" /></div><h2 className="mx-auto max-w-3xl text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">Convert every conversation into the next right action.</h2><p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300">Start with the inbox. Add customers, tasks, billing, AI agents and automations as your operation grows.</p><div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"><Link href="/register" className="inline-flex h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 hover:bg-indigo-100">Start free <ArrowRight className="ml-2 h-4 w-4" /></Link><Link href="/pricing" className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-6 text-sm font-semibold text-white hover:bg-white/10">View pricing</Link></div></div></section></main><Footer /></div>;
+      <main>
+        {/* Hero */}
+        <section className="relative px-4 pb-20 pt-32 sm:px-6 sm:pb-28 sm:pt-36 lg:px-8">
+          <div className="absolute inset-x-0 top-0 -z-10 h-[700px] bg-[radial-gradient(circle_at_50%_0%,rgba(79,70,229,0.16),transparent_58%)]" />
+          <div className="mx-auto max-w-7xl text-center">
+            <div className="mb-7 flex justify-center">
+              <Badge tone="primary">{t.hero.badge}</Badge>
+            </div>
+            <h1 className="mx-auto max-w-5xl text-balance text-5xl font-semibold tracking-[-0.07em] text-slate-950 sm:text-7xl lg:text-[88px] lg:leading-[0.92]">
+              {t.hero.title}
+            </h1>
+            <p className="mx-auto mt-7 max-w-3xl text-balance text-lg leading-8 text-slate-600 sm:text-xl">
+              {t.hero.subtitle}
+            </p>
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/register"
+                className="group inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                {t.cta.startFree} <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                {t.cta.viewDemo}
+              </Link>
+            </div>
+          </div>
+          <div className="mx-auto mt-14 max-w-7xl">
+            <ProductMockup />
+          </div>
+        </section>
+
+        {/* Trust bar */}
+        <section className="border-y border-slate-200 bg-white px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+            <p className="text-sm font-medium text-slate-500">{t.trust.text}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Badge>{t.trust.chips.isolation}</Badge>
+              <Badge>{t.trust.chips.guardrails}</Badge>
+              <Badge>{t.trust.chips.audit}</Badge>
+              <Badge>{t.trust.chips.review}</Badge>
+            </div>
+          </div>
+        </section>
+
+        {/* Platform */}
+        <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <SectionLabel>{t.platform.eyebrow}</SectionLabel>
+              <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">
+                {t.platform.title}
+              </h2>
+              <p className="mt-6 text-lg leading-8 text-slate-600">{t.platform.subtitle}</p>
+            </div>
+            <div className="mt-12">
+              <PlatformPillars />
+            </div>
+          </div>
+        </section>
+
+        {/* Message to action */}
+        <MessageFlow />
+
+        {/* AI Agents */}
+        <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+              <div>
+                <SectionLabel>{t.agents.eyebrow}</SectionLabel>
+                <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">
+                  {t.agents.title}
+                </h2>
+              </div>
+              <p className="text-lg leading-8 text-slate-600">{t.agents.subtitle}</p>
+            </div>
+            <AgentConsole />
+          </div>
+        </section>
+
+        {/* Billing */}
+        <section className="border-y border-slate-200 bg-white px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <SectionLabel>{t.billing.eyebrow}</SectionLabel>
+              <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">
+                {t.billing.title}
+              </h2>
+              <p className="mt-6 text-lg leading-8 text-slate-600">{t.billing.subtitle}</p>
+            </div>
+            <BillingFlow />
+          </div>
+        </section>
+
+        {/* Automation */}
+        <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <SectionLabel>{t.automation.eyebrow}</SectionLabel>
+              <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">
+                {t.automation.title}
+              </h2>
+              <p className="mt-6 text-lg leading-8 text-slate-600">{t.automation.subtitle}</p>
+            </div>
+            <AutomationRecipe />
+          </div>
+        </section>
+
+        {/* Security */}
+        <section className="bg-white px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-12 max-w-3xl">
+              <SectionLabel>{t.security.eyebrow}</SectionLabel>
+              <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">
+                {t.security.title}
+              </h2>
+              <p className="mt-6 text-lg leading-8 text-slate-600">{t.security.subtitle}</p>
+            </div>
+            <SecurityGrid />
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <FaqSection />
+
+        {/* Final CTA */}
+        <FinalCta />
+      </main>
+
+      <Footer />
+    </div>
+  );
 }
