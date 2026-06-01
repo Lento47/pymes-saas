@@ -385,9 +385,10 @@ function PlatformContent() {
               ) : (
                 <div className="space-y-1 max-h-64 overflow-y-auto">
                   {wsList.map((w: any) => (
-                    <button
+                    <Button
                       key={w.id}
-                      className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
+                      variant="ghost"
+                      className={`w-full justify-start px-3 py-2 h-auto text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
                       onClick={() => setSelectedSlug(w.slug)}
                     >
                       <span className="font-medium">{w.name}</span>
@@ -395,7 +396,7 @@ function PlatformContent() {
                       <span className="ml-2 text-[10px] rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-blue-300">
                         {w.plan}
                       </span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -596,13 +597,15 @@ function PlatformContent() {
                           <div className="flex items-center gap-1">
                             <Badge variant="outline" className={`text-xs ${ROLE_COLORS[m.role] ?? ""}`}>{m.role}</Badge>
                             {!m.is_owner && (
-                              <button
-                                className="text-muted-foreground hover:text-destructive ml-1"
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive ml-1"
                                 onClick={() => revoke.mutate({ userId: m.user?.id })}
                                 title="Revocar acceso"
                               >
                                 <UserMinus className="h-3 w-3" />
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </div>

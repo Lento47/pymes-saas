@@ -192,24 +192,24 @@ export default function InventoryPage() {
           </div>
         ) : viewMode === "table" ? (
           <div className="rounded-xl border border-border overflow-hidden bg-card/40">
-+            <Table>
-+              <TableHeader>
-+                <TableRow>
-+                  <TableHead>Producto</TableHead>
-+                  <TableHead>Categoría</TableHead>
-+                  <TableHead className="text-right">Precio</TableHead>
-+                  <TableHead>Stock</TableHead>
-+                  <TableHead>Tipo</TableHead>
-+                  <TableHead className="text-right w-20"></TableHead>
-+                </TableRow>
-+              </TableHeader>
-+              <TableBody>
-+                {sorted.map((p) => (
-+                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
-+                ))}
-+              </TableBody>
-+            </Table>
-+          </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead className="text-right">Precio</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((p) => (
+                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {sorted.map((p) => (
