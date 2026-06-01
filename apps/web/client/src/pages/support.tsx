@@ -277,7 +277,11 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
         setError('Este caso requiere revisión humana. Podés escalarlo usando el botón de arriba.');
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al conectar con el asistente';
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      const isAbort = rawMsg.includes('abort') || rawMsg.includes('AbortError') || rawMsg.includes('timeout');
+      const msg = isAbort
+        ? 'El diagnóstico está tardando más de lo esperado. No te preocupes — los agentes siguen trabajando. Revisá "Casos recientes" en unos segundos para ver el resultado.'
+        : rawMsg || 'Error al conectar con el asistente';
       setError(msg);
       setMessages(prev => prev.filter(m => m.id !== 'live-progress'));
     } finally {

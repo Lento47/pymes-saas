@@ -31,7 +31,7 @@ export class FlowiseClient {
     this.baseUrl =
       config.get<string>("FLOWISE_BASE_URL") ?? "http://localhost:3001";
     this.apiKey = config.get<string>("FLOWISE_API_KEY") ?? null;
-    this.timeoutMs = config.get<number>("FLOWISE_TIMEOUT_MS") ?? 30_000;
+    this.timeoutMs = config.get<number>("FLOWISE_TIMEOUT_MS") ?? 90_000;
   }
 
   get isEnabled(): boolean {
