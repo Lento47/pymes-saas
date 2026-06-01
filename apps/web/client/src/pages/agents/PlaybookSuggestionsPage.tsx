@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const statusColors: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-800",
-  APPROVED: "bg-green-100 text-green-800",
-  ACTIVE: "bg-blue-100 text-blue-800",
-  REJECTED: "bg-gray-100 text-gray-500",
+  PENDING: "bg-warning/10 text-warning",
+  APPROVED: "bg-success/10 text-success",
+  ACTIVE: "bg-info/10 text-info",
+  REJECTED: "bg-muted text-muted-foreground",
 };
 
 export default function PlaybookSuggestionsPage() {
@@ -68,7 +68,7 @@ export default function PlaybookSuggestionsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge className={statusColors[pb.status] ?? "bg-gray-100 text-gray-600"}>
+                  <Badge className={statusColors[pb.status] ?? "bg-muted text-muted-foreground"}>
                     {pb.status}
                   </Badge>
                   {pb.confidence > 0 && (

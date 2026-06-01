@@ -375,11 +375,11 @@ export default function AiSettingsPage() {
     }),
     onSuccess: (result) => {
       setTestResult(result);
-      toast({ title: "Conexion validada" });
+      toast({ title: "Conexión validada" });
     },
     onError: (e: any) => {
       setTestResult({ ok: false, message: e.message });
-      toast({ title: "Fallo la conexion", description: e.message, variant: "destructive" });
+      toast({ title: "Falló la conexión", description: e.message, variant: "destructive" });
     },
   });
 
@@ -448,7 +448,7 @@ export default function AiSettingsPage() {
 
         {testResult?.ok && (
           <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-            Conexion valida con {AI_PROVIDERS.find(p => p.id === testResult.provider)?.label ?? testResult.provider}
+            Conexión válida con {AI_PROVIDERS.find(p => p.id === testResult.provider)?.label ?? testResult.provider}
             {testResult.model ? ` · ${testResult.model}` : ""}
             {typeof testResult.latency_ms === "number" ? ` · ${testResult.latency_ms} ms` : ""}
             {testResult.reply ? ` · "${testResult.reply}"` : ""}
@@ -457,7 +457,7 @@ export default function AiSettingsPage() {
 
         {testResult && testResult.ok === false && (
           <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-            No se pudo validar la conexion. {testResult.message}
+            No se pudo validar la conexión. {testResult.message}
           </div>
         )}
 
@@ -535,7 +535,7 @@ export default function AiSettingsPage() {
               disabled={!canTest || testConnection.isPending || !customApiEnabled}
               className="h-8 text-xs border-border"
             >
-              {testConnection.isPending ? "Probando..." : "Probar conexion"}
+              {testConnection.isPending ? "Probando..." : "Probar conexión"}
             </Button>
             <Button
               onClick={() => save.mutate()}
@@ -899,7 +899,7 @@ export default function AiSettingsPage() {
             </div>
 
             <div>
-              <Label className="text-xs mb-1 block">Asignacion de tareas creadas por IA</Label>
+              <Label className="text-xs mb-1 block">Asignación de tareas creadas por IA</Label>
               <Select value={assignmentMode} onValueChange={setAssignmentMode}>
                 <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
                   <SelectValue />
