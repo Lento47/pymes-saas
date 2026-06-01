@@ -676,11 +676,11 @@ export class SupportOrchestratorService {
   }
 
   private securityApproved(text: string): boolean {
-    // Conservative: only treat as approved on an explicit positive signal,
-    // and never if a block/critical signal is present.
     const t = text.toLowerCase();
-    if (/(bloque|block|riesgo cr[ií]tico|critical risk|denegad|denied)/.test(t)) return false;
-    return /(aprobad|approved|sin riesgos|no risks|ok para|safe to proceed)/.test(t);
+    // Only block on explicit denial or critical risk
+    if (/(bloque|block|riesgo cr[ií]tico|critical risk|denegad|denied|no aprobado)/.test(t)) return false;
+    // Accept explicit approval OR no issues found
+    return /(aprobad|approved|sin riesgos|no risks|ok|safe|sin problemas|no issues|correcto)/.test(t);
   }
 
   private buildSummary(

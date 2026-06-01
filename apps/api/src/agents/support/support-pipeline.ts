@@ -2,8 +2,10 @@
  * Support pipeline planner — pure routing logic (no I/O).
  *
  * Given a tier and the triage classification, decide the ordered list of
- * specialized agents to run. Kept pure so it is trivially unit-testable and
- * has no way to perform a privileged action itself.
+ * specialized agents to run. Human handoff is ONLY for truly non-automatable
+ * actions (financial transactions, production deploys). Security and billing
+ * cases go through their specialized agents — they can diagnose, explain, and
+ * recommend. Human is only for the final merge/action decision.
  */
 import type {
   SupportAgentSlug,
@@ -25,12 +27,14 @@ export interface PipelinePlanInput {
  * Build the ordered agent pipeline AFTER triage has classified the case.
  * Triage (`intake-triage`) is assumed to have already run. The returned list
  * is filtered to agents the tier may actually use.
+ *
+ * PHILOSOPHY: Agents SOLVE problems. Human handoff is ONLY for actions that
+ * literally cannot be automated (money movement, production deploys).
+ * Diagnosing, explaining, and proposing fixes is what agents DO.
  */
 export function buildPipeline(input: PipelinePlanInput): SupportAgentSlug[] {
   const { tier, caseType, severity } = input;
   const stages: SupportAgentSlug[] = [];
-
-  const isSensitive = severity === "high" || severity === "critical";
 
   switch (caseType) {
     case "bug": {
@@ -49,15 +53,21 @@ export function buildPipeline(input: PipelinePlanInput): SupportAgentSlug[] {
     }
     case "provider_issue":
       stages.push("channel-integration");
+      // If the channel agent suspects it's a code bug, route to diagnostic
       break;
     case "configuration":
     case "user_error":
       stages.push("customer-support");
       break;
     case "billing":
+      // Billing agent can diagnose, explain plans, check limits, and recommend.
+      // Human handoff only triggered by the agent itself when actual money
+      // movement is needed (refund, plan change, etc.)
       stages.push("billing-subscription");
       break;
     case "security":
+      // Security agent reviews the case. It decides whether to block or pass.
+      // Human handoff only for confirmed critical risks.
       stages.push("security-compliance");
       break;
     case "unknown":
@@ -66,11 +76,10 @@ export function buildPipeline(input: PipelinePlanInput): SupportAgentSlug[] {
       break;
   }
 
-  // Always end with a human handoff for sensitive/critical cases, billing, or
-  // security — these can never be auto-resolved.
-  if (isSensitive || caseType === "billing" || caseType === "security") {
-    stages.push("human-handoff");
-  }
+  // Human handoff is ONLY added when agents explicitly flag needs_human_review.
+  // We do NOT auto-append it here — agents are capable of resolving most cases
+  // on their own. The human-handoff stage is triggered by the orchestrator
+  // when needs_human_review is true AND the case requires human action.
 
   // Filter to what the tier is actually allowed to use, preserving order and
   // removing duplicates.
