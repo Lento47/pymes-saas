@@ -11,6 +11,7 @@ import { LocationAttachment } from "../media/LocationAttachment";
 import { ContactAttachment } from "../media/ContactAttachment";
 import { InteractiveAttachment } from "../media/InteractiveAttachment";
 import { TelegramRichText } from "./TelegramRichText";
+import { WhatsAppRichText } from "./WhatsAppRichText";
 
 interface MessageBubbleProps {
   message: UiMessage;
@@ -192,6 +193,13 @@ export const MessageBubble = function MessageBubble({
           return (
             <div className={`overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
               <TelegramRichText html={message.bodyHtml} isOutbound={isOutbound} />
+            </div>
+          );
+        }
+        if (message.provider === "WHATSAPP") {
+          return (
+            <div className={`overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
+              <WhatsAppRichText text={message.bodyText} isOutbound={isOutbound} />
             </div>
           );
         }

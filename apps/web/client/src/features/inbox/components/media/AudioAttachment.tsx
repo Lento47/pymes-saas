@@ -74,6 +74,8 @@ export function AudioAttachment({ messageId, caption, durationMs, className, pro
   const displayTime = audioDuration > 0 ? formatDuration((audioDuration - currentTime) * 1000) : durationMs ? formatDuration(durationMs) : displayTime;
   const waveform = [30, 52, 36, 70, 44, 82, 55, 38, 64, 48, 76, 42, 58, 34, 68, 46, 72, 40];
   const isTelegramVoice = provider === "TELEGRAM";
+  const isWhatsAppVoice = provider === "WHATSAPP";
+  const hasSpeedControl = isTelegramVoice || isWhatsAppVoice;
   const filledWaveClass = isTelegramVoice ? "bg-sky-500/90" : "bg-primary/80";
 
   if (loading && !blobUrl) {
@@ -147,22 +149,28 @@ export function AudioAttachment({ messageId, caption, durationMs, className, pro
             </div>
           </div>
 
-          {isTelegramVoice && (
+          {hasSpeedControl && (
             <div className="mt-1.5 flex gap-1 pl-1">
-              {[1, 1.5, 2].map((rate) => (
-                <button
-                  key={rate}
-                  onClick={() => changeSpeed(rate)}
-                  className={cn(
-                    "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
-                    playbackRate === rate
-                      ? "bg-sky-500/90 text-white"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted/70"
-                  )}
-                >
-                  {rate}x
-                </button>
-              ))}
+              {[1, 1.5, 2].map((rate) => {
+                const activeClass = isTelegramVoice
+                  ? "bg-sky-500/90 text-white"
+                  : "bg-primary text-primary-foreground";
+
+                return (
+                  <button
+                    key={rate}
+                    onClick={() => changeSpeed(rate)}
+                    className={cn(
+                      "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                      playbackRate === rate
+                        ? activeClass
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    {rate}x
+                  </button>
+                );
+              })}
             </div>
           )}
 

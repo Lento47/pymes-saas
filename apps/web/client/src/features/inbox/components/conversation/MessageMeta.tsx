@@ -1,7 +1,7 @@
 import type { UiMessage } from "@/features/inbox/message-types";
 import { formatMessageTime } from "@/features/inbox/media-utils";
 import { MessageStatus } from "./MessageStatus";
-import { Send } from "lucide-react";
+import { Send, MessageCircle } from "lucide-react";
 
 interface MessageMetaProps {
   message: UiMessage;
@@ -48,6 +48,7 @@ export function MessageMeta({ message, isOutbound, showSenderName, compact, over
     : "text-[10px] text-muted-foreground/45 mt-1.5 text-left flex items-center gap-1";
 
   const isTelegram = message.provider === "TELEGRAM";
+  const isWhatsApp = message.provider === "WHATSAPP";
 
   return (
     <div className={cls}>
@@ -56,6 +57,7 @@ export function MessageMeta({ message, isOutbound, showSenderName, compact, over
       )}
       <span>{formatMessageTime(message.sentAt)}</span>
       {isTelegram && <Send className="h-3 w-3 text-sky-400/70" />}
+      {isWhatsApp && <MessageCircle className="h-3 w-3 text-muted-foreground/60" />}
     </div>
   );
 }

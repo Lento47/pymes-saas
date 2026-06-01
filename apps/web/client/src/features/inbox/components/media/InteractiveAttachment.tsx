@@ -1,5 +1,6 @@
 import { SensitiveText } from "@/components/shared/sensitive-text";
 import { cn } from "@/lib/utils";
+import { MessageCircle } from "lucide-react";
 
 interface InteractiveAttachmentProps {
   interactiveType?: string | null;
@@ -15,13 +16,15 @@ interface InteractiveAttachmentProps {
   provider?: string | null;
 }
 
-function accentForType(type?: string | null) {
+function accentForType(type?: string | null, provider?: string | null) {
+  const isWhatsApp = provider === "WHATSAPP";
+
   switch (type) {
     case "button_reply": return "border-emerald-500/60";
     case "list_reply":   return "border-amber-500/60";
     case "nfm_reply":    return "border-violet-500/60";
-    case "button":       return "border-sky-500/60";
-    case "list":         return "border-amber-500/60";
+    case "button":       return isWhatsApp ? "border-primary/40" : "border-sky-500/60";
+    case "list":         return isWhatsApp ? "border-primary/40" : "border-amber-500/60";
     default:             return "border-border";
   }
 }
@@ -47,7 +50,7 @@ export function InteractiveAttachment({
   return (
     <div className={cn(
       "flex flex-col gap-2 rounded-xl border border-border/50 bg-card/60 p-3",
-      accentForType(interactiveType),
+      accentForType(interactiveType, provider),
       "border-l-[3px]", // Discord embed style — colored left border
       className,
     )}>
@@ -81,16 +84,21 @@ export function InteractiveAttachment({
         <div className="flex flex-wrap gap-1.5">
           {buttons.map((button, i) => {
             const isTelegram = provider === "TELEGRAM";
+            const isWhatsApp = provider === "WHATSAPP";
+
+            let buttonClass = "border border-border/60 bg-muted/40 text-foreground/80";
+            if (isTelegram) buttonClass = "bg-sky-600 text-white shadow-sm hover:bg-sky-500 active:bg-sky-700";
+            if (isWhatsApp) buttonClass = "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/80";
+
             return (
               <span
                 key={i}
                 className={cn(
-                  "inline-flex items-center rounded-md px-3 py-1 text-[13px] font-medium transition-colors select-none",
-                  isTelegram
-                    ? "bg-sky-600 text-white shadow-sm hover:bg-sky-500 active:bg-sky-700"
-                    : "border border-border/60 bg-muted/40 text-foreground/80"
+                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[13px] font-medium transition-colors select-none",
+                  buttonClass
                 )}
               >
+                {isWhatsApp && <MessageCircle className="h-3.5 w-3.5" />}
                 <SensitiveText text={button.title} />
               </span>
             );
@@ -102,7 +110,10 @@ export function InteractiveAttachment({
       {hasSections && (
         <div className="space-y-2">
           {actionLabel && (
-            <span className="text-[11px] font-medium text-muted-foreground/70">{actionLabel}</span>
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/70">
+              {provider === "WHATSAPP" && <MessageCircle className="h-3 w-3" />}
+              {actionLabel}
+            </span>
           )}
           {sections.map((section, si) => (
             <div key={si}>
