@@ -12,6 +12,7 @@ interface InteractiveAttachmentProps {
   sections?: Array<{ title?: string | null; rows: Array<{ title: string; description?: string | null }> }>;
   fallbackText?: string | null;
   className?: string;
+  provider?: string | null;
 }
 
 function accentForType(type?: string | null) {
@@ -36,6 +37,7 @@ export function InteractiveAttachment({
   sections,
   fallbackText,
   className,
+  provider,
 }: InteractiveAttachmentProps) {
   const primaryText = body ?? fallbackText ?? "Mensaje interactivo";
   const replyTitle = title && title !== primaryText ? title : null;
@@ -74,14 +76,25 @@ export function InteractiveAttachment({
         </p>
       )}
 
-      {/* Buttons — rendered as chips */}
+      {/* Buttons */}
       {hasButtons && (
         <div className="flex flex-wrap gap-1.5">
-          {buttons.map((button, i) => (
-            <span key={i} className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-[12px] font-medium text-foreground/80">
-              <SensitiveText text={button.title} />
-            </span>
-          ))}
+          {buttons.map((button, i) => {
+            const isTelegram = provider === "TELEGRAM";
+            return (
+              <span
+                key={i}
+                className={cn(
+                  "inline-flex items-center rounded-md px-3 py-1 text-[13px] font-medium transition-colors select-none",
+                  isTelegram
+                    ? "bg-sky-600 text-white shadow-sm hover:bg-sky-500 active:bg-sky-700"
+                    : "border border-border/60 bg-muted/40 text-foreground/80"
+                )}
+              >
+                <SensitiveText text={button.title} />
+              </span>
+            );
+          })}
         </div>
       )}
 

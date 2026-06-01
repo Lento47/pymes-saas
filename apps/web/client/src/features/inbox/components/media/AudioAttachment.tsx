@@ -10,6 +10,7 @@ interface AudioAttachmentProps {
   caption?: string | null;
   durationMs?: number | null;
   className?: string;
+  provider?: string | null;
 }
 
 function formatDuration(ms: number): string {
@@ -19,12 +20,13 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function AudioAttachment({ messageId, caption, durationMs, className }: AudioAttachmentProps) {
+export function AudioAttachment({ messageId, caption, durationMs, className, provider }: AudioAttachmentProps) {
   const mediaUrl = getMediaProxyUrl(messageId);
   const { blobUrl, error, loading } = useMediaBlobUrl(mediaUrl);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(durationMs ? durationMs / 1000 : 0);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
@@ -52,9 +54,27 @@ export function AudioAttachment({ messageId, caption, durationMs, className }: A
     setCurrentTime(0);
   }, []);
 
+  const changeSpeed = useCallback((rate: number) => {
+    setPlaybackRate(rate);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.playbackRate = rate;
+    }
+  }, []);
+
+  // Apply playback rate whenever it changes or audio loads
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
-  const displayTime = audioDuration > 0 ? formatDuration((audioDuration - currentTime) * 1000) : durationMs ? formatDuration(durationMs) : "0:00";
+  const displayTime = audioDuration > 0 ? formatDuration((audioDuration - currentTime) * 1000) : durationMs ? formatDuration(durationMs) : displayTime;
   const waveform = [30, 52, 36, 70, 44, 82, 55, 38, 64, 48, 76, 42, 58, 34, 68, 46, 72, 40];
+  const isTelegramVoice = provider === "TELEGRAM";
+  const filledWaveClass = isTelegramVoice ? "bg-sky-500/90" : "bg-primary/80";
 
   if (loading && !blobUrl) {
     return (
@@ -119,13 +139,33 @@ export function AudioAttachment({ messageId, caption, durationMs, className }: A
                 {waveform.map((height, index) => (
                   <span
                     key={index}
-                    className="w-1 flex-1 rounded-full bg-primary/80"
+                    className={`w-1 flex-1 rounded-full ${filledWaveClass}`}
                     style={{ height: `${height}%` }}
                   />
                 ))}
               </div>
             </div>
           </div>
+
+          {isTelegramVoice && (
+            <div className="mt-1.5 flex gap-1 pl-1">
+              {[1, 1.5, 2].map((rate) => (
+                <button
+                  key={rate}
+                  onClick={() => changeSpeed(rate)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                    playbackRate === rate
+                      ? "bg-sky-500/90 text-white"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted/70"
+                  )}
+                >
+                  {rate}x
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="mt-0.5 flex items-center justify-between">
             <span className="select-none text-[10px] tabular-nums text-muted-foreground/70">
               {playing ? displayTime : durationMs ? formatDuration(durationMs) : displayTime}

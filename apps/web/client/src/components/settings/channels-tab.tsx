@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Plug, PlugZap, PowerOff, Trash2, Mail, MessageCircle, ExternalLink, Radio, Send, RefreshCw, Pencil } from "lucide-react";
+import { Plus, Plug, PlugZap, PowerOff, Trash2, Mail, MessageCircle, ExternalLink, Radio, Send, RefreshCw, Pencil, Copy, Loader2, CheckCircle2, AlertCircle, Bot, Webhook, Play, Zap, Mic, FileText, Image, ShieldCheck, Users, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 type Channel = { id: string; name: string; type: string; status: string; config?: Record<string, string>; workspace_id?: string };
 type TelegramWebhookStatus = { url?: string; pending_update_count?: number; last_error_message?: string; last_error_date?: number };
@@ -261,6 +265,16 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
   const [botToken, setBotToken] = useState("");
   const [webhookStatus, setWebhookStatus] = useState<TelegramWebhookStatus | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [activeTab, setActiveTab] = useState<"config" | "webhook" | "bot" | "test" | "potencial">("config");
+  const [botInfo, setBotInfo] = useState<Record<string, any> | null>(null);
+  const [checkingBot, setCheckingBot] = useState(false);
+  const [testChatId, setTestChatId] = useState("");
+  const [testMessage, setTestMessage] = useState("✓ Webhook de Telegram funciona correctamente");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message?: string } | null>(null);
+  const [registering, setRegistering] = useState(false);
+
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   const save = useMutation({
     mutationFn: () => api.configureTelegram(channel.id, { bot_token: botToken || undefined }),
@@ -271,8 +285,6 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
     },
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
-  const isEdit = channel?.status !== "PENDING_SETUP";
 
   const checkWebhookStatus = async () => {
     setCheckingStatus(true);
@@ -287,107 +299,359 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
     }
   };
 
+  const registerWebhook = async () => {
+    setRegistering(true);
+    try {
+      const res = await api.registerTelegramWebhook(channel.id);
+      toast({ title: "Webhook registrado", description: res?.message || "Listo" });
+      await checkWebhookStatus();
+      setActiveTab("webhook");
+    } catch (e: any) {
+      toast({ title: "Error al registrar", description: e.message, variant: "destructive" });
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const loadBotInfo = async () => {
+    setCheckingBot(true);
+    try {
+      const res = await api.getTelegramBotInfo(channel.id);
+      setBotInfo(res?.data ?? res);
+    } catch {
+      setBotInfo(null);
+      toast({ title: "Error al obtener info del bot", variant: "destructive" });
+    } finally {
+      setCheckingBot(false);
+    }
+  };
+
+  const sendTest = async () => {
+    if (!testChatId.trim()) {
+      toast({ title: "Chat ID requerido", description: "Usá @userinfobot en Telegram para obtener el ID del chat de prueba", variant: "destructive" });
+      return;
+    }
+    setSendingTest(true);
+    setTestResult(null);
+    try {
+      const res = await api.sendTelegramTestMessage(channel.id, testChatId.trim(), testMessage.trim() || undefined);
+      setTestResult({ ok: true, message: res?.message });
+      toast({ title: "Mensaje de prueba enviado", description: "Revisá el chat en Telegram" });
+    } catch (e: any) {
+      setTestResult({ ok: false, message: e.message });
+      toast({ title: "Error enviando prueba", description: e.message, variant: "destructive" });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: `${label} copiado` });
+    });
+  };
+
   return (
-    <div className="space-y-4 pt-2">
-      <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-xs text-sky-300">
-        Creá un bot en{" "}
-        <a
-          href="https://t.me/BotFather"
-          target="_blank"
-          rel="noreferrer"
-          className="underline inline-flex items-center gap-1"
-          onClick={(event) => {
-            event.preventDefault();
-            void openExternal("https://t.me/BotFather");
-          }}
-        >
-          @BotFather <ExternalLink className="h-3 w-3" />
-        </a>
-        {" "}con <span className="font-mono">/newbot</span>, copiá el token y pegalo acá.
-      </div>
-
-      <div>
-        <Label>Token del Bot {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
-        <div className="mt-1">
-          <SecretInput
-            value={botToken}
-            onChange={setBotToken}
-            placeholder={isEdit ? "••••••••••••••••••••" : "1234567890:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"}
-          />
+    <div className="space-y-4 pt-1">
+      {/* Hero banner */}
+      <div className="flex items-center gap-3 rounded-xl border border-sky-500/20 bg-gradient-to-r from-sky-500/10 to-transparent p-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/20">
+          <Send className="h-5 w-5 text-sky-400" />
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          El token se encripta al guardarse. Nunca lo compartas.
-        </p>
-      </div>
-
-      {isEdit && (
-        <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-foreground">Estado del webhook</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-6 text-[11px] border-border"
-              onClick={checkWebhookStatus}
-              disabled={checkingStatus}
-            >
-              <RefreshCw className={`h-3 w-3 mr-1 ${checkingStatus ? "animate-spin" : ""}`} />
-              Verificar
-            </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-foreground">Telegram — Potencial ilimitado para tu negocio</p>
+            <Badge variant="outline" className="text-[10px] border-sky-500/30 text-sky-400">Sin costo por mensaje</Badge>
           </div>
-          {webhookStatus && (
-            <div className="space-y-1 text-muted-foreground">
-              <p>
-                URL:{" "}
-                <span className="font-mono text-[10px] break-all text-foreground">
-                  {webhookStatus.url || "—"}
-                </span>
-              </p>
-              <p>
-                Pendientes:{" "}
-                <span className={(webhookStatus.pending_update_count ?? 0) > 0 ? "text-yellow-400" : "text-green-400"}>
-                  {webhookStatus.pending_update_count ?? "—"}
-                </span>
-              </p>
-              {webhookStatus.last_error_message && (
-                <p className="text-red-400">
-                  Error: {webhookStatus.last_error_message}
-                </p>
-              )}
-              {webhookStatus.last_error_date && (
-                <p className="text-red-400">
-                  Último error: {new Date(webhookStatus.last_error_date * 1000).toLocaleString("es-CR")}
-                </p>
-              )}
-              {!webhookStatus.last_error_message && webhookStatus.url && (
-                <p className="text-green-400">✅ Webhook funcionando correctamente</p>
-              )}
-            </div>
-          )}
-          {!webhookStatus && !checkingStatus && (
-            <p className="text-muted-foreground">Presioná "Verificar" para chequear el estado del webhook.</p>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Webhooks seguros • Keyboards interactivos • Voz nativa • Media rico • Edición de mensajes
+          </p>
         </div>
-      )}
-
-      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">¿Cómo funciona?</p>
-        <p>
-          Cuando alguien le escribe al bot en Telegram, PymesHub recibe el mensaje vía webhook
-          y crea una conversación automáticamente en tu bandeja de entrada.
-        </p>
-        <p className="mt-1">
-          Tipos soportados: texto, fotos, documentos, videos, audios y mensajes de voz.
-        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-sky-400 hover:text-sky-300"
+          onClick={() => openExternal("https://t.me/BotFather")}
+        >
+          <ExternalLink className="h-3.5 w-3.5 mr-1" /> BotFather
+        </Button>
       </div>
 
-      <Button
-        onClick={() => save.mutate()}
-        disabled={(!isEdit && !botToken) || save.isPending}
-        className="w-full bg-sky-600 hover:bg-sky-700"
-      >
-        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
-      </Button>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+        <TabsList className="grid w-full grid-cols-5 bg-[hsl(var(--elevated))] border border-border p-1 rounded-lg">
+          <TabsTrigger value="config" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Bot className="h-3.5 w-3.5 mr-1" /> Config
+          </TabsTrigger>
+          <TabsTrigger value="webhook" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Webhook className="h-3.5 w-3.5 mr-1" /> Webhook
+          </TabsTrigger>
+          <TabsTrigger value="bot" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Info className="h-3.5 w-3.5 mr-1" /> Bot Info
+          </TabsTrigger>
+          <TabsTrigger value="test" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Play className="h-3.5 w-3.5 mr-1" /> Probar
+          </TabsTrigger>
+          <TabsTrigger value="potencial" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Zap className="h-3.5 w-3.5 mr-1" /> Potencial
+          </TabsTrigger>
+        </TabsList>
+
+        {/* CONFIG TAB */}
+        <TabsContent value="config" className="space-y-4 mt-4">
+          <Card className="border-border bg-[hsl(var(--elevated))]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Bot className="h-4 w-4 text-sky-400" /> Token del Bot
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {isEdit ? "Actualizá el token solo si rotaste el bot en @BotFather" : "Pegá el token que te dio @BotFather"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">API Token</Label>
+                <div className="mt-1.5">
+                  <SecretInput
+                    value={botToken}
+                    onChange={setBotToken}
+                    placeholder={isEdit ? "••••••••••••••••••••" : "1234567890:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3" /> Se encripta con ENCRYPTION_KEY del servidor. Nunca lo compartas.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => save.mutate()}
+                disabled={(!isEdit && !botToken) || save.isPending}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-9"
+              >
+                {save.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios y reconectar" : "Guardar y activar canal"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Alert className="border-sky-500/30 bg-sky-500/5">
+            <AlertDescription className="text-xs text-sky-300">
+              Después de guardar, andá a la pestaña <span className="font-medium">Webhook</span> para registrar el endpoint y verificar el estado.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+
+        {/* WEBHOOK TAB */}
+        <TabsContent value="webhook" className="space-y-4 mt-4">
+          <Card className="border-border bg-[hsl(var(--elevated))]">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Webhook className="h-4 w-4 text-sky-400" /> Estado del Webhook
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-border"
+                    onClick={registerWebhook}
+                    disabled={registering || !isEdit}
+                  >
+                    {registering ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Webhook className="h-3 w-3 mr-1" />}
+                    Registrar / Actualizar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-border"
+                    onClick={checkWebhookStatus}
+                    disabled={checkingStatus}
+                  >
+                    <RefreshCw className={`h-3 w-3 mr-1 ${checkingStatus ? "animate-spin" : ""}`} />
+                    Refrescar
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!isEdit && (
+                <Alert variant="default" className="border-amber-500/30 bg-amber-500/10">
+                  <AlertDescription className="text-xs">Guardá y activá el canal primero para poder registrar el webhook.</AlertDescription>
+                </Alert>
+              )}
+
+              {webhookStatus && (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-background/40 p-3 font-mono text-[10px]">
+                    <div className="break-all text-foreground/90 flex-1">{webhookStatus.url || "—"}</div>
+                    {webhookStatus.url && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyToClipboard(webhookStatus.url!, "URL del webhook")}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pendientes</div>
+                      <div className={`mt-1 text-2xl font-semibold tabular-nums ${(webhookStatus.pending_update_count ?? 0) > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                        {webhookStatus.pending_update_count ?? "0"}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">updates en cola de Telegram</div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Último error</div>
+                      <div className="mt-1 text-sm text-red-400 line-clamp-2 min-h-[2.5rem]">
+                        {webhookStatus.last_error_message || "Ninguno"}
+                      </div>
+                      {webhookStatus.last_error_date && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {new Date(webhookStatus.last_error_date * 1000).toLocaleString("es-CR")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {!webhookStatus.last_error_message && webhookStatus.url && (
+                    <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-400 text-xs">
+                      <CheckCircle2 className="h-4 w-4" /> Webhook activo y verificado por Telegram
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!webhookStatus && !checkingStatus && isEdit && (
+                <div className="text-center py-6 text-muted-foreground text-xs">
+                  Presioná <span className="font-medium text-foreground">Registrar</span> o <span className="font-medium text-foreground">Refrescar</span> para ver el estado.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* BOT INFO TAB */}
+        <TabsContent value="bot" className="space-y-4 mt-4">
+          <Card className="border-border bg-[hsl(var(--elevated))]">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm flex items-center gap-2"><Bot className="h-4 w-4 text-sky-400" /> Información del Bot</CardTitle>
+                <CardDescription className="text-xs">Datos devueltos por Telegram (getMe)</CardDescription>
+              </div>
+              <Button size="sm" variant="outline" onClick={loadBotInfo} disabled={checkingBot || !isEdit} className="border-border h-7 text-xs">
+                {checkingBot ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Cargar / Actualizar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {botInfo ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-1 rounded border border-border p-3 bg-background/30">
+                    <div className="text-[10px] text-muted-foreground">Nombre</div>
+                    <div className="font-medium text-foreground">{botInfo.first_name || "—"}</div>
+                  </div>
+                  <div className="space-y-1 rounded border border-border p-3 bg-background/30">
+                    <div className="text-[10px] text-muted-foreground">Username</div>
+                    <div className="font-mono text-sky-400 flex items-center gap-1">@{botInfo.username || "—"}</div>
+                  </div>
+                  <div className="space-y-1 rounded border border-border p-3 bg-background/30">
+                    <div className="text-[10px] text-muted-foreground">ID del Bot</div>
+                    <div className="font-mono">{botInfo.id || "—"}</div>
+                  </div>
+                  <div className="space-y-1 rounded border border-border p-3 bg-background/30">
+                    <div className="text-[10px] text-muted-foreground">Capacidades</div>
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {botInfo.can_join_groups && <Badge variant="outline" className="text-[10px] border-border">Grupos</Badge>}
+                      {botInfo.can_read_all_group_messages && <Badge variant="outline" className="text-[10px] border-border">Leer grupos</Badge>}
+                      {botInfo.supports_inline_queries && <Badge variant="outline" className="text-[10px] border-border">Inline</Badge>}
+                      {!botInfo.can_join_groups && !botInfo.can_read_all_group_messages && !botInfo.supports_inline_queries && <span className="text-xs text-muted-foreground">Básicas</span>}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-xs text-muted-foreground">
+                  {isEdit ? "Cargá la información del bot para ver nombre, username y capacidades." : "Activá el canal primero."}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TEST TAB */}
+        <TabsContent value="test" className="space-y-4 mt-4">
+          <Card className="border-border bg-[hsl(var(--elevated))]">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2"><Play className="h-4 w-4 text-sky-400" /> Enviar mensaje de prueba</CardTitle>
+              <CardDescription className="text-xs">Verificá que el webhook y el token estén funcionando correctamente.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-xs">Chat ID de destino (obtenelo con @userinfobot)</Label>
+                <Input
+                  value={testChatId}
+                  onChange={(e) => setTestChatId(e.target.value)}
+                  placeholder="123456789"
+                  className="mt-1.5 font-mono bg-background border-border"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Mensaje</Label>
+                <textarea
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  className="mt-1.5 w-full min-h-[72px] rounded-md border border-border bg-background p-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-sky-500/50"
+                />
+              </div>
+
+              <Button
+                onClick={sendTest}
+                disabled={!isEdit || !testChatId.trim() || sendingTest}
+                className="w-full bg-primary hover:bg-primary/90 h-9"
+              >
+                {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Enviar prueba a Telegram
+              </Button>
+
+              {testResult && (
+                <Alert className={testResult.ok ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}>
+                  <AlertDescription className="text-xs">
+                    {testResult.ok ? "✓ " : "✕ "}{testResult.message || (testResult.ok ? "Enviado" : "Falló")}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* POTENCIAL TAB — fully unlocking Telegram */}
+        <TabsContent value="potencial" className="space-y-3 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { icon: Zap, title: "Respuestas instantáneas", desc: "Edición de mensajes y typing indicators nativos. La IA puede actualizar respuestas en vivo." },
+              { icon: Mic, title: "Voz de alta calidad", desc: "Notas de voz TTS con ElevenLabs + recepción de audios/voice messages del cliente." },
+              { icon: Image, title: "Media rico sin límites", desc: "Fotos, videos, documentos, PDFs de facturas, captions con formato HTML." },
+              { icon: Users, title: "Keyboards interactivos", desc: "Botones inline y listas generados por el agente IA para acciones rápidas (pago, agendar, etc)." },
+              { icon: ShieldCheck, title: "Seguridad enterprise", desc: "Secret token por canal + verificación timing-safe. Webhooks firmados y rotables." },
+              { icon: FileText, title: "Cero costo marginal", desc: "A diferencia de WhatsApp Cloud API, Telegram no cobra por mensajes enviados/recibidos." },
+            ].map((f, i) => (
+              <Card key={i} className="border-border bg-[hsl(var(--elevated))] hover:border-sky-500/30 transition-colors">
+                <CardContent className="pt-4 pb-4 flex gap-3">
+                  <div className="mt-0.5"><f.icon className="h-5 w-5 text-sky-400 shrink-0" /></div>
+                  <div>
+                    <div className="font-medium text-sm text-foreground">{f.title}</div>
+                    <div className="text-xs text-muted-foreground leading-snug mt-1">{f.desc}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3 text-xs text-sky-300">
+            Todo esto ya está activo en el inbox y con el Agente IA. Configurá el canal y empezá a usarlo con tus clientes en Telegram hoy.
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="pt-2 text-[10px] text-muted-foreground text-center">
+        Telegram • {channel?.name} • ID: <span className="font-mono">{channel?.id?.slice(0, 8)}…</span>
+      </div>
     </div>
   );
 }
@@ -543,7 +807,7 @@ export function ChannelsTab() {
       </div>
 
       <Dialog open={!!configChannel} onOpenChange={open => { if (!open) setConfigChannel(null); }}>
-        <DialogContent className="bg-card border-border max-w-md">
+        <DialogContent className="bg-card border-border max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : isWA ? <MessageCircle className="h-4 w-4 text-green-400" /> : isTG ? <Send className="h-4 w-4 text-sky-400" /> : null}

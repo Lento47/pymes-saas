@@ -10,6 +10,7 @@ import { DocumentAttachment } from "../media/DocumentAttachment";
 import { LocationAttachment } from "../media/LocationAttachment";
 import { ContactAttachment } from "../media/ContactAttachment";
 import { InteractiveAttachment } from "../media/InteractiveAttachment";
+import { TelegramRichText } from "./TelegramRichText";
 
 interface MessageBubbleProps {
   message: UiMessage;
@@ -121,7 +122,9 @@ export const MessageBubble = function MessageBubble({
     // ── PymesHub branded: solid indigo outbound, clean white inbound ──
     const surface = isOutbound
       ? "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(79,70,229,0.18)]"
-      : "bg-card border border-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
+      : message.provider === "TELEGRAM"
+        ? "bg-card border border-sky-500/20 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+        : "bg-card border border-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
 
     switch (variant) {
       case "sticker":
@@ -151,7 +154,7 @@ export const MessageBubble = function MessageBubble({
         return <StickerAttachment messageId={message.id} caption={message.mediaCaption} />;
       case "audio": {
         const audio = message.attachments.find(a => a.type === "audio");
-        return <AudioAttachment messageId={message.id} caption={message.mediaCaption} durationMs={audio?.durationMs} />;
+        return <AudioAttachment messageId={message.id} caption={message.mediaCaption} durationMs={audio?.durationMs} provider={message.provider} />;
       }
       case "video":
         return <VideoAttachment messageId={message.id} caption={message.mediaCaption} mimeType={message.mediaMimeType} />;
@@ -180,10 +183,18 @@ export const MessageBubble = function MessageBubble({
             buttons={interactive?.buttons}
             sections={interactive?.sections}
             fallbackText={message.bodyText}
+            provider={message.provider}
           />
         );
       }
       default:
+        if (message.provider === "TELEGRAM" && message.bodyHtml) {
+          return (
+            <div className={`overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
+              <TelegramRichText html={message.bodyHtml} isOutbound={isOutbound} />
+            </div>
+          );
+        }
         return (
           <div className={`whitespace-pre-wrap break-words text-[13.5px] sm:text-[14px] ${isShort ? "leading-snug" : "leading-relaxed"} overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
             {renderTextWithLinks(message.bodyText, isOutbound)}

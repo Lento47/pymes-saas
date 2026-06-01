@@ -1,6 +1,7 @@
 import type { UiMessage } from "@/features/inbox/message-types";
 import { formatMessageTime } from "@/features/inbox/media-utils";
 import { MessageStatus } from "./MessageStatus";
+import { Send } from "lucide-react";
 
 interface MessageMetaProps {
   message: UiMessage;
@@ -46,12 +47,15 @@ export function MessageMeta({ message, isOutbound, showSenderName, compact, over
     ? "text-[9px] text-muted-foreground/40 mt-0.5 text-left flex items-center gap-1"
     : "text-[10px] text-muted-foreground/45 mt-1.5 text-left flex items-center gap-1";
 
+  const isTelegram = message.provider === "TELEGRAM";
+
   return (
     <div className={cls}>
       {showSenderName && message.senderName && (
         <span className="font-medium text-muted-foreground/60">{message.senderName}</span>
       )}
       <span>{formatMessageTime(message.sentAt)}</span>
+      {isTelegram && <Send className="h-3 w-3 text-sky-400/70" />}
     </div>
   );
 }

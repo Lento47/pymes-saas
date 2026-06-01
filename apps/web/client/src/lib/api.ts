@@ -420,6 +420,12 @@ export const api = {
     request<Record<string, any>>('POST', `/api/channels/${id}/configure-telegram`, data),
   getTelegramWebhookStatus: (channelId: string) =>
     request<Record<string, any>>('GET', `/api/inbound/telegram/${channelId}/webhook-status`),
+  registerTelegramWebhook: (channelId: string) =>
+    request<Record<string, any>>('POST', `/api/inbound/telegram/${channelId}/register-webhook`),
+  getTelegramBotInfo: (channelId: string) =>
+    request<Record<string, any>>('GET', `/api/inbound/telegram/${channelId}/bot-info`),
+  sendTelegramTestMessage: (channelId: string, chatId: string, message?: string) =>
+    request<Record<string, any>>('POST', `/api/inbound/telegram/${channelId}/send-test-message`, { chatId, message }),
   getDepartments: () => request<Record<string, any>>("GET", "/api/departments"),
   createDepartment: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/departments", data),
   updateDepartment: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/departments/${id}`, data),

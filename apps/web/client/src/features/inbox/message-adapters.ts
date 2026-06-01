@@ -341,6 +341,9 @@ export function normalizeMessage(raw: Record<string, any>): UiMessage {
   const mediaType = detectMediaType(raw, bodyText);
   const sender = extractSenderInfo(raw);
 
+  const isTelegram = raw.provider === "TELEGRAM";
+  const bodyHtml = isTelegram && raw.body_html ? String(raw.body_html) : null;
+
   return {
     id: String(raw.id),
     direction: extractDirection(raw),
@@ -348,6 +351,7 @@ export function normalizeMessage(raw: Record<string, any>): UiMessage {
     senderRef: sender.ref,
     senderAvatarUrl: sender.avatarUrl,
     bodyText,
+    bodyHtml,
     sentAt: safeDate(raw.sent_at) ?? safeDate(raw.created_at),
     hasMedia: Boolean(raw.has_media),
     mediaType,

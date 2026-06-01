@@ -54,6 +54,7 @@ export interface UiMessage {
   deliveryError?: string | null;
   replyToMessageId?: string | null;
   wamid?: string | null;
+  bodyHtml?: string | null;
   raw?: Record<string, any>;
 }
 
