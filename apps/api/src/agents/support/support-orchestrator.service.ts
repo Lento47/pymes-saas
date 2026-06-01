@@ -323,7 +323,7 @@ export class SupportOrchestratorService {
 
     const tier = (run.tier as SupportTier) ?? "TIER_1";
     const sessionId = randomUUID();
-    const stages: StageRecord[] = (run.stages_json as StageRecord[]) ?? [];
+    const stages: StageRecord[] = (run.stages_json as unknown as StageRecord[]) ?? [];
     const caseType = (run.case_type as SupportCaseType) ?? "unknown";
     const severity = (run.severity as SupportSeverity) ?? "medium";
 
