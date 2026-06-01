@@ -309,7 +309,7 @@ export class FlowiseSetupService {
         const agentFlowData = this.flowise.buildSupportFlowData({
           modelName: SUPPORT_MODEL_NAME[agent.model],
           systemPrompt: agent.systemPrompt,
-          toolIds: toolPairs.map((p) => p.id),
+          toolIds: toolPairs.map((p) => p.name),  // use names, not UUIDs — survives Flowise tool recreation
           toolNames: toolPairs.map((p) => p.name),
           basepath: deepseekBaseUrl,
           temperature: agent.temperature,
