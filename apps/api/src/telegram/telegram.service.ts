@@ -39,6 +39,33 @@ export class TelegramService {
   ) {}
 
   /**
+   * On module init, re-register webhooks for all active Telegram channels.
+   * This makes webhooks self-healing on every deploy — no manual intervention needed.
+   */
+  async onModuleInit() {
+    this.logger.log("[telegram] onModuleInit — scanning for active Telegram channels...");
+    try {
+      const channels = await this.prisma.channel.findMany({
+        where: { type: "TELEGRAM", status: "ACTIVE" },
+        select: { id: true, workspace_id: true },
+      });
+      this.logger.log(`[telegram] found ${channels.length} active channel(s)`);
+      for (const ch of channels) {
+        try {
+          await this.registerWebhook(ch.workspace_id, ch.id);
+          this.logger.log(`[telegram] startup re-registered webhook for channel=${ch.id}`);
+        } catch (err) {
+          this.logger.warn(
+            `[telegram] startup re-register failed for channel=${ch.id}: ${(err as Error).message}`,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.error(`[telegram] onModuleInit scan failed: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Get bot token from encrypted config
    */
   private async getBotToken(channelId: string): Promise<string | null> {
@@ -149,6 +176,7 @@ export class TelegramService {
     channelId: string,
     suppliedSecret: string | undefined,
   ): Promise<boolean> {
+    this.logger.debug(`[telegram] verifyWebhookSecret called for channel=${channelId}, secret=${suppliedSecret ? 'present' : 'MISSING'}`);
     if (!suppliedSecret) return false;
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, type: "TELEGRAM" },
