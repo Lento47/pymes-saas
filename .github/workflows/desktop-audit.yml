@@ -1,0 +1,42 @@
+name: Desktop Cargo Audit
+
+# Surfaces RustSec advisories for the Tauri desktop crate (apps/desktop/src-tauri).
+# The npm side is covered by pnpm; this watches the Cargo dependency tree, which
+# Dependabot also scans (alerts against apps/desktop/src-tauri/Cargo.lock).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/desktop/src-tauri/Cargo.lock"
+      - "apps/desktop/src-tauri/Cargo.toml"
+      - ".github/workflows/desktop-audit.yml"
+  pull_request:
+    paths:
+      - "apps/desktop/src-tauri/Cargo.lock"
+      - "apps/desktop/src-tauri/Cargo.toml"
+      - ".github/workflows/desktop-audit.yml"
+  schedule:
+    # Weekly re-scan so newly published advisories surface without a code change.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-audit:
+    name: cargo audit (Tauri crate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit Cargo.lock
+        working-directory: apps/desktop/src-tauri
+        run: cargo audit
