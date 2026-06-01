@@ -157,34 +157,43 @@ export class TelegramService {
     if (!channel) return false;
 
     let expected = (channel.config_json as any)?.webhook_secret as string | undefined;
-
-    // Auto-recovery: if webhook_secret is missing but bot token is configured,
-    // re-register the webhook so the channel self-heals on next request.
-    if (!expected) {
-      try {
-        await this.registerWebhook(channel.workspace_id, channelId);
-        const refreshed = await this.prisma.channel.findFirst({
-          where: { id: channelId, type: "TELEGRAM" },
-          select: { config_json: true },
-        });
-        expected = (refreshed?.config_json as any)?.webhook_secret;
-        if (expected) {
-          this.logger.log(`[telegram] auto-recovered webhook_secret for channel=${channelId}`);
-        }
-      } catch (err) {
-        this.logger.warn(`[telegram] auto-recovery failed for channel=${channelId}: ${(err as Error).message}`);
-      }
-    }
-
-    if (!expected) return false;
     const a = Buffer.from(suppliedSecret, "utf8");
-    const b = Buffer.from(expected, "utf8");
-    if (a.length !== b.length) return false;
-    try {
-      return timingSafeEqual(a, b);
-    } catch {
-      return false;
+
+    // Try existing secret first
+    if (expected) {
+      const b = Buffer.from(expected, "utf8");
+      if (a.length === b.length) {
+        try {
+          if (timingSafeEqual(a, b)) return true;
+        } catch { /* fall through to recovery */ }
+      }
+      this.logger.warn(`[telegram] secret mismatch for channel=${channelId} — re-registering`);
     }
+
+    // Recover: re-register webhook (generates new secret, tells Telegram)
+    try {
+      await this.registerWebhook(channel.workspace_id, channelId);
+      const refreshed = await this.prisma.channel.findFirst({
+        where: { id: channelId, type: "TELEGRAM" },
+        select: { config_json: true },
+      });
+      expected = (refreshed?.config_json as any)?.webhook_secret;
+      if (expected) {
+        const b = Buffer.from(expected, "utf8");
+        if (a.length !== b.length) return false;
+        try {
+          if (timingSafeEqual(a, b)) {
+            this.logger.log(`[telegram] recovered + verified channel=${channelId}`);
+            return true;
+          }
+        } catch { /* fall through */ }
+      }
+      this.logger.warn(`[telegram] recovery completed but first request still mismatched channel=${channelId}`);
+    } catch (err) {
+      this.logger.warn(`[telegram] recovery failed for channel=${channelId}: ${(err as Error).message}`);
+    }
+
+    return false;
   }
 
   /**
