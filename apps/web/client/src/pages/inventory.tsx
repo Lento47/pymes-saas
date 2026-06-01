@@ -254,33 +254,32 @@ export default function InventoryPage() {
         onCategoryCreated={() => qc.invalidateQueries({ queryKey: ["inventory-categories"] })}
       />
 
-      {/* Stock adjust dialog */}
-      {adjusting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Ajustar stock — {adjusting.name}</h3>
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Stock actual: <span className="text-foreground font-semibold">{adjusting.current_stock}</span></p>
-              <div className="space-y-1.5">
-                <Label className="text-[11px]">Cantidad (+ entrada, − salida)</Label>
-                <Input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)} className="h-9 text-xs bg-background border-border" autoFocus />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px]">Motivo</Label>
-                <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} placeholder="Conteo físico, merma..." className="h-9 text-xs bg-background border-border" />
-              </div>
-              <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground font-semibold">{(adjusting.current_stock || 0) + adjustQty}</span></p>
+      <Dialog open={!!adjusting} onOpenChange={(open) => { if (!open) { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ajustar stock — {adjusting?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Stock actual: <span className="text-foreground font-semibold">{adjusting?.current_stock}</span></p>
+            <div className="space-y-1.5">
+              <Label className="text-[11px]">Cantidad (+ entrada, − salida)</Label>
+              <Input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)} className="h-9 text-xs bg-background border-border" autoFocus />
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
-              <Button size="sm" className="flex-1 h-8 text-xs" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
-                {adjustMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
-                Ajustar
-              </Button>
+            <div className="space-y-1.5">
+              <Label className="text-[11px]">Motivo</Label>
+              <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} placeholder="Conteo físico, merma..." className="h-9 text-xs bg-background border-border" />
             </div>
+            <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground font-semibold">{(adjusting?.current_stock || 0) + adjustQty}</span></p>
           </div>
-        </div>
-      )}
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
+            <Button size="sm" className="flex-1 h-8 text-xs" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjusting && adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
+              {adjustMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              Ajustar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="products" />
     </div>

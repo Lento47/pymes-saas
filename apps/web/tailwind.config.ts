@@ -72,13 +72,25 @@ export default {
             foreground: "hsl(var(--fg) / <alpha-value>)",
           },
         },
-        chart: {
-          "1": "hsl(var(--accent) / <alpha-value>)",
-          "2": "hsl(var(--success) / <alpha-value>)",
-          "3": "hsl(var(--warning) / <alpha-value>)",
-          "4": "hsl(262 60% 62% / <alpha-value>)",
-          "5": "hsl(var(--danger) / <alpha-value>)",
-        },
+        success: {
+            DEFAULT: "hsl(var(--success) / <alpha-value>)",
+            foreground: "hsl(0 0% 100% / <alpha-value>)",
+          },
+          warning: {
+            DEFAULT: "hsl(var(--warning) / <alpha-value>)",
+            foreground: "hsl(0 0% 100% / <alpha-value>)",
+          },
+          info: {
+            DEFAULT: "hsl(var(--info) / <alpha-value>)",
+            foreground: "hsl(var(--info-fg) / <alpha-value>)",
+          },
+          chart: {
+            "1": "hsl(var(--accent) / <alpha-value>)",
+            "2": "hsl(var(--success) / <alpha-value>)",
+            "3": "hsl(var(--warning) / <alpha-value>)",
+            "4": "hsl(262 60% 62% / <alpha-value>)",
+            "5": "hsl(var(--danger) / <alpha-value>)",
+          },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

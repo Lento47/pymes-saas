@@ -218,12 +218,14 @@ export default function AutomationsPage() {
                 className="h-8 pl-8 pr-8 text-[12px] bg-background border-border rounded-lg"
               />
               {searchQuery && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -336,13 +338,15 @@ export default function AutomationsPage() {
                               </div>
                               <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{recipe.description}</p>
                               {hasConfig && recipe.is_active && (
-                                <button
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => setExpandedRecipe(isExpanded ? null : recipe.slug)}
-                                  className="mt-1.5 flex items-center gap-1 text-[11px] text-primary/80 hover:text-primary"
+                                  className="mt-1.5 h-6 px-2 flex items-center gap-1 text-[11px] text-primary/80 hover:text-primary"
                                 >
                                   {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                   Configurar
-                                </button>
+                                </Button>
                               )}
                               {isExpanded && (
                                 <RecipeConfigForm
