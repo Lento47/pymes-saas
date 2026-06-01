@@ -193,7 +193,7 @@ export class SupportOrchestratorService {
         return clarificationResult;
       }
 
-      // ── Routed pipeline (feature-based) ──
+      // ── Routed pipeline (feature-based, council phases) ──
       const feature = caseTypeToFeature(caseType);
       const pipeline = buildPipelineByFeature({
         profile,
@@ -201,36 +201,103 @@ export class SupportOrchestratorService {
         needsHuman,
       });
 
+      // Phase separation: council agents run around domain specialists
+      const PRE_SPECIALISTS = new Set<SupportAgentSlug>(["evidence-collector"]);
+      const POST_SPECIALISTS = new Set<SupportAgentSlug>([
+        "consensus-arbiter", "user-communication", "human-handoff",
+      ]);
+      const SECURITY_FIX = new Set<SupportAgentSlug>([
+        "code-fix-proposal", "security-compliance", "pr-review",
+      ]);
+
+      const preStages = pipeline.filter((s) => PRE_SPECIALISTS.has(s));
+      const specialistStages = pipeline.filter(
+        (s) => !PRE_SPECIALISTS.has(s) && !POST_SPECIALISTS.has(s) && !SECURITY_FIX.has(s),
+      );
+      const postStages = pipeline.filter((s) => POST_SPECIALISTS.has(s));
+      const secFixStages = pipeline.filter((s) => SECURITY_FIX.has(s));
+
       let carriedContext = `${triageCtx}\n\nClasificación triage: ${JSON.stringify(triageOut ?? {})}\nFeature: ${feature}`;
       let securityPassed = false;
 
-      for (const slug of pipeline) {
-        // Hard gate: never run the PR-review stage unless a prior security
-        // stage explicitly passed.
+      // ── Phase 1: Evidence Collection ──
+      for (const slug of preStages) {
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
+        if (stage?.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // ── Phase 2: Domain Specialists (parallel council) ──
+      const allFindings: string[] = [];
+      if (specialistStages.length > 0) {
+        const parallelResults = await this.runParallelStages(
+          specialistStages, profile, carriedContext, sessionId,
+          stages, input.workspace_id, run.id,
+        );
+        for (const rec of parallelResults) {
+          if (rec.output_preview) {
+            allFindings.push(`[${rec.agent_slug}]: ${rec.output_preview}`);
+          }
+          const diag = this.parseDiagnostic(rec.structured);
+          if (diag?.needs_human_review) needsHuman = true;
+        }
+      }
+
+      // ── Phase 3: Consensus / Arbiter ──
+      if (postStages.includes("consensus-arbiter") && allFindings.length > 0) {
+        const findingsCtx = [carriedContext, `\n[FINDINGS DE LOS AGENTES]`, ...allFindings].join("\n");
+        const arbiter = await this.runStage(
+          "consensus-arbiter", profile, findingsCtx,
+          `${sessionId}:council`, stages, input.workspace_id, run.id,
+        );
+        if (arbiter?.output_preview) {
+          carriedContext += `\n\n[consensus-arbiter] ${arbiter.output_preview}`.slice(0, 8000);
+        }
+        const aDiag = this.parseDiagnostic(arbiter?.structured);
+        if (aDiag?.needs_human_review) needsHuman = true;
+      } else if (allFindings.length > 0) {
+        carriedContext += `\n\n[Specialist Findings]\n${allFindings.join("\n")}`;
+      }
+
+      // ── Phase 4: Security + Fix stages (sequential) ──
+      for (const slug of secFixStages) {
         if (slug === "pr-review" && !securityPassed) {
-          stages.push({
-            agent_slug: slug,
-            allowed: false,
-            skipped_reason: "security-compliance no aprobó; PR no se revisa",
-          });
+          stages.push({ agent_slug: slug, allowed: false, skipped_reason: "security-compliance no aprobó; PR no se revisa" });
           needsHuman = true;
           continue;
         }
-
         const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
         if (!stage) continue;
-
-        // Track security signoff for downstream gating.
         if (slug === "security-compliance") {
           securityPassed = this.securityApproved(stage.output_preview ?? "");
           if (!securityPassed) needsHuman = true;
         }
-
+        if (stage.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
         const diag = this.parseDiagnostic(stage.structured);
         if (diag?.needs_human_review) needsHuman = true;
+      }
 
-        // Carry a compact summary of this stage into the next one.
-        carriedContext += `\n\n[${slug}] ${stage.output_preview ?? ""}`.slice(0, 8000);
+      // ── Phase 5: User Communication ──
+      if (postStages.includes("user-communication")) {
+        const comm = await this.runStage(
+          "user-communication", profile, carriedContext,
+          `${sessionId}:comm`, stages, input.workspace_id, run.id,
+        );
+        if (comm?.output_preview) {
+          carriedContext += `\n\n[user-communication] ${comm.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // ── Phase 6: Human Handoff (if needed) ──
+      if (needsHuman && postStages.includes("human-handoff")) {
+        await this.runStage(
+          "human-handoff", profile,
+          `${carriedContext}\n\n⚠️ Requiere revisión humana. Prepará resumen ejecutivo.`,
+          `${sessionId}:handoff`, stages, input.workspace_id, run.id,
+        );
       }
 
       const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
@@ -757,6 +824,38 @@ export class SupportOrchestratorService {
       this.logger.warn(`[orchestrator] stage ${slug} error: ${err?.message}`);
       return rec;
     }
+  }
+
+  /**
+   * Run multiple specialist agents in parallel.
+   * Each gets the same context and session prefix. Non-fatal per-agent —
+   * individual failures are recorded and the others continue.
+   */
+  private async runParallelStages(
+    slugs: SupportAgentSlug[],
+    profile: SupportProfile,
+    context: string,
+    sessionId: string,
+    stages: StageRecord[],
+    workspaceId?: string,
+    runId?: string,
+  ): Promise<StageRecord[]> {
+    const results = await Promise.all(
+      slugs.map((slug) =>
+        this.runStage(slug, profile, context, `${sessionId}:${slug}`, stages, workspaceId, runId)
+          .then((rec) => rec ?? {
+            agent_slug: slug,
+            allowed: true,
+            error: "stage returned null",
+          } as StageRecord)
+          .catch((err) => ({
+            agent_slug: slug,
+            allowed: true,
+            error: err?.message ?? "parallel execution failed",
+          } as StageRecord)),
+      ),
+    );
+    return results;
   }
 
   private tryParseJson(text: string): unknown {
