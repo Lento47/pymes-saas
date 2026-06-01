@@ -2,30 +2,38 @@
  * SupportOrchestratorService
  *
  * Drives the multi-agent support pipeline:
- *   triage → (route) → diagnostic → fix-proposal → security → pr-review
+ *   triage → feature router → agent council → consensus → communication
  * with a human-handoff terminal for sensitive cases.
  *
  * The orchestrator only SEQUENCES agents and records an audit trail. It never
  * performs a privileged action itself — PR creation happens inside an agent's
  * Flowise flow via the create_github_pr tool, which is independently gated by
- * PrCreationPolicyService. Stages the tier may not use are skipped.
+ * PrCreationPolicyService. Agents the profile may not use are skipped.
  */
 import { Injectable, Logger, Optional } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { FlowiseClient } from "../flowise/flowise.client";
-import { FlowiseSetupService, PLAN_TO_TIER } from "../flowise-setup.service";
+import { FlowiseSetupService } from "../flowise-setup.service";
 import { AgentGuardrailsService } from "../runtime/agent-guardrails.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { EventsGateway } from "../../gateways/events.gateway";
 import { CreditsService } from "../../memory/credits.service";
-import { getSupportAgent } from "./support-agents.catalog";
-import { buildPipeline } from "./support-pipeline";
+import {
+  getSupportAgent,
+  planToProfile,
+  profileCanUseAgent,
+  getProfilePolicy,
+  caseTypeToFeature,
+} from "./support-agents.catalog";
+import { buildPipelineByFeature } from "./support-pipeline";
 import type {
   DiagnosticOutput,
   SupportAgentSlug,
   SupportCaseType,
+  SupportFeature,
+  SupportProfile,
   SupportSeverity,
   SupportTier,
 } from "./support-agent.types";
@@ -58,7 +66,7 @@ export interface StageRecord {
 
 export interface OrchestrateResult {
   run_id: string;
-  tier: SupportTier;
+  tier: string; // SupportProfile name (stored in legacy tier column)
   case_type?: SupportCaseType;
   severity?: SupportSeverity;
   status: "COMPLETED" | "NEEDS_HUMAN" | "FAILED";
@@ -97,7 +105,8 @@ export class SupportOrchestratorService {
   }
 
   async orchestrate(input: OrchestrateInput): Promise<OrchestrateResult> {
-    const tier = await this.resolveTier(input.workspace_id);
+    const profile = await this.resolveProfile(input.workspace_id);
+    const policy = getProfilePolicy(profile);
     const sessionId = randomUUID();
     const stages: StageRecord[] = [];
 
@@ -106,7 +115,7 @@ export class SupportOrchestratorService {
       data: {
         workspace_id: input.workspace_id,
         diagnostic_case_id: input.diagnostic_case_id ?? null,
-        tier,
+        tier: profile, // store profile in tier column (backward compat)
         status: "RUNNING",
         stages_json: [],
       },
@@ -122,22 +131,22 @@ export class SupportOrchestratorService {
       event: "orchestration:started",
       run_id: run.id,
       diagnostic_case_id: input.diagnostic_case_id,
-      tier,
+      tier: profile,
     });
 
     try {
       // Pre-fetch workspace and diagnostic case context so stage flows don't
       // depend on Flowise Tool nodes to understand what case is being analyzed.
       const [wsCtx, caseCtx] = await Promise.all([
-        this.fetchWorkspaceContext(input.workspace_id, tier),
+        this.fetchWorkspaceContext(input.workspace_id, profile),
         this.fetchDiagnosticCaseContext(input.workspace_id, input.diagnostic_case_id),
       ]);
 
-      // ── Stage 0: triage (all tiers) ──
+      // ── Stage 0: triage (all profiles) ──
       const triageCtx = [wsCtx, caseCtx, `Mensaje del usuario:\n${input.message}`]
         .filter(Boolean)
         .join("\n\n");
-      const triage = await this.runStage("intake-triage", tier, triageCtx, sessionId, stages, input.workspace_id, run.id);
+      const triage = await this.runStage("intake-triage", profile, triageCtx, sessionId, stages, input.workspace_id, run.id);
       const triageOut = this.parseDiagnostic(triage?.structured);
       caseType = triageOut?.case_type ?? "unknown";
       severity = triageOut?.severity ?? "medium";
@@ -148,7 +157,7 @@ export class SupportOrchestratorService {
         const summary = triageOut.summary || "Se necesita más información para diagnosticar el problema.";
         const clarificationResult: OrchestrateResult = {
           run_id: run.id,
-          tier,
+          tier: profile as any,
           case_type: caseType,
           severity,
           status: "NEEDS_CLARIFICATION" as any,
@@ -177,22 +186,22 @@ export class SupportOrchestratorService {
           event: "orchestration:done",
           run_id: run.id,
           diagnostic_case_id: input.diagnostic_case_id,
-          tier,
+          tier: profile,
           result: clarificationResult,
         });
 
         return clarificationResult;
       }
 
-      // ── Routed pipeline ──
-      const pipeline = buildPipeline({
-        tier,
-        caseType,
-        severity,
-        allowPrOverride: input.allow_pr_creation,
+      // ── Routed pipeline (feature-based) ──
+      const feature = caseTypeToFeature(caseType);
+      const pipeline = buildPipelineByFeature({
+        profile,
+        feature,
+        needsHuman,
       });
 
-      let carriedContext = `${triageCtx}\n\nClasificación triage: ${JSON.stringify(triageOut ?? {})}`;
+      let carriedContext = `${triageCtx}\n\nClasificación triage: ${JSON.stringify(triageOut ?? {})}\nFeature: ${feature}`;
       let securityPassed = false;
 
       for (const slug of pipeline) {
@@ -208,7 +217,7 @@ export class SupportOrchestratorService {
           continue;
         }
 
-        const stage = await this.runStage(slug, tier, carriedContext, sessionId, stages, input.workspace_id, run.id);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
         if (!stage) continue;
 
         // Track security signoff for downstream gating.
@@ -225,7 +234,7 @@ export class SupportOrchestratorService {
       }
 
       const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
-      const summary = this.buildSummary(tier, caseType, severity, stages, needsHuman);
+      const summary = this.buildSummary(profile, caseType, severity, stages, needsHuman);
 
       await this.prisma.supportOrchestrationRun.update({
         where: { id: run.id },
@@ -254,7 +263,7 @@ export class SupportOrchestratorService {
 
       const result: OrchestrateResult = {
         run_id: run.id,
-        tier,
+        tier: profile,
         case_type: caseType,
         severity,
         status,
@@ -268,7 +277,7 @@ export class SupportOrchestratorService {
         event: "orchestration:done",
         run_id: run.id,
         diagnostic_case_id: input.diagnostic_case_id,
-        tier,
+        tier: profile,
         result,
       });
 
@@ -282,7 +291,7 @@ export class SupportOrchestratorService {
       this.logger.error(`[orchestrator] run ${run.id} failed: ${err?.message}`);
       const failedResult: OrchestrateResult = {
         run_id: run.id,
-        tier,
+        tier: profile,
         case_type: caseType,
         severity,
         status: "FAILED",
@@ -308,7 +317,7 @@ export class SupportOrchestratorService {
         event: "orchestration:done",
         run_id: run.id,
         diagnostic_case_id: input.diagnostic_case_id,
-        tier,
+        tier: profile,
         result: failedResult,
       });
 
@@ -327,7 +336,7 @@ export class SupportOrchestratorService {
     });
     if (!run) throw new Error("No se encontró un caso pendiente de clarificación con ese ID.");
 
-    const tier = (run.tier as SupportTier) ?? "TIER_1";
+    const profile = (run.tier as SupportProfile) ?? "FREE_GUIDED";
     const sessionId = randomUUID();
     const stages: StageRecord[] = (run.stages_json as unknown as StageRecord[]) ?? [];
     const caseType = (run.case_type as SupportCaseType) ?? "unknown";
@@ -338,7 +347,7 @@ export class SupportOrchestratorService {
 
     try {
       const [wsCtx, caseCtx] = await Promise.all([
-        this.fetchWorkspaceContext(workspaceId, tier),
+        this.fetchWorkspaceContext(workspaceId, profile),
         this.fetchDiagnosticCaseContext(workspaceId, run.diagnostic_case_id ?? undefined),
       ]);
 
@@ -352,12 +361,12 @@ export class SupportOrchestratorService {
         .filter(Boolean)
         .join("\n\n");
 
-      // ── Routed pipeline (skip triage, start from diagnostic) ──
-      const pipeline = buildPipeline({
-        tier,
-        caseType,
-        severity,
-        allowPrOverride: false,
+      // ── Routed pipeline (feature-based, skip triage) ──
+      const feature = caseTypeToFeature(caseType);
+      const pipeline = buildPipelineByFeature({
+        profile,
+        feature,
+        needsHuman,
       });
 
       // Skip triage since it already ran
@@ -376,7 +385,7 @@ export class SupportOrchestratorService {
           continue;
         }
 
-        const stage = await this.runStage(slug, tier, carriedContext, sessionId, stages, workspaceId, runId);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
         if (!stage) continue;
 
         if (slug === "security-compliance") {
@@ -391,7 +400,7 @@ export class SupportOrchestratorService {
       }
 
       const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
-      const summary = this.buildSummary(tier, caseType, severity, stages, needsHuman);
+      const summary = this.buildSummary(profile, caseType, severity, stages, needsHuman);
 
       await this.prisma.supportOrchestrationRun.update({
         where: { id: runId },
@@ -413,7 +422,7 @@ export class SupportOrchestratorService {
 
       const result: OrchestrateResult = {
         run_id: runId,
-        tier,
+        tier: profile,
         case_type: caseType,
         severity,
         status,
@@ -426,7 +435,7 @@ export class SupportOrchestratorService {
       this.events?.emitOrchestrationProgress(workspaceId, {
         event: "orchestration:done",
         run_id: runId,
-        tier,
+        tier: profile,
         result,
       });
 
@@ -439,7 +448,7 @@ export class SupportOrchestratorService {
       this.logger.error(`[orchestrator] continue run ${runId} failed: ${err?.message}`);
       const failedResult: OrchestrateResult = {
         run_id: runId,
-        tier,
+        tier: profile,
         case_type: caseType,
         severity,
         status: "FAILED",
@@ -537,7 +546,7 @@ export class SupportOrchestratorService {
 
   // ── Internals ──────────────────────────────────────────────────────────────
 
-  private async fetchWorkspaceContext(workspaceId: string, tier: SupportTier): Promise<string> {
+  private async fetchWorkspaceContext(workspaceId: string, profile: string): Promise<string> {
     try {
       const [ws, counts] = await Promise.all([
         this.prisma.workspace.findUnique({
@@ -555,13 +564,13 @@ export class SupportOrchestratorService {
         `[Contexto del Workspace]`,
         `ID: ${ws?.id ?? workspaceId}`,
         `Nombre: ${ws?.name ?? "—"}`,
-        `Plan: ${ws?.plan ?? "FREE"} | Tier: ${tier}`,
+        `Plan: ${ws?.plan ?? "FREE"} | Perfil: ${profile}`,
         `Estado: ${ws?.status ?? "—"}`,
         `Zona horaria: ${ws?.timezone ?? "UTC"} | Locale: ${ws?.locale ?? "es"}`,
         `Estadísticas: ${contacts} contactos, ${conversations} conversaciones, ${tasks} tareas`,
       ].join("\n");
     } catch {
-      return `[Contexto del Workspace]\nID: ${workspaceId} | Tier: ${tier}`;
+      return `[Contexto del Workspace]\nID: ${workspaceId} | Perfil: ${profile}`;
     }
   }
 
@@ -642,12 +651,12 @@ export class SupportOrchestratorService {
     }
   }
 
-  private async resolveTier(workspaceId: string): Promise<SupportTier> {
+  private async resolveProfile(workspaceId: string): Promise<SupportProfile> {
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true },
     });
-    return (PLAN_TO_TIER[ws?.plan ?? "FREE"] ?? "TIER_1") as SupportTier;
+    return planToProfile(ws?.plan ?? "FREE");
   }
 
   /**
@@ -656,7 +665,7 @@ export class SupportOrchestratorService {
    */
   private async runStage(
     slug: SupportAgentSlug,
-    tier: SupportTier,
+    profile: SupportProfile,
     context: string,
     sessionId: string,
     stages: StageRecord[],
@@ -664,11 +673,11 @@ export class SupportOrchestratorService {
     runId?: string,
   ): Promise<StageRecord | null> {
     const def = getSupportAgent(slug);
-    if (!def || !def.tierAccess.includes(tier)) {
+    if (!def || !profileCanUseAgent(profile, slug)) {
       const rec: StageRecord = {
         agent_slug: slug,
         allowed: false,
-        skipped_reason: `Tier ${tier} no puede usar ${slug}`,
+        skipped_reason: `Perfil ${profile} no puede usar ${slug}`,
       };
       stages.push(rec);
       if (workspaceId && runId) {
@@ -777,7 +786,7 @@ export class SupportOrchestratorService {
   }
 
   private buildSummary(
-    tier: SupportTier,
+    profile: string,
     caseType: SupportCaseType | undefined,
     severity: SupportSeverity | undefined,
     stages: StageRecord[],
@@ -804,7 +813,7 @@ export class SupportOrchestratorService {
 
     // Header
     parts.push(`### ${caseType ? (caseType.charAt(0).toUpperCase() + caseType.slice(1)).replace(/_/g, ' ') : 'Soporte'}`);
-    parts.push(`**Severidad:** ${severity ?? "—"} · **Tier:** ${tier}`);
+    parts.push(`**Severidad:** ${severity ?? "—"} · **Perfil:** ${profile}`);
 
     // Diagnosis
     if (triageStage?.output_preview) {

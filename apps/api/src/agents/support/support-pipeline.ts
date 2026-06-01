@@ -1,92 +1,99 @@
 /**
- * Support pipeline planner — pure routing logic (no I/O).
+ * Support OS — dynamic agent group pipeline.
  *
- * Given a tier and the triage classification, decide the ordered list of
- * specialized agents to run. Human handoff is ONLY for truly non-automatable
- * actions (financial transactions, production deploys). Security and billing
- * cases go through their specialized agents — they can diagnose, explain, and
- * recommend. Human is only for the final merge/action decision.
+ * Given a feature classification and a profile, assemble the ordered list
+ * of specialist agents to run. Triage (`intake-triage`) is assumed to have
+ * already run. The returned list is filtered by profile capabilities.
+ *
+ * Unlike the old `buildPipeline`, this doesn't hardcode 6 case types.
+ * Agent groups are defined declaratively in `AGENT_GROUPS` and filtered
+ * by `SupportProfilePolicy.allowedAgents`.
  */
-import type {
-  SupportAgentSlug,
-  SupportCaseType,
-  SupportSeverity,
-  SupportTier,
-} from "./support-agent.types";
-import { tierCanUseAgent, tierAllowsPrCreation } from "./support-agents.catalog";
+
+import type { SupportAgentSlug, SupportFeature, SupportProfile } from "./support-agent.types";
+import { buildAgentGroup, caseTypeToFeature, getProfilePolicy, profileCanUseAgent } from "./support-agents.catalog";
 
 export interface PipelinePlanInput {
+  profile: SupportProfile;
+  feature: SupportFeature;
+  /** Whether the triage classified this as needing human attention. */
+  needsHuman?: boolean;
+}
+
+/**
+ * Build the ordered agent group for a feature.
+ * Includes optional code-fix and PR-review stages for profiles that support them.
+ */
+export function buildPipelineByFeature(input: PipelinePlanInput): SupportAgentSlug[] {
+  const { profile, feature, needsHuman } = input;
+  const policy = getProfilePolicy(profile);
+
+  const group = buildAgentGroup(feature, profile);
+
+  // Append code-fix → security → PR path for engineering-capable profiles
+  if (policy.canCreateFixProposal && group.includes("technical-diagnostic")) {
+    if (profileCanUseAgent(profile, "code-fix-proposal")) {
+      group.push("code-fix-proposal");
+    }
+    if (profileCanUseAgent(profile, "security-compliance")) {
+      group.push("security-compliance");
+    }
+    if (policy.canCreatePrDraft && profileCanUseAgent(profile, "pr-review")) {
+      group.push("pr-review");
+    }
+  }
+
+  // Human handoff for profiles that need it on sensitive cases
+  if (needsHuman && profileCanUseAgent(profile, "human-handoff")) {
+    group.push("human-handoff");
+  }
+
+  return group;
+}
+
+// ── Backward compatibility — kept for existing callers ──────────────────────
+
+import type { SupportCaseType, SupportSeverity, SupportTier } from "./support-agent.types";
+import { tierCanUseAgent, tierAllowsPrCreation } from "./support-agents.catalog";
+
+/** @deprecated Use `buildPipelineByFeature` with profiles instead. */
+export interface LegacyPipelineInput {
   tier: SupportTier;
   caseType: SupportCaseType;
-  severity: SupportSeverity;
+  severity?: SupportSeverity;
   /** Tier 3 opt-in to allow the fix→PR branch. */
   allowPrOverride?: boolean;
 }
 
-/**
- * Build the ordered agent pipeline AFTER triage has classified the case.
- * Triage (`intake-triage`) is assumed to have already run. The returned list
- * is filtered to agents the tier may actually use.
- *
- * PHILOSOPHY: Agents SOLVE problems. Human handoff is ONLY for actions that
- * literally cannot be automated (money movement, production deploys).
- * Diagnosing, explaining, and proposing fixes is what agents DO.
- */
-export function buildPipeline(input: PipelinePlanInput): SupportAgentSlug[] {
+/** @deprecated Use `buildPipelineByFeature` with profiles instead. */
+export function buildPipeline(input: LegacyPipelineInput): SupportAgentSlug[] {
   const { tier, caseType, severity } = input;
+  const feature = caseTypeToFeature(caseType);
   const stages: SupportAgentSlug[] = [];
 
-  switch (caseType) {
-    case "bug": {
-      stages.push("technical-diagnostic");
-      // Code-fix branch only for tiers that can propose code.
-      if (tierCanUseAgent(tier, "code-fix-proposal")) {
-        stages.push("code-fix-proposal");
-        // Security review is mandatory before any PR.
-        stages.push("security-compliance");
-        // Only chain pr-review when the tier may actually open PRs.
-        if (tierAllowsPrCreation(tier, input.allowPrOverride ?? false)) {
-          stages.push("pr-review");
-        }
-      }
-      break;
+  // Use the new feature-based routing but filter by tier for backward compat
+  const featureGroup = buildAgentGroup(feature, "ENTERPRISE_CUSTOM"); // full group
+  for (const slug of featureGroup) {
+    if (slug === "intake-triage" || slug === "user-communication") continue; // already handled
+    if (tierCanUseAgent(tier, slug)) {
+      stages.push(slug);
     }
-    case "provider_issue":
-      stages.push("channel-integration");
-      // If the channel agent suspects it's a code bug, route to diagnostic
-      break;
-    case "configuration":
-    case "user_error":
-      stages.push("customer-support");
-      break;
-    case "billing":
-      // Billing agent can diagnose, explain plans, check limits, and recommend.
-      // Human handoff only triggered by the agent itself when actual money
-      // movement is needed (refund, plan change, etc.)
-      stages.push("billing-subscription");
-      break;
-    case "security":
-      // Security agent reviews the case. It decides whether to block or pass.
-      // Human handoff only for confirmed critical risks.
-      stages.push("security-compliance");
-      break;
-    case "unknown":
-    default:
-      stages.push("customer-support");
-      break;
   }
 
-  // Human handoff is ONLY added when agents explicitly flag needs_human_review.
-  // We do NOT auto-append it here — agents are capable of resolving most cases
-  // on their own. The human-handoff stage is triggered by the orchestrator
-  // when needs_human_review is true AND the case requires human action.
+  // Code-fix branch for tiers that can propose code
+  if (caseType === "bug" && tierCanUseAgent(tier, "code-fix-proposal")) {
+    stages.push("code-fix-proposal");
+    stages.push("security-compliance");
+    if (tierAllowsPrCreation(tier, input.allowPrOverride ?? false)) {
+      stages.push("pr-review");
+    }
+  }
 
-  // Filter to what the tier is actually allowed to use, preserving order and
-  // removing duplicates.
+  // Dedup
   const seen = new Set<SupportAgentSlug>();
   return stages.filter((slug) => {
     if (seen.has(slug)) return false;
     seen.add(slug);
-    return tierCanUseAgent(tier, slug);
+    return true;
   });
 }
