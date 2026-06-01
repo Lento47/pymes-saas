@@ -6,6 +6,9 @@ import {
   Send,
   Loader2,
   ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
   CheckCircle2,
   LifeBuoy,
   Wifi,
@@ -18,10 +21,10 @@ import {
   Stethoscope,
   Clock,
   History,
-  ChevronRight,
   XCircle,
   Check,
   X,
+  SkipForward,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/use-auth';
@@ -547,18 +550,204 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   );
 }
 
+function RunDetailExpanded({ runId, onClose }: { runId: string; onClose: () => void }) {
+  const [liveStages, setLiveStages] = useState<LiveStage[]>([]);
+  const [runStatus, setRunStatus] = useState<string | null>(null);
+
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ["supportRun", runId],
+    queryFn: () => api.getSupportRun(runId),
+    staleTime: 15_000,
+  });
+
+  // WebSocket: live progress for active runs
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const onStage = (payload: any) => {
+      if (payload.run_id !== runId) return;
+      if (!payload.stage) return;
+      setLiveStages(prev => [...prev, payload.stage]);
+    };
+    const onDone = (payload: any) => {
+      if (payload.run_id !== runId) return;
+      setRunStatus(payload.result?.status ?? 'COMPLETED');
+    };
+
+    socket.on('orchestration:stage-complete', onStage);
+    socket.on('orchestration:done', onDone);
+    return () => {
+      socket.off('orchestration:stage-complete', onStage);
+      socket.off('orchestration:done', onDone);
+    };
+  }, [runId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Cargando detalle del caso...
+      </div>
+    );
+  }
+
+  const run = detail as Record<string, any> | null;
+  if (!run) {
+    return (
+      <div className="px-4 py-3 text-xs text-muted-foreground">No se pudo cargar el detalle.</div>
+    );
+  }
+
+  const stages: any[] = Array.isArray(run.stages) ? run.stages : [];
+  const isRunning = run.status === 'RUNNING' || (!runStatus && run.status !== 'COMPLETED' && run.status !== 'FAILED' && run.status !== 'NEEDS_HUMAN' && run.status !== 'CLOSED');
+  const statusLabel = runStatus ?? run.status;
+  const showStages = stages.length > 0 || liveStages.length > 0;
+  const allStages = [...stages, ...liveStages.filter(ls => !stages.some(s => s.agent_slug === ls.agent_slug))];
+
+  return (
+    <div className="border-t border-border/60">
+      {/* Status header */}
+      <div className={`flex items-center gap-2 px-4 py-2.5 ${
+        statusLabel === 'COMPLETED' ? 'border-b border-emerald-500/10 bg-emerald-500/[0.03]' :
+        statusLabel === 'NEEDS_HUMAN' ? 'border-b border-amber-500/10 bg-amber-500/[0.03]' :
+        statusLabel === 'RUNNING' ? 'border-b border-primary/10 bg-primary/[0.03]' :
+        statusLabel === 'FAILED' ? 'border-b border-destructive/10 bg-destructive/[0.03]' :
+        'border-b border-muted-foreground/10 bg-muted/[0.02]'
+      }`}>
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+          statusLabel === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/30 bg-emerald-500/5' :
+          statusLabel === 'NEEDS_HUMAN' ? 'text-amber-600 border-amber-500/30 bg-amber-500/5' :
+          statusLabel === 'RUNNING' ? 'text-primary border-primary/30 bg-primary/5' :
+          statusLabel === 'FAILED' ? 'text-destructive border-destructive/30 bg-destructive/5' :
+          'text-muted-foreground border-border bg-muted'
+        }`}>
+          {statusLabel === 'RUNNING' && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+          {statusLabel === 'COMPLETED' && <CheckCircle2 className="w-2.5 h-2.5" />}
+          {statusLabel === 'NEEDS_HUMAN' && <AlertCircle className="w-2.5 h-2.5" />}
+          {statusLabel === 'FAILED' && <XCircle className="w-2.5 h-2.5" />}
+          {statusLabel === 'CLOSED' && <X className="w-2.5 h-2.5" />}
+          {statusLabel === 'COMPLETED' ? 'Resuelto' :
+           statusLabel === 'NEEDS_HUMAN' ? 'Requiere revisión' :
+           statusLabel === 'RUNNING' ? 'En progreso' :
+           statusLabel === 'FAILED' ? 'Falló' :
+           statusLabel === 'CLOSED' ? 'Cerrado' :
+           statusLabel}
+        </span>
+        {run.case_type && (
+          <span className="text-[10px] text-muted-foreground capitalize">{run.case_type}</span>
+        )}
+        {run.severity && (
+          <span className="text-[10px] text-muted-foreground/70">· {run.severity}</span>
+        )}
+        <span className="ml-auto text-[10px] text-muted-foreground/60">
+          {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true, locale: es }) : ''}
+        </span>
+      </div>
+
+      {/* Summary */}
+      {run.summary && (
+        <div className="px-4 py-3 border-b border-border/30">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="text-xs leading-relaxed text-foreground/80 mb-1.5 last:mb-0">{children}</p>,
+              ul: ({ children }) => <ul className="mb-1.5 list-disc pl-4 text-xs last:mb-0">{children}</ul>,
+              li: ({ children }) => <li className="mb-0.5 text-xs">{children}</li>,
+              code: ({ children }) => <code className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">{children}</code>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            }}
+          >{run.summary}</ReactMarkdown>
+        </div>
+      )}
+
+      {/* Pipeline stages */}
+      {showStages && (
+        <div className="px-4 py-3 space-y-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+            {isRunning ? 'Pipeline en ejecución' : 'Pipeline ejecutado'}
+          </p>
+          {allStages.map((stage: any, i: number) => {
+            const isLive = !stage.output_preview && !stage.error && !stage.skipped_reason && isRunning;
+            return (
+              <div key={i} className={`flex items-start gap-2.5 rounded-md border px-3 py-2 text-xs ${
+                isLive ? 'border-primary/20 bg-primary/5' :
+                stage.error ? 'border-destructive/20 bg-destructive/5' :
+                stage.skipped_reason ? 'border-border/40 bg-muted/20' :
+                'border-emerald-500/20 bg-emerald-500/5'
+              }`}>
+                {isLive ? (
+                  <Loader2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary animate-spin" />
+                ) : stage.error ? (
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-destructive" />
+                ) : stage.skipped_reason ? (
+                  <SkipForward className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground/40" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-500" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">
+                    {stage.agent_slug?.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) ?? 'Stage'}
+                  </p>
+                  {isLive ? (
+                    <p className="text-muted-foreground mt-0.5">Ejecutando...</p>
+                  ) : stage.error ? (
+                    <p className="text-destructive mt-0.5">{stage.error}</p>
+                  ) : stage.skipped_reason ? (
+                    <p className="text-muted-foreground mt-0.5">{stage.skipped_reason}</p>
+                  ) : (
+                    stage.output_preview && (
+                      <p className="text-muted-foreground mt-0.5 line-clamp-2">{stage.output_preview.slice(0, 300)}</p>
+                    )
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {stage.duration_ms && (
+                      <span className="text-[10px] text-muted-foreground/60">{(stage.duration_ms / 1000).toFixed(1)}s</span>
+                    )}
+                    {stage.cost_credits != null && stage.cost_credits > 0 && (
+                      <span className="text-[10px] text-muted-foreground/60">{stage.cost_credits.toFixed(2)} créd.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {isRunning && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-primary/20 bg-primary/5">
+              <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
+              <span className="text-[10px] text-primary/80">Esperando siguiente etapa...</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cost footer */}
+      {(run.total_cost_credits != null && run.total_cost_credits > 0) && (
+        <div className="flex items-center justify-between border-t border-border/30 px-4 py-2">
+          <span className="text-[10px] text-muted-foreground">
+            {liveStages.length > 0 ? 'Costo acumulado' : 'Costo total'}
+          </span>
+          <span className="text-[11px] font-medium text-muted-foreground">{run.total_cost_credits.toFixed(2)} créditos</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SupportHistorySection() {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const { data: runs, isLoading } = useQuery({
     queryKey: ["supportRuns"],
-    queryFn: () => api.listSupportRuns(10),
+    queryFn: () => api.listSupportRuns(15),
     staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+      <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground py-2">
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        Cargando historial...
+        Cargando casos recientes...
       </div>
     );
   }
@@ -572,40 +761,64 @@ function SupportHistorySection() {
       <div className="flex items-center gap-2 mb-3">
         <History className="w-4 h-4 text-muted-foreground" />
         <h2 className="text-sm font-medium text-foreground">Casos recientes</h2>
+        <span className="text-[10px] text-muted-foreground/60 ml-1">{items.length}</span>
       </div>
-      <div className="space-y-2">
-        {items.slice(0, 5).map((run: any) => (
-          <Link
-            key={run.id}
-            href={`/support?agent=${run.case_type || 'whatsapp'}`}
-            className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/20 hover:bg-primary/5"
-          >
-            <div className={`flex-shrink-0 w-2 h-2 rounded-full ${
-              run.status === 'COMPLETED' ? 'bg-emerald-500' :
-              run.status === 'NEEDS_HUMAN' ? 'bg-amber-500' :
-              run.status === 'CLOSED' ? 'bg-muted-foreground/40' :
-              run.status === 'FAILED' ? 'bg-destructive' :
-              'bg-blue-500'
-            }`} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-foreground truncate">
-                {run.case_type ?? 'Soporte'} · {run.severity ?? '—'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                {run.summary?.slice(0, 120) ?? 'Sin resumen'}
-              </p>
-            </div>
-            <div className="flex-shrink-0 text-right">
-              <p className="text-[11px] text-muted-foreground">
-                {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true, locale: es }) : ''}
-              </p>
-              {run.total_cost_credits != null && run.total_cost_credits > 0 && (
-                <p className="text-[10px] text-muted-foreground/60">{run.total_cost_credits.toFixed(2)} créd.</p>
+      <div className="space-y-1.5">
+        {items.slice(0, 10).map((run: any) => {
+          const isExpanded = expandedId === run.id;
+          const isActive = run.status === 'RUNNING';
+
+          return (
+            <div
+              key={run.id}
+              className={`rounded-lg border transition-colors ${
+                isExpanded ? 'border-primary/30 bg-card' :
+                'border-border bg-card/60 hover:border-border/80 hover:bg-card'
+              }`}
+            >
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : run.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left"
+              >
+                <div className={`flex-shrink-0 w-2 h-2 rounded-full ${
+                  isActive ? 'bg-primary animate-pulse' :
+                  run.status === 'COMPLETED' ? 'bg-emerald-500' :
+                  run.status === 'NEEDS_HUMAN' ? 'bg-amber-500' :
+                  run.status === 'CLOSED' ? 'bg-muted-foreground/40' :
+                  run.status === 'FAILED' ? 'bg-destructive' :
+                  'bg-muted-foreground/50'
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-foreground truncate">
+                    {run.case_type ? (run.case_type.charAt(0).toUpperCase() + run.case_type.slice(1)) : 'Soporte'} · {run.severity ?? '—'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {run.summary?.slice(0, 120) ?? 'Sin resumen'}
+                  </p>
+                </div>
+                <div className="flex-shrink-0 text-right flex items-center gap-2">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true, locale: es }) : ''}
+                    </p>
+                    {run.total_cost_credits != null && run.total_cost_credits > 0 && (
+                      <p className="text-[10px] text-muted-foreground/60">{run.total_cost_credits.toFixed(2)} créd.</p>
+                    )}
+                  </div>
+                  {isExpanded ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />
+                  )}
+                </div>
+              </button>
+
+              {isExpanded && (
+                <RunDetailExpanded runId={run.id} onClose={() => setExpandedId(null)} />
               )}
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-          </Link>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
