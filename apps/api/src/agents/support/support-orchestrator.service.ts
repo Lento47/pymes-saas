@@ -40,7 +40,7 @@ export interface OrchestrateInput {
   triggered_by_user_id?: string;
 }
 
-interface StageRecord {
+export interface StageRecord {
   agent_slug: SupportAgentSlug;
   allowed: boolean;
   skipped_reason?: string;
@@ -584,11 +584,11 @@ export class SupportOrchestratorService {
     );
     if (result.success) {
       this.logger.log(
-        `Workspace ${workspaceId}: deducted ${cost} credits for support case ${runId.slice(0, 8)}. Balance: ${result.newBalance}`,
+        `Workspace ${workspaceId}: deducted ${Math.ceil(totalCost)} credits for support case ${runId.slice(0, 8)}. Balance: ${result.newBalance}`,
       );
     } else {
       this.logger.warn(
-        `Workspace ${workspaceId}: insufficient credits for support case ${runId.slice(0, 8)} (balance: ${result.newBalance}, needed: ${cost})`,
+        `Workspace ${workspaceId}: insufficient credits for support case ${runId.slice(0, 8)} (balance: ${result.newBalance}, needed: ${Math.ceil(totalCost)})`,
       );
     }
   }
