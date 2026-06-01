@@ -35,12 +35,28 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
     );
   }
 
-  if (s === "pending" || !deliveryStatus) {
+  // No explicit status — if outbound, treat as "sent" (at minimum the UI sent it)
+  if (!deliveryStatus && direction === "OUTBOUND") {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Clock className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+            <Check className="w-3 h-3 text-white/70 shrink-0" />
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">Enviado</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  if (s === "pending") {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Clock className="w-3 h-3 text-white/50 shrink-0" />
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">Pendiente</p>
@@ -55,7 +71,7 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Check className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+            <Check className="w-3 h-3 text-white/70 shrink-0" />
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">Enviado ✓</p>
@@ -70,7 +86,7 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <CheckCheck className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+            <CheckCheck className="w-3 h-3 text-white/70 shrink-0" />
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">Entregado ✓✓</p>
@@ -85,7 +101,7 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <CheckCheck className="w-3 h-3 text-sky-400 shrink-0" />
+            <CheckCheck className="w-3 h-3 text-sky-300 shrink-0" />
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">Leído ✓✓</p>
@@ -100,7 +116,7 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <CheckCheck className="w-3 h-3 text-sky-400 shrink-0" />
+            <CheckCheck className="w-3 h-3 text-sky-300 shrink-0" />
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">Reproducido</p>
@@ -110,6 +126,6 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
     );
   }
 
-  // Unknown status — show single check
-  return <Check className="w-3 h-3 text-muted-foreground/50 shrink-0" />;
+  // Unknown status — single check
+  return <Check className="w-3 h-3 text-white/70 shrink-0" />;
 }
