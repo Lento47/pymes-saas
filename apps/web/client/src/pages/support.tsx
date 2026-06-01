@@ -207,7 +207,7 @@ function StageResult({ stage }: { stage: StageRecord | LiveStage }) {
           <p className="text-muted-foreground mt-0.5">{stage.skipped_reason}</p>
         ) : (
           stage.output_preview && (
-            <p className="text-muted-foreground mt-0.5 line-clamp-2">{stage.output_preview.slice(0, 300)}</p>
+            <p className="text-muted-foreground mt-0.5 line-clamp-4">{stage.output_preview.slice(0, 800)}</p>
           )
         )}
         {stage.duration_ms && (
@@ -761,7 +761,7 @@ function RunDetailExpanded({ runId, onClose }: { runId: string; onClose: () => v
                         <p className="text-muted-foreground mt-0.5">{stage.skipped_reason}</p>
                       ) : (
                         stage.output_preview && (
-                          <p className="text-muted-foreground mt-0.5 line-clamp-2">{stage.output_preview.slice(0, 300)}</p>
+                          <p className="text-muted-foreground mt-0.5 line-clamp-4">{stage.output_preview.slice(0, 800)}</p>
                         )
                       )}
                       <div className="flex items-center gap-2 mt-1">
