@@ -791,50 +791,20 @@ export class MessagesService {
               return;
             }
 
-            // AI chain with agent persona + context enrichment
-            const dispatchOpts = {
-              systemPromptAddendum: decision.systemPromptAddendum,
-              contextEnrichment: decision.contextEnrichment,
-            };
-
-            if (flowise) {
-              flowise
-                .dispatch(workspaceId, conversationId, bodyText, dispatchOpts)
-                .then(async (handled) => {
-                  router.recordOutcome(workspaceId, decision, handled).catch(() => undefined);
-                  if (handled) { this.logger.log(`[emit-notify] router+flowise handled conv=${conversationId}`); return; }
-                  this.logger.log(`[emit-notify] router fallback conv=${conversationId} → triggerEmrendeAutoReply`);
-                  await this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive);
-                })
-                .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
-            } else {
-              this.logger.log(`[emit-notify] router+no-flowise direct trigger conv=${conversationId}`);
-              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
-                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-              );
-            }
+            // AI auto-reply: direct gateway (fast), skip Flowise for general auto-replies
+            this.logger.log(`[emit-notify] router direct trigger conv=${conversationId} intent=${decision.intent}`);
+            this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+              (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+            );
             return;
           }
         }
 
-        // Fallback when router is absent: original chain
-        if (flowise) {
-          flowise
-            .dispatch(workspaceId, conversationId, bodyText)
-            .then((handled) => {
-              if (handled) { this.logger.log(`[emit-notify] flowise handled conv=${conversationId}`); return; }
-              this.logger.log(`[emit-notify] flowise fallback conv=${conversationId} → triggerEmrendeAutoReply`);
-              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
-                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-              );
-            })
-            .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
-        } else {
-          this.logger.log(`[emit-notify] no flowise, direct trigger conv=${conversationId}`);
-          this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
-            (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-          );
-        }
+        // Fallback when router is absent: direct gateway
+        this.logger.log(`[emit-notify] no router, direct trigger conv=${conversationId}`);
+        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+          (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+        );
       })
       .catch((err) => this.logger.error("Error en agent run processMessage", err?.stack ?? err));
   }
