@@ -9,6 +9,10 @@ import { SearchDialog } from "@/components/shared/search-dialog";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
@@ -417,13 +421,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
               title={isCollapsed ? ws : undefined}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-primary/25 bg-primary/[0.12] text-primary shadow-sm">
+              <Avatar className="h-8 w-8">
                 {user?.workspace?.logo_url ? (
-                  <img src={user.workspace.logo_url} alt={ws} className="h-6 w-6 object-contain" />
+                  <img src={user.workspace.logo_url} alt={ws} className="h-8 w-8 object-contain" />
                 ) : (
-                  <span className="text-xs font-semibold">{workspaceInitial}</span>
+                  <AvatarFallback className="bg-primary/[0.12] text-primary text-xs font-semibold border border-primary/25 shadow-sm">
+                    {workspaceInitial}
+                  </AvatarFallback>
                 )}
-              </div>
+              </Avatar>
               {!isCollapsed && (
                 <>
                   <div className="min-w-0 flex-1">
@@ -676,12 +682,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div
             className={cn(
               "flex items-center rounded-xl border border-border/70 bg-sidebar-accent/30",
-              isCollapsed ? "justify-center p-1.5" : "gap-2 px-2.5 py-2",
+              isCollapsed ? "justify-center p-1.5" : "gap-2.5 px-2.5 py-2",
             )}
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/20 text-[11px] font-bold text-primary">
-              {initials}
-            </div>
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="bg-primary/20 text-primary text-[11px] font-bold border border-primary/30">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">{name}</p>
@@ -690,18 +698,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={logout}
             title={copy.logout}
             aria-label={copy.logout}
             className={cn(
-              "flex w-full items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/15 hover:text-destructive",
+              "w-full justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive",
               isCollapsed ? "h-9 px-0" : "gap-2 px-3 py-2 text-xs font-semibold",
             )}
           >
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />
             {!isCollapsed && <span>{copy.logout ?? "Logout"}</span>}
-          </button>
+          </Button>
         </div>
       </aside>
 
@@ -716,15 +726,16 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
-          <button
+          <Button
+            variant="outline"
             onClick={() => setSearchOpen(true)}
-            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-primary/20 bg-white/[0.04] px-3 text-left text-xs text-muted-foreground transition-all duration-200 hover:text-foreground md:flex"
+            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border-primary/20 bg-white/[0.04] px-3 text-left text-xs text-muted-foreground hover:text-foreground md:flex"
             title="Buscar (Ctrl+K)"
           >
             <Search className="h-3.5 w-3.5" />
             <span className="flex-1">{copy.searchPlaceholder}</span>
             <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">Ctrl K</kbd>
-          </button>
+          </Button>
 
           <button
             onClick={() => setSearchOpen(true)}
