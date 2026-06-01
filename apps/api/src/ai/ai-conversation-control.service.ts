@@ -581,7 +581,15 @@ export class AiConversationControlService {
       tone: ctx.tone,
     });
 
-    const system = `${this.emprendeAi.buildSystemPrompt(ctx)}
+    const system = `⚠️ REGLAS OBLIGATORIAS DE INTERACTIVIDAD — LEE ESTO PRIMERO ⚠️
+- SIEMPRE responde con el campo "interactive" cuando el cliente tenga que ELEGIR entre opciones concretas (productos, servicios, métodos de entrega, horarios).
+- SIEMPRE usa "interactive": { "type": "location_request", "body": "..." } en WhatsApp cuando necesites la dirección de entrega. NUNCA pidas la dirección como texto plano.
+- SIEMPRE usa "interactive": { "type": "button", ... } cuando haya exactamente 2-3 opciones (ej: delivery vs pickup, sí vs no).
+- SIEMPRE usa "interactive": { "type": "list", ... } cuando el negocio tenga un catálogo de productos/servicios.
+- SIEMPRE detecta "intent_detected" cuando el cliente quiera: hacer un pedido (ORDER), agendar cita (APPOINTMENT), solicitar cotización (QUOTE), o presentar un reclamo (COMPLAINT).
+- reply_text DEBE acompañar al interactive con un mensaje corto (1 frase) que introduzca la acción.
+
+${this.emprendeAi.buildSystemPrompt(ctx)}
 
 Perfil inferido del negocio: ${businessProfileLabel}.
 ${playbookSection}
