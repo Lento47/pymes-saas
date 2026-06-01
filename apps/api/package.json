@@ -89,7 +89,7 @@
     "@types/node": "^20.0.0",
     "@types/nodemailer": "^8.0.0",
     "@types/passport-google-oauth20": "^2.0.17",
-    "@types/passport-jwt": "^3.0.0",
+    "@types/passport-jwt": "^4.0.1",
     "@types/sanitize-html": "^2.16.1",
     "@typescript-eslint/eslint-plugin": "^8.59.4",
     "@typescript-eslint/parser": "^8.59.4",
