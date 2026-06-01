@@ -331,7 +331,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     setUploading(true);
     try {
       const { url } = await api.uploadAttachment(form);
-      const type = file.type.startsWith("image/") ? "image"
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      const type = ext === "webp"
+        ? "sticker"
+        : file.type.startsWith("image/") ? "image"
         : file.type.startsWith("video/") ? "video"
         : file.type.startsWith("audio/") ? "audio"
         : "document";

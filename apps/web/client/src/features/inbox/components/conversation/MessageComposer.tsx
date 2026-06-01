@@ -215,7 +215,7 @@ export function MessageComposer({
 
           <label className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground ${freeFormDisabled ? "pointer-events-none opacity-45" : "cursor-pointer"}`} aria-label="Adjuntar archivo">
             <Paperclip className="h-4 w-4" />
-            <input type="file" className="sr-only" accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx" onChange={handleFileChange} disabled={freeFormDisabled || isPending || uploading} />
+            <input type="file" className="sr-only" accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx,.webp" onChange={handleFileChange} disabled={freeFormDisabled || isPending || uploading} />
           </label>
 
           {availableTemplates && availableTemplates.length > 0 && onInsertTemplate && (

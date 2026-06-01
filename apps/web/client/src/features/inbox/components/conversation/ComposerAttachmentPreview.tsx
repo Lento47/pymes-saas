@@ -1,4 +1,4 @@
-import { Loader2, Paperclip, X } from "lucide-react";
+import { Loader2, Paperclip, Sticker, X } from "lucide-react";
 import { formatFileSize, safeFileName } from "../../media-utils";
 
 interface ComposerAttachmentPreviewProps {
@@ -22,7 +22,11 @@ export function ComposerAttachmentPreview({
         <div className="h-0.5 w-full bg-amber-400/30 animate-pulse" />
       )}
       <div className="flex items-center gap-2 px-3 py-1.5">
-        <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
+        {attachment.type === "sticker" ? (
+          <Sticker className="w-3 h-3 text-amber-500 shrink-0" />
+        ) : (
+          <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
+        )}
         <span className="flex-1 truncate text-[11px] text-foreground">
           {safeFileName(attachment.file.name)}
         </span>
