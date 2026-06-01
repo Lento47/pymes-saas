@@ -88,9 +88,9 @@ const toneVariant: Record<Tone, "default" | "destructive" | "secondary" | "outli
 };
 
 const toneDotClass: Record<Tone, string> = {
-  danger: "bg-red-500",
-  warning: "bg-amber-500",
-  success: "bg-emerald-500",
+  danger: "bg-destructive",
+  warning: "bg-warning",
+  success: "bg-success",
   neutral: "bg-muted-foreground/40",
 };
 
