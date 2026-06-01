@@ -7,3 +7,10 @@ dist/
 .enterprise-runtime-bundle/
 .codex-worktrees/
 apps/android/
+
+# Stale lockfiles — only the root pnpm-lock.yaml is authoritative in this pnpm
+# workspace. Per-app and npm lockfiles are not used by CI/Docker and cause
+# phantom Dependabot alerts, so keep them out of the tree.
+package-lock.json
+**/package-lock.json
+apps/*/pnpm-lock.yaml
