@@ -1,18 +1,54 @@
-import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { Bell, CheckCheck, MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, ClipboardList, ChevronRight, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Bell, X, CheckCheck, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-type Notification = { id: string; read_at?: string | null; body?: string; title?: string; type?: string; created_at?: string };
+const TYPE_CONFIG: Record<string, { icon: typeof Bell; variant: "default" | "success" | "destructive"; label: string }> = {
+  task_completed: { icon: CheckSquare, variant: "success", label: "Tarea completada" },
+  task_overdue: { icon: AlertTriangle, variant: "destructive", label: "Tarea vencida" },
+  new_message: { icon: MessageCircle, variant: "default", label: "Nuevo mensaje" },
+  AI_TASK_CREATED: { icon: Bot, variant: "default", label: "Tarea IA" },
+  deal_created: { icon: KanbanSquare, variant: "default", label: "Negocio creado" },
+  deal_stage_changed: { icon: KanbanSquare, variant: "default", label: "Etapa cambiada" },
+  deal_won: { icon: KanbanSquare, variant: "success", label: "Negocio ganado" },
+  invoice_paid: { icon: Receipt, variant: "success", label: "Factura pagada" },
+  payment_received: { icon: Receipt, variant: "success", label: "Pago recibido" },
+  invoice_overdue: { icon: Receipt, variant: "destructive", label: "Factura vencida" },
+  automation: { icon: Zap, variant: "default", label: "Automatización" },
+  conversation_no_reply: { icon: MessageCircle, variant: "destructive", label: "Sin respuesta" },
+};
 
-/** Compact notification bell icon with unread badge + dropdown panel */
+const VARIANT_STYLES: Record<string, { icon: string; bg: string }> = {
+  default: { icon: "text-foreground/70", bg: "bg-muted border-border/60" },
+  success: { icon: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" },
+  destructive: { icon: "text-destructive", bg: "bg-destructive/10 border-destructive/20" },
+};
+
+function getTypeConfig(type: string) {
+  return TYPE_CONFIG[type] || { icon: Bell, variant: "default" as const, label: type };
+}
+
+/** Resolve navigation target from notification's related entity */
+function resolveLink(n: any): string | null {
+  if (!n.related_entity_type || !n.related_entity_id) return null;
+  const t = n.related_entity_type.toLowerCase();
+  if (t === "conversation" || t === "conversations") return `/inbox/${n.related_entity_id}`;
+  if (t === "task") return `/tasks`;
+  if (t === "contact") return `/contacts/${n.related_entity_id}`;
+  if (t === "deal") return `/pipeline`;
+  if (t === "invoice") return `/invoices`;
+  return null;
+}
+
 export function NotificationBell() {
-  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
 
   const { data: unreadData } = useQuery({
     queryKey: ["/api/notifications/unread-count"],
@@ -20,222 +56,135 @@ export function NotificationBell() {
     refetchInterval: 30000,
   });
 
-  const { data: notifData } = useQuery({
+  const { data: notificationsData } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: () => api.getNotifications(),
     enabled: open,
   });
 
-  const markRead = useMutation({
-    mutationFn: (ids: string[]) => api.markRead({ ids }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/notifications"] });
-      qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
-    },
-  });
-
-  const markAllRead = useMutation({
-    mutationFn: () => api.markRead({ all: true }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/notifications"] });
-      qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
-    },
-  });
-
   const unreadCount = unreadData?.count ?? 0;
-  const notifications = notifData?.data ?? notifData ?? [];
+  const notifications = (notificationsData?.data ?? []).slice(0, 5);
+
+  const handleMarkRead = async (ids: string[]) => {
+    await api.markRead({ ids });
+    qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+    qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+  };
+
+  const handleMarkAllRead = async () => {
+    await api.markRead({ ids: [] });
+    qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+    qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+  };
+
+  const handleNotificationClick = (n: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!n.read_at) handleMarkRead([n.id]);
+    setOpen(false);
+  };
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md hover:bg-white/5 transition-colors"
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative h-8 w-8 rounded-md"
+        onClick={() => setOpen(!open)}
         title="Notificaciones"
-        style={{ color: "hsl(var(--fg-2))" }}
       >
-        <Bell style={{ width: 16, height: 16 }} />
+        <Bell className="h-4 w-4 text-muted-foreground" />
         {unreadCount > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: "hsl(var(--accent))",
-              color: "white",
-              fontSize: 9,
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              lineHeight: 1,
-              transform: "translate(2px, -2px)",
-            }}
-          >
+          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-[16px] rounded-full text-[9px] font-semibold px-1 bg-primary text-primary-foreground">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </button>
+      </Button>
 
       {open && (
         <>
-          {/* Backdrop to close on click outside */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
-
-          {/* Dropdown panel */}
-          <div
-            className="absolute right-0 top-full z-50 mt-1 overflow-hidden rounded-md shadow-lg"
-            style={{
-              width: 340,
-              maxHeight: 400,
-              background: "hsl(var(--bg-card))",
-              border: "1px solid hsl(var(--border))",
-            }}
-          >
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed right-4 top-14 z-50 w-80 rounded-lg border border-border bg-card shadow-lg">
             {/* Header */}
-            <div
-              className="flex items-center justify-between px-3 py-2"
-              style={{ borderBottom: "1px solid hsl(var(--border))" }}
-            >
-              <span className="text-xs font-semibold text-foreground">
-                Notificaciones
-              </span>
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+              <span className="text-xs font-medium text-foreground">Notificaciones</span>
               {unreadCount > 0 && (
                 <button
-                  onClick={() => markAllRead.mutate()}
-                  className="flex items-center gap-1 text-xs"
-                  style={{ color: "hsl(var(--accent))" }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  onClick={handleMarkAllRead}
                 >
-                  <CheckCheck style={{ width: 12, height: 12 }} />
+                  <CheckCheck className="w-3 h-3" />
                   Marcar todas leídas
                 </button>
               )}
             </div>
 
             {/* List */}
-            <div className="overflow-y-auto max-h-[340px]">
+            <div className="max-h-72 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div
-                  className="text-xs text-center py-8 px-3"
-                  style={{ color: "hsl(var(--fg-3))" }}
-                >
-                  Sin notificaciones
+                <div className="px-3 py-4 text-center">
+                  <p className="text-[11px] text-muted-foreground">No hay notificaciones</p>
                 </div>
               ) : (
-                (notifications as Notification[]).map((n) => (
-                  <NotifItem
-                    key={n.id}
-                    notification={n}
-                    onMarkRead={() => markRead.mutate([n.id])}
-                  />
-                ))
+                notifications.map((n: any) => {
+                  const cfg = getTypeConfig(n.type);
+                  const Icon = cfg.icon;
+                  const timeAgo = n.created_at
+                    ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
+                    : "";
+                  const isUnread = !n.read_at;
+                  const link = resolveLink(n);
+
+                  const item = (
+                    <div
+                      className={cn(
+                        "flex items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/50 cursor-pointer",
+                        isUnread && "bg-primary/5",
+                      )}
+                      style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}
+                      onClick={(e) => {
+                        if (isUnread) {
+                          e.stopPropagation();
+                          handleMarkRead([n.id]);
+                        }
+                      }}
+                    >
+                      <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 border", VARIANT_STYLES[cfg.variant]?.bg)}>
+                        <Icon className={cn("w-3.5 h-3.5", VARIANT_STYLES[cfg.variant]?.icon)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] font-medium text-foreground truncate">{n.title}</span>
+                          {isUnread && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-primary" />}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{n.body}</p>
+                        <span className="text-[9px] text-muted-foreground/70">{timeAgo}</span>
+                      </div>
+                    </div>
+                  );
+
+                  return link ? (
+                    <Link key={n.id} href={link} onClick={(e: any) => handleNotificationClick(n, e)}>
+                      {item}
+                    </Link>
+                  ) : (
+                    <div key={n.id}>{item}</div>
+                  );
+                })
               )}
             </div>
 
-            {/* Footer link */}
-            {notifications.length > 0 && (
+            <Link href="/notifications">
               <div
-                className="px-3 py-2"
-                style={{ borderTop: "1px solid hsl(var(--border))" }}
+                className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium text-primary hover:bg-muted/50 transition-colors border-t border-border"
+                onClick={() => setOpen(false)}
               >
-                <Link
-                  href="/notifications"
-                  className="text-xs flex items-center gap-1 hover:underline"
-                  style={{ color: "hsl(var(--fg-2))" }}
-                  onClick={() => setOpen(false)}
-                >
-                  Ver todas <ExternalLink style={{ width: 10, height: 10 }} />
-                </Link>
+                Ver todas las notificaciones
+                <ChevronRight className="w-3 h-3" />
               </div>
-            )}
+            </Link>
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-/* ── Single notification item ── */
-
-function NotifItem({
-  notification: n,
-  onMarkRead,
-}: {
-  notification: Notification;
-  onMarkRead: () => void;
-}) {
-  const [hovering, setHovering] = useState(false);
-
-  const timeAgo = n.created_at
-    ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
-    : "";
-
-  const isUnread = !n.read_at;
-  const body = n.body ?? n.title ?? "";
-  const title = n.title ?? n.type ?? "";
-
-  return (
-    <div
-      className="px-3 py-2.5 transition-colors"
-      style={{
-        borderBottom: "1px solid hsl(var(--border))",
-        background: isUnread ? "hsl(var(--bg-active) / 0.4)" : "transparent",
-      }}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-    >
-      <div className="flex items-start gap-2">
-        <div
-          className="shrink-0 mt-1"
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: isUnread ? "hsl(var(--accent))" : "transparent",
-          }}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-foreground truncate">
-              {title}
-            </span>
-            {hovering && isUnread && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkRead();
-                }}
-                className="shrink-0 p-0.5 rounded hover:bg-white/10"
-                style={{ color: "hsl(var(--fg-3))" }}
-                title="Marcar como leída"
-              >
-                <X style={{ width: 10, height: 10 }} />
-              </button>
-            )}
-          </div>
-          {body && (
-            <p
-              className="text-xs mt-0.5 line-clamp-2"
-              style={{ color: "hsl(var(--fg-2))" }}
-            >
-              {body}
-            </p>
-          )}
-          {timeAgo && (
-            <p
-              className="text-[10px] mt-0.5"
-              style={{ color: "hsl(var(--fg-3))" }}
-            >
-              {timeAgo}
-            </p>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

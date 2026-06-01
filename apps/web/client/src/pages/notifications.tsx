@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
@@ -9,20 +10,21 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
-  Bell, BellOff, Check, CheckCheck,
+  Bell, BellOff, CheckCheck,
   MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, Bot,
+  ExternalLink,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-// 3 semantic variants — no rainbow
 const TYPE_BADGE: Record<string, { label: string; variant: "default" | "success" | "destructive"; icon: typeof Bell }> = {
   task_completed:    { label: "Tarea completada", variant: "success",      icon: CheckSquare },
   task_overdue:      { label: "Tarea vencida",     variant: "destructive", icon: AlertTriangle },
   new_message:       { label: "Nuevo mensaje",     variant: "default",     icon: MessageCircle },
-  AI_TASK_CREATED:   { label: "Tarea sugerida",    variant: "default",     icon: Bot },
+  AI_TASK_CREATED:   { label: "Tarea IA",          variant: "default",     icon: Bot },
   deal_created:      { label: "Negocio creado",    variant: "default",     icon: KanbanSquare },
   deal_stage_changed:{ label: "Etapa cambiada",    variant: "default",     icon: KanbanSquare },
   deal_won:          { label: "Negocio ganado",    variant: "success",     icon: KanbanSquare },
@@ -39,11 +41,16 @@ const VARIANT_CLASSES: Record<string, string> = {
   destructive: "bg-destructive/10 text-destructive",
 };
 
-const ICON_WRAPPER_CLASSES: Record<string, string> = {
-  default:     "bg-muted/40 border-border/60",
-  success:     "bg-emerald-500/10 border-emerald-500/20",
-  destructive: "bg-destructive/10 border-destructive/20",
-};
+function resolveLink(n: any): string | null {
+  if (!n.related_entity_type || !n.related_entity_id) return null;
+  const t = n.related_entity_type.toLowerCase();
+  if (t === "conversation" || t === "conversations") return `/inbox/${n.related_entity_id}`;
+  if (t === "task") return `/tasks`;
+  if (t === "contact") return `/contacts/${n.related_entity_id}`;
+  if (t === "deal") return `/pipeline`;
+  if (t === "invoice") return `/invoices`;
+  return null;
+}
 
 export default function NotificationsPage() {
   useRequireAuth();
@@ -135,41 +142,64 @@ export default function NotificationsPage() {
               const time = n.created_at
                 ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
                 : "";
+              const link = resolveLink(n);
 
-              return (
-                <div
-                  key={n.id}
-                  className={cn("rounded-lg border p-4 transition-colors", isUnread ? "border-border bg-card" : "border-border/60 bg-card/40")}
+              const card = (
+                <Card
+                  className={cn(
+                    "p-4 transition-colors cursor-pointer",
+                    isUnread
+                      ? "border-border bg-card hover:bg-muted/30"
+                      : "border-border/60 bg-card/40 hover:bg-muted/20",
+                    link && "hover:border-primary/30"
+                  )}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border", ICON_WRAPPER_CLASSES[cfg.variant])}>
-                      <Icon className={cn("w-4 h-4", VARIANT_CLASSES[cfg.variant].split(" ").pop())} />
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border",
+                      isUnread ? "border-border" : "border-border/60"
+                    )}>
+                      <Icon className={cn("w-4 h-4", isUnread ? "text-foreground/70" : "text-muted-foreground/50")} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-medium text-foreground">{n.title}</span>
-                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 border-border/60", VARIANT_CLASSES[cfg.variant])}>
+                        <span className={cn("text-sm", isUnread ? "font-medium text-foreground" : "text-muted-foreground")}>
+                          {n.title}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
                           {cfg.label}
                         </Badge>
-                        {isUnread && (
-                          <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                        )}
+                        {isUnread && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                        {link && <ExternalLink className="w-3 h-3 text-muted-foreground/40 flex-shrink-0" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">{n.body}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>
                       <div className="flex items-center gap-3 mt-2">
-                        <span className="text-[10px] text-muted-foreground">{time}</span>
+                        <span className="text-[10px] text-muted-foreground/60">{time}</span>
                         {isUnread && (
                           <button
-                            className="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-                            onClick={() => handleMarkRead([n.id])}
+                            className="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleMarkRead([n.id]);
+                            }}
                           >
-                            <Check className="w-3 h-3" />
                             Marcar leída
                           </button>
                         )}
                       </div>
                     </div>
                   </div>
+                </Card>
+              );
+
+              return link ? (
+                <Link key={n.id} href={link} className="block">
+                  {card}
+                </Link>
+              ) : (
+                <div key={n.id} onClick={() => isUnread && handleMarkRead([n.id])}>
+                  {card}
                 </div>
               );
             })}

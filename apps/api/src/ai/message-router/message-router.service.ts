@@ -305,6 +305,7 @@ export class MessageRouterService {
           : rawAiState === "AI_ACTIVE"
           ? "AI_ACTIVE"
           : "IDLE",
+      human_handover_at: meta.human_handover_at as string | undefined,
       workspacePlan: workspace?.plan ?? "FREE",
       aiAgentAutoActive: wsSettings.ai_agent_auto_active === true,
       contact: conv?.contact

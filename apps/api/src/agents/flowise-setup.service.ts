@@ -65,6 +65,27 @@ export class FlowiseSetupService {
     private readonly flowise: FlowiseClient,
   ) {}
 
+  /**
+   * Returns the overrideConfig.vars object injected at prediction time
+   * so Flowise Custom Tools can access $vars.GITHUB_TOKEN, $vars.RAILWAY_TOKEN, etc.
+   */
+  getPredictionVars(workspaceSlug?: string): Record<string, string> {
+    const vars: Record<string, string> = {};
+    const gh = this.config.get<string>("GITHUB_TOKEN");
+    const rw = this.config.get<string>("RAILWAY_API_TOKEN");
+    const rwSvc = this.config.get<string>("RAILWAY_SERVICE_ID");
+    const pk = this.config.get<string>("PYMESHUB_FOUNDER_API_KEY");
+    const ds = this.config.get<string>("GATEWAY_KEY_DEEPSEEK");
+
+    if (gh) vars.GITHUB_TOKEN = gh;
+    if (rw) vars.RAILWAY_TOKEN = rw;
+    if (rwSvc) vars.RAILWAY_SERVICE_ID = rwSvc;
+    if (pk) vars.PYMESHUB_API_KEY = pk;
+    if (ds) vars.GATEWAY_KEY_DEEPSEEK = ds;
+    if (workspaceSlug) vars.WORKSPACE_SLUG = workspaceSlug;
+    return vars;
+  }
+
   async setup(): Promise<void> {
     if (!this.flowise.isEnabled) {
       this.logger.warn("[flowise-setup] Flowise disabled — skipping tier agentflow setup");
@@ -454,228 +475,301 @@ export class FlowiseSetupService {
     }
   }
 
+  /**
+   * Build tool definitions for Flowise.
+   *
+   * Architecture:
+   *   GitHub tools → call GitHub REST API directly (using $vars.GITHUB_TOKEN)
+   *   Railway tools → call Railway GraphQL directly (using $vars.RAILWAY_TOKEN)
+   *   PymesHub read tools → call PymesHub REST API directly (using $vars.PYMESHUB_API_KEY)
+   *   Write tools     → proxy through PymesHub /api/agent/tool (audit trail)
+   *
+   * Variables are injected at prediction time via overrideConfig.vars.
+   */
   private buildToolDefs(apiBase: string, founderKey: string): Record<string, FlowiseToolDef> {
-    const makeFunc = (toolName: string): string =>
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    const safeFetch = (moreCode: string): string =>
       [
-        `const args = typeof input === 'string' ? JSON.parse(input || '{}') : (input || {});`,
-        `const res = await fetch('${apiBase}/api/agent/tool', {`,
-        `  method: 'POST',`,
-        `  headers: { 'Authorization': 'Bearer ${founderKey}', 'Content-Type': 'application/json' },`,
-        `  body: JSON.stringify({ tool: '${toolName}', arguments: args })`,
-        `});`,
-        `if (!res.ok) { const e = await res.text(); throw new Error('Tool error: ' + e); }`,
-        `const data = await res.json();`,
-        `return JSON.stringify(data);`,
+        `const fetch = require('node-fetch');`,
+        `try {`,
+        ...moreCode.split("\n").map((l) => `  ${l}`),
+        `} catch(e) { return JSON.stringify({ error: e.message || String(e) }); }`,
       ].join("\n");
 
+    // Proxy through PymesHub (audited, workspace-scoped)
+    const pymesHubProxy = (toolName: string): string =>
+      safeFetch(
+        [
+          `const args = typeof $input === 'string' ? JSON.parse($input || '{}') : ($input || {});`,
+          `const res = await fetch('${apiBase}/api/agent/tool', {`,
+          `  method: 'POST',`,
+          `  headers: { 'Authorization': 'Bearer ${founderKey}', 'Content-Type': 'application/json' },`,
+          `  body: JSON.stringify({ tool: '${toolName}', arguments: args })`,
+          `});`,
+          `const data = await res.json();`,
+          `if (!res.ok) throw new Error(data.message || 'Tool error HTTP ' + res.status);`,
+          `return JSON.stringify(data);`,
+        ].join("\n"),
+      );
+
+    // ── GitHub tools (native — call GitHub API directly) ─────────────────────
+
+    const readGithubFile: FlowiseToolDef = {
+      name: "read_github_file",
+      description:
+        "Lee el contenido de un archivo del repositorio de GitHub (pymes-saas). LLAMA A GITHUB DIRECTAMENTE — usa el GITHUB_TOKEN de Flowise. Args: { path: string, ref?: string (default: master) }",
+      schema: JSON.stringify({
+        type: "object",
+        properties: { path: { type: "string" }, ref: { type: "string" } },
+        required: ["path"],
+      }),
+      func: safeFetch(
+        [
+          `const token = $vars.GITHUB_TOKEN;`,
+          `const repo = 'Lento47/pymes-saas';`,
+          `const path = $path;`,
+          `const ref = $ref || 'master';`,
+          `const url = 'https://api.github.com/repos/' + repo + '/contents/' + path + '?ref=' + ref;`,
+          `const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3.raw' } });`,
+          `if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 500)); }`,
+          `return await res.text();`,
+        ].join("\n"),
+      ),
+    };
+
+    const searchGithubFiles: FlowiseToolDef = {
+      name: "search_github_files",
+      description:
+        "Busca archivos en el repositorio pymes-saas por query. LLAMA A GITHUB DIRECTAMENTE. Args: { query: string, limit?: number }",
+      schema: JSON.stringify({
+        type: "object",
+        properties: { query: { type: "string" }, limit: { type: "number" } },
+        required: ["query"],
+      }),
+      func: safeFetch(
+        [
+          `const token = $vars.GITHUB_TOKEN;`,
+          `const repo = 'Lento47/pymes-saas';`,
+          `const q = $query + ' repo:' + repo;`,
+          `const limit = $limit || 10;`,
+          `const url = 'https://api.github.com/search/code?q=' + encodeURIComponent(q) + '&per_page=' + limit;`,
+          `const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' } });`,
+          `const data = await res.json();`,
+          `const items = (data.items || []).map(i => ({ path: i.path, repo: i.repository?.full_name }));`,
+          `return JSON.stringify({ total: data.total_count, results: items });`,
+        ].join("\n"),
+      ),
+    };
+
+    const getRecentCommits: FlowiseToolDef = {
+      name: "get_recent_commits",
+      description:
+        "Commits recientes del repo pymes-saas. LLAMA A GITHUB DIRECTAMENTE. Args: { path?: string, limit?: number }",
+      schema: JSON.stringify({
+        type: "object",
+        properties: { path: { type: "string" }, limit: { type: "number" } },
+        required: [],
+      }),
+      func: safeFetch(
+        [
+          `const token = $vars.GITHUB_TOKEN;`,
+          `const repo = 'Lento47/pymes-saas';`,
+          `const limit = $limit || 10;`,
+          `let url = 'https://api.github.com/repos/' + repo + '/commits?per_page=' + limit;`,
+          `if ($path) url += '&path=' + encodeURIComponent($path);`,
+          `const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' } });`,
+          `const data = await res.json();`,
+          `return JSON.stringify((Array.isArray(data) ? data : []).map(c => ({ sha: c.sha?.slice(0,7), message: (c.commit?.message || '').split('\\n')[0], author: c.commit?.author?.name, date: c.commit?.author?.date })));`,
+        ].join("\n"),
+      ),
+    };
+
+    // ── Railway tool (native — call Railway GraphQL directly) ─────────────────
+
+    const getRailwayLogs: FlowiseToolDef = {
+      name: "get_railway_logs",
+      description:
+        "Logs recientes del deployment de Railway. LLAMA A RAILWAY DIRECTAMENTE. Args: { limit?: number }",
+      schema: JSON.stringify({
+        type: "object",
+        properties: { limit: { type: "number" } },
+        required: [],
+      }),
+      func: safeFetch(
+        [
+          `const token = $vars.RAILWAY_TOKEN;`,
+          `const serviceId = $vars.RAILWAY_SERVICE_ID;`,
+          `const limit = $limit || 100;`,
+          `const query = 'query($serviceId: String!, $limit: Int!) { deploymentLogs(serviceId: $serviceId, limit: $limit) { timestamp message severity } }';`,
+          `const res = await fetch('https://backboard.railway.app/graphql/v2', {`,
+          `  method: 'POST',`,
+          `  headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },`,
+          `  body: JSON.stringify({ query, variables: { serviceId, limit } })`,
+          `});`,
+          `const json = await res.json();`,
+          `const logs = json?.data?.deploymentLogs || [];`,
+          `return JSON.stringify(logs.slice(-limit));`,
+        ].join("\n"),
+      ),
+    };
+
+    // ── PymesHub read tools (call PymesHub REST API directly) ─────────────────
+
+    const pymesHubApi = (toolName: string, description: string, schemaStr: string, endpointExtra: string, paramMapping: string): FlowiseToolDef => ({
+      name: toolName,
+      description,
+      schema: schemaStr,
+      func: safeFetch(
+        [
+          `const apiKey = $vars.PYMESHUB_API_KEY;`,
+          `const wsSlug = $vars.WORKSPACE_SLUG;`,
+          `const apiBase = '${apiBase}';`,
+          paramMapping,
+          `const url = apiBase + '${endpointExtra}';`,
+          `const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' } });`,
+          `const data = await res.json();`,
+          `if (!res.ok) throw new Error(data.message || 'API error HTTP ' + res.status);`,
+          `return JSON.stringify(data);`,
+        ].join("\n"),
+      ),
+    });
+
+    // ── Write tools (proxy through PymesHub — audit trail) ────────────────────
+
     return {
-      get_railway_logs: {
-        name: "get_railway_logs",
-        description: "Obtiene los logs recientes del deployment de la API en Railway. USAR SIEMPRE PRIMERO para diagnosticar errores en producción.",
-        schema: JSON.stringify({
-          type: "object",
-          properties: { limit: { type: "number", description: "Número máximo de líneas de log a retornar" } },
-          required: [],
-        }),
-        func: makeFunc("get_railway_logs"),
-      },
-      get_errors: {
-        name: "get_errors",
-        description: "Obtiene los error reports recientes del workspace o del sistema.",
-        schema: JSON.stringify({
-          type: "object",
-          properties: { limit: { type: "number", description: "Número máximo de errores a retornar" } },
-          required: [],
-        }),
-        func: makeFunc("get_errors"),
-      },
-      read_github_file: {
-        name: "read_github_file",
-        description: "Lee el contenido de un archivo del repositorio de GitHub. SIEMPRE leer antes de proponer un fix.",
-        schema: JSON.stringify({
-          type: "object",
-          properties: {
-            path: { type: "string", description: "Ruta del archivo en el repositorio (ej: apps/api/src/auth/auth.service.ts)" },
-            ref: { type: "string", description: "Branch o commit SHA (opcional, default: master)" },
-          },
-          required: ["path"],
-        }),
-        func: makeFunc("read_github_file"),
-      },
-      get_recent_commits: {
-        name: "get_recent_commits",
-        description: "Obtiene commits recientes. Si se provee path, filtra por archivo específico. Útil para detectar regresiones.",
-        schema: JSON.stringify({
-          type: "object",
-          properties: {
-            path: { type: "string", description: "Ruta del archivo a revisar (opcional)" },
-            limit: { type: "number", description: "Número máximo de commits" },
-          },
-          required: [],
-        }),
-        func: makeFunc("get_recent_commits"),
-      },
+      // GitHub (native)
+      read_github_file: readGithubFile,
+      search_github_files: searchGithubFiles,
+      get_recent_commits: getRecentCommits,
+
+      // Railway (native)
+      get_railway_logs: getRailwayLogs,
+
+      // PymesHub read (native REST)
+      get_workspace_context: pymesHubApi(
+        "get_workspace_context",
+        "Identidad del workspace + plan + tier + conteos. Args: {}",
+        JSON.stringify({ type: "object", properties: {}, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/full-context",
+        "// wsSlug from $vars",
+      ),
+      get_workspace_plan: pymesHubApi(
+        "get_workspace_plan",
+        "Plan y estado del workspace. Args: {}",
+        JSON.stringify({ type: "object", properties: {}, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/plan",
+        "",
+      ),
+      get_recent_errors: pymesHubApi(
+        "get_recent_errors",
+        "Error reports recientes. Args: { limit?: number }",
+        JSON.stringify({ type: "object", properties: { limit: { type: "number" } }, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/errors?limit=" + "$limit || 20",
+        "// limit from args, wsSlug from $vars",
+      ),
+      get_channel_status: pymesHubApi(
+        "get_channel_status",
+        "Estado de canales del workspace. Args: { type?: string }",
+        JSON.stringify({ type: "object", properties: { type: { type: "string" } }, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/channels",
+        "",
+      ),
+      get_billing_status: pymesHubApi(
+        "get_billing_status",
+        "Estado de suscripción/plan. Args: {}",
+        JSON.stringify({ type: "object", properties: {}, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/billing",
+        "",
+      ),
+      get_workflow_config: pymesHubApi(
+        "get_workflow_config",
+        "Config de automatizaciones del workspace. Args: { id?: string }",
+        JSON.stringify({ type: "object", properties: { id: { type: "string" } }, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/workflows",
+        "",
+      ),
+      list_fix_cases: pymesHubApi(
+        "list_fix_cases",
+        "Casos de fix pendientes/en progreso. Args: {}",
+        JSON.stringify({ type: "object", properties: {}, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/fix-cases",
+        "",
+      ),
+      list_diagnostic_cases: pymesHubApi(
+        "list_diagnostic_cases",
+        "Casos de diagnóstico del workspace. Args: {}",
+        JSON.stringify({ type: "object", properties: {}, required: [] }),
+        "/api/admin/workspace/" + "$wsSlug" + "/diagnostic-cases",
+        "",
+      ),
+
+      // Write tools (proxy — audit trail)
       apply_github_fix: {
         name: "apply_github_fix",
-        description: "Crea un branch, commitea el código corregido y abre un PR. El content de cada archivo debe ser el archivo COMPLETO.",
+        description: "Crea branch, commitea código corregido y abre PR REAL en GitHub. El content de cada archivo debe ser COMPLETO (no diff). Args: { branch_name, files: [{path, content}], pr_title, pr_body?, diagnostic_case_id? }",
         schema: JSON.stringify({
           type: "object",
           properties: {
-            branch_name: { type: "string", description: "Nombre del branch (ej: fix/auto-auth-1234567890)" },
-            files: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  path: { type: "string" },
-                  content: { type: "string", description: "Contenido completo del archivo corregido" },
-                },
-                required: ["path", "content"],
-              },
-            },
-            pr_title: { type: "string", description: "Título del PR" },
-            pr_body: { type: "string", description: "Descripción del PR (opcional)" },
-            diagnostic_case_id: { type: "string", description: "ID del caso de diagnóstico (opcional)" },
+            branch_name: { type: "string" },
+            files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } },
+            pr_title: { type: "string" },
+            pr_body: { type: "string" },
+            diagnostic_case_id: { type: "string" },
           },
           required: ["branch_name", "files", "pr_title"],
         }),
-        func: makeFunc("apply_github_fix"),
-      },
-      list_fix_cases: {
-        name: "list_fix_cases",
-        description: "Lista los casos de fix pendientes o en proceso.",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("list_fix_cases"),
-      },
-      list_diagnostic_cases: {
-        name: "list_diagnostic_cases",
-        description: "Lista los casos de diagnóstico del workspace.",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("list_diagnostic_cases"),
-      },
-
-      // ── Support multi-agent: context + privileged tools ──
-      get_workspace_context: {
-        name: "get_workspace_context",
-        description: "Identidad del workspace + plan + tier + conteos de alto nivel. Úsalo primero para entender el contexto.",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("get_workspace_context"),
-      },
-      get_workspace_plan: {
-        name: "get_workspace_plan",
-        description: "Plan, estado y tier del workspace.",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("get_workspace_plan"),
-      },
-      get_recent_errors: {
-        name: "get_recent_errors",
-        description: "Error reports recientes del workspace.",
-        schema: JSON.stringify({ type: "object", properties: { limit: { type: "number" } }, required: [] }),
-        func: makeFunc("get_recent_errors"),
-      },
-      get_conversation_context: {
-        name: "get_conversation_context",
-        description: "Detalle de una conversación y sus mensajes. Requiere id.",
-        schema: JSON.stringify({ type: "object", properties: { id: { type: "string" } }, required: ["id"] }),
-        func: makeFunc("get_conversation_context"),
-      },
-      get_channel_status: {
-        name: "get_channel_status",
-        description: "Estado de conexión de los canales (sin secretos). Opcional: type (WHATSAPP/TELEGRAM/EMAIL).",
-        schema: JSON.stringify({ type: "object", properties: { type: { type: "string" } }, required: [] }),
-        func: makeFunc("get_channel_status"),
-      },
-      get_whatsapp_status: {
-        name: "get_whatsapp_status",
-        description: "Estado de conexión de los canales de WhatsApp (sin secretos).",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("get_whatsapp_status"),
-      },
-      get_telegram_status: {
-        name: "get_telegram_status",
-        description: "Estado de conexión de los canales de Telegram (sin secretos).",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("get_telegram_status"),
-      },
-      get_billing_status: {
-        name: "get_billing_status",
-        description: "Estado de suscripción y plan. Nunca modifica nada.",
-        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
-        func: makeFunc("get_billing_status"),
-      },
-      get_workflow_config: {
-        name: "get_workflow_config",
-        description: "Configuración de automatizaciones/reglas del workspace. Opcional: id.",
-        schema: JSON.stringify({ type: "object", properties: { id: { type: "string" } }, required: [] }),
-        func: makeFunc("get_workflow_config"),
-      },
-      add_internal_case_note: {
-        name: "add_internal_case_note",
-        description: "Añade una nota interna de auditoría a un caso de diagnóstico del workspace.",
-        schema: JSON.stringify({
-          type: "object",
-          properties: { diagnostic_case_id: { type: "string" }, note: { type: "string" } },
-          required: ["diagnostic_case_id", "note"],
-        }),
-        func: makeFunc("add_internal_case_note"),
-      },
-      search_github_files: {
-        name: "search_github_files",
-        description: "Busca archivos en el repositorio por contenido/ruta. Devuelve rutas coincidentes.",
-        schema: JSON.stringify({
-          type: "object",
-          properties: { query: { type: "string" }, limit: { type: "number" } },
-          required: ["query"],
-        }),
-        func: makeFunc("search_github_files"),
+        func: pymesHubProxy("apply_github_fix"),
       },
       create_fix_proposal: {
         name: "create_fix_proposal",
-        description: "Guarda una propuesta de fix SIN abrir PR. files[].content debe ser el archivo completo.",
+        description: "Guarda propuesta de fix SIN abrir PR. files[].content debe ser archivo completo. Args: { files: [{path, content, reason?}], fix_summary?, rollback_notes?, diagnostic_case_id? }",
         schema: JSON.stringify({
           type: "object",
           properties: {
             diagnostic_case_id: { type: "string" },
             fix_summary: { type: "string" },
             rollback_notes: { type: "string" },
-            files: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: { path: { type: "string" }, content: { type: "string" }, reason: { type: "string" } },
-                required: ["path", "content"],
-              },
-            },
+            files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" }, reason: { type: "string" } }, required: ["path", "content"] } },
           },
           required: ["files"],
         }),
-        func: makeFunc("create_fix_proposal"),
+        func: pymesHubProxy("create_fix_proposal"),
       },
       create_github_pr: {
         name: "create_github_pr",
-        description:
-          "Crea un PR draft (nunca merge/aprobación) desde una propuesta. Pasa por la política de seguridad. files[].content debe ser el archivo completo. Requiere security_review_passed=true para áreas sensibles.",
+        description: "Crea PR draft desde propuesta aprobada. Pasa por política de seguridad. files[].content debe ser archivo completo. Args: { branch_name, files: [{path, content}], pr_title, pr_body?, security_review_passed?, diagnostic_case_id? }",
         schema: JSON.stringify({
           type: "object",
           properties: {
-            branch_name: { type: "string", description: "fix/ai/<area>/<timestamp>" },
+            branch_name: { type: "string" },
             base_branch: { type: "string" },
             pr_title: { type: "string" },
             pr_body: { type: "string" },
             security_review_passed: { type: "boolean" },
             diagnostic_case_id: { type: "string" },
-            files: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: { path: { type: "string" }, content: { type: "string" } },
-                required: ["path", "content"],
-              },
-            },
+            files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } },
           },
           required: ["branch_name", "files", "pr_title"],
         }),
-        func: makeFunc("create_github_pr"),
+        func: pymesHubProxy("create_github_pr"),
+      },
+      add_internal_case_note: {
+        name: "add_internal_case_note",
+        description: "Añade nota interna de auditoría a un caso. Args: { diagnostic_case_id, note }",
+        schema: JSON.stringify({
+          type: "object",
+          properties: { diagnostic_case_id: { type: "string" }, note: { type: "string" } },
+          required: ["diagnostic_case_id", "note"],
+        }),
+        func: pymesHubProxy("add_internal_case_note"),
+      },
+
+      get_errors: {
+        name: "get_errors",
+        description: "Error reports recientes del sistema. (Alias de get_recent_errors — mantenido por compatibilidad con tier flows viejos).",
+        schema: JSON.stringify({ type: "object", properties: { limit: { type: "number" } }, required: [] }),
+        func: pymesHubProxy("get_errors"),
       },
     };
   }

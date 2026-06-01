@@ -154,6 +154,7 @@ export class AiConversationControlService {
         metadata_json: {
           ...meta,
           ai_state: "HUMAN_ACTIVE",
+          human_handover_at: new Date().toISOString(),
           ai_control_stopped_at: new Date().toISOString(),
         } as any,
         updated_at: new Date(),
@@ -455,6 +456,7 @@ export class AiConversationControlService {
         metadata_json: {
           ...meta,
           ai_state: action.handoff_reason ? "HUMAN_ACTIVE" : "AI_ACTIVE",
+          ...(action.handoff_reason ? { human_handover_at: new Date().toISOString() } : {}),
           last_ai_reply_at: now,
           ai_control: {
             active: !action.handoff_reason,

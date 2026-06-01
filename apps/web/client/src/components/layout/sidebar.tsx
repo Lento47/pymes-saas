@@ -18,6 +18,7 @@ import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
   BarChart3,
+  Bell,
   Bot,
   BrainCircuit,
   Building2,
@@ -105,6 +106,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/", icon: LayoutDashboard, key: "dashboard" },
       { path: "/inbox", icon: Inbox, key: "inbox", badge: "unread" },
+      { path: "/notifications", icon: Bell, key: "notifications", badge: "unread" },
       { path: "/contacts", icon: Users, key: "contacts" },
       { path: "/tasks", icon: CheckSquare, key: "tasks", badge: "overdue" },
       { path: "/pipeline", icon: KanbanSquare, key: "pipeline" },

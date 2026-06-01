@@ -6,6 +6,7 @@ import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { FlowiseClient } from "../agents/flowise/flowise.client";
 import { FlowiseSetupService } from "../agents/flowise-setup.service";
 import { AgentGuardrailsService } from "../agents/runtime/agent-guardrails.service";
+import { isAiBlockedByHuman } from "./ai-gating";
 import type { ContextEnrichment } from "./message-router/types";
 import { toWhatsAppMarkdown, toTelegramHtml } from "./whatsapp-markdown.util";
 
@@ -48,7 +49,7 @@ export class FlowiseAutoReplyService {
       const [workspace, conv] = await Promise.all([
         this.prisma.workspace.findUnique({
           where: { id: workspaceId },
-          select: { plan: true, settings_json: true },
+          select: { plan: true, settings_json: true, slug: true },
         }),
         this.prisma.conversation.findFirst({
           where: { id: conversationId, workspace_id: workspaceId },
@@ -64,11 +65,8 @@ export class FlowiseAutoReplyService {
       if (!workspace || !conv) return false;
 
       const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-      if (meta.ai_state === "HUMAN_ACTIVE") return false;
-
-      const wsSettings = (workspace.settings_json as Record<string, unknown>) ?? {};
-      const wsAutoActive = wsSettings.ai_agent_auto_active === true;
-      if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") return false;
+      // Only skip AI when a human recently took over (3 min timeout, then AI resumes)
+      if (isAiBlockedByHuman(meta)) return false;
 
       const chatflowId = await this.flowiseSetup.getChatflowIdForPlan(workspace.plan);
       if (!chatflowId) {
@@ -88,7 +86,7 @@ export class FlowiseAutoReplyService {
         await Promise.all([
           this.prisma.conversation.updateMany({
             where: { id: conversationId, workspace_id: workspaceId },
-            data: { status: "REQUIRES_HUMAN", metadata_json: { ai_state: "HUMAN_ACTIVE" } },
+            data: { status: "REQUIRES_HUMAN", metadata_json: { ai_state: "HUMAN_ACTIVE", human_handover_at: new Date().toISOString() } },
           }),
           this.prisma.auditLog.create({
             data: {
@@ -115,6 +113,7 @@ export class FlowiseAutoReplyService {
       const res = await this.flowise.predict(chatflowId, {
         question,
         sessionId: conversationId,
+        overrideConfig: { vars: this.flowiseSetup.getPredictionVars(workspace.slug) },
       });
 
       const replyText = res.text?.trim();
@@ -244,6 +243,12 @@ export class FlowiseAutoReplyService {
       message_type: "TEXT",
       has_media: false,
     });
+
+    // Mark conversation as AI-active so subsequent messages continue auto-replying
+    await this.prisma.conversation.updateMany({
+      where: { id: conversationId, workspace_id: workspaceId },
+      data: { metadata_json: { ai_state: "AI_ACTIVE", last_ai_reply_at: new Date().toISOString() } },
+    }).catch(() => {/* non-fatal */});
 
     this.logger.log(`[flowise] ${source} sent conv=${conversationId}`);
     return true;

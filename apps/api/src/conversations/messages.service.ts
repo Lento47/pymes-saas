@@ -9,6 +9,7 @@ import { AgentRunService } from "../ai/agent-run.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { MessageRouterService } from "../ai/message-router/message-router.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
+import { isAiBlockedByHuman } from "../ai/ai-gating";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -204,7 +205,7 @@ export class MessagesService {
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE" },
+        metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE", human_handover_at: new Date().toISOString() },
         updated_at: new Date(),
       },
       select: { id: true },
@@ -462,7 +463,7 @@ export class MessagesService {
         .create(workspaceId, {
           user_id: member.user_id,
           type: "new_message",
-          title: "📩 Nuevo mensaje recibido",
+          title: "Nuevo mensaje recibido",
           body: `Nuevo mensaje de ${senderName}${conversation.subject ? ' en "' + conversation.subject + '"' : ""}: "${bodyText.slice(0, 100)}${bodyText.length > 100 ? "..." : ""}"`,
           related_entity_type: "conversation",
           related_entity_id: conversation.id,
@@ -1232,14 +1233,9 @@ export class MessagesService {
     if (!conv) return;
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-    if (meta.ai_state === "HUMAN_ACTIVE") {
+    // Only skip AI when a human recently took over (3 min timeout, then AI resumes)
+    if (isAiBlockedByHuman(meta)) {
       this.logger.debug(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
-      return;
-    }
-    const wsSettings = (workspace.settings_json as Record<string, any>) ?? {};
-    const wsAutoActive = wsSettings.ai_agent_auto_active === true;
-    if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") {
-      this.logger.warn(`[ai-auto] conv ${conversationId} wsAutoActive=${wsAutoActive} ai_state=${meta.ai_state ?? "IDLE"} — skip`);
       return;
     }
 
@@ -1255,7 +1251,7 @@ export class MessagesService {
       workspaceId,
       conversationId,
       inboundText,
-      { source: "auto_reply", activate: wsAutoActive },
+      { source: "auto_reply", activate: true },
     );
     if (!result.ok) {
       this.logger.warn(`AI control auto-reply skipped: ${result.error ?? "unknown"}`);

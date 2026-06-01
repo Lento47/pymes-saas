@@ -40,6 +40,7 @@ export interface ConversationContext {
   isServiceWindowOpen: boolean;
   conversationStatus: string;
   aiState: "AI_ACTIVE" | "HUMAN_ACTIVE" | "IDLE";
+  human_handover_at?: string | null;
   workspacePlan: string;
   aiAgentAutoActive: boolean;
   contact?: {
