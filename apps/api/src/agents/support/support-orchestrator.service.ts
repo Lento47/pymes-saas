@@ -202,7 +202,7 @@ export class SupportOrchestratorService {
       });
 
       // Phase separation: council agents run around domain specialists
-      const PRE_SPECIALISTS = new Set<SupportAgentSlug>(["evidence-collector"]);
+      const PRE_SPECIALISTS = new Set<SupportAgentSlug>(["evidence-collector", "support-supervisor"]);
       const POST_SPECIALISTS = new Set<SupportAgentSlug>([
         "consensus-arbiter", "user-communication", "human-handoff",
       ]);
@@ -428,7 +428,7 @@ export class SupportOrchestratorService {
         .filter(Boolean)
         .join("\n\n");
 
-      // ── Routed pipeline (feature-based, skip triage) ──
+      // ── Routed pipeline (feature-based, skip triage, council phases) ──
       const feature = caseTypeToFeature(caseType);
       const pipeline = buildPipelineByFeature({
         profile,
@@ -439,31 +439,100 @@ export class SupportOrchestratorService {
       // Skip triage since it already ran
       const filteredPipeline = pipeline.filter(s => s !== "intake-triage");
 
+      // Phase separation (same as main orchestrator)
+      const PRE_SPECIALISTS2 = new Set<SupportAgentSlug>(["evidence-collector", "support-supervisor"]);
+      const POST_SPECIALISTS2 = new Set<SupportAgentSlug>([
+        "consensus-arbiter", "user-communication", "human-handoff",
+      ]);
+      const SECURITY_FIX2 = new Set<SupportAgentSlug>([
+        "code-fix-proposal", "security-compliance", "pr-review",
+      ]);
+
+      const preStages2 = filteredPipeline.filter((s) => PRE_SPECIALISTS2.has(s));
+      const specialistStages2 = filteredPipeline.filter(
+        (s) => !PRE_SPECIALISTS2.has(s) && !POST_SPECIALISTS2.has(s) && !SECURITY_FIX2.has(s),
+      );
+      const postStages2 = filteredPipeline.filter((s) => POST_SPECIALISTS2.has(s));
+      const secFixStages2 = filteredPipeline.filter((s) => SECURITY_FIX2.has(s));
+
       let carriedContext = clarificationCtx;
 
-      for (const slug of filteredPipeline) {
+      // Phase 1: Evidence + Supervisor
+      for (const slug of preStages2) {
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
+        if (stage?.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // Phase 2: Domain Specialists (parallel)
+      const allFindings2: string[] = [];
+      if (specialistStages2.length > 0) {
+        const parallelResults = await this.runParallelStages(
+          specialistStages2, profile, carriedContext, sessionId,
+          stages, workspaceId, runId,
+        );
+        for (const rec of parallelResults) {
+          if (rec.output_preview) {
+            allFindings2.push(`[${rec.agent_slug}]: ${rec.output_preview}`);
+          }
+          const diag = this.parseDiagnostic(rec.structured);
+          if (diag?.needs_human_review) needsHuman = true;
+        }
+      }
+
+      // Phase 3: Consensus / Arbiter
+      if (postStages2.includes("consensus-arbiter") && allFindings2.length > 0) {
+        const findingsCtx = [carriedContext, `\n[FINDINGS DE LOS AGENTES]`, ...allFindings2].join("\n");
+        const arbiter = await this.runStage(
+          "consensus-arbiter", profile, findingsCtx,
+          `${sessionId}:council`, stages, workspaceId, runId,
+        );
+        if (arbiter?.output_preview) {
+          carriedContext += `\n\n[consensus-arbiter] ${arbiter.output_preview}`.slice(0, 8000);
+        }
+        const aDiag = this.parseDiagnostic(arbiter?.structured);
+        if (aDiag?.needs_human_review) needsHuman = true;
+      }
+
+      // Phase 4: Security + Fix
+      for (const slug of secFixStages2) {
         if (slug === "pr-review" && !securityPassed) {
-          stages.push({
-            agent_slug: slug,
-            allowed: false,
-            skipped_reason: "security-compliance no aprobó; PR no se revisa",
-          });
+          stages.push({ agent_slug: slug, allowed: false, skipped_reason: "security-compliance no aprobó; PR no se revisa" });
           needsHuman = true;
           continue;
         }
-
         const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
         if (!stage) continue;
-
         if (slug === "security-compliance") {
           securityPassed = this.securityApproved(stage.output_preview ?? "");
           if (!securityPassed) needsHuman = true;
         }
-
+        if (stage.output_preview) {
+          carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
+        }
         const diag = this.parseDiagnostic(stage.structured);
         if (diag?.needs_human_review) needsHuman = true;
+      }
 
-        carriedContext += `\n\n[${slug}] ${stage.output_preview ?? ""}`.slice(0, 8000);
+      // Phase 5: User Communication
+      if (postStages2.includes("user-communication")) {
+        const comm = await this.runStage(
+          "user-communication", profile, carriedContext,
+          `${sessionId}:comm`, stages, workspaceId, runId,
+        );
+        if (comm?.output_preview) {
+          carriedContext += `\n\n[user-communication] ${comm.output_preview}`.slice(0, 8000);
+        }
+      }
+
+      // Phase 6: Human Handoff
+      if (needsHuman && postStages2.includes("human-handoff")) {
+        await this.runStage(
+          "human-handoff", profile,
+          `${carriedContext}\n\n⚠️ Requiere revisión humana. Prepará resumen ejecutivo.`,
+          `${sessionId}:handoff`, stages, workspaceId, runId,
+        );
       }
 
       const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
