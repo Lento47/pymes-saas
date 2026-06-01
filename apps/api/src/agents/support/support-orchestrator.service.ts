@@ -19,6 +19,7 @@ import { FlowiseSetupService, PLAN_TO_TIER } from "../flowise-setup.service";
 import { AgentGuardrailsService } from "../runtime/agent-guardrails.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { EventsGateway } from "../../gateways/events.gateway";
+import { CreditsService } from "../../memory/credits.service";
 import { getSupportAgent } from "./support-agents.catalog";
 import { buildPipeline } from "./support-pipeline";
 import type {
@@ -73,7 +74,13 @@ export class SupportOrchestratorService {
     private readonly guardrails: AgentGuardrailsService,
     private readonly notifications: NotificationsService,
     @Optional() private readonly events?: EventsGateway,
+    @Optional() private readonly credits?: CreditsService,
   ) {}
+
+  /** Credits consumed per support case (configurable via env). */
+  private get supportCaseCredits(): number {
+    return Number(process.env.SUPPORT_CASE_CREDIT_COST) || 5;
+  }
 
   async orchestrate(input: OrchestrateInput): Promise<OrchestrateResult> {
     const tier = await this.resolveTier(input.workspace_id);
@@ -200,6 +207,11 @@ export class SupportOrchestratorService {
         tier,
         result,
       });
+
+      // Deduct credits for the support case (non-fatal)
+      this.deductCreditsForCase(input.workspace_id, run.id).catch((err) =>
+        this.logger.error(`[orchestrator] credit deduction failed: ${err?.message}`)
+      );
 
       return result;
     } catch (err: any) {
@@ -471,6 +483,28 @@ export class SupportOrchestratorService {
         related_entity_type: "support_run",
         related_entity_id: runId,
       });
+    }
+  }
+
+  private async deductCreditsForCase(
+    workspaceId: string,
+    runId: string,
+  ): Promise<void> {
+    if (!this.credits) return;
+    const cost = this.supportCaseCredits;
+    const result = await this.credits.deductCredits(
+      workspaceId,
+      cost,
+      `Soporte — caso #${runId.slice(0, 8)}`,
+    );
+    if (result.success) {
+      this.logger.log(
+        `Workspace ${workspaceId}: deducted ${cost} credits for support case ${runId.slice(0, 8)}. Balance: ${result.newBalance}`,
+      );
+    } else {
+      this.logger.warn(
+        `Workspace ${workspaceId}: insufficient credits for support case ${runId.slice(0, 8)} (balance: ${result.newBalance}, needed: ${cost})`,
+      );
     }
   }
 }

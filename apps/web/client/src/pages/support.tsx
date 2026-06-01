@@ -12,6 +12,10 @@ import {
   CreditCard,
   Bot,
   Building2,
+  AlertCircle,
+  Cog,
+  ShieldCheck,
+  Stethoscope,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/use-auth';
@@ -64,18 +68,75 @@ const AGENTS: SupportAgent[] = [
   },
 ];
 
-type Message = {
+type OrchestrateResult = {
+  run_id: string;
+  tier: string;
+  case_type?: string;
+  severity?: string;
+  status: 'COMPLETED' | 'NEEDS_HUMAN' | 'FAILED';
+  needs_human_review: boolean;
+  stages: StageRecord[];
+  summary: string;
+};
+
+type StageRecord = {
+  agent_slug: string;
+  allowed: boolean;
+  skipped_reason?: string;
+  output_preview?: string;
+  duration_ms?: number;
+  error?: string;
+};
+
+type ChatMessage = {
   id: string;
   role: 'user' | 'agent' | 'system';
   content: string;
-  isStreaming?: boolean;
+  result?: OrchestrateResult;
 };
 
+const STAGE_ICONS: Record<string, typeof Stethoscope> = {
+  'intake-triage': Stethoscope,
+  diagnostic: Cog,
+  'fix-proposal': LifeBuoy,
+  'security-compliance': ShieldCheck,
+  'pr-review': CheckCircle2,
+};
+
+function StageResult({ stage }: { stage: StageRecord }) {
+  const Icon = STAGE_ICONS[stage.agent_slug] ?? Cog;
+  const label = stage.agent_slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  return (
+    <div className={`flex items-start gap-2.5 rounded-md border px-3 py-2 text-xs ${
+      stage.error ? 'border-destructive/20 bg-destructive/5' :
+      stage.skipped_reason ? 'border-border/40 bg-muted/20' :
+      'border-emerald-500/20 bg-emerald-500/5'
+    }`}>
+      <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+        stage.error ? 'text-destructive' :
+        stage.skipped_reason ? 'text-muted-foreground/40' :
+        'text-emerald-500'
+      }`} />
+      <div className="min-w-0">
+        <p className="font-medium text-foreground">{label}</p>
+        {stage.error && <p className="text-destructive mt-0.5">{stage.error}</p>}
+        {stage.skipped_reason && <p className="text-muted-foreground mt-0.5">{stage.skipped_reason}</p>}
+        {stage.output_preview && !stage.error && (
+          <p className="text-muted-foreground mt-0.5 line-clamp-2">{stage.output_preview.slice(0, 300)}</p>
+        )}
+        {stage.duration_ms && (
+          <p className="text-muted-foreground/60 mt-0.5">{(stage.duration_ms / 1000).toFixed(1)}s</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId?: string; onBack: () => void }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [escalating, setEscalating] = useState(false);
   const [escalated, setEscalated] = useState(false);
@@ -84,62 +145,51 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   const initialized = useRef(false);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-  useEffect(() => { if (!isStreaming) inputRef.current?.focus(); }, [isStreaming]);
+  useEffect(() => { if (!isRunning) inputRef.current?.focus(); }, [isRunning]);
 
   const sendMessage = useCallback(async (text: string, systemContext?: string) => {
     const messageText = text.trim();
-    if (!messageText || isStreaming) return;
+    if (!messageText || isRunning) return;
     setError(null);
 
-    const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: messageText };
-    const agentMessage: Message = { id: crypto.randomUUID(), role: 'agent', content: '', isStreaming: true };
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: messageText };
+    const thinkingMessage: ChatMessage = { id: crypto.randomUUID(), role: 'system', content: 'Ejecutando diagnóstico...' };
 
     setMessages(prev => systemContext
-      ? [...prev, agentMessage]
-      : [...prev, userMessage, agentMessage]
+      ? [...prev, thinkingMessage]
+      : [...prev, userMessage, thinkingMessage]
     );
     setInput('');
-    setIsStreaming(true);
+    setIsRunning(true);
 
-    const payload = systemContext
+    const payloadMessage = systemContext
       ? `[CONTEXTO DEL SISTEMA: ${systemContext}]\n\n${messageText}`
       : messageText;
 
     try {
-      const response = await api.createAgentStream(payload, conversationId);
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const result = await api.orchestrateSupport(payloadMessage, undefined, false) as OrchestrateResult;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'response.output_text.delta') {
-              setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, content: m.content + (data.delta || '') } : m));
-            } else if (data.type === 'response.completed' && data.response?.id) {
-              setConversationId(data.response.id);
-            } else if (data.type === 'error') {
-              setError(data.error?.message || 'Error del agente');
-            }
-          } catch {}
-        }
+      setMessages(prev => {
+        const withoutThinking = prev.filter(m => m.id !== thinkingMessage.id);
+        return [...withoutThinking, {
+          id: crypto.randomUUID(),
+          role: 'agent',
+          content: result.summary,
+          result,
+        }];
+      });
+
+      if (result.needs_human_review) {
+        setError('Este caso requiere revisión humana. Podés escalarlo usando el botón de arriba.');
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al conectar con el asistente';
       setError(msg);
-      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: msg, isStreaming: false } : m));
+      setMessages(prev => prev.filter(m => m.id !== thinkingMessage.id));
     } finally {
-      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, isStreaming: false } : m));
-      setIsStreaming(false);
+      setIsRunning(false);
     }
-  }, [isStreaming, conversationId]);
+  }, [isRunning]);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -195,7 +245,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
           <span className="text-[13px] font-medium text-foreground">{agent.title}</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {messages.length > 2 && !escalated && (
+          {messages.length > 1 && !escalated && (
             <button
               onClick={handleEscalate}
               disabled={escalating}
@@ -223,40 +273,88 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             >
               {msg.role !== 'user' && (
                 <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-                  msg.role === 'system' ? 'border-destructive/25 text-destructive' : 'border-border bg-card text-muted-foreground'
+                  msg.role === 'system' ? 'border-border bg-muted text-muted-foreground' : 'border-border bg-card text-muted-foreground'
                 }`}>
-                  {msg.role === 'system' ? '!' : <MessageSquare className="w-3 h-3" />}
+                  {msg.role === 'system' ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <MessageSquare className="w-3 h-3" />
+                  )}
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-lg px-3 py-2.5 text-sm leading-relaxed ${
+              <div className={`max-w-[80%] space-y-2 ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-sm leading-relaxed'
                   : msg.role === 'system'
-                    ? 'border border-destructive/20 bg-destructive/5 text-destructive'
-                    : 'border border-border bg-card text-foreground'
+                    ? 'rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground'
+                    : ''
               }`}>
-                {msg.role === 'agent' ? (
-                  <>
+                {msg.role === 'user' ? (
+                  msg.content
+                ) : msg.role === 'system' ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {msg.content}
+                  </div>
+                ) : msg.role === 'agent' && msg.result ? (
+                  <div className="rounded-lg border border-border bg-card text-foreground max-w-full overflow-hidden">
+                    {/* Result header */}
+                    <div className={`flex items-center gap-2 px-4 py-3 border-b ${
+                      msg.result.status === 'COMPLETED' ? 'border-emerald-500/20 bg-emerald-500/5' :
+                      msg.result.status === 'NEEDS_HUMAN' ? 'border-amber-500/20 bg-amber-500/5' :
+                      'border-destructive/20 bg-destructive/5'
+                    }`}>
+                      {msg.result.status === 'COMPLETED' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      ) : msg.result.status === 'NEEDS_HUMAN' ? (
+                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                      )}
+                      <span className="text-xs font-medium">
+                        {msg.result.status === 'COMPLETED' ? 'Diagnóstico completado' :
+                         msg.result.status === 'NEEDS_HUMAN' ? 'Requiere revisión humana' :
+                         'Diagnóstico fallido'}
+                      </span>
+                      {msg.result.tier && (
+                        <span className="ml-auto text-[10px] text-muted-foreground">Tier {msg.result.tier}</span>
+                      )}
+                    </div>
+
+                    {/* Summary */}
+                    <div className="px-4 py-3">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="mb-2 list-disc pl-4 text-sm last:mb-0">{children}</ul>,
+                          ol: ({ children }) => <ol className="mb-2 list-decimal pl-4 text-sm last:mb-0">{children}</ol>,
+                          li: ({ children }) => <li className="mb-0.5 text-sm">{children}</li>,
+                          code: ({ children }) => <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">{children}</code>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        }}
+                      >{msg.result.summary}</ReactMarkdown>
+                    </div>
+
+                    {/* Stages */}
+                    {msg.result.stages.length > 0 && (
+                      <div className="border-t border-border px-4 py-3 space-y-2">
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Pipeline de diagnóstico</p>
+                        {msg.result.stages.map((stage, i) => (
+                          <StageResult key={i} stage={stage} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border bg-card px-3 py-2.5">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}
                       components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="mb-2 list-disc pl-4 last:mb-0">{children}</ul>,
-                        ol: ({ children }) => <ol className="mb-2 list-decimal pl-4 last:mb-0">{children}</ol>,
-                        li: ({ children }) => <li className="mb-0.5">{children}</li>,
-                        code: ({ children }) => <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">{children}</code>,
-                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        p: ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="mb-2 list-disc pl-4 text-sm last:mb-0">{children}</ul>,
+                        li: ({ children }) => <li className="mb-0.5 text-sm">{children}</li>,
                       }}
                     >{msg.content}</ReactMarkdown>
-                    {msg.isStreaming && !msg.content && (
-                      <span className="inline-flex gap-0.5 mt-1">
-                        {[0, 1, 2].map(i => (
-                          <span key={i} className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-                        ))}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  msg.content
+                  </div>
                 )}
               </div>
             </div>
@@ -276,7 +374,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming}
+            disabled={isRunning}
             placeholder="Describí tu problema..."
             rows={1}
             className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
@@ -284,10 +382,10 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isRunning}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
       </div>

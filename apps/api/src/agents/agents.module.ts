@@ -16,9 +16,10 @@ import { PrismaModule } from "../common/prisma/prisma.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { EventsModule } from "../gateways/events.module";
 import { AuditModule } from "../audit/audit.module";
+import { MemoryModule } from "../memory/memory.module";
 
 @Module({
-  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule, EventsModule, AuditModule],
+  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule, EventsModule, AuditModule, MemoryModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,
