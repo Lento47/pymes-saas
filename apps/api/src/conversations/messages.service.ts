@@ -1309,15 +1309,12 @@ export class MessagesService {
     this.logger.log(`AI control auto-reply sent to conversation ${conversationId}`);
 
     // ── Increment FREE tier monthly counter ──────────────────────────────
-    const monthKey = new Date().toISOString().slice(0, 7);
-    const wsSettings = (workspace.settings_json as Record<string, any>) ?? {};
-    const replyPeriod = wsSettings.monthly_ai_reply_period as string | undefined;
-    const newCount = (replyPeriod === monthKey ? (wsSettings.monthly_ai_reply_count as number) : 0) + 1;
+    const newCount = (replyPeriod === monthKey ? (settings.monthly_ai_reply_count as number) : 0) + 1;
     await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
         settings_json: {
-          ...wsSettings,
+          ...settings,
           monthly_ai_reply_period: monthKey,
           monthly_ai_reply_count: newCount,
         },
