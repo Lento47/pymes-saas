@@ -128,12 +128,75 @@ export class PlatformAdminService {
       return;
     }
 
-    // ── System prompt: no business restrictions + architecture context ────────
+    // ── Live DB metrics ─────────────────────────────────────────────────────
+    let dbStats = "";
+    try {
+      const [workspaceCount, planBreakdown, userCount, convCount, todayMessages] = await Promise.all([
+        this.prisma.workspace.count({ where: { deleted_at: null } }),
+        this.prisma.workspace.groupBy({ by: ["plan"], where: { deleted_at: null }, _count: true }),
+        this.prisma.user.count(),
+        this.prisma.conversation.count({ where: { status: { in: ["NEW", "OPEN", "PENDING"] } } }),
+        this.prisma.message.count({
+          where: { sent_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+        }),
+      ]);
+      const plans = planBreakdown.map((p) => `${p.plan}: ${p._count}`).join(", ");
+      dbStats = `\n== MÉTRICAS EN VIVO (actualizadas al momento) ==
+Workspaces activos: ${workspaceCount}
+Por plan: ${plans}
+Usuarios: ${userCount}
+Conversaciones abiertas: ${convCount}
+Mensajes últimas 24h: ${todayMessages}
+`;
+    } catch (err: any) {
+      this.logger.warn(`[platform-admin] DB stats query failed: ${err?.message}`);
+    }
+
+    // ── Workspace-specific lookup (admin mentioned a workspace ID or name) ──
+    let workspaceDetail = "";
+    const wsIdMatch = text.match(/workspace[:\s]+([a-z0-9]{20,30})/i) || text.match(/\b(cmo[a-z0-9]{20,})\b/i);
+    const wsNameMatch = text.match(/workspace\s+[""]?([^""\s]{2,40})[""]?/i);
+    if (wsIdMatch) {
+      try {
+        const ws = await this.prisma.workspace.findUnique({
+          where: { id: wsIdMatch[1] },
+          select: {
+            id: true, name: true, slug: true, plan: true,
+            created_at: true,
+            _count: { select: { conversations: true, messages: true, users: { where: { role: "OWNER" } } } },
+          },
+        });
+        if (ws) {
+          workspaceDetail = `\n== WORKSPACE CONSULTADO ==
+ID: ${ws.id}
+Nombre: ${ws.name}
+Slug: ${ws.slug}
+Plan: ${ws.plan}
+Creado: ${ws.created_at?.toISOString().slice(0, 10) ?? "?"}
+Conversaciones: ${ws._count.conversations}
+Mensajes: ${ws._count.messages}
+Owners: ${ws._count.users}
+`;
+        }
+      } catch {}
+    }
+    if (!workspaceDetail && wsNameMatch) {
+      try {
+        const wss = await this.prisma.workspace.findMany({
+          where: { name: { contains: wsNameMatch[1], mode: "insensitive" }, deleted_at: null },
+          select: { id: true, name: true, plan: true, slug: true },
+          take: 5,
+        });
+        if (wss.length > 0) {
+          workspaceDetail = `\n== WORKSPACES ENCONTRADOS ("${wsNameMatch[1]}") ==\n${wss.map((w) => `- ${w.name} (${w.slug}) — ${w.plan} — ${w.id}`).join("\n")}\n`;
+        }
+      } catch {}
+    }
     const systemPrompt = `Eres el asistente de administración de la plataforma PymesHub.
 Estás hablando directamente con el administrador de la plataforma (dueño del sistema).
 Workspace activo: ${workspaceId}
 Canal: ${channelType}
-
+${dbStats}${workspaceDetail}
 MODO ADMINISTRADOR — sin restricciones de negocio, sin prompt de cliente.
 
 == ARQUITECTURA PYMESHUB ==
@@ -171,6 +234,8 @@ El admin puede pedirte que leas cualquier archivo para obtener contexto real del
 
 Puedes ayudar con cualquier consulta:
 - Diagnóstico de errores: leer logs, revisar código, proponer fixes
+- Consultas de base de datos: workspaces, usuarios, mensajes, métricas en vivo
+- Buscar workspace por ID o nombre: "workspace cmo..." o "workspace NombreNegocio"
 - Configuración de workspaces, planes, facturación
 - Pruebas de IA: modelos, proveedores, prompts, temperatura
 - Estado técnico del sistema, variables de entorno Railway
