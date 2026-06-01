@@ -141,11 +141,8 @@ export class TelegramService {
         secret_token: webhookSecret,
       });
 
-      // Remove old webhook after new one is confirmed registered.
-      // Doing it before would leave the channel without a webhook if setWebhook fails.
-      await this.removeWebhook(channelId).catch((err) =>
-        this.logger.warn(`Failed to clean up old webhook for channel=${channelId}`, err),
-      );
+      // setWebhook replaces any existing webhook on Telegram's side.
+      // Do NOT call deleteWebhook() here — it would remove the one we just set.
 
       // Persist the secret on the channel config so the webhook handler can validate it.
       const existing = (channel.config_json as any) || {};
