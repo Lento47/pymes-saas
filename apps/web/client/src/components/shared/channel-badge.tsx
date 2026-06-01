@@ -1,16 +1,27 @@
-const CHANNEL_STYLES: Record<string, string> = {
-  WHATSAPP: "bg-[#25D366]/15 text-[#25D366]",
-  TELEGRAM: "bg-[#0088cc]/15 text-[#0088cc]",
-  EMAIL: "bg-[#60A5FA]/15 text-[#60A5FA]",
-  FORM: "bg-[#A78BFA]/15 text-[#A78BFA]",
+import { MessageCircle, Send, Mail, FileText } from "lucide-react";
+
+const CHANNEL_ICON: Record<string, React.ReactNode> = {
+  WHATSAPP: <MessageCircle className="h-3 w-3" />,
+  TELEGRAM: <Send className="h-3 w-3" />,
+  EMAIL: <Mail className="h-3 w-3" />,
+  FORM: <FileText className="h-3 w-3" />,
+};
+
+const CHANNEL_LABEL: Record<string, string> = {
+  WHATSAPP: "WA",
+  TELEGRAM: "TG",
+  EMAIL: "Mail",
+  FORM: "Form",
 };
 
 export function ChannelBadge({ channel }: { channel?: string | null }) {
   if (!channel) return null;
-  const style = CHANNEL_STYLES[channel] || "bg-muted text-muted-foreground";
+  const icon = CHANNEL_ICON[channel];
+  const label = CHANNEL_LABEL[channel] ?? channel;
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${style}`}>
-      {channel}
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/50">
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
     </span>
   );
 }
