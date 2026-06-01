@@ -36,11 +36,11 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "support-orchestrator",
     name: "Support Orchestrator",
-    role: "Routes a case to the right specialized agent; never resolves it alone.",
+    role: "Routes a case to the right specialized agent.",
     tierAccess: ALL_TIERS,
     model: "fast",
     temperature: 0.2,
-    tools: ["get_workspace_context", "get_workspace_plan", "list_diagnostic_cases"],
+    tools: ["get_workspace_data", "get_recent_errors"],
     systemPrompt: SUPPORT_ORCHESTRATOR_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -53,7 +53,7 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
     tierAccess: ALL_TIERS,
     model: "fast",
     temperature: 0.2,
-    tools: ["get_workspace_context", "get_recent_errors", "add_internal_case_note"],
+    tools: ["get_workspace_data", "get_recent_errors"],
     systemPrompt: INTAKE_TRIAGE_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -62,11 +62,11 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "customer-support",
     name: "Customer Support Agent",
-    role: "Helps users with normal product usage and configuration.",
+    role: "Helps users with product usage and configuration.",
     tierAccess: ALL_TIERS,
     model: "fast",
     temperature: 0.3,
-    tools: ["get_workspace_context", "get_conversation_context"],
+    tools: ["get_workspace_data"],
     systemPrompt: CUSTOMER_SUPPORT_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -75,15 +75,13 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "channel-integration",
     name: "Channel Integration Agent",
-    role: "Diagnoses WhatsApp / Telegram / email connection and webhook issues.",
+    role: "Diagnoses WhatsApp / Telegram / email connection issues using real channel data.",
     tierAccess: TIER_2_PLUS,
     model: "fast",
     temperature: 0.3,
     tools: [
-      "get_workspace_context",
+      "get_workspace_data",
       "get_channel_status",
-      "get_whatsapp_status",
-      "get_telegram_status",
       "get_recent_errors",
     ],
     systemPrompt: CHANNEL_INTEGRATION_PROMPT,
@@ -98,7 +96,7 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
     tierAccess: TIER_2_PLUS,
     model: "fast",
     temperature: 0.3,
-    tools: ["get_workspace_context", "get_workflow_config", "get_conversation_context"],
+    tools: ["get_workspace_data", "get_recent_errors"],
     systemPrompt: CRM_WORKFLOW_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -107,11 +105,11 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "billing-subscription",
     name: "Billing / Subscription Agent",
-    role: "Explains plans, limits and subscription state; never mutates billing.",
+    role: "Explains plans, limits and subscription state using real billing data.",
     tierAccess: TIER_2_PLUS,
     model: "fast",
     temperature: 0.2,
-    tools: ["get_workspace_context", "get_workspace_plan", "get_billing_status"],
+    tools: ["get_workspace_data", "get_billing_status"],
     systemPrompt: BILLING_SUBSCRIPTION_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -120,19 +118,17 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "technical-diagnostic",
     name: "Technical Diagnostic Agent",
-    role: "Reads logs and real code to find probable root cause with evidence.",
-    // Tier 2 gets a limited/redacted variant (enforced by tool access at runtime, PR2).
+    role: "Reads logs, real code, and commits to find root cause with evidence.",
     tierAccess: TIER_2_PLUS,
     model: "reasoning",
     temperature: 0.1,
     tools: [
-      "get_workspace_context",
-      "get_recent_errors",
-      "get_railway_logs",
-      "read_github_file",
-      "search_github_files",
-      "get_recent_commits",
-      "list_diagnostic_cases",
+      "get_workspace_data",        // Custom Tool → PymesHub API
+      "get_recent_errors",         // Custom Tool → PymesHub API
+      "get_railway_logs",          // Custom Tool → Railway GraphQL
+      "read_github_file",          // Custom Tool → GitHub API
+      "search_github_code",        // Custom Tool → GitHub Search API
+      "get_recent_commits",        // Custom Tool → GitHub Commits API
     ],
     systemPrompt: TECHNICAL_DIAGNOSTIC_PROMPT,
     canCreatePr: false,
@@ -142,18 +138,16 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "code-fix-proposal",
     name: "Code Fix Proposal Agent",
-    role: "Turns a verified diagnosis into a complete, reviewable change proposal.",
+    role: "Reads real code and produces complete, reviewable file fixes.",
     tierAccess: TIER_3_PLUS,
     model: "reasoning",
     temperature: 0.1,
     tools: [
-      "get_workspace_context",
-      "read_github_file",
-      "search_github_files",
-      "get_recent_commits",
-      "create_fix_proposal",
-      // create_github_pr is listed but gated by plan + PrCreationPolicyService (PR2).
-      "create_github_pr",
+      "get_workspace_data",
+      "read_github_file",          // Custom Tool → GitHub API
+      "search_github_code",        // Custom Tool → GitHub Search API
+      "get_recent_commits",         // Custom Tool → GitHub Commits API
+      "create_github_pr",          // Custom Tool → GitHub API (draft PR)
     ],
     systemPrompt: CODE_FIX_PROPOSAL_PROMPT,
     canCreatePr: true,
@@ -167,7 +161,7 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
     tierAccess: TIER_3_PLUS,
     model: "reasoning",
     temperature: 0.1,
-    tools: ["get_workspace_context", "read_github_file", "get_recent_commits"],
+    tools: ["read_github_file", "get_recent_commits"],
     systemPrompt: PR_REVIEW_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -176,11 +170,11 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
   {
     slug: "security-compliance",
     name: "Security / Compliance Agent",
-    role: "Mandatory gate before any PR touching sensitive areas; can block.",
+    role: "Mandatory gate before any PR touching sensitive areas.",
     tierAccess: TIER_3_PLUS,
     model: "reasoning",
     temperature: 0.0,
-    tools: ["get_workspace_context", "read_github_file"],
+    tools: ["read_github_file"],
     systemPrompt: SECURITY_COMPLIANCE_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
@@ -193,7 +187,7 @@ export const SUPPORT_AGENTS: SupportAgentDefinition[] = [
     tierAccess: ALL_TIERS,
     model: "fast",
     temperature: 0.2,
-    tools: ["get_workspace_context", "add_internal_case_note"],
+    tools: ["get_workspace_data"],
     systemPrompt: HUMAN_HANDOFF_PROMPT,
     canCreatePr: false,
     requiresSecurityReview: false,
