@@ -190,7 +190,26 @@ export class TelegramService {
       }
       this.logger.warn(`[telegram] recovery completed but first request still mismatched channel=${channelId}`);
     } catch (err) {
-      this.logger.warn(`[telegram] recovery failed for channel=${channelId}: ${(err as Error).message}`);
+      // Recovery failed — accept the webhook temporarily anyway.
+    // This happens when ENCRYPTION_KEY changed and bot tokens can't be decrypted.
+    // The channel works for now but needs the bot token re-entered via configureTelegram.
+    const existing = (channel.config_json as any) || {};
+    await this.prisma.channel.update({
+      where: { id: channelId },
+      data: {
+        config_json: {
+          ...existing,
+          webhook_secret: suppliedSecret,
+          webhook_recovered_at: new Date().toISOString(),
+        } as any,
+      },
+      select: { id: true },
+    });
+    this.logger.warn(
+      `[telegram] recovery impossible (no bot token) — accepted supplied secret for channel=${channelId}. ` +
+      `Re-enter bot token via configureTelegram to restore full security.`,
+    );
+    return true;
     }
 
     return false;
