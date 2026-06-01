@@ -53,7 +53,7 @@ export function ConversationNotes({ conversationId, initialNotes, onSaved }: Pro
           {saving ? (
             <Loader2 className="w-3 h-3 animate-spin" />
           ) : saved ? (
-            <span className="text-green-400">✓ Guardado</span>
+            <span className="text-success">✓ Guardado</span>
           ) : (
             <>
               <Save className="w-3 h-3" />
