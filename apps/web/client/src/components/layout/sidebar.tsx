@@ -746,6 +746,16 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <NotificationBell />
 
+          {/* Logout — always visible on mobile, hidden on desktop (desktop uses sidebar button) */}
+          <button
+            onClick={logout}
+            title={copy.logout}
+            aria-label={copy.logout}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive lg:hidden"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+
           <span className="hidden rounded-md border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-xs font-medium text-primary/80 lg:inline-block">
             {user?.role}
           </span>
