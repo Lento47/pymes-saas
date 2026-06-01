@@ -126,11 +126,17 @@ export class SupportOrchestratorService {
     });
 
     try {
-      // Pre-fetch workspace context so stage flows don't need Flowise Tool nodes.
-      const wsCtx = await this.fetchWorkspaceContext(input.workspace_id, tier);
+      // Pre-fetch workspace and diagnostic case context so stage flows don't
+      // depend on Flowise Tool nodes to understand what case is being analyzed.
+      const [wsCtx, caseCtx] = await Promise.all([
+        this.fetchWorkspaceContext(input.workspace_id, tier),
+        this.fetchDiagnosticCaseContext(input.workspace_id, input.diagnostic_case_id),
+      ]);
 
       // ── Stage 0: triage (all tiers) ──
-      const triageCtx = `${wsCtx}\n\nMensaje del usuario:\n${input.message}`;
+      const triageCtx = [wsCtx, caseCtx, `Mensaje del usuario:\n${input.message}`]
+        .filter(Boolean)
+        .join("\n\n");
       const triage = await this.runStage("intake-triage", tier, triageCtx, sessionId, stages, input.workspace_id, run.id);
       const triageOut = this.parseDiagnostic(triage?.structured);
       caseType = triageOut?.case_type ?? "unknown";
@@ -331,10 +337,20 @@ export class SupportOrchestratorService {
     let securityPassed = false;
 
     try {
-      const wsCtx = await this.fetchWorkspaceContext(workspaceId, tier);
+      const [wsCtx, caseCtx] = await Promise.all([
+        this.fetchWorkspaceContext(workspaceId, tier),
+        this.fetchDiagnosticCaseContext(workspaceId, run.diagnostic_case_id ?? undefined),
+      ]);
 
-      // Build context with the original triage + user's answer
-      const clarificationCtx = `${wsCtx}\n\n[RESPUESTA DEL USUARIO A LAS PREGUNTAS DE CLARIFICACIÓN]\n${userAnswer}\n\n[Clasificación previa: ${caseType}, severidad: ${severity}]`;
+      // Build context with the original triage + user's answer + case context
+      const clarificationCtx = [
+        wsCtx,
+        caseCtx,
+        `[RESPUESTA DEL USUARIO A LAS PREGUNTAS DE CLARIFICACIÓN]\n${userAnswer}`,
+        `[Clasificación previa: ${caseType}, severidad: ${severity}]`,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       // ── Routed pipeline (skip triage, start from diagnostic) ──
       const pipeline = buildPipeline({
@@ -546,6 +562,83 @@ export class SupportOrchestratorService {
       ].join("\n");
     } catch {
       return `[Contexto del Workspace]\nID: ${workspaceId} | Tier: ${tier}`;
+    }
+  }
+
+  /**
+   * Load the diagnostic case context so agents understand what they're analyzing.
+   * When no case_id is provided (standalone messages), returns empty string.
+   */
+  private async fetchDiagnosticCaseContext(
+    workspaceId: string,
+    diagnosticCaseId?: string,
+  ): Promise<string> {
+    if (!diagnosticCaseId) return "";
+
+    try {
+      const dCase = await this.prisma.supportDiagnosticCase.findFirst({
+        where: {
+          id: diagnosticCaseId,
+          workspace_id: workspaceId,
+        },
+        select: {
+          id: true,
+          module: true,
+          error_code: true,
+          trace_id: true,
+          category: true,
+          risk_level: true,
+          status: true,
+          title: true,
+          user_description: true,
+          safe_summary: true,
+          evidence_json: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      if (!dCase) {
+        return [
+          `[Caso de diagnóstico]`,
+          `ID: ${diagnosticCaseId}`,
+          `Estado: no encontrado o no pertenece al workspace actual`,
+        ].join("\n");
+      }
+
+      const evidencePreview = dCase.evidence_json
+        ? JSON.stringify(dCase.evidence_json).slice(0, 4000)
+        : "";
+
+      return [
+        `[Caso de diagnóstico]`,
+        `ID: ${dCase.id}`,
+        `Estado: ${dCase.status}`,
+        `Módulo: ${dCase.module ?? "unknown"}`,
+        `Categoría: ${dCase.category}`,
+        `Riesgo: ${dCase.risk_level}`,
+        dCase.error_code ? `Código de error: ${dCase.error_code}` : "",
+        dCase.trace_id ? `Trace ID: ${dCase.trace_id}` : "",
+        `Título: ${dCase.title}`,
+        dCase.user_description
+          ? `Descripción del usuario:\n${dCase.user_description}`
+          : "",
+        dCase.safe_summary ? `Resumen seguro:\n${dCase.safe_summary}` : "",
+        evidencePreview ? `Evidencia registrada:\n${evidencePreview}` : "",
+        `Creado: ${dCase.created_at.toISOString()}`,
+        `Actualizado: ${dCase.updated_at.toISOString()}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    } catch (err: any) {
+      this.logger.warn(
+        `[orchestrator] failed to fetch diagnostic case ${diagnosticCaseId}: ${err?.message}`,
+      );
+      return [
+        `[Caso de diagnóstico]`,
+        `ID: ${diagnosticCaseId}`,
+        `(no se pudo cargar — ${err?.message ?? "error"})`,
+      ].join("\n");
     }
   }
 
