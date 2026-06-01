@@ -27,8 +27,8 @@ export function AudioAttachment({ messageId, caption, durationMs, className, pro
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null!);
+  const progressRef = useRef<HTMLDivElement>(null!);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -71,7 +71,16 @@ export function AudioAttachment({ messageId, caption, durationMs, className, pro
   }, [playbackRate]);
 
   const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
-  const displayTime = audioDuration > 0 ? formatDuration((audioDuration - currentTime) * 1000) : durationMs ? formatDuration(durationMs) : displayTime;
+
+  const totalDurationMs = audioDuration > 0
+    ? Math.floor(audioDuration * 1000)
+    : (durationMs ?? 0);
+  const remainingMs = audioDuration > 0
+    ? Math.max(0, Math.floor((audioDuration - currentTime) * 1000))
+    : totalDurationMs;
+
+  const displayTime = formatDuration(playing ? remainingMs : totalDurationMs);
+
   const waveform = [30, 52, 36, 70, 44, 82, 55, 38, 64, 48, 76, 42, 58, 34, 68, 46, 72, 40];
   const isTelegramVoice = provider === "TELEGRAM";
   const isWhatsAppVoice = provider === "WHATSAPP";
@@ -176,7 +185,7 @@ export function AudioAttachment({ messageId, caption, durationMs, className, pro
 
           <div className="mt-0.5 flex items-center justify-between">
             <span className="select-none text-[10px] tabular-nums text-muted-foreground/70">
-              {playing ? displayTime : durationMs ? formatDuration(durationMs) : displayTime}
+              {displayTime}
             </span>
           </div>
         </div>

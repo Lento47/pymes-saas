@@ -108,7 +108,7 @@ export const MessageBubble = function MessageBubble({
   className,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === "OUTBOUND";
-  const isShort = message.bodyText?.length < 100;
+  const isShort = (message.bodyText?.length ?? 0) < 100;
   const variant = getBubbleVariant(message);
 
   const timeString = useMemo(() => {
