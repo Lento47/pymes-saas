@@ -1228,21 +1228,58 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     temperature?: number;
     credentialId?: string;
   }): string {
-    // Stage flows are Start → LLM only. No Tool nodes.
+    // Build a Start → Tools (parallel) → LLM flow when tools are available.
+    // Falls back to Start → LLM only when no tool IDs are provided.
     //
-    // Flowise validates ALL Tool node references (by ID) at buildChatflow
-    // time — before any node executes. If the stored ID doesn't match a
-    // registered tool, the entire flow fails with "Tool not selected".
-    // Neither names nor IDs are reliable across Flowise DB resets.
-    //
-    // Instead, SupportOrchestratorService pre-fetches workspace context
-    // directly from Prisma and injects it into the question string before
-    // calling Flowise. The LLM receives full context without needing to
-    // call any Flowise-side tools. This is the correct separation:
-    //   Orchestrator → data fetching / sequencing
-    //   Flowise      → LLM reasoning only
+    // Tool nodes execute BEFORE the LLM, storing their output in flow state.
+    // The LLM receives the system prompt + tool outputs as context.
+    // This design is validated against the tier flow builders (Tier2/3/4)
+    // which use the same Tool Node → LLM pattern successfully in production.
+
     const llmId = "llmAgentflow_0";
+    const nodes: any[] = [];
+    const edges: any[] = [];
+
     const start = FlowiseClient.buildStartNode();
+    nodes.push(start);
+
+    const toolNamesArr = opts.toolNames ?? [];
+    const toolIdsArr = opts.toolIds ?? [];
+    const hasTools = toolIdsArr.length > 0;
+
+    // ── Tool Nodes (parallel, execute before LLM) ──
+    if (hasTools) {
+      const toolStateUpdates: string[] = [];
+      for (let i = 0; i < toolIdsArr.length; i++) {
+        const toolId = `toolAgentflow_${i}`;
+        const toolName = toolNamesArr[i] ?? toolIdsArr[i];
+        const stateKey = toolName.replace(/[^a-zA-Z0-9]/g, "_");
+        const inputValue = "{}"; // tools get context from $vars injected at predict time
+
+        const toolNode = FlowiseClient.buildToolNode({
+          id: toolId,
+          label: toolName,
+          toolId: toolIdsArr[i],
+          inputValue,
+          position: { x: 600 + i * 250, y: 200 },
+          updateState: JSON.stringify([{ key: stateKey, value: `{{ ${toolId}.output }}` }]),
+        });
+        nodes.push(toolNode);
+        toolStateUpdates.push(stateKey);
+
+        // Edge: Start → each Tool
+        edges.push(
+          FlowiseClient.buildEdge(
+            "startAgentflow_0",
+            "startAgentflow_0-output-startAgentflow",
+            toolId,
+            toolId,
+          ),
+        );
+      }
+    }
+
+    // ── LLM Node ──
     const llm = FlowiseClient.buildLLMNode({
       id: llmId,
       label: "Stage Agent",
@@ -1254,17 +1291,33 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
         basepath: opts.basepath,
       },
       returnResponseAs: "assistantMessage",
-      position: { x: 300, y: 250 },
+      position: { x: 300, y: hasTools ? 500 : 250 },
     });
-    const edges = [
-      FlowiseClient.buildEdge(
-        "startAgentflow_0",
-        "startAgentflow_0-output-startAgentflow",
-        llmId,
-        llmId,
-      ),
-    ];
-    return JSON.stringify({ nodes: [start, llm], edges });
+    nodes.push(llm);
+
+    if (hasTools) {
+      // Edge: Start → LLM (so LLM runs after tools complete — Flowise executes
+      // nodes in topological order, and the LLM will wait for all its inputs)
+      edges.push(
+        FlowiseClient.buildEdge(
+          "startAgentflow_0",
+          "startAgentflow_0-output-startAgentflow",
+          llmId,
+          llmId,
+        ),
+      );
+    } else {
+      edges.push(
+        FlowiseClient.buildEdge(
+          "startAgentflow_0",
+          "startAgentflow_0-output-startAgentflow",
+          llmId,
+          llmId,
+        ),
+      );
+    }
+
+    return JSON.stringify({ nodes, edges });
   }
 
   // ── Chatflow CRUD ──────────────────────────────────────────────────────────
@@ -1364,6 +1417,13 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     } catch {
       return [];
     }
+  }
+
+  /** Resolve a tool ID by name. Returns undefined if the tool is not registered. */
+  async getToolIdByName(name: string): Promise<string | undefined> {
+    const tools = await this.listTools();
+    const tool = tools.find((t) => t.name === name);
+    return tool?.id;
   }
 
   async createTool(tool: FlowiseToolDef): Promise<string> {

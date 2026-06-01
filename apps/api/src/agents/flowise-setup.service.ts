@@ -378,9 +378,28 @@ export class FlowiseSetupService {
     if (!agent) return null;
     try {
       const flowName = `PymesHub Agente — ${agent.name}`;
-      const toolPairs = agent.tools
-        .map((name) => ({ name, id: this._toolIdByName.get(name) }))
-        .filter((p): p is { name: string; id: string } => !!p.id);
+
+      // Resolve tool IDs: prefer cache, fall back to Flowise API live lookup.
+      const toolPairs: { name: string; id: string }[] = [];
+      for (const name of agent.tools) {
+        let id = this._toolIdByName.get(name);
+        if (!id) {
+          // Cache miss — likely after Flowise DB reset. Resolve live.
+          id = await this.flowise.getToolIdByName(name);
+          if (id) this._toolIdByName.set(name, id); // repopulate cache
+        }
+        if (id) toolPairs.push({ name, id });
+      }
+
+      const missingTools = agent.tools.filter(
+        (n) => !toolPairs.some((p) => p.name === n),
+      );
+      if (missingTools.length > 0) {
+        this.logger.warn(
+          `[flowise-setup] ${slug}: ${missingTools.length} tools not found in Flowise: ${missingTools.join(", ")}`,
+        );
+      }
+
       const flowData = this.flowise.buildSupportFlowData({
         modelName: SUPPORT_MODEL_NAME[agent.model],
         systemPrompt: agent.systemPrompt,
