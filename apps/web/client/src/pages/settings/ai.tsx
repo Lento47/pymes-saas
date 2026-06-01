@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2, ShoppingCart, UtensilsCrossed, Zap, Stethoscope, Megaphone, Briefcase, Store, LayoutGrid } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2, ShoppingCart, UtensilsCrossed, Zap, Stethoscope, Megaphone, Briefcase, Store, LayoutGrid, Sparkles, ChevronUp, ChevronDown, X } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -38,16 +38,16 @@ function PromptSuggestion({
   suggestion, loading, onApply, onDismiss,
 }: { suggestion: string; loading: boolean; onApply: () => void; onDismiss: () => void }) {
   if (loading) {
-    return <p className="mt-1 text-[11px] text-muted-foreground animate-pulse">✨ Generando sugerencia...</p>;
+    return <p className="mt-1 text-[11px] text-muted-foreground animate-pulse flex items-center gap-1"><Sparkles className="w-3 h-3 animate-pulse" />Generando sugerencia...</p>;
   }
   if (!suggestion) return null;
   return (
     <div className="mt-1.5 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-[11px]">
-      <p className="font-medium text-primary mb-1">✨ Sugerencia IA</p>
+      <p className="font-medium text-primary mb-1 flex items-center gap-1"><Sparkles className="w-3 h-3" />Sugerencia IA</p>
       <p className="text-foreground/80 whitespace-pre-wrap leading-4">{suggestion}</p>
       <div className="mt-2 flex gap-3">
-        <button onClick={onApply} className="font-medium text-primary hover:underline">Aplicar</button>
-        <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors">Descartar</button>
+        <Button variant="ghost" size="sm" onClick={onApply} className="font-medium text-primary hover:underline h-6 px-2 text-xs">Aplicar</Button>
+        <Button variant="ghost" size="sm" onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors h-6 px-2 text-xs">Descartar</Button>
       </div>
     </div>
   );
@@ -513,13 +513,15 @@ export default function AiSettingsPage() {
                 placeholder={hasKey ? "••••••••••••••••••••" : "sk-... / AIza... / re_..."}
                 className="pr-9 bg-[hsl(var(--elevated))] border-border font-mono text-xs"
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowKey(v => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -556,12 +558,13 @@ export default function AiSettingsPage() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {BUSINESS_PROFILES.map(({ id, label, Icon }) => (
-              <button
+              <Button
                 key={id}
                 type="button"
+                variant="outline"
                 onClick={() => applyProfile(BUSINESS_PROFILES.find(p => p.id === id)!)}
                 className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-center transition-colors",
+                  "flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 h-auto text-center transition-colors",
                   selectedProfile === id
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -569,7 +572,7 @@ export default function AiSettingsPage() {
               >
                 <Icon className="h-5 w-5 shrink-0" strokeWidth={1.8} />
                 <span className="text-[11px] font-medium leading-tight">{label}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -808,8 +811,10 @@ export default function AiSettingsPage() {
                         <p className="text-[10px] text-muted-foreground">{info?.provider ?? ""} · {modelId}</p>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setAgentProviders(prev => {
                             if (index === 0) return prev;
                             const next = [...prev];
@@ -817,13 +822,15 @@ export default function AiSettingsPage() {
                             return next;
                           })}
                           disabled={index === 0}
-                          className="p-1 rounded hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="h-6 w-6 p-0 hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Subir"
                         >
-                          ▲
-                        </button>
-                        <button
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setAgentProviders(prev => {
                             if (index === prev.length - 1) return prev;
                             const next = [...prev];
@@ -831,19 +838,21 @@ export default function AiSettingsPage() {
                             return next;
                           })}
                           disabled={index === agentProviders.length - 1}
-                          className="p-1 rounded hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="h-6 w-6 p-0 hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Bajar"
                         >
-                          ▼
-                        </button>
-                        <button
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setAgentProviders(prev => prev.filter((_, i) => i !== index))}
-                          className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                          className="h-6 w-6 p-0 hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
                           title="Quitar"
                         >
-                          ✕
-                        </button>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   );

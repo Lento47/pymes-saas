@@ -16,6 +16,10 @@ import { CategoryChips } from "@/components/inventory/CategoryChips";
 import { StockBar } from "@/components/inventory/StockBar";
 import { cn } from "@/lib/utils";
 import CsvImportModal from "@/components/import/csv-import-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { PageHeader } from "@/components/shared/page-header";
 
 type SortKey = "name" | "price" | "stock" | "created";
 
@@ -110,29 +114,25 @@ export default function InventoryPage() {
   return (
     <div className="min-h-full bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Inventario</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {total} producto{total !== 1 ? "s" : ""}
-            </p>
-          </div>
+        <PageHeader
+          title="Inventario"
+          description={`${total} producto${total !== 1 ? "s" : ""}`}
+        >
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-              >
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(v) => { if (v) setViewMode(v as "grid" | "table"); }}
+              variant="outline"
+              size="sm"
+            >
+              <ToggleGroupItem value="grid" aria-label="Vista cuadrícula">
                 <Grid3X3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("table")}
-                className={cn("p-1.5 rounded-md transition-colors", viewMode === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-              >
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Vista tabla">
                 <List className="w-4 h-4" />
-              </button>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
             <Link href="/inventory/movements">
               <Button variant="outline" size="sm" className="h-9"><ChevronDown className="h-4 w-4 mr-1" />Movimientos</Button>
             </Link>
