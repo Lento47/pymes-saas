@@ -1247,10 +1247,24 @@ export class MessagesService {
     });
     if (!workspace) return;
 
-    // Only EMPRENDE+ plans
-    const EMPRENDE_PLUS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
-    if (!EMPRENDE_PLUS.includes(workspace.plan)) {
-      this.logger.warn(`[ai-auto] workspace ${workspaceId} plan=${workspace.plan} no permite IA — requiere EMPRENDE+`);
+    // ── FREE tier rate limit: max 10 AI replies per month ──────────────────
+    const settings = (workspace.settings_json as Record<string, any>) ?? {};
+    const monthKey = new Date().toISOString().slice(0, 7); // "2026-06"
+    const replyPeriod = settings.monthly_ai_reply_period as string | undefined;
+    const replyCount = (replyPeriod === monthKey ? settings.monthly_ai_reply_count as number : 0) ?? 0;
+
+    if (workspace.plan === "FREE" && replyCount >= 10) {
+      this.logger.warn(`[ai-auto] FREE tier limit reached — workspace=${workspaceId} replies=${replyCount}/10`);
+      // Send a WhatsApp message informing the user they hit the limit
+      const limitMsg = "Has alcanzado el límite de 10 respuestas automáticas de IA este mes. Actualizá tu plan para acceder a respuestas ilimitadas. 🚀";
+      const convLimit = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { channel: { select: { type: true, config_json: true } }, contact: { select: { phone: true } } },
+      });
+      if (convLimit?.channel?.type === "WHATSAPP" && convLimit?.contact?.phone) {
+        const to = convLimit.contact.phone.replace(/\D/g, "");
+        if (to) this.whatsappService.sendMessage(convLimit.channel, to, limitMsg).catch(() => {});
+      }
       return;
     }
 
@@ -1293,5 +1307,22 @@ export class MessagesService {
     }
 
     this.logger.log(`AI control auto-reply sent to conversation ${conversationId}`);
+
+    // ── Increment FREE tier monthly counter ──────────────────────────────
+    const monthKey = new Date().toISOString().slice(0, 7);
+    const wsSettings = (workspace.settings_json as Record<string, any>) ?? {};
+    const replyPeriod = wsSettings.monthly_ai_reply_period as string | undefined;
+    const newCount = (replyPeriod === monthKey ? (wsSettings.monthly_ai_reply_count as number) : 0) + 1;
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: {
+        settings_json: {
+          ...wsSettings,
+          monthly_ai_reply_period: monthKey,
+          monthly_ai_reply_count: newCount,
+        },
+      },
+      select: { id: true },
+    }).catch(() => {/* non-fatal */});
   }
 }
