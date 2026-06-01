@@ -4,7 +4,7 @@ import { Job } from "bullmq";
 import { createWorker } from "tesseract.js";
 import sharp from "sharp";
 import * as mammoth from "mammoth";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import * as zlib from "zlib";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AiService } from "../../ai/ai.service";
@@ -317,14 +317,28 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
     }
   }
 
-  private extractXlsx(buffer: Buffer): string {
+  private async extractXlsx(buffer: Buffer): Promise<string> {
     try {
-      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const workbook = new ExcelJS.Workbook();
+      // exceljs reads the buffer as an ArrayBuffer-compatible source.
+      await workbook.xlsx.load(buffer);
       const sheets: string[] = [];
-      for (const name of workbook.SheetNames.slice(0, 3)) {
-        const sheet = workbook.Sheets[name];
-        const csv = XLSX.utils.sheet_to_csv(sheet);
-        if (csv.trim()) sheets.push(`[${name}]\n${csv}`);
+      for (const ws of workbook.worksheets.slice(0, 3)) {
+        const rows: string[] = [];
+        ws.eachRow({ includeEmpty: false }, (row) => {
+          // row.values is 1-indexed (index 0 is unused), so drop the first slot.
+          const cells = (row.values as unknown[]).slice(1).map((cell) => {
+            if (cell == null) return "";
+            if (typeof cell === "object") {
+              const obj = cell as Record<string, unknown>;
+              return String(obj.text ?? obj.result ?? obj.hyperlink ?? "");
+            }
+            return String(cell);
+          });
+          rows.push(cells.join(","));
+        });
+        const csv = rows.join("\n");
+        if (csv.trim()) sheets.push(`[${ws.name}]\n${csv}`);
       }
       return sheets.join("\n\n").slice(0, MAX_OCR_CHARS);
     } catch (err) {
