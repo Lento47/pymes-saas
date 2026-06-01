@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { Plus, User, Calendar, DollarSign, Trash2, Trophy } from "lucide-react";
+import { Plus, User, Calendar, DollarSign, Trash2, Trophy, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -42,10 +42,10 @@ interface Stage {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const PRIORITY_COLORS: Record<Deal["priority"], string> = {
-  LOW:    "text-[hsl(var(--fg-3))]",
-  MEDIUM: "text-[hsl(var(--accent))]",
-  HIGH:   "text-orange-400",
-  URGENT: "text-red-400",
+  LOW:    "text-muted-foreground",
+  MEDIUM: "text-primary",
+  HIGH:   "text-orange-500",
+  URGENT: "text-destructive",
 };
 
 const PRIORITY_LABELS: Record<Deal["priority"], string> = {
@@ -81,30 +81,29 @@ function DealCard({
       draggable
       onDragStart={(e) => onDragStart(e, deal.id)}
       onClick={() => onClick(deal)}
-      className="rounded-md p-3 cursor-pointer select-none transition-all hover:brightness-110 active:opacity-70"
-      style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))" }}
+      className="rounded-md p-3 cursor-pointer select-none transition-all hover:brightness-110 active:opacity-70 bg-[hsl(var(--bg-sidebar))] border border-border"
     >
       <div className="text-foreground text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
 
       {deal.value && (
         <div className="flex items-center gap-1 mb-1.5">
-          <DollarSign style={{ width: 11, height: 11, color: "hsl(var(--fg-3))" }} />
-          <span className="text-[12px] font-semibold" style={{ color: "hsl(var(--accent))" }}>
+          <DollarSign className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs font-semibold text-primary">
             {fmtCRC(deal.value, deal.currency)}
           </span>
         </div>
       )}
 
       {deal.contact && (
-        <div className="flex items-center gap-1 mb-1" style={{ color: "hsl(var(--fg-2))" }}>
-          <User style={{ width: 10, height: 10 }} />
+        <div className="flex items-center gap-1 mb-1 text-secondary-foreground">
+          <User className="w-2.5 h-2.5" />
           <span className="text-[11px] truncate">{deal.contact.full_name}</span>
         </div>
       )}
 
       {deal.closing_date && (
-        <div className="flex items-center gap-1" style={{ color: "hsl(var(--fg-3))" }}>
-          <Calendar style={{ width: 10, height: 10 }} />
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <Calendar className="w-2.5 h-2.5" />
           <span className="text-[11px]">{format(new Date(deal.closing_date), "dd/MM/yy")}</span>
         </div>
       )}
@@ -114,10 +113,7 @@ function DealCard({
           {PRIORITY_LABELS[deal.priority]}
         </span>
         {deal.assigned_user && (
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ background: "hsl(var(--bg-active))", color: "hsl(var(--fg-2))" }}
-          >
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--bg-active))] text-secondary-foreground">
             {deal.assigned_user.name.split(" ")[0]}
           </span>
         )}
@@ -146,16 +142,15 @@ function KanbanColumn({
 
   return (
     <div
-      className="flex flex-col shrink-0 rounded-lg"
-      style={{ width: 260, background: "hsl(var(--bg-sidebar) / 0.5)", border: "1px solid hsl(var(--border))" }}
+      className="flex flex-col shrink-0 w-[260px] rounded-lg bg-[hsl(var(--bg-sidebar)/0.5)] border border-border"
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { setOver(false); onDrop(e, stage.id); }}
     >
       {/* Header */}
       <div
-        className="px-3 py-2.5 flex items-center gap-2 rounded-t-lg"
-        style={{ borderBottom: "1px solid hsl(var(--border))", borderLeft: `3px solid ${stage.color}` }}
+        className="px-3 py-2.5 flex items-center gap-2 rounded-t-lg border-b border-border"
+        style={{ borderLeft: `3px solid ${stage.color}` }}
       >
         <span className="flex-1 text-[13px] font-semibold text-foreground truncate">{stage.name}</span>
         <span
@@ -167,23 +162,20 @@ function KanbanColumn({
       </div>
 
       {total && (
-        <div className="px-3 py-1.5" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-          <span className="text-[11px]" style={{ color: "hsl(var(--fg-3))" }}>{total}</span>
+        <div className="px-3 py-1.5 border-b border-border">
+          <span className="text-[11px] text-muted-foreground">{total}</span>
         </div>
       )}
 
       {/* Cards */}
       <div
-        className={cn("flex-1 flex flex-col gap-2 p-2 min-h-[80px] transition-colors", over && "bg-white/5")}
+        className={cn("flex-1 flex flex-col gap-2 p-2 min-h-[80px] transition-colors", over && "bg-muted/20")}
       >
         {stage.deals.map((deal) => (
           <DealCard key={deal.id} deal={deal} onDragStart={onDragStart} onClick={onClickDeal} />
         ))}
         {stage.deals.length === 0 && (
-          <div
-            className="flex-1 flex items-center justify-center rounded text-[11px]"
-            style={{ color: "hsl(var(--fg-3))", minHeight: 60, border: `1px dashed hsl(var(--border))` }}
-          >
+          <div className="flex-1 flex items-center justify-center rounded text-[11px] text-muted-foreground min-h-[60px] border border-dashed border-border">
             Arrastra aquí
           </div>
         )}
@@ -192,11 +184,10 @@ function KanbanColumn({
       {/* Add button */}
       <button
         onClick={() => onAddDeal(stage.id)}
-        className="flex items-center gap-1.5 px-3 py-2 w-full hover:bg-white/5 transition-colors rounded-b-lg"
-        style={{ borderTop: "1px solid hsl(var(--border))", color: "hsl(var(--fg-3))" }}
+        className="flex items-center gap-1.5 px-3 py-2 w-full hover:bg-muted/20 transition-colors rounded-b-lg border-t border-border text-muted-foreground text-xs"
       >
-        <Plus style={{ width: 12, height: 12 }} />
-        <span style={{ fontSize: 12 }}>Agregar deal</span>
+        <Plus className="w-3 h-3" />
+        Agregar deal
       </button>
     </div>
   );
@@ -382,21 +373,17 @@ function DealModal({
           {isEdit && deal?.status === "OPEN" && (
             <Button
               type="button"
-              className="w-full"
-              style={{ background: "hsl(var(--success))", color: "white" }}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               disabled={winMut.isPending}
               onClick={() => winMut.mutate()}
             >
-              <Trophy style={{ width: 14, height: 14, marginRight: 6 }} />
+              <Trophy className="w-3.5 h-3.5 mr-1.5" />
               {winMut.isPending ? "Procesando..." : "Marcar como Ganado → Generar Factura"}
             </Button>
           )}
 
           {isEdit && deal?.status !== "OPEN" && (
-            <div
-              className="text-center text-[12px] py-1 rounded"
-              style={{ background: "hsl(var(--bg-active))", color: "hsl(var(--fg-2))" }}
-            >
+            <div className="text-center text-xs py-1.5 rounded bg-[hsl(var(--bg-active))] text-secondary-foreground">
               Deal {deal?.status === "WON" ? "ganado ✓" : "perdido"}
             </div>
           )}
@@ -413,7 +400,7 @@ function DealModal({
                 disabled={deleteMut.isPending}
                 onClick={() => deleteMut.mutate()}
               >
-                <Trash2 style={{ width: 14, height: 14 }} />
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>
@@ -485,19 +472,16 @@ export default function Pipeline() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div
-        className="shrink-0 px-6 py-4 flex items-center justify-between"
-        style={{ borderBottom: "1px solid hsl(var(--border))" }}
-      >
+      <div className="shrink-0 px-6 py-4 flex items-center justify-between border-b border-border">
         <div>
           <h1 className="text-xl font-bold text-foreground">Pipeline de Ventas</h1>
-          <p style={{ fontSize: 13, color: "hsl(var(--fg-3))" }}>
+          <p className="text-sm text-muted-foreground">
             {totalDeals} deal{totalDeals !== 1 ? "s" : ""}
-            {totalFormatted && <> · <span style={{ color: "hsl(var(--accent))" }}>{totalFormatted}</span></>}
+            {totalFormatted && <> · <span className="text-primary">{totalFormatted}</span></>}
           </p>
         </div>
         <Button onClick={() => openCreate(stages[0]?.id ?? "")} size="sm">
-          <Plus style={{ width: 14, height: 14, marginRight: 6 }} />
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
           Nuevo deal
         </Button>
       </div>
@@ -505,11 +489,17 @@ export default function Pipeline() {
       {/* Board */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full" style={{ color: "hsl(var(--fg-3))" }}>
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
             Cargando pipeline...
           </div>
+        ) : stages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+            <Trophy className="w-10 h-10 opacity-30" />
+            <p className="text-sm">No hay etapas configuradas</p>
+          </div>
         ) : (
-          <div className="flex gap-4 p-6 h-full" style={{ minWidth: "max-content" }}>
+          <div className="flex gap-4 p-6 h-full min-w-max">
             {stages.map((stage) => (
               <KanbanColumn
                 key={stage.id}
