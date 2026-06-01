@@ -144,6 +144,19 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
   CLOSED: 'secondary',
 };
 
+const STAGE_LABELS_CONVERSATIONAL: Record<string, string> = {
+  'intake-triage': 'Analizando tu caso',
+  'customer-support': 'Soporte',
+  'channel-integration': 'Revisando canales',
+  'crm-workflow': 'Revisando CRM',
+  'billing-subscription': 'Revisando facturación',
+  'technical-diagnostic': 'Diagnóstico técnico',
+  'code-fix-proposal': 'Propuesta de solución',
+  'security-compliance': 'Revisión de seguridad',
+  'pr-review': 'Revisión de cambios',
+  'human-handoff': 'Resumen para revisión',
+};
+
 function StatusBadge({ status }: { status: string }) {
   type VariantType = 'default' | 'secondary' | 'destructive' | 'outline';
   const icon = (variant: VariantType) => {
@@ -247,25 +260,50 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
     const onStageComplete = (payload: any) => {
       if (payload.run_id !== currentRunId) return;
       if (!payload.stage) return;
-      liveStagesRef.current = [...liveStagesRef.current, payload.stage];
-      setMessages(prev => prev.map(m =>
-        m.id === 'live-progress' ? { ...m, liveStages: [...liveStagesRef.current] } : m
-      ));
+
+      const stage = payload.stage;
+      // Skip triage JSON — it's technical, not user-facing. The final summary covers it.
+      if (stage.agent_slug === 'intake-triage') return;
+      if (stage.skipped_reason || stage.error) return;
+
+      // Format stage output as conversational message
+      const stageLabel = STAGE_LABELS_CONVERSATIONAL[stage.agent_slug] ?? 
+        stage.agent_slug?.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+      let content = stage.output_preview ?? '';
+      // Strip JSON if the output is just JSON
+      if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+        try {
+          const parsed = JSON.parse(content);
+          content = parsed.summary || parsed.fix_summary || parsed.root_cause || content;
+        } catch { /* keep as-is */ }
+      }
+
+      if (!content.trim()) return;
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'agent' as const,
+          content: `**${stageLabel}**\n\n${content.slice(0, 600)}`,
+        },
+      ]);
     };
 
     const onDone = (payload: any) => {
       if (payload.run_id !== currentRunId) return;
       setIsRunning(false);
       if (payload.result) {
-        setMessages(prev => {
-          const withoutProgress = prev.filter(m => m.id !== 'live-progress');
-          return [...withoutProgress, {
+        setMessages(prev => [
+          ...prev,
+          {
             id: crypto.randomUUID(),
-            role: 'agent',
+            role: 'agent' as const,
             content: payload.result.summary,
             result: payload.result,
-          }];
-        });
+          },
+        ]);
       }
     };
 
@@ -285,9 +323,9 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
     liveStagesRef.current = [];
 
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: messageText };
-    const progressMessage: ChatMessage = { id: 'live-progress', role: 'live-progress', content: '', liveStages: [] };
+    const thinkingId = crypto.randomUUID();
 
-    setMessages(prev => [...prev, userMessage, progressMessage]);
+    setMessages(prev => [...prev, userMessage, { id: thinkingId, role: 'system', content: 'Analizando tu caso...' }]);
     setInput('');
     setIsRunning(true);
 
@@ -299,11 +337,13 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
       const result = await api.orchestrateSupport(payloadMessage, undefined, false) as OrchestrateResult;
       setCurrentRunId(result.run_id);
 
+      // Remove thinking indicator
+      setMessages(prev => prev.filter(m => m.id !== thinkingId));
+
       setMessages(prev => {
         const hasResult = prev.some(m => m.role === 'agent' && m.result?.run_id === result.run_id);
         if (hasResult) return prev;
-        const withoutProgress = prev.filter(m => m.id !== 'live-progress');
-        return [...withoutProgress, {
+        return [...prev, {
           id: crypto.randomUUID(),
           role: 'agent',
           content: result.summary,
@@ -327,7 +367,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
         ? 'El diagnóstico está tardando más de lo esperado. No te preocupes — los agentes siguen trabajando. Revisá "Casos recientes" en unos segundos para ver el resultado.'
         : rawMsg || 'Error al conectar con el asistente';
       setError(msg);
-      setMessages(prev => prev.filter(m => m.id !== 'live-progress'));
+      setMessages(prev => prev.filter(m => m.id !== thinkingId));
     } finally {
       setIsRunning(false);
     }
@@ -350,20 +390,20 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
 
     const answerText = input.trim();
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: answerText };
-    const progressMessage: ChatMessage = { id: 'live-progress', role: 'live-progress', content: '', liveStages: [] };
+    const thinkingId = crypto.randomUUID();
 
-    setMessages(prev => [...prev, userMessage, progressMessage]);
+    setMessages(prev => [...prev, userMessage, { id: thinkingId, role: 'system', content: 'Continuando diagnóstico...' }]);
     setInput('');
     setIsRunning(true);
     liveStagesRef.current = [];
 
     try {
       const result = await api.continueSupport(currentRunId, answerText) as OrchestrateResult;
+      setMessages(prev => prev.filter(m => m.id !== thinkingId));
       setMessages(prev => {
         const hasResult = prev.some(m => m.role === 'agent' && m.result?.run_id === result.run_id);
         if (hasResult) return prev;
-        const withoutProgress = prev.filter(m => m.id !== 'live-progress');
-        return [...withoutProgress, {
+        return [...prev, {
           id: crypto.randomUUID(),
           role: 'agent',
           content: result.summary,
@@ -379,7 +419,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
         ? 'El diagnóstico continúa en segundo plano. Revisá "Casos recientes" en unos segundos.'
         : rawMsg || 'Error al continuar el diagnóstico';
       setError(msg);
-      setMessages(prev => prev.filter(m => m.id !== 'live-progress'));
+      setMessages(prev => prev.filter(m => m.id !== thinkingId));
     } finally {
       setIsRunning(false);
       setClarifying(false);
@@ -467,32 +507,15 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             <div key={msg.id} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role !== 'user' && (
                 <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-                  msg.role === 'live-progress' ? 'border-primary/20 bg-primary/5 text-primary' :
                   msg.role === 'system' ? 'border-border bg-muted text-muted-foreground' :
                   'border-border bg-card text-muted-foreground'
                 }`}>
-                  {msg.role === 'live-progress' ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : msg.role === 'system' ? '!' : <MessageSquare className="w-3 h-3" />}
+                  {msg.role === 'system' ? '!' : <MessageSquare className="w-3 h-3" />}
                 </div>
               )}
               <div className={`max-w-[80%] ${msg.role === 'user' ? 'rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-sm leading-relaxed' : ''}`}>
                 {msg.role === 'user' ? (
                   msg.content
-                ) : msg.role === 'live-progress' ? (
-                  <Card className="max-w-full overflow-hidden">
-                    <CardHeader className="flex-row items-center gap-2 px-4 py-3 border-b border-primary/20 bg-primary/5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                      <CardTitle className="text-xs font-medium">Ejecutando diagnóstico...</CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 py-3 space-y-2">
-                      {msg.liveStages && msg.liveStages.length > 0 ? (
-                        msg.liveStages.map((stage, i) => <StageResult key={i} stage={stage} />)
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Iniciando agentes de soporte...</p>
-                      )}
-                    </CardContent>
-                  </Card>
                 ) : msg.role === 'agent' && msg.result ? (
                   <Card className="max-w-full overflow-hidden">
                     <CardHeader className={`flex-row items-center gap-2 px-4 py-3 border-b ${
@@ -532,32 +555,11 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
                         }}
                       >{msg.result.summary}</ReactMarkdown>
                     </CardContent>
-                    {msg.result.stages.length > 0 && (
-                      <>
-                        <Separator />
-                        <CardContent className="px-4 py-3 space-y-2">
-                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Pipeline de diagnóstico</p>
-                          {msg.result.stages.map((stage, i) => <StageResult key={i} stage={stage} />)}
-                        </CardContent>
-                      </>
-                    )}
-                    {!caseClosed && msg.result.summary && (
-                      <>
-                        <Separator />
-                        <CardContent className="px-4 py-2">
-                          <p className="text-[10px] text-muted-foreground">
-                            ¿Necesitás más ayuda? Escribí tu consulta abajo o usá "Cerrar caso" cuando esté resuelto.
-                          </p>
-                        </CardContent>
-                      </>
-                    )}
                   </Card>
                 ) : msg.role === 'system' ? (
-                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      {msg.content}
-                    </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {msg.content}
                   </div>
                 ) : (
                   <Card className="px-3 py-2.5">

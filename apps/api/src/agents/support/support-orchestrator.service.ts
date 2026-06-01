@@ -493,14 +493,14 @@ export class SupportOrchestratorService {
     };
   }
 
-  /** Auto-close runs that are > 1 hour stale with no follow-up. */
+  /** Auto-close runs that are > 3 days stale with no follow-up. */
   async autoCloseStaleRuns(workspaceId: string): Promise<number> {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
     const result = await this.prisma.supportOrchestrationRun.updateMany({
       where: {
         workspace_id: workspaceId,
         status: { in: ["RUNNING", "NEEDS_HUMAN"] },
-        updated_at: { lt: oneHourAgo },
+        updated_at: { lt: threeDaysAgo },
       },
       data: {
         status: "CLOSED",
@@ -508,7 +508,7 @@ export class SupportOrchestratorService {
     });
     if (result.count > 0) {
       this.logger.log(
-        `Auto-closed ${result.count} stale support run(s) for workspace ${workspaceId} (no follow-up in 1h)`,
+        `Auto-closed ${result.count} stale support run(s) for workspace ${workspaceId} (no follow-up in 3d)`,
       );
     }
     return result.count;
