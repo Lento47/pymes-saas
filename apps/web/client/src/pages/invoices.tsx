@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   Pencil,
   Plus,
   RefreshCw,
@@ -47,6 +48,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function formatMoney(amount: unknown, currency = "USD") {
   const value = Number(amount ?? 0);
@@ -673,7 +692,7 @@ export default function InvoicesPage() {
                   return (
                     <TableRow
                       key={invoice.id}
-                      className="border-border hover:bg-foreground/[0.015]"
+                      className="border-border hover:bg-muted/50"
                     >
                       <TableCell className="text-sm font-medium text-foreground">{invoice.number}</TableCell>
                       <TableCell>
@@ -698,7 +717,7 @@ export default function InvoicesPage() {
                       <TableCell className="text-sm text-foreground">
                         <div>{formatMoney(invoice.balance_due, invoice.currency)}</div>
                         {invoice.status === "OVERDUE" && (
-                          <div className="text-[11px] text-amber-700">{overdueDays}d vencida</div>
+                          <div className="text-[11px] text-amber-600">{overdueDays}d vencida</div>
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground/60">
@@ -711,42 +730,7 @@ export default function InvoicesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          {invoice.status === "PENDING_APPROVAL" && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 text-xs text-emerald-600 border-emerald-600/30 hover:bg-emerald-600/10"
-                                onClick={() => approveMutation.mutate(invoice.id)}
-                                disabled={approveMutation.isPending}
-                              >
-                                {approveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
-                                Aprobar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 text-xs text-destructive hover:text-destructive"
-                                onClick={() => rejectMutation.mutate(invoice.id)}
-                                disabled={rejectMutation.isPending}
-                              >
-                                {rejectMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
-                                Descartar
-                              </Button>
-                            </>
-                          )}
-                          {invoice.conversation_id && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-muted-foreground"
-                              title="Ver conversación original"
-                              onClick={() => window.location.hash = `#/inbox/${invoice.conversation_id}`}
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -756,163 +740,153 @@ export default function InvoicesPage() {
                             <Eye className="w-3.5 h-3.5 mr-1.5" />
                             Ver
                           </Button>
-                          {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => openEditModal(invoice)}
-                            >
-                              <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                              Editar
-                            </Button>
-                          )}
-                          {invoice.issuance_mode === "HACIENDA" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => submitHaciendaMutation.mutate(invoice.id)}
-                              disabled={
-                                submitHaciendaMutation.isPending ||
-                                !isHaciendaWorkspaceReady ||
-                                ["SUBMITTED", "RECIBIDO", "PROCESANDO", "ACEPTADO"].includes(invoice.hacienda_status)
-                              }
-                              title={
-                                !isHaciendaWorkspaceReady
-                                  ? `Configura Hacienda antes de emitir: ${haciendaReadinessIssues.join(", ")}`
-                                  : undefined
-                              }
-                            >
-                              {submitHaciendaMutation.isPending && selectedInvoice?.id === invoice.id
-                                ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                : <FileUp className="w-3.5 h-3.5 mr-1.5" />}
-                              Enviar MH
-                            </Button>
-                          )}
-                          {invoice.issuance_mode === "HACIENDA" && invoice.clave && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => syncHaciendaMutation.mutate(invoice.id)}
-                              disabled={syncHaciendaMutation.isPending}
-                            >
-                              <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", syncHaciendaMutation.isPending && "animate-spin")} />
-                              Estado MH
-                            </Button>
-                          )}
-                          {invoice.issuance_mode === "HACIENDA" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => validateHaciendaMutation.mutate(invoice.id)}
-                              disabled={validateHaciendaMutation.isPending}
-                            >
-                              {validateHaciendaMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
-                              Validar MH
-                            </Button>
-                          )}
-                          {invoice.hacienda_status === "RECHAZADO" && invoice.hacienda_last_error && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => explainErrorMutation.mutate(invoice.id)}
-                              disabled={explainErrorMutation.isPending}
-                            >
-                              {explainErrorMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Info className="w-3.5 h-3.5 mr-1" />}
-                              Error MH
-                            </Button>
-                          )}
-                          {invoice.issuance_mode === "HACIENDA" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs"
-                              onClick={() => xmlPreviewMutation.mutate(invoice.id)}
-                              disabled={xmlPreviewMutation.isPending}
-                            >
-                              {xmlPreviewMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Code2 className="w-3.5 h-3.5 mr-1" />}
-                              XML
-                            </Button>
-                          )}
-                          {invoice.status === "OVERDUE" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => openReminderModal(invoice)}
-                              disabled={generateReminderMutation.isPending && selectedInvoice?.id === invoice.id}
-                            >
-                              {generateReminderMutation.isPending && selectedInvoice?.id === invoice.id
-                                ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                : <Pencil className="w-3.5 h-3.5 mr-1.5" />}
-                              Redactar
-                            </Button>
-                          )}
-                          {!["PAID", "CANCELLED"].includes(invoice.status) && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => openPaymentModal(invoice)}
-                            >
-                              <Coins className="w-3.5 h-3.5 mr-1.5" />
-                              Registrar pago
-                            </Button>
-                          )}
-                          {!["PAID", "CANCELLED"].includes(invoice.status) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs"
-                              onClick={() => markPaidMutation.mutate(invoice.id)}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                              Saldar
-                            </Button>
-                          )}
-                          {invoice.status !== "CANCELLED" &&
-                           !(invoice.issuance_mode === "HACIENDA" && ["SUBMITTED", "RECIBIDO", "PROCESANDO", "ACEPTADO"].includes(invoice.hacienda_status)) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs text-destructive/70 hover:text-destructive"
-                              disabled={cancelMutation.isPending}
-                              onClick={() => {
-                                if (window.confirm(`¿Cancelar factura ${invoice.number}? Esta acción no se puede deshacer.`)) {
-                                  cancelMutation.mutate(invoice.id);
-                                }
-                              }}
-                            >
-                              Cancelar
-                            </Button>
-                          )}
-                          {invoice.issuance_mode === "HACIENDA" && invoice.hacienda_status === "ACEPTADO" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs"
-                              disabled={creditNoteMutation.isPending}
-                              onClick={() => {
-                                if (window.confirm(`¿Crear nota de crédito para ${invoice.number}? Se generará un comprobante de anulación.`)) {
-                                  creditNoteMutation.mutate(invoice);
-                                }
-                              }}
-                            >
-                              Nota crédito
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-xs text-destructive hover:text-destructive"
-                            onClick={() => deleteMutation.mutate(invoice.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
+                                <DropdownMenuItem onClick={() => openEditModal(invoice)}>
+                                  <Pencil className="w-3.5 h-3.5 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.conversation_id && (
+                                <DropdownMenuItem onClick={() => window.location.hash = `#/inbox/${invoice.conversation_id}`}>
+                                  <MessageSquare className="w-3.5 h-3.5 mr-2" />
+                                  Ver conversación
+                                </DropdownMenuItem>
+                              )}
+
+                              {invoice.status === "PENDING_APPROVAL" && <DropdownMenuSeparator />}
+                              {invoice.status === "PENDING_APPROVAL" && (
+                                <DropdownMenuItem onClick={() => approveMutation.mutate(invoice.id)} disabled={approveMutation.isPending}>
+                                  <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                                  Aprobar
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.status === "PENDING_APPROVAL" && (
+                                <DropdownMenuItem onClick={() => rejectMutation.mutate(invoice.id)} disabled={rejectMutation.isPending} className="text-destructive focus:text-destructive">
+                                  <XCircle className="w-3.5 h-3.5 mr-2" />
+                                  Descartar
+                                </DropdownMenuItem>
+                              )}
+
+                              {invoice.issuance_mode === "HACIENDA" && <DropdownMenuSeparator />}
+                              {invoice.issuance_mode === "HACIENDA" && (
+                                <DropdownMenuItem onClick={() => submitHaciendaMutation.mutate(invoice.id)} disabled={submitHaciendaMutation.isPending || !isHaciendaWorkspaceReady || ["SUBMITTED", "RECIBIDO", "PROCESANDO", "ACEPTADO"].includes(invoice.hacienda_status)}>
+                                  <FileUp className="w-3.5 h-3.5 mr-2" />
+                                  Enviar MH
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.issuance_mode === "HACIENDA" && invoice.clave && (
+                                <DropdownMenuItem onClick={() => syncHaciendaMutation.mutate(invoice.id)} disabled={syncHaciendaMutation.isPending}>
+                                  <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                                  Estado MH
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.issuance_mode === "HACIENDA" && (
+                                <DropdownMenuItem onClick={() => validateHaciendaMutation.mutate(invoice.id)} disabled={validateHaciendaMutation.isPending}>
+                                  <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                                  Validar MH
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.hacienda_status === "RECHAZADO" && invoice.hacienda_last_error && (
+                                <DropdownMenuItem onClick={() => explainErrorMutation.mutate(invoice.id)} disabled={explainErrorMutation.isPending}>
+                                  <Info className="w-3.5 h-3.5 mr-2" />
+                                  Error MH
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.issuance_mode === "HACIENDA" && (
+                                <DropdownMenuItem onClick={() => xmlPreviewMutation.mutate(invoice.id)} disabled={xmlPreviewMutation.isPending}>
+                                  <Code2 className="w-3.5 h-3.5 mr-2" />
+                                  XML
+                                </DropdownMenuItem>
+                              )}
+
+                              {![ "PAID", "CANCELLED"].includes(invoice.status) && <DropdownMenuSeparator />}
+                              {invoice.status === "OVERDUE" && (
+                                <DropdownMenuItem onClick={() => openReminderModal(invoice)} disabled={generateReminderMutation.isPending && selectedInvoice?.id === invoice.id}>
+                                  <Pencil className="w-3.5 h-3.5 mr-2" />
+                                  Redactar cobro
+                                </DropdownMenuItem>
+                              )}
+                              {![ "PAID", "CANCELLED"].includes(invoice.status) && (
+                                <DropdownMenuItem onClick={() => openPaymentModal(invoice)}>
+                                  <Coins className="w-3.5 h-3.5 mr-2" />
+                                  Registrar pago
+                                </DropdownMenuItem>
+                              )}
+                              {![ "PAID", "CANCELLED"].includes(invoice.status) && (
+                                <DropdownMenuItem onClick={() => markPaidMutation.mutate(invoice.id)}>
+                                  <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                                  Saldar
+                                </DropdownMenuItem>
+                              )}
+
+                              <DropdownMenuSeparator />
+                              {invoice.status !== "CANCELLED" && !(invoice.issuance_mode === "HACIENDA" && ["SUBMITTED", "RECIBIDO", "PROCESANDO", "ACEPTADO"].includes(invoice.hacienda_status)) && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                      <XCircle className="w-3.5 h-3.5 mr-2" />
+                                      Cancelar factura
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>¿Cancelar factura {invoice.number}?</AlertDialogTitle>
+                                      <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>No, mantener</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => cancelMutation.mutate(invoice.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Sí, cancelar</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                              {invoice.issuance_mode === "HACIENDA" && invoice.hacienda_status === "ACEPTADO" && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                      <Receipt className="w-3.5 h-3.5 mr-2" />
+                                      Nota de crédito
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>¿Crear nota de crédito para {invoice.number}?</AlertDialogTitle>
+                                      <AlertDialogDescription>Se generará un comprobante de anulación.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => creditNoteMutation.mutate(invoice)}>Crear nota</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar factura {invoice.number}?</AlertDialogTitle>
+                                    <AlertDialogDescription>Esta acción es permanente y no se puede deshacer.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteMutation.mutate(invoice.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -979,33 +953,33 @@ export default function InvoicesPage() {
                 <div>
                   <span className="text-muted-foreground/60">Líneas ({selectedInvoice.lines.length})</span>
                   <div className="mt-1.5 rounded-lg border border-border overflow-hidden">
-                    <table className="w-full text-[10px]">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">#</th>
-                          <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Descripción</th>
-                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Cant</th>
-                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Precio</th>
-                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">IVA</th>
-                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="text-[10px] h-7 px-2">#</TableHead>
+                          <TableHead className="text-[10px] h-7 px-2">Descripción</TableHead>
+                          <TableHead className="text-[10px] h-7 px-2 text-right">Cant</TableHead>
+                          <TableHead className="text-[10px] h-7 px-2 text-right">Precio</TableHead>
+                          <TableHead className="text-[10px] h-7 px-2 text-right">IVA</TableHead>
+                          <TableHead className="text-[10px] h-7 px-2 text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {selectedInvoice.lines.map((line: any) => (
-                          <tr key={line.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
-                            <td className="px-2 py-1.5 text-muted-foreground">{line.line_number}</td>
-                            <td className="px-2 py-1.5 text-foreground">
-                              <span>{line.description}</span>
+                          <TableRow key={line.id} className="border-border/50 hover:bg-muted/30">
+                            <TableCell className="px-2 py-1.5 text-[10px] text-muted-foreground">{line.line_number}</TableCell>
+                            <TableCell className="px-2 py-1.5 text-[10px]">
+                              <span className="text-foreground">{line.description}</span>
                               {line.product?.name && <span className="text-muted-foreground/60 ml-1">({line.product.name})</span>}
-                            </td>
-                            <td className="px-2 py-1.5 text-right text-foreground">{Number(line.quantity)}</td>
-                            <td className="px-2 py-1.5 text-right text-foreground">{formatMoney(line.unit_price, selectedInvoice.currency)}</td>
-                            <td className="px-2 py-1.5 text-right text-muted-foreground">{line.tax_rate != null ? `${line.tax_rate}%` : "—"}</td>
-                            <td className="px-2 py-1.5 text-right text-foreground font-medium">{formatMoney(line.total_line_amount, selectedInvoice.currency)}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5 text-[10px] text-right text-foreground">{Number(line.quantity)}</TableCell>
+                            <TableCell className="px-2 py-1.5 text-[10px] text-right text-foreground">{formatMoney(line.unit_price, selectedInvoice.currency)}</TableCell>
+                            <TableCell className="px-2 py-1.5 text-[10px] text-right text-muted-foreground">{line.tax_rate != null ? `${line.tax_rate}%` : "—"}</TableCell>
+                            <TableCell className="px-2 py-1.5 text-[10px] text-right text-foreground font-medium">{formatMoney(line.total_line_amount, selectedInvoice.currency)}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
@@ -1055,16 +1029,17 @@ export default function InvoicesPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground/60">Contacto</Label>
-              <select
-                value={editForm.contact_id}
-                onChange={(e) => setEditForm(f => ({ ...f, contact_id: e.target.value }))}
-                className="flex h-8 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <option value="">Sin contacto</option>
-                {contacts.map((c: any) => (
-                  <option key={c.id} value={c.id}>{c.full_name}{c.company_name ? ` · ${c.company_name}` : ""}</option>
-                ))}
-              </select>
+              <Select value={editForm.contact_id || "__none__"} onValueChange={(v) => setEditForm(f => ({ ...f, contact_id: v === "__none__" ? "" : v }))}>
+                <SelectTrigger className="h-8 text-xs bg-background border-border">
+                  <SelectValue placeholder="Sin contacto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin contacto</SelectItem>
+                  {contacts.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.full_name}{c.company_name ? ` · ${c.company_name}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
