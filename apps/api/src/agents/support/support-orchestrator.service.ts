@@ -69,7 +69,7 @@ export interface OrchestrateResult {
   total_cost_credits?: number;
 }
 
-const MAX_PREVIEW = 2000;
+const MAX_PREVIEW = 8000;
 
 @Injectable()
 export class SupportOrchestratorService {
@@ -136,6 +136,47 @@ export class SupportOrchestratorService {
       caseType = triageOut?.case_type ?? "unknown";
       severity = triageOut?.severity ?? "medium";
       if (triageOut?.needs_human_review) needsHuman = true;
+
+      // If triage needs clarification from the user, stop here and return questions
+      if (triageOut?.clarification_needed && triageOut?.questions?.length) {
+        const summary = triageOut.summary || "Se necesita más información para diagnosticar el problema.";
+        const clarificationResult: OrchestrateResult = {
+          run_id: run.id,
+          tier,
+          case_type: caseType,
+          severity,
+          status: "NEEDS_CLARIFICATION" as any,
+          needs_human_review: false,
+          stages,
+          summary,
+          total_cost_credits: stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0),
+        };
+
+        await this.prisma.supportOrchestrationRun.update({
+          where: { id: run.id },
+          data: {
+            status: "NEEDS_CLARIFICATION",
+            case_type: caseType,
+            severity,
+            stages_json: stages as unknown as Prisma.InputJsonValue,
+            summary,
+            clarification_questions: triageOut.questions as unknown as Prisma.InputJsonValue,
+          },
+        });
+
+        // Store the questions in the run for the follow-up to use
+        (clarificationResult as any).questions = triageOut.questions;
+
+        this.events?.emitOrchestrationProgress(input.workspace_id, {
+          event: "orchestration:done",
+          run_id: run.id,
+          diagnostic_case_id: input.diagnostic_case_id,
+          tier,
+          result: clarificationResult,
+        });
+
+        return clarificationResult;
+      }
 
       // ── Routed pipeline ──
       const pipeline = buildPipeline({
@@ -265,6 +306,135 @@ export class SupportOrchestratorService {
         result: failedResult,
       });
 
+      return failedResult;
+    }
+  }
+
+  /** Continue a run that was paused waiting for user clarification. */
+  async continueWithClarification(
+    workspaceId: string,
+    runId: string,
+    userAnswer: string,
+  ): Promise<OrchestrateResult> {
+    const run = await this.prisma.supportOrchestrationRun.findFirst({
+      where: { id: runId, workspace_id: workspaceId, status: "NEEDS_CLARIFICATION" },
+    });
+    if (!run) throw new Error("No se encontró un caso pendiente de clarificación con ese ID.");
+
+    const tier = (run.tier as SupportTier) ?? "TIER_1";
+    const sessionId = randomUUID();
+    const stages: StageRecord[] = (run.stages_json as StageRecord[]) ?? [];
+    const caseType = (run.case_type as SupportCaseType) ?? "unknown";
+    const severity = (run.severity as SupportSeverity) ?? "medium";
+
+    let needsHuman = false;
+    let securityPassed = false;
+
+    try {
+      const wsCtx = await this.fetchWorkspaceContext(workspaceId, tier);
+
+      // Build context with the original triage + user's answer
+      const clarificationCtx = `${wsCtx}\n\n[RESPUESTA DEL USUARIO A LAS PREGUNTAS DE CLARIFICACIÓN]\n${userAnswer}\n\n[Clasificación previa: ${caseType}, severidad: ${severity}]`;
+
+      // ── Routed pipeline (skip triage, start from diagnostic) ──
+      const pipeline = buildPipeline({
+        tier,
+        caseType,
+        severity,
+        allowPrOverride: false,
+      });
+
+      // Skip triage since it already ran
+      const filteredPipeline = pipeline.filter(s => s !== "intake-triage");
+
+      let carriedContext = clarificationCtx;
+
+      for (const slug of filteredPipeline) {
+        if (slug === "pr-review" && !securityPassed) {
+          stages.push({
+            agent_slug: slug,
+            allowed: false,
+            skipped_reason: "security-compliance no aprobó; PR no se revisa",
+          });
+          needsHuman = true;
+          continue;
+        }
+
+        const stage = await this.runStage(slug, tier, carriedContext, sessionId, stages, workspaceId, runId);
+        if (!stage) continue;
+
+        if (slug === "security-compliance") {
+          securityPassed = this.securityApproved(stage.output_preview ?? "");
+          if (!securityPassed) needsHuman = true;
+        }
+
+        const diag = this.parseDiagnostic(stage.structured);
+        if (diag?.needs_human_review) needsHuman = true;
+
+        carriedContext += `\n\n[${slug}] ${stage.output_preview ?? ""}`.slice(0, 8000);
+      }
+
+      const status = needsHuman ? "NEEDS_HUMAN" : "COMPLETED";
+      const summary = this.buildSummary(tier, caseType, severity, stages, needsHuman);
+
+      await this.prisma.supportOrchestrationRun.update({
+        where: { id: runId },
+        data: {
+          status,
+          needs_human_review: needsHuman,
+          stages_json: stages as unknown as Prisma.InputJsonValue,
+          summary,
+        },
+      });
+
+      if (needsHuman) {
+        this.notifyHumanEscalation(workspaceId, runId, summary).catch((err) =>
+          this.logger.error(`[orchestrator] escalation notification failed: ${err?.message}`)
+        );
+      }
+
+      const totalCost = stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0);
+
+      const result: OrchestrateResult = {
+        run_id: runId,
+        tier,
+        case_type: caseType,
+        severity,
+        status,
+        needs_human_review: needsHuman,
+        stages,
+        summary,
+        total_cost_credits: totalCost,
+      };
+
+      this.events?.emitOrchestrationProgress(workspaceId, {
+        event: "orchestration:done",
+        run_id: runId,
+        tier,
+        result,
+      });
+
+      this.deductCreditsForCase(workspaceId, runId, caseType, totalCost).catch((err) =>
+        this.logger.error(`[orchestrator] credit deduction failed: ${err?.message}`)
+      );
+
+      return result;
+    } catch (err: any) {
+      this.logger.error(`[orchestrator] continue run ${runId} failed: ${err?.message}`);
+      const failedResult: OrchestrateResult = {
+        run_id: runId,
+        tier,
+        case_type: caseType,
+        severity,
+        status: "FAILED",
+        needs_human_review: true,
+        stages,
+        summary: `La orquestación falló al continuar: ${err?.message ?? "error desconocido"}.`,
+      };
+      await this.prisma.supportOrchestrationRun.update({
+        where: { id: runId },
+        data: { status: "FAILED", summary: failedResult.summary },
+      }).catch(() => undefined);
       return failedResult;
     }
   }
@@ -520,19 +690,64 @@ export class SupportOrchestratorService {
     stages: StageRecord[],
     needsHuman: boolean,
   ): string {
-    const ran = stages.filter((s) => s.allowed && !s.skipped_reason && !s.error).map((s) => s.agent_slug);
-    const skipped = stages.filter((s) => s.skipped_reason).map((s) => s.agent_slug);
-    const parts = [
-      `Tier ${tier} · caso ${caseType ?? "?"} · severidad ${severity ?? "?"}.`,
-      ran.length ? `Agentes ejecutados: ${ran.join(" → ")}.` : "No se ejecutó ningún agente.",
-    ];
-    if (skipped.length) parts.push(`Omitidos: ${skipped.join(", ")}.`);
-    parts.push(
-      needsHuman
-        ? "Requiere revisión humana antes de cualquier acción."
-        : "Pipeline completado sin acciones sensibles pendientes.",
-    );
-    return parts.join(" ");
+    const ran = stages.filter((s) => s.allowed && !s.skipped_reason && !s.error);
+    const errored = stages.filter((s) => s.error);
+    const skipped = stages.filter((s) => s.skipped_reason);
+
+    // Extract diagnostic content from stage outputs
+    const triageStage = ran.find((s) => s.agent_slug === "intake-triage");
+    const diagnosticStage = ran.find((s) => s.agent_slug === "technical-diagnostic");
+    const fixStage = ran.find((s) => s.agent_slug === "code-fix-proposal");
+
+    const triageDiag = triageStage?.output_preview
+      ? (() => { try { const m = triageStage.output_preview!.match(/\{[^}]*"root_cause"[^}]*\}|\{[^}]*"likely_root_cause"[^}]*\}/); return m ? m[0] : null; } catch { return null; }})()
+      : null;
+
+    const rootCauseText = fixStage?.output_preview
+      ? (() => { try { const m = fixStage.output_preview!.match(/"root_cause"\s*:\s*"([^"]+)"/); return m?.[1]; } catch { return null; }})()
+      : null;
+
+    const parts: string[] = [];
+
+    // Header
+    parts.push(`### ${caseType ? (caseType.charAt(0).toUpperCase() + caseType.slice(1)).replace(/_/g, ' ') : 'Soporte'}`);
+    parts.push(`**Severidad:** ${severity ?? "—"} · **Tier:** ${tier}`);
+
+    // Diagnosis
+    if (triageStage?.output_preview) {
+      const preview = triageStage.output_preview.slice(0, 500).trim();
+      if (preview && !preview.startsWith("{")) {
+        parts.push(`\n**Diagnóstico:** ${preview}`);
+      }
+    }
+
+    // Root cause
+    if (rootCauseText) {
+      parts.push(`\n**Causa raíz:** ${rootCauseText}`);
+    } else if (diagnosticStage?.output_preview) {
+      const diagPreview = diagnosticStage.output_preview.slice(0, 400).trim();
+      if (diagPreview && !diagPreview.startsWith("{")) {
+        parts.push(`\n**Análisis técnico:** ${diagPreview}`);
+      }
+    }
+
+    // Pipeline info
+    if (ran.length > 0) {
+      parts.push(`\n**Agentes:** ${ran.map((s) => s.agent_slug.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())).join(" → ")}`);
+    }
+    if (skipped.length > 0) {
+      parts.push(`*Omitidos: ${skipped.map((s) => s.agent_slug).join(", ")}*`);
+    }
+    if (errored.length > 0) {
+      parts.push(`*Errores: ${errored.map((s) => `${s.agent_slug}: ${s.error}`).join("; ")}*`);
+    }
+
+    // Status
+    if (needsHuman) {
+      parts.push(`\n⚠️ **Requiere revisión humana** antes de continuar.`);
+    }
+
+    return parts.join("\n");
   }
 
   private async notifyHumanEscalation(

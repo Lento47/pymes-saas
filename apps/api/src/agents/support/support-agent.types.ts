@@ -99,6 +99,10 @@ export interface DiagnosticOutput {
   recommended_next_step: string;
   needs_human_review: boolean;
   allowed_to_create_pr: boolean;
+  /** When true, the agent needs more info from the user before proceeding. */
+  clarification_needed?: boolean;
+  /** Questions the agent wants to ask the user (only when clarification_needed). */
+  questions?: string[];
 }
 
 /** A single proposed file change. `content_complete` is the full file, never a diff. */

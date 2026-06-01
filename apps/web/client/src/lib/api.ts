@@ -531,6 +531,8 @@ export const api = {
     request<Array<Record<string, any>>>(`GET`, `/api/agents/support/runs${limit ? `?limit=${limit}` : ""}`),
   getSupportRun: (id: string) =>
     request<Record<string, any>>("GET", `/api/agents/support/runs/${id}`),
+  continueSupport: (runId: string, answer: string) =>
+    request<Record<string, any>>("POST", `/api/agents/support/orchestrate/${runId}/continue`, { answer }, { timeout: 180_000 }),
   executeAgentTool: (tool: string, args?: any) => request<Record<string, any>>("POST", "/api/agent/tool", { tool, args }),
   escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
     request<Record<string, any>>("POST", "/api/agent/escalate", { summary, severity, evidence }),

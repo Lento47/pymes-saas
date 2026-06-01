@@ -2141,6 +2141,7 @@ model SupportOrchestrationRun {
   needs_human_review Boolean @default(false)
   stages_json        Json    @db.JsonB // [{ agent_slug, allowed, output_preview, structured, duration_ms, error }]
   summary            String? @db.Text
+  clarification_questions Json? @db.JsonB // questions asked to user when NEEDS_CLARIFICATION
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

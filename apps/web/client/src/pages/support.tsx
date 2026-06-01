@@ -138,6 +138,7 @@ const STAGE_ICONS: Record<string, typeof Stethoscope> = {
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   COMPLETED: 'default',
   NEEDS_HUMAN: 'secondary',
+  NEEDS_CLARIFICATION: 'outline',
   RUNNING: 'outline',
   FAILED: 'destructive',
   CLOSED: 'secondary',
@@ -150,6 +151,7 @@ function StatusBadge({ status }: { status: string }) {
       case 'RUNNING': return <Loader2 className="w-3 h-3 animate-spin" />;
       case 'COMPLETED': return <CheckCircle2 className="w-3 h-3" />;
       case 'NEEDS_HUMAN': return <AlertCircle className="w-3 h-3" />;
+      case 'NEEDS_CLARIFICATION': return <MessageSquare className="w-3 h-3" />;
       case 'FAILED': return <XCircle className="w-3 h-3" />;
       case 'CLOSED': return <X className="w-3 h-3" />;
       default: return null;
@@ -158,6 +160,7 @@ function StatusBadge({ status }: { status: string }) {
   const label = 
     status === 'COMPLETED' ? 'Resuelto' :
     status === 'NEEDS_HUMAN' ? 'Requiere revisión' :
+    status === 'NEEDS_CLARIFICATION' ? 'Pide más datos' :
     status === 'RUNNING' ? 'En progreso' :
     status === 'FAILED' ? 'Falló' :
     status === 'CLOSED' ? 'Cerrado' : status;
@@ -227,6 +230,8 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   const [escalated, setEscalated] = useState(false);
   const [caseClosed, setCaseClosed] = useState(false);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [clarifying, setClarifying] = useState(false);
+  const [clarificationQuestions, setClarificationQuestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const initialized = useRef(false);
@@ -309,6 +314,12 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
       if (result.needs_human_review) {
         setError('Este caso requiere revisión humana. Podés escalarlo usando el botón de arriba.');
       }
+
+      // If the triage agent needs clarification, show questions to user
+      if ((result as any).status === 'NEEDS_CLARIFICATION' && (result as any).questions?.length) {
+        setClarificationQuestions((result as any).questions);
+        setClarifying(true);
+      }
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : String(err);
       const isAbort = rawMsg.includes('abort') || rawMsg.includes('AbortError') || rawMsg.includes('timeout');
@@ -332,6 +343,49 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   }, []);
 
   const handleSend = () => sendMessage(input);
+  const handleSendClarification = async () => {
+    if (!currentRunId || !input.trim() || clarifying === false || isRunning) return;
+    setClarifying('sending');
+    setError(null);
+
+    const answerText = input.trim();
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: answerText };
+    const progressMessage: ChatMessage = { id: 'live-progress', role: 'live-progress', content: '', liveStages: [] };
+
+    setMessages(prev => [...prev, userMessage, progressMessage]);
+    setInput('');
+    setIsRunning(true);
+    liveStagesRef.current = [];
+
+    try {
+      const result = await api.continueSupport(currentRunId, answerText) as OrchestrateResult;
+      setMessages(prev => {
+        const hasResult = prev.some(m => m.role === 'agent' && m.result?.run_id === result.run_id);
+        if (hasResult) return prev;
+        const withoutProgress = prev.filter(m => m.id !== 'live-progress');
+        return [...withoutProgress, {
+          id: crypto.randomUUID(),
+          role: 'agent',
+          content: result.summary,
+          result,
+        }];
+      });
+      setClarifying(false);
+      setClarificationQuestions([]);
+    } catch (err: unknown) {
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      const isAbort = rawMsg.includes('abort') || rawMsg.includes('AbortError') || rawMsg.includes('timeout');
+      const msg = isAbort
+        ? 'El diagnóstico continúa en segundo plano. Revisá "Casos recientes" en unos segundos.'
+        : rawMsg || 'Error al continuar el diagnóstico';
+      setError(msg);
+      setMessages(prev => prev.filter(m => m.id !== 'live-progress'));
+    } finally {
+      setIsRunning(false);
+      setClarifying(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
@@ -524,6 +578,31 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
               <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
+
+          {/* Clarification questions panel */}
+          {clarifying && clarificationQuestions.length > 0 && (
+            <Card className="border-primary/30 bg-primary/[0.02]">
+              <CardHeader className="pb-2 px-4 pt-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-xs font-medium text-primary">El agente necesita más información</CardTitle>
+                </div>
+                <CardDescription className="text-xs mt-1">
+                  Respondé estas preguntas para que el diagnóstico sea más preciso:
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 space-y-2">
+                {clarificationQuestions.map((q, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                    <span className="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
+                      {i + 1}
+                    </span>
+                    <span>{q}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
           {!isRunning && !caseClosed && messages.length > 3 && (
             <div className="flex justify-center pt-2">
               <span className="text-[10px] text-muted-foreground/50">{lastResult?.run_id?.slice(0, 8)}</span>
@@ -540,16 +619,16 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={clarifying ? (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendClarification(); }} : handleKeyDown}
               disabled={isRunning}
-              placeholder={showFollowUp ? "Escribí para continuar el diagnóstico..." : "Describí tu problema..."}
+              placeholder={clarifying ? "Escribí tu respuesta a las preguntas del agente..." : showFollowUp ? "Escribí para continuar el diagnóstico..." : "Describí tu problema..."}
               rows={1}
               className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
               style={{ minHeight: 36, maxHeight: 120 }}
             />
             <Button
               size="icon"
-              onClick={handleSend}
+              onClick={clarifying ? handleSendClarification : handleSend}
               disabled={!input.trim() || isRunning}
             >
               {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -607,7 +686,7 @@ function RunDetailExpanded({ runId, onClose }: { runId: string; onClose: () => v
   }
 
   const stages: any[] = Array.isArray(run.stages) ? run.stages : [];
-  const isRunning = run.status === 'RUNNING' || (!runStatus && run.status !== 'COMPLETED' && run.status !== 'FAILED' && run.status !== 'NEEDS_HUMAN' && run.status !== 'CLOSED');
+  const isRunning = run.status === 'RUNNING' || (!runStatus && run.status !== 'COMPLETED' && run.status !== 'FAILED' && run.status !== 'NEEDS_HUMAN' && run.status !== 'CLOSED' && run.status !== 'NEEDS_CLARIFICATION');
   const statusLabel = runStatus ?? run.status;
   const showStages = stages.length > 0 || liveStages.length > 0;
   const allStages = [...stages, ...liveStages.filter(ls => !stages.some(s => s.agent_slug === ls.agent_slug))];

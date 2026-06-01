@@ -31,6 +31,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   ESCALATED: "destructive",
   COMPLETED: "outline",
   NEEDS_HUMAN: "secondary",
+  NEEDS_CLARIFICATION: "outline",
   RUNNING: "default",
   FAILED: "destructive",
   CLOSED: "outline",

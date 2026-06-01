@@ -56,6 +56,21 @@ export class AgentsController {
     });
   }
 
+  @Post("support/orchestrate/:id/continue")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  continueOrchestration(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body("answer") answer: string,
+  ) {
+    return this.orchestrator.continueWithClarification(user.workspace_id, id, answer);
+  }
+
   @Get("support/runs")
   @Roles(
     WorkspaceUserRole.VIEWER,
