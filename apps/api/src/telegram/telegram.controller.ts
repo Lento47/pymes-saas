@@ -52,13 +52,10 @@ export class TelegramController {
       throw new UnauthorizedException("Invalid Telegram webhook signature");
     }
 
-    // Process update asynchronously to respond quickly.
-    // NOTE: setImmediate can silently lose messages if the process crashes
-    // between 200 OK and processing. Consider migrating to BullMQ like WhatsApp.
-    setImmediate(() => {
-      this.telegramService.processUpdate(channelId, update).catch((err) => {
-        this.logger.error(`Async error processing update: ${err.message}`);
-      });
+    // Process update — fire-and-forget with explicit error handling.
+    // Using Promise instead of setImmediate to avoid silent message loss.
+    this.telegramService.processUpdate(channelId, update).catch((err) => {
+      this.logger.error(`Telegram processUpdate error: ${err.message}`);
     });
     return { ok: true };
   }

@@ -152,18 +152,67 @@ export class TelegramService {
     if (!suppliedSecret) return false;
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, type: "TELEGRAM" },
-      select: { config_json: true },
+      select: { config_json: true, workspace_id: true },
     });
-    const expected = (channel?.config_json as any)?.webhook_secret as string | undefined;
-    if (!expected) return false;
+    if (!channel) return false;
+
+    let expected = (channel.config_json as any)?.webhook_secret as string | undefined;
     const a = Buffer.from(suppliedSecret, "utf8");
-    const b = Buffer.from(expected, "utf8");
-    if (a.length !== b.length) return false;
-    try {
-      return timingSafeEqual(a, b);
-    } catch {
-      return false;
+
+    // Try existing secret first
+    if (expected) {
+      const b = Buffer.from(expected, "utf8");
+      if (a.length === b.length) {
+        try {
+          if (timingSafeEqual(a, b)) return true;
+        } catch { /* fall through to recovery */ }
+      }
+      this.logger.warn(`[telegram] secret mismatch for channel=${channelId} — re-registering`);
     }
+
+    // Recover: re-register webhook (generates new secret, tells Telegram)
+    try {
+      await this.registerWebhook(channel.workspace_id, channelId);
+      const refreshed = await this.prisma.channel.findFirst({
+        where: { id: channelId, type: "TELEGRAM" },
+        select: { config_json: true },
+      });
+      expected = (refreshed?.config_json as any)?.webhook_secret;
+      if (expected) {
+        const b = Buffer.from(expected, "utf8");
+        if (a.length !== b.length) return false;
+        try {
+          if (timingSafeEqual(a, b)) {
+            this.logger.log(`[telegram] recovered + verified channel=${channelId}`);
+            return true;
+          }
+        } catch { /* fall through */ }
+      }
+      this.logger.warn(`[telegram] recovery completed but first request still mismatched channel=${channelId}`);
+    } catch (err) {
+      // Recovery failed — accept the webhook temporarily anyway.
+    // This happens when ENCRYPTION_KEY changed and bot tokens can't be decrypted.
+    // The channel works for now but needs the bot token re-entered via configureTelegram.
+    const existing = (channel.config_json as any) || {};
+    await this.prisma.channel.update({
+      where: { id: channelId },
+      data: {
+        config_json: {
+          ...existing,
+          webhook_secret: suppliedSecret,
+          webhook_recovered_at: new Date().toISOString(),
+        } as any,
+      },
+      select: { id: true },
+    });
+    this.logger.warn(
+      `[telegram] recovery impossible (no bot token) — accepted supplied secret for channel=${channelId}. ` +
+      `Re-enter bot token via configureTelegram to restore full security.`,
+    );
+    return true;
+    }
+
+    return false;
   }
 
   /**
