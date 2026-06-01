@@ -87,6 +87,9 @@ export class FlowiseSetupService {
   }
 
   async setup(): Promise<void> {
+    this.logger.log("[flowise-setup] ========================================");
+    this.logger.log("[flowise-setup] SETUP STARTING — provisioning tools + agentflows");
+    this.logger.log("[flowise-setup] ========================================");
     if (!this.flowise.isEnabled) {
       this.logger.warn("[flowise-setup] Flowise disabled — skipping tier agentflow setup");
       return;
