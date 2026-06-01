@@ -132,8 +132,8 @@ export class PlatformAdminService {
     let dbStats = "";
     try {
       const [workspaceCount, planBreakdown, userCount, convCount, todayMessages] = await Promise.all([
-        this.prisma.workspace.count({ where: { deleted_at: null } }),
-        this.prisma.workspace.groupBy({ by: ["plan"], where: { deleted_at: null }, _count: true }),
+        this.prisma.workspace.count({ where: { status: { not: "DELETED" } } }),
+        this.prisma.workspace.groupBy({ by: ["plan"], where: { status: { not: "DELETED" } }, _count: true }),
         this.prisma.user.count(),
         this.prisma.conversation.count({ where: { status: { in: ["NEW", "OPEN", "PENDING"] } } }),
         this.prisma.message.count({
@@ -163,7 +163,7 @@ Mensajes últimas 24h: ${todayMessages}
           select: {
             id: true, name: true, slug: true, plan: true,
             created_at: true,
-            _count: { select: { conversations: true, messages: true, users: { where: { role: "OWNER" } } } },
+            _count: { select: { conversations: true, messages: true, workspace_users: { where: { role: "OWNER" } } } },
           },
         });
         if (ws) {
@@ -175,7 +175,7 @@ Plan: ${ws.plan}
 Creado: ${ws.created_at?.toISOString().slice(0, 10) ?? "?"}
 Conversaciones: ${ws._count.conversations}
 Mensajes: ${ws._count.messages}
-Owners: ${ws._count.users}
+Owners: ${ws._count.workspace_users}
 `;
         }
       } catch {}
@@ -183,7 +183,7 @@ Owners: ${ws._count.users}
     if (!workspaceDetail && wsNameMatch) {
       try {
         const wss = await this.prisma.workspace.findMany({
-          where: { name: { contains: wsNameMatch[1], mode: "insensitive" }, deleted_at: null },
+          where: { name: { contains: wsNameMatch[1], mode: "insensitive" }, status: { not: "DELETED" } },
           select: { id: true, name: true, plan: true, slug: true },
           take: 5,
         });
