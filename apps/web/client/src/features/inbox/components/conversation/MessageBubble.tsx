@@ -36,7 +36,7 @@ type BubbleVariant =
   | "interactive"
   | "system";
 
-function renderTextWithLinks(text: string) {
+function renderTextWithLinks(text: string, isOutbound: boolean) {
   const parts = text.split(URL_REGEX);
   return parts.map((part, i) => {
     if (URL_PATTERN.test(part)) {
@@ -46,7 +46,7 @@ function renderTextWithLinks(text: string) {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className="break-all text-primary hover:underline"
+          className={`break-all ${isOutbound ? "text-white/90 underline decoration-white/30" : "text-primary hover:underline"}`}
         >
           {part}
         </a>
@@ -88,10 +88,11 @@ function getBubbleVariant(message: UiMessage): BubbleVariant {
 }
 
 function bubbleRadius(isOutbound: boolean, isConsecutive: boolean, loose = false) {
-  if (!isConsecutive) return loose ? "rounded-[17px] sm:rounded-[18px]" : "rounded-[17px] sm:rounded-2xl";
+  const base = loose ? "rounded-2xl" : "rounded-2xl";
+  if (!isConsecutive) return base;
   return isOutbound
-    ? loose ? "rounded-[17px] rounded-tr-md sm:rounded-[18px]" : "rounded-[17px] rounded-tr-md sm:rounded-2xl"
-    : loose ? "rounded-[17px] rounded-tl-md sm:rounded-[18px]" : "rounded-[17px] rounded-tl-md sm:rounded-2xl";
+    ? `${base} rounded-tr-md`
+    : `${base} rounded-tl-md`;
 }
 
 export const MessageBubble = function MessageBubble({
@@ -115,10 +116,12 @@ export const MessageBubble = function MessageBubble({
   const senderLabel = isOutbound ? "Tú" : (contactName || "Contacto");
 
   const bubbleClasses = useMemo(() => {
-    const spacing = isConsecutive ? "mt-0.5" : "mt-2";
+    const spacing = isConsecutive ? "mt-0.5" : "mt-3";
+
+    // ── PymesHub branded: solid indigo outbound, clean white inbound ──
     const surface = isOutbound
-      ? "border border-primary/[0.14] bg-primary/[0.075]"
-      : "border border-border/55 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
+      ? "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(79,70,229,0.18)]"
+      : "bg-card border border-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
 
     switch (variant) {
       case "sticker":
@@ -133,10 +136,10 @@ export const MessageBubble = function MessageBubble({
       case "interactive":
         return `max-w-[86%] sm:max-w-[360px] ${spacing} border-0 bg-transparent p-0 shadow-none`;
       case "system":
-        return `max-w-[88%] ${spacing} rounded-full border border-border/40 bg-muted/45 px-3 py-1.5`;
+        return `max-w-[88%] ${spacing} rounded-full border border-border/30 bg-muted/30 px-3 py-1.5`;
       case "text":
       default:
-        return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3 py-2" : "px-3.5 py-2.5"}`;
+        return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
     }
   }, [variant, isConsecutive, isOutbound, isShort]);
 
@@ -182,8 +185,8 @@ export const MessageBubble = function MessageBubble({
       }
       default:
         return (
-          <div className={`whitespace-pre-wrap break-words text-[13.5px] text-foreground sm:text-sm ${isShort ? "leading-snug" : "leading-relaxed"} overflow-hidden`}>
-            {renderTextWithLinks(message.bodyText)}
+          <div className={`whitespace-pre-wrap break-words text-[13.5px] sm:text-[14px] ${isShort ? "leading-snug" : "leading-relaxed"} overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
+            {renderTextWithLinks(message.bodyText, isOutbound)}
           </div>
         );
     }
@@ -198,9 +201,9 @@ export const MessageBubble = function MessageBubble({
     : "";
 
   return (
-    <div className={`flex gap-1.5 px-0.5 sm:gap-2 sm:px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
+    <div className={`flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
-        <div className="mt-auto flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/50 sm:h-6 sm:w-6" aria-label={`Avatar de ${senderLabel}`}>
+        <div className="mt-auto flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/30 sm:h-7 sm:w-7" aria-label={`Avatar de ${senderLabel}`}>
           {contactAvatarUrl ? (
             <img src={contactAvatarUrl} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -211,7 +214,7 @@ export const MessageBubble = function MessageBubble({
         </div>
       )}
       {!isOutbound && isConsecutive && (
-        <div className="w-5 shrink-0 sm:w-6" aria-hidden="true" />
+        <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
       )}
       <div className={bubbleClasses}>
         {renderContent()}
