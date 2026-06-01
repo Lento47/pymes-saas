@@ -1,0 +1,33 @@
+version: 2
+updates:
+  # npm — only the authoritative root pnpm-lock.yaml. This pnpm workspace uses a
+  # single root lockfile; per-app and npm lockfiles are not built from and must
+  # not be reintroduced (they produce phantom alerts against unused trees).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Rust — the Tauri desktop crate.
+  - package-ecosystem: "cargo"
+    directory: "/apps/desktop/src-tauri"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      cargo-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions used across the workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
