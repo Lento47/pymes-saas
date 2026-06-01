@@ -526,6 +526,7 @@ export class MessagesService {
     timestamp?: string;
     rawPayload?: Record<string, any>;
     whatsappMedia?: Record<string, any> | null;
+    interactiveContent?: Record<string, unknown> | null;
   }): Promise<{
     status: "created" | "duplicate";
     messageId?: string;
@@ -648,7 +649,8 @@ export class MessagesService {
           raw_payload_json: {
             ...(typeof params.rawPayload === "object" ? params.rawPayload : {}),
             ...(params.whatsappMedia ? { whatsapp_media: params.whatsappMedia } : {}),
-          },
+            ...(params.interactiveContent ? { whatsapp_interactive: params.interactiveContent } : {}),
+          } as any,
           sent_at: params.timestamp ? new Date(Number(params.timestamp) * 1000) : new Date(),
           provider,
           provider_message_id: providerMessageId,
