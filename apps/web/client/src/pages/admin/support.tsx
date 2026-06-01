@@ -522,6 +522,31 @@ export default function SupportPage() {
                               </button>
                             </>
                           )}
+                          {/* ESCALATED cases: allow resolving or reopening */}
+                          {c.status === "ESCALATED" && isAdmin && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  statusMut.mutate({ id: c.id, status: "RESOLVED" });
+                                }}
+                                disabled={statusMut.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                              >
+                                <Check className="w-3 h-3" /> Resuelto
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  statusMut.mutate({ id: c.id, status: "INVESTIGATING" });
+                                }}
+                                disabled={statusMut.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                              >
+                                <ChevronDown className="w-3 h-3 rotate-180" /> Reabrir
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

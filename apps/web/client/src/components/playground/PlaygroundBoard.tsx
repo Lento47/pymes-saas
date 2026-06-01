@@ -66,9 +66,9 @@ interface AgentState {
   currentCase?: string;
 }
 
-function CaseCard({ c, onFix, onResolve, onEscalate, onAnalyze, isFixing, isAnalyzing, compact }: {
+function CaseCard({ c, onFix, onResolve, onEscalate, onReopen, onAnalyze, isFixing, isAnalyzing, compact }: {
   c: Record<string, any>; onFix?: (id: string) => void; onResolve?: (id: string) => void;
-  onEscalate?: (id: string) => void; onAnalyze?: (id: string) => void;
+  onEscalate?: (id: string) => void; onReopen?: (id: string) => void; onAnalyze?: (id: string) => void;
   isFixing?: boolean; isAnalyzing?: boolean; compact?: boolean;
 }) {
   const statusColor =
@@ -88,6 +88,7 @@ function CaseCard({ c, onFix, onResolve, onEscalate, onAnalyze, isFixing, isAnal
     c.status === "ESCALATED" ? "Escalado" : "Resuelto";
 
   const isOpen = c.status === "OPEN" || c.status === "INVESTIGATING";
+  const isEscalated = c.status === "ESCALATED";
 
   return (
     <div className={`rounded-lg border p-3 ${statusColor} text-left ${compact ? "min-w-[160px]" : "min-w-[180px]"}`}>
@@ -150,6 +151,26 @@ function CaseCard({ c, onFix, onResolve, onEscalate, onAnalyze, isFixing, isAnal
               className="inline-flex items-center justify-center gap-1 px-2 py-1 text-[9px] font-medium rounded-md border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <ExternalLink className="w-2.5 h-2.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ESCALATED cases: resolve or reopen */}
+      {isEscalated && (
+        <div className="flex gap-1 mt-2 pt-2 border-t border-border/40">
+          <button
+            onClick={(e) => { e.stopPropagation(); onResolve?.(c.id); }}
+            className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-[9px] font-medium rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+          >
+            <Check className="w-2.5 h-2.5" /> Resolver
+          </button>
+          {onReopen && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onReopen(c.id); }}
+              className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-[9px] font-medium rounded-md border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors"
+            >
+              <ChevronDown className="w-2.5 h-2.5 rotate-180" /> Reabrir
             </button>
           )}
         </div>
@@ -437,6 +458,7 @@ export function PlaygroundBoard() {
   const handleFix = (caseId: string) => { setFixingId(caseId); fixMut.mutate(caseId); };
   const handleResolve = (caseId: string) => statusMut.mutate({ id: caseId, status: "RESOLVED" });
   const handleEscalate = (caseId: string) => statusMut.mutate({ id: caseId, status: "ESCALATED" });
+  const handleReopen = (caseId: string) => statusMut.mutate({ id: caseId, status: "INVESTIGATING" });
 
   return (
     <div className="space-y-4">
@@ -512,6 +534,7 @@ export function PlaygroundBoard() {
             {urgentCases.map((c) => (
               <CaseCard key={c.id} c={c} compact
                 onFix={handleFix} onResolve={handleResolve} onEscalate={handleEscalate}
+                onReopen={handleReopen}
                 onAnalyze={handleAnalyze} isFixing={fixingId === c.id}
                 isAnalyzing={analyzingIds.has(c.id)}
               />
@@ -545,6 +568,7 @@ export function PlaygroundBoard() {
                     <div className="mt-1">
                       <CaseCard c={activeCase}
                         onFix={handleFix} onResolve={handleResolve} onEscalate={handleEscalate}
+                        onReopen={handleReopen}
                         onAnalyze={handleAnalyze} isFixing={fixingId === activeCase.id}
                         isAnalyzing={analyzingIds.has(activeCase.id)}
                       />
@@ -561,6 +585,7 @@ export function PlaygroundBoard() {
                     <div className="mt-1">
                       <CaseCard c={nextCase}
                         onFix={handleFix} onResolve={handleResolve} onEscalate={handleEscalate}
+                        onReopen={handleReopen}
                         onAnalyze={handleAnalyze} isFixing={fixingId === nextCase.id}
                         isAnalyzing={analyzingIds.has(nextCase.id)}
                       />
