@@ -8,26 +8,41 @@ import { PageLoader } from "@/components/shared/loading-spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import {
-  Bell, BellOff, Check, CheckCheck, Loader2,
+  Bell, BellOff, Check, CheckCheck,
   MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, Bot,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-const TYPE_BADGE: Record<string, { label: string; bg: string; color: string; icon: typeof Bell }> = {
-  task_completed: { label: "Tarea completada", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: CheckSquare },
-  task_overdue: { label: "Tarea vencida", bg: "bg-red-500/10", color: "text-red-400", icon: AlertTriangle },
-  new_message: { label: "Nuevo mensaje", bg: "bg-blue-500/10", color: "text-blue-400", icon: MessageCircle },
-  AI_TASK_CREATED: { label: "Tarea sugerida", bg: "bg-muted/40", color: "text-muted-foreground", icon: Bot },
-  deal_created: { label: "Negocio creado", bg: "bg-amber-500/10", color: "text-amber-400", icon: KanbanSquare },
-  deal_stage_changed: { label: "Etapa cambiada", bg: "bg-sky-500/10", color: "text-sky-400", icon: KanbanSquare },
-  deal_won: { label: "Negocio ganado", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: KanbanSquare },
-  invoice_paid: { label: "Factura pagada", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: Receipt },
-  payment_received: { label: "Pago recibido", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: Receipt },
-  invoice_overdue: { label: "Factura vencida", bg: "bg-red-500/10", color: "text-red-400", icon: Receipt },
-  automation: { label: "Automatización", bg: "bg-muted/40", color: "text-muted-foreground", icon: Zap },
-  conversation_no_reply: { label: "Sin respuesta", bg: "bg-amber-500/10", color: "text-amber-400", icon: MessageCircle },
+// 3 semantic variants — no rainbow
+const TYPE_BADGE: Record<string, { label: string; variant: "default" | "success" | "destructive"; icon: typeof Bell }> = {
+  task_completed:    { label: "Tarea completada", variant: "success",      icon: CheckSquare },
+  task_overdue:      { label: "Tarea vencida",     variant: "destructive", icon: AlertTriangle },
+  new_message:       { label: "Nuevo mensaje",     variant: "default",     icon: MessageCircle },
+  AI_TASK_CREATED:   { label: "Tarea sugerida",    variant: "default",     icon: Bot },
+  deal_created:      { label: "Negocio creado",    variant: "default",     icon: KanbanSquare },
+  deal_stage_changed:{ label: "Etapa cambiada",    variant: "default",     icon: KanbanSquare },
+  deal_won:          { label: "Negocio ganado",    variant: "success",     icon: KanbanSquare },
+  invoice_paid:      { label: "Factura pagada",    variant: "success",     icon: Receipt },
+  payment_received:  { label: "Pago recibido",     variant: "success",     icon: Receipt },
+  invoice_overdue:   { label: "Factura vencida",   variant: "destructive", icon: Receipt },
+  automation:        { label: "Automatización",    variant: "default",     icon: Zap },
+  conversation_no_reply: { label: "Sin respuesta", variant: "destructive", icon: MessageCircle },
+};
+
+const VARIANT_CLASSES: Record<string, string> = {
+  default:     "bg-muted/40 text-muted-foreground",
+  success:     "bg-emerald-500/10 text-emerald-500",
+  destructive: "bg-destructive/10 text-destructive",
+};
+
+const ICON_WRAPPER_CLASSES: Record<string, string> = {
+  default:     "bg-muted/40 border-border/60",
+  success:     "bg-emerald-500/10 border-emerald-500/20",
+  destructive: "bg-destructive/10 border-destructive/20",
 };
 
 export default function NotificationsPage() {
@@ -85,20 +100,20 @@ export default function NotificationsPage() {
               <CheckCheck className="w-3.5 h-3.5" /> Marcar todas leídas
             </Button>
           )}
-          <div className="flex rounded-md border border-border overflow-hidden">
-            <button
-              className={`px-3 py-1 text-[11px] font-medium transition-colors ${filter === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              onClick={() => setFilter("all")}
-            >
+          <ToggleGroup
+            type="single"
+            value={filter}
+            onValueChange={(v) => { if (v) setFilter(v as "all" | "unread"); }}
+            className="border border-border rounded-md overflow-hidden"
+            size="sm"
+          >
+            <ToggleGroupItem value="all" className="text-[11px] px-3 h-7 data-[state=on]:bg-muted data-[state=on]:text-foreground">
               Todas
-            </button>
-            <button
-              className={`px-3 py-1 text-[11px] font-medium transition-colors ${filter === "unread" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              onClick={() => setFilter("unread")}
-            >
+            </ToggleGroupItem>
+            <ToggleGroupItem value="unread" className="text-[11px] px-3 h-7 data-[state=on]:bg-muted data-[state=on]:text-foreground">
               Sin leer {unreadCount > 0 && `(${unreadCount})`}
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </PageHeader>
 
@@ -114,7 +129,7 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {filtered.map((n: any) => {
-              const cfg = TYPE_BADGE[n.type] || { label: n.type, bg: "bg-zinc-500/10", color: "text-zinc-400", icon: Bell };
+              const cfg = TYPE_BADGE[n.type] || { label: n.type, variant: "default" as const, icon: Bell };
               const Icon = cfg.icon;
               const isUnread = !n.read_at;
               const time = n.created_at
@@ -124,20 +139,20 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={n.id}
-                  className={`rounded-lg border p-4 transition-colors ${isUnread ? "border-border bg-card" : "border-border/60 bg-card/40"}`}
+                  className={cn("rounded-lg border p-4 transition-colors", isUnread ? "border-border bg-card" : "border-border/60 bg-card/40")}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.bg} border border-border/60`}>
-                      <Icon className={`w-4 h-4 ${cfg.color}`} />
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border", ICON_WRAPPER_CLASSES[cfg.variant])}>
+                      <Icon className={cn("w-4 h-4", VARIANT_CLASSES[cfg.variant].split(" ").pop())} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-sm font-medium text-foreground">{n.title}</span>
-                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border border-border/60 ${cfg.bg} ${cfg.color}`}>
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 border-border/60", VARIANT_CLASSES[cfg.variant])}>
                           {cfg.label}
                         </Badge>
                         {isUnread && (
-                          <span className="w-2 h-2 rounded-full bg-foreground/55 flex-shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{n.body}</p>
@@ -145,8 +160,7 @@ export default function NotificationsPage() {
                         <span className="text-[10px] text-muted-foreground">{time}</span>
                         {isUnread && (
                           <button
-                            className="text-[10px] font-medium hover:text-foreground transition-colors flex items-center gap-1"
-                            style={{ color: "hsl(var(--accent))" }}
+                            className="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                             onClick={() => handleMarkRead([n.id])}
                           >
                             <Check className="w-3 h-3" />
