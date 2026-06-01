@@ -20,6 +20,8 @@
   --danger-fg:    0 0% 100%;
   --success:      156 58% 42%;
   --warning:      38 88% 50%;
+  --info:         217 91% 60%;
+  --info-fg:      0 0% 100%;
 
   --background:        var(--bg);
   --foreground:        var(--fg);
@@ -103,6 +105,8 @@ html.light {
   --danger-fg:     0 0% 100%;
   --success:       156 58% 34%;
   --warning:       35 90% 48%;
+  --info:          217 91% 50%;
+  --info-fg:       0 0% 100%;
   --bg-2:          240 15% 95%;
   --surface:       var(--bg-card);
   --surface-subtle: 240 15% 97%;
