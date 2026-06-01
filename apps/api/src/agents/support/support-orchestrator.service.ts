@@ -142,6 +142,13 @@ export class SupportOrchestratorService {
         this.fetchDiagnosticCaseContext(input.workspace_id, input.diagnostic_case_id),
       ]);
 
+      // ── Pre-flight: ensure Flowise tools + agentflows exist ──────────────
+      const existingTools = await this.flowise.listTools().catch(() => []);
+      if (existingTools.length === 0) {
+        this.logger.warn("[orchestrator] Flowise tools missing — running full setup before pipeline");
+        await this.flowiseSetup.reprovisionAllFlows();
+      }
+
       // ── Stage 0: triage (all profiles) ──
       const triageCtx = [wsCtx, caseCtx, `Mensaje del usuario:\n${input.message}`]
         .filter(Boolean)
