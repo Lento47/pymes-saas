@@ -76,6 +76,22 @@ type InteractiveAttachmentData = Pick<
 function extractInteractiveAttachment(raw: Record<string, any>, bodyText: string): InteractiveAttachmentData | null {
   const payload = parseJsonValue(raw.button_payload_json);
   const rawPayload = getRawPayload(raw);
+
+  // New: structured interactive content stored by backend
+  const storedInteractive = rawPayload?.whatsapp_interactive as Record<string, any> | undefined;
+  if (storedInteractive?.type) {
+    const sit = storedInteractive;
+    switch (sit.type) {
+      case "button_reply":
+        return { type: "interactive", interactiveType: "button_reply", title: sit.title ?? bodyText, body: "Respuesta seleccionada" };
+      case "list_reply":
+        return { type: "interactive", interactiveType: "list_reply", title: sit.title ?? bodyText, description: sit.description, body: "Opción seleccionada" };
+      case "nfm_reply":
+        return { type: "interactive", interactiveType: "nfm_reply", title: sit.title ?? "Flow", description: sit.description, body: "Respuesta de flow" };
+    }
+  }
+
+  // Fallback: parse raw WhatsApp webhook payload
   const whatsAppMessage = getWhatsAppMessage(rawPayload);
   const whatsAppInteractive = whatsAppMessage?.interactive;
   const dbInteractiveType = raw.interactive_type ? String(raw.interactive_type) : null;
