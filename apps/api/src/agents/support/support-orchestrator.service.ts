@@ -48,6 +48,12 @@ interface StageRecord {
   structured?: unknown;
   duration_ms?: number;
   error?: string;
+  /** Estimated credit cost for this stage, based on input/output size. */
+  cost_credits?: number;
+  /** Characters of input context sent to the stage. */
+  input_chars?: number;
+  /** Characters of output received from the stage. */
+  output_chars?: number;
 }
 
 export interface OrchestrateResult {
@@ -59,6 +65,8 @@ export interface OrchestrateResult {
   needs_human_review: boolean;
   stages: StageRecord[];
   summary: string;
+  /** Total estimated credit cost for this case. */
+  total_cost_credits?: number;
 }
 
 const MAX_PREVIEW = 2000;
@@ -77,9 +85,15 @@ export class SupportOrchestratorService {
     @Optional() private readonly credits?: CreditsService,
   ) {}
 
-  /** Credits consumed per support case (configurable via env). */
-  private get supportCaseCredits(): number {
-    return Number(process.env.SUPPORT_CASE_CREDIT_COST) || 5;
+  /** Cost model: estimate credits from LLM usage per stage. */
+  private estimateStageCredits(inputChars: number, outputChars: number): number {
+    // Approximation: 3 chars ≈ 1 token for Spanish mixed with code/JSON
+    const inputTokens = Math.ceil(inputChars / 3);
+    const outputTokens = Math.ceil(outputChars / 3);
+    // DeepSeek pricing: ~$0.14/1M input, ~$0.28/1M output
+    const costUSD = (inputTokens / 1_000_000) * 0.14 + (outputTokens / 1_000_000) * 0.28;
+    // 1 credit ≈ $0.001
+    return Math.round(costUSD * 1000 * 100) / 100;
   }
 
   async orchestrate(input: OrchestrateInput): Promise<OrchestrateResult> {
@@ -189,6 +203,8 @@ export class SupportOrchestratorService {
         );
       }
 
+      const totalCost = stages.reduce((sum, s) => sum + (s.cost_credits ?? 0), 0);
+
       const result: OrchestrateResult = {
         run_id: run.id,
         tier,
@@ -198,6 +214,7 @@ export class SupportOrchestratorService {
         needs_human_review: needsHuman,
         stages,
         summary,
+        total_cost_credits: totalCost,
       };
 
       this.events?.emitOrchestrationProgress(input.workspace_id, {
@@ -209,7 +226,7 @@ export class SupportOrchestratorService {
       });
 
       // Deduct credits for the support case (non-fatal)
-      this.deductCreditsForCase(input.workspace_id, run.id).catch((err) =>
+      this.deductCreditsForCase(input.workspace_id, run.id, caseType ?? "unknown", totalCost).catch((err) =>
         this.logger.error(`[orchestrator] credit deduction failed: ${err?.message}`)
       );
 
@@ -375,12 +392,18 @@ export class SupportOrchestratorService {
         }
       }
       const safeText = this.guardrails.sanitizeOutputAfterModel(res.text ?? "", MAX_PREVIEW);
+      const inputChars = safeContext.length;
+      const outputChars = (res.text ?? "").length;
+      const costCredits = this.estimateStageCredits(inputChars, outputChars);
       const rec: StageRecord = {
         agent_slug: slug,
         allowed: true,
         output_preview: safeText,
         structured: this.tryParseJson(res.text ?? ""),
         duration_ms: Date.now() - started,
+        input_chars: inputChars,
+        output_chars: outputChars,
+        cost_credits: costCredits,
       };
       stages.push(rec);
       if (workspaceId && runId) {
@@ -489,13 +512,14 @@ export class SupportOrchestratorService {
   private async deductCreditsForCase(
     workspaceId: string,
     runId: string,
+    caseType: string,
+    totalCost: number,
   ): Promise<void> {
-    if (!this.credits) return;
-    const cost = this.supportCaseCredits;
+    if (!this.credits || totalCost <= 0) return;
     const result = await this.credits.deductCredits(
       workspaceId,
-      cost,
-      `Soporte — caso #${runId.slice(0, 8)}`,
+      Math.ceil(totalCost),
+      `Soporte ${caseType} — caso #${runId.slice(0, 8)}`,
     );
     if (result.success) {
       this.logger.log(

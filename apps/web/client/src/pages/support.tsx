@@ -77,6 +77,7 @@ type OrchestrateResult = {
   needs_human_review: boolean;
   stages: StageRecord[];
   summary: string;
+  total_cost_credits?: number;
 };
 
 type StageRecord = {
@@ -86,6 +87,9 @@ type StageRecord = {
   output_preview?: string;
   duration_ms?: number;
   error?: string;
+  cost_credits?: number;
+  input_chars?: number;
+  output_chars?: number;
 };
 
 type ChatMessage = {
@@ -127,6 +131,9 @@ function StageResult({ stage }: { stage: StageRecord }) {
         )}
         {stage.duration_ms && (
           <p className="text-muted-foreground/60 mt-0.5">{(stage.duration_ms / 1000).toFixed(1)}s</p>
+        )}
+        {stage.cost_credits != null && stage.cost_credits > 0 && (
+          <p className="text-muted-foreground/60 mt-0.5">{stage.cost_credits.toFixed(2)} créditos</p>
         )}
       </div>
     </div>
@@ -318,6 +325,9 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
                       </span>
                       {msg.result.tier && (
                         <span className="ml-auto text-[10px] text-muted-foreground">Tier {msg.result.tier}</span>
+                      )}
+                      {msg.result.total_cost_credits != null && msg.result.total_cost_credits > 0 && (
+                        <span className="text-[10px] text-muted-foreground ml-1">{msg.result.total_cost_credits.toFixed(1)} créditos</span>
                       )}
                     </div>
 
