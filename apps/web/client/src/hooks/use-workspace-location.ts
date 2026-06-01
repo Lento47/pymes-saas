@@ -1,7 +1,7 @@
 import { useSyncExternalStore, useCallback } from "react";
 import { getWorkspaceSlug } from "@/lib/api";
 
-const PUBLIC_PATHS = ["/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation", "/product"];
+const PUBLIC_PATHS = ["/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation", "/product", "/platform", "/ai-agents", "/billing-workflows", "/security"];
 
 function isPublicPath(path: string): boolean {
   const cleanPath = path.split("?")[0];

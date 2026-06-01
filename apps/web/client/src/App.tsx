@@ -49,10 +49,12 @@ import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import DataRequestPage from "@/pages/data-request";
 import AccessibilityPage from "@/pages/accessibility";
-import PlatformPage from "@/pages/platform";
+import PlatformPage from "@/pages/marketing/platform-page";
+import AiAgentsPage from "@/pages/marketing/ai-agents-page";
+import BillingMarketingPage from "@/pages/marketing/billing-page";
 import WorkflowsPage from "@/pages/workflows";
 import InsightsPage from "@/pages/insights-page";
-import SecurityPage from "@/pages/security-page";
+import SecurityPage from "@/pages/marketing/security-page";
 import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
 import Agent from "@/pages/agent";
@@ -219,6 +221,12 @@ function AppRouter() {
       </Route>
       <Route path="/platform">
         {() => <PlatformPage />}
+      </Route>
+      <Route path="/ai-agents">
+        {() => <AiAgentsPage />}
+      </Route>
+      <Route path="/billing-workflows">
+        {() => <BillingMarketingPage />}
       </Route>
       <Route path="/workflows">
         {() => <WorkflowsPage />}
