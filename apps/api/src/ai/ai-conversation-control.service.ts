@@ -90,7 +90,10 @@ interface BusinessContextForPlaybook {
 }
 
 interface ReplyOptions {
+  /** Set ai_state to AI_ACTIVE permanently after replying (delegation) */
   activate?: boolean;
+  /** Bypass the ai_state check — reply even if not AI_ACTIVE (one-shot) */
+  force?: boolean;
   triggerText?: string;
   source?: "manual_start" | "auto_reply";
 }
@@ -140,6 +143,20 @@ export class AiConversationControlService {
     });
   }
 
+  /** One-shot AI reply — responds once but does NOT change ai_state. */
+  async replyOnce(workspaceId: string, conversationId: string) {
+    const lastInbound = await this.prisma.message.findFirst({
+      where: { workspace_id: workspaceId, conversation_id: conversationId, direction: "INBOUND" },
+      orderBy: { sent_at: "desc" },
+      select: { body_text: true },
+    });
+
+    return this.replyToInbound(workspaceId, conversationId, lastInbound?.body_text ?? "", {
+      force: true,
+      source: "manual_start",
+    });
+  }
+
   async stopControl(workspaceId: string, conversationId: string) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -185,7 +202,7 @@ export class AiConversationControlService {
 
     const conv = await this.getConversation(workspaceId, conversationId);
     const meta = parseJsonValue<Record<string, unknown>>(conv.metadata_json, {});
-    if (!options.activate && meta.ai_state !== "AI_ACTIVE") {
+    if (!options.activate && !options.force && meta.ai_state !== "AI_ACTIVE") {
       return { ok: false, error: "AI_NOT_ACTIVE", balance: await this.aiTokens.getBalance(workspaceId) };
     }
 
@@ -376,17 +393,20 @@ export class AiConversationControlService {
       }
 
       const now = new Date().toISOString();
+      const nextMeta = options.activate
+        ? { ...meta, ai_state: "AI_ACTIVE", last_ai_reply_at: now }
+        : { ...meta, last_ai_reply_at: now };
       await this.prisma.conversation.update({
         where: { id: conversationId },
         data: {
           last_message_at: new Date(),
           updated_at: new Date(),
-          metadata_json: { ...meta, ai_state: "AI_ACTIVE", last_ai_reply_at: now } as any,
+          metadata_json: nextMeta as any,
         },
         select: { id: true },
       });
 
-      return { ok: true, balance, ai_state: "AI_ACTIVE" };
+      return { ok: true, balance, ai_state: options.activate ? ("AI_ACTIVE" as const) : undefined };
     }
 
     if (!action.reply_text.trim()) {

@@ -40,6 +40,7 @@ import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { AgentRunService } from "../ai/agent-run.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
+import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { EventsGateway } from "../gateways/events.gateway";
 
 class StartAgentRunDto {
@@ -69,6 +70,8 @@ export class ConversationsController {
     private readonly agentRunService: AgentRunService,
     @Inject(forwardRef(() => AiConversationControlService))
     private readonly aiConversationControl: AiConversationControlService,
+    @Inject(forwardRef(() => FlowiseAutoReplyService))
+    private readonly flowiseAutoReply: FlowiseAutoReplyService,
   ) {}
 
   // ── Conversations ──────────────────────────────────────────────────────────
@@ -551,9 +554,22 @@ export class ConversationsController {
       },
       select: { id: true },
     });
-    return { ok: true, ai_state: "AI_ACTIVE" };
+    // Trigger an immediate AI response now that it's delegated
+    const result = await this.aiConversationControl.startControl(workspaceId, conversationId);
+    return { ok: true, ai_state: "AI_ACTIVE", message: result.message };
   }
 
+  /** One-shot AI reply — responds once, does NOT delegate permanently. */
+  @Post(":id/ai-control/reply-once")
+  @Roles(WorkspaceUserRole.AGENT)
+  async replyOnce(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    return this.aiConversationControl.replyOnce(workspaceId, conversationId);
+  }
+
+  /** Delegate AI permanently + respond immediately (same as delegate-to-ai). */
   @Post(":id/ai-control/start")
   @Roles(WorkspaceUserRole.AGENT)
   async startAiControl(

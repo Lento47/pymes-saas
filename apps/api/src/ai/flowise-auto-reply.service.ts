@@ -13,6 +13,8 @@ import { toWhatsAppMarkdown, toTelegramHtml } from "./whatsapp-markdown.util";
 export interface FlowiseDispatchOptions {
   systemPromptAddendum?: string;
   contextEnrichment?: ContextEnrichment;
+  /** Bypass ai_state gating — respond even if HUMAN_ACTIVE (one-shot). */
+  force?: boolean;
 }
 
 @Injectable()
@@ -66,8 +68,8 @@ export class FlowiseAutoReplyService {
 
       const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
       const aiSettings = parseAiSettings(workspace.settings_json);
-      // Only skip AI when a human recently took over (respects workspace settings)
-      if (isAiBlockedByHuman(meta, aiSettings)) return false;
+      // Skip if human took over, unless forced (one-shot reply)
+      if (!options?.force && isAiBlockedByHuman(meta, aiSettings)) return false;
 
       const chatflowId = await this.flowiseSetup.getChatflowIdForPlan(workspace.plan);
       if (!chatflowId) {
