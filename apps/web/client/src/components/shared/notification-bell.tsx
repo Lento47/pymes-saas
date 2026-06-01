@@ -1,41 +1,51 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Bell, CheckCheck, MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, ClipboardList, ChevronRight, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Bell, X, CheckCheck, ChevronRight,
+  MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, ClipboardList,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
-const TYPE_CONFIG: Record<string, { icon: typeof Bell; variant: "default" | "success" | "destructive"; label: string }> = {
-  task_completed: { icon: CheckSquare, variant: "success", label: "Tarea completada" },
-  task_overdue: { icon: AlertTriangle, variant: "destructive", label: "Tarea vencida" },
-  new_message: { icon: MessageCircle, variant: "default", label: "Nuevo mensaje" },
-  AI_TASK_CREATED: { icon: Bot, variant: "default", label: "Tarea IA" },
-  deal_created: { icon: KanbanSquare, variant: "default", label: "Negocio creado" },
-  deal_stage_changed: { icon: KanbanSquare, variant: "default", label: "Etapa cambiada" },
-  deal_won: { icon: KanbanSquare, variant: "success", label: "Negocio ganado" },
-  invoice_paid: { icon: Receipt, variant: "success", label: "Factura pagada" },
-  payment_received: { icon: Receipt, variant: "success", label: "Pago recibido" },
-  invoice_overdue: { icon: Receipt, variant: "destructive", label: "Factura vencida" },
-  automation: { icon: Zap, variant: "default", label: "Automatización" },
-  conversation_no_reply: { icon: MessageCircle, variant: "destructive", label: "Sin respuesta" },
+type Notification = {
+  id: string;
+  read_at?: string | null;
+  body?: string;
+  title?: string;
+  type?: string;
+  created_at?: string;
+  related_entity_type?: string;
+  related_entity_id?: string;
 };
 
-const VARIANT_STYLES: Record<string, { icon: string; bg: string }> = {
-  default: { icon: "text-foreground/70", bg: "bg-muted border-border/60" },
-  success: { icon: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" },
-  destructive: { icon: "text-destructive", bg: "bg-destructive/10 border-destructive/20" },
+const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
+  task_completed:        { icon: CheckSquare,  color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  task_overdue:          { icon: AlertTriangle, color: "text-red-500",     bg: "bg-red-500/10"     },
+  new_message:           { icon: MessageCircle, color: "text-blue-500",    bg: "bg-blue-500/10"    },
+  AI_TASK_CREATED:       { icon: ClipboardList, color: "text-muted-foreground", bg: "bg-muted"    },
+  deal_created:          { icon: KanbanSquare,  color: "text-amber-500",   bg: "bg-amber-500/10"   },
+  deal_stage_changed:    { icon: KanbanSquare,  color: "text-sky-500",     bg: "bg-sky-500/10"     },
+  deal_won:              { icon: KanbanSquare,  color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  invoice_paid:          { icon: Receipt,       color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  payment_received:      { icon: Receipt,       color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  invoice_overdue:       { icon: Receipt,       color: "text-red-500",     bg: "bg-red-500/10"     },
+  automation:            { icon: Zap,           color: "text-muted-foreground", bg: "bg-muted"    },
+  conversation_no_reply: { icon: MessageCircle, color: "text-amber-500",   bg: "bg-amber-500/10"   },
 };
 
-function getTypeConfig(type: string) {
-  return TYPE_CONFIG[type] || { icon: Bell, variant: "default" as const, label: type };
+function getTypeConfig(type?: string) {
+  return (type && TYPE_CONFIG[type]) || { icon: Bell, color: "text-muted-foreground", bg: "bg-muted" };
 }
 
-/** Resolve navigation target from notification's related entity */
-function resolveLink(n: any): string | null {
+/** Resolve navigation target from a notification's related entity */
+function resolveLink(n: Notification): string | null {
   if (!n.related_entity_type || !n.related_entity_id) return null;
   const t = n.related_entity_type.toLowerCase();
   if (t === "conversation" || t === "conversations") return `/inbox/${n.related_entity_id}`;
@@ -56,135 +66,183 @@ export function NotificationBell() {
     refetchInterval: 30000,
   });
 
-  const { data: notificationsData } = useQuery({
+  const { data: notifData } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: () => api.getNotifications(),
     enabled: open,
   });
 
+  const markRead = useMutation({
+    mutationFn: (ids: string[]) => api.markRead({ ids }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+      qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+  });
+
+  const markAllRead = useMutation({
+    mutationFn: () => api.markRead({ all: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+      qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+  });
+
   const unreadCount = unreadData?.count ?? 0;
-  const notifications = (notificationsData?.data ?? []).slice(0, 5);
-
-  const handleMarkRead = async (ids: string[]) => {
-    await api.markRead({ ids });
-    qc.invalidateQueries({ queryKey: ["/api/notifications"] });
-    qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
-  };
-
-  const handleMarkAllRead = async () => {
-    await api.markRead({ ids: [] });
-    qc.invalidateQueries({ queryKey: ["/api/notifications"] });
-    qc.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
-  };
-
-  const handleNotificationClick = (n: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!n.read_at) handleMarkRead([n.id]);
-    setOpen(false);
-  };
+  const notifications: Notification[] = Array.isArray(notifData?.data)
+    ? notifData.data
+    : Array.isArray(notifData)
+    ? notifData
+    : [];
 
   return (
-    <div className="relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative h-8 w-8 rounded-md"
-        onClick={() => setOpen(!open)}
-        title="Notificaciones"
-      >
-        <Bell className="h-4 w-4 text-muted-foreground" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-[16px] rounded-full text-[9px] font-semibold px-1 bg-primary text-primary-foreground">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </Button>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          title="Notificaciones"
+          aria-label="Notificaciones"
+        >
+          <Bell className="h-4 w-4" strokeWidth={1.75} />
+          {unreadCount > 0 && (
+            <span className="absolute right-1 top-1 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-accent px-[3px] text-[9px] font-bold leading-none text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed right-4 top-14 z-50 w-80 rounded-lg border border-border bg-card shadow-lg">
-            {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-              <span className="text-xs font-medium text-foreground">Notificaciones</span>
-              {unreadCount > 0 && (
-                <button
-                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                  onClick={handleMarkAllRead}
-                >
-                  <CheckCheck className="w-3 h-3" />
-                  Marcar todas leídas
-                </button>
-              )}
+      <PopoverContent align="end" sideOffset={8} className="w-[360px] p-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">Notificaciones</span>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => markAllRead.mutate()}
+              disabled={markAllRead.isPending}
+            >
+              <CheckCheck className="h-3 w-3" />
+              Marcar todas leídas
+            </Button>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* List */}
+        <ScrollArea className="max-h-[320px]">
+          {notifications.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No hay notificaciones
             </div>
-
-            {/* List */}
-            <div className="max-h-72 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="px-3 py-4 text-center">
-                  <p className="text-[11px] text-muted-foreground">No hay notificaciones</p>
-                </div>
-              ) : (
-                notifications.map((n: any) => {
-                  const cfg = getTypeConfig(n.type);
-                  const Icon = cfg.icon;
-                  const timeAgo = n.created_at
-                    ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
-                    : "";
-                  const isUnread = !n.read_at;
-                  const link = resolveLink(n);
-
-                  const item = (
-                    <div
-                      className={cn(
-                        "flex items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/50 cursor-pointer",
-                        isUnread && "bg-primary/5",
-                      )}
-                      style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}
-                      onClick={(e) => {
-                        if (isUnread) {
-                          e.stopPropagation();
-                          handleMarkRead([n.id]);
-                        }
-                      }}
-                    >
-                      <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 border", VARIANT_STYLES[cfg.variant]?.bg)}>
-                        <Icon className={cn("w-3.5 h-3.5", VARIANT_STYLES[cfg.variant]?.icon)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px] font-medium text-foreground truncate">{n.title}</span>
-                          {isUnread && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-primary" />}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{n.body}</p>
-                        <span className="text-[9px] text-muted-foreground/70">{timeAgo}</span>
-                      </div>
-                    </div>
-                  );
-
-                  return link ? (
-                    <Link key={n.id} href={link} onClick={(e: any) => handleNotificationClick(n, e)}>
-                      {item}
-                    </Link>
-                  ) : (
-                    <div key={n.id}>{item}</div>
-                  );
-                })
-              )}
+          ) : (
+            <div>
+              {notifications.map((n) => (
+                <NotifItem
+                  key={n.id}
+                  notification={n}
+                  onMarkRead={() => markRead.mutate([n.id])}
+                  onNavigate={() => setOpen(false)}
+                />
+              ))}
             </div>
+          )}
+        </ScrollArea>
 
-            <Link href="/notifications">
-              <div
-                className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium text-primary hover:bg-muted/50 transition-colors border-t border-border"
-                onClick={() => setOpen(false)}
-              >
-                Ver todas las notificaciones
-                <ChevronRight className="w-3 h-3" />
-              </div>
+        {/* Footer */}
+        {notifications.length > 0 && (
+          <>
+            <Separator />
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-1 px-4 py-2.5 text-xs font-medium text-accent transition-colors hover:bg-muted/40"
+            >
+              Ver todas las notificaciones
+              <ChevronRight className="h-3 w-3" />
             </Link>
-          </div>
-        </>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function NotifItem({
+  notification: n,
+  onMarkRead,
+  onNavigate,
+}: {
+  notification: Notification;
+  onMarkRead: () => void;
+  onNavigate: () => void;
+}) {
+  const [hovering, setHovering] = useState(false);
+  const isUnread = !n.read_at;
+  const cfg = getTypeConfig(n.type);
+  const Icon = cfg.icon;
+  const link = resolveLink(n);
+  const timeAgo = n.created_at
+    ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
+    : "";
+
+  const handleClick = () => {
+    if (isUnread) onMarkRead();
+    if (link) onNavigate();
+  };
+
+  const body = (
+    <div
+      className={cn(
+        "flex items-start gap-3 border-b border-border/50 px-4 py-3 last:border-0",
+        isUnread && "bg-accent/5",
+        link && "cursor-pointer hover:bg-muted/50",
       )}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      onClick={handleClick}
+    >
+      {/* Unread dot */}
+      <div className="mt-2 flex w-2 shrink-0 items-center justify-center">
+        {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+      </div>
+
+      {/* Type icon */}
+      <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md", cfg.bg)}>
+        <Icon className={cn("h-3.5 w-3.5", cfg.color)} />
+      </div>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="truncate text-xs font-medium text-foreground">{n.title ?? n.type}</span>
+          {hovering && isUnread && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+              title="Marcar como leída"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkRead();
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        {n.body && (
+          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{n.body}</p>
+        )}
+        {timeAgo && (
+          <p className="mt-1 text-[10px] text-muted-foreground/70">{timeAgo}</p>
+        )}
+      </div>
     </div>
   );
+
+  return link ? <Link href={link}>{body}</Link> : body;
 }
