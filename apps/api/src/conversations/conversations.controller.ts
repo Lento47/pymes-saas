@@ -28,6 +28,7 @@ import { EmailService } from "../email/email.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { WhatsAppRateLimiter } from "../whatsapp/whatsapp-rate-limiter";
 import { TelegramService } from "../telegram/telegram.service";
+import { toWhatsAppMarkdown, toTelegramHtml } from "../ai/whatsapp-markdown.util";
 import { MessageTemplatesService } from "../message-templates/message-templates.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -295,7 +296,7 @@ export class ConversationsController {
           } else {
             externalId = (await this.whatsAppService.sendMessage(
               conv.channel, to,
-              dto.body_text || dto.media_caption || "Archivo adjunto",
+              toWhatsAppMarkdown(dto.body_text || dto.media_caption || "Archivo adjunto"),
             )).message_id;
           }
         } else if (dto.body_text) {
@@ -304,12 +305,12 @@ export class ConversationsController {
           externalId = hasReply
             ? (await this.whatsAppService.sendReply(
                 conv.channel, to,
-                dto.body_text,
+                toWhatsAppMarkdown(dto.body_text),
                 dto.reply_to_message_id!,
               )).message_id
             : (await this.whatsAppService.sendMessage(
                 conv.channel, to,
-                dto.body_text,
+                toWhatsAppMarkdown(dto.body_text),
               )).message_id;
         }
 
@@ -369,7 +370,7 @@ export class ConversationsController {
             dto.media_type,
             bodyText || undefined,
           )
-          : await this.telegramService.sendMessage(conv.channel.id, chatId, bodyText);
+          : await this.telegramService.sendMessage(conv.channel.id, chatId, toTelegramHtml(bodyText));
 
         const telegramMessageId = result?.message_id != null ? String(result.message_id) : null;
         message = await this.prisma.message.update({

@@ -278,7 +278,8 @@ export class TelegramService {
         message.document ||
         message.video ||
         message.audio ||
-        message.voice
+        message.voice ||
+        message.sticker
       );
       if (!hasContent) return { processed: false };
 
@@ -301,7 +302,11 @@ export class TelegramService {
         return { processed: true, duplicate: true };
       }
 
-      const text = message.text || message.caption || "";
+      const text = message.sticker
+        ? message.sticker.emoji
+          ? `${message.sticker.emoji} Sticker`
+          : "💬 Sticker"
+        : (message.text || message.caption || "");
       const senderName = from.first_name
         ? `${from.first_name}${from.last_name ? " " + from.last_name : ""}`
         : from.username || `Telegram User ${from.id}`;
@@ -333,6 +338,14 @@ export class TelegramService {
       if (message.voice) {
         attachments.push({ type: "voice", file_id: message.voice.file_id });
       }
+      if (message.sticker) {
+        attachments.push({
+          type: "sticker",
+          file_id: message.sticker.file_id,
+          emoji: message.sticker.emoji ?? null,
+          set_name: message.sticker.set_name ?? null,
+        });
+      }
 
       const result = await this.messagesService.receiveInbound("telegram", channel.workspace_id, {
         channel_id: channel.id,
@@ -346,7 +359,9 @@ export class TelegramService {
         telegram_chat_id: String(chat.id),
         telegram_user_id: from.id ? String(from.id) : undefined,
         telegram_message_id: tgMessageId,
-        message_type: message.photo
+        message_type: message.sticker
+          ? "sticker"
+          : message.photo
           ? "image"
           : message.document
             ? "file"
@@ -615,6 +630,30 @@ export class TelegramService {
   }
 
   /**
+   * Send a sticker to a Telegram chat.
+   * Stickers must be WEBP (preferred), PNG, or TGS (animated).
+   */
+  async sendSticker(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+  ): Promise<any> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException("No bot token configured");
+
+    try {
+      const bot = new Telegraf(token);
+      const { source } = await this.resolveFileInput(mediaUrl);
+      const result = await bot.telegram.sendSticker(chatId, { source } as any);
+      this.logger.log(`Sticker sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send sticker: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send sticker: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Send a document (any file type) to a Telegram chat.
    */
   async sendDocument(
@@ -661,6 +700,8 @@ export class TelegramService {
         return this.sendAudio(channelId, chatId, mediaUrl, caption);
       case "voice":
         return this.sendVoice(channelId, chatId, mediaUrl, caption);
+      case "sticker":
+        return this.sendSticker(channelId, chatId, mediaUrl);
       default:
         return this.sendDocument(channelId, chatId, mediaUrl, caption);
     }
