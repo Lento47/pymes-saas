@@ -1,18 +1,50 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Bell, X, CheckCheck, ExternalLink } from "lucide-react";
+import {
+  Bell, X, CheckCheck, ChevronRight,
+  MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, ClipboardList,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Link } from "wouter";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
-type Notification = { id: string; read_at?: string | null; body?: string; title?: string; type?: string; created_at?: string };
+type Notification = {
+  id: string;
+  read_at?: string | null;
+  body?: string;
+  title?: string;
+  type?: string;
+  created_at?: string;
+};
 
-/** Compact notification bell icon with unread badge + dropdown panel */
+const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
+  task_completed:        { icon: CheckSquare,  color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  task_overdue:          { icon: AlertTriangle, color: "text-red-500",     bg: "bg-red-500/10"     },
+  new_message:           { icon: MessageCircle, color: "text-blue-500",    bg: "bg-blue-500/10"    },
+  AI_TASK_CREATED:       { icon: ClipboardList, color: "text-muted-foreground", bg: "bg-muted"    },
+  deal_created:          { icon: KanbanSquare,  color: "text-amber-500",   bg: "bg-amber-500/10"   },
+  deal_stage_changed:    { icon: KanbanSquare,  color: "text-sky-500",     bg: "bg-sky-500/10"     },
+  deal_won:              { icon: KanbanSquare,  color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  invoice_paid:          { icon: Receipt,       color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  payment_received:      { icon: Receipt,       color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  invoice_overdue:       { icon: Receipt,       color: "text-red-500",     bg: "bg-red-500/10"     },
+  automation:            { icon: Zap,           color: "text-muted-foreground", bg: "bg-muted"    },
+  conversation_no_reply: { icon: MessageCircle, color: "text-amber-500",   bg: "bg-amber-500/10"   },
+};
+
+function getTypeConfig(type?: string) {
+  return (type && TYPE_CONFIG[type]) || { icon: Bell, color: "text-muted-foreground", bg: "bg-muted" };
+}
+
 export function NotificationBell() {
-  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
 
   const { data: unreadData } = useQuery({
     queryKey: ["/api/notifications/unread-count"],
@@ -43,124 +75,86 @@ export function NotificationBell() {
   });
 
   const unreadCount = unreadData?.count ?? 0;
-  const notifications = notifData?.data ?? notifData ?? [];
+  const notifications: Notification[] = Array.isArray(notifData?.data)
+    ? notifData.data
+    : Array.isArray(notifData)
+    ? notifData
+    : [];
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md hover:bg-white/5 transition-colors"
-        title="Notificaciones"
-        style={{ color: "hsl(var(--fg-2))" }}
-      >
-        <Bell style={{ width: 16, height: 16 }} />
-        {unreadCount > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: "hsl(var(--accent))",
-              color: "white",
-              fontSize: 9,
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              lineHeight: 1,
-              transform: "translate(2px, -2px)",
-            }}
-          >
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </button>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          title="Notificaciones"
+          aria-label="Notificaciones"
+        >
+          <Bell className="h-4 w-4" strokeWidth={1.75} />
+          {unreadCount > 0 && (
+            <span className="absolute right-1 top-1 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-accent px-[3px] text-[9px] font-bold leading-none text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
 
-      {open && (
-        <>
-          {/* Backdrop to close on click outside */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
-
-          {/* Dropdown panel */}
-          <div
-            className="absolute right-0 top-full z-50 mt-1 overflow-hidden rounded-md shadow-lg"
-            style={{
-              width: 340,
-              maxHeight: 400,
-              background: "hsl(var(--bg-card))",
-              border: "1px solid hsl(var(--border))",
-            }}
-          >
-            {/* Header */}
-            <div
-              className="flex items-center justify-between px-3 py-2"
-              style={{ borderBottom: "1px solid hsl(var(--border))" }}
+      <PopoverContent align="end" sideOffset={8} className="w-[360px] p-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">Notificaciones</span>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => markAllRead.mutate()}
+              disabled={markAllRead.isPending}
             >
-              <span className="text-xs font-semibold text-foreground">
-                Notificaciones
-              </span>
-              {unreadCount > 0 && (
-                <button
-                  onClick={() => markAllRead.mutate()}
-                  className="flex items-center gap-1 text-xs"
-                  style={{ color: "hsl(var(--accent))" }}
-                >
-                  <CheckCheck style={{ width: 12, height: 12 }} />
-                  Marcar todas leídas
-                </button>
-              )}
-            </div>
+              <CheckCheck className="h-3 w-3" />
+              Marcar todas leídas
+            </Button>
+          )}
+        </div>
 
-            {/* List */}
-            <div className="overflow-y-auto max-h-[340px]">
-              {notifications.length === 0 ? (
-                <div
-                  className="text-xs text-center py-8 px-3"
-                  style={{ color: "hsl(var(--fg-3))" }}
-                >
-                  Sin notificaciones
-                </div>
-              ) : (
-                (notifications as Notification[]).map((n) => (
-                  <NotifItem
-                    key={n.id}
-                    notification={n}
-                    onMarkRead={() => markRead.mutate([n.id])}
-                  />
-                ))
-              )}
-            </div>
+        <Separator />
 
-            {/* Footer link */}
-            {notifications.length > 0 && (
-              <div
-                className="px-3 py-2"
-                style={{ borderTop: "1px solid hsl(var(--border))" }}
-              >
-                <Link
-                  href="/notifications"
-                  className="text-xs flex items-center gap-1 hover:underline"
-                  style={{ color: "hsl(var(--fg-2))" }}
-                  onClick={() => setOpen(false)}
-                >
-                  Ver todas <ExternalLink style={{ width: 10, height: 10 }} />
-                </Link>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+        {/* List */}
+        <ScrollArea className="max-h-[320px]">
+          {notifications.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No hay notificaciones
+            </div>
+          ) : (
+            <div>
+              {notifications.map((n) => (
+                <NotifItem
+                  key={n.id}
+                  notification={n}
+                  onMarkRead={() => markRead.mutate([n.id])}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Footer */}
+        {notifications.length > 0 && (
+          <>
+            <Separator />
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-1 px-4 py-2.5 text-xs font-medium text-accent transition-colors hover:bg-muted/40"
+            >
+              Ver todas las notificaciones
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
-
-/* ── Single notification item ── */
 
 function NotifItem({
   notification: n,
@@ -170,71 +164,57 @@ function NotifItem({
   onMarkRead: () => void;
 }) {
   const [hovering, setHovering] = useState(false);
-
+  const isUnread = !n.read_at;
+  const cfg = getTypeConfig(n.type);
+  const Icon = cfg.icon;
   const timeAgo = n.created_at
     ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })
     : "";
 
-  const isUnread = !n.read_at;
-  const body = n.body ?? n.title ?? "";
-  const title = n.title ?? n.type ?? "";
-
   return (
     <div
-      className="px-3 py-2.5 transition-colors"
-      style={{
-        borderBottom: "1px solid hsl(var(--border))",
-        background: isUnread ? "hsl(var(--bg-active) / 0.4)" : "transparent",
-      }}
+      className={cn(
+        "flex items-start gap-3 border-b border-border/50 px-4 py-3 last:border-0",
+        isUnread && "bg-accent/5",
+      )}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      <div className="flex items-start gap-2">
-        <div
-          className="shrink-0 mt-1"
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: isUnread ? "hsl(var(--accent))" : "transparent",
-          }}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-foreground truncate">
-              {title}
-            </span>
-            {hovering && isUnread && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkRead();
-                }}
-                className="shrink-0 p-0.5 rounded hover:bg-white/10"
-                style={{ color: "hsl(var(--fg-3))" }}
-                title="Marcar como leída"
-              >
-                <X style={{ width: 10, height: 10 }} />
-              </button>
-            )}
-          </div>
-          {body && (
-            <p
-              className="text-xs mt-0.5 line-clamp-2"
-              style={{ color: "hsl(var(--fg-2))" }}
+      {/* Unread dot */}
+      <div className="mt-2 flex w-2 shrink-0 items-center justify-center">
+        {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+      </div>
+
+      {/* Type icon */}
+      <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md", cfg.bg)}>
+        <Icon className={cn("h-3.5 w-3.5", cfg.color)} />
+      </div>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="truncate text-xs font-medium text-foreground">{n.title ?? n.type}</span>
+          {hovering && isUnread && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+              title="Marcar como leída"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkRead();
+              }}
             >
-              {body}
-            </p>
-          )}
-          {timeAgo && (
-            <p
-              className="text-[10px] mt-0.5"
-              style={{ color: "hsl(var(--fg-3))" }}
-            >
-              {timeAgo}
-            </p>
+              <X className="h-3 w-3" />
+            </Button>
           )}
         </div>
+        {n.body && (
+          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{n.body}</p>
+        )}
+        {timeAgo && (
+          <p className="mt-1 text-[10px] text-muted-foreground/70">{timeAgo}</p>
+        )}
       </div>
     </div>
   );
