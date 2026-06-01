@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -224,9 +225,9 @@ export default function RegisterPage() {
           <div className="mt-7 flex flex-col items-center gap-3 text-center">
             <p className="text-sm text-white/60">
               ¿Ya tienes cuenta?{" "}
-              <a href="#/login" className="font-medium text-violet-400 transition hover:text-violet-300">
+              <Link href="/login" className="font-medium text-violet-400 transition hover:text-violet-300">
                 Iniciar sesión
-              </a>
+              </Link>
             </p>
             <p className="text-xs uppercase tracking-[0.1em] text-white/40">
               &copy; {new Date().getFullYear()} PymesHub S.A., Limón, Costa Rica
