@@ -152,9 +152,30 @@ export class TelegramService {
     if (!suppliedSecret) return false;
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, type: "TELEGRAM" },
-      select: { config_json: true },
+      select: { config_json: true, workspace_id: true },
     });
-    const expected = (channel?.config_json as any)?.webhook_secret as string | undefined;
+    if (!channel) return false;
+
+    let expected = (channel.config_json as any)?.webhook_secret as string | undefined;
+
+    // Auto-recovery: if webhook_secret is missing but bot token is configured,
+    // re-register the webhook so the channel self-heals on next request.
+    if (!expected) {
+      try {
+        await this.registerWebhook(channel.workspace_id, channelId);
+        const refreshed = await this.prisma.channel.findFirst({
+          where: { id: channelId, type: "TELEGRAM" },
+          select: { config_json: true },
+        });
+        expected = (refreshed?.config_json as any)?.webhook_secret;
+        if (expected) {
+          this.logger.log(`[telegram] auto-recovered webhook_secret for channel=${channelId}`);
+        }
+      } catch (err) {
+        this.logger.warn(`[telegram] auto-recovery failed for channel=${channelId}: ${(err as Error).message}`);
+      }
+    }
+
     if (!expected) return false;
     const a = Buffer.from(suppliedSecret, "utf8");
     const b = Buffer.from(expected, "utf8");
