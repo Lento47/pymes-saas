@@ -10,16 +10,16 @@ interface Props {
 }
 
 const sentimentColors: Record<string, string> = {
-  positive: "bg-green-100 text-green-800",
-  neutral: "bg-gray-100 text-gray-800",
-  negative: "bg-red-100 text-red-800",
+  positive: "bg-success/10 text-success",
+  neutral: "bg-muted text-foreground",
+  negative: "bg-destructive/10 text-destructive",
 };
 
 const intentColors: Record<string, string> = {
-  venta: "bg-blue-100 text-blue-800",
-  soporte: "bg-yellow-100 text-yellow-800",
-  consulta: "bg-purple-100 text-purple-800",
-  reclamo: "bg-red-100 text-red-800",
+  venta: "bg-info/10 text-info",
+  soporte: "bg-warning/10 text-warning",
+  consulta: "bg-primary/10 text-primary",
+  reclamo: "bg-destructive/10 text-destructive",
 };
 
 export function ConversationInsightPanel({ conversationId }: Props) {
@@ -58,14 +58,14 @@ export function ConversationInsightPanel({ conversationId }: Props) {
               <div className="flex gap-2 flex-wrap">
                 {insight.intent && (
                   <Badge
-                    className={intentColors[insight.intent] ?? "bg-gray-100 text-gray-800"}
+                    className={intentColors[insight.intent] ?? "bg-muted text-foreground"}
                   >
                     {insight.intent}
                   </Badge>
                 )}
                 {insight.sentiment && (
                   <Badge
-                    className={sentimentColors[insight.sentiment] ?? "bg-gray-100 text-gray-800"}
+                    className={sentimentColors[insight.sentiment] ?? "bg-muted text-foreground"}
                   >
                     {insight.sentiment}
                   </Badge>
@@ -99,7 +99,7 @@ export function ConversationInsightPanel({ conversationId }: Props) {
               {Array.isArray(insight.unresolved_items_json) &&
                 insight.unresolved_items_json.length > 0 && (
                   <div>
-                    <p className="font-medium flex items-center gap-1 mb-1 text-amber-700">
+                    <p className="font-medium flex items-center gap-1 mb-1 text-warning">
                       <AlertCircle className="h-3 w-3" />
                       Items sin resolver
                     </p>
