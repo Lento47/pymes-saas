@@ -235,10 +235,10 @@ export function PlaygroundBoard() {
       {/* Stats bar */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: "Abiertos", value: totalOpen, color: "text-blue-400" },
-          { label: "Resueltos", value: totalResolved, color: "text-emerald-400" },
-          { label: "SLA en riesgo", value: slaAtRisk, color: "text-orange-400" },
-          { label: "Escalados", value: escalated, color: "text-red-400" },
+          { label: "Abiertos", value: totalOpen, color: "text-info" },
+          { label: "Resueltos", value: totalResolved, color: "text-success" },
+          { label: "SLA en riesgo", value: slaAtRisk, color: "text-warning" },
+          { label: "Escalados", value: escalated, color: "text-destructive" },
         ].map(s => (
           <div key={s.label} className="rounded-lg border border-border/60 bg-card/40 px-4 py-3 text-center">
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -249,9 +249,9 @@ export function PlaygroundBoard() {
 
       {/* Urgent queue */}
       {urgentCases.length > 0 && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/[0.03] p-4">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/[0.03] p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
             <h3 className="text-xs font-semibold text-foreground">Cola de urgentes</h3>
             <span className="text-[10px] text-muted-foreground/60">· Se atienden primero</span>
           </div>
@@ -352,15 +352,15 @@ export function PlaygroundBoard() {
       <div className="rounded-lg border border-border/60 bg-card/40 p-4">
         <h4 className="text-[11px] font-semibold text-foreground mb-2">Cómo funciona</h4>
         <div className="flex flex-wrap gap-4 text-[10px] text-muted-foreground">
-          <span><span className="font-semibold text-red-400">1.</span> Urgente — Se atienden primero</span>
-          <span><span className="font-semibold text-amber-400">2.</span> En curso — El agente resuelve</span>
-          <span><span className="font-semibold text-blue-400">3.</span> Siguiente caso — Se delega</span>
-          <span><span className="font-semibold text-emerald-400">4.</span> Fix — Se crea automáticamente si hay solución conocida</span>
+          <span><span className="font-semibold text-destructive">1.</span> Urgente — Se atienden primero</span>
+          <span><span className="font-semibold text-warning">2.</span> En curso — El agente resuelve</span>
+          <span><span className="font-semibold text-info">3.</span> Siguiente caso — Se delega</span>
+          <span><span className="font-semibold text-success">4.</span> Fix — Se crea automáticamente si hay solución conocida</span>
         </div>
         <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground/60">
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Disponible</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Ocupado</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> Fix sugerido</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success" /> Disponible</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> Ocupado</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning" /> Fix sugerido</span>
         </div>
       </div>
     </div>
