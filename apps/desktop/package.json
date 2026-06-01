@@ -13,19 +13,19 @@
     "tauri:build:cloud": "cross-env PYMESHUB_EDITION=cloud PYMESHUB_UPDATER_ACTIVE=true tauri build --config src-tauri/tauri.cloud.conf.json"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/plugin-deep-link": "^2.0.0",
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "@tauri-apps/plugin-notification": "^2.0.0",
-    "@tauri-apps/plugin-store": "^2.0.0",
+    "@tauri-apps/plugin-store": "^2.4.3",
     "@tauri-apps/plugin-updater": "^2.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "wouter": "^3.3.5",
-    "@tanstack/react-query": "^5.60.5"
+    "wouter": "^3.10.0",
+    "@tanstack/react-query": "^5.100.14"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.0",
