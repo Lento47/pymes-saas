@@ -5,6 +5,7 @@ import type { InboxConversation } from "../types";
 import { AvatarFallback } from "@/components/shared/avatar-fallback";
 import { ChannelBadge } from "@/components/shared/channel-badge";
 import { hasSensitiveContent } from "@/components/shared/sensitive-text";
+import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Bot, Clock3, Lock, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -137,21 +138,21 @@ function ConversationListItemImpl({
           <div className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
             <ChannelBadge channel={conversation.channel?.type} />
             {intentLabel && (
-              <span className="truncate rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+              <Badge variant="secondary" className="truncate px-1.5 py-px text-[10px] font-medium">
                 {intentLabel}
-              </span>
+              </Badge>
             )}
             {requiresHuman && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-1.5 py-px text-[10px] font-medium text-red-600 dark:text-red-400">
+              <Badge variant="destructive" className="gap-1 px-1.5 py-px text-[10px] font-medium">
                 <AlertCircle className="h-2.5 w-2.5" />
                 Needs human
-              </span>
+              </Badge>
             )}
             {isAiActive && !requiresHuman && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500/10 px-1.5 py-px text-[10px] font-medium text-violet-600 dark:text-violet-300">
+              <Badge variant="outline" className="gap-1 border-violet-500/30 bg-violet-500/10 px-1.5 py-px text-[10px] font-medium text-violet-600 dark:text-violet-300">
                 <Bot className="h-2.5 w-2.5" />
                 AI active
-              </span>
+              </Badge>
             )}
           </div>
 

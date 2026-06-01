@@ -2,6 +2,10 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { CHANNEL_TABS } from "../constants";
 import { StatusFilterSelect } from "./StatusFilterSelect";
 import { NewConversationModal } from "./NewConversationModal";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import type { ChannelTab, ConversationStatusFilter, InboxConversation } from "../types";
 
 function countByStatus(conversations: InboxConversation[], statuses: string[]) {
@@ -56,6 +60,7 @@ export function InboxToolbar({
 
   return (
     <div className="shrink-0 border-b border-border bg-background px-3 py-2.5 sm:px-4">
+      {/* ── Mobile header ── */}
       <div className="flex items-start justify-between gap-3 md:hidden">
         <div className="min-w-0">
           <h1 className="text-[17px] font-semibold leading-tight text-foreground">Inbox</h1>
@@ -64,45 +69,43 @@ export function InboxToolbar({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-            aria-label="Filters"
-          >
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Filters">
             <SlidersHorizontal className="h-4 w-4" />
-          </button>
+          </Button>
           <NewConversationModal />
         </div>
       </div>
 
+      {/* ── Desktop toolbar ── */}
       <div className="mt-2 md:mt-0 md:flex md:items-center md:justify-between md:gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="relative w-full md:max-w-[260px]">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-muted-foreground/75" />
-            <input
+            <Input
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search conversations..."
-              className="h-9 w-full rounded-lg border border-border/50 bg-muted/30 pl-8 pr-3 text-[13px] text-foreground transition-colors placeholder:text-muted-foreground/60 focus:border-primary/50 focus:bg-muted/50 focus:outline-none md:h-8 md:rounded-md"
+              className="h-9 w-full rounded-lg border-border/50 bg-muted/30 pl-8 pr-3 text-[13px] md:h-8 md:rounded-md"
             />
           </div>
 
-          <div className="hidden items-center gap-1 md:flex">
+          <div className="hidden items-center gap-1.5 md:flex">
             {CHANNEL_TABS.map((tab) => {
               const active = channelTab === tab.id;
               return (
-                <button
+                <Badge
                   key={tab.id}
-                  onClick={() => onChannelTabChange(tab.id)}
-                  className={`flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-all duration-150 ${
+                  variant={active ? "default" : "secondary"}
+                  className={`cursor-pointer gap-1.5 px-2.5 py-0.5 text-[12px] font-medium transition-all ${
                     active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground/60 hover:bg-muted/40 hover:text-foreground"
+                      ? ""
+                      : "text-muted-foreground/60 hover:text-foreground"
                   }`}
+                  onClick={() => onChannelTabChange(tab.id)}
                 >
                   <span className="scale-75">{tab.icon}</span>
                   {tab.label}
-                </button>
+                </Badge>
               );
             })}
           </div>
@@ -114,29 +117,27 @@ export function InboxToolbar({
         </div>
       </div>
 
+      {/* ── Mobile: status chips ── */}
       <div className="-mx-3 mt-2 flex gap-1 overflow-x-auto px-3 pb-0.5 minimal-scrollbar md:hidden">
         {mobileStatusChips.map((chip) => {
           const active = statusFilter === chip.value;
           const count = typeof chip.count === "number" ? chip.count : undefined;
           if (chip.value !== "ALL" && count === 0) return null;
           return (
-            <button
+            <Badge
               key={chip.value}
-              type="button"
+              variant={active ? "default" : "outline"}
+              className="cursor-pointer shrink-0 gap-1 px-3 py-1.5 text-xs font-medium"
               onClick={() => onStatusFilterChange(chip.value)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                active
-                  ? "border-primary/20 bg-primary/10 text-primary"
-                  : "border-border/60 bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
             >
               {chip.label}
-              {typeof count === "number" && <span className="ml-1 text-[11px] opacity-70">{count}</span>}
-            </button>
+              {typeof count === "number" && <span className="text-[11px] opacity-70">{count}</span>}
+            </Badge>
           );
         })}
       </div>
 
+      {/* ── Mobile: channel chips ── */}
       <div className="-mx-3 mt-1 flex gap-1 overflow-x-auto px-3 pb-0.5 minimal-scrollbar md:hidden">
         {[
           { label: "All channels", value: "ALL" as ChannelTab, count: conversations.length },
@@ -147,17 +148,15 @@ export function InboxToolbar({
           if (chip.value !== "ALL" && chip.count === 0) return null;
           const active = channelTab === chip.value;
           return (
-            <button
+            <Badge
               key={chip.value}
-              type="button"
+              variant={active ? "secondary" : "ghost"}
+              className="cursor-pointer shrink-0 px-2.5 py-1 text-[11px] font-medium"
               onClick={() => onChannelTabChange(chip.value)}
-              className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
             >
               {chip.label}
               <span className="ml-1 opacity-60">{chip.count}</span>
-            </button>
+            </Badge>
           );
         })}
       </div>
