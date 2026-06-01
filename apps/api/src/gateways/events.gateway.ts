@@ -239,6 +239,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         output_preview?: string;
         duration_ms?: number;
         error?: string;
+        cost_credits?: number;
       };
       /** Present on done */
       result?: unknown;

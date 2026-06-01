@@ -20,11 +20,13 @@ import {
   History,
   ChevronRight,
   XCircle,
-  ChevronDown,
+  Check,
+  X,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/use-auth';
-import { useQuery } from '@tanstack/react-query';
+import { getSocket } from '@/hooks/use-socket';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { formatDistanceToNow } from 'date-fns';
@@ -81,7 +83,7 @@ type OrchestrateResult = {
   tier: string;
   case_type?: string;
   severity?: string;
-  status: 'COMPLETED' | 'NEEDS_HUMAN' | 'FAILED';
+  status: 'COMPLETED' | 'NEEDS_HUMAN' | 'FAILED' | 'CLOSED';
   needs_human_review: boolean;
   stages: StageRecord[];
   summary: string;
@@ -96,15 +98,24 @@ type StageRecord = {
   duration_ms?: number;
   error?: string;
   cost_credits?: number;
-  input_chars?: number;
-  output_chars?: number;
+};
+
+type LiveStage = {
+  agent_slug: string;
+  allowed: boolean;
+  skipped_reason?: string;
+  output_preview?: string;
+  duration_ms?: number;
+  error?: string;
+  cost_credits?: number;
 };
 
 type ChatMessage = {
   id: string;
-  role: 'user' | 'agent' | 'system';
+  role: 'user' | 'agent' | 'system' | 'live-progress';
   content: string;
   result?: OrchestrateResult;
+  liveStages?: LiveStage[];
 };
 
 const STAGE_ICONS: Record<string, typeof Stethoscope> = {
@@ -115,32 +126,47 @@ const STAGE_ICONS: Record<string, typeof Stethoscope> = {
   'pr-review': CheckCircle2,
 };
 
-function StageResult({ stage }: { stage: StageRecord }) {
+function StageResult({ stage }: { stage: StageRecord | LiveStage }) {
   const Icon = STAGE_ICONS[stage.agent_slug] ?? Cog;
   const label = stage.agent_slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const isRunning = !stage.output_preview && !stage.error && !stage.skipped_reason;
 
   return (
     <div className={`flex items-start gap-2.5 rounded-md border px-3 py-2 text-xs ${
+      isRunning ? 'border-primary/20 bg-primary/5' :
       stage.error ? 'border-destructive/20 bg-destructive/5' :
       stage.skipped_reason ? 'border-border/40 bg-muted/20' :
       'border-emerald-500/20 bg-emerald-500/5'
     }`}>
       <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+        isRunning ? 'text-primary animate-pulse' :
         stage.error ? 'text-destructive' :
         stage.skipped_reason ? 'text-muted-foreground/40' :
         'text-emerald-500'
       }`} />
       <div className="min-w-0">
         <p className="font-medium text-foreground">{label}</p>
-        {stage.error && <p className="text-destructive mt-0.5">{stage.error}</p>}
-        {stage.skipped_reason && <p className="text-muted-foreground mt-0.5">{stage.skipped_reason}</p>}
-        {stage.output_preview && !stage.error && (
-          <p className="text-muted-foreground mt-0.5 line-clamp-2">{stage.output_preview.slice(0, 300)}</p>
+        {isRunning ? (
+          <p className="text-muted-foreground mt-0.5">
+            <span className="inline-flex gap-0.5">
+              {[0, 1, 2].map(i => (
+                <span key={i} className="h-1 w-1 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+              ))}
+            </span>
+          </p>
+        ) : stage.error ? (
+          <p className="text-destructive mt-0.5">{stage.error}</p>
+        ) : stage.skipped_reason ? (
+          <p className="text-muted-foreground mt-0.5">{stage.skipped_reason}</p>
+        ) : (
+          stage.output_preview && (
+            <p className="text-muted-foreground mt-0.5 line-clamp-2">{stage.output_preview.slice(0, 300)}</p>
+          )
         )}
         {stage.duration_ms && (
           <p className="text-muted-foreground/60 mt-0.5">{(stage.duration_ms / 1000).toFixed(1)}s</p>
         )}
-        {stage.cost_credits != null && stage.cost_credits > 0 && (
+        {stage.cost_credits != null && stage.cost_credits > 0 && !isRunning && (
           <p className="text-muted-foreground/60 mt-0.5">{stage.cost_credits.toFixed(2)} créditos</p>
         )}
       </div>
@@ -155,25 +181,70 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   const [error, setError] = useState<string | null>(null);
   const [escalating, setEscalating] = useState(false);
   const [escalated, setEscalated] = useState(false);
+  const [caseClosed, setCaseClosed] = useState(false);
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const initialized = useRef(false);
+  const liveStagesRef = useRef<LiveStage[]>([]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   useEffect(() => { if (!isRunning) inputRef.current?.focus(); }, [isRunning]);
+
+  // ── WebSocket: real-time orchestration progress ─────────────────────────
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const onStageComplete = (payload: any) => {
+      if (payload.run_id !== currentRunId) return;
+      if (!payload.stage) return;
+
+      liveStagesRef.current = [...liveStagesRef.current, payload.stage];
+
+      setMessages(prev => prev.map(m =>
+        m.id === 'live-progress' ? { ...m, liveStages: [...liveStagesRef.current] } : m
+      ));
+    };
+
+    const onDone = (payload: any) => {
+      if (payload.run_id !== currentRunId) return;
+      setIsRunning(false);
+
+      if (payload.result) {
+        // Remove live-progress and add the final result
+        setMessages(prev => {
+          const withoutProgress = prev.filter(m => m.id !== 'live-progress');
+          return [...withoutProgress, {
+            id: crypto.randomUUID(),
+            role: 'agent',
+            content: payload.result.summary,
+            result: payload.result,
+          }];
+        });
+      }
+    };
+
+    socket.on('orchestration:stage-complete', onStageComplete);
+    socket.on('orchestration:done', onDone);
+
+    return () => {
+      socket.off('orchestration:stage-complete', onStageComplete);
+      socket.off('orchestration:done', onDone);
+    };
+  }, [currentRunId]);
 
   const sendMessage = useCallback(async (text: string, systemContext?: string) => {
     const messageText = text.trim();
     if (!messageText || isRunning) return;
     setError(null);
+    setCaseClosed(false);
+    liveStagesRef.current = [];
 
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: messageText };
-    const thinkingMessage: ChatMessage = { id: crypto.randomUUID(), role: 'system', content: 'Ejecutando diagnóstico...' };
+    const progressMessage: ChatMessage = { id: 'live-progress', role: 'live-progress', content: '', liveStages: [] };
 
-    setMessages(prev => systemContext
-      ? [...prev, thinkingMessage]
-      : [...prev, userMessage, thinkingMessage]
-    );
+    setMessages(prev => [...prev, userMessage, progressMessage]);
     setInput('');
     setIsRunning(true);
 
@@ -183,10 +254,15 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
 
     try {
       const result = await api.orchestrateSupport(payloadMessage, undefined, false) as OrchestrateResult;
+      setCurrentRunId(result.run_id);
 
+      // Only show if WebSocket didn't already deliver the result
       setMessages(prev => {
-        const withoutThinking = prev.filter(m => m.id !== thinkingMessage.id);
-        return [...withoutThinking, {
+        const hasResult = prev.some(m => m.role === 'agent' && m.result?.run_id === result.run_id);
+        if (hasResult) return prev;
+
+        const withoutProgress = prev.filter(m => m.id !== 'live-progress');
+        return [...withoutProgress, {
           id: crypto.randomUUID(),
           role: 'agent',
           content: result.summary,
@@ -200,11 +276,11 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al conectar con el asistente';
       setError(msg);
-      setMessages(prev => prev.filter(m => m.id !== thinkingMessage.id));
+      setMessages(prev => prev.filter(m => m.id !== 'live-progress'));
     } finally {
       setIsRunning(false);
     }
-  }, [isRunning]);
+  }, [isRunning, currentRunId]);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -239,6 +315,11 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
     }
   };
 
+  // Check if the last result needs human review or is closed
+  const lastResult = [...messages].reverse().find(m => m.result)?.result;
+  const showFollowUp = lastResult && !isRunning && !caseClosed &&
+    lastResult.status !== 'CLOSED';
+
   const Icon = agent.icon;
 
   return (
@@ -259,7 +340,24 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
           </div>
           <span className="text-[13px] font-medium text-foreground">{agent.title}</span>
         </div>
+        {lastResult && !caseClosed && lastResult.status !== 'CLOSED' && (
+          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${
+            lastResult.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-600' :
+            'bg-amber-500/10 text-amber-600'
+          }`}>
+            {lastResult.status === 'COMPLETED' ? 'Resuelto' : 'Pendiente'}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
+          {showFollowUp && (
+            <button
+              onClick={() => { setCaseClosed(true); setError('Caso cerrado. Podés abrir uno nuevo volviendo al menú.'); }}
+              className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Check className="w-3 h-3" />
+              Cerrar caso
+            </button>
+          )}
           {messages.length > 1 && !escalated && (
             <button
               onClick={handleEscalate}
@@ -267,7 +365,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
               className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors disabled:opacity-50"
             >
               {escalating ? <Loader2 className="w-3 h-3 animate-spin" /> : <LifeBuoy className="w-3 h-3" />}
-              Escalar a soporte humano
+              Escalar a humano
             </button>
           )}
           {escalated && (
@@ -288,28 +386,37 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             >
               {msg.role !== 'user' && (
                 <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-                  msg.role === 'system' ? 'border-border bg-muted text-muted-foreground' : 'border-border bg-card text-muted-foreground'
+                  msg.role === 'live-progress' ? 'border-primary/20 bg-primary/5 text-primary' :
+                  msg.role === 'system' ? 'border-border bg-muted text-muted-foreground' :
+                  'border-border bg-card text-muted-foreground'
                 }`}>
-                  {msg.role === 'system' ? (
+                  {msg.role === 'live-progress' ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : msg.role === 'system' ? (
+                    '!'
                   ) : (
                     <MessageSquare className="w-3 h-3" />
                   )}
                 </div>
               )}
-              <div className={`max-w-[80%] space-y-2 ${
-                msg.role === 'user'
-                  ? 'rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-sm leading-relaxed'
-                  : msg.role === 'system'
-                    ? 'rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground'
-                    : ''
-              }`}>
+              <div className={`max-w-[80%] ${msg.role === 'user' ? 'rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-sm leading-relaxed' : ''}`}>
                 {msg.role === 'user' ? (
                   msg.content
-                ) : msg.role === 'system' ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {msg.content}
+                ) : msg.role === 'live-progress' ? (
+                  <div className="rounded-lg border border-border bg-card max-w-full overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b border-primary/20 bg-primary/5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                      <span className="text-xs font-medium text-foreground">Ejecutando diagnóstico...</span>
+                    </div>
+                    <div className="px-4 py-3 space-y-2 max-h-96 overflow-y-auto">
+                      {msg.liveStages && msg.liveStages.length > 0 ? (
+                        msg.liveStages.map((stage, i) => (
+                          <StageResult key={i} stage={stage} />
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Iniciando agentes de soporte...</p>
+                      )}
+                    </div>
                   </div>
                 ) : msg.role === 'agent' && msg.result ? (
                   <div className="rounded-lg border border-border bg-card text-foreground max-w-full overflow-hidden">
@@ -331,12 +438,14 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
                          msg.result.status === 'NEEDS_HUMAN' ? 'Requiere revisión humana' :
                          'Diagnóstico fallido'}
                       </span>
-                      {msg.result.tier && (
-                        <span className="ml-auto text-[10px] text-muted-foreground">Tier {msg.result.tier}</span>
-                      )}
-                      {msg.result.total_cost_credits != null && msg.result.total_cost_credits > 0 && (
-                        <span className="text-[10px] text-muted-foreground ml-1">{msg.result.total_cost_credits.toFixed(1)} créditos</span>
-                      )}
+                      <div className="ml-auto flex items-center gap-1">
+                        {msg.result.tier && (
+                          <span className="text-[10px] text-muted-foreground">Tier {msg.result.tier}</span>
+                        )}
+                        {msg.result.total_cost_credits != null && msg.result.total_cost_credits > 0 && (
+                          <span className="text-[10px] text-muted-foreground ml-1">{msg.result.total_cost_credits.toFixed(1)} créd.</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Summary */}
@@ -362,6 +471,22 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
                         ))}
                       </div>
                     )}
+
+                    {/* Follow-up hint */}
+                    {!caseClosed && msg.result.summary && (
+                      <div className="border-t border-border px-4 py-2">
+                        <p className="text-[10px] text-muted-foreground">
+                          ¿Necesitás más ayuda? Escribí tu consulta abajo o usá "Cerrar caso" cuando esté resuelto.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : msg.role === 'system' ? (
+                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {msg.content}
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-border bg-card px-3 py-2.5">
@@ -378,35 +503,46 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
             </div>
           ))}
           {error && (
-            <p className="text-center text-xs text-destructive">{error}</p>
+            <div className="flex items-center gap-2 justify-center">
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
+          {!isRunning && !caseClosed && messages.length > 3 && (
+            <div className="flex justify-center pt-2">
+              <span className="text-[10px] text-muted-foreground/50">
+                {lastResult?.run_id?.slice(0, 8)}
+              </span>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
       {/* Input */}
-      <div className="shrink-0 border-t border-border bg-card px-4 py-3">
-        <div className="mx-auto max-w-[680px] flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isRunning}
-            placeholder="Describí tu problema..."
-            rows={1}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
-            style={{ minHeight: 36, maxHeight: 120 }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isRunning}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
+      {!caseClosed && (
+        <div className="shrink-0 border-t border-border bg-card px-4 py-3">
+          <div className="mx-auto max-w-[680px] flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isRunning}
+              placeholder={showFollowUp ? "Escribí para continuar el diagnóstico..." : "Describí tu problema..."}
+              rows={1}
+              className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
+              style={{ minHeight: 36, maxHeight: 120 }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isRunning}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
