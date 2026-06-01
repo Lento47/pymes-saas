@@ -39,7 +39,8 @@
       "follow-redirects": ">=1.16.0",
       "postcss": ">=8.5.10",
       "@opentelemetry/exporter-prometheus": ">=0.217.0",
-      "@nestjs/core": ">=11.1.18"
+      "@nestjs/core": ">=11.1.18",
+      "ioredis": "5.11.0"
     }
   }
 }
