@@ -322,9 +322,16 @@ export class MessagesService {
       if (!["NEW", "OPEN", "PENDING"].includes(conversation.status)) {
         await this.prisma.conversation.update({
           where: { id: conversation.id },
-          data: { status: "NEW", updated_at: new Date() },
+          data: { status: "NEW", is_service_window_open: true, updated_at: new Date() },
         });
         conversation.status = "NEW";
+      } else {
+        // Re-open service window on every inbound message
+        await this.prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { is_service_window_open: true },
+          select: { id: true },
+        });
       }
     } else {
       conversation = await this.prisma.conversation.create({
@@ -335,6 +342,7 @@ export class MessagesService {
           subject: subject ?? `Mensaje de ${senderName}`,
           status: "NEW",
           priority: "MEDIUM",
+          is_service_window_open: true,
           metadata_json: initialMetadata,
         },
         select: {
@@ -633,8 +641,16 @@ export class MessagesService {
             subject: `Mensaje de ${senderName}`,
             status: "NEW",
             priority: "MEDIUM",
+            is_service_window_open: true, // WhatsApp 24h window opens on inbound message
             metadata_json: initialMetadata,
           },
+        });
+      } else {
+        // Re-open the WhatsApp 24h service window on every inbound message
+        await tx.conversation.update({
+          where: { id: conversation.id },
+          data: { is_service_window_open: true },
+          select: { id: true },
         });
       }
 
