@@ -735,7 +735,7 @@ export class MessagesService {
     this.agentRunService
       .processMessage(workspaceId, conversationId, bodyText)
       .then(async (consumedByAgent) => {
-        if (consumedByAgent) return;
+        if (consumedByAgent) { this.logger.log(`[emit-notify] agent consumed message conv=${conversationId}`); return; }
 
         const router = this.messageRouter;
         const flowise = this.flowiseAutoReply;
@@ -753,6 +753,7 @@ export class MessagesService {
               receivedAt: new Date(),
               isInteractive,
             });
+            this.logger.log(`[emit-notify] router decision conv=${conversationId} intent=${decision.intent} shouldCallAi=${decision.shouldCallAi} quickReply=${!!decision.quickReplyText}`);
           } catch (err) {
             this.logger.error("Error en router.evaluate", err);
             // Fall through to AI chain on router failure
@@ -785,11 +786,13 @@ export class MessagesService {
                 .dispatch(workspaceId, conversationId, bodyText, dispatchOpts)
                 .then(async (handled) => {
                   router.recordOutcome(workspaceId, decision, handled).catch(() => undefined);
-                  if (handled) return;
+                  if (handled) { this.logger.log(`[emit-notify] router+flowise handled conv=${conversationId}`); return; }
+                  this.logger.log(`[emit-notify] router fallback conv=${conversationId} → triggerEmrendeAutoReply`);
                   await this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive);
                 })
                 .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
             } else {
+              this.logger.log(`[emit-notify] router+no-flowise direct trigger conv=${conversationId}`);
               this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
                 (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
               );
@@ -803,13 +806,15 @@ export class MessagesService {
           flowise
             .dispatch(workspaceId, conversationId, bodyText)
             .then((handled) => {
-              if (handled) return;
+              if (handled) { this.logger.log(`[emit-notify] flowise handled conv=${conversationId}`); return; }
+              this.logger.log(`[emit-notify] flowise fallback conv=${conversationId} → triggerEmrendeAutoReply`);
               this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
                 (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
               );
             })
             .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
         } else {
+          this.logger.log(`[emit-notify] no flowise, direct trigger conv=${conversationId}`);
           this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
             (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
           );
@@ -1200,7 +1205,7 @@ export class MessagesService {
     inboundText: string,
     isInteractive?: boolean,
   ): Promise<void> {
-    this.logger.debug(`[ai-auto] triggered — workspace=${workspaceId} conv=${conversationId}`);
+    this.logger.log(`[ai-auto] triggered — workspace=${workspaceId} conv=${conversationId} planCheck=pending`);
 
     // ── Platform admin fast-path ────────────────────────────────────────────
     // If the sender is a platform admin, bypass all workspace logic entirely.
@@ -1264,7 +1269,7 @@ export class MessagesService {
     const aiSettings = parseAiSettings(workspace.settings_json);
     // Only skip AI when a human recently took over (respects workspace settings)
     if (isAiBlockedByHuman(meta, aiSettings)) {
-      this.logger.debug(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
+      this.logger.log(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
       return;
     }
 
@@ -1272,7 +1277,7 @@ export class MessagesService {
     // 30s was causing legitimate follow-up messages to be silently dropped.
     const lastAiReply = meta.last_ai_reply_at as string | undefined;
     if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 3_000) {
-      this.logger.debug(`[ai-auto] conv ${conversationId} throttled (3s)`);
+      this.logger.log(`[ai-auto] conv ${conversationId} throttled (3s)`);
       return;
     }
 
