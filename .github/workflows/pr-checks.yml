@@ -89,7 +89,7 @@ jobs:
           echo "Target build: ${{ steps.target.outputs.type }}"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
