@@ -6,12 +6,10 @@ interface DateSeparatorProps {
 
 export function DateSeparator({ date }: DateSeparatorProps) {
   return (
-    <div className="flex items-center gap-3 my-4 sm:my-5">
-      <div className="flex-1 h-px bg-border/45" />
-      <span className="shrink-0 rounded-full border border-border/45 bg-background/80 px-2.5 py-1 text-[10px] font-medium text-muted-foreground/75 shadow-sm">
+    <div className="flex justify-center my-4 sm:my-5">
+      <span className="rounded-full bg-foreground/[0.06] px-3 py-1 text-[11px] font-medium text-muted-foreground/70">
         {formatMessageDate(date)}
       </span>
-      <div className="flex-1 h-px bg-border/45" />
     </div>
   );
 }

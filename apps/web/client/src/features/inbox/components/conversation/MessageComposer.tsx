@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, ShoppingBag, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, ShoppingBag, Smile, Sparkles } from "lucide-react";
+import { EmojiPicker } from "@/components/shared/emoji-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -59,8 +60,10 @@ export function MessageComposer({
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [templateSearch, setTemplateSearch] = useState("");
   const [slashOpen, setSlashOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isWhatsApp = channelType?.toUpperCase() === "WHATSAPP";
   const windowClosed = isWhatsApp && !isServiceWindowOpen;
@@ -110,6 +113,18 @@ export function MessageComposer({
       onAttach(file);
       e.target.value = "";
     }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    const el = textareaRef.current;
+    if (!el) { onChange(value + emoji); return; }
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    onChange(value.slice(0, start) + emoji + value.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
   };
 
   const handleAiSuggest = async () => {
@@ -218,6 +233,20 @@ export function MessageComposer({
             <input type="file" className="sr-only" accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx,.webp" onChange={handleFileChange} disabled={freeFormDisabled || isPending || uploading} />
           </label>
 
+          <div className="relative hidden min-[380px]:block">
+            <button
+              type="button"
+              onClick={() => setEmojiPickerOpen(v => !v)}
+              disabled={freeFormDisabled}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
+              title="Insertar emoji"
+              aria-label="Insertar emoji"
+            >
+              <Smile className="h-4 w-4" />
+            </button>
+            <EmojiPicker open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen} onSelect={handleEmojiSelect} />
+          </div>
+
           {availableTemplates && availableTemplates.length > 0 && onInsertTemplate && (
             <Popover open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
               <PopoverTrigger asChild>
@@ -266,6 +295,7 @@ export function MessageComposer({
           )}
 
           <Textarea
+            ref={textareaRef}
             className="max-h-[96px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[13.5px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-h-[38px] sm:text-sm"
             value={value}
             onChange={(e) => onChange(e.target.value)}
