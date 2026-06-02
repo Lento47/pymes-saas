@@ -76,7 +76,7 @@ export function MessageTimeline({
     overscan: 5,
   });
 
-  const containerCls = `relative min-h-0 flex-1 overflow-hidden ${theme.surfaceCls} ${className ?? ""}`;
+  const containerCls = `relative min-h-0 flex-1 ${theme.surfaceCls} ${className ?? ""}`;
 
   if (isLoading) {
     return (
@@ -98,7 +98,7 @@ export function MessageTimeline({
     <div className={containerCls} style={theme.surfaceStyle}>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-4 sm:py-5"
+        className="h-full overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-5"
         onScroll={onScroll}
         style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
