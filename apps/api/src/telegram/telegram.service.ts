@@ -464,7 +464,7 @@ export class TelegramService {
   /**
    * Send message to Telegram chat
    */
-  async sendMessage(channelId: string, chatId: string, text: string): Promise<any> {
+  async sendMessage(channelId: string, chatId: string, text: string, replyToMessageId?: string | null): Promise<any> {
     if (!text || !chatId) {
       throw new BadRequestException("Missing text or chatId");
     }
@@ -478,9 +478,11 @@ export class TelegramService {
       // Reuse cached bot instance instead of creating a new Telegraf per message
       const bot = this.bots.get(channelId) || new Telegraf(token);
       if (!this.bots.has(channelId)) this.bots.set(channelId, bot);
-      const result = await bot.telegram.sendMessage(chatId, text, {
-        parse_mode: "HTML",
-      });
+      const extra: any = { parse_mode: "HTML" };
+      if (replyToMessageId) {
+        extra.reply_parameters = { message_id: Number(replyToMessageId) };
+      }
+      const result = await bot.telegram.sendMessage(chatId, text, extra);
       this.logger.log(`Message sent to chat ${chatId} in channel ${channelId}`);
       return result;
     } catch (err) {

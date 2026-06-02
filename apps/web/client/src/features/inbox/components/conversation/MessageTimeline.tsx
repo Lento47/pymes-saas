@@ -29,8 +29,8 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
     }
   }
 
-  // ReplyQuote adds ~36px when present
-  if (msg.replyToMessageId) base += 36;
+  // ReplyQuote adds ~48px when present (sender + 2-line preview)
+  if (msg.replyToMessageId) base += 48;
 
   return base;
 }

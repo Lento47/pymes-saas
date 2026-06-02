@@ -302,16 +302,32 @@ export class ConversationsController {
         } else if (dto.body_text) {
           // Dispatch text message (with optional reply context)
           const hasReply = !!dto.reply_to_message_id;
-          externalId = hasReply
-            ? (await this.whatsAppService.sendReply(
+          if (hasReply) {
+            // Resolve internal DB ID → WhatsApp wamid for the reply context
+            const quotedMsg = await this.prisma.message.findFirst({
+              where: { id: dto.reply_to_message_id!, conversation_id: conversationId },
+              select: { provider_message_id: true },
+            });
+            const waReplyId = quotedMsg?.provider_message_id;
+            if (waReplyId) {
+              externalId = (await this.whatsAppService.sendReply(
                 conv.channel, to,
                 toWhatsAppMarkdown(dto.body_text),
-                dto.reply_to_message_id!,
-              )).message_id
-            : (await this.whatsAppService.sendMessage(
+                waReplyId,
+              )).message_id;
+            } else {
+              // Quoted message has no wamid (e.g. outbound not yet acked) — send as regular message
+              externalId = (await this.whatsAppService.sendMessage(
                 conv.channel, to,
                 toWhatsAppMarkdown(dto.body_text),
               )).message_id;
+            }
+          } else {
+            externalId = (await this.whatsAppService.sendMessage(
+              conv.channel, to,
+              toWhatsAppMarkdown(dto.body_text),
+            )).message_id;
+          }
         }
 
         // Update with external message ID for status tracking
@@ -362,6 +378,17 @@ export class ConversationsController {
         this.logger.log(
           `[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
         );
+
+        // Resolve reply context (DB ID → telegram_message_id)
+        let tgReplyId: string | null = null;
+        if (dto.reply_to_message_id) {
+          const quotedMsg = await this.prisma.message.findFirst({
+            where: { id: dto.reply_to_message_id, conversation_id: conversationId },
+            select: { telegram_message_id: true, provider_message_id: true },
+          });
+          tgReplyId = quotedMsg?.telegram_message_id ?? quotedMsg?.provider_message_id ?? null;
+        }
+
         const result = dto.media_url && dto.media_type
           ? await this.telegramService.sendMedia(
             conv.channel.id,
@@ -370,7 +397,7 @@ export class ConversationsController {
             dto.media_type,
             bodyText || undefined,
           )
-          : await this.telegramService.sendMessage(conv.channel.id, chatId, toTelegramHtml(bodyText));
+          : await this.telegramService.sendMessage(conv.channel.id, chatId, toTelegramHtml(bodyText), tgReplyId);
 
         const telegramMessageId = result?.message_id != null ? String(result.message_id) : null;
         message = await this.prisma.message.update({
