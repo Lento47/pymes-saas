@@ -3,6 +3,7 @@ import type { UiMessage } from "@/features/inbox/message-types";
 import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Reply } from "lucide-react";
 import { MessageMeta } from "./MessageMeta";
 import { MessageText } from "./MessageText";
 import { ReplyQuote } from "./ReplyQuote";
@@ -317,28 +318,43 @@ export const MessageBubble = function MessageBubble({
       )}
 
       {/* Bubble — Card base with defaults reset so channel theme classes take precedence */}
-      <Card className={`border-0 bg-transparent shadow-none ${bubbleClasses}`}>
-        {quotedMessage && (
-          <ReplyQuote
-            quotedMessage={quotedMessage}
-            isOutbound={isOutbound}
-            quoteCls={isOutbound ? theme.outboundQuoteCls : theme.inboundQuoteCls}
-            senderCls={isOutbound ? theme.outboundQuoteSenderCls : theme.inboundQuoteSenderCls}
-            textCls={isOutbound ? theme.outboundQuoteTextCls : theme.inboundQuoteTextCls}
+      <div className="group/bubble relative">
+        <Card className={`border-0 bg-transparent shadow-none ${bubbleClasses}`}>
+          {quotedMessage && (
+            <ReplyQuote
+              quotedMessage={quotedMessage}
+              isOutbound={isOutbound}
+              quoteCls={isOutbound ? theme.outboundQuoteCls : theme.inboundQuoteCls}
+              senderCls={isOutbound ? theme.outboundQuoteSenderCls : theme.inboundQuoteSenderCls}
+              textCls={isOutbound ? theme.outboundQuoteTextCls : theme.inboundQuoteTextCls}
+            />
+          )}
+          <CardContent className="p-0">
+            {renderContent()}
+          </CardContent>
+          <CardFooter className="p-0 mt-0.5">
+            <MessageMeta
+              {...metaProps}
+              compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
+            overlay={variant === "media"}
+            isLargeEmoji={isLargeEmoji}
           />
+          </CardFooter>
+        </Card>
+
+        {/* Desktop reply button — visible on hover, positioned on the outer edge */}
+        {onReply && message.direction !== "INTERNAL" && (
+          <button
+            type="button"
+            onClick={() => onReply(message)}
+            className={`absolute top-1/2 -translate-y-1/2 hidden sm:flex h-7 w-7 items-center justify-center rounded-full border border-border/40 bg-background/90 text-muted-foreground shadow-sm opacity-0 group-hover/bubble:opacity-100 transition-opacity duration-150 hover:bg-muted hover:text-foreground z-10 ${isOutbound ? "-left-9" : "-right-9"}`}
+            aria-label="Responder"
+            title="Responder"
+          >
+            <Reply className="h-3.5 w-3.5" />
+          </button>
         )}
-        <CardContent className="p-0">
-          {renderContent()}
-        </CardContent>
-        <CardFooter className="p-0 mt-0.5">
-          <MessageMeta
-            {...metaProps}
-            compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
-          overlay={variant === "media"}
-          isLargeEmoji={isLargeEmoji}
-        />
-        </CardFooter>
-      </Card>
+      </div>
     </div>
   );
 };
