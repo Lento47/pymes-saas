@@ -1,13 +1,12 @@
 /**
- * AgentRunCard — compact inline AI indicator.
+ * AgentRunCard — inline agent status separator.
  *
- * Shows a narrative one-liner inside the chat flow:
- *   RUNNING:  "Detectó solicitud de factura · 2 datos pendientes"
- *   COMPLETED: "Respuesta lista ✓"
- *   FAILED:    "Agente detenido — error"
+ * Collapsed (default): thin line with centered dynamic label
+ *   —————————— Analizando contexto ——————————
  *
- * Matches the landing page AgentConsole style: intent + pending count,
- * not raw technical step names. Compact pill, contextual icons.
+ * Expanded (click): shows intent, pending fields, steps
+ *
+ * Compact, minimal, one-line when collapsed.
  */
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +20,7 @@ import {
   Brain,
   FileText,
   Wrench,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,15 +47,15 @@ export interface AgentRun {
   artifact: AgentArtifact | null;
 }
 
-/* ── Intent labels (Spanish, narrative) ─────────────────────────────────── */
+/* ── Intent labels (Spanish) ────────────────────────────────────────────── */
 const INTENT_LABELS: Record<string, string> = {
-  ORDER:       "un pedido",
-  APPOINTMENT: "una cita",
-  QUOTE:       "una cotización",
-  COMPLAINT:   "una queja",
-  SUPPORT:     "una consulta de soporte",
-  BILLING:     "una consulta de facturación",
-  GENERAL:     "una consulta general",
+  ORDER:       "pedido",
+  APPOINTMENT: "cita",
+  QUOTE:       "cotización",
+  COMPLAINT:   "queja",
+  SUPPORT:     "soporte",
+  BILLING:     "facturación",
+  GENERAL:     "consulta",
 };
 
 function getIntentLabel(intent?: string | null): string {
@@ -63,7 +63,15 @@ function getIntentLabel(intent?: string | null): string {
   return INTENT_LABELS[intent.toUpperCase()] ?? intent.toLowerCase().replace(/_/g, " ");
 }
 
-/* ── Step icon (internal, not shown as label) ───────────────────────────── */
+/* ── Running hints (rotating while no intent) ───────────────────────────── */
+const RUNNING_HINTS = [
+  "Pensando",
+  "Leyendo contexto",
+  "Analizando",
+  "Verificando datos",
+];
+
+/* ── Step icon ──────────────────────────────────────────────────────────── */
 function getStepIcon(stepType?: string) {
   if (!stepType) return <Loader2 className="h-3 w-3 animate-spin" />;
   if (stepType.includes("SEARCH") || stepType.includes("LOAD") || stepType.includes("CONTEXT")) {
@@ -78,74 +86,27 @@ function getStepIcon(stepType?: string) {
   return <Loader2 className="h-3 w-3 animate-spin" />;
 }
 
-/* ── Running animation states ───────────────────────────────────────────── */
-const RUNNING_HINTS = [
-  "Analizando conversación",
-  "Leyendo contexto",
-  "Identificando intención",
-  "Verificando datos",
-];
-
-/* ── Narrative status builder ───────────────────────────────────────────── */
-function buildNarrative(run: AgentRun): { icon: React.ReactNode; text: string; tone: "running" | "success" | "error" } {
-  const { status, intent } = run;
+/* ── Build label ────────────────────────────────────────────────────────── */
+function buildLabel(run: AgentRun): string {
   const steps = Array.isArray(run.steps) ? run.steps : [];
   const pending_fields = Array.isArray(run.pending_fields) ? run.pending_fields : [];
-  const lastStep = steps[steps.length - 1];
   const pending = pending_fields.length;
+  const intentLabel = getIntentLabel(run.intent);
 
-  if (status === "COMPLETED") {
-    return {
-      icon: <CheckCircle2 className="h-3 w-3" />,
-      text: "Respuesta lista",
-      tone: "success",
-    };
-  }
+  if (run.status === "COMPLETED") return "Respuesta lista";
+  if (run.status === "FAILED") return "Agente detenido";
 
-  if (status === "FAILED") {
-    return {
-      icon: <AlertCircle className="h-3 w-3" />,
-      text: "Agente detenido",
-      tone: "error",
-    };
-  }
-
-  if (status === "CANCELLED") {
-    return {
-      icon: <X className="h-3 w-3" />,
-      text: "Cancelado",
-      tone: "error",
-    };
-  }
-
-  // RUNNING — build narrative
-  const intentLabel = getIntentLabel(intent);
-
-  // If we have intent, show the narrative pattern
   if (intentLabel) {
-    const parts: string[] = [];
-    parts.push(`Detectó ${intentLabel}`);
-    if (pending > 0) {
-      parts.push(`${pending} dato${pending > 1 ? "s" : ""} pendiente${pending > 1 ? "s" : ""}`);
-    }
-    return {
-      icon: getStepIcon(lastStep?.type),
-      text: parts.join(" · "),
-      tone: "running",
-    };
+    const parts = [`Detectó ${intentLabel}`];
+    if (pending > 0) parts.push(`${pending} dato${pending > 1 ? "s" : ""} pendiente${pending > 1 ? "s" : ""}`);
+    return parts.join(" · ");
   }
 
-  // No intent yet — show hint
   const startedAt = new Date(run.started_at).getTime();
   const bucket = Number.isFinite(startedAt)
     ? Math.floor((Date.now() - startedAt) / 2500) % RUNNING_HINTS.length
     : 0;
-
-  return {
-    icon: <Loader2 className="h-3 w-3 animate-spin" />,
-    text: RUNNING_HINTS[bucket],
-    tone: "running",
-  };
+  return RUNNING_HINTS[bucket];
 }
 
 /* ── Component ──────────────────────────────────────────────────────────── */
@@ -156,16 +117,18 @@ interface Props {
 
 export function AgentRunCard({ run, conversationId }: Props) {
   const [dismissed, setDismissed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const status = run?.status;
-  const pending = Array.isArray(run?.pending_fields) ? run.pending_fields.length : 0;
+  const steps = Array.isArray(run?.steps) ? run.steps : [];
+  const pending_fields = Array.isArray(run?.pending_fields) ? run.pending_fields : [];
+  const lastStep = steps[steps.length - 1];
 
-  // Auto-dismiss completed after 8s
   useEffect(() => {
     if (status === "COMPLETED") {
-      const t = setTimeout(() => setDismissed(true), 8000);
+      const t = setTimeout(() => setDismissed(true), 6000);
       return () => clearTimeout(t);
     }
   }, [status]);
@@ -179,73 +142,93 @@ export function AgentRunCard({ run, conversationId }: Props) {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const narrative = useMemo(() => (run ? buildNarrative(run) : null), [run]);
+  const label = useMemo(() => (run ? buildLabel(run) : ""), [run]);
 
-  if (!run?.id || !status || !narrative) return null;
+  if (!run?.id || !status) return null;
   if (dismissed || status === "CANCELLED") return null;
 
   const isRunning = status === "RUNNING";
+  const isCompleted = status === "COMPLETED";
+  const isFailed = status === "FAILED";
 
-  const toneCls = {
-    running: "bg-violet-500/[0.06] border-violet-500/15 text-violet-700 dark:text-violet-400",
-    success: "bg-emerald-500/[0.08] border-emerald-500/20 text-emerald-700 dark:text-emerald-400",
-    error:   "bg-destructive/[0.06] border-destructive/20 text-destructive",
-  }[narrative.tone];
+  const toneColor = isCompleted
+    ? "text-emerald-600 dark:text-emerald-400"
+    : isFailed
+      ? "text-destructive"
+      : "text-violet-600 dark:text-violet-400";
 
-  const iconCls = {
-    running: "text-violet-500",
-    success: "text-emerald-500",
-    error:   "text-destructive",
-  }[narrative.tone];
+  const lineColor = isCompleted
+    ? "border-emerald-500/30"
+    : isFailed
+      ? "border-destructive/30"
+      : "border-violet-500/20";
 
   return (
-    <div className="ml-8 flex items-center gap-1 px-1.5 py-1 sm:ml-10 sm:px-2">
-      <div className={cn(
-        "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-all",
-        toneCls,
-      )}>
-        <span className={iconCls}>{narrative.icon}</span>
-
-        <span className="max-w-[200px] truncate leading-tight">
-          {narrative.text}
+    <div className="px-3 py-2 sm:px-4">
+      {/* Collapsed: separator line with centered label */}
+      <button
+        type="button"
+        onClick={() => setExpanded(prev => !prev)}
+        className="flex w-full items-center gap-2 group"
+        aria-expanded={expanded}
+      >
+        <div className={`flex-1 border-t ${lineColor}`} />
+        <span className={cn("flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium", toneColor)}>
+          {isRunning && (lastStep ? getStepIcon(lastStep.type) : <Loader2 className="h-3 w-3 animate-spin" />)}
+          {isCompleted && <CheckCircle2 className="h-3 w-3" />}
+          {isFailed && <AlertCircle className="h-3 w-3" />}
+          {label}
+          <ChevronDown className={cn("h-3 w-3 opacity-40 transition-transform", expanded && "rotate-180")} />
         </span>
+        <div className={`flex-1 border-t ${lineColor}`} />
+      </button>
 
-        {/* Pending count badge (only when running and has pending fields) */}
-        {isRunning && pending > 0 && (
-          <span className="rounded-full bg-amber-500/10 px-1 py-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-400">
-            {pending}
-          </span>
-        )}
+      {/* Expanded: details */}
+      {expanded && (
+        <div className="mt-1.5 ml-4 space-y-1">
+          {/* Intent */}
+          {run.intent && (
+            <p className="text-[10px] text-muted-foreground">
+              Intención: <span className="font-medium text-foreground">{getIntentLabel(run.intent)}</span>
+            </p>
+          )}
 
-        {/* Stop button (running) */}
-        {isRunning && (
-          <button
-            onClick={() => stopMut.mutate()}
-            disabled={stopMut.isPending}
-            className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-            title="Detener agente"
-            aria-label="Detener agente"
-          >
-            {stopMut.isPending ? (
-              <Loader2 className="h-2.5 w-2.5 animate-spin" />
-            ) : (
-              <X className="h-2.5 w-2.5" />
+          {/* Pending fields */}
+          {isRunning && pending_fields.length > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Pendiente: <span className="text-amber-600 dark:text-amber-400">{pending_fields.join(", ")}</span>
+            </p>
+          )}
+
+          {/* Recent steps */}
+          {steps.slice(-3).map((step, i) => (
+            <p key={i} className="text-[10px] text-muted-foreground/70">
+              {step.label || step.type.replace(/_/g, " ").toLowerCase()}
+            </p>
+          ))}
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 pt-1">
+            {isRunning && (
+              <button
+                onClick={(e) => { e.stopPropagation(); stopMut.mutate(); }}
+                disabled={stopMut.isPending}
+                className="text-[10px] text-destructive hover:underline"
+              >
+                Detener agente
+              </button>
             )}
-          </button>
-        )}
-
-        {/* Dismiss button (done/failed) */}
-        {!isRunning && (
-          <button
-            onClick={() => setDismissed(true)}
-            className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted"
-            title="Cerrar"
-            aria-label="Cerrar"
-          >
-            <X className="h-2.5 w-2.5" />
-          </button>
-        )}
-      </div>
+            {!isRunning && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
+                className="text-[10px] text-muted-foreground hover:underline"
+              >
+                Cerrar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
