@@ -71,7 +71,8 @@ function isEmojiOnly(text: string): boolean {
 function bubbleRadius(isOutbound: boolean, isConsecutive: boolean) {
   const base = "rounded-2xl";
   if (isConsecutive) return base;
-  return isOutbound ? `${base} rounded-br-sm` : `${base} rounded-bl-sm`;
+  // Asymmetric bottom corner suggests direction (WhatsApp-style)
+  return isOutbound ? `${base} rounded-br-md` : `${base} rounded-bl-md`;
 }
 
 function getInitials(name: string) {
@@ -104,6 +105,7 @@ export const MessageBubble = function MessageBubble({
 
   // Tail only for text and audio (media has overflow-hidden which would clip it).
   // System/internal messages are rendered as pills — no tail.
+  // Uses CSS-only approach (border-radius asymmetry) — no SVG that gets clipped.
   const showTail =
     !isConsecutive &&
     !isLargeEmoji &&
@@ -151,7 +153,6 @@ export const MessageBubble = function MessageBubble({
   const codeCls   = isOutbound ? theme.outboundCodeCls   : theme.inboundCodeCls;
   const preCls    = isOutbound ? theme.outboundPreCls    : theme.inboundPreCls;
   const metaCls   = isOutbound ? theme.outboundMetaCls   : theme.inboundMetaCls;
-  const tailColor = isOutbound ? theme.outboundTailColor : theme.inboundTailColor;
 
   const renderContent = () => {
     switch (message.mediaType) {
@@ -260,8 +261,8 @@ export const MessageBubble = function MessageBubble({
         <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
       )}
 
-      {/* Bubble (SVG tail rendered inside so max-w % applies correctly) */}
-      <div className={`${bubbleClasses}${showTail ? " relative" : ""}`}>
+      {/* Bubble */}
+      <div className={bubbleClasses}>
         {quotedMessage && (variant === "text" || variant === "audio") && (
           <ReplyQuote
             quotedMessage={quotedMessage}
@@ -278,18 +279,6 @@ export const MessageBubble = function MessageBubble({
           overlay={variant === "media"}
           isLargeEmoji={isLargeEmoji}
         />
-        {showTail && (
-          <svg
-            viewBox="0 0 8 8"
-            className={`absolute bottom-0 h-2 w-2 ${isOutbound ? "-right-[7px]" : "-left-[7px]"}`}
-            style={{ fill: tailColor }}
-            aria-hidden="true"
-          >
-            {isOutbound
-              ? <path d="M0 8 Q0 0 8 0 L8 8 Z" />
-              : <path d="M8 8 Q8 0 0 0 L0 8 Z" />}
-          </svg>
-        )}
       </div>
     </div>
   );
