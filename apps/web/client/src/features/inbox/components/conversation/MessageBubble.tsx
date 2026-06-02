@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
 import { MessageMeta } from "./MessageMeta";
 import { MessageText } from "./MessageText";
 import { ReplyQuote } from "./ReplyQuote";
@@ -256,8 +257,8 @@ export const MessageBubble = function MessageBubble({
         <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
       )}
 
-      {/* Bubble */}
-      <div className={bubbleClasses}>
+      {/* Bubble — Card base with defaults reset so channel theme classes take precedence */}
+      <Card className={`border-0 bg-transparent shadow-none ${bubbleClasses}`}>
         {quotedMessage && (variant === "text" || variant === "audio") && (
           <ReplyQuote
             quotedMessage={quotedMessage}
@@ -274,7 +275,7 @@ export const MessageBubble = function MessageBubble({
           overlay={variant === "media"}
           isLargeEmoji={isLargeEmoji}
         />
-      </div>
+      </Card>
     </div>
   );
 };
