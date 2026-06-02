@@ -979,6 +979,7 @@ export class MessagesService {
           : hasMedia
             ? "processing"
             : "none",
+      reply_to_message_id: msg.reply_to_message_id ?? null,
       attachments: attachmentsList,
     };
   }
