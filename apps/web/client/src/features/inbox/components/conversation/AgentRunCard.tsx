@@ -88,8 +88,11 @@ const RUNNING_HINTS = [
 
 /* ── Narrative status builder ───────────────────────────────────────────── */
 function buildNarrative(run: AgentRun): { icon: React.ReactNode; text: string; tone: "running" | "success" | "error" } {
-  const { status, intent, pending_fields, steps } = run;
+  const { status, intent } = run;
+  const steps = Array.isArray(run.steps) ? run.steps : [];
+  const pending_fields = Array.isArray(run.pending_fields) ? run.pending_fields : [];
   const lastStep = steps[steps.length - 1];
+  const pending = pending_fields.length;
 
   if (status === "COMPLETED") {
     return {
@@ -117,7 +120,6 @@ function buildNarrative(run: AgentRun): { icon: React.ReactNode; text: string; t
 
   // RUNNING — build narrative
   const intentLabel = getIntentLabel(intent);
-  const pending = Array.isArray(pending_fields) ? pending_fields.length : 0;
 
   // If we have intent, show the narrative pattern
   if (intentLabel) {
