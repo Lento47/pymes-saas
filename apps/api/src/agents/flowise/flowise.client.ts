@@ -1482,6 +1482,14 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     }
   }
 
+  async deleteTool(id: string): Promise<void> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/tools/${id}`;
+    const res = await fetch(url, { method: "DELETE", headers: { "Content-Type": "application/json", ...this.authHeaders } });
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`Flowise DELETE tool ${id} returned HTTP ${res.status}`);
+    }
+  }
+
   // ── Credential CRUD ────────────────────────────────────────────────────────
 
   async listCredentials(): Promise<FlowiseCredentialResponse[]> {
