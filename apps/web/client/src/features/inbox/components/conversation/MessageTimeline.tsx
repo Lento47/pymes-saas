@@ -10,17 +10,29 @@ import { MessageBubble } from "./MessageBubble";
 
 function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   const msg = messages[idx];
-  if (!msg?.mediaType) return 58;
-  switch (msg.mediaType) {
-    case "sticker": return 112;
-    case "image":
-    case "video": return 240;
-    case "audio": return 76;
-    case "document":
-    case "location":
-    case "contact": return 96;
-    default: return 58;
+  if (!msg) return 72;
+
+  let base: number;
+  if (!msg.mediaType) {
+    base = 72; // text: Card + CardContent + CardFooter + padding
+  } else {
+    switch (msg.mediaType) {
+      case "sticker":   base = 120; break;
+      case "image":
+      case "video":     base = 250; break;
+      case "audio":     base = 84;  break;
+      case "document":
+      case "location":
+      case "contact":   base = 104; break;
+      case "interactive": base = 110; break;
+      default:          base = 72;  break;
+    }
   }
+
+  // ReplyQuote adds ~36px when present
+  if (msg.replyToMessageId) base += 36;
+
+  return base;
 }
 
 import { AgentRunCard, type AgentRun } from "./AgentRunCard";
