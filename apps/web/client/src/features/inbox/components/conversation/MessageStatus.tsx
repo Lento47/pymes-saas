@@ -12,9 +12,9 @@ interface MessageStatusProps {
 export function MessageStatus({ direction, deliveryStatus, deliveryError, variant = "light" }: MessageStatusProps) {
   if (direction !== "OUTBOUND") return null;
 
-  const dimCls  = variant === "light" ? "text-white/70"  : "text-[#111827]/40";
-  const fadeCls = variant === "light" ? "text-white/50"  : "text-[#111827]/30";
-  const blueCls = variant === "light" ? "text-sky-300"   : "text-[#2481cc]";
+  const dimCls  = variant === "light" ? "text-white/70"  : "text-[#111827]/40 dark:text-white/60";
+  const fadeCls = variant === "light" ? "text-white/50"  : "text-[#111827]/30 dark:text-white/40";
+  const blueCls = variant === "light" ? "text-sky-300"   : "text-[#2481cc] dark:text-sky-300";
 
   const s = (deliveryStatus ?? "").toLowerCase();
 
