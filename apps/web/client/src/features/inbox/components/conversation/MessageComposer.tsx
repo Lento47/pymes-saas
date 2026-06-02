@@ -1,9 +1,28 @@
 import { useState, useEffect, useRef } from "react";
-import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, ShoppingBag, Smile, Sparkles } from "lucide-react";
+import {
+  FileText,
+  List,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  Paperclip,
+  Plus,
+  Send,
+  ShoppingBag,
+  Smile,
+  Sparkles,
+} from "lucide-react";
 import { EmojiPicker } from "@/components/shared/emoji-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ComposerAttachmentPreview } from "./ComposerAttachmentPreview";
 import { InteractiveToolbar, type InteractiveState } from "../composer/InteractiveToolbar";
@@ -58,6 +77,7 @@ export function MessageComposer({
 }: MessageComposerProps) {
   const [interactive, setInteractive] = useState<InteractiveState>({ type: null });
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -70,14 +90,21 @@ export function MessageComposer({
   const freeFormDisabled = windowClosed || disabled;
   const WA_CHAR_LIMIT = 4096;
 
+  const hasTemplates = !!(availableTemplates && availableTemplates.length > 0 && onInsertTemplate);
+  const hasProducts = !!onInsertProduct;
+  const hasInteractive = isWhatsApp && !interactive.type;
+  // Show the unified "+" menu when any action is available
+  const showActionMenu = (hasInteractive || hasTemplates || hasProducts) && !windowClosed;
+
+  // Slash command opens the template picker filtered by what the user typed
   useEffect(() => {
-    if (value.startsWith("/") && availableTemplates && availableTemplates.length > 0 && onInsertTemplate) {
+    if (value.startsWith("/") && hasTemplates) {
       setSlashOpen(true);
       setTemplateSearch(value.slice(1));
     } else {
       setSlashOpen(false);
     }
-  }, [value, availableTemplates, onInsertTemplate]);
+  }, [value, hasTemplates]);
 
   const handleSend = () => {
     if (isPending || uploading) return;
@@ -144,24 +171,28 @@ export function MessageComposer({
     target.style.height = Math.min(target.scrollHeight, 96) + "px";
   };
 
-  const canSend = !(!value.trim() && !attachment && !interactive.type) && !isPending && !uploading;
-
   const handleInteractiveType = (type: NonNullable<InteractiveState["type"]>) => {
-    if (interactive.type === type) setInteractive({ type: null });
-    else setInteractive({ type, buttons: [{ id: "", title: "" }] });
+    setInteractive(interactive.type === type ? { type: null } : { type, buttons: [{ id: "", title: "" }] });
+    setActionMenuOpen(false);
   };
 
+  const canSend = !(!value.trim() && !attachment && !interactive.type) && !isPending && !uploading;
+
   const filteredTemplates = templateSearch
-    ? (availableTemplates ?? []).filter(t => t.name.toLowerCase().includes(templateSearch.toLowerCase()) || t.body.toLowerCase().includes(templateSearch.toLowerCase()))
+    ? (availableTemplates ?? []).filter(t =>
+        t.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+        t.body.toLowerCase().includes(templateSearch.toLowerCase())
+      )
     : (availableTemplates ?? []);
 
   return (
     <div className={`shrink-0 border-t border-border bg-background pb-[max(env(safe-area-inset-bottom),0px)] ${className ?? ""}`}>
+      {/* Service window closed banner */}
       {windowClosed && (
         <div className="px-2.5 pt-2 sm:px-3">
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/[0.12] bg-amber-500/[0.05] px-3 py-2">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium text-amber-600 dark:text-amber-300">Ventana de servicio cerrada</p>
+              <p className="text-[11px] font-medium text-amber-600">Ventana de servicio cerrada</p>
               <p className="mt-0.5 text-[10px] text-muted-foreground/70">Requiere una plantilla aprobada de WhatsApp.</p>
             </div>
             {onSelectTemplate && (
@@ -177,6 +208,7 @@ export function MessageComposer({
         </div>
       )}
 
+      {/* Interactive builder toolbar */}
       {!windowClosed && (
         <InteractiveToolbar
           value={interactive}
@@ -186,6 +218,7 @@ export function MessageComposer({
         />
       )}
 
+      {/* Slash command: same template list, filtered inline */}
       {slashOpen && filteredTemplates.length > 0 && (
         <div className="mx-2.5 mb-1 max-h-[38dvh] overflow-hidden rounded-lg border border-border bg-card shadow-md sm:mx-3">
           <div className="max-h-[38dvh] overflow-y-auto overscroll-contain">
@@ -211,35 +244,91 @@ export function MessageComposer({
 
       <div className="px-2.5 py-2 sm:px-3">
         <ComposerAttachmentPreview attachment={attachment} uploading={uploading} onRemove={onRemoveAttachment} />
+
         <div className="flex items-end gap-1 rounded-2xl border border-border bg-background p-1.5 shadow-sm transition-all duration-200 focus-within:border-primary/40 focus-within:shadow-primary/5 sm:gap-1.5">
-          {isWhatsApp && !interactive.type && (
-            <DropdownMenu>
+
+          {/* Unified action menu: WA interactive + templates + products */}
+          {showActionMenu && (
+            <DropdownMenu open={actionMenuOpen} onOpenChange={setActionMenuOpen}>
               <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 shrink-0 rounded-full p-0 text-muted-foreground hover:text-foreground" disabled={isPending || freeFormDisabled} aria-label="Más acciones de mensaje">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 rounded-full p-0 text-muted-foreground hover:text-foreground"
+                  disabled={isPending || freeFormDisabled}
+                  aria-label="Más acciones de mensaje"
+                >
                   <Plus className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top" className="w-52">
-                <DropdownMenuItem onClick={() => handleInteractiveType("buttons")}><MessageSquare className="mr-2 h-3.5 w-3.5 text-muted-foreground" />Botones de respuesta</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleInteractiveType("list")}><List className="mr-2 h-3.5 w-3.5 text-muted-foreground" />Lista de opciones</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleInteractiveType("location_request")}><MapPin className="mr-2 h-3.5 w-3.5 text-muted-foreground" />Solicitar ubicación</DropdownMenuItem>
-                {onSelectTemplate && <DropdownMenuItem onClick={onSelectTemplate}><FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" />Plantilla</DropdownMenuItem>}
+              <DropdownMenuContent align="start" side="top" className="w-56">
+                {hasInteractive && (
+                  <>
+                    <DropdownMenuLabel className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                      Interactivo
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleInteractiveType("buttons")}>
+                      <MessageSquare className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                      Botones de respuesta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleInteractiveType("list")}>
+                      <List className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                      Lista de opciones
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleInteractiveType("location_request")}>
+                      <MapPin className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                      Solicitar ubicación
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {hasTemplates && (
+                  <>
+                    {hasInteractive && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                      Plantillas
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => { setTemplatePickerOpen(true); setActionMenuOpen(false); }}>
+                      <FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                      Insertar plantilla
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {hasProducts && (
+                  <>
+                    {(hasInteractive || hasTemplates) && <DropdownMenuSeparator />}
+                    <DropdownMenuItem onClick={() => { setProductPickerOpen(true); setActionMenuOpen(false); }}>
+                      <ShoppingBag className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                      Insertar producto
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
 
-          <label className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground ${freeFormDisabled ? "pointer-events-none opacity-45" : "cursor-pointer"}`} aria-label="Adjuntar archivo">
+          {/* Attachment */}
+          <label
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground ${freeFormDisabled ? "pointer-events-none opacity-45" : "cursor-pointer"}`}
+            aria-label="Adjuntar archivo"
+          >
             <Paperclip className="h-4 w-4" />
-            <input type="file" className="sr-only" accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx,.webp" onChange={handleFileChange} disabled={freeFormDisabled || isPending || uploading} />
+            <input
+              type="file"
+              className="sr-only"
+              accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx,.webp"
+              onChange={handleFileChange}
+              disabled={freeFormDisabled || isPending || uploading}
+            />
           </label>
 
+          {/* Emoji */}
           <div className="relative hidden min-[380px]:block">
             <button
               type="button"
               onClick={() => setEmojiPickerOpen(v => !v)}
               disabled={freeFormDisabled}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
-              title="Insertar emoji"
               aria-label="Insertar emoji"
             >
               <Smile className="h-4 w-4" />
@@ -247,53 +336,20 @@ export function MessageComposer({
             <EmojiPicker open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen} onSelect={handleEmojiSelect} />
           </div>
 
-          {availableTemplates && availableTemplates.length > 0 && onInsertTemplate && (
-            <Popover open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" disabled={freeFormDisabled} className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-45 min-[380px]:flex" title="Insertar plantilla">
-                  <FileText className="h-4 w-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" side="top" className="w-[min(18rem,calc(100vw-1rem))] p-2">
-                <div className="mb-2">
-                  <input className="w-full rounded-md border border-border bg-muted/30 px-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/50" placeholder="Buscar plantilla..." value={templateSearch} onChange={e => setTemplateSearch(e.target.value)} autoFocus />
-                </div>
-                <div className="max-h-[42dvh] space-y-0.5 overflow-y-auto overscroll-contain">
-                  {filteredTemplates.length === 0 ? <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p> : filteredTemplates.map((tpl) => (
-                    <button key={tpl.id} type="button" className="w-full rounded-md px-2 py-2 text-left transition-colors hover:bg-muted" onClick={() => { onInsertTemplate(tpl.body); setTemplatePickerOpen(false); setTemplateSearch(""); }}>
-                      <div className="text-xs font-medium text-foreground">{tpl.name}</div>
-                      <div className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{tpl.body}</div>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-
-          {onInsertProduct && (
-            <div className="relative hidden min-[430px]:block">
-              <button type="button" onClick={() => setProductPickerOpen(v => !v)} disabled={freeFormDisabled} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-45" title="Insertar producto">
-                <ShoppingBag className="h-4 w-4" />
-              </button>
-              {productPickerOpen && (
-                <div className="absolute bottom-10 left-0 z-50 w-[min(18rem,calc(100vw-1rem))]">
-                  <ProductPicker open={productPickerOpen} onOpenChange={setProductPickerOpen} onSelect={(p) => {
-                    const price = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 }).format(p.unit_price);
-                    const text = [p.name, p.description && p.description !== p.name ? p.description : null, `Precio: ${price}`].filter(Boolean).join("\n");
-                    onInsertProduct(text);
-                    setProductPickerOpen(false);
-                  }} />
-                </div>
-              )}
-            </div>
-          )}
-
+          {/* AI suggest */}
           {onAiSuggest && (
-            <button type="button" onClick={handleAiSuggest} disabled={isSuggesting || freeFormDisabled} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:pointer-events-none disabled:opacity-45" title="Sugerir respuesta con IA">
+            <button
+              type="button"
+              onClick={handleAiSuggest}
+              disabled={isSuggesting || freeFormDisabled}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:pointer-events-none disabled:opacity-45"
+              aria-label="Sugerir respuesta con IA"
+            >
               {isSuggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
             </button>
           )}
 
+          {/* Textarea */}
           <Textarea
             ref={textareaRef}
             className="max-h-[96px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[13.5px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-h-[38px] sm:text-sm"
@@ -308,16 +364,82 @@ export function MessageComposer({
             aria-label="Escribe un mensaje"
           />
 
-          <Button type="button" size="sm" className={`h-8 w-8 shrink-0 rounded-full p-0 ${canSend ? "bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 active:scale-95" : "cursor-not-allowed bg-muted text-muted-foreground/40"}`} onClick={handleSend} disabled={!canSend} aria-label={canSend ? "Enviar mensaje" : "No hay mensaje para enviar"}>
+          {/* Send */}
+          <Button
+            type="button"
+            size="sm"
+            className={`h-8 w-8 shrink-0 rounded-full p-0 ${canSend ? "bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 active:scale-95" : "cursor-not-allowed bg-muted text-muted-foreground/40"}`}
+            onClick={handleSend}
+            disabled={!canSend}
+            aria-label={canSend ? "Enviar mensaje" : "No hay mensaje para enviar"}
+          >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
+
+        {/* WhatsApp character counter */}
         {isWhatsApp && value.length > 0 && (
           <div className="mt-1 flex justify-end pr-1">
-            <span className={`text-[10px] tabular-nums ${value.length > WA_CHAR_LIMIT ? "text-destructive" : "text-muted-foreground/50"}`}>{value.length}/{WA_CHAR_LIMIT}</span>
+            <span className={`text-[10px] tabular-nums ${value.length > WA_CHAR_LIMIT ? "text-destructive" : "text-muted-foreground/50"}`}>
+              {value.length}/{WA_CHAR_LIMIT}
+            </span>
           </div>
         )}
       </div>
+
+      {/* Template picker popover (opened from the action menu or slash command) */}
+      {hasTemplates && (
+        <Popover
+          open={templatePickerOpen}
+          onOpenChange={(o) => { setTemplatePickerOpen(o); if (!o) setTemplateSearch(""); }}
+        >
+          {/* Invisible anchor — opened programmatically */}
+          <PopoverTrigger asChild><span /></PopoverTrigger>
+          <PopoverContent align="start" side="top" className="w-[min(18rem,calc(100vw-1rem))] p-2">
+            <div className="mb-2">
+              <input
+                className="w-full rounded-md border border-border bg-muted/30 px-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/50"
+                placeholder="Buscar plantilla o escribe /"
+                value={templateSearch}
+                onChange={e => setTemplateSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="max-h-[42dvh] space-y-0.5 overflow-y-auto overscroll-contain">
+              {filteredTemplates.length === 0
+                ? <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p>
+                : filteredTemplates.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      className="w-full rounded-md px-2 py-2 text-left transition-colors hover:bg-muted"
+                      onClick={() => { onInsertTemplate!(tpl.body); setTemplatePickerOpen(false); setTemplateSearch(""); }}
+                    >
+                      <div className="text-xs font-medium text-foreground">{tpl.name}</div>
+                      <div className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{tpl.body}</div>
+                    </button>
+                  ))
+              }
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {/* Product picker */}
+      {hasProducts && productPickerOpen && (
+        <div className="absolute bottom-full left-2.5 z-50 w-[min(18rem,calc(100vw-1rem))]">
+          <ProductPicker
+            open={productPickerOpen}
+            onOpenChange={setProductPickerOpen}
+            onSelect={(p) => {
+              const price = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 }).format(p.unit_price);
+              const text = [p.name, p.description && p.description !== p.name ? p.description : null, `Precio: ${price}`].filter(Boolean).join("\n");
+              onInsertProduct!(text);
+              setProductPickerOpen(false);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

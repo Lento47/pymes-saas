@@ -538,6 +538,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         contactName={contactName}
         contactAvatarInitials={getInitials(contactName)}
         contactAvatarUrl={contactAvatarUrl}
+        provider={channelType || undefined}
         scrollRef={scrollRef}
         bottomRef={bottomRef}
         nearBottom={nearBottom}

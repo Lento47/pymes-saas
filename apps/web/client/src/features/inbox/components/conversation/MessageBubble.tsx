@@ -1,7 +1,9 @@
 import { useMemo } from "react";
-import { SensitiveText } from "@/components/shared/sensitive-text";
 import type { UiMessage } from "@/features/inbox/message-types";
+import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { MessageMeta } from "./MessageMeta";
+import { MessageText } from "./MessageText";
+import { ReplyQuote } from "./ReplyQuote";
 import { ImageAttachment } from "../media/ImageAttachment";
 import { StickerAttachment } from "../media/StickerAttachment";
 import { AudioAttachment } from "../media/AudioAttachment";
@@ -10,9 +12,6 @@ import { DocumentAttachment } from "../media/DocumentAttachment";
 import { LocationAttachment } from "../media/LocationAttachment";
 import { ContactAttachment } from "../media/ContactAttachment";
 import { InteractiveAttachment } from "../media/InteractiveAttachment";
-import { TelegramRichText } from "./TelegramRichText";
-import { WhatsAppRichText } from "./WhatsAppRichText";
-import { ReplyQuote } from "./ReplyQuote";
 
 interface MessageBubbleProps {
   message: UiMessage;
@@ -26,9 +25,6 @@ interface MessageBubbleProps {
   className?: string;
 }
 
-const URL_REGEX = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
-const URL_PATTERN = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/;
-
 type BubbleVariant =
   | "text"
   | "media"
@@ -39,31 +35,6 @@ type BubbleVariant =
   | "contact"
   | "interactive"
   | "system";
-
-function renderTextWithLinks(text: string, isOutbound: boolean) {
-  const parts = text.split(URL_REGEX);
-  return parts.map((part, i) => {
-    if (URL_PATTERN.test(part)) {
-      return (
-        <a
-          key={i}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`break-all ${isOutbound ? "text-white/90 underline decoration-white/30" : "text-primary hover:underline"}`}
-        >
-          {part}
-        </a>
-      );
-    }
-    return <SensitiveText key={i} text={part} />;
-  });
-}
-
-function getInitials(name: string) {
-  if (!name) return "?";
-  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
-}
 
 function getBubbleVariant(message: UiMessage): BubbleVariant {
   switch (message.mediaType) {
@@ -100,9 +71,12 @@ function isEmojiOnly(text: string): boolean {
 function bubbleRadius(isOutbound: boolean, isConsecutive: boolean) {
   const base = "rounded-2xl";
   if (isConsecutive) return base;
-  return isOutbound
-    ? `${base} rounded-br-sm`
-    : `${base} rounded-bl-sm`;
+  return isOutbound ? `${base} rounded-br-sm` : `${base} rounded-bl-sm`;
+}
+
+function getInitials(name: string) {
+  if (!name) return "?";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
 
 export const MessageBubble = function MessageBubble({
@@ -119,32 +93,38 @@ export const MessageBubble = function MessageBubble({
   const isOutbound = message.direction === "OUTBOUND";
   const isShort = (message.bodyText?.length ?? 0) < 100;
   const variant = getBubbleVariant(message);
-  const isLargeEmoji = variant === "text" && !message.bodyHtml && !message.hasMedia && !message.isReaction && isEmojiOnly(message.bodyText ?? "");
-  const showTail = !isConsecutive && !isLargeEmoji && (variant === "text" || variant === "audio" || variant === "media");
+  const theme = getChannelTheme(message.provider);
 
-  const timeString = useMemo(() => {
-    return message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "";
-  }, [message.sentAt]);
+  const isLargeEmoji =
+    variant === "text" &&
+    !message.bodyHtml &&
+    !message.hasMedia &&
+    !message.isReaction &&
+    isEmojiOnly(message.bodyText ?? "");
+
+  // Tail only for text and audio (media has overflow-hidden which would clip it)
+  const showTail = !isConsecutive && !isLargeEmoji && (variant === "text" || variant === "audio");
+
+  const timeString = useMemo(
+    () => message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "",
+    [message.sentAt],
+  );
 
   const senderLabel = isOutbound ? "Tú" : (contactName || "Contacto");
 
+  const surface = isOutbound ? theme.outboundCls : theme.inboundCls;
+
   const bubbleClasses = useMemo(() => {
     const spacing = isConsecutive ? "mt-0.5" : "mt-3";
-
-    // ── PymesHub branded: solid indigo outbound, clean white inbound ──
-    const surface = isOutbound
-      ? "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(79,70,229,0.18)]"
-      : message.provider === "TELEGRAM"
-        ? "bg-card border border-sky-500/20 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-        : "bg-card border border-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
+    const radius = bubbleRadius(isOutbound, isConsecutive);
 
     switch (variant) {
       case "sticker":
         return `max-w-[160px] sm:max-w-[180px] ${spacing} border-0 bg-transparent px-0 py-0 shadow-none`;
       case "media":
-        return `relative max-w-[84%] sm:max-w-[360px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} overflow-hidden p-1`;
+        return `relative max-w-[84%] sm:max-w-[360px] ${spacing} ${surface} ${radius} overflow-hidden p-1`;
       case "audio":
-        return `max-w-[86%] sm:max-w-[340px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} px-2.5 py-2`;
+        return `max-w-[86%] sm:max-w-[340px] ${spacing} ${surface} ${radius} px-2.5 py-2`;
       case "document":
       case "location":
       case "contact":
@@ -157,9 +137,16 @@ export const MessageBubble = function MessageBubble({
         if (isLargeEmoji) {
           return `max-w-[84%] sm:max-w-[68%] ${spacing} bg-transparent border-0 shadow-none px-1 py-0.5`;
         }
-        return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
+        return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${radius} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
     }
-  }, [variant, isConsecutive, isOutbound, isShort, isLargeEmoji]);
+  }, [variant, isConsecutive, isOutbound, isShort, isLargeEmoji, surface]);
+
+  const textCls   = isOutbound ? theme.outboundTextCls   : theme.inboundTextCls;
+  const linkCls   = isOutbound ? theme.outboundLinkCls   : theme.inboundLinkCls;
+  const codeCls   = isOutbound ? theme.outboundCodeCls   : theme.inboundCodeCls;
+  const preCls    = isOutbound ? theme.outboundPreCls    : theme.inboundPreCls;
+  const metaCls   = isOutbound ? theme.outboundMetaCls   : theme.inboundMetaCls;
+  const tailColor = isOutbound ? theme.outboundTailColor : theme.inboundTailColor;
 
   const renderContent = () => {
     switch (message.mediaType) {
@@ -199,35 +186,30 @@ export const MessageBubble = function MessageBubble({
             sections={interactive?.sections}
             fallbackText={message.bodyText}
             provider={message.provider}
+            isOutbound={isOutbound}
           />
         );
       }
       default:
         if (isLargeEmoji) {
           return (
-            <div className="text-4xl sm:text-5xl leading-none py-1 select-none">
+            <div className={`text-4xl sm:text-5xl leading-none py-1 select-none ${textCls}`}>
               {message.bodyText}
             </div>
           );
         }
-        if (message.provider === "TELEGRAM" && message.bodyHtml) {
-          return (
-            <div className={`overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
-              <TelegramRichText html={message.bodyHtml} isOutbound={isOutbound} />
-            </div>
-          );
-        }
-        if (message.provider === "WHATSAPP") {
-          return (
-            <div className={`overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
-              <WhatsAppRichText text={message.bodyText} isOutbound={isOutbound} />
-            </div>
-          );
-        }
         return (
-          <div className={`whitespace-pre-wrap break-words text-[13.5px] sm:text-[14px] ${isShort ? "leading-snug" : "leading-relaxed"} overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
-            {renderTextWithLinks(message.bodyText, isOutbound)}
-          </div>
+          <MessageText
+            text={message.bodyText}
+            bodyHtml={message.bodyHtml}
+            provider={message.provider}
+            isOutbound={isOutbound}
+            isShort={isShort}
+            textCls={textCls}
+            linkCls={linkCls}
+            codeCls={codeCls}
+            preCls={preCls}
+          />
         );
     }
   };
@@ -240,10 +222,26 @@ export const MessageBubble = function MessageBubble({
         : "message-entry-inbound"
     : "";
 
+  const metaProps = {
+    message,
+    isOutbound,
+    showSenderName,
+    metaCls,
+    statusVariant: theme.statusVariant,
+  } as const;
+
   return (
-    <div className={`flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
+    <div
+      className={`flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`}
+      role="article"
+      aria-label={`${senderLabel} · ${timeString}`}
+    >
+      {/* Inbound avatar */}
       {!isOutbound && !isConsecutive && (
-        <div className="mt-auto flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/30 sm:h-7 sm:w-7" aria-label={`Avatar de ${senderLabel}`}>
+        <div
+          className="mt-auto flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/30 sm:h-7 sm:w-7"
+          aria-label={`Avatar de ${senderLabel}`}
+        >
           {contactAvatarUrl ? (
             <img src={contactAvatarUrl} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -256,46 +254,38 @@ export const MessageBubble = function MessageBubble({
       {!isOutbound && isConsecutive && (
         <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
       )}
-      {showTail ? (
-        <div className="relative">
-          <div className={bubbleClasses}>
-            {quotedMessage && (variant === "text" || variant === "audio") && (
-              <ReplyQuote quotedMessage={quotedMessage} isOutbound={isOutbound} />
-            )}
-            {renderContent()}
-            <MessageMeta
-              message={message}
-              isOutbound={isOutbound}
-              showSenderName={showSenderName}
-              compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
-              overlay={variant === "media"}
-              isLargeEmoji={isLargeEmoji}
-            />
-          </div>
+
+      {/* Bubble (SVG tail rendered inside so max-w % applies correctly) */}
+      <div className={`${bubbleClasses}${showTail ? " relative" : ""}`}>
+        {quotedMessage && (variant === "text" || variant === "audio") && (
+          <ReplyQuote
+            quotedMessage={quotedMessage}
+            isOutbound={isOutbound}
+            quoteCls={isOutbound ? theme.outboundQuoteCls : theme.inboundQuoteCls}
+            senderCls={isOutbound ? theme.outboundQuoteSenderCls : theme.inboundQuoteSenderCls}
+            textCls={isOutbound ? theme.outboundQuoteTextCls : theme.inboundQuoteTextCls}
+          />
+        )}
+        {renderContent()}
+        <MessageMeta
+          {...metaProps}
+          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
+          overlay={variant === "media"}
+          isLargeEmoji={isLargeEmoji}
+        />
+        {showTail && (
           <svg
             viewBox="0 0 8 8"
             className={`absolute bottom-0 h-2 w-2 ${isOutbound ? "-right-[7px]" : "-left-[7px]"}`}
-            style={{ fill: isOutbound ? "hsl(var(--primary))" : "hsl(var(--card))" }}
+            style={{ fill: tailColor }}
             aria-hidden="true"
           >
             {isOutbound
               ? <path d="M0 8 Q0 0 8 0 L8 8 Z" />
               : <path d="M8 8 Q8 0 0 0 L0 8 Z" />}
           </svg>
-        </div>
-      ) : (
-        <div className={bubbleClasses}>
-          {renderContent()}
-          <MessageMeta
-            message={message}
-            isOutbound={isOutbound}
-            showSenderName={showSenderName}
-            compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
-            overlay={variant === "media"}
-            isLargeEmoji={isLargeEmoji}
-          />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
