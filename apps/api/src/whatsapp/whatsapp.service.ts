@@ -554,8 +554,8 @@ export class WhatsAppService {
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to,
-        type: 'typing',
-        typing: { status },
+        type: 'presence',
+        presence: { status },
       }),
     });
 
