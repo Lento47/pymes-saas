@@ -199,20 +199,20 @@ export function AgentRunCard({ run, conversationId }: Props) {
   }[narrative.tone];
 
   return (
-    <div className="ml-8 flex items-center gap-1.5 px-2 py-1.5 sm:ml-10 sm:px-3">
+    <div className="ml-8 flex items-center gap-1 px-1.5 py-1 sm:ml-10 sm:px-2">
       <div className={cn(
-        "flex items-center gap-2 rounded-2xl rounded-bl-md border px-3 py-1.5 text-xs transition-all",
+        "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-all",
         toneCls,
       )}>
         <span className={iconCls}>{narrative.icon}</span>
 
-        <span className="max-w-[260px] truncate leading-snug">
+        <span className="max-w-[200px] truncate leading-tight">
           {narrative.text}
         </span>
 
         {/* Pending count badge (only when running and has pending fields) */}
         {isRunning && pending > 0 && (
-          <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+          <span className="rounded-full bg-amber-500/10 px-1 py-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-400">
             {pending}
           </span>
         )}
@@ -222,14 +222,14 @@ export function AgentRunCard({ run, conversationId }: Props) {
           <button
             onClick={() => stopMut.mutate()}
             disabled={stopMut.isPending}
-            className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
             title="Detener agente"
             aria-label="Detener agente"
           >
             {stopMut.isPending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
             ) : (
-              <X className="h-3 w-3" />
+              <X className="h-2.5 w-2.5" />
             )}
           </button>
         )}
@@ -238,11 +238,11 @@ export function AgentRunCard({ run, conversationId }: Props) {
         {!isRunning && (
           <button
             onClick={() => setDismissed(true)}
-            className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted"
+            className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted"
             title="Cerrar"
             aria-label="Cerrar"
           >
-            <X className="h-3 w-3" />
+            <X className="h-2.5 w-2.5" />
           </button>
         )}
       </div>
