@@ -206,39 +206,38 @@ export class AiConversationControlService {
       return { ok: false, error: "AI_NOT_ACTIVE", balance: await this.aiTokens.getBalance(workspaceId) };
     }
 
+    // Resolve last inbound message ID for typing indicator (mark_as_read + typing_indicator)
+    let lastInboundWamid: string | null = null;
     if (conv.channel?.type === "WHATSAPP") {
       const lastInbound = await this.prisma.message.findFirst({
         where: { conversation_id: conversationId, direction: "INBOUND", provider_message_id: { not: null } },
         orderBy: { sent_at: "desc" },
         select: { provider_message_id: true },
       });
-      if (lastInbound?.provider_message_id) {
-        this.whatsapp.markAsRead(conv.channel, lastInbound.provider_message_id, true).catch(() => {});
-      }
+      lastInboundWamid = lastInbound?.provider_message_id ?? null;
     }
 
     // Typing indicators — keep visible for the full LLM wait time
     const isWhatsApp = conv.channel?.type === "WHATSAPP";
     const isTelegram = conv.channel?.type === "TELEGRAM";
-    const waPhone = conv.contact?.phone?.replace(/\D/g, "") ?? null;
     const tgChatId = conv.contact?.telegram_chat_id ?? null;
 
     if (isTelegram && tgChatId) {
       this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
     }
-    if (isWhatsApp && waPhone) {
-      this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "composing").catch(() => {});
+    if (isWhatsApp && lastInboundWamid) {
+      this.whatsapp.sendTypingIndicator(conv.channel as any, lastInboundWamid).catch(() => {});
     }
 
-    // Typing indicators expire — refresh periodically (Telegram ~5s, WhatsApp ~25s)
+    // Typing indicators expire — refresh periodically (Telegram ~5s, WhatsApp via mark_as_read ~25s)
     let typingInterval: ReturnType<typeof setInterval> | null = null;
     if (isTelegram && tgChatId) {
       typingInterval = setInterval(() => {
         this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
       }, 4000);
-    } else if (isWhatsApp && waPhone) {
+    } else if (isWhatsApp && lastInboundWamid) {
       typingInterval = setInterval(() => {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, 'composing').catch(() => {});
+        this.whatsapp.sendTypingIndicator(conv.channel as any, lastInboundWamid!).catch(() => {});
       }, 20_000);
     }
 
@@ -258,9 +257,6 @@ export class AiConversationControlService {
 
     if (!reservation.success || !reservation.reservationId) {
       if (typingInterval) clearInterval(typingInterval);
-      if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
-      }
       return {
         ok: false,
         error: "INSUFFICIENT_AI_TOKENS",
@@ -277,9 +273,6 @@ export class AiConversationControlService {
       });
     } catch (err) {
       if (typingInterval) clearInterval(typingInterval);
-      if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
-      }
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
       this.logger.warn(`AI control provider failed: ${(err as Error).message}`);
       return {
@@ -289,9 +282,6 @@ export class AiConversationControlService {
       };
     } finally {
       if (typingInterval) clearInterval(typingInterval);
-      if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
-      }
     }
 
     const action = this.parseAction(completion.text);
@@ -319,8 +309,8 @@ export class AiConversationControlService {
       const tgPlaceholderDbId: string | null = isTelegram ? interimFinal.id : null;
 
       // Keep typing indicator alive during Flowise call
-      if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "composing").catch(() => {});
+      if (isWhatsApp && lastInboundWamid) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, lastInboundWamid).catch(() => {});
       }
       let delegateTypingInterval: ReturnType<typeof setInterval> | null = null;
       if (isTelegram && tgChatId) {
@@ -328,9 +318,9 @@ export class AiConversationControlService {
         delegateTypingInterval = setInterval(() => {
           this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
         }, 4000);
-      } else if (isWhatsApp && waPhone) {
+      } else if (isWhatsApp && lastInboundWamid) {
         delegateTypingInterval = setInterval(() => {
-          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, 'composing').catch(() => {});
+          this.whatsapp.sendTypingIndicator(conv.channel as any, lastInboundWamid!).catch(() => {});
         }, 20_000);
       }
 
@@ -349,9 +339,6 @@ export class AiConversationControlService {
         this.logger.warn(`[delegate_to_agent] Flowise failed (${action.delegate_to_agent.instance_id}): ${(err as Error).message}`);
       } finally {
         if (delegateTypingInterval) clearInterval(delegateTypingInterval);
-        if (isWhatsApp && waPhone) {
-          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
-        }
       }
 
       if (agentText?.trim()) {

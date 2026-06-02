@@ -534,36 +534,14 @@ export class WhatsAppService {
     }
   }
 
-  // ── Typing indicator ───────────────────────────────────────────────────────
+  // ── Typing indicator (via mark_as_read + typing_indicator) ────────────────
 
   async sendTypingIndicator(
     channel: any,
-    to: string,
-    status: 'composing' | 'paused' = 'composing',
+    incomingMessageId: string,
   ): Promise<void> {
-    const cfg = channel.config_json as any;
-    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
-    const phoneNumberId = cfg.phone_number_id;
-
-    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'typing',
-        typing: { status },
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      // Typing indicators are best-effort — don't throw
-      this.logger.warn(`Typing indicator ${status} failed: ${res.status} ${body}`);
-    }
+    // Typing indicator is sent as part of mark_as_read per Meta Graph API v22+
+    await this.markAsRead(channel, incomingMessageId, true);
   }
 
   // ── Interactive: Reply buttons ─────────────────────────────────────────────

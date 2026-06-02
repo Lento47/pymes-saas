@@ -92,10 +92,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
 
     if (message.length > 0) {
-      api.sendTypingIndicator(id, "composing").catch(() => {});
+      api.sendTypingIndicator(id).catch(() => {});
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       typingTimerRef.current = setTimeout(() => {
-        api.sendTypingIndicator(id, "paused").catch(() => {});
+        // typing stops automatically via timeout
       }, 3000);
     }
 

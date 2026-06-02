@@ -540,7 +540,6 @@ export class ConversationsController {
   async typingIndicator(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') conversationId: string,
-    @Body('action') action: 'composing' | 'paused',
   ) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -551,12 +550,16 @@ export class ConversationsController {
       return { ok: false, reason: 'not_whatsapp_channel' };
     }
 
-    const to = (conv.contact as any)?.phone?.replace(/\D/g, '');
-    if (to && conv.channel) {
+    const lastInbound = await this.prisma.message.findFirst({
+      where: { conversation_id: conversationId, direction: 'INBOUND', provider_message_id: { not: null } },
+      orderBy: { sent_at: 'desc' },
+      select: { provider_message_id: true },
+    });
+
+    if (lastInbound?.provider_message_id && conv.channel) {
       await this.whatsAppService.sendTypingIndicator(
         conv.channel,
-        to,
-        action ?? 'composing',
+        lastInbound.provider_message_id,
       );
     }
 
