@@ -334,6 +334,24 @@ export class FlowiseClient {
     updateState?: string;
     position?: { x: number; y: number };
   }) {
+    // Convert inputValue JSON to Flowise's toolInputArgs format
+    let toolInputArgs: Array<{ inputArgName: string; inputArgValue: any }> = [];
+    try {
+      const parsed = JSON.parse(opts.inputValue);
+      if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+        toolInputArgs = Object.entries(parsed).map(([k, v]) => ({
+          inputArgName: k,
+          inputArgValue: v,
+        }));
+      }
+    } catch { /* empty or non-JSON → no args */ }
+
+    // Parse updateState from JSON string to array (Flowise expects object, not string)
+    let toolUpdateState: any[] = [];
+    if (opts.updateState) {
+      try { toolUpdateState = JSON.parse(opts.updateState); } catch { /* skip */ }
+    }
+
     return {
       id: opts.id,
       type: "agentFlow",
@@ -351,9 +369,9 @@ export class FlowiseClient {
         inputParams: [],
         inputAnchors: [],
         inputs: {
-          toolNodeName: opts.toolId,
-          toolNodeInput: opts.inputValue,
-          toolNodeUpdateState: opts.updateState ?? "",
+          toolAgentflowSelectedTool: opts.toolId,
+          toolInputArgs,
+          toolUpdateState,
         },
         outputAnchors: [
           { id: `${opts.id}-output-toolAgentflow`, label: "Tool", name: "toolAgentflow" },
@@ -1570,11 +1588,20 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
         body: JSON.stringify(body),
         signal: controller.signal,
       });
+      const text = await res.text().catch(() => "");
+      const contentType = res.headers.get("content-type") ?? "";
+
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Flowise agentflow creation failed: ${res.status} ${text}`);
+        throw new Error(`Flowise agentflow creation failed: ${res.status} ${text.slice(0, 500)}`);
       }
-      const data = (await res.json()) as FlowiseChatflowResponse;
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          `Flowise returned non-JSON response from ${url}: ${res.status} ${contentType} ${text.slice(0, 300)}`
+        );
+      }
+
+      const data = JSON.parse(text) as FlowiseChatflowResponse;
       this.logger.log(`AgentFlow created in Flowise: ${data.id} (${body.name})`);
       return data.id;
     } catch (err: unknown) {
