@@ -866,7 +866,9 @@ export class SupportOrchestratorService {
         } else if ((predictErr?.message as string | undefined)?.includes("Tool not selected")) {
           this.logger.warn(`[orchestrator] missing tools detected — running full Flowise setup`);
           await this.flowiseSetup.reprovisionAllFlows();
-          // Retry once after reprovisioning all tools and flows
+          // After reprovisioning, agentflows may have new IDs — refresh before retrying
+          const reProvisionedId = await this.flowiseSetup.getChatflowIdForAgent(slug);
+          if (reProvisionedId) activeId = reProvisionedId;
           res = await this.flowise.predict(activeId, {
             question: safeContext,
             sessionId: `${sessionId}:${slug}`,
