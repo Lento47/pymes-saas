@@ -11,7 +11,7 @@ import { EventsGateway } from "../gateways/events.gateway";
 import * as path from "path";
 import { MessageDeliveryStatus } from "@prisma/client";
 
-const META_API_BASE = "https://graph.facebook.com/v19.0";
+const META_API_BASE = "https://graph.facebook.com/v22.0";
 
 interface SendMediaParams {
   channel: any;
@@ -531,6 +531,8 @@ export class WhatsAppService {
       const data: any = await res.json().catch(() => null);
       this.logger.warn(`Mark as read failed for ${messageId}:`, data?.error?.message);
       // Don't throw — read receipts are best-effort
+    } else if (withTypingIndicator) {
+      this.logger.log(`[typing] mark_as_read + typing_indicator OK for ${messageId}`);
     }
   }
 
@@ -540,6 +542,7 @@ export class WhatsAppService {
     channel: any,
     incomingMessageId: string,
   ): Promise<void> {
+    this.logger.log(`[typing] sending mark_as_read + typing_indicator for ${incomingMessageId}`);
     // Typing indicator is sent as part of mark_as_read per Meta Graph API v22+
     await this.markAsRead(channel, incomingMessageId, true);
   }
