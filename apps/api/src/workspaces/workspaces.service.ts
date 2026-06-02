@@ -535,7 +535,7 @@ export class WorkspacesService {
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
 
-    const [new_conversations, received_messages, created_tasks, uploaded_documents] =
+    const [new_conversations, received_messages, created_tasks, uploaded_documents, unanswered_conversations] =
       await Promise.all([
         this.prisma.conversation.count({
           where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
@@ -553,9 +553,17 @@ export class WorkspacesService {
         this.prisma.document.count({
           where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
         }),
+        // Conversations where the customer sent messages we haven't replied to yet
+        this.prisma.conversation.count({
+          where: {
+            workspace_id: workspaceId,
+            unread_count: { gt: 0 },
+            status: { notIn: ["RESOLVED", "ARCHIVED"] },
+          },
+        }),
       ]);
 
-    return { new_conversations, received_messages, created_tasks, uploaded_documents };
+    return { new_conversations, received_messages, created_tasks, uploaded_documents, unanswered_conversations };
   }
 
   // ── GET /workspaces/current/export ────────────────────────────────────────

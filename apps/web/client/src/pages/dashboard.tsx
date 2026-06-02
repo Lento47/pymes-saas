@@ -63,8 +63,8 @@ interface DashTask {
 }
 
 type TodayStats = {
-  unread_conversations?: number;
-  open_conversations?: number;
+  unanswered_conversations?: number;
+  new_conversations?: number;
   received_messages?: number;
 };
 
@@ -393,7 +393,7 @@ export default function DashboardPage() {
     0,
   );
   const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0);
-  const unreadCount = Number(t.unread_conversations ?? t.open_conversations ?? t.received_messages ?? 0);
+  const unreadCount = Number(t.unanswered_conversations ?? 0);
   const operatingTone: Tone = overdueInvoices.length > 0 || urgentTasks.length > 0 ? "danger" : soonInvoices.length > 0 ? "warning" : "success";
 
   return (
