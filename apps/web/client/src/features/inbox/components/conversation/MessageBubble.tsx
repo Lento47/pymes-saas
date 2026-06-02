@@ -84,6 +84,24 @@ function getInitials(name: string) {
   return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
 
+/** Max-width class for the bubble wrapper — placed on the wrapper, NOT the Card.
+ *  This breaks a circular sizing dependency where the Card's %-based max-width
+ *  was relative to a parent whose own width depended on the Card's content. */
+function getBubbleMaxWidth(variant: BubbleVariant, isLargeEmoji: boolean): string {
+  switch (variant) {
+    case "sticker":     return "max-w-[160px] sm:max-w-[180px]";
+    case "media":       return "max-w-[84%] sm:max-w-[360px]";
+    case "audio":       return "max-w-[86%] sm:max-w-[340px]";
+    case "document":
+    case "location":
+    case "contact":
+    case "interactive": return "max-w-[86%] sm:max-w-[360px]";
+    case "system":      return "max-w-[88%]";
+    case "text":
+    default:            return "max-w-[84%] sm:max-w-[68%]";
+  }
+}
+
 export const MessageBubble = function MessageBubble({
   message,
   isConsecutive,
@@ -107,6 +125,8 @@ export const MessageBubble = function MessageBubble({
     !message.hasMedia &&
     !message.isReaction &&
     isEmojiOnly(message.bodyText ?? "");
+
+  const maxWidthCls = getBubbleMaxWidth(variant, isLargeEmoji);
 
   // Tail only for text and audio (media has overflow-hidden which would clip it).
   // System/internal messages are rendered as pills — no tail.
@@ -132,24 +152,24 @@ export const MessageBubble = function MessageBubble({
 
     switch (variant) {
       case "sticker":
-        return `max-w-[160px] sm:max-w-[180px] ${spacing} border-0 bg-transparent px-0 py-0 shadow-none`;
+        return `${spacing} border-0 bg-transparent px-0 py-0 shadow-none`;
       case "media":
-        return `relative max-w-[84%] sm:max-w-[360px] ${spacing} ${surface} ${radius} overflow-hidden p-1`;
+        return `relative ${spacing} ${surface} ${radius} overflow-hidden p-1`;
       case "audio":
-        return `max-w-[86%] sm:max-w-[340px] ${spacing} ${surface} ${radius} px-2.5 py-2`;
+        return `${spacing} ${surface} ${radius} px-2.5 py-2`;
       case "document":
       case "location":
       case "contact":
       case "interactive":
-        return `max-w-[86%] sm:max-w-[360px] ${spacing} border-0 bg-transparent p-0 shadow-none`;
+        return `${spacing} border-0 bg-transparent p-0 shadow-none`;
       case "system":
-        return `max-w-[88%] ${spacing} rounded-full border border-border/30 bg-muted/30 px-3 py-1.5`;
+        return `${spacing} rounded-full border border-border/30 bg-muted/30 px-3 py-1.5`;
       case "text":
       default:
         if (isLargeEmoji) {
-          return `max-w-[84%] sm:max-w-[68%] ${spacing} bg-transparent border-0 shadow-none px-1 py-0.5`;
+          return `${spacing} bg-transparent border-0 shadow-none px-1 py-0.5`;
         }
-        return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${radius} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
+        return `${spacing} ${surface} ${radius} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
     }
   }, [variant, isConsecutive, isOutbound, isShort, isLargeEmoji, surface]);
 
@@ -318,7 +338,7 @@ export const MessageBubble = function MessageBubble({
       )}
 
       {/* Bubble — Card base with defaults reset so channel theme classes take precedence */}
-      <div className="group/bubble relative min-w-0">
+      <div className={`group/bubble relative min-w-0 ${maxWidthCls}`}>
         <Card className={`border-0 bg-transparent shadow-none ${bubbleClasses}`}>
           {quotedMessage && (
             <ReplyQuote

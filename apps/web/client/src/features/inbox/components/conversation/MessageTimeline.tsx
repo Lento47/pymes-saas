@@ -14,7 +14,14 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
 
   let base: number;
   if (!msg.mediaType) {
-    base = 72; // text: Card + CardContent + CardFooter + padding
+    // Text messages: estimate height based on content length.
+    // ~35 chars/line is conservative (mobile-first, 84% of 360px viewport).
+    // Each line ≈ 20px, padding ≈ 20px (py-2.5), meta row ≈ 22px.
+    const text = (msg.bodyText || "").replace(/<[^>]*>/g, ""); // strip HTML if any
+    const newlines = (text.match(/\n/g) || []).length;
+    const charLines = Math.ceil(text.length / 35);
+    const lines = Math.max(1, Math.max(newlines + 1, charLines));
+    base = lines * 20 + 20 + 22; // lineHeight + padding + meta
   } else {
     switch (msg.mediaType) {
       case "sticker":   base = 120; break;
