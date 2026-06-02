@@ -23,7 +23,7 @@ interface MessageBubbleProps {
   contactName?: string;
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
-  quotedMessage?: Pick<UiMessage, "bodyText" | "senderName" | "direction"> | null;
+  quotedMessage?: Pick<UiMessage, "bodyText" | "senderName" | "direction" | "mediaType" | "mediaCaption" | "mediaFilename"> | null;
   className?: string;
 }
 
@@ -259,7 +259,7 @@ export const MessageBubble = function MessageBubble({
 
       {/* Bubble — Card base with defaults reset so channel theme classes take precedence */}
       <Card className={`border-0 bg-transparent shadow-none ${bubbleClasses}`}>
-        {quotedMessage && (variant === "text" || variant === "audio") && (
+        {quotedMessage && (
           <ReplyQuote
             quotedMessage={quotedMessage}
             isOutbound={isOutbound}

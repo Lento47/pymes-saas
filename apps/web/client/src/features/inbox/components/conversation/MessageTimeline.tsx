@@ -116,7 +116,7 @@ export function MessageTimeline({
               ? messages.find(m => m.id === msg.replyToMessageId)
               : null;
             const quotedMessage = quotedRaw
-              ? { bodyText: quotedRaw.bodyText, senderName: quotedRaw.senderName ?? null, direction: quotedRaw.direction }
+              ? { bodyText: quotedRaw.bodyText, senderName: quotedRaw.senderName ?? null, direction: quotedRaw.direction, mediaType: quotedRaw.mediaType, mediaCaption: quotedRaw.mediaCaption, mediaFilename: quotedRaw.mediaFilename }
               : undefined;
 
             return (
