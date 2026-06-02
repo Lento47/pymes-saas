@@ -40,6 +40,9 @@ type BubbleVariant =
   | "interactive"
   | "system";
 
+// Matches 1–5 emoji with optional surrounding whitespace/zero-width-space only
+const EMOJI_ONLY_RE = /^[\s​]*(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}){1,5}[\s​]*$/u;
+
 function renderTextWithLinks(text: string, isOutbound: boolean) {
   const parts = text.split(URL_REGEX);
   return parts.map((part, i) => {
@@ -91,8 +94,6 @@ function getBubbleVariant(message: UiMessage): BubbleVariant {
   }
 }
 
-const EMOJI_ONLY_RE = /^[\s​]*(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}){1,5}[\s​]*$/u;
-
 function isEmojiOnly(text: string): boolean {
   return !!text?.trim() && EMOJI_ONLY_RE.test(text);
 }
@@ -120,7 +121,8 @@ export const MessageBubble = function MessageBubble({
   const isShort = (message.bodyText?.length ?? 0) < 100;
   const variant = getBubbleVariant(message);
   const isLargeEmoji = variant === "text" && !message.bodyHtml && !message.hasMedia && !message.isReaction && isEmojiOnly(message.bodyText ?? "");
-  const showTail = !isConsecutive && !isLargeEmoji && (variant === "text" || variant === "audio" || variant === "media");
+  // Exclude media: its overflow-hidden clips the tail SVG
+  const showTail = !isConsecutive && !isLargeEmoji && (variant === "text" || variant === "audio");
 
   const timeString = useMemo(() => {
     return message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -131,7 +133,6 @@ export const MessageBubble = function MessageBubble({
   const bubbleClasses = useMemo(() => {
     const spacing = isConsecutive ? "mt-0.5" : "mt-3";
 
-    // ── PymesHub branded: solid indigo outbound, clean white inbound ──
     const surface = isOutbound
       ? "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(79,70,229,0.18)]"
       : message.provider === "TELEGRAM"
@@ -159,7 +160,7 @@ export const MessageBubble = function MessageBubble({
         }
         return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
     }
-  }, [variant, isConsecutive, isOutbound, isShort, isLargeEmoji]);
+  }, [variant, isConsecutive, isOutbound, isShort, isLargeEmoji, message.provider]);
 
   const renderContent = () => {
     switch (message.mediaType) {
@@ -256,22 +257,20 @@ export const MessageBubble = function MessageBubble({
       {!isOutbound && isConsecutive && (
         <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
       )}
-      {showTail ? (
-        <div className="relative">
-          <div className={bubbleClasses}>
-            {quotedMessage && (variant === "text" || variant === "audio") && (
-              <ReplyQuote quotedMessage={quotedMessage} isOutbound={isOutbound} />
-            )}
-            {renderContent()}
-            <MessageMeta
-              message={message}
-              isOutbound={isOutbound}
-              showSenderName={showSenderName}
-              compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
-              overlay={variant === "media"}
-              isLargeEmoji={isLargeEmoji}
-            />
-          </div>
+      <div className={`${bubbleClasses}${showTail ? " relative" : ""}`}>
+        {quotedMessage && (variant === "text" || variant === "audio") && (
+          <ReplyQuote quotedMessage={quotedMessage} isOutbound={isOutbound} />
+        )}
+        {renderContent()}
+        <MessageMeta
+          message={message}
+          isOutbound={isOutbound}
+          showSenderName={showSenderName}
+          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
+          overlay={variant === "media"}
+          isLargeEmoji={isLargeEmoji}
+        />
+        {showTail && (
           <svg
             viewBox="0 0 8 8"
             className={`absolute bottom-0 h-2 w-2 ${isOutbound ? "-right-[7px]" : "-left-[7px]"}`}
@@ -282,20 +281,8 @@ export const MessageBubble = function MessageBubble({
               ? <path d="M0 8 Q0 0 8 0 L8 8 Z" />
               : <path d="M8 8 Q8 0 0 0 L0 8 Z" />}
           </svg>
-        </div>
-      ) : (
-        <div className={bubbleClasses}>
-          {renderContent()}
-          <MessageMeta
-            message={message}
-            isOutbound={isOutbound}
-            showSenderName={showSenderName}
-            compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
-            overlay={variant === "media"}
-            isLargeEmoji={isLargeEmoji}
-          />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

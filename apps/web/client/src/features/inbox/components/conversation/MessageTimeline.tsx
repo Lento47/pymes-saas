@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { ArrowDown } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -7,6 +6,11 @@ import { isConsecutiveMessage } from "@/features/inbox/message-adapters";
 import { DateSeparator } from "./DateSeparator";
 import { EmptyConversationState } from "./EmptyConversationState";
 import { MessageBubble } from "./MessageBubble";
+
+const chatBgStyle: React.CSSProperties = {
+  backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px)`,
+  backgroundSize: `20px 20px`,
+};
 
 function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   const msg = messages[idx];
@@ -60,11 +64,6 @@ export function MessageTimeline({
     estimateSize: (idx) => estimateSizeForIndex(idx, messages),
     overscan: 5,
   });
-
-  const chatBgStyle: React.CSSProperties = {
-    backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px)`,
-    backgroundSize: `20px 20px`,
-  };
 
   if (isLoading) {
     return (
