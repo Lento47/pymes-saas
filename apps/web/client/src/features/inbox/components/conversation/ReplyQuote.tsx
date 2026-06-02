@@ -35,8 +35,8 @@ export function ReplyQuote({ quotedMessage, isOutbound, quoteCls, senderCls, tex
   const showMediaBadge = meta && captionOrText; // show small badge when there IS text alongside media
 
   return (
-    <div className={`mb-1.5 flex flex-col rounded-md px-2.5 py-1.5 ${quoteCls}`}>
-      <span className={`text-[10px] font-semibold leading-tight ${senderCls}`}>{sender}</span>
+    <div className={`mb-1.5 rounded-md px-2.5 py-1.5 ${quoteCls}`}>
+      <span className={`block text-[10px] font-semibold leading-tight ${senderCls}`}>{sender}</span>
 
       {/* Media tag: icon + label when no text (e.g. quoted a pure image) */}
       {showMediaTag && Icon && (
@@ -49,14 +49,14 @@ export function ReplyQuote({ quotedMessage, isOutbound, quoteCls, senderCls, tex
         </span>
       )}
 
-      {/* Text preview (with optional media badge inline) */}
+      {/* Text preview — block layout so line-clamp works properly */}
       {captionOrText && (
-        <span className={`mt-0.5 flex items-center gap-1 line-clamp-2 text-[11px] leading-snug ${textCls}`}>
+        <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 break-words ${textCls}`}>
           {showMediaBadge && Icon && (
-            <Icon className="h-3 w-3 shrink-0 opacity-60" />
+            <Icon className="mr-1 inline h-3 w-3 align-text-bottom opacity-60" />
           )}
-          <span className="min-w-0">{preview}</span>
-        </span>
+          {preview}
+        </p>
       )}
     </div>
   );
