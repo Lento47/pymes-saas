@@ -12,10 +12,8 @@ function getStoredTheme(): Theme {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
-  root.classList.remove("light");
-  if (theme === "light") {
-    root.classList.add("light");
-  }
+  root.classList.remove("light", "dark");
+  root.classList.add(theme);
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#070B14" : "#f2f3f5");
   try { localStorage.setItem("PymesHub-theme", theme); } catch {}
 }
