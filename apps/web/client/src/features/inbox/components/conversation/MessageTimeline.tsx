@@ -23,6 +23,8 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   }
 }
 
+import { AgentRunCard, type AgentRun } from "./AgentRunCard";
+
 interface MessageTimelineProps {
   messages: UiMessage[];
   isLoading: boolean;
@@ -33,6 +35,10 @@ interface MessageTimelineProps {
   contactAvatarUrl?: string | null;
   /** Channel type string (e.g. "WHATSAPP", "TELEGRAM") used to pick the chat surface theme. */
   provider?: string;
+  /** Agent run data to render inline in the timeline. */
+  agentRun?: AgentRun | null;
+  /** Conversation ID for the agent run card actions. */
+  agentRunConversationId?: string;
   scrollRef: React.RefObject<HTMLDivElement>;
   bottomRef: React.RefObject<HTMLDivElement>;
   nearBottom: boolean;
@@ -50,6 +56,8 @@ export function MessageTimeline({
   contactAvatarInitials,
   contactAvatarUrl,
   provider,
+  agentRun,
+  agentRunConversationId,
   scrollRef,
   bottomRef,
   nearBottom,
@@ -152,6 +160,11 @@ export function MessageTimeline({
             </div>
           </div>
         )}
+
+        {agentRun && agentRun.status !== "CANCELLED" && agentRunConversationId && (
+          <AgentRunCard run={agentRun} conversationId={agentRunConversationId} />
+        )}
+
         <div ref={bottomRef} />
       </div>
 

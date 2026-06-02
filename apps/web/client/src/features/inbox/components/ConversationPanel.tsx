@@ -526,15 +526,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         isStartingAgent={startAgentMut.isPending}
       />
 
-      {agentRun && (agentRun as AgentRun).status !== "CANCELLED" && (
-        <div className="shrink-0">
-          <AgentRunCard run={agentRun as AgentRun} conversationId={id} />
-        </div>
-      )}
-
       <MessageTimeline
         messages={uiMessages}
         isLoading={msgsLoading}
+        agentRun={agentRun as AgentRun | null | undefined}
+        agentRunConversationId={id}
         contactName={contactName}
         contactAvatarInitials={getInitials(contactName)}
         contactAvatarUrl={contactAvatarUrl}
