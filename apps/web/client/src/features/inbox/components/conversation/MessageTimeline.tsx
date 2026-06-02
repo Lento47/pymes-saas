@@ -32,6 +32,14 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   // ReplyQuote adds ~48px when present (sender + 2-line preview)
   if (msg.replyToMessageId) base += 48;
 
+  // Non-consecutive messages get mt-3 (12px) + avatar/name height for inbound
+  const prev = idx > 0 ? messages[idx - 1] : null;
+  const isConsecutive = isConsecutiveMessage(msg, prev);
+  if (!isConsecutive) {
+    base += 12; // mt-3 spacing
+    if (msg.direction === "INBOUND") base += 20; // avatar + sender name
+  }
+
   return base;
 }
 
