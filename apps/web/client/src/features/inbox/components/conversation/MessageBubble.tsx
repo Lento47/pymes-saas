@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { MessageMeta } from "./MessageMeta";
 import { MessageText } from "./MessageText";
 import { ReplyQuote } from "./ReplyQuote";
@@ -268,13 +268,17 @@ export const MessageBubble = function MessageBubble({
             textCls={isOutbound ? theme.outboundQuoteTextCls : theme.inboundQuoteTextCls}
           />
         )}
-        {renderContent()}
-        <MessageMeta
-          {...metaProps}
-          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
+        <CardContent className="p-0">
+          {renderContent()}
+        </CardContent>
+        <CardFooter className="p-0 mt-0.5">
+          <MessageMeta
+            {...metaProps}
+            compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
           overlay={variant === "media"}
           isLargeEmoji={isLargeEmoji}
         />
+        </CardFooter>
       </Card>
     </div>
   );
