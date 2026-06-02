@@ -1,22 +1,20 @@
-import { Check, CheckCheck, Loader2, Clock, AlertCircle } from "lucide-react";
+import { Check, CheckCheck, Clock, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MessageStatusProps {
   direction: string;
   deliveryStatus?: string | null;
   deliveryError?: string | null;
+  /** "light" = white icons (dark bubble). "dark" = muted icons (light bubble). */
+  variant?: "light" | "dark";
 }
 
-/**
- * WhatsApp-style status ticks:
- * - PENDING / null: clock icon (waiting to send)
- * - SENT: single grey check ✓
- * - DELIVERED: double grey checks ✓✓
- * - READ: double blue checks ✓✓
- * - FAILED / DISPATCH_FAILED: ⚠ alert
- */
-export function MessageStatus({ direction, deliveryStatus, deliveryError }: MessageStatusProps) {
+export function MessageStatus({ direction, deliveryStatus, deliveryError, variant = "light" }: MessageStatusProps) {
   if (direction !== "OUTBOUND") return null;
+
+  const dimCls  = variant === "light" ? "text-white/70"  : "text-[#111827]/40";
+  const fadeCls = variant === "light" ? "text-white/50"  : "text-[#111827]/30";
+  const blueCls = variant === "light" ? "text-sky-300"   : "text-[#2481cc]";
 
   const s = (deliveryStatus ?? "").toLowerCase();
 
@@ -35,47 +33,27 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
     );
   }
 
-  // No explicit status — if outbound, treat as "sent" (at minimum the UI sent it)
-  if (!deliveryStatus && direction === "OUTBOUND") {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Check className="w-3 h-3 text-white/70 shrink-0" />
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">Enviado</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
   if (s === "pending") {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Clock className="w-3 h-3 text-white/50 shrink-0" />
+            <Clock className={`w-3 h-3 shrink-0 ${fadeCls}`} />
           </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">Pendiente</p>
-          </TooltipContent>
+          <TooltipContent side="top"><p className="text-xs">Pendiente</p></TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   }
 
-  if (s === "sent") {
+  if (!deliveryStatus || s === "sent") {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Check className="w-3 h-3 text-white/70 shrink-0" />
+            <Check className={`w-3 h-3 shrink-0 ${dimCls}`} />
           </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">Enviado ✓</p>
-          </TooltipContent>
+          <TooltipContent side="top"><p className="text-xs">Enviado ✓</p></TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
@@ -86,46 +64,28 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError }: Mess
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <CheckCheck className="w-3 h-3 text-white/70 shrink-0" />
+            <CheckCheck className={`w-3 h-3 shrink-0 ${dimCls}`} />
           </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">Entregado ✓✓</p>
-          </TooltipContent>
+          <TooltipContent side="top"><p className="text-xs">Entregado ✓✓</p></TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   }
 
-  if (s === "read") {
+  if (s === "read" || s === "played") {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <CheckCheck className="w-3 h-3 text-sky-300 shrink-0" />
+            <CheckCheck className={`w-3 h-3 shrink-0 ${blueCls}`} />
           </TooltipTrigger>
           <TooltipContent side="top">
-            <p className="text-xs">Leído ✓✓</p>
+            <p className="text-xs">{s === "played" ? "Reproducido" : "Leído ✓✓"}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   }
 
-  if (s === "played") {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <CheckCheck className="w-3 h-3 text-sky-300 shrink-0" />
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">Reproducido</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
-  // Unknown status — single check
-  return <Check className="w-3 h-3 text-white/70 shrink-0" />;
+  return <Check className={`w-3 h-3 shrink-0 ${dimCls}`} />;
 }

@@ -2,15 +2,11 @@ import { ArrowDown } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { UiMessage } from "@/features/inbox/message-types";
+import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { isConsecutiveMessage } from "@/features/inbox/message-adapters";
 import { DateSeparator } from "./DateSeparator";
 import { EmptyConversationState } from "./EmptyConversationState";
 import { MessageBubble } from "./MessageBubble";
-
-const chatBgStyle: React.CSSProperties = {
-  backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px)`,
-  backgroundSize: `20px 20px`,
-};
 
 function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   const msg = messages[idx];
@@ -35,6 +31,8 @@ interface MessageTimelineProps {
   contactName?: string;
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
+  /** Channel type string (e.g. "WHATSAPP", "TELEGRAM") used to pick the chat surface theme. */
+  provider?: string;
   scrollRef: React.RefObject<HTMLDivElement>;
   bottomRef: React.RefObject<HTMLDivElement>;
   nearBottom: boolean;
@@ -51,6 +49,7 @@ export function MessageTimeline({
   contactName,
   contactAvatarInitials,
   contactAvatarUrl,
+  provider,
   scrollRef,
   bottomRef,
   nearBottom,
@@ -58,6 +57,10 @@ export function MessageTimeline({
   onScroll,
   className,
 }: MessageTimelineProps) {
+  // Derive the channel from the first message when not explicitly passed
+  const effectiveProvider = provider ?? messages[0]?.provider ?? undefined;
+  const theme = getChannelTheme(effectiveProvider);
+
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
@@ -65,9 +68,11 @@ export function MessageTimeline({
     overscan: 5,
   });
 
+  const containerCls = `relative min-h-0 flex-1 overflow-hidden ${theme.surfaceCls} ${className ?? ""}`;
+
   if (isLoading) {
     return (
-      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`} style={chatBgStyle}>
+      <div className={containerCls} style={theme.surfaceStyle}>
         <EmptyConversationState isLoading />
       </div>
     );
@@ -75,32 +80,27 @@ export function MessageTimeline({
 
   if (messages.length === 0) {
     return (
-      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`} style={chatBgStyle}>
+      <div className={containerCls} style={theme.surfaceStyle}>
         <EmptyConversationState isLoading={false} contactName={contactName} />
       </div>
     );
   }
 
   return (
-    <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`} style={chatBgStyle}>
+    <div className={containerCls} style={theme.surfaceStyle}>
       <div
         ref={scrollRef}
         className="h-full overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-4 sm:py-5"
         onScroll={onScroll}
-        style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" }}
+        style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
+        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const idx = virtualItem.index;
             const msg = messages[idx];
             const prev = idx > 0 ? messages[idx - 1] : null;
-            const showDateSeparator = !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
+            const showDateSeparator =
+              !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
             const isConsecutive = isConsecutiveMessage(msg, prev);
             const showSenderName = !isConsecutive && msg.direction === "INBOUND";
             const isNew = msg.id === animatingMsgId;
@@ -139,6 +139,7 @@ export function MessageTimeline({
             );
           })}
         </div>
+
         {isUserTyping && (
           <div className="ml-8 flex items-center gap-1.5 px-2 py-2 sm:ml-10 sm:px-3">
             <div className="flex items-center gap-3 rounded-2xl rounded-bl-md bg-muted/40 px-3 py-2">
