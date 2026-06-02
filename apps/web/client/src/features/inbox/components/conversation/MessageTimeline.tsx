@@ -15,11 +15,12 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   let base: number;
   if (!msg.mediaType) {
     // Text messages: estimate height based on content length.
-    // ~35 chars/line is conservative (mobile-first, 84% of 360px viewport).
+    // ~25 chars/line — deliberately over-estimates to avoid overlap.
+    // measureElement corrects after first paint; over-estimate > under-estimate.
     // Each line ≈ 20px, padding ≈ 20px (py-2.5), meta row ≈ 22px.
     const text = (msg.bodyText || "").replace(/<[^>]*>/g, ""); // strip HTML if any
     const newlines = (text.match(/\n/g) || []).length;
-    const charLines = Math.ceil(text.length / 35);
+    const charLines = Math.ceil(text.length / 25);
     const lines = Math.max(1, Math.max(newlines + 1, charLines));
     base = lines * 20 + 20 + 22; // lineHeight + padding + meta
   } else {
@@ -108,6 +109,7 @@ export function MessageTimeline({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: (idx) => estimateSizeForIndex(idx, messages),
+    getItemKey: (idx: number) => messages[idx]?.id ?? idx,
     overscan: 15,
   });
 
