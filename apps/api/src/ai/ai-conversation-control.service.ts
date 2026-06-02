@@ -227,7 +227,7 @@ export class AiConversationControlService {
       this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
     }
     if (isWhatsApp && waPhone) {
-      this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+      this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "composing").catch(() => {});
     }
 
     // Typing indicators expire — refresh periodically (Telegram ~5s, WhatsApp ~25s)
@@ -238,8 +238,8 @@ export class AiConversationControlService {
       }, 4000);
     } else if (isWhatsApp && waPhone) {
       typingInterval = setInterval(() => {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
-      }, 8000);
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, 'composing').catch(() => {});
+      }, 20_000);
     }
 
     await this.persistInboundMemory(workspaceId, conv, inboundText);
@@ -259,7 +259,7 @@ export class AiConversationControlService {
     if (!reservation.success || !reservation.reservationId) {
       if (typingInterval) clearInterval(typingInterval);
       if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
       }
       return {
         ok: false,
@@ -278,7 +278,7 @@ export class AiConversationControlService {
     } catch (err) {
       if (typingInterval) clearInterval(typingInterval);
       if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
       }
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
       this.logger.warn(`AI control provider failed: ${(err as Error).message}`);
@@ -290,7 +290,7 @@ export class AiConversationControlService {
     } finally {
       if (typingInterval) clearInterval(typingInterval);
       if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
       }
     }
 
@@ -320,7 +320,7 @@ export class AiConversationControlService {
 
       // Keep typing indicator alive during Flowise call
       if (isWhatsApp && waPhone) {
-        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "composing").catch(() => {});
       }
       let delegateTypingInterval: ReturnType<typeof setInterval> | null = null;
       if (isTelegram && tgChatId) {
@@ -330,8 +330,8 @@ export class AiConversationControlService {
         }, 4000);
       } else if (isWhatsApp && waPhone) {
         delegateTypingInterval = setInterval(() => {
-          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
-        }, 8000);
+          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, 'composing').catch(() => {});
+        }, 20_000);
       }
 
       // Call the Flowise agent
@@ -350,7 +350,7 @@ export class AiConversationControlService {
       } finally {
         if (delegateTypingInterval) clearInterval(delegateTypingInterval);
         if (isWhatsApp && waPhone) {
-          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "paused").catch(() => {});
         }
       }
 

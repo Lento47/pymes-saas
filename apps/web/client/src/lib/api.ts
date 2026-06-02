@@ -291,7 +291,7 @@ export const api = {
   getMessages: (conversationId: string) => request<Record<string, any>>("GET", `/api/conversations/${conversationId}/messages`),
   sendMessage: (conversationId: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/conversations/${conversationId}/messages`, data),
   sendReadReceipt: (conversationId: string) => request<Record<string, any>>("POST", `/api/conversations/${conversationId}/read-receipt`),
-  sendTypingIndicator: (conversationId: string, action: "typing_on" | "typing_off") => request<Record<string, any>>("POST", `/api/conversations/${conversationId}/typing`, { action }),
+  sendTypingIndicator: (conversationId: string, action: "composing" | "paused") => request<Record<string, any>>("POST", `/api/conversations/${conversationId}/typing`, { action }),
   getContacts: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<Record<string, any>>("GET", `/api/contacts${qs}`);

@@ -539,7 +539,7 @@ export class WhatsAppService {
   async sendTypingIndicator(
     channel: any,
     to: string,
-    action: 'typing_on' | 'typing_off',
+    status: 'composing' | 'paused' = 'composing',
   ): Promise<void> {
     const cfg = channel.config_json as any;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
@@ -554,13 +554,14 @@ export class WhatsAppService {
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to,
-        type: action,
+        type: 'typing',
+        typing: { status },
       }),
     });
 
     if (!res.ok) {
       // Typing indicators are best-effort — don't throw
-      this.logger.debug(`Typing indicator ${action} failed silently`);
+      this.logger.debug(`Typing indicator ${status} failed silently`);
     }
   }
 

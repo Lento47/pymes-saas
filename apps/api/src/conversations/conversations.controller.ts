@@ -540,7 +540,7 @@ export class ConversationsController {
   async typingIndicator(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') conversationId: string,
-    @Body('action') action: 'typing_on' | 'typing_off',
+    @Body('action') action: 'composing' | 'paused',
   ) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -556,7 +556,7 @@ export class ConversationsController {
       await this.whatsAppService.sendTypingIndicator(
         conv.channel,
         to,
-        action ?? 'typing_on',
+        action ?? 'composing',
       );
     }
 
