@@ -1,8 +1,9 @@
 /**
- * AITypingBubble — Inline AI "thinking" trace for PymesHub IA runs.
+ * AITypingBubble — Stream-of-thought trace for PymesHub IA agent runs.
  *
- * Starts expanded when RUNNING; auto-collapses to a summary when COMPLETED/FAILED.
- * Stays in the timeline permanently — no auto-dismiss.
+ * Full-width, timeline-style panel (not a chat bubble) that shows the AI's
+ * reasoning steps inline in the operator's conversation view.
+ * Starts expanded when RUNNING; auto-collapses to a summary on completion.
  */
 import { useState, useEffect, useMemo } from "react";
 import type { ElementType } from "react";
@@ -14,8 +15,8 @@ import {
   Check,
   Package,
   ChevronDown,
-  AlertCircle,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -39,7 +40,7 @@ export interface AgentRun {
   artifact: { type: string; id: string; title: string } | null;
 }
 
-/* ── Step icon mapping ──────────────────────────────────────────────── */
+/* ── Step metadata ──────────────────────────────────────────────────── */
 const STEP_ICONS: Record<string, ElementType> = {
   INTENT_DETECTED: Brain,
   QUESTION_SENT: MessageCircle,
@@ -47,12 +48,17 @@ const STEP_ICONS: Record<string, ElementType> = {
   ARTIFACT_CREATED: Package,
 };
 
+const STEP_SECTION_LABELS: Record<string, string> = {
+  INTENT_DETECTED: "Analizando",
+  QUESTION_SENT: "Preguntando",
+  FIELD_COLLECTED: "Recopiló",
+  ARTIFACT_CREATED: "Finalizó",
+};
+
 /* ── Component ─────────────────────────────────────────────────────── */
 interface Props {
-  /** When set, shows agent run details (intent, steps, stop button) */
   agentRun?: AgentRun | null;
   conversationId?: string;
-  /** Label shown in the bubble header */
   label?: string;
 }
 
@@ -61,13 +67,11 @@ export function AITypingBubble({ agentRun, conversationId, label = "PymesHub IA"
   const isCompleted = agentRun?.status === "COMPLETED";
   const isFailed = agentRun?.status === "FAILED";
 
-  // Start expanded when running; collapsed otherwise
   const [expanded, setExpanded] = useState(isRunning);
-
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // Auto-expand when a new run starts; auto-collapse when it finishes
+  // Auto-expand on new run; auto-collapse when done
   useEffect(() => {
     if (isRunning) setExpanded(true);
   }, [isRunning]);
@@ -76,7 +80,6 @@ export function AITypingBubble({ agentRun, conversationId, label = "PymesHub IA"
     if (isCompleted || isFailed) setExpanded(false);
   }, [isCompleted, isFailed]);
 
-  // "pensó en Xs" — computed once when completed
   const elapsedSeconds = useMemo(() => {
     if (!isCompleted || !agentRun?.started_at) return null;
     const secs = Math.round((Date.now() - new Date(agentRun.started_at).getTime()) / 1000);
@@ -93,147 +96,163 @@ export function AITypingBubble({ agentRun, conversationId, label = "PymesHub IA"
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  // Simple typing dots fallback (no active agent run)
+  // No active run — simple typing dots (same as before, won't show in MessageTimeline
+  // since it filters CANCELLED runs out before rendering this component)
   if (!agentRun || agentRun.status === "CANCELLED") {
     return (
       <div
-        className="flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 justify-end"
+        className="flex items-center gap-2 px-1 py-1.5"
         role="status"
         aria-live="polite"
         aria-label={`${label} está escribiendo`}
       >
-        <div className="max-w-[72%] rounded-2xl rounded-br-md bg-violet-600 dark:bg-violet-700 px-3.5 py-2 shadow-sm">
-          <div className="mb-1 text-[11px] font-medium leading-none text-violet-200">{label}</div>
-          <div className="flex h-5 items-center gap-1.5">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200 [animation-delay:-0.24s]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200 [animation-delay:-0.12s]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200" />
-          </div>
-        </div>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/60">
+          <Bot className="h-3 w-3 text-muted-foreground/60" strokeWidth={1.75} />
+        </span>
+        <span className="text-[11px] text-muted-foreground/60">{label}</span>
+        <span className="flex items-center gap-1">
+          <span className="h-1 w-1 animate-bounce rounded-full bg-muted-foreground/30 [animation-delay:0ms]" />
+          <span className="h-1 w-1 animate-bounce rounded-full bg-muted-foreground/30 [animation-delay:150ms]" />
+          <span className="h-1 w-1 animate-bounce rounded-full bg-muted-foreground/30 [animation-delay:300ms]" />
+        </span>
       </div>
     );
   }
 
   const steps = Array.isArray(agentRun.steps) ? agentRun.steps : [];
 
-  const headerBg = isCompleted
-    ? "bg-emerald-700 dark:bg-emerald-800"
+  // Status dot color
+  const dotCls = isCompleted
+    ? "bg-emerald-500"
     : isFailed
-      ? "bg-red-700 dark:bg-red-800"
-      : "bg-violet-600 dark:bg-violet-700";
-
-  const traceBg = isCompleted
-    ? "bg-emerald-800/70 dark:bg-emerald-900/70"
-    : isFailed
-      ? "bg-red-800/70 dark:bg-red-900/70"
-      : "bg-violet-700/70 dark:bg-violet-800/70";
-
-  const headerTextCls = isCompleted
-    ? "text-emerald-200"
-    : isFailed
-      ? "text-red-200"
-      : "text-violet-200";
-
-  const stepIconCls = isCompleted
-    ? "text-emerald-300/70"
-    : isFailed
-      ? "text-red-300/70"
-      : "text-violet-300/70";
-
-  const stepTextCls = isCompleted
-    ? "text-emerald-100/80"
-    : isFailed
-      ? "text-red-100/80"
-      : "text-violet-100/80";
+      ? "bg-red-400"
+      : "bg-primary animate-pulse";
 
   return (
-    <div className="flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 justify-end" role="status" aria-live="polite">
-      <div className="max-w-[84%] sm:max-w-[68%]">
-        {/* ── Header toggle button ─────────────────────────────────── */}
+    <div className="my-1 w-full" role="status" aria-live="polite">
+      <div className={cn(
+        "rounded-xl border border-border/50 bg-muted/20 transition-colors",
+        isCompleted && "border-emerald-500/20 bg-emerald-500/[0.03]",
+        isFailed && "border-red-400/20 bg-red-400/[0.03]",
+      )}>
+        {/* ── Header ──────────────────────────────────────────────── */}
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className={cn(
-            "w-full text-left rounded-2xl rounded-br-md px-3.5 py-2 shadow-sm",
-            headerBg,
-          )}
+          className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
         >
-          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium leading-none", headerTextCls)}>
-            {isCompleted ? (
-              <CheckCircle2 className="h-3 w-3 shrink-0" />
-            ) : isFailed ? (
-              <AlertCircle className="h-3 w-3 shrink-0" />
-            ) : (
-              <Bot className="h-3 w-3 shrink-0" />
-            )}
-            <span>{label}</span>
-            {isCompleted && elapsedSeconds && (
-              <span className="opacity-60">· pensó en {elapsedSeconds}s</span>
-            )}
-            {isFailed && <span className="opacity-60">· detenida</span>}
-            {isRunning && steps.length > 0 && (
-              <span className="opacity-60">· {steps.length} paso{steps.length !== 1 ? "s" : ""}</span>
-            )}
-            <ChevronDown
-              className={cn(
-                "h-3 w-3 ml-auto opacity-40 transition-transform duration-200",
-                expanded && "rotate-180",
-              )}
-            />
-          </div>
+          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotCls)} />
+          <span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/75">
+            {isCompleted
+              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" strokeWidth={1.75} />
+              : isFailed
+              ? <AlertCircle className="h-3.5 w-3.5 text-red-400" strokeWidth={1.75} />
+              : <Bot className="h-3.5 w-3.5 text-primary/60" strokeWidth={1.75} />
+            }
+            {label}
+          </span>
 
-          {/* Bouncing dots shown in header while running + collapsed */}
-          {isRunning && !expanded && (
-            <div className="mt-1.5 flex h-4 items-center gap-1.5">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200 [animation-delay:-0.24s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200 [animation-delay:-0.12s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200" />
-            </div>
-          )}
+          <span className="text-[11px] text-muted-foreground/50">
+            {isRunning && steps.length > 0 && `· ${steps.length} paso${steps.length !== 1 ? "s" : ""}`}
+            {isCompleted && elapsedSeconds && `· pensó en ${elapsedSeconds}s`}
+            {isCompleted && !elapsedSeconds && "· completado"}
+            {isFailed && "· detenida"}
+          </span>
+
+          <ChevronDown
+            className={cn(
+              "ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/30 transition-transform duration-200",
+              expanded && "rotate-180",
+            )}
+            strokeWidth={1.75}
+          />
         </button>
 
-        {/* ── Collapsible step trace ───────────────────────────────── */}
-        <div
-          className={cn(
-            "overflow-hidden transition-all duration-200 mt-0.5 rounded-2xl rounded-br-md",
-            traceBg,
-            expanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
-          )}
-        >
-          <div className="space-y-2 px-3.5 py-2.5">
-            {steps.map((step, i) => {
-              const isLastAndRunning = i === steps.length - 1 && isRunning;
-              const Icon = STEP_ICONS[step.type] ?? Check;
-              return (
-                <div key={i} className="flex items-start gap-2 text-[11px]">
-                  {isLastAndRunning ? (
-                    <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-violet-300 animate-pulse" />
-                  ) : (
-                    <Icon className={cn("mt-0.5 h-3 w-3 shrink-0", stepIconCls)} />
-                  )}
-                  <span className={cn("leading-relaxed", stepTextCls)}>
-                    {step.label || step.type.replace(/_/g, " ").toLowerCase()}
-                  </span>
+        {/* ── Timeline body ────────────────────────────────────────── */}
+        <div className={cn(
+          "overflow-hidden transition-all duration-200",
+          expanded ? "max-h-[480px] opacity-100" : "max-h-0 opacity-0",
+        )}>
+          <div className="px-4 pb-3">
+            {/* Vertical timeline */}
+            <div className="relative ml-0.5 border-l border-border/40 pl-4 space-y-4">
+              {steps.map((step, i) => {
+                const isLast = i === steps.length - 1;
+                const isLastRunning = isLast && isRunning;
+                const Icon = STEP_ICONS[step.type] ?? Check;
+                const sectionLabel = STEP_SECTION_LABELS[step.type];
+
+                return (
+                  <div key={i} className="relative">
+                    {/* Timeline node */}
+                    <span className={cn(
+                      "absolute -left-[1.3125rem] top-[3px] h-2.5 w-2.5 rounded-full border-2 border-background ring-1",
+                      isLastRunning
+                        ? "bg-primary/30 ring-primary/40"
+                        : "bg-background ring-border/60",
+                    )} />
+
+                    {/* Section label */}
+                    {sectionLabel && (
+                      <p className="mb-0.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+                        <Icon className="h-3 w-3" strokeWidth={1.75} />
+                        {sectionLabel}
+                      </p>
+                    )}
+
+                    {/* Step content */}
+                    {step.type === "QUESTION_SENT" ? (
+                      <div className="mt-0.5 inline-block max-w-full rounded-lg border border-border/50 bg-background px-3 py-1.5 text-[12px] text-foreground/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                        {step.label}
+                      </div>
+                    ) : (
+                      <p className="text-[12px] leading-relaxed text-foreground/70">
+                        {step.label}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Running indicator — appears after the last step */}
+              {isRunning && (
+                <div className="relative">
+                  <span className="absolute -left-[1.3125rem] top-[3px] h-2.5 w-2.5 rounded-full border-2 border-background bg-muted ring-1 ring-border/30" />
+                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
+                    Esperando respuesta
+                    <span className="flex gap-0.5">
+                      <span className="h-1 w-1 animate-bounce rounded-full bg-muted-foreground/30 [animation-delay:0ms]" />
+                      <span className="h-1 w-1 animate-bounce rounded-full bg-muted-foreground/30 [animation-delay:150ms]" />
+                      <span className="h-1 w-1 animate-bounce rounded-full bg-muted-foreground/30 [animation-delay:300ms]" />
+                    </span>
+                  </p>
                 </div>
-              );
-            })}
+              )}
 
-            {steps.length === 0 && isRunning && (
-              <div className="flex items-center gap-2 text-[11px]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-300" />
-                <span className="text-violet-100/60">Iniciando...</span>
-              </div>
-            )}
+              {/* Completed / failed terminal node */}
+              {(isCompleted || isFailed) && (
+                <div className="relative">
+                  <span className={cn(
+                    "absolute -left-[1.3125rem] top-[3px] h-2.5 w-2.5 rounded-full border-2 border-background ring-1",
+                    isCompleted ? "bg-emerald-500/70 ring-emerald-500/40" : "bg-red-400/70 ring-red-400/40",
+                  )} />
+                  <p className={cn(
+                    "text-[11px] font-medium",
+                    isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400",
+                  )}>
+                    {isCompleted ? "Finalizado" : "Detenida"}
+                  </p>
+                </div>
+              )}
+            </div>
 
+            {/* Stop button */}
             {isRunning && conversationId && (
-              <div className="pt-1.5 border-t border-violet-500/30">
+              <div className="mt-3 ml-4">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    stopMut.mutate();
-                  }}
+                  onClick={() => stopMut.mutate()}
                   disabled={stopMut.isPending}
-                  className="text-[11px] text-red-300 hover:text-red-200 hover:underline disabled:opacity-50"
+                  className="text-[11px] text-muted-foreground/50 hover:text-destructive hover:underline disabled:opacity-40 transition-colors"
                 >
                   Detener agente
                 </button>
