@@ -142,6 +142,10 @@ export class SupportOrchestratorService {
         this.fetchDiagnosticCaseContext(input.workspace_id, input.diagnostic_case_id),
       ]);
 
+      // Build Flowise $vars for tool execution (API keys, workspace slug)
+      const ws = await this.prisma.workspace.findUnique({ where: { id: input.workspace_id }, select: { slug: true } });
+      const flowVars = this.flowiseSetup.getPredictionVars(ws?.slug);
+
       // ── Pre-flight: ensure Flowise tools + agentflows exist ──────────────
       const existingTools = await this.flowise.listTools().catch(() => []);
       if (existingTools.length === 0) {
@@ -153,7 +157,7 @@ export class SupportOrchestratorService {
       const triageCtx = [wsCtx, caseCtx, `Mensaje del usuario:\n${input.message}`]
         .filter(Boolean)
         .join("\n\n");
-      const triage = await this.runStage("intake-triage", profile, triageCtx, sessionId, stages, input.workspace_id, run.id);
+      const triage = await this.runStage("intake-triage", profile, triageCtx, sessionId, stages, input.workspace_id, run.id, flowVars);
       const triageOut = this.parseDiagnostic(triage?.structured);
       caseType = triageOut?.case_type ?? "unknown";
       severity = triageOut?.severity ?? "medium";
@@ -229,7 +233,7 @@ export class SupportOrchestratorService {
 
       // ── Phase 1: Evidence Collection ──
       for (const slug of preStages) {
-        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id, flowVars);
         if (stage?.output_preview) {
           carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
         }
@@ -240,7 +244,7 @@ export class SupportOrchestratorService {
       if (specialistStages.length > 0) {
         const parallelResults = await this.runParallelStages(
           specialistStages, profile, carriedContext, sessionId,
-          stages, input.workspace_id, run.id,
+          stages, input.workspace_id, run.id, flowVars,
         );
         for (const rec of parallelResults) {
           if (rec.output_preview) {
@@ -256,7 +260,7 @@ export class SupportOrchestratorService {
         const findingsCtx = [carriedContext, `\n[FINDINGS DE LOS AGENTES]`, ...allFindings].join("\n");
         const arbiter = await this.runStage(
           "consensus-arbiter", profile, findingsCtx,
-          `${sessionId}:council`, stages, input.workspace_id, run.id,
+          `${sessionId}:council`, stages, input.workspace_id, run.id, flowVars,
         );
         if (arbiter?.output_preview) {
           carriedContext += `\n\n[consensus-arbiter] ${arbiter.output_preview}`.slice(0, 8000);
@@ -274,7 +278,7 @@ export class SupportOrchestratorService {
           needsHuman = true;
           continue;
         }
-        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, input.workspace_id, run.id, flowVars);
         if (!stage) continue;
         if (slug === "security-compliance") {
           securityPassed = this.securityApproved(stage.output_preview ?? "");
@@ -291,7 +295,7 @@ export class SupportOrchestratorService {
       if (postStages.includes("user-communication")) {
         const comm = await this.runStage(
           "user-communication", profile, carriedContext,
-          `${sessionId}:comm`, stages, input.workspace_id, run.id,
+          `${sessionId}:comm`, stages, input.workspace_id, run.id, flowVars,
         );
         if (comm?.output_preview) {
           carriedContext += `\n\n[user-communication] ${comm.output_preview}`.slice(0, 8000);
@@ -303,7 +307,7 @@ export class SupportOrchestratorService {
         await this.runStage(
           "human-handoff", profile,
           `${carriedContext}\n\n⚠️ Requiere revisión humana. Prepará resumen ejecutivo.`,
-          `${sessionId}:handoff`, stages, input.workspace_id, run.id,
+          `${sessionId}:handoff`, stages, input.workspace_id, run.id, flowVars,
         );
       }
 
@@ -425,6 +429,10 @@ export class SupportOrchestratorService {
         this.fetchDiagnosticCaseContext(workspaceId, run.diagnostic_case_id ?? undefined),
       ]);
 
+      // Build Flowise $vars for tool execution
+      const ws2 = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { slug: true } });
+      const flowVars2 = this.flowiseSetup.getPredictionVars(ws2?.slug);
+
       // Build context with the original triage + user's answer + case context
       const clarificationCtx = [
         wsCtx,
@@ -466,7 +474,7 @@ export class SupportOrchestratorService {
 
       // Phase 1: Evidence + Supervisor
       for (const slug of preStages2) {
-        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId, flowVars2);
         if (stage?.output_preview) {
           carriedContext += `\n\n[${slug}] ${stage.output_preview}`.slice(0, 8000);
         }
@@ -477,7 +485,7 @@ export class SupportOrchestratorService {
       if (specialistStages2.length > 0) {
         const parallelResults = await this.runParallelStages(
           specialistStages2, profile, carriedContext, sessionId,
-          stages, workspaceId, runId,
+          stages, workspaceId, runId, flowVars2,
         );
         for (const rec of parallelResults) {
           if (rec.output_preview) {
@@ -493,7 +501,7 @@ export class SupportOrchestratorService {
         const findingsCtx = [carriedContext, `\n[FINDINGS DE LOS AGENTES]`, ...allFindings2].join("\n");
         const arbiter = await this.runStage(
           "consensus-arbiter", profile, findingsCtx,
-          `${sessionId}:council`, stages, workspaceId, runId,
+          `${sessionId}:council`, stages, workspaceId, runId, flowVars2,
         );
         if (arbiter?.output_preview) {
           carriedContext += `\n\n[consensus-arbiter] ${arbiter.output_preview}`.slice(0, 8000);
@@ -509,7 +517,7 @@ export class SupportOrchestratorService {
           needsHuman = true;
           continue;
         }
-        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId);
+        const stage = await this.runStage(slug, profile, carriedContext, sessionId, stages, workspaceId, runId, flowVars2);
         if (!stage) continue;
         if (slug === "security-compliance") {
           securityPassed = this.securityApproved(stage.output_preview ?? "");
@@ -526,7 +534,7 @@ export class SupportOrchestratorService {
       if (postStages2.includes("user-communication")) {
         const comm = await this.runStage(
           "user-communication", profile, carriedContext,
-          `${sessionId}:comm`, stages, workspaceId, runId,
+          `${sessionId}:comm`, stages, workspaceId, runId, flowVars2,
         );
         if (comm?.output_preview) {
           carriedContext += `\n\n[user-communication] ${comm.output_preview}`.slice(0, 8000);
@@ -538,7 +546,7 @@ export class SupportOrchestratorService {
         await this.runStage(
           "human-handoff", profile,
           `${carriedContext}\n\n⚠️ Requiere revisión humana. Prepará resumen ejecutivo.`,
-          `${sessionId}:handoff`, stages, workspaceId, runId,
+          `${sessionId}:handoff`, stages, workspaceId, runId, flowVars2,
         );
       }
 
@@ -814,6 +822,7 @@ export class SupportOrchestratorService {
     stages: StageRecord[],
     workspaceId?: string,
     runId?: string,
+    vars?: Record<string, string>,
   ): Promise<StageRecord | null> {
     const def = getSupportAgent(slug);
     if (!def || !profileCanUseAgent(profile, slug)) {
@@ -852,6 +861,7 @@ export class SupportOrchestratorService {
         res = await this.flowise.predict(activeId, {
           question: safeContext,
           sessionId: `${sessionId}:${slug}`,
+          overrideConfig: vars ? { vars } : undefined,
         });
       } catch (predictErr: any) {
         if ((predictErr?.message as string | undefined)?.includes("returned 404")) {
@@ -862,6 +872,7 @@ export class SupportOrchestratorService {
           res = await this.flowise.predict(activeId, {
             question: safeContext,
             sessionId: `${sessionId}:${slug}`,
+            overrideConfig: vars ? { vars } : undefined,
           });
         } else if ((predictErr?.message as string | undefined)?.includes("Tool not selected")) {
           this.logger.warn(`[orchestrator] missing tools detected — running full Flowise setup`);
@@ -872,6 +883,7 @@ export class SupportOrchestratorService {
           res = await this.flowise.predict(activeId, {
             question: safeContext,
             sessionId: `${sessionId}:${slug}`,
+            overrideConfig: vars ? { vars } : undefined,
           });
         } else {
           throw predictErr;
@@ -925,10 +937,11 @@ export class SupportOrchestratorService {
     stages: StageRecord[],
     workspaceId?: string,
     runId?: string,
+    vars?: Record<string, string>,
   ): Promise<StageRecord[]> {
     const results = await Promise.all(
       slugs.map((slug) =>
-        this.runStage(slug, profile, context, `${sessionId}:${slug}`, stages, workspaceId, runId)
+        this.runStage(slug, profile, context, `${sessionId}:${slug}`, stages, workspaceId, runId, vars)
           .then((rec) => rec ?? {
             agent_slug: slug,
             allowed: true,
