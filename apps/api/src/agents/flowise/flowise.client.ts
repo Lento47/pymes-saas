@@ -329,28 +329,31 @@ export class FlowiseClient {
   static buildToolNode(opts: {
     id: string;
     label: string;
-    toolId: string;
-    inputValue: string;
+    toolId: string; // UUID de Flowise Custom Tool
+    inputValue?: string;
     updateState?: string;
     position?: { x: number; y: number };
   }) {
-    // Convert inputValue JSON to Flowise's toolInputArgs format
-    let toolInputArgs: Array<{ inputArgName: string; inputArgValue: any }> = [];
-    try {
-      const parsed = JSON.parse(opts.inputValue);
-      if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-        toolInputArgs = Object.entries(parsed).map(([k, v]) => ({
-          inputArgName: k,
-          inputArgValue: v,
+    const toolInputArgs = (() => {
+      const raw = opts.inputValue ?? "{}";
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return [];
+        }
+        return Object.entries(parsed).map(([key, value]) => ({
+          inputArgName: key,
+          inputArgValue: typeof value === "string" ? value : JSON.stringify(value),
         }));
+      } catch {
+        return [{ inputArgName: "input", inputArgValue: raw }];
       }
-    } catch { /* empty or non-JSON → no args */ }
+    })();
 
-    // Parse updateState from JSON string to array (Flowise expects object, not string)
-    let toolUpdateState: any[] = [];
-    if (opts.updateState) {
-      try { toolUpdateState = JSON.parse(opts.updateState); } catch { /* skip */ }
-    }
+    const toolUpdateState = (() => {
+      if (!opts.updateState) return [];
+      try { return JSON.parse(opts.updateState); } catch { return []; }
+    })();
 
     return {
       id: opts.id,
@@ -365,11 +368,15 @@ export class FlowiseClient {
         color: "#4CAF50",
         baseClasses: ["Tool"],
         category: "Agent Flows",
-        description: "Execute a specific tool deterministically",
+        description: "Execute a specific Flowise Custom Tool",
         inputParams: [],
         inputAnchors: [],
         inputs: {
-          toolAgentflowSelectedTool: opts.toolId,
+          toolAgentflowSelectedTool: "customTool",
+          toolAgentflowSelectedToolConfig: {
+            selectedTool: opts.toolId,
+            returnDirect: false,
+          },
           toolInputArgs,
           toolUpdateState,
         },
