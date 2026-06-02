@@ -8,6 +8,10 @@ export class AiProviderBalancerService {
 
   constructor(private readonly gateway: AiGatewayService) {}
 
+  get isConfigured(): boolean {
+    return this.gateway.isConfigured;
+  }
+
   // providers: ordered list of "provider/model" strings. Empty = use gateway default.
   async chatCompletionWithUsage(
     messages: AssistantMessage[],

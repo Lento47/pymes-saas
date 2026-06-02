@@ -136,7 +136,7 @@ export class AgentRunService {
       return null;
     }
 
-    if (!this.cloudflare.isConfigured && !this.balancer) return null;
+    if (!this.cloudflare.isConfigured && !this.balancer?.isConfigured) return null;
 
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -323,7 +323,7 @@ export class AgentRunService {
     providers: string[],
     memory?: import("../memory/contact-memory.service").ContactMemoryProfile | null,
   ): Promise<{ intent: AgentIntent; extracted: Record<string, string> } | null> {
-    if (!this.cloudflare.isConfigured && !this.balancer) return null;
+    if (!this.cloudflare.isConfigured && !this.balancer?.isConfigured) return null;
 
     const businessType = categories.length > 0 ? categories.join(", ") : "servicios generales";
     const memoryContext = memory
