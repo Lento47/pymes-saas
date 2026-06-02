@@ -148,7 +148,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         body_text: newMessage.body_text,
         direction: "OUTBOUND",
         sender_name: user?.name ?? "Yo",
+        sender_ref: user?.id ?? "self",
         sender_user_id: user?.id,
+        sender_user: user ? { id: user.id, name: user.name, avatar_url: null } : null,
         sent_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         message_type: "TEXT",
@@ -185,13 +187,16 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         const deduped = Array.from(byId.values());
         return Array.isArray(old) ? deduped : { ...old, data: deduped };
       });
+      // Map temp animation ID → server ID so the slide-up animation survives replacement
+      setAnimatingMsgId(serverMessage.id);
     },
     onError: (err: any, _newMessage, context: any) => {
       if (context?.previousMessages) qc.setQueryData(["/api/conversations", id, "messages"], context.previousMessages);
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
+      // Only invalidate conversation list (unread count, last message preview).
+      // Message cache is already updated optimistically + in onSuccess — no refetch needed.
       qc.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
@@ -481,7 +486,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           animationTimerRef.current = null;
         }, 520);
       }
-      if (lastNew?.direction === "OUTBOUND" || nearBottomRef.current) scrollToBottom(true);
+      // Instant scroll for outbound (user sends) to avoid competing with virtualizer repositioning.
+      // Smooth scroll for incoming messages (contact sends) for a gentler UX.
+      const instant = lastNew?.direction === "OUTBOUND";
+      if (lastNew?.direction === "OUTBOUND" || nearBottomRef.current) scrollToBottom(instant);
     }
   }, [msgsLoading, msgList.length, initialLoaded, scrollToBottom]);
 
