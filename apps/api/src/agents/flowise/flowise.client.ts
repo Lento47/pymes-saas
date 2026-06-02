@@ -1344,7 +1344,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
   // ── Chatflow CRUD ──────────────────────────────────────────────────────────
 
   async createChatflow(name: string, systemMessage?: string): Promise<string> {
-    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/agentflows`;
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
     const model = this.config.get<string>("FLOWISE_DEFAULT_MODEL") ?? "deepseek-v4-flash";
     const basepath = this.config.get<string>("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
     const apiKey =
@@ -1366,19 +1366,20 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       flowData: this.buildFlowData(model, systemMessage, basepath, credentialId),
       deployed: true,
       isPublic: false,
+      type: "AGENTFLOW",
     };
 
     return this._postChatflow(url, body);
   }
 
   async createChatflowWithData(name: string, flowDataJson: string): Promise<string> {
-    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/agentflows`;
-    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false };
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
+    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
     return this._postChatflow(url, body);
   }
 
   async updateChatflowWithData(id: string, name: string, flowDataJson: string): Promise<void> {
-    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/agentflows/${id}`;
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
     const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
     const bodyJson = JSON.stringify(body);
     this.logger.log(`FlowiseClient.updateChatflowWithData → PUT ${url} (body ${bodyJson.length} bytes, auth=${!!this.apiKey})`);
@@ -1406,7 +1407,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
   }
 
   async listChatflows(): Promise<Array<{ id: string; name: string }>> {
-    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/agentflows`;
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows?type=AGENTFLOW`;
     try {
       const res = await fetch(url, { headers: { "Content-Type": "application/json", ...this.authHeaders } });
       if (!res.ok) return [];
@@ -1418,14 +1419,10 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
   }
 
   async deleteChatflow(id: string): Promise<void> {
-    // Try agentflows endpoint first; fall back to chatflows for legacy entries
-    const agentflowUrl = `${this.baseUrl.replace(/\/$/, "")}/api/v1/agentflows/${id}`;
-    const res = await fetch(agentflowUrl, { method: "DELETE", headers: { "Content-Type": "application/json", ...this.authHeaders } });
-    if (res.ok || res.status === 404) return;
-    const legacyUrl = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
-    const legacyRes = await fetch(legacyUrl, { method: "DELETE", headers: { "Content-Type": "application/json", ...this.authHeaders } });
-    if (!legacyRes.ok && legacyRes.status !== 404) {
-      throw new Error(`Flowise DELETE agentflow ${id} returned HTTP ${legacyRes.status}`);
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
+    const res = await fetch(url, { method: "DELETE", headers: { "Content-Type": "application/json", ...this.authHeaders } });
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`Flowise DELETE chatflow ${id} returned HTTP ${res.status}`);
     }
   }
 
