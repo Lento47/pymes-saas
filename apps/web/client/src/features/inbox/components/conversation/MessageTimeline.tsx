@@ -56,6 +56,8 @@ interface MessageTimelineProps {
   nearBottom: boolean;
   onScrollToBottom: () => void;
   onScroll?: () => void;
+  /** Called when user swipes right or double-taps a message to reply. */
+  onReply?: (message: UiMessage) => void;
   className?: string;
 }
 
@@ -75,6 +77,7 @@ export function MessageTimeline({
   nearBottom,
   onScrollToBottom,
   onScroll,
+  onReply,
   className,
 }: MessageTimelineProps) {
   // Derive the channel from the first message when not explicitly passed
@@ -154,6 +157,7 @@ export function MessageTimeline({
                   contactAvatarInitials={contactAvatarInitials}
                   contactAvatarUrl={contactAvatarUrl}
                   quotedMessage={quotedMessage}
+                  onReply={onReply}
                 />
               </div>
             );

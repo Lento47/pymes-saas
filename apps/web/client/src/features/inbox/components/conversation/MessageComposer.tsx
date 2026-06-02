@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Smile,
   Sparkles,
+  X,
 } from "lucide-react";
 import { EmojiPicker } from "@/components/shared/emoji-picker";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ComposerAttachmentPreview } from "./ComposerAttachmentPreview";
 import { InteractiveToolbar, type InteractiveState } from "../composer/InteractiveToolbar";
 import { ProductPicker } from "@/components/inventory/ProductPicker";
+import type { UiMessage } from "@/features/inbox/message-types";
 
 interface MessageTemplate {
   id: string;
@@ -52,6 +54,8 @@ interface MessageComposerProps {
   availableTemplates?: MessageTemplate[];
   onInsertTemplate?: (body: string) => void;
   onInsertProduct?: (text: string) => void;
+  replyingTo?: UiMessage | null;
+  onCancelReply?: () => void;
   disabled?: boolean;
   className?: string;
 }
@@ -72,6 +76,8 @@ export function MessageComposer({
   availableTemplates,
   onInsertTemplate,
   onInsertProduct,
+  replyingTo,
+  onCancelReply,
   disabled,
   className,
 }: MessageComposerProps) {
@@ -205,6 +211,39 @@ export function MessageComposer({
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Reply bar — shown when user swipes/double-taps a message */}
+      {replyingTo && (
+        <div className="mx-2.5 mt-2 flex items-center gap-2 rounded-lg border-l-2 border-primary/50 bg-primary/[0.06] px-3 py-2 sm:mx-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold text-primary truncate">
+              {replyingTo.direction === "OUTBOUND" ? "Tú" : (replyingTo.senderName || "Contacto")}
+            </p>
+            <p className="text-[11px] text-muted-foreground truncate">
+              {replyingTo.mediaCaption || replyingTo.bodyText || (
+                replyingTo.mediaType === "image" ? "Foto" :
+                replyingTo.mediaType === "video" ? "Video" :
+                replyingTo.mediaType === "audio" ? "Audio" :
+                replyingTo.mediaType === "document" ? "Documento" :
+                replyingTo.mediaType === "sticker" ? "Sticker" :
+                replyingTo.mediaType === "location" ? "Ubicación" :
+                replyingTo.mediaType === "contact" ? "Contacto" :
+                "Mensaje"
+              )}
+            </p>
+          </div>
+          {onCancelReply && (
+            <button
+              type="button"
+              onClick={onCancelReply}
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Cancelar respuesta"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
         </div>
       )}
 

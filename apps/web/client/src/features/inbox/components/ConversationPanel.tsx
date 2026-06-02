@@ -16,6 +16,7 @@ import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { emptyTask, type TaskFormData } from "@/lib/task-utils";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 import { normalizeMessage } from "@/features/inbox/message-adapters";
+import type { UiMessage } from "@/features/inbox/message-types";
 import type { InteractiveState } from "./composer/InteractiveToolbar";
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -61,6 +62,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [showAddContact, setShowAddContact] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<UiMessage | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -322,8 +324,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       basePayload.body_text = message;
     }
 
+    if (replyingTo?.id) {
+      basePayload.reply_to_message_id = replyingTo.id;
+    }
+
     sendMut.mutate(basePayload);
-  }, [message, attachment, sendMut, uploading]);
+    setReplyingTo(null);
+  }, [message, attachment, sendMut, uploading, replyingTo]);
 
   const handleAttach = useCallback(async (file: File) => {
     const form = new FormData();
@@ -562,6 +569,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         animatingMsgId={animatingMsgId}
         onScrollToBottom={scrollToBottom}
         onScroll={handleScroll}
+        onReply={setReplyingTo}
       />
 
       <MessageComposer
@@ -577,6 +585,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         channelType={channelType}
         isServiceWindowOpen={isServiceWindowOpen}
         disabled={!id}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
         availableTemplates={Array.isArray(approvedTemplates) ? approvedTemplates : []}
         onInsertTemplate={(body) => setMessage(body)}
         onInsertProduct={(text) => setMessage(text)}

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useCallback } from "react";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +24,7 @@ interface MessageBubbleProps {
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
   quotedMessage?: Pick<UiMessage, "bodyText" | "senderName" | "direction" | "mediaType" | "mediaCaption" | "mediaFilename"> | null;
+  onReply?: (message: UiMessage) => void;
   className?: string;
 }
 
@@ -91,6 +92,7 @@ export const MessageBubble = function MessageBubble({
   contactAvatarInitials,
   contactAvatarUrl,
   quotedMessage,
+  onReply,
   className,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === "OUTBOUND";
@@ -238,11 +240,68 @@ export const MessageBubble = function MessageBubble({
     statusVariant: theme.statusVariant,
   } as const;
 
+  // ── Reply gesture: swipe right (touch) + double-click (desktop) ─────────
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeOffsetRef = useRef(0);
+  const bubbleWrapRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!onReply || message.direction === "INTERNAL") return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+  }, [onReply, message.direction]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = Math.abs(t.clientY - touchStartRef.current.y);
+    // Only horizontal swipe (dx > 0 = right, dy < 45°)
+    if (dx > 10 && dx > dy && dx < 120) {
+      swipeOffsetRef.current = dx;
+      if (bubbleWrapRef.current) {
+        bubbleWrapRef.current.style.transform = `translateX(${Math.min(dx * 0.4, 40)}px)`;
+      }
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!touchStartRef.current || !onReply) {
+      touchStartRef.current = null;
+      return;
+    }
+    const elapsed = Date.now() - touchStartRef.current.time;
+    if (swipeOffsetRef.current > 50 && elapsed < 500) {
+      onReply(message);
+    }
+    // Reset position
+    swipeOffsetRef.current = 0;
+    touchStartRef.current = null;
+    if (bubbleWrapRef.current) {
+      bubbleWrapRef.current.style.transform = "";
+      bubbleWrapRef.current.style.transition = "transform 0.2s ease-out";
+      setTimeout(() => {
+        if (bubbleWrapRef.current) bubbleWrapRef.current.style.transition = "";
+      }, 200);
+    }
+  }, [onReply, message]);
+
+  const handleDoubleClick = useCallback(() => {
+    if (onReply && message.direction !== "INTERNAL") {
+      onReply(message);
+    }
+  }, [onReply, message]);
+
   return (
     <div
+      ref={bubbleWrapRef}
       className={`flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`}
       role="article"
       aria-label={`${senderLabel} · ${timeString}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onDoubleClick={handleDoubleClick}
     >
       {/* Inbound avatar */}
       {!isOutbound && !isConsecutive && (
