@@ -452,17 +452,19 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const scrollToBottom = useCallback((smooth = true) => {
     nearBottomRef.current = true;
     setNearBottom(true);
-    // rAF ensures the virtualizer has measured and positioned new items
-    // before we scroll — prevents scrolling to stale positions.
     requestAnimationFrame(() => {
-      if (bottomRef.current) {
-        bottomRef.current.scrollIntoView({ block: "end", behavior: smooth ? "smooth" : "instant" });
+      const el = scrollRef.current;
+      if (!el) return;
+      if (smooth) {
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      } else {
+        el.scrollTop = el.scrollHeight;
       }
     });
   }, []);
 
   useEffect(() => {
-    if (msgsLoading || !bottomRef.current) return;
+    if (msgsLoading || !scrollRef.current) return;
 
     if (!initialLoaded) {
       const timer = setTimeout(() => {
@@ -504,9 +506,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   useEffect(() => {
     if (nearBottomRef.current) {
       requestAnimationFrame(() => {
-        if (bottomRef.current) {
-          bottomRef.current.scrollIntoView({ block: "end", behavior: "instant" });
-        }
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       });
     }
   }, [isUserTyping]);
