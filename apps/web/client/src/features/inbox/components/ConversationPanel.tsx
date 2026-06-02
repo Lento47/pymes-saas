@@ -405,8 +405,18 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       return api.startAgentRun(id, text);
     },
     onSuccess: (data) => {
-      if (data?.run) qc.setQueryData(["agent-run", id], data.run);
-      else toast({ title: "No se detectó intención", description: "El agente no pudo interpretar el último mensaje.", variant: "destructive" });
+      if (data?.run) {
+        qc.setQueryData(["agent-run", id], data.run);
+      } else {
+        const REASON_MSGS: Record<string, string> = {
+          QUOTA_EXCEEDED: "Límite diario de ejecuciones de agente alcanzado.",
+          AI_NOT_CONFIGURED: "El agente IA no está configurado en este workspace.",
+          CONVERSATION_NOT_FOUND: "No se encontró la conversación.",
+          INTENT_NOT_DETECTED: "No se detectó una intención reconocible (pedido, cita, cotización o queja).",
+        };
+        const description = data?.reason ? (REASON_MSGS[data.reason] ?? data.reason) : REASON_MSGS.INTENT_NOT_DETECTED;
+        toast({ title: "No se pudo iniciar el agente", description, variant: "destructive" });
+      }
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
     },
     onError: (e: any) => toast({ title: "Error al iniciar agente", description: e.message, variant: "destructive" }),

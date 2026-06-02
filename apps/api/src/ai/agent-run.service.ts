@@ -34,6 +34,16 @@ export interface AgentRun {
   artifact: AgentArtifact | null;
 }
 
+export type AgentRunFailReason =
+  | "QUOTA_EXCEEDED"
+  | "AI_NOT_CONFIGURED"
+  | "INTENT_NOT_DETECTED"
+  | "CONVERSATION_NOT_FOUND";
+
+export type AgentRunResult =
+  | { run: AgentRun; reason: null }
+  | { run: null; reason: AgentRunFailReason };
+
 type InteractiveHint = "products_list" | "services_list" | "delivery_buttons";
 
 interface FieldDef {
@@ -129,14 +139,15 @@ export class AgentRunService {
     conversationId: string,
     triggerText: string,
     knownIntent?: AgentIntent,
-  ): Promise<AgentRun | null> {
+  ): Promise<AgentRunResult> {
     const quota = await this.planLimits.evaluatePlanLimit(workspaceId, "agent_executions_per_day");
     if (!quota.allowed) {
       this.logger.warn(`Agent run blocked for workspace ${workspaceId}: ${quota.message}`);
-      return null;
+      return { run: null, reason: "QUOTA_EXCEEDED" };
     }
 
-    if (!this.cloudflare.isConfigured && !this.balancer?.isConfigured) return null;
+    if (!this.cloudflare.isConfigured && !this.balancer?.isConfigured)
+      return { run: null, reason: "AI_NOT_CONFIGURED" };
 
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -147,11 +158,11 @@ export class AgentRunService {
         assigned_user_id: true,
       },
     });
-    if (!conv) return null;
+    if (!conv) return { run: null, reason: "CONVERSATION_NOT_FOUND" };
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
     const existingRun = meta.agent_run as AgentRun | undefined;
-    if (existingRun?.status === "RUNNING") return existingRun;
+    if (existingRun?.status === "RUNNING") return { run: existingRun, reason: null };
 
     const ctx = await this.emprendeAi.buildBusinessContext(workspaceId);
 
@@ -175,7 +186,7 @@ export class AgentRunService {
         providers,
         contactMemoryProfile,
       );
-      if (!detection) return null;
+      if (!detection) return { run: null, reason: "INTENT_NOT_DETECTED" };
       intent = detection.intent;
       extracted = detection.extracted;
     }
@@ -222,7 +233,7 @@ export class AgentRunService {
     }
 
     this.events.emitAgentUpdated(conversationId, workspaceId, run);
-    return run;
+    return { run, reason: null };
   }
 
   /**
