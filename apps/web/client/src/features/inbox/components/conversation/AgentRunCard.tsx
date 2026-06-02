@@ -1,3 +1,14 @@
+/**
+ * AgentRunCard — compact inline AI indicator.
+ *
+ * Shows a narrative one-liner inside the chat flow:
+ *   RUNNING:  "Detectó solicitud de factura · 2 datos pendientes"
+ *   COMPLETED: "Respuesta lista ✓"
+ *   FAILED:    "Agente detenido — error"
+ *
+ * Matches the landing page AgentConsole style: intent + pending count,
+ * not raw technical step names. Compact pill, contextual icons.
+ */
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -8,8 +19,8 @@ import {
   Loader2,
   X,
   Brain,
-  Wrench,
   FileText,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,66 +47,106 @@ export interface AgentRun {
   artifact: AgentArtifact | null;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  CLASSIFY_INTENT: "Identificando intención",
-  LOAD_CUSTOMER_CONTEXT: "Revisando contexto",
-  SEARCH_KNOWLEDGE_BASE: "Buscando en base de conocimiento",
-  CHECK_REQUIRED_FIELDS: "Verificando campos",
-  FIELD_COLLECTED: "Campo recolectado",
-  PREPARE_DRAFT: "Preparando respuesta",
-  ARTIFACT_CREATED: "Borrador listo",
-  AWAITING_REVIEW: "Esperando revisión",
-  DONE: "Listo",
-  FAILED: "Detenido",
+/* ── Intent labels (Spanish, narrative) ─────────────────────────────────── */
+const INTENT_LABELS: Record<string, string> = {
+  ORDER:       "un pedido",
+  APPOINTMENT: "una cita",
+  QUOTE:       "una cotización",
+  COMPLAINT:   "una queja",
+  SUPPORT:     "una consulta de soporte",
+  BILLING:     "una consulta de facturación",
+  GENERAL:     "una consulta general",
 };
 
-const RUNNING_FALLBACK_STATES = [
-  "Revisando mensajes",
-  "Analizando contexto",
+function getIntentLabel(intent?: string | null): string {
+  if (!intent) return "";
+  return INTENT_LABELS[intent.toUpperCase()] ?? intent.toLowerCase().replace(/_/g, " ");
+}
+
+/* ── Step icon (internal, not shown as label) ───────────────────────────── */
+function getStepIcon(stepType?: string) {
+  if (!stepType) return <Loader2 className="h-3 w-3 animate-spin" />;
+  if (stepType.includes("SEARCH") || stepType.includes("LOAD") || stepType.includes("CONTEXT")) {
+    return <Brain className="h-3 w-3 animate-pulse" />;
+  }
+  if (stepType.includes("DRAFT") || stepType.includes("PREPARE") || stepType.includes("ARTIFACT")) {
+    return <FileText className="h-3 w-3 animate-pulse" />;
+  }
+  if (stepType.includes("FIELD") || stepType.includes("CHECK")) {
+    return <Wrench className="h-3 w-3 animate-pulse" />;
+  }
+  return <Loader2 className="h-3 w-3 animate-spin" />;
+}
+
+/* ── Running animation states ───────────────────────────────────────────── */
+const RUNNING_HINTS = [
+  "Analizando conversación",
+  "Leyendo contexto",
   "Identificando intención",
-  "Preparando respuesta",
+  "Verificando datos",
 ];
 
-function getStepLabel(step: AgentStep) {
-  return STEP_LABELS[step.type] ?? step.label ?? step.type.replace(/_/g, " ").toLowerCase();
-}
-
-function getCurrentAgentStatus(run: AgentRun, steps: AgentStep[], pendingFields: string[]) {
-  if (run.status === "COMPLETED") return "Respuesta lista";
-  if (run.status === "FAILED") return "Agente detenido";
-  if (run.status === "CANCELLED") return "Cancelado";
-
+/* ── Narrative status builder ───────────────────────────────────────────── */
+function buildNarrative(run: AgentRun): { icon: React.ReactNode; text: string; tone: "running" | "success" | "error" } {
+  const { status, intent, pending_fields, steps } = run;
   const lastStep = steps[steps.length - 1];
-  if (lastStep?.type) {
-    return getStepLabel(lastStep);
+
+  if (status === "COMPLETED") {
+    return {
+      icon: <CheckCircle2 className="h-3 w-3" />,
+      text: "Respuesta lista",
+      tone: "success",
+    };
   }
 
+  if (status === "FAILED") {
+    return {
+      icon: <AlertCircle className="h-3 w-3" />,
+      text: "Agente detenido",
+      tone: "error",
+    };
+  }
+
+  if (status === "CANCELLED") {
+    return {
+      icon: <X className="h-3 w-3" />,
+      text: "Cancelado",
+      tone: "error",
+    };
+  }
+
+  // RUNNING — build narrative
+  const intentLabel = getIntentLabel(intent);
+  const pending = Array.isArray(pending_fields) ? pending_fields.length : 0;
+
+  // If we have intent, show the narrative pattern
+  if (intentLabel) {
+    const parts: string[] = [];
+    parts.push(`Detectó ${intentLabel}`);
+    if (pending > 0) {
+      parts.push(`${pending} dato${pending > 1 ? "s" : ""} pendiente${pending > 1 ? "s" : ""}`);
+    }
+    return {
+      icon: getStepIcon(lastStep?.type),
+      text: parts.join(" · "),
+      tone: "running",
+    };
+  }
+
+  // No intent yet — show hint
   const startedAt = new Date(run.started_at).getTime();
   const bucket = Number.isFinite(startedAt)
-    ? Math.floor((Date.now() - startedAt) / 2500) % RUNNING_FALLBACK_STATES.length
+    ? Math.floor((Date.now() - startedAt) / 2500) % RUNNING_HINTS.length
     : 0;
-  return RUNNING_FALLBACK_STATES[bucket];
+
+  return {
+    icon: <Loader2 className="h-3 w-3 animate-spin" />,
+    text: RUNNING_HINTS[bucket],
+    tone: "running",
+  };
 }
 
-function getStatusIcon(run: AgentRun, stepType?: string) {
-  if (run.status === "COMPLETED") return <CheckCircle2 className="h-3 w-3 text-emerald-500" />;
-  if (run.status === "FAILED") return <AlertCircle className="h-3 w-3 text-destructive" />;
-
-  if (stepType) {
-    if (stepType.includes("SEARCH") || stepType.includes("LOAD") || stepType.includes("CONTEXT")) {
-      return <Brain className="h-3 w-3 text-violet-500 animate-pulse" />;
-    }
-    if (stepType.includes("DRAFT") || stepType.includes("PREPARE") || stepType.includes("ARTIFACT")) {
-      return <FileText className="h-3 w-3 text-amber-500 animate-pulse" />;
-    }
-    if (stepType.includes("FIELD") || stepType.includes("CHECK")) {
-      return <Wrench className="h-3 w-3 text-blue-500 animate-pulse" />;
-    }
-  }
-
-  return <Loader2 className="h-3 w-3 text-primary animate-spin" />;
-}
-
+/* ── Component ──────────────────────────────────────────────────────────── */
 interface Props {
   run: AgentRun;
   conversationId: string;
@@ -107,9 +158,9 @@ export function AgentRunCard({ run, conversationId }: Props) {
   const qc = useQueryClient();
 
   const status = run?.status;
-  const steps = Array.isArray(run?.steps) ? run.steps : [];
-  const pendingFields = Array.isArray(run?.pending_fields) ? run.pending_fields : [];
+  const pending = Array.isArray(run?.pending_fields) ? run.pending_fields.length : 0;
 
+  // Auto-dismiss completed after 8s
   useEffect(() => {
     if (status === "COMPLETED") {
       const t = setTimeout(() => setDismissed(true), 8000);
@@ -126,48 +177,45 @@ export function AgentRunCard({ run, conversationId }: Props) {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const currentStatus = useMemo(
-    () => (run ? getCurrentAgentStatus(run, steps, pendingFields) : ""),
-    [run, steps, pendingFields],
-  );
+  const narrative = useMemo(() => (run ? buildNarrative(run) : null), [run]);
 
-  if (!run?.id || !status) return null;
+  if (!run?.id || !status || !narrative) return null;
   if (dismissed || status === "CANCELLED") return null;
 
   const isRunning = status === "RUNNING";
-  const isCompleted = status === "COMPLETED";
-  const isFailed = status === "FAILED";
-  const lastStep = steps[steps.length - 1];
+
+  const toneCls = {
+    running: "bg-violet-500/[0.06] border-violet-500/15 text-violet-700 dark:text-violet-400",
+    success: "bg-emerald-500/[0.08] border-emerald-500/20 text-emerald-700 dark:text-emerald-400",
+    error:   "bg-destructive/[0.06] border-destructive/20 text-destructive",
+  }[narrative.tone];
+
+  const iconCls = {
+    running: "text-violet-500",
+    success: "text-emerald-500",
+    error:   "text-destructive",
+  }[narrative.tone];
 
   return (
     <div className="ml-8 flex items-center gap-1.5 px-2 py-1.5 sm:ml-10 sm:px-3">
-      <div
-        className={cn(
-          "flex items-center gap-2 rounded-2xl rounded-bl-md px-3 py-1.5 text-xs transition-all",
-          isCompleted
-            ? "bg-emerald-500/[0.08] border border-emerald-500/20"
-            : isFailed
-              ? "bg-destructive/[0.06] border border-destructive/20"
-              : "bg-violet-500/[0.06] border border-violet-500/15",
-        )}
-      >
-        {getStatusIcon(run, lastStep?.type)}
+      <div className={cn(
+        "flex items-center gap-2 rounded-2xl rounded-bl-md border px-3 py-1.5 text-xs transition-all",
+        toneCls,
+      )}>
+        <span className={iconCls}>{narrative.icon}</span>
 
-        <span
-          className={cn(
-            "max-w-[200px] truncate leading-snug",
-            isCompleted ? "text-emerald-700 dark:text-emerald-400" : isFailed ? "text-destructive" : "text-violet-700 dark:text-violet-400",
-          )}
-        >
-          {currentStatus}
+        <span className="max-w-[260px] truncate leading-snug">
+          {narrative.text}
         </span>
 
-        {isRunning && pendingFields.length > 0 && (
+        {/* Pending count badge (only when running and has pending fields) */}
+        {isRunning && pending > 0 && (
           <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-            {pendingFields.length}
+            {pending}
           </span>
         )}
 
+        {/* Stop button (running) */}
         {isRunning && (
           <button
             onClick={() => stopMut.mutate()}
@@ -184,6 +232,7 @@ export function AgentRunCard({ run, conversationId }: Props) {
           </button>
         )}
 
+        {/* Dismiss button (done/failed) */}
         {!isRunning && (
           <button
             onClick={() => setDismissed(true)}
