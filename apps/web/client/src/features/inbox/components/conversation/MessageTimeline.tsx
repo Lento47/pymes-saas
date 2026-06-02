@@ -76,9 +76,9 @@ export function MessageTimeline({
     <div className={containerCls} style={theme.surfaceStyle}>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-4 sm:py-5"
+        className="h-full overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-5"
         onScroll={onScroll}
-        style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+        style={{ scrollbarWidth: "thin", scrollbarGutter: "stable", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
         {messages.map((msg, idx) => {
           const prev = idx > 0 ? messages[idx - 1] : null;
