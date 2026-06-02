@@ -407,6 +407,12 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
       }
     }
 
+    // ── Guard: empty response ────────────────────────────────────────────────
+    if (!response?.trim()) {
+      this.logger.warn(`[platform-admin] Empty response from AI — skipping dispatch`);
+      return;
+    }
+
     // ── Store in DB ──────────────────────────────────────────────────────────
     await this.prisma.message.create({
       data: {
