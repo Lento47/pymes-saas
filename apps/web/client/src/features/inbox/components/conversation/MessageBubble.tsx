@@ -102,8 +102,13 @@ export const MessageBubble = function MessageBubble({
     !message.isReaction &&
     isEmojiOnly(message.bodyText ?? "");
 
-  // Tail only for text and audio (media has overflow-hidden which would clip it)
-  const showTail = !isConsecutive && !isLargeEmoji && (variant === "text" || variant === "audio");
+  // Tail only for text and audio (media has overflow-hidden which would clip it).
+  // System/internal messages are rendered as pills — no tail.
+  const showTail =
+    !isConsecutive &&
+    !isLargeEmoji &&
+    message.direction !== "INTERNAL" &&
+    (variant === "text" || variant === "audio");
 
   const timeString = useMemo(
     () => message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "",
