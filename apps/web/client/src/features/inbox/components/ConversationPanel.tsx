@@ -423,6 +423,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType?.toUpperCase() ?? "");
 
   const [nearBottom, setNearBottom] = useState(true);
+  const nearBottomRef = useRef(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const prevMsgCountRef = useRef(0);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -431,14 +432,21 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    setNearBottom(scrollHeight - scrollTop - clientHeight < 150);
+    const isNear = scrollHeight - scrollTop - clientHeight < 150;
+    nearBottomRef.current = isNear;
+    setNearBottom(isNear);
   }, []);
 
   const scrollToBottom = useCallback((smooth = true) => {
+    nearBottomRef.current = true;
     setNearBottom(true);
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ block: "end", behavior: smooth ? "smooth" : "instant" });
-    }
+    // rAF ensures the virtualizer has measured and positioned new items
+    // before we scroll — prevents scrolling to stale positions.
+    requestAnimationFrame(() => {
+      if (bottomRef.current) {
+        bottomRef.current.scrollIntoView({ block: "end", behavior: smooth ? "smooth" : "instant" });
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -466,15 +474,27 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           animationTimerRef.current = null;
         }, 520);
       }
-      if (lastNew?.direction === "OUTBOUND" || nearBottom) scrollToBottom(true);
+      if (lastNew?.direction === "OUTBOUND" || nearBottomRef.current) scrollToBottom(true);
     }
-  }, [msgsLoading, msgList.length, initialLoaded, nearBottom, scrollToBottom]);
+  }, [msgsLoading, msgList.length, initialLoaded, scrollToBottom]);
 
   useEffect(() => {
     return () => {
       if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
     };
   }, []);
+
+  // Re-scroll when typing indicator appears/disappears near bottom.
+  // Without this, the scroll height change causes a visible jump.
+  useEffect(() => {
+    if (nearBottomRef.current) {
+      requestAnimationFrame(() => {
+        if (bottomRef.current) {
+          bottomRef.current.scrollIntoView({ block: "end", behavior: "instant" });
+        }
+      });
+    }
+  }, [isUserTyping]);
 
   const uiMessages = useMemo(() => msgList.map(normalizeMessage), [msgList]);
 
