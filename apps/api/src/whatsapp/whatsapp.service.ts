@@ -554,14 +554,15 @@ export class WhatsAppService {
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to,
-        type: 'presence',
-        presence: { status },
+        type: 'typing',
+        typing: { status },
       }),
     });
 
     if (!res.ok) {
+      const body = await res.text().catch(() => '');
       // Typing indicators are best-effort — don't throw
-      this.logger.debug(`Typing indicator ${status} failed silently`);
+      this.logger.warn(`Typing indicator ${status} failed: ${res.status} ${body}`);
     }
   }
 
