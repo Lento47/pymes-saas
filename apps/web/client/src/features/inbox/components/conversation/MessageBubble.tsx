@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { getChannelTheme } from "@/features/inbox/channel-theme";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageMeta } from "./MessageMeta";
 import { MessageText } from "./MessageText";
 import { ReplyQuote } from "./ReplyQuote";
@@ -244,18 +245,12 @@ export const MessageBubble = function MessageBubble({
     >
       {/* Inbound avatar */}
       {!isOutbound && !isConsecutive && (
-        <div
-          className="mt-auto flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/30 sm:h-7 sm:w-7"
-          aria-label={`Avatar de ${senderLabel}`}
-        >
-          {contactAvatarUrl ? (
-            <img src={contactAvatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-[9px] font-semibold text-muted-foreground sm:text-[10px]">
-              {contactAvatarInitials || getInitials(contactName || "")}
-            </span>
-          )}
-        </div>
+        <Avatar className="mt-auto h-6 w-6 sm:h-7 sm:w-7" aria-label={`Avatar de ${senderLabel}`}>
+          {contactAvatarUrl && <AvatarImage src={contactAvatarUrl} alt="" />}
+          <AvatarFallback className="text-[9px] font-semibold sm:text-[10px]">
+            {contactAvatarInitials || getInitials(contactName || "")}
+          </AvatarFallback>
+        </Avatar>
       )}
       {!isOutbound && isConsecutive && (
         <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
