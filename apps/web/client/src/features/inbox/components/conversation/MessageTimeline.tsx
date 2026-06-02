@@ -32,8 +32,13 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   // ReplyQuote adds ~48px when present (sender + 2-line preview)
   if (msg.replyToMessageId) base += 48;
 
-  // Non-consecutive messages get mt-3 (12px) + avatar/name height for inbound
+  // DateSeparator: my-4 (32px) + pill (~24px) = ~48px
   const prev = idx > 0 ? messages[idx - 1] : null;
+  const showDate =
+    !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
+  if (showDate) base += 48;
+
+  // Non-consecutive messages get mt-3 (12px) + avatar/name height for inbound
   const isConsecutive = isConsecutiveMessage(msg, prev);
   if (!isConsecutive) {
     base += 12; // mt-3 spacing
@@ -96,7 +101,7 @@ export function MessageTimeline({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: (idx) => estimateSizeForIndex(idx, messages),
-    overscan: 5,
+    overscan: 15,
   });
 
   const containerCls = `relative min-h-0 flex-1 overflow-hidden ${theme.surfaceCls} ${className ?? ""}`;
