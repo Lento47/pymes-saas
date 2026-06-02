@@ -1,61 +1,11 @@
 import { ArrowDown } from "lucide-react";
 import { isSameDay } from "date-fns";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { getChannelTheme } from "@/features/inbox/channel-theme";
 import { isConsecutiveMessage } from "@/features/inbox/message-adapters";
 import { DateSeparator } from "./DateSeparator";
 import { EmptyConversationState } from "./EmptyConversationState";
 import { MessageBubble } from "./MessageBubble";
-
-function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
-  const msg = messages[idx];
-  if (!msg) return 72;
-
-  let base: number;
-  if (!msg.mediaType) {
-    // Text messages: estimate height based on content length.
-    // ~25 chars/line — deliberately over-estimates to avoid overlap.
-    // measureElement corrects after first paint; over-estimate > under-estimate.
-    // Each line ≈ 20px, padding ≈ 20px (py-2.5), meta row ≈ 22px.
-    const text = (msg.bodyText || "").replace(/<[^>]*>/g, ""); // strip HTML if any
-    const newlines = (text.match(/\n/g) || []).length;
-    const charLines = Math.ceil(text.length / 25);
-    const lines = Math.max(1, Math.max(newlines + 1, charLines));
-    base = lines * 20 + 20 + 22; // lineHeight + padding + meta
-  } else {
-    switch (msg.mediaType) {
-      case "sticker":   base = 120; break;
-      case "image":
-      case "video":     base = 250; break;
-      case "audio":     base = 84;  break;
-      case "document":
-      case "location":
-      case "contact":   base = 104; break;
-      case "interactive": base = 110; break;
-      default:          base = 72;  break;
-    }
-  }
-
-  // ReplyQuote adds ~48px when present (sender + 2-line preview)
-  if (msg.replyToMessageId) base += 48;
-
-  // DateSeparator: my-4 (32px) + pill (~24px) = ~48px
-  const prev = idx > 0 ? messages[idx - 1] : null;
-  const showDate =
-    !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
-  if (showDate) base += 48;
-
-  // Non-consecutive messages get mt-3 (12px) + avatar/name height for inbound
-  const isConsecutive = isConsecutiveMessage(msg, prev);
-  if (!isConsecutive) {
-    base += 12; // mt-3 spacing
-    if (msg.direction === "INBOUND") base += 20; // avatar + sender name
-  }
-
-  return base;
-}
-
 import { AITypingBubble, type AgentRun } from "./AITypingBubble";
 
 interface MessageTimelineProps {
@@ -101,17 +51,8 @@ export function MessageTimeline({
   onReply,
   className,
 }: MessageTimelineProps) {
-  // Derive the channel from the first message when not explicitly passed
   const effectiveProvider = provider ?? messages[0]?.provider ?? undefined;
   const theme = getChannelTheme(effectiveProvider);
-
-  const virtualizer = useVirtualizer({
-    count: messages.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: (idx) => estimateSizeForIndex(idx, messages),
-    getItemKey: (idx: number) => messages[idx]?.id ?? idx,
-    overscan: 15,
-  });
 
   const containerCls = `relative min-h-0 flex-1 overflow-hidden ${theme.surfaceCls} ${className ?? ""}`;
 
@@ -139,52 +80,44 @@ export function MessageTimeline({
         onScroll={onScroll}
         style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const idx = virtualItem.index;
-            const msg = messages[idx];
-            const prev = idx > 0 ? messages[idx - 1] : null;
-            const showDateSeparator =
-              !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
-            const isConsecutive = isConsecutiveMessage(msg, prev);
-            const showSenderName = !isConsecutive && msg.direction === "INBOUND";
-            const isNew = msg.id === animatingMsgId;
-            const quotedRaw = msg.replyToMessageId
-              ? messages.find(m => m.id === msg.replyToMessageId)
-              : null;
-            const quotedMessage = quotedRaw
-              ? { bodyText: quotedRaw.bodyText, senderName: quotedRaw.senderName ?? null, direction: quotedRaw.direction, mediaType: quotedRaw.mediaType, mediaCaption: quotedRaw.mediaCaption, mediaFilename: quotedRaw.mediaFilename }
-              : undefined;
+        {messages.map((msg, idx) => {
+          const prev = idx > 0 ? messages[idx - 1] : null;
+          const showDateSeparator =
+            !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
+          const isConsecutive = isConsecutiveMessage(msg, prev);
+          const showSenderName = !isConsecutive && msg.direction === "INBOUND";
+          const isNew = msg.id === animatingMsgId;
+          const quotedRaw = msg.replyToMessageId
+            ? messages.find(m => m.id === msg.replyToMessageId)
+            : null;
+          const quotedMessage = quotedRaw
+            ? {
+                bodyText: quotedRaw.bodyText,
+                senderName: quotedRaw.senderName ?? null,
+                direction: quotedRaw.direction,
+                mediaType: quotedRaw.mediaType,
+                mediaCaption: quotedRaw.mediaCaption,
+                mediaFilename: quotedRaw.mediaFilename,
+              }
+            : undefined;
 
-            return (
-              <div
-                key={msg.id}
-                data-index={idx}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                {showDateSeparator && msg.sentAt && <DateSeparator date={msg.sentAt} />}
-                <MessageBubble
-                  message={msg}
-                  isConsecutive={isConsecutive}
-                  showSenderName={showSenderName}
-                  isNew={isNew}
-                  contactName={contactName}
-                  contactAvatarInitials={contactAvatarInitials}
-                  contactAvatarUrl={contactAvatarUrl}
-                  quotedMessage={quotedMessage}
-                  onReply={onReply}
-                />
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div key={msg.id}>
+              {showDateSeparator && msg.sentAt && <DateSeparator date={msg.sentAt} />}
+              <MessageBubble
+                message={msg}
+                isConsecutive={isConsecutive}
+                showSenderName={showSenderName}
+                isNew={isNew}
+                contactName={contactName}
+                contactAvatarInitials={contactAvatarInitials}
+                contactAvatarUrl={contactAvatarUrl}
+                quotedMessage={quotedMessage}
+                onReply={onReply}
+              />
+            </div>
+          );
+        })}
 
         {isUserTyping && (
           <div className="ml-8 flex items-center gap-1.5 px-2 py-2 sm:ml-10 sm:px-3">

@@ -52,13 +52,14 @@ function segmentByUrls(text: string, linkCls: string, baseKey: number): React.Re
 // Matches (in order of precedence):
 //   1. ```block```
 //   2. `inline`
-//   3. *bold*  (no space at edges, no newline inside)
-//   4. _italic_
-//   5. ~strike~
-//   6. URL
-//   7. \n
+//   3. **bold** (double asterisk, standard Markdown / AI output)
+//   4. *bold*   (single asterisk, WhatsApp style)
+//   5. _italic_
+//   6. ~strike~
+//   7. URL
+//   8. \n
 const WA_TOKEN_RE =
-  /(```[\s\S]*?```|`[^`\n]+`|\*(?!\s)[^*\n]+?(?<!\s)\*|_(?!\s)[^_\n]+?(?<!\s)_|~(?!\s)[^~\n]+?(?<!\s)~|https?:\/\/[^\s<>"{}|\\^`[\]]+|\n)/g;
+  /(```[\s\S]*?```|`[^`\n]+`|\*\*(?!\s)[^*\n]+?(?<!\s)\*\*|\*(?!\s)[^*\n]+?(?<!\s)\*|_(?!\s)[^_\n]+?(?<!\s)_|~(?!\s)[^~\n]+?(?<!\s)~|https?:\/\/[^\s<>"{}|\\^`[\]]+|\n)/g;
 
 interface TextClasses { linkCls: string; codeCls: string; preCls: string }
 
@@ -86,6 +87,8 @@ function renderWAMarkdown(text: string, cls: TextClasses): React.ReactNode[] {
       nodes.push(<pre key={key++} className={cls.preCls}><code>{code}</code></pre>);
     } else if (match.startsWith("`") && match.endsWith("`")) {
       nodes.push(<code key={key++} className={cls.codeCls}>{match.slice(1, -1)}</code>);
+    } else if (match.startsWith("**") && match.endsWith("**")) {
+      nodes.push(<span key={key++} className="font-semibold">{match.slice(2, -2)}</span>);
     } else if (match.startsWith("*") && match.endsWith("*")) {
       nodes.push(<span key={key++} className="font-semibold">{match.slice(1, -1)}</span>);
     } else if (match.startsWith("_") && match.endsWith("_")) {
@@ -211,8 +214,8 @@ export function MessageText({
 
   const content = useMemo<React.ReactNode[]>(() => {
     if (isTelegram && bodyHtml) return parseTelegramHtml(bodyHtml, cls);
-    if (isWhatsApp && text) return renderWAMarkdown(text, cls);
-    if (text) return segmentByUrls(text, linkCls, 0);
+    if (bodyHtml && !isWhatsApp) return parseTelegramHtml(bodyHtml, cls);
+    if (text) return renderWAMarkdown(text, cls);
     return [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, bodyHtml, isWhatsApp, isTelegram, linkCls, codeCls, preCls]);

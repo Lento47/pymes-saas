@@ -45,6 +45,29 @@ interface PipelineStage {
   deals: StageDeal[];
 }
 
+interface DashInvoice {
+  id: string;
+  status?: string;
+  collection_state?: string;
+  due_date?: string | null;
+  balance_due?: number | null;
+  amount?: number;
+  client_name?: string;
+}
+
+interface DashTask {
+  id: string;
+  title: string;
+  priority?: string;
+  due_date?: string | null;
+}
+
+type TodayStats = {
+  unanswered_conversations?: number;
+  new_conversations?: number;
+  received_messages?: number;
+};
+
 type Tone = "neutral" | "danger" | "warning" | "success";
 
 const ACTIVE_STAGES = ["Ganado", "Perdido"];
@@ -57,7 +80,7 @@ function crc(n: number): string {
     : `₡${n.toLocaleString("es-CR")}`;
 }
 
-function invoiceUrgency(inv: any): "overdue" | "soon" | "ok" {
+function invoiceUrgency(inv: DashInvoice): "overdue" | "soon" | "ok" {
   if (!inv?.due_date) return "ok";
   const days = Math.ceil((new Date(inv.due_date).getTime() - Date.now()) / 86400000);
   if (days < 0) return "overdue";
@@ -125,7 +148,7 @@ function MetricCard({
   const dotClass = toneDotClass[tone];
 
   const inner = (
-    <Card className="group h-full transition-colors hover:bg-accent/50 cursor-pointer">
+    <Card className="group relative h-full transition-colors hover:bg-accent/50 cursor-pointer">
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -265,7 +288,10 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-primary/50 border border-primary/30" />
+                      <span
+                      className="h-2 w-2 shrink-0 rounded-full border border-black/10"
+                      style={{ backgroundColor: stage.color ?? "hsl(var(--primary))" }}
+                    />
                       <span className="truncate text-sm font-medium text-foreground">{stage.name}</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">{crc(value)}</p>
@@ -327,47 +353,47 @@ export default function DashboardPage() {
     refetchInterval: 120000,
   });
 
-  const { data: conversations } = useQuery({
+  const { data: conversations, isLoading: convsLoading } = useQuery({
     queryKey: ["/api/conversations", "dash"],
     queryFn: () => api.getConversations({ limit: "5" }),
   });
 
-  const { data: tasks } = useQuery({
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks", "dash"],
     queryFn: () => api.getTasks({ limit: "10" }),
   });
 
-  const { data: invoicesData } = useQuery({
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery({
     queryKey: ["/api/invoices", "dash"],
     queryFn: () => api.getInvoices({ limit: "50" }),
     refetchInterval: 120000,
   });
 
-  /* ── Data processing (unchanged) ── */
-  const t = (todayStats as any) ?? {};
+  /* ── Data processing ── */
+  const t = (todayStats as TodayStats | undefined) ?? {};
   const pipelineStages: PipelineStage[] = Array.isArray(pipeline) ? pipeline : [];
   const activeStages = pipelineStages.filter((stage) => !ACTIVE_STAGES.includes(stage.name));
-  const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
-  const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
-  const allInvoices: any[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data ?? [];
-  const outstandingInvoices = allInvoices.filter((inv: any) =>
-    ["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(inv.status ?? inv.collection_state)
+  const convList = Array.isArray(conversations) ? conversations : (conversations as { data?: unknown[] } | undefined)?.data ?? [];
+  const taskList: DashTask[] = Array.isArray(tasks) ? tasks : (tasks as { data?: DashTask[] } | undefined)?.data ?? [];
+  const allInvoices: DashInvoice[] = Array.isArray(invoicesData) ? invoicesData : (invoicesData as { data?: DashInvoice[] } | undefined)?.data ?? [];
+  const outstandingInvoices = allInvoices.filter((inv) =>
+    ["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(inv.status ?? inv.collection_state ?? "")
   );
   const upcomingInvoices = [...outstandingInvoices].sort(
-    (a: any, b: any) => new Date(a.due_date ?? 0).getTime() - new Date(b.due_date ?? 0).getTime()
+    (a, b) => new Date(a.due_date ?? 0).getTime() - new Date(b.due_date ?? 0).getTime()
   );
-  const overdueInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "overdue");
-  const soonInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "soon");
-  const priorityInvoices = [...overdueInvoices, ...soonInvoices, ...upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "ok")];
-  const urgentTasks = taskList.filter((task: any) => task.priority === "HIGH");
-  const attentionTasks = [...urgentTasks, ...taskList.filter((task: any) => task.priority !== "HIGH")];
+  const overdueInvoices = upcomingInvoices.filter((inv) => invoiceUrgency(inv) === "overdue");
+  const soonInvoices = upcomingInvoices.filter((inv) => invoiceUrgency(inv) === "soon");
+  const priorityInvoices = [...overdueInvoices, ...soonInvoices, ...upcomingInvoices.filter((inv) => invoiceUrgency(inv) === "ok")];
+  const urgentTasks = taskList.filter((task) => task.priority === "HIGH");
+  const attentionTasks = [...urgentTasks, ...taskList.filter((task) => task.priority !== "HIGH")];
   const pipelineTotalDeals = activeStages.reduce((sum, stage) => sum + stage.deals.length, 0);
   const pipelineTotalValue = activeStages.reduce(
     (sum, stage) => sum + stage.deals.reduce((stageSum, deal) => stageSum + (Number(deal.value) || 0), 0),
     0,
   );
-  const totalOutstanding = outstandingInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0);
-  const unreadCount = Number(t.unread_conversations ?? t.open_conversations ?? t.received_messages ?? 0);
+  const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0);
+  const unreadCount = Number(t.unanswered_conversations ?? 0);
   const operatingTone: Tone = overdueInvoices.length > 0 || urgentTasks.length > 0 ? "danger" : soonInvoices.length > 0 ? "warning" : "success";
 
   return (
@@ -386,7 +412,7 @@ export default function DashboardPage() {
               </h1>
               {(operatingTone === "danger" || operatingTone === "warning") && (
                 <StatusBadge
-                  label={operatingTone === "danger" ? "Tenés facturas vencidas" : "Mensajes sin responder"}
+                  label={operatingTone === "danger" ? "Facturas vencidas" : "Facturas próximas a vencer"}
                   tone={operatingTone}
                 />
               )}
@@ -455,7 +481,7 @@ export default function DashboardPage() {
             label="Vencidas"
             value={String(overdueInvoices.length)}
             detail={overdueInvoices.length > 0
-              ? `${crc(overdueInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado`
+              ? `${crc(overdueInvoices.reduce((sum, inv) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado`
               : "Todo cobrado al día"}
             tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
@@ -483,13 +509,37 @@ export default function DashboardPage() {
         </section>
 
         {/* ── Pipeline band ── */}
-        {!pipelineLoading && activeStages.length > 0 && <PipelineBand stages={activeStages} />}
+        {pipelineLoading ? (
+          <Card>
+            <CardContent className="grid gap-px sm:grid-cols-2 lg:grid-cols-4 p-0 bg-primary/[0.08]">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-card px-4 py-3 space-y-2">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="h-7 w-12" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : activeStages.length > 0 ? (
+          <PipelineBand stages={activeStages} />
+        ) : null}
 
         {/* ── Main grid ── */}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.85fr)]">
           <div className="space-y-5">
-            <SectionCard title="Actividad reciente" count={convList.length} linkTo="/inbox">
-              {convList.length === 0 ? (
+            <SectionCard title="Actividad reciente" count={convsLoading ? undefined : convList.length} linkTo="/inbox">
+              {convsLoading ? (
+                <div className="divide-y divide-primary/[0.08]">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-3.5 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : convList.length === 0 ? (
                 <EmptyState
                   icon={MessageCircle}
                   text="Ningún mensaje nuevo por ahora"
@@ -498,26 +548,27 @@ export default function DashboardPage() {
                 />
               ) : (
                 <div className="divide-y divide-primary/[0.08]">
-                  {convList.slice(0, 7).map((conv: any) => {
-                    const statusTone: Tone = conv.status === "NEW" || conv.status === "OPEN" ? "warning" : conv.status === "PENDING" ? "neutral" : "success";
+                  {(convList as Array<Record<string, unknown>>).slice(0, 7).map((conv) => {
+                    const status = conv.status as string | undefined;
+                    const statusTone: Tone = status === "NEW" || status === "OPEN" ? "warning" : status === "PENDING" ? "neutral" : "success";
                     return (
-                      <RowItem key={conv.id} href={`/inbox/${conv.id}`}>
+                      <RowItem key={conv.id as string} href={`/inbox/${conv.id as string}`}>
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 items-center gap-2">
                             <p className="truncate text-sm font-medium text-foreground">
-                              {conv.contact?.full_name || "Sin nombre"}
+                              {(conv.contact as { full_name?: string } | undefined)?.full_name || "Sin nombre"}
                             </p>
                             <span className="shrink-0 text-[11px] text-muted-foreground/70">
-                              {CONV_STATUS[conv.status] || conv.status}
+                              {CONV_STATUS[status ?? ""] || status}
                             </span>
                           </div>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {conv.subject || conv.last_message_preview || "Sin asunto"}
+                            {(conv.subject as string | undefined) || (conv.last_message_preview as string | undefined) || "Sin asunto"}
                           </p>
                         </div>
                         {conv.updated_at && (
                           <span className="hidden text-xs text-muted-foreground sm:block">
-                            {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })}
+                            {formatDistanceToNow(new Date(conv.updated_at as string), { addSuffix: true, locale: es })}
                           </span>
                         )}
                       </RowItem>
@@ -531,8 +582,20 @@ export default function DashboardPage() {
           <aside className="space-y-5">
             <SetupChecklist />
 
-            <SectionCard title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
-              {priorityInvoices.length === 0 ? (
+            <SectionCard title="Cobranza crítica" count={invoicesLoading ? undefined : priorityInvoices.length} linkTo="/invoices">
+              {invoicesLoading ? (
+                <div className="divide-y divide-primary/[0.08]">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-3.5 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                      <Skeleton className="h-4 w-16 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              ) : priorityInvoices.length === 0 ? (
                 <EmptyState
                   icon={Receipt}
                   text="No hay facturas por vencer esta semana"
@@ -541,7 +604,7 @@ export default function DashboardPage() {
                 />
               ) : (
                 <div className="divide-y divide-primary/[0.08]">
-                  {priorityInvoices.slice(0, 6).map((inv: any) => {
+                  {priorityInvoices.slice(0, 6).map((inv) => {
                     const state = invoiceUrgency(inv);
                     const tone: Tone = state === "overdue" ? "danger" : state === "soon" ? "warning" : "neutral";
                     return (
@@ -561,7 +624,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                          {crc(Number(inv.balance_due ?? inv.amount) || 0)}
+                          {crc(Number(inv.balance_due ?? inv.amount ?? 0))}
                         </span>
                       </RowItem>
                     );
@@ -572,10 +635,21 @@ export default function DashboardPage() {
 
             <SectionCard
               title={urgentTasks.length > 0 ? "Tareas urgentes" : "Tareas pendientes"}
-              count={urgentTasks.length || taskList.length}
+              count={tasksLoading ? undefined : urgentTasks.length || taskList.length}
               linkTo="/tasks"
             >
-              {attentionTasks.length === 0 ? (
+              {tasksLoading ? (
+                <div className="divide-y divide-primary/[0.08]">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-3.5 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : attentionTasks.length === 0 ? (
                 <EmptyState
                   icon={CheckSquare}
                   text="Sin tareas asignadas por ahora"
@@ -584,7 +658,7 @@ export default function DashboardPage() {
                 />
               ) : (
                 <div className="divide-y divide-primary/[0.08]">
-                  {attentionTasks.slice(0, 7).map((task: any) => {
+                  {attentionTasks.slice(0, 7).map((task) => {
                     const tone: Tone = task.priority === "HIGH" ? "danger" : task.priority === "MEDIUM" ? "warning" : "neutral";
                     return (
                       <RowItem key={task.id} href="/tasks">
