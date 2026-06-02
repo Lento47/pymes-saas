@@ -357,6 +357,27 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
       model = fallback;
     }
 
+    // ── Typing indicator (WhatsApp only) ─────────────────────────────────────
+    let lastInboundWamid: string | null = null;
+    if (channelType === "WHATSAPP" && this.whatsapp) {
+      const lastInbound = await this.prisma.message.findFirst({
+        where: { conversation_id: conversationId, direction: "INBOUND", provider_message_id: { not: null } },
+        orderBy: { sent_at: "desc" },
+        select: { provider_message_id: true },
+      });
+      lastInboundWamid = lastInbound?.provider_message_id ?? null;
+      if (lastInboundWamid) {
+        const channel = await this.prisma.channel.findUnique({ where: { id: channelId }, select: { id: true, type: true, config_json: true } });
+        if (channel) this.whatsapp.sendTypingIndicator(channel as any, lastInboundWamid).catch(() => {});
+      }
+    }
+    const typingRefresh = lastInboundWamid && this.whatsapp
+      ? setInterval(() => {
+          this.prisma.channel.findUnique({ where: { id: channelId }, select: { id: true, type: true, config_json: true } })
+            .then(ch => ch && this.whatsapp!.sendTypingIndicator(ch as any, lastInboundWamid!).catch(() => {}));
+        }, 20_000)
+      : null;
+
     let response: string;
     // MiMo thinking models (v2.5-pro, v2.5, v2-pro, v2-omni) use temperature 1.0
     // by default and override any custom value internally. Using 1.0 aligns with
@@ -406,6 +427,9 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
             : `❌ Error ${statusHint} al procesar tu mensaje. Revisa los logs del servidor.`;
       }
     }
+
+    // ── Stop typing indicator ──────────────────────────────────────────────
+    if (typingRefresh) clearInterval(typingRefresh);
 
     // ── Guard: empty response ────────────────────────────────────────────────
     if (!response?.trim()) {
