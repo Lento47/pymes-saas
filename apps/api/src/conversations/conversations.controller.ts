@@ -649,11 +649,11 @@ export class ConversationsController {
     });
     const text = dto.trigger_text || lastMsg?.body_text || "";
     try {
-      const run = await this.agentRunService.startRun(workspaceId, conversationId, text);
-      return { ok: !!run, run };
+      const result = await this.agentRunService.startRun(workspaceId, conversationId, text);
+      return { ok: !!result.run, run: result.run, reason: result.reason };
     } catch (err: any) {
       this.logger.error(`Agent run failed: ${err?.message}`, err?.stack);
-      return { ok: false, run: null, error: "AGENT_RUN_FAILED" };
+      return { ok: false, run: null, reason: "AGENT_RUN_FAILED" };
     }
   }
 
