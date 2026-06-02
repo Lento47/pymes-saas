@@ -12,6 +12,7 @@ import { ContactAttachment } from "../media/ContactAttachment";
 import { InteractiveAttachment } from "../media/InteractiveAttachment";
 import { TelegramRichText } from "./TelegramRichText";
 import { WhatsAppRichText } from "./WhatsAppRichText";
+import { ReplyQuote } from "./ReplyQuote";
 
 interface MessageBubbleProps {
   message: UiMessage;
@@ -21,6 +22,7 @@ interface MessageBubbleProps {
   contactName?: string;
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
+  quotedMessage?: Pick<UiMessage, "bodyText" | "senderName" | "direction"> | null;
   className?: string;
 }
 
@@ -89,12 +91,18 @@ function getBubbleVariant(message: UiMessage): BubbleVariant {
   }
 }
 
-function bubbleRadius(isOutbound: boolean, isConsecutive: boolean, loose = false) {
-  const base = loose ? "rounded-2xl" : "rounded-2xl";
-  if (!isConsecutive) return base;
+const EMOJI_ONLY_RE = /^[\s​]*(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}){1,5}[\s​]*$/u;
+
+function isEmojiOnly(text: string): boolean {
+  return !!text?.trim() && EMOJI_ONLY_RE.test(text);
+}
+
+function bubbleRadius(isOutbound: boolean, isConsecutive: boolean) {
+  const base = "rounded-2xl";
+  if (isConsecutive) return base;
   return isOutbound
-    ? `${base} rounded-tr-md`
-    : `${base} rounded-tl-md`;
+    ? `${base} rounded-br-sm`
+    : `${base} rounded-bl-sm`;
 }
 
 export const MessageBubble = function MessageBubble({
@@ -105,11 +113,14 @@ export const MessageBubble = function MessageBubble({
   contactName,
   contactAvatarInitials,
   contactAvatarUrl,
+  quotedMessage,
   className,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === "OUTBOUND";
   const isShort = (message.bodyText?.length ?? 0) < 100;
   const variant = getBubbleVariant(message);
+  const isLargeEmoji = variant === "text" && !message.bodyHtml && !message.hasMedia && !message.isReaction && isEmojiOnly(message.bodyText ?? "");
+  const showTail = !isConsecutive && !isLargeEmoji && (variant === "text" || variant === "audio" || variant === "media");
 
   const timeString = useMemo(() => {
     return message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -131,9 +142,9 @@ export const MessageBubble = function MessageBubble({
       case "sticker":
         return `max-w-[160px] sm:max-w-[180px] ${spacing} border-0 bg-transparent px-0 py-0 shadow-none`;
       case "media":
-        return `relative max-w-[84%] sm:max-w-[360px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} overflow-hidden p-1`;
+        return `relative max-w-[84%] sm:max-w-[360px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} overflow-hidden p-1`;
       case "audio":
-        return `max-w-[86%] sm:max-w-[340px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} px-2.5 py-2`;
+        return `max-w-[86%] sm:max-w-[340px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} px-2.5 py-2`;
       case "document":
       case "location":
       case "contact":
@@ -143,9 +154,12 @@ export const MessageBubble = function MessageBubble({
         return `max-w-[88%] ${spacing} rounded-full border border-border/30 bg-muted/30 px-3 py-1.5`;
       case "text":
       default:
+        if (isLargeEmoji) {
+          return `max-w-[84%] sm:max-w-[68%] ${spacing} bg-transparent border-0 shadow-none px-1 py-0.5`;
+        }
         return `max-w-[84%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3.5 py-2" : "px-4 py-2.5"}`;
     }
-  }, [variant, isConsecutive, isOutbound, isShort]);
+  }, [variant, isConsecutive, isOutbound, isShort, isLargeEmoji]);
 
   const renderContent = () => {
     switch (message.mediaType) {
@@ -189,6 +203,13 @@ export const MessageBubble = function MessageBubble({
         );
       }
       default:
+        if (isLargeEmoji) {
+          return (
+            <div className="text-4xl sm:text-5xl leading-none py-1 select-none">
+              {message.bodyText}
+            </div>
+          );
+        }
         if (message.provider === "TELEGRAM" && message.bodyHtml) {
           return (
             <div className={`overflow-hidden ${isOutbound ? "text-primary-foreground" : "text-foreground"}`}>
@@ -235,16 +256,46 @@ export const MessageBubble = function MessageBubble({
       {!isOutbound && isConsecutive && (
         <div className="w-6 shrink-0 sm:w-7" aria-hidden="true" />
       )}
-      <div className={bubbleClasses}>
-        {renderContent()}
-        <MessageMeta
-          message={message}
-          isOutbound={isOutbound}
-          showSenderName={showSenderName}
-          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
-          overlay={variant === "media"}
-        />
-      </div>
+      {showTail ? (
+        <div className="relative">
+          <div className={bubbleClasses}>
+            {quotedMessage && (variant === "text" || variant === "audio") && (
+              <ReplyQuote quotedMessage={quotedMessage} isOutbound={isOutbound} />
+            )}
+            {renderContent()}
+            <MessageMeta
+              message={message}
+              isOutbound={isOutbound}
+              showSenderName={showSenderName}
+              compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
+              overlay={variant === "media"}
+              isLargeEmoji={isLargeEmoji}
+            />
+          </div>
+          <svg
+            viewBox="0 0 8 8"
+            className={`absolute bottom-0 h-2 w-2 ${isOutbound ? "-right-[7px]" : "-left-[7px]"}`}
+            style={{ fill: isOutbound ? "hsl(var(--primary))" : "hsl(var(--card))" }}
+            aria-hidden="true"
+          >
+            {isOutbound
+              ? <path d="M0 8 Q0 0 8 0 L8 8 Z" />
+              : <path d="M8 8 Q8 0 0 0 L0 8 Z" />}
+          </svg>
+        </div>
+      ) : (
+        <div className={bubbleClasses}>
+          {renderContent()}
+          <MessageMeta
+            message={message}
+            isOutbound={isOutbound}
+            showSenderName={showSenderName}
+            compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
+            overlay={variant === "media"}
+            isLargeEmoji={isLargeEmoji}
+          />
+        </div>
+      )}
     </div>
   );
 };

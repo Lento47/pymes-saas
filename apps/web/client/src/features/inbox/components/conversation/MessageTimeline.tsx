@@ -61,9 +61,14 @@ export function MessageTimeline({
     overscan: 5,
   });
 
+  const chatBgStyle: React.CSSProperties = {
+    backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px)`,
+    backgroundSize: `20px 20px`,
+  };
+
   if (isLoading) {
     return (
-      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`} style={chatBgStyle}>
         <EmptyConversationState isLoading />
       </div>
     );
@@ -71,14 +76,14 @@ export function MessageTimeline({
 
   if (messages.length === 0) {
     return (
-      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+      <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`} style={chatBgStyle}>
         <EmptyConversationState isLoading={false} contactName={contactName} />
       </div>
     );
   }
 
   return (
-    <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+    <div className={`relative min-h-0 flex-1 overflow-hidden bg-muted/[0.12] ${className ?? ""}`} style={chatBgStyle}>
       <div
         ref={scrollRef}
         className="h-full overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-4 sm:py-5"
@@ -100,6 +105,12 @@ export function MessageTimeline({
             const isConsecutive = isConsecutiveMessage(msg, prev);
             const showSenderName = !isConsecutive && msg.direction === "INBOUND";
             const isNew = msg.id === animatingMsgId;
+            const quotedRaw = msg.replyToMessageId
+              ? messages.find(m => m.id === msg.replyToMessageId)
+              : null;
+            const quotedMessage = quotedRaw
+              ? { bodyText: quotedRaw.bodyText, senderName: quotedRaw.senderName ?? null, direction: quotedRaw.direction }
+              : undefined;
 
             return (
               <div
@@ -123,6 +134,7 @@ export function MessageTimeline({
                   contactName={contactName}
                   contactAvatarInitials={contactAvatarInitials}
                   contactAvatarUrl={contactAvatarUrl}
+                  quotedMessage={quotedMessage}
                 />
               </div>
             );
