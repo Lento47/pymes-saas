@@ -339,7 +339,7 @@ export const MessageBubble = function MessageBubble({
 
       {/* Bubble — Card base with defaults reset so channel theme classes take precedence */}
       <div className={`group/bubble relative min-w-0 ${maxWidthCls}`}>
-        <Card className={`border-0 bg-transparent shadow-none ${bubbleClasses}`}>
+        <Card className={`border-0 bg-transparent shadow-none overflow-hidden ${bubbleClasses}`}>
           {quotedMessage && (
             <ReplyQuote
               quotedMessage={quotedMessage}
