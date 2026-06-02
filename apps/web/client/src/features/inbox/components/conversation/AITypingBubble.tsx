@@ -39,21 +39,6 @@ export interface AgentRun {
   artifact: { type: string; id: string; title: string } | null;
 }
 
-/* ── Intent labels ─────────────────────────────────────────────────── */
-const INTENT_LABELS: Record<string, string> = {
-  ORDER: "pedido",
-  APPOINTMENT: "cita",
-  QUOTE: "cotización",
-  COMPLAINT: "queja",
-  SUPPORT: "soporte",
-  BILLING: "facturación",
-};
-
-function getIntentLabel(intent?: string | null): string {
-  if (!intent) return "";
-  return INTENT_LABELS[intent.toUpperCase()] ?? intent.toLowerCase().replace(/_/g, " ");
-}
-
 /* ── Step icon mapping ──────────────────────────────────────────────── */
 const STEP_ICONS: Record<string, ElementType> = {
   INTENT_DETECTED: Brain,
@@ -82,7 +67,11 @@ export function AITypingBubble({ agentRun, conversationId, label = "PymesHub IA"
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // Auto-collapse when the run finishes
+  // Auto-expand when a new run starts; auto-collapse when it finishes
+  useEffect(() => {
+    if (isRunning) setExpanded(true);
+  }, [isRunning]);
+
   useEffect(() => {
     if (isCompleted || isFailed) setExpanded(false);
   }, [isCompleted, isFailed]);
