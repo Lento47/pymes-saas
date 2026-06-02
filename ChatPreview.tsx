@@ -4,7 +4,7 @@
  * Dependencies: lucide-react (icons only)
  */
 import { useState } from "react";
-import { Check, CheckCheck, Reply, ChevronDown, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Check, CheckCheck, Reply } from "lucide-react";
 
 /* ── Channel Themes ─────────────────────────────────────────────────── */
 const THEMES = {
@@ -31,33 +31,6 @@ const THEMES = {
 } as const;
 
 type Channel = keyof typeof THEMES;
-
-/* ── AI Inline Separator ────────────────────────────────────────────── */
-function AIInlineSeparator({ status, variant = "running" }: { status: string; variant?: "running" | "done" | "error" }) {
-  const colors = {
-    running: { pill: "border-violet-100 bg-violet-50 dark:border-violet-800 dark:bg-violet-950", text: "text-violet-700 dark:text-violet-400", dot: "bg-violet-500", ping: "bg-violet-400", line: "bg-slate-200 dark:bg-slate-700" },
-    done:    { pill: "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", ping: "bg-emerald-400", line: "bg-emerald-200 dark:bg-emerald-800" },
-    error:   { pill: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950", text: "text-red-700 dark:text-red-400", dot: "bg-red-500", ping: "bg-red-400", line: "bg-red-200 dark:bg-red-800" },
-  }[variant];
-
-  return (
-    <div className="flex items-center gap-3 px-3 py-1.5">
-      <div className={`h-px flex-1 ${colors.line}`} />
-      <div className={`flex items-center gap-2 rounded-full border px-3 py-1 ${colors.pill}`}>
-        {variant === "running" && (
-          <span className="relative flex h-2 w-2">
-            <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${colors.ping}`} />
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${colors.dot}`} />
-          </span>
-        )}
-        {variant === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-        {variant === "error" && <AlertCircle className="h-3 w-3 text-red-500" />}
-        <span className={`text-xs font-medium whitespace-nowrap ${colors.text}`}>PymesHub IA · {status}</span>
-      </div>
-      <div className={`h-px flex-1 ${colors.line}`} />
-    </div>
-  );
-}
 
 /* ── Message Bubble ─────────────────────────────────────────────────── */
 function MessageBubble({
@@ -154,8 +127,17 @@ export default function ChatPreview() {
           <MessageBubble text="Hola, ¿hacen entregas a domicilio hoy?" time="10:41" isOutbound={false} channel={channel} />
           <MessageBubble text="Necesito que me envíen 2 cajas de empanadas" time="10:41" isOutbound={false} isConsecutive channel={channel} />
 
-          {/* AI thinking */}
-          <AIInlineSeparator status="analizando mensaje" />
+          {/* AI thinking — WhatsApp-style bubble */}
+          <div className="flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 justify-end">
+            <div className="max-w-[72%] rounded-2xl rounded-br-md bg-violet-600 dark:bg-violet-700 px-3.5 py-2 shadow-sm">
+              <div className="mb-1 text-[11px] font-medium leading-none text-violet-200">PymesHub IA</div>
+              <div className="flex h-5 items-center gap-1.5">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200 [animation-delay:-0.24s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200 [animation-delay:-0.12s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-200" />
+              </div>
+            </div>
+          </div>
 
           {/* AI reply with quote */}
           <MessageBubble
@@ -174,8 +156,13 @@ export default function ChatPreview() {
             channel={channel}
           />
 
-          {/* AI done separator */}
-          <AIInlineSeparator status="respuesta lista" variant="done" />
+          {/* AI done — brief status */}
+          <div className="flex gap-2 px-0.5 sm:gap-2.5 sm:px-1 justify-end">
+            <div className="max-w-[72%] rounded-2xl rounded-br-md bg-emerald-600 dark:bg-emerald-700 px-3.5 py-2 shadow-sm">
+              <div className="mb-1 text-[11px] font-medium leading-none text-emerald-200">PymesHub IA · respuesta lista</div>
+              <span className="text-[12px] text-emerald-200">✓ lista</span>
+            </div>
+          </div>
 
           {/* Final AI message */}
           <MessageBubble
