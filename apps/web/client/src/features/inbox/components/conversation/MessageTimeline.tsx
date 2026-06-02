@@ -35,7 +35,7 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
   return base;
 }
 
-import { AgentRunCard, type AgentRun } from "./AgentRunCard";
+import { AITypingBubble, type AgentRun } from "./AITypingBubble";
 
 interface MessageTimelineProps {
   messages: UiMessage[];
@@ -178,7 +178,7 @@ export function MessageTimeline({
         )}
 
         {agentRun && agentRun.status !== "CANCELLED" && agentRunConversationId && (
-          <AgentRunCard run={agentRun} conversationId={agentRunConversationId} />
+          <AITypingBubble agentRun={agentRun} conversationId={agentRunConversationId} />
         )}
 
         <div ref={bottomRef} />
