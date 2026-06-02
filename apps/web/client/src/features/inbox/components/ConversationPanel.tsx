@@ -8,7 +8,7 @@ import { getSocket } from "@/hooks/use-socket";
 import { ConversationHeader } from "./conversation/ConversationHeader";
 import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
-import { AgentRunCard, type AgentRun } from "./conversation/AgentRunCard";
+import { type AgentRun } from "./conversation/AITypingBubble";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
 import { ContactFromConversationDialog } from "./ContactFromConversationDialog";
