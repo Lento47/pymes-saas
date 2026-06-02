@@ -258,7 +258,8 @@ export const MessageBubble = function MessageBubble({
     isOutbound,
     showSenderName,
     metaCls,
-    statusVariant: theme.statusVariant,
+    statusDimCls: theme.statusDimCls,
+    statusReadCls: theme.statusReadCls,
   } as const;
 
   // ── Reply gesture: swipe right (touch) + double-click (desktop) ─────────

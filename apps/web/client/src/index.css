@@ -78,6 +78,33 @@
   --sidebar-width-icon: 3rem;
   --skeleton-width:    5rem;
   --spacing-4:         1rem;
+
+  /* ── Chat channel theme tokens (dark defaults) ── */
+  --wa-surface: #111b21;
+  --wa-bubble-out: #005c4b;
+  --wa-bubble-in: #202c33;
+  --wa-text: #e9edef;
+  --wa-link: #53bdeb;
+  --wa-code-bg: rgba(255,255,255,0.10);
+  --wa-meta: rgba(233,237,239,0.45);
+  --wa-status-read: #4fc3f7;
+  --wa-quote-border: rgba(83,189,235,0.35);
+  --wa-quote-bg: rgba(83,189,235,0.08);
+  --wa-quote-sender: rgba(83,189,235,0.90);
+  --wa-quote-text: rgba(233,237,239,0.60);
+
+  --tg-surface: #0e1621;
+  --tg-bubble-out: #2b5278;
+  --tg-bubble-in: #182533;
+  --tg-text: #ffffff;
+  --tg-link: #71baf4;
+  --tg-code-bg: rgba(255,255,255,0.10);
+  --tg-meta: rgba(255,255,255,0.45);
+  --tg-status-read: #64b5f6;
+  --tg-quote-border: rgba(113,186,244,0.35);
+  --tg-quote-bg: rgba(113,186,244,0.08);
+  --tg-quote-sender: rgba(113,186,244,0.90);
+  --tg-quote-text: rgba(255,255,255,0.60);
 }
 
 /* ── Light theme (opt-in) ── */
@@ -112,6 +139,33 @@ html.light {
   --surface-subtle: 240 15% 97%;
   --surface-raised: 0 0% 100%;
   --link:          262 83% 50%;
+
+  /* ── Chat channel theme tokens (light overrides) ── */
+  --wa-surface: #e5ddd5;
+  --wa-bubble-out: #dcf8c6;
+  --wa-bubble-in: #ffffff;
+  --wa-text: #111827;
+  --wa-link: #075e54;
+  --wa-code-bg: rgba(0,0,0,0.06);
+  --wa-meta: rgba(17,24,39,0.45);
+  --wa-status-read: #1a8fe3;
+  --wa-quote-border: rgba(7,94,84,0.30);
+  --wa-quote-bg: rgba(7,94,84,0.07);
+  --wa-quote-sender: rgba(7,94,84,0.85);
+  --wa-quote-text: rgba(17,24,39,0.60);
+
+  --tg-surface: #c8d8e4;
+  --tg-bubble-out: #effdde;
+  --tg-bubble-in: #ffffff;
+  --tg-text: #111827;
+  --tg-link: #2481cc;
+  --tg-code-bg: rgba(0,0,0,0.06);
+  --tg-meta: rgba(17,24,39,0.45);
+  --tg-status-read: #1a8fe3;
+  --tg-quote-border: rgba(36,129,204,0.30);
+  --tg-quote-bg: rgba(36,129,204,0.07);
+  --tg-quote-sender: rgba(36,129,204,0.85);
+  --tg-quote-text: rgba(17,24,39,0.60);
 }
 
 /* Light mode: glass panels become solid cards */

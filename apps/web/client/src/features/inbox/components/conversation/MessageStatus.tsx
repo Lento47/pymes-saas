@@ -5,16 +5,16 @@ interface MessageStatusProps {
   direction: string;
   deliveryStatus?: string | null;
   deliveryError?: string | null;
-  /** "light" = white icons (dark bubble). "dark" = muted icons (light bubble). */
-  variant?: "light" | "dark";
+  /** Tailwind color class for sent/delivered/pending icons (from channel theme). */
+  dimCls?: string;
+  /** Tailwind color class for the read/played double-tick (from channel theme). */
+  readCls?: string;
 }
 
-export function MessageStatus({ direction, deliveryStatus, deliveryError, variant = "light" }: MessageStatusProps) {
+export function MessageStatus({ direction, deliveryStatus, deliveryError, dimCls = "text-white/70", readCls = "text-sky-300" }: MessageStatusProps) {
   if (direction !== "OUTBOUND") return null;
 
-  const dimCls  = variant === "light" ? "text-white/70"  : "text-[#111827]/40 dark:text-white/60";
-  const fadeCls = variant === "light" ? "text-white/50"  : "text-[#111827]/30 dark:text-white/40";
-  const blueCls = variant === "light" ? "text-sky-300"   : "text-[#2481cc] dark:text-sky-300";
+  const blueCls = readCls;
 
   const s = (deliveryStatus ?? "").toLowerCase();
 
@@ -38,7 +38,7 @@ export function MessageStatus({ direction, deliveryStatus, deliveryError, varian
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Clock className={`w-3 h-3 shrink-0 ${fadeCls}`} />
+            <Clock className={`w-3 h-3 shrink-0 ${dimCls} opacity-70`} />
           </TooltipTrigger>
           <TooltipContent side="top"><p className="text-xs">Pendiente</p></TooltipContent>
         </Tooltip>

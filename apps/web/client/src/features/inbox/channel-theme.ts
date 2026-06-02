@@ -9,10 +9,6 @@ export interface ChannelTheme {
   outboundCls: string;
   inboundCls: string;
 
-  // SVG tail fill (inline CSS color string) — unused since CSS-only corners
-  outboundTailColor: string;
-  inboundTailColor: string;
-
   // Text inside bubbles
   outboundTextCls: string;
   inboundTextCls: string;
@@ -33,8 +29,9 @@ export interface ChannelTheme {
   outboundMetaCls: string;
   inboundMetaCls: string;
 
-  // Status icon variant — 'light' for dark bubbles, 'dark' for light bubbles
-  statusVariant: "light" | "dark";
+  // Status icon colors (outbound only)
+  statusDimCls: string;
+  statusReadCls: string;
 
   // Reply quote styles
   outboundQuoteCls: string;
@@ -60,9 +57,6 @@ export const DEFAULT_THEME: ChannelTheme = {
   outboundCls: "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(79,70,229,0.18)]",
   inboundCls: "bg-card border border-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2)]",
 
-  outboundTailColor: "hsl(var(--primary))",
-  inboundTailColor: "hsl(var(--card))",
-
   outboundTextCls: "text-primary-foreground",
   inboundTextCls: "text-foreground",
 
@@ -78,7 +72,8 @@ export const DEFAULT_THEME: ChannelTheme = {
   outboundMetaCls: "text-white/50",
   inboundMetaCls: "text-muted-foreground/45",
 
-  statusVariant: "light",
+  statusDimCls: "text-white/70",
+  statusReadCls: "text-sky-300",
 
   outboundQuoteCls: "border-l-2 border-white/40 bg-white/10",
   inboundQuoteCls: "border-l-2 border-primary/50 bg-primary/[0.06]",
@@ -90,91 +85,71 @@ export const DEFAULT_THEME: ChannelTheme = {
 
 export const CHANNEL_THEMES: Record<string, ChannelTheme> = {
   WHATSAPP: {
-    /* Surface: WhatsApp light parchment → dark charcoal #0b141a */
-    surfaceCls: "bg-[#e5ddd5] dark:bg-[#0b141a]",
+    /* Surface: CSS vars — dark default in :root, light override in html.light (index.css) */
+    surfaceCls: "bg-[var(--wa-surface)]",
     surfaceStyle: {},
 
-    /* Outbound: light green #dcf8c6 → dark teal #005c4b */
-    outboundCls: "bg-[#dcf8c6] shadow-sm dark:bg-[#005c4b] dark:shadow-black/20",
-    /* Inbound: white → dark surface #202c33 */
-    inboundCls: "bg-white shadow-sm dark:bg-[#202c33] dark:shadow-black/20",
+    outboundCls: "bg-[var(--wa-bubble-out)] shadow-sm",
+    inboundCls: "bg-[var(--wa-bubble-in)] shadow-sm",
 
-    outboundTailColor: "#dcf8c6",
-    inboundTailColor: "#ffffff",
+    outboundTextCls: "text-[var(--wa-text)]",
+    inboundTextCls: "text-[var(--wa-text)]",
 
-    /* Text: dark gray → white */
-    outboundTextCls: "text-[#111827] dark:text-white",
-    inboundTextCls: "text-[#111827] dark:text-white",
+    outboundLinkCls: "text-[var(--wa-link)] underline",
+    inboundLinkCls: "text-[var(--wa-link)] underline",
 
-    /* Links: green → teal-300 */
-    outboundLinkCls: "text-[#075e54] underline dark:text-[#53bdeb]",
-    inboundLinkCls: "text-[#075e54] underline dark:text-[#53bdeb]",
+    outboundCodeCls: "bg-[var(--wa-code-bg)] px-1 py-0.5 rounded font-mono text-[12.5px] text-[var(--wa-text)]",
+    inboundCodeCls: "bg-[var(--wa-code-bg)] px-1 py-0.5 rounded font-mono text-[12.5px] text-[var(--wa-text)]",
 
-    /* Inline code */
-    outboundCodeCls: "bg-black/[0.06] px-1 py-0.5 rounded font-mono text-[12.5px] text-[#111827] dark:bg-white/10 dark:text-white",
-    inboundCodeCls: "bg-black/[0.06] px-1 py-0.5 rounded font-mono text-[12.5px] text-[#111827] dark:bg-white/10 dark:text-white",
+    outboundPreCls: "bg-[var(--wa-code-bg)] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 text-[var(--wa-text)]",
+    inboundPreCls: "bg-[var(--wa-code-bg)] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 text-[var(--wa-text)]",
 
-    /* Code blocks */
-    outboundPreCls: "bg-black/[0.06] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 dark:bg-white/10 dark:text-white",
-    inboundPreCls: "bg-black/[0.06] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 dark:bg-white/10 dark:text-white",
+    outboundMetaCls: "text-[var(--wa-meta)]",
+    inboundMetaCls: "text-[var(--wa-meta)]",
 
-    /* Meta/timestamp */
-    outboundMetaCls: "text-[#111827]/45 dark:text-white/40",
-    inboundMetaCls: "text-[#111827]/45 dark:text-white/40",
+    statusDimCls: "text-[var(--wa-meta)]",
+    statusReadCls: "text-[var(--wa-status-read)]",
 
-    statusVariant: "dark",
-
-    /* Reply quotes */
-    outboundQuoteCls: "border-l-2 border-[#075e54]/30 bg-[#075e54]/[0.08] dark:border-[#53bdeb]/40 dark:bg-[#53bdeb]/[0.1]",
-    inboundQuoteCls: "border-l-2 border-[#075e54]/30 bg-[#075e54]/[0.06] dark:border-[#53bdeb]/30 dark:bg-[#53bdeb]/[0.08]",
-    outboundQuoteSenderCls: "text-[#075e54]/80 dark:text-[#53bdeb]/80",
-    inboundQuoteSenderCls: "text-[#075e54]/80 dark:text-[#53bdeb]/80",
-    outboundQuoteTextCls: "text-[#111827]/60 dark:text-white/55",
-    inboundQuoteTextCls: "text-[#111827]/60 dark:text-white/55",
+    outboundQuoteCls: "border-l-2 border-[var(--wa-quote-border)] bg-[var(--wa-quote-bg)]",
+    inboundQuoteCls: "border-l-2 border-[var(--wa-quote-border)] bg-[var(--wa-quote-bg)]",
+    outboundQuoteSenderCls: "text-[var(--wa-quote-sender)]",
+    inboundQuoteSenderCls: "text-[var(--wa-quote-sender)]",
+    outboundQuoteTextCls: "text-[var(--wa-quote-text)]",
+    inboundQuoteTextCls: "text-[var(--wa-quote-text)]",
   },
 
   TELEGRAM: {
-    /* Surface: light blue #c8d8e4 → dark #0e1621 */
-    surfaceCls: "bg-[#c8d8e4] dark:bg-[#0e1621]",
+    /* Surface: CSS vars — dark default in :root, light override in html.light (index.css) */
+    surfaceCls: "bg-[var(--tg-surface)]",
     surfaceStyle: {},
 
-    /* Outbound: light green #effdde → dark blue #2b5278 */
-    outboundCls: "bg-[#effdde] shadow-sm dark:bg-[#2b5278] dark:shadow-black/20",
-    /* Inbound: white → dark surface #182533 */
-    inboundCls: "bg-white shadow-sm dark:bg-[#182533] dark:shadow-black/20",
+    outboundCls: "bg-[var(--tg-bubble-out)] shadow-sm",
+    inboundCls: "bg-[var(--tg-bubble-in)] shadow-sm",
 
-    outboundTailColor: "#effdde",
-    inboundTailColor: "#ffffff",
+    outboundTextCls: "text-[var(--tg-text)]",
+    inboundTextCls: "text-[var(--tg-text)]",
 
-    /* Text: dark gray → white */
-    outboundTextCls: "text-[#111827] dark:text-white",
-    inboundTextCls: "text-[#111827] dark:text-white",
+    outboundLinkCls: "text-[var(--tg-link)] underline",
+    inboundLinkCls: "text-[var(--tg-link)] underline",
 
-    /* Links: blue → Telegram link blue */
-    outboundLinkCls: "text-[#2481cc] underline dark:text-[#6ab2f2]",
-    inboundLinkCls: "text-[#2481cc] underline dark:text-[#6ab2f2]",
+    outboundCodeCls: "bg-[var(--tg-code-bg)] px-1 py-0.5 rounded font-mono text-[12.5px] text-[var(--tg-text)]",
+    inboundCodeCls: "bg-[var(--tg-code-bg)] px-1 py-0.5 rounded font-mono text-[12.5px] text-[var(--tg-text)]",
 
-    /* Inline code */
-    outboundCodeCls: "bg-black/[0.06] px-1 py-0.5 rounded font-mono text-[12.5px] text-[#111827] dark:bg-white/10 dark:text-white",
-    inboundCodeCls: "bg-black/[0.06] px-1 py-0.5 rounded font-mono text-[12.5px] text-[#111827] dark:bg-white/10 dark:text-white",
+    outboundPreCls: "bg-[var(--tg-code-bg)] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 text-[var(--tg-text)]",
+    inboundPreCls: "bg-[var(--tg-code-bg)] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 text-[var(--tg-text)]",
 
-    /* Code blocks */
-    outboundPreCls: "bg-black/[0.06] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 dark:bg-white/10 dark:text-white",
-    inboundPreCls: "bg-black/[0.06] p-2 rounded-md font-mono text-[12px] overflow-x-auto my-1 dark:bg-white/10 dark:text-white",
+    outboundMetaCls: "text-[var(--tg-meta)]",
+    inboundMetaCls: "text-[var(--tg-meta)]",
 
-    /* Meta/timestamp */
-    outboundMetaCls: "text-[#111827]/45 dark:text-white/40",
-    inboundMetaCls: "text-[#111827]/45 dark:text-white/40",
+    statusDimCls: "text-[var(--tg-meta)]",
+    statusReadCls: "text-[var(--tg-status-read)]",
 
-    statusVariant: "dark",
-
-    /* Reply quotes */
-    outboundQuoteCls: "border-l-2 border-[#2481cc]/30 bg-[#2481cc]/[0.08] dark:border-[#6ab2f2]/40 dark:bg-[#6ab2f2]/[0.1]",
-    inboundQuoteCls: "border-l-2 border-[#2481cc]/30 bg-[#2481cc]/[0.06] dark:border-[#6ab2f2]/30 dark:bg-[#6ab2f2]/[0.08]",
-    outboundQuoteSenderCls: "text-[#2481cc]/80 dark:text-[#6ab2f2]/80",
-    inboundQuoteSenderCls: "text-[#2481cc]/80 dark:text-[#6ab2f2]/80",
-    outboundQuoteTextCls: "text-[#111827]/60 dark:text-white/55",
-    inboundQuoteTextCls: "text-[#111827]/60 dark:text-white/55",
+    outboundQuoteCls: "border-l-2 border-[var(--tg-quote-border)] bg-[var(--tg-quote-bg)]",
+    inboundQuoteCls: "border-l-2 border-[var(--tg-quote-border)] bg-[var(--tg-quote-bg)]",
+    outboundQuoteSenderCls: "text-[var(--tg-quote-sender)]",
+    inboundQuoteSenderCls: "text-[var(--tg-quote-sender)]",
+    outboundQuoteTextCls: "text-[var(--tg-quote-text)]",
+    inboundQuoteTextCls: "text-[var(--tg-quote-text)]",
   },
 };
 

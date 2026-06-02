@@ -12,8 +12,10 @@ interface MessageMetaProps {
   isLargeEmoji?: boolean;
   /** Timestamp text color class (from channel theme) */
   metaCls: string;
-  /** Icon variant for status ticks (from channel theme) */
-  statusVariant: "light" | "dark";
+  /** Status tick dim color class (from channel theme) */
+  statusDimCls: string;
+  /** Status tick read/played color class (from channel theme) */
+  statusReadCls: string;
 }
 
 export function MessageMeta({
@@ -24,7 +26,8 @@ export function MessageMeta({
   overlay,
   isLargeEmoji,
   metaCls,
-  statusVariant,
+  statusDimCls,
+  statusReadCls,
 }: MessageMetaProps) {
   if (overlay) {
     return (
@@ -51,7 +54,8 @@ export function MessageMeta({
           direction={message.direction}
           deliveryStatus={message.deliveryStatus}
           deliveryError={message.deliveryError}
-          variant={statusVariant}
+          dimCls={statusDimCls}
+          readCls={statusReadCls}
         />
       </div>
     );
