@@ -8,7 +8,6 @@ import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { ContactMemoryService } from "../memory/contact-memory.service";
-import { ScheduledMessagesService } from "../scheduled-messages/scheduled-messages.service";
 
 export type AgentIntent = "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT";
 
@@ -131,8 +130,6 @@ export class AgentRunService {
     private readonly planLimits: PlanLimitsService,
     @Optional() private readonly contactMemory?: ContactMemoryService,
     @Optional() private readonly balancer?: AiProviderBalancerService,
-    @Optional() @Inject(forwardRef(() => ScheduledMessagesService))
-    private readonly scheduledMessages?: ScheduledMessagesService,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -724,25 +721,6 @@ Si indica que no tiene la información, responde "N/A".`;
         .catch((err) => this.logger.warn("Failed to enrich contact memory", err));
     }
 
-    // Auto-schedule a follow-up message after ORDER and APPOINTMENT completions
-    if (this.scheduledMessages && (run.intent === "ORDER" || run.intent === "APPOINTMENT")) {
-      const followUpMs = run.intent === "ORDER" ? 4 * 60 * 60 * 1000 : 60 * 60 * 1000; // ORDER: 4h, APPT: 1h
-      const followUpText =
-        run.intent === "ORDER"
-          ? "¡Hola! 👋 Pasamos a verificar si todo salió bien con tu pedido. ¿Tuviste algún inconveniente? Estamos para ayudarte."
-          : "¡Hola! 👋 Confirmamos que tu cita fue registrada correctamente. Si necesitas cambiar algo, escríbenos con gusto.";
-
-      this.scheduledMessages
-        .schedule({
-          workspaceId,
-          conversationId,
-          bodyText: followUpText,
-          scheduledAt: new Date(Date.now() + followUpMs),
-          source: "agent_followup",
-          contextNote: `Seguimiento automático post-${run.intent === "ORDER" ? "pedido" : "cita"}`,
-        })
-        .catch((err) => this.logger.warn("Failed to schedule follow-up", err));
-    }
   }
 
   private async saveRun(conversationId: string, meta: Record<string, unknown>, run: AgentRun): Promise<void> {

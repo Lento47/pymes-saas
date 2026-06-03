@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, Optional, Inject, forwardRef } from "@nestjs/common";
 import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { StorageService } from "../common/storage/storage.service";
@@ -19,6 +19,7 @@ import { parseJsonValue } from "../common/prisma/json";
 import { generateWorkspaceInvoicePdf } from "../invoices/invoice-pdf.service";
 import { ElevenLabsService } from "./elevenlabs.service";
 import { AgentRuntimeService } from "../agents/runtime/agent-runtime.service";
+import { ScheduledMessagesService } from "../scheduled-messages/scheduled-messages.service";
 
 type SupportedInteractive =
   | {
@@ -67,6 +68,7 @@ interface AiControlAction {
   } | null;
   intent_detected?: AgentIntent | null;
   delegate_to_agent?: { instance_id: string; reason: string } | null;
+  schedule_action?: { delay_minutes: number; message: string } | null;
 }
 
 interface ConversationShape {
@@ -128,6 +130,8 @@ export class AiConversationControlService {
     private readonly crypto: CryptoService,
     private readonly elevenLabs: ElevenLabsService,
     private readonly agentRuntime: AgentRuntimeService,
+    @Optional() @Inject(forwardRef(() => ScheduledMessagesService))
+    private readonly scheduledMessages?: ScheduledMessagesService,
   ) {}
 
   async startControl(workspaceId: string, conversationId: string) {
@@ -430,6 +434,20 @@ export class AiConversationControlService {
 
     await this.persistActionMemory(workspaceId, conv, action);
 
+    if (action.schedule_action && this.scheduledMessages) {
+      const delayMs = action.schedule_action.delay_minutes * 60_000;
+      this.scheduledMessages
+        .schedule({
+          workspaceId,
+          conversationId,
+          bodyText: action.schedule_action.message,
+          scheduledAt: new Date(Date.now() + delayMs),
+          source: "customer_request",
+          contextNote: "Recordatorio solicitado por el cliente",
+        })
+        .catch((err: Error) => this.logger.warn(`[schedule_action] failed: ${err.message}`));
+    }
+
     const supportsVoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
     let voiceOnly = false;
     if (supportsVoice && !normalizedInteractive) {
@@ -607,7 +625,8 @@ Responde SOLO JSON válido con este shape:
   "handoff_reason": null,
   "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." },
   "intent_detected": null | "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT",
-  "delegate_to_agent": null | { "instance_id": "<id del agente>", "reason": "<por qué delegas>" }
+  "delegate_to_agent": null | { "instance_id": "<id del agente>", "reason": "<por qué delegas>" },
+  "schedule_action": null | { "delay_minutes": <entero positivo>, "message": "<texto que se enviará al cliente cuando pase ese tiempo>" }
 }
 Reglas de intent_detected:
 - Úsalo SOLO cuando el cliente exprese claramente una intención de acción (hacer un pedido, agendar cita, solicitar cotización, presentar un reclamo).
@@ -625,6 +644,13 @@ Reglas de invoice_action:
 - Debes conocer la descripción, cantidad y precio exacto de cada ítem; si no los tienes, no uses invoice_action.
 - reply_text debe anunciar brevemente que se enviará la factura (ej: "En un momento te envío tu factura.").
 - invoice_action aplica en WhatsApp y Telegram; en otros canales usa null.
+Reglas de schedule_action:
+- Úsalo SOLO cuando el cliente pida EXPLÍCITAMENTE ser notificado o recordado en un tiempo concreto (ej: "avísame en 15 min", "recuérdame en 2 horas", "contáctame mañana", "remind me in 30 minutes").
+- delay_minutes: entero positivo. Convierte la expresión de tiempo a minutos (15 min → 15, 2 horas → 120, 1 día → 1440, 1 semana → 10080). Máximo 43200 (30 días).
+- message: el texto que el sistema enviará al cliente cuando pase ese tiempo. Debe ser un mensaje útil relacionado con el contexto de la conversación, no solo "recordatorio".
+- reply_text debe confirmar el agendamiento (ej: "¡Claro! Te avisaré en 15 minutos." o "Anotado, te escribimos en 2 horas.").
+- Cuando schedule_action no es null: interactive debe ser null, intent_detected debe ser null.
+- Si el cliente NO pide explícitamente un recordatorio, schedule_action debe ser null.
 
 ESCALACIÓN OBLIGATORIA:
 - Debes escalar SIEMPRE (handoff_reason con motivo breve y claro) cuando ocurra cualquiera de estos triggers baseline:
@@ -725,6 +751,20 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
           ? { instance_id: delegateRaw.instance_id as string, reason: String(delegateRaw.reason ?? "") }
           : null;
 
+      const schedRaw = parsed.schedule_action;
+      const scheduleAction =
+        schedRaw &&
+        typeof schedRaw === "object" &&
+        typeof schedRaw.delay_minutes === "number" &&
+        schedRaw.delay_minutes > 0 &&
+        typeof schedRaw.message === "string" &&
+        schedRaw.message.trim().length > 0
+          ? {
+              delay_minutes: Math.max(1, Math.min(43200, Math.floor(schedRaw.delay_minutes))),
+              message: String(schedRaw.message).slice(0, 1000),
+            }
+          : null;
+
       return {
         reply_text: replyText || (delegateToAgent ? "" : fallbackReply),
         interactive: parsed.interactive ?? null,
@@ -733,6 +773,7 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
         invoice_action: parsed.invoice_action ?? null,
         intent_detected: intentDetected,
         delegate_to_agent: delegateToAgent,
+        schedule_action: scheduleAction,
       };
     };
 

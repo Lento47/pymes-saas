@@ -3,8 +3,6 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
-import { detectScheduleRequest } from "./schedule-detector";
-
 export type ScheduledMessageStatus = "PENDING" | "SENT" | "FAILED" | "CANCELLED";
 export type ScheduledMessageSource = "customer_request" | "agent_followup" | "operator";
 
@@ -128,36 +126,6 @@ export class ScheduledMessagesService {
     await Promise.allSettled(due.map((msg) => this.sendScheduled(msg)));
   }
 
-  /**
-   * Detect a scheduling request in a customer message and auto-schedule.
-   * Returns the label string if a schedule was created, null otherwise.
-   */
-  async tryDetectAndSchedule(
-    workspaceId: string,
-    conversationId: string,
-    customerText: string,
-    agentLabel = "PymesHub IA",
-  ): Promise<string | null> {
-    const detected = detectScheduleRequest(customerText);
-    if (!detected) return null;
-
-    const confirmBody = `¡Anotado! Te enviaré un mensaje en ${detected.label}. 📅`;
-
-    await this.schedule({
-      workspaceId,
-      conversationId,
-      bodyText: confirmBody,
-      scheduledAt: detected.scheduledAt,
-      source: "customer_request",
-      contextNote: `Solicitud del cliente: "${customerText.slice(0, 200)}"`,
-    });
-
-    // Send an immediate confirmation message visible in the operator's inbox
-    await this.sendConfirmationMessage(workspaceId, conversationId, confirmBody, agentLabel);
-
-    return detected.label;
-  }
-
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private async sendScheduled(msg: {
@@ -269,66 +237,4 @@ export class ScheduledMessagesService {
     }
   }
 
-  private async sendConfirmationMessage(
-    workspaceId: string,
-    conversationId: string,
-    text: string,
-    senderName: string,
-  ): Promise<void> {
-    const msg = await this.prisma.message.create({
-      data: {
-        workspace_id:    workspaceId,
-        conversation_id: conversationId,
-        direction:       "OUTBOUND",
-        sender_name:     senderName,
-        sender_ref:      "ai-agent@emprende",
-        body_text:       text,
-        sent_at:         new Date(),
-        delivery_status: "SENT",
-        message_type:    "TEXT",
-        has_media:       false,
-        media_status:    "NONE",
-      },
-    });
-
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: { last_message_at: new Date(), updated_at: new Date() },
-      select: { id: true },
-    });
-
-    this.events.emitNewMessage(conversationId, workspaceId, {
-      id:              msg.id,
-      conversation_id: conversationId,
-      workspace_id:    workspaceId,
-      direction:       "OUTBOUND",
-      sender_name:     senderName,
-      sender_ref:      "ai-agent@emprende",
-      body_text:       text,
-      sent_at:         msg.sent_at?.toISOString(),
-      created_at:      msg.created_at.toISOString(),
-      message_type:    "TEXT",
-      delivery_status: "SENT",
-      has_media:       false,
-      media_status:    "none",
-    });
-
-    // Also dispatch to the channel so the customer receives the confirmation
-    const conv = await this.prisma.conversation.findFirst({
-      where: { id: conversationId, workspace_id: workspaceId },
-      select: {
-        channel_id: true,
-        contact: { select: { phone: true, telegram_chat_id: true } },
-      },
-    });
-    if (conv) {
-      await this.dispatchToChannel({
-        workspace_id:        workspaceId,
-        channel_id:          conv.channel_id ?? null,
-        contact_phone:       conv.contact?.phone ?? null,
-        contact_telegram_id: conv.contact?.telegram_chat_id ?? null,
-        body_text:           text,
-      }).catch((err) => this.logger.warn(`Confirmation dispatch failed: ${err.message}`));
-    }
-  }
 }
