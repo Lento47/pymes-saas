@@ -720,6 +720,7 @@ Si indica que no tiene la información, responde "N/A".`;
         .enrichFromAgentRun(workspaceId, conv.contact.id, run.intent, run.collected)
         .catch((err) => this.logger.warn("Failed to enrich contact memory", err));
     }
+
   }
 
   private async saveRun(conversationId: string, meta: Record<string, unknown>, run: AgentRun): Promise<void> {

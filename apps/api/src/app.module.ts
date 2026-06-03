@@ -66,6 +66,7 @@ import { ProductMetricsModule } from "./common/metrics/product-metrics.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
 import { LearningModule } from "./learning/learning.module";
+import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages.module";
 
 @Module({
   imports: [
@@ -139,6 +140,7 @@ import { LearningModule } from "./learning/learning.module";
     InventoryModule,
     AiTokensModule,
     LearningModule,
+    ScheduledMessagesModule,
 
     // Metrics
     ProductMetricsModule,
