@@ -15,6 +15,7 @@ import { AutomationsModule } from "../automations/automations.module";
 import { RoutingModule } from "../routing/routing.module";
 import { SlaService } from "./sla.service";
 import { LearningModule } from "../learning/learning.module";
+import { ScheduledMessagesModule } from "../scheduled-messages/scheduled-messages.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { LearningModule } from "../learning/learning.module";
     forwardRef(() => AutomationsModule),
     RoutingModule,
     LearningModule,
+    forwardRef(() => ScheduledMessagesModule),
   ],
   controllers: [ConversationsController, InboundController],
   providers: [ConversationsService, MessagesService, SlaService],

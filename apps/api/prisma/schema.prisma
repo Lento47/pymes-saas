@@ -370,6 +370,7 @@ model Workspace {
   conversation_insights ConversationInsight[]
   ai_feedback_events    AiFeedbackEvent[]
   playbook_suggestions  PlaybookSuggestion[]
+  scheduled_messages    ScheduledMessage[]
 
   @@index([slug])
   @@index([status])
@@ -638,12 +639,13 @@ model Conversation {
   assigned_user User?       @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
   department    Department? @relation("ConversationDepartment", fields: [department_id], references: [id])
 
-  messages  Message[]
-  tasks     Task[]
-  documents Document[]
-  invoices  Invoice[]
-  orders    Order[]
-  insight   ConversationInsight?
+  messages           Message[]
+  tasks              Task[]
+  documents          Document[]
+  invoices           Invoice[]
+  orders             Order[]
+  insight            ConversationInsight?
+  scheduled_messages ScheduledMessage[]
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -2704,4 +2706,33 @@ model PlatformSettings {
   updated_by_id     String?
 
   @@map("platform_settings")
+}
+
+// ── Scheduled Messages (reminders, follow-ups, time-based outreach) ───────────
+model ScheduledMessage {
+  id                  String   @id @default(cuid())
+  workspace_id        String
+  conversation_id     String
+  channel_id          String?
+  contact_phone       String?
+  contact_telegram_id String?
+  body_text           String   @db.Text
+  scheduled_at        DateTime
+  /// PENDING | SENT | FAILED | CANCELLED
+  status              String   @default("PENDING")
+  /// "customer_request" | "agent_followup" | "operator"
+  source              String   @default("customer_request")
+  context_note        String?  @db.Text
+  retry_count         Int      @default(0)
+  created_at          DateTime @default(now())
+  sent_at             DateTime?
+  error               String?  @db.Text
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduled_at])
+  @@index([workspace_id])
+  @@index([conversation_id])
+  @@map("scheduled_messages")
 }

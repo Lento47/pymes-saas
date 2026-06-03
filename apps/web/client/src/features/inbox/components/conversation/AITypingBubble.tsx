@@ -140,6 +140,7 @@ export function AITypingBubble({ agentRun, conversationId, label = "PymesHub IA"
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
           className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
+          aria-expanded={expanded}
         >
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotCls)} />
           <span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/75">
@@ -159,10 +160,17 @@ export function AITypingBubble({ agentRun, conversationId, label = "PymesHub IA"
             {isFailed && "· detenida"}
           </span>
 
+          {/* Show step count when collapsed so the operator knows there's content */}
+          {!expanded && steps.length > 0 && (
+            <span className="ml-auto mr-1 text-[10px] text-muted-foreground/35">
+              {steps.length} paso{steps.length !== 1 ? "s" : ""}
+            </span>
+          )}
+
           <ChevronDown
             className={cn(
-              "ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/30 transition-transform duration-200",
-              expanded && "rotate-180",
+              "h-3.5 w-3.5 shrink-0 text-muted-foreground/30 transition-transform duration-200",
+              expanded ? "ml-0 rotate-180" : steps.length === 0 && "ml-auto",
             )}
             strokeWidth={1.75}
           />

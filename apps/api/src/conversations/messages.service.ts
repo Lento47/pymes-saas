@@ -20,6 +20,7 @@ import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { StorageService } from "../common/storage/storage.service";
 import { parseJsonValue } from "../common/prisma/json";
+import { ScheduledMessagesService } from "../scheduled-messages/scheduled-messages.service";
 
 /** Shape of a single attachment entry stored in Message.attachments_json */
 interface AttachmentEntry {
@@ -58,6 +59,8 @@ export class MessagesService {
     private readonly flowiseAutoReply?: FlowiseAutoReplyService,
     @Optional() @Inject(forwardRef(() => MessageRouterService))
     private readonly messageRouter?: MessageRouterService,
+    @Optional() @Inject(forwardRef(() => ScheduledMessagesService))
+    private readonly scheduledMessages?: ScheduledMessagesService,
   ) {}
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -510,8 +513,13 @@ export class MessagesService {
     const isInteractivePayload = payload.is_interactive === true;
     this.agentRunService
       .processMessage(workspaceId, conversationId, bodyText)
-      .then((consumedByAgent) => {
+      .then(async (consumedByAgent) => {
         if (consumedByAgent) return;
+        // Detect scheduling/reminder requests before handing off to auto-reply AI
+        const label = await this.scheduledMessages
+          ?.tryDetectAndSchedule(workspaceId, conversationId, bodyText)
+          .catch(() => null);
+        if (label) { this.logger.log(`[scheduling] intercepted reminder request conv=${conversationId} → ${label}`); return; }
         this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractivePayload).catch((err) =>
           this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
         );
@@ -752,6 +760,15 @@ export class MessagesService {
       .processMessage(workspaceId, conversationId, bodyText)
       .then(async (consumedByAgent) => {
         if (consumedByAgent) { this.logger.log(`[emit-notify] agent consumed message conv=${conversationId}`); return; }
+
+        // Detect scheduling/reminder requests before handing off to router/AI
+        const schedLabel = await this.scheduledMessages
+          ?.tryDetectAndSchedule(workspaceId, conversationId, bodyText)
+          .catch(() => null);
+        if (schedLabel) {
+          this.logger.log(`[scheduling] intercepted reminder conv=${conversationId} → ${schedLabel}`);
+          return;
+        }
 
         const router = this.messageRouter;
         const flowise = this.flowiseAutoReply;

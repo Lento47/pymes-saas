@@ -56,6 +56,7 @@ import { FixApprovalService } from "./fix-approval.service";
 import { FlowiseAutoReplyService } from "./flowise-auto-reply.service";
 import { ProductMetricsModule } from "../common/metrics/product-metrics.module";
 import { PlatformModule } from "../platform/platform.module";
+import { ScheduledMessagesModule } from "../scheduled-messages/scheduled-messages.module";
 
 // NOTE: do NOT import EmailModule here. Adding it creates a cycle
 // AiModule → EmailModule → ConversationsModule → AiModule (the last
@@ -83,6 +84,7 @@ import { PlatformModule } from "../platform/platform.module";
     AiPrivacyModule,
     forwardRef(() => AgentsModule),
     forwardRef(() => PlatformModule),
+    forwardRef(() => ScheduledMessagesModule),
   ],
   providers: [
     AiService,

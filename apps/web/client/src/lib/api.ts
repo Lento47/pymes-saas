@@ -530,6 +530,11 @@ export const api = {
   getAgentRun: (id: string) => request<any>("GET", `/api/conversations/${id}/agent-run`),
   startAgentRun: (id: string, triggerText?: string) => request<{ ok: boolean; run: any }>("POST", `/api/conversations/${id}/start-agent`, { trigger_text: triggerText }),
   stopAgentRun: (id: string) => request<{ ok: boolean }>("DELETE", `/api/conversations/${id}/agent-run`, {}),
+  listScheduledMessages: (id: string) => request<any[]>("GET", `/api/conversations/${id}/scheduled-messages`),
+  createScheduledMessage: (id: string, body: { body_text: string; scheduled_at: string; source: string; context_note?: string }) =>
+    request<{ ok: boolean }>("POST", `/api/conversations/${id}/scheduled-messages`, body),
+  cancelScheduledMessage: (conversationId: string, msgId: string) =>
+    request<{ ok: boolean }>("DELETE", `/api/conversations/${conversationId}/scheduled-messages/${msgId}`),
   createAgentStream: (message: string, conversationId?: string) => request<Record<string, any>>("POST", "/api/agent/stream", { message, conversationId }),
   orchestrateSupport: (message: string, diagnostic_case_id?: string, allow_pr_creation?: boolean) =>
     request<Record<string, any>>("POST", "/api/agents/support/orchestrate", { message, diagnostic_case_id, allow_pr_creation }, { timeout: 120_000 }),
