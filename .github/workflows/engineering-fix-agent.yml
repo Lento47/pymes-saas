@@ -53,7 +53,7 @@ jobs:
           echo "Branch: $BRANCH"
 
       - name: Open Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "fix: engineering investigation — case ${{ github.event.inputs.case_id }}"
           branch: "fix/${{ github.event.inputs.case_id }}"
