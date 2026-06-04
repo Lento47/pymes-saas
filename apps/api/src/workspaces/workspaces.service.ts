@@ -35,14 +35,14 @@ export class WorkspacesService {
     private readonly audit: AuditService,
   ) {}
 
-  private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(
+  private serializeWorkspace<T extends { settings_json?: unknown; workspace_tax_profile?: unknown }>(
     workspace: T,
   ) {
     const settings =
       workspace.settings_json && typeof workspace.settings_json === "object"
-        ? (workspace.settings_json as Record<string, any>)
+        ? (workspace.settings_json as Record<string, unknown>)
         : {};
-    const taxProfile = (workspace as any).workspace_tax_profile ?? null;
+    const taxProfile = workspace.workspace_tax_profile ?? null;
 
     return {
       ...workspace,
@@ -116,7 +116,7 @@ export class WorkspacesService {
       },
     });
 
-    return this.serializeWorkspace(workspace as any);
+    return this.serializeWorkspace(workspace);
   }
 
   // ── GET /workspaces/current/dashboard ────────────────────────────────────
@@ -359,7 +359,7 @@ export class WorkspacesService {
       },
     });
 
-    const serialized = this.serializeWorkspace(refreshed as any);
+    const serialized = this.serializeWorkspace(refreshed);
     this.events.emitWorkspaceUpdated(workspaceId, serialized);
 
     if (settingsChanged) {

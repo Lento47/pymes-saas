@@ -10,7 +10,10 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { createHash } from "crypto";
-import { Request, Response } from "express";
+import { Request as ExpressRequest, Response } from "express";
+
+// ApiTokenGuard injects workspace_id into the request object
+type Request = ExpressRequest & { workspace_id?: string };
 import { ApiTokenGuard } from "../api-tokens/api-token.guard";
 import { PrismaService } from "../common/prisma/prisma.service";
 
@@ -173,7 +176,7 @@ export class McpController {
       sseSend(res, { jsonrpc: "2.0", id: body.id, result: { tools: getToolsForResponse() } });
     } else if (body.method === "tools/call") {
       const result = await this.executeToolCall(
-        (req as any).workspace_id,
+        req.workspace_id,
         body.params,
         body.id,
         req,
@@ -239,7 +242,7 @@ export class McpController {
       // Handle tools/call
       else if (body.method === "tools/call") {
         const result = await this.executeToolCall(
-          (req as any).workspace_id,
+          req.workspace_id,
           body.params,
           body.id,
           req,
@@ -278,7 +281,7 @@ export class McpController {
         return res.json({ jsonrpc: "2.0", id: body.id, result: { tools: getToolsForResponse() } });
       case "tools/call": {
         const result = await this.executeToolCall(
-          (req as any).workspace_id,
+          req.workspace_id,
           body.params,
           body.id,
           req,

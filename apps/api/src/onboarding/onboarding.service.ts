@@ -1,6 +1,10 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 
+type ChecklistTask = { key?: string; completed?: boolean; notes?: string };
+type ChecklistCategory = { key?: string; title?: string; items?: ChecklistTask[] };
+type ChecklistItem = ChecklistCategory | ChecklistTask;
+
 @Injectable()
 export class OnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
@@ -20,7 +24,7 @@ export class OnboardingService {
       select: { status: true, checklist: true },
     });
     if (!project) return { exists: false };
-    const checklist = (project.checklist as any[]) ?? [];
+    const checklist = (project.checklist as ChecklistCategory[]) ?? [];
     let completed = 0;
     let total = 0;
     for (const cat of checklist) {
@@ -99,7 +103,7 @@ export class OnboardingService {
     });
     if (!project) throw new NotFoundException("Proyecto de onboarding no encontrado.");
 
-    const checklist = (project.checklist as any[]) ?? [];
+    const checklist = (project.checklist as ChecklistCategory[]) ?? [];
     if (checklist[categoryIndex]?.items?.[itemIndex]) {
       checklist[categoryIndex].items[itemIndex].completed = completed;
       if (notes !== undefined) checklist[categoryIndex].items[itemIndex].notes = notes;
