@@ -405,7 +405,7 @@ export class DiagnosticService {
             support_note: "Caso registrado. El equipo de PymesHub revisará este reporte.",
             tier: "FREE",
             dispatched_at: new Date().toISOString(),
-          } as any,
+          } as Prisma.InputJsonValue,
         },
       }).catch(() => {});
       this.logger.log(`[support-agent] Tier 1 (FREE) — notification stored for ${diagnosticCaseId}`);
@@ -442,9 +442,9 @@ export class DiagnosticService {
 
     try {
       // Call Flowise directly via HTTP predict (reusing FlowiseClient pattern)
-      const flowiseBaseUrl = (this.flowiseSetup as any)?.flowise?.baseUrl ??
-        process.env.FLOWISE_BASE_URL ?? "http://localhost:3001";
-      const flowiseApiKey = (this.flowiseSetup as any)?.flowise?.apiKey ?? process.env.FLOWISE_API_KEY;
+      // Access via env vars directly — FlowiseSetupService.flowise is private
+      const flowiseBaseUrl = process.env.FLOWISE_BASE_URL ?? "http://localhost:3001";
+      const flowiseApiKey = process.env.FLOWISE_API_KEY;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (flowiseApiKey) headers["Authorization"] = `Bearer ${flowiseApiKey}`;
 
@@ -469,7 +469,7 @@ export class DiagnosticService {
             support_agent_analysis: raw.slice(0, 6000),
             support_tier: tierKey,
             support_agent_dispatched_at: new Date().toISOString(),
-          } as any,
+          } as Prisma.InputJsonValue,
         },
       });
 
@@ -477,7 +477,7 @@ export class DiagnosticService {
 
       // Tier 4: auto-approve if PR was not already created by apply_github_fix tool
       if (tierKey === "TIER_4" && this.flowiseSetup?.isAutoApprovePlan(plan)) {
-        const fixCase = await (this.prisma as any).engineeringFixCase.findFirst({
+        const fixCase = await this.prisma.engineeringFixCase.findFirst({
           where: { diagnostic_case_id: diagnosticCaseId, status: "FIX_READY" },
           select: { id: true },
         });
@@ -567,7 +567,7 @@ Formato requerido:
           evidence_json: {
             support_agent_analysis: analysis,
             support_agent_dispatched_at: new Date().toISOString(),
-          } as any,
+          } as Prisma.InputJsonValue,
         },
       });
       this.logger.log(`[support-agent] Analysis stored for case ${diagnosticCaseId}`);
@@ -586,16 +586,16 @@ Formato requerido:
 
     try {
       // Check if a fix case already exists (e.g., created by known issue auto-match)
-      const existingFixCase = await (this.prisma as any).engineeringFixCase.findFirst({
+      const existingFixCase = await this.prisma.engineeringFixCase.findFirst({
         where: { diagnostic_case_id: diagnosticCaseId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, fix_summary: true },
       });
 
       let fixCaseId: string;
       if (existingFixCase) {
         fixCaseId = existingFixCase.id;
         // Update the existing fix case with AI-generated proposal data
-        await (this.prisma as any).engineeringFixCase.update({
+        await this.prisma.engineeringFixCase.update({
           where: { id: fixCaseId },
           data: {
             fix_summary: analysis.fix_summary ?? existingFixCase.fix_summary,

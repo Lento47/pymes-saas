@@ -430,7 +430,7 @@ export class WhatsAppService {
     targetMessageId: string,
     emoji: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -471,7 +471,7 @@ export class WhatsAppService {
     bodyText: string,
     replyToMessageId: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -509,7 +509,7 @@ export class WhatsAppService {
     messageId: string,
     withTypingIndicator = false,
   ): Promise<void> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -560,7 +560,7 @@ export class WhatsAppService {
       throw new BadGatewayException('Reply buttons: 1–3 buttons required');
     }
 
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -618,7 +618,7 @@ export class WhatsAppService {
       throw new BadGatewayException('List message: max 10 sections, max 10 rows total');
     }
 
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -663,7 +663,7 @@ export class WhatsAppService {
     to: string,
     body: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -706,7 +706,7 @@ export class WhatsAppService {
     languageCode: string,
     components?: Array<Record<string, any>>,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -749,7 +749,7 @@ export class WhatsAppService {
     footer?: string,
     catalogId?: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -797,7 +797,7 @@ export class WhatsAppService {
     productRetailerId: string,
     footer?: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -849,7 +849,7 @@ export class WhatsAppService {
     }>,
     footer?: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -906,7 +906,7 @@ export class WhatsAppService {
     screenId?: string,
     dataPayload?: Record<string, any>,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
