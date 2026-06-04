@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException, Optional, Inject, forwardRef } from "@nestjs/common";
-import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus } from "@prisma/client";
+import { AgentChannelScope, HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus, TemplateStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { StorageService } from "../common/storage/storage.service";
 import { CloudflareAiService, AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
@@ -335,7 +335,7 @@ export class AiConversationControlService {
           agent_instance_id: action.delegate_to_agent.instance_id,
           workspace_id: workspaceId,
           question: inboundText,
-          channel: (conv.channel?.type ?? "ALL") as any,
+          channel: (conv.channel?.type ?? "ALL") as AgentChannelScope,
           conversation_id: conversationId,
         });
         agentText = result.text ?? null;
@@ -545,7 +545,7 @@ export class AiConversationControlService {
       }),
       conv.contact?.id ? this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null) : null,
       this.prisma.messageTemplate.findMany({
-        where: { workspace_id: workspaceId, channel: "WHATSAPP", status: "APPROVED" as any },
+        where: { workspace_id: workspaceId, channel: "WHATSAPP", status: TemplateStatus.APPROVED },
         take: 3,
         orderBy: { updated_at: "desc" },
         select: { name: true, external_template_id: true, body: true },
@@ -555,7 +555,7 @@ export class AiConversationControlService {
         where: {
           workspace_id: workspaceId,
           status: "ACTIVE",
-          channel_scope: { in: ["ALL", channelScopeFilter as any] },
+          channel_scope: { in: ["ALL", channelScopeFilter] as AgentChannelScope[] },
         },
         select: { id: true, name: true, description: true },
       }).catch(() => [] as Array<{ id: string; name: string; description: string | null }>),
