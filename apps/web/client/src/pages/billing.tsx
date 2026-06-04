@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Check, Loader2, AlertTriangle, CalendarDays, CreditCard } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, CalendarDays, CreditCard, Coins, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -95,6 +95,18 @@ export default function BillingPage() {
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.getSubscription(),
+    enabled: isAuthenticated,
+  });
+
+  const { data: creditsData } = useQuery({
+    queryKey: ['memoryCredits'],
+    queryFn: () => api.getCredits(),
+    enabled: isAuthenticated,
+  });
+
+  const { data: aiTokensData } = useQuery({
+    queryKey: ['aiTokens'],
+    queryFn: () => api.getAiTokens(),
     enabled: isAuthenticated,
   });
 
@@ -395,6 +407,72 @@ export default function BillingPage() {
             );
           })}
         </div>
+      </div>
+
+      <Separator />
+
+      {/* Unified credits panel */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-foreground">Créditos y tokens</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Memory credits */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
+                    <Coins className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Créditos de memoria</p>
+                    <p className="text-xs text-muted-foreground">Para contactos activos / mes</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold tabular-nums text-foreground">
+                    {creditsData?.balance?.toLocaleString() ?? '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">disponibles</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI tokens */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
+                    <Zap className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Tokens IA</p>
+                    <p className="text-xs text-muted-foreground">Para respuestas automáticas</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold tabular-nums text-foreground">
+                    {aiTokensData?.available != null
+                      ? aiTokensData.available >= 1_000_000
+                        ? `${(aiTokensData.available / 1_000_000).toFixed(1)}M`
+                        : aiTokensData.available >= 1_000
+                          ? `${(aiTokensData.available / 1_000).toFixed(0)}k`
+                          : aiTokensData.available.toLocaleString()
+                      : '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">disponibles</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Para recargar créditos o tokens, visitá la sección de{' '}
+          <a href="#/credits" className="text-accent underline-offset-2 hover:underline">
+            Créditos
+          </a>.
+        </p>
       </div>
     </div>
   );

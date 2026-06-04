@@ -90,6 +90,14 @@ export class PaypalWebhookController {
       }
       if (paymentOrder.status === "COMPLETED") return;
 
+      // Webhook is backup path — only runs if capture-order endpoint missed it.
+      // Trust the stored credit amount; never derive from USD.
+      const creditAmount = paymentOrder.credits;
+      if (!creditAmount || creditAmount <= 0) {
+        this.logger.warn(`Webhook ${event.id}: order ${orderId} has no credits stored, skipping`);
+        return;
+      }
+
       const existingTx = await this.credits.findTransactionByPaypalOrderId(orderId);
       if (existingTx && existingTx.amount > 0) {
         await this.prisma.paypalPaymentOrder.update({
@@ -99,7 +107,6 @@ export class PaypalWebhookController {
         return;
       }
 
-      const creditAmount = this.amountToCredits(amount);
       await this.credits.addCredits(
         paymentOrder.workspace_id,
         creditAmount,
@@ -113,7 +120,7 @@ export class PaypalWebhookController {
         data: { status: "COMPLETED", capture_id: captureId },
       });
 
-      this.logger.log(`Webhook: credits ${creditAmount} added for order ${orderId}`);
+      this.logger.log(`Webhook: ${creditAmount} credits added for order ${orderId}`);
     } catch (err) {
       this.logger.error(`Error PAYMENT.CAPTURE.COMPLETED ${event.id}:`, err);
     }
@@ -273,11 +280,4 @@ export class PaypalWebhookController {
     }
   }
 
-  private amountToCredits(amountUsd: number): number {
-    if (amountUsd >= 69.99) return 5000;
-    if (amountUsd >= 24.99) return 1500;
-    if (amountUsd >= 9.99) return 500;
-    if (amountUsd >= 2.99) return 100;
-    return Math.round(amountUsd / 0.03);
-  }
 }

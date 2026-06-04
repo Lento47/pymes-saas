@@ -93,14 +93,27 @@ export class PaypalController {
         throw new BadRequestException("orderId es requerido");
       }
 
-      const { captureId, amount } = await this.paypal.captureOrder(body.orderId);
+      const { captureId } = await this.paypal.captureOrder(body.orderId);
+
+      // Order record must exist — it was created at create-order time and is
+      // scoped to this workspace. If missing, refuse: never guess amounts from USD.
       const order = await this.prisma.paypalPaymentOrder.findFirst({
         where: { order_id: body.orderId, workspace_id: user.workspace_id },
       });
-      const purchaseType = order?.purchase_type ?? "MEMORY_CREDITS";
+      if (!order) {
+        throw new BadRequestException("Orden de pago no encontrada para este workspace.");
+      }
+      if (order.status === "COMPLETED") {
+        throw new BadRequestException("Esta orden ya fue procesada.");
+      }
+
+      const purchaseType = order.purchase_type ?? "MEMORY_CREDITS";
 
       if (purchaseType === "AI_TOKENS") {
-        const tokenAmount = order?.tokens ?? this.amountToTokens(amount);
+        const tokenAmount = order.tokens;
+        if (!tokenAmount || tokenAmount <= 0) {
+          throw new BadRequestException("La orden no tiene tokens registrados. Contactá a soporte.");
+        }
         const newBalance = await this.aiTokens.addTokens(
           user.workspace_id,
           tokenAmount,
@@ -163,7 +176,10 @@ export class PaypalController {
         };
       }
 
-      const creditAmount = order?.credits ?? this.amountToCredits(amount);
+      const creditAmount = order.credits;
+      if (!creditAmount || creditAmount <= 0) {
+        throw new BadRequestException("La orden no tiene créditos registrados. Contactá a soporte.");
+      }
       const newBalance = await this.credits.addCredits(
         user.workspace_id,
         creditAmount,
@@ -194,19 +210,4 @@ export class PaypalController {
     }
   }
 
-  private amountToCredits(amountUsd: number): number {
-    if (amountUsd >= 69.99) return 5000;
-    if (amountUsd >= 24.99) return 1500;
-    if (amountUsd >= 9.99) return 500;
-    if (amountUsd >= 2.99) return 100;
-    return Math.round(amountUsd / 0.03);
-  }
-
-  private amountToTokens(amountUsd: number): number {
-    if (amountUsd >= 49.99) return 5_000_000;
-    if (amountUsd >= 19.99) return 1_500_000;
-    if (amountUsd >= 9.99)  return 500_000;
-    if (amountUsd >= 2.99)  return 100_000;
-    return Math.round(amountUsd * 33_445);
-  }
 }
