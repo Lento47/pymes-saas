@@ -37,6 +37,7 @@ import { HaciendaModule } from "./hacienda/hacienda.module";
 import { PipelineModule } from "./pipeline/pipeline.module";
 import { OrdersModule } from "./orders/orders.module";
 import { HealthModule } from "./health/health.module";
+import { BackupModule } from "./backup/backup.module";
 import { AiModule } from "./ai/ai.module";
 import { AgentsModule } from "./agents/agents.module";
 import { TtsModule } from "./tts/tts.module";
@@ -113,6 +114,7 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     AgentsModule,
     ErrorReportsModule,
     HealthModule,
+    BackupModule,
     ApiTokensModule,
     BillingModule,
     RoutingModule,
