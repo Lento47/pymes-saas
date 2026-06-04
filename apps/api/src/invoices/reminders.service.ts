@@ -51,7 +51,7 @@ export class RemindersService {
             title: "Facturas vencidas detectadas",
             body: `${updated.count} factura(s) fueron marcadas como vencidas. Revisa el módulo de facturación.`,
             related_entity_type: "invoice",
-            related_entity_id: null as any,
+            related_entity_id: undefined,
           })
           .catch((err) =>
             this.logger.warn(
@@ -154,7 +154,7 @@ export class RemindersService {
       const items = invoice.lines
         .map(
           (l) =>
-            `- ${l.quantity}x ${(l as any).product?.name || l.description} — ${new Intl.NumberFormat("es-CR", { style: "currency", currency: invoice.currency }).format(Number(l.total_line_amount))}`,
+            `- ${l.quantity}x ${(l as { product?: { name?: string } }).product?.name || l.description} — ${new Intl.NumberFormat("es-CR", { style: "currency", currency: invoice.currency }).format(Number(l.total_line_amount))}`,
         )
         .join("\n");
       draftText += `\n\n📦 Productos:\n${items}`;

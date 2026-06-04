@@ -74,7 +74,7 @@ export class CsvImportService {
           continue;
         }
 
-        await this.prisma.contact.create({ data: contactData as any });
+        await this.prisma.contact.create({ data: contactData as Parameters<typeof this.prisma.contact.create>[0]["data"] });
         imported++;
       } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? "Error desconocido" });
@@ -129,8 +129,8 @@ export class CsvImportService {
             where: {
               workspace_id: workspaceId,
               OR: [
-                { full_name: { contains: contactName, mode: "insensitive" as any } },
-                { company_name: { contains: contactName, mode: "insensitive" as any } },
+                { full_name: { contains: contactName, mode: "insensitive" as const } },
+                { company_name: { contains: contactName, mode: "insensitive" as const } },
               ],
             },
             select: { id: true },

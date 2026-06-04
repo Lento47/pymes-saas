@@ -86,15 +86,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse = isHttpException ? exception.getResponse() : null;
-    const message =
-      typeof exceptionResponse === "string"
-        ? exceptionResponse
-        : ((exceptionResponse as any)?.message ??
-          (exception instanceof Error ? exception.message : "Error interno del servidor"));
+    const rawMsg = typeof exceptionResponse === "string"
+      ? exceptionResponse
+      : (((exceptionResponse as { message?: string | string[] })?.message) ??
+        (exception instanceof Error ? exception.message : "Error interno del servidor"));
+    const message: string | string[] = rawMsg;
 
     const errorName =
       typeof exceptionResponse === "object" && exceptionResponse
-        ? (exceptionResponse as any).error
+        ? (exceptionResponse as { error?: string }).error
         : undefined;
 
     if (status === 404) {
@@ -122,7 +122,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         errorCode = matched?.key ?? "UNKNOWN_ERROR";
         const module = matched?.module ?? (request.path?.split("/")[2] || "unknown");
         try {
-          const existing = await (this.prisma as any).supportDiagnosticCase.findFirst({
+          const existing = await this.prisma.supportDiagnosticCase.findFirst({
             where: {
               workspace_id: request.user.workspace_id,
               error_code: errorCode,
@@ -133,7 +133,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
           if (existing) {
             diagnosticCaseId = existing.id;
           } else {
-            const created = await (this.prisma as any).supportDiagnosticCase.create({
+            const created = await this.prisma.supportDiagnosticCase.create({
               data: {
                 workspace_id: request.user.workspace_id,
                 user_id: request.user.id ?? null,
