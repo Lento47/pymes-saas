@@ -247,4 +247,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     this.server.to(`workspace:${workspaceId}`).emit(payload.event, payload);
   }
+
+  emitContactUpdated(workspaceId: string, contact: unknown) {
+    this.server.to(`workspace:${workspaceId}`).emit("contact:updated", contact);
+  }
 }

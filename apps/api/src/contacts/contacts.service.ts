@@ -5,12 +5,14 @@ import { CreateContactDto } from "./dto/create-contact.dto";
 import { UpdateContactDto } from "./dto/update-contact.dto";
 import { FilterContactsDto } from "./dto/filter-contacts.dto";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { EventsGateway } from "../gateways/events.gateway";
 
 @Injectable()
 export class ContactsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planLimits: PlanLimitsService,
+    private readonly events: EventsGateway,
   ) {}
 
   // ── GET /contacts ──────────────────────────────────────────────────────────
@@ -148,6 +150,7 @@ export class ContactsService {
       })
       .then((contact) => {
         this.trackQuickStart(workspaceId, "contacts_added");
+        this.events.emitContactUpdated(workspaceId, contact);
         return contact;
       });
   }
@@ -224,7 +227,7 @@ export class ContactsService {
   async update(workspaceId: string, id: string, dto: UpdateContactDto) {
     await this.findOne(workspaceId, id); // valida existencia
 
-    return this.prisma.contact.update({
+    const updated = await this.prisma.contact.update({
       where: { id },
       data: {
         ...(dto.type && { type: dto.type }),
@@ -251,6 +254,8 @@ export class ContactsService {
         updated_at: new Date(),
       },
     });
+    this.events.emitContactUpdated(workspaceId, updated);
+    return updated;
   }
 
   // ── DELETE /contacts/:id ───────────────────────────────────────────────────

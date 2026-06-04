@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { useTasksSocket } from "@/hooks/use-tasks-socket";
 import { usePipelineSocket } from "@/hooks/use-pipeline-socket";
+import { useContactsSocket } from "@/hooks/use-contacts-socket";
 import { api } from "@/lib/api";
 import {
   BarChart3,
@@ -182,6 +183,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   useNotificationsSocket();
   useTasksSocket();
   usePipelineSocket();
+  useContactsSocket();
 
   const { data: myWorkspaces } = useQuery({
     queryKey: ["/api/auth/my-workspaces"],
