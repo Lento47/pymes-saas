@@ -33,6 +33,10 @@ export class AuthService {
   ) {}
   private readonly logger = new Logger(AuthService.name);
 
+  private get demoBuildEnabled(): boolean {
+    return process.env.ENABLE_DEMO_DATA === "true";
+  }
+
   // ── Login ──────────────────────────────────────────────────────────────────
 
   async login(dto: LoginDto, workspaceSlug: string | undefined) {
@@ -196,9 +200,9 @@ export class AuthService {
     //   - MOVER A UNA OPCION OPT-IN EN EL ONBOARDING.
     // EN PROD INFLA LA BD CON DATA QUE EL USUARIO NO PIDIO.
     // ──────────────────────────────────────────────────────────────────────
-    this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) => {
-      // Silent — demo data population failures are non-critical
-    });
+    if (this.demoBuildEnabled) {
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+    }
 
     // Send verification email (fire-and-forget — never block registration)
     this.sendVerificationEmail(dto.email, dto.name, verificationToken).catch((err) => {
@@ -269,6 +273,34 @@ export class AuthService {
       data: { email_verification_token: token },
     });
     await this.sendVerificationEmail(user.email, user.name, token);
+  }
+
+  private async sendPasswordResetEmail(email: string, token: string): Promise<void> {
+    const apiKey = this.config.get<string>("RESEND_API_KEY");
+    if (!apiKey) {
+      this.logger.log(`[dev] Password reset token for ${email}: ${token}`);
+      return;
+    }
+
+    const appUrl = this.config.get<string>("APP_URL") ?? "https://pymeshub.lat";
+    const link = `${appUrl}/#/reset-password?token=${token}`;
+
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
+
+    await resend.emails.send({
+      from: "PymesHub <no-reply@pymeshub.lat>",
+      to: email,
+      subject: "Restablecer contraseña — PymesHub",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+          <h2 style="font-size:20px;font-weight:600;color:#111827;margin-bottom:8px">Restablecé tu contraseña</h2>
+          <p style="color:#6B7280;font-size:14px;margin-bottom:24px">Recibimos una solicitud para restablecer la contraseña de tu cuenta. El enlace expira en 15 minutos.</p>
+          <a href="${link}" style="display:inline-block;background:#3F3CBB;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600">Restablecer contraseña</a>
+          <p style="color:#9CA3AF;font-size:12px;margin-top:24px">Si no solicitaste este cambio, podés ignorar este email.</p>
+        </div>
+      `,
+    });
   }
 
   private async sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
@@ -505,11 +537,13 @@ export class AuthService {
         },
       });
 
-      this.demoData
-        .populateDemoWorkspace(workspace.id, workspace.name)
-        .catch((err) =>
-          this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
-        );
+      if (this.demoBuildEnabled) {
+        this.demoData
+          .populateDemoWorkspace(workspace.id, workspace.name)
+          .catch((err) =>
+            this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
+          );
+      }
 
       const access_token = this.signToken({
         sub: user.id,
@@ -739,11 +773,13 @@ export class AuthService {
         },
       });
 
-      this.demoData
-        .populateDemoWorkspace(workspace.id, workspace.name)
-        .catch((err) =>
-          this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
-        );
+      if (this.demoBuildEnabled) {
+        this.demoData
+          .populateDemoWorkspace(workspace.id, workspace.name)
+          .catch((err) =>
+            this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
+          );
+      }
 
       const access_token = this.signToken({
         sub: user.id,
@@ -912,11 +948,13 @@ export class AuthService {
         },
       });
 
-      this.demoData
-        .populateDemoWorkspace(workspace.id, workspace.name)
-        .catch((err) =>
-          this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
-        );
+      if (this.demoBuildEnabled) {
+        this.demoData
+          .populateDemoWorkspace(workspace.id, workspace.name)
+          .catch((err) =>
+            this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
+          );
+      }
 
       const access_token = this.signToken({
         sub: user.id,
@@ -1359,13 +1397,14 @@ export class AuthService {
       { expiresIn: "15m" },
     );
 
-    // Avoid leaking the token to general logs in production.
-    if (process.env.NODE_ENV !== "production") {
-      Logger.log(`Password reset token for ${email}: ${token}`, "AuthService");
-    }
+    // Send reset email fire-and-forget — never reveal whether this succeeded.
+    this.sendPasswordResetEmail(email, token).catch((err) => {
+      this.logger.warn(`Failed to send password reset email to ${email}: ${err?.message}`);
+      if (process.env.NODE_ENV !== "production") {
+        this.logger.debug(`[dev] Password reset token for ${email}: ${token}`);
+      }
+    });
 
-    // TODO: dispatch via transactional email (Resend/SES) pointing to
-    // ${APP_URL}/reset-password?token=${token}.
     return generic;
   }
 
