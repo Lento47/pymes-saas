@@ -13,6 +13,26 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 const logger = new Logger("Bootstrap");
 
+// ── Startup env validation ─────────────────────────────────────────────────
+// Fail fast before any network binding if critical config is missing.
+const REQUIRED_ENV_VARS = [
+  "DATABASE_URL",
+  "JWT_SECRET",
+  "JWT_REFRESH_SECRET",
+  "PAYPAL_CLIENT_ID",
+  "PAYPAL_CLIENT_SECRET",
+] as const;
+
+function validateEnv() {
+  const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    logger.error(`Missing required environment variables: ${missing.join(", ")}`);
+    logger.error("Server will not start until all required env vars are set.");
+    process.exit(1);
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 process.on("uncaughtException", (err) => {
   logger.error("UNCAUGHT EXCEPTION — process will exit", err);
   process.exit(1);
@@ -23,6 +43,8 @@ process.on("unhandledRejection", (reason) => {
 });
 
 async function bootstrap() {
+  validateEnv();
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // ✅ SECURITY: Add Helmet.js for HTTP security headers

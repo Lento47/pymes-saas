@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { PRICING_TIERS, ADD_ONS, FAQS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
 import { FAQSection } from '@/components/pricing/FAQSection';
@@ -9,7 +9,6 @@ import { Footer } from '@/components/marketing/footer';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { BrandLockup } from '@/components/marketing/brand-lockup';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
-import { usePaddle } from '@/hooks/use-paddle';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 
@@ -18,9 +17,7 @@ export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(false);
   const { messages } = useI18n();
   const copy = messages.pricing || {};
-  const paddle = usePaddle();
-  const { user, isAuthenticated } = useAuth();
-  const [addOnLoading, setAddOnLoading] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
   const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
@@ -140,35 +137,12 @@ export default function PricingPage() {
                   copy.addOns?.items as Record<string, { name: string; description: string }> | undefined
                 )?.[addOn.key];
                 const isSeat = addOn.key === 'extra_user';
-                const priceId = addOn.paddlePriceIdMonthly;
-                const isLoading = addOnLoading === addOn.key;
 
-                const handleAddOnPurchase = async () => {
-                  if (!priceId || !paddle) {
-                    navigate('/login?plan=growth');
-                    return;
-                  }
+                const handleAddOnPurchase = () => {
                   if (isAuthenticated) {
                     navigate(`/settings/billing?addon=${addOn.key}`);
-                    return;
-                  }
-                  setAddOnLoading(addOn.key);
-                  try {
-                    await paddle.Checkout.open({
-                      items: [{ priceId, quantity: 1 }],
-                      customData: {
-                        workspaceSlug: user?.workspace?.slug ?? null,
-                        addon: addOn.key,
-                      },
-                      settings: {
-                        displayMode: 'overlay',
-                        theme: 'dark',
-                        locale: 'en',
-                        successUrl: `${window.location.origin}/login?addon=${addOn.key}`,
-                      },
-                    });
-                  } finally {
-                    setAddOnLoading(null);
+                  } else {
+                    navigate(`/login?plan=growth&addon=${addOn.key}`);
                   }
                 };
 
@@ -205,21 +179,14 @@ export default function PricingPage() {
                     </div>
                     <button
                       onClick={handleAddOnPurchase}
-                      disabled={isLoading}
                       className={cn(
-                        'mt-4 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
+                        'mt-4 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition',
                         isSeat
                           ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                           : 'border border-border text-foreground hover:bg-muted/35'
                       )}>
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          {isSeat ? 'Agregar' : 'Comprar'}
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </>
-                      )}
+                      {isSeat ? 'Agregar' : 'Comprar'}
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   </article>
                 );
