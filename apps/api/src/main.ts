@@ -9,6 +9,7 @@ import { PrismaExceptionFilter } from "./common/prisma/prisma-exception.filter";
 import { ErrorReportsService } from "./error-reports/error-reports.service";
 import { PrismaService } from "./common/prisma/prisma.service";
 import { AiTriageService } from "./ai/ai-triage.service";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 const logger = new Logger("Bootstrap");
 
@@ -96,6 +97,28 @@ async function bootstrap() {
     new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService), aiTriage as any),
   );
   app.useGlobalFilters(new PrismaExceptionFilter());
+  // OpenAPI docs — enabled in dev or when SWAGGER_ENABLED=true
+  if (process.env.NODE_ENV !== "production" || process.env.SWAGGER_ENABLED === "true") {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("PymesHub API")
+      .setDescription("API multi-tenant para PymesHub — CRM + Inbox + Facturación + IA para PYMEs")
+      .setVersion("1.0")
+      .addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" }, "JWT")
+      .addGlobalParameters({
+        in: "header",
+        required: false,
+        name: "x-workspace-slug",
+        schema: { type: "string" },
+        description: "Workspace slug (used by API tokens)",
+      })
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("api/docs", app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+    logger.log(`Swagger docs at http://127.0.0.1:${process.env.PORT ?? 4000}/api/docs`);
+  }
+
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
   await app.listen(port, host);
