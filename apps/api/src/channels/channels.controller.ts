@@ -36,7 +36,7 @@ export class ChannelsController {
     @CurrentUser() user: AuthUser,
     @Body() body: { type: string; name: string; provider?: string },
   ) {
-    return this.channelsService.create(user.workspace_id, body);
+    return this.channelsService.create(user.workspace_id, body, user.id);
   }
 
   @Get()
@@ -78,68 +78,68 @@ export class ChannelsController {
   @Patch(":id")
   @Roles(WorkspaceUserRole.ADMIN)
   update(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
     @Body() body: { name?: string; status?: string },
   ) {
-    return this.channelsService.update(workspaceId, id, body);
+    return this.channelsService.update(user.workspace_id, id, body, user.id);
   }
 
   @Delete(":id")
   @Roles(WorkspaceUserRole.ADMIN)
   remove(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.channelsService.remove(workspaceId, id);
+    return this.channelsService.remove(user.workspace_id, id, user.id);
   }
 
   @Post(":id/connect")
   @Roles(WorkspaceUserRole.ADMIN)
   connect(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.channelsService.connect(workspaceId, id);
+    return this.channelsService.connect(user.workspace_id, id, user.id);
   }
 
   @Post(":id/disconnect")
   @Roles(WorkspaceUserRole.ADMIN)
   disconnect(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.channelsService.disconnect(workspaceId, id);
+    return this.channelsService.disconnect(user.workspace_id, id, user.id);
   }
 
   @Post(":id/configure-email")
   @Roles(WorkspaceUserRole.ADMIN)
   configureEmail(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureEmailDto,
   ) {
-    return this.channelsService.configureEmail(workspaceId, id, dto);
+    return this.channelsService.configureEmail(user.workspace_id, id, dto, user.id);
   }
 
   @Post(":id/configure-whatsapp")
   @Roles(WorkspaceUserRole.ADMIN)
   async configureWhatsApp(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureWhatsAppDto,
   ) {
-    await this.planLimits.enforcePlanTier(workspaceId, "EMPRENDE", "WhatsApp");
-    return this.channelsService.configureWhatsApp(workspaceId, id, dto);
+    await this.planLimits.enforcePlanTier(user.workspace_id, "EMPRENDE", "WhatsApp");
+    return this.channelsService.configureWhatsApp(user.workspace_id, id, dto, user.id);
   }
 
   @Post(":id/configure-telegram")
   @Roles(WorkspaceUserRole.ADMIN)
   async configureTelegram(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureTelegramDto,
   ) {
-    return this.channelsService.configureTelegram(workspaceId, id, dto);
+    return this.channelsService.configureTelegram(user.workspace_id, id, dto, user.id);
   }
 }

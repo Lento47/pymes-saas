@@ -93,6 +93,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ssoExpanded, setSsoExpanded] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const [workspaceOptions, setWorkspaceOptions] = useState<{ slug: string; name: string }[]>([]);
 
   const planParam = new URLSearchParams(window.location.search).get('plan');
@@ -223,15 +226,31 @@ export default function LoginPage() {
       history.replaceState(null, "", target);
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err: unknown) {
-      const msg = (err as any)?.message || '';
+      const msg = (err as Error)?.message || '';
       if (msg.startsWith('MULTIPLE_WORKSPACES:')) {
         try { setWorkspaceOptions(JSON.parse(msg.slice('MULTIPLE_WORKSPACES:'.length))); } catch {}
+      } else if (msg.startsWith('EMAIL_NOT_VERIFIED:')) {
+        setWorkspaceOptions([]);
+        setEmailNotVerified(true);
       } else {
         setWorkspaceOptions([]);
         toast({ title: copy.loginErrorTitle, description: msg, variant: 'destructive' });
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    try {
+      const { api } = await import('@/lib/api');
+      await api.resendVerificationByEmail(email);
+      setResendSent(true);
+    } catch {
+      setResendSent(true); // always show success to avoid enumeration
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -275,8 +294,31 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* Email-not-verified gate */}
+            {emailNotVerified && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm space-y-3">
+                <p className="font-semibold text-amber-800">Verificá tu email para continuar</p>
+                <p className="text-amber-700 text-xs leading-5">
+                  Enviamos un enlace de verificación a <strong>{email}</strong> cuando creaste tu cuenta.
+                  Revisá tu bandeja de entrada (y la carpeta de spam).
+                </p>
+                {resendSent ? (
+                  <p className="text-xs font-medium text-amber-800">Enlace reenviado. Revisá tu email.</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    className="text-xs font-semibold text-amber-800 underline underline-offset-2 hover:no-underline disabled:opacity-50"
+                  >
+                    {resendLoading ? 'Enviando…' : 'Reenviar enlace de verificación'}
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Workspace picker */}
-            {workspaceOptions.length > 0 ? (
+            {!emailNotVerified && workspaceOptions.length > 0 ? (
               <div>
                 <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-[#E4E7F0] bg-[#F8F9FF] text-[#4F46E5]">
                   <Building2 className="h-5 w-5" />

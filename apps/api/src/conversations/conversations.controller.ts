@@ -216,12 +216,12 @@ export class ConversationsController {
     }
 
     // ── Email dispatch ──
-    if (conv.channel.type === "EMAIL" && (conv.contact as any)?.email) {
+    if (conv.channel.type === "EMAIL" && conv.contact.email) {
       try {
         await this.emailService.sendOutbound(
           conv.channel,
-          (conv.contact as any).email,
-          (conv as any).subject ?? "Nuevo mensaje",
+          conv.contact.email,
+          (conv as { subject?: string }).subject ?? "Nuevo mensaje",
           bodyHtml || bodyText,
           bodyText,
         );
@@ -232,14 +232,14 @@ export class ConversationsController {
     }
 
     // ── WhatsApp dispatch ──
-    if (conv.channel.type === "WHATSAPP" && (conv.contact as any)?.phone) {
+    if (conv.channel.type === "WHATSAPP" && conv.contact.phone) {
       try {
-        const phoneStr = (conv.contact as any).phone as string;
+        const phoneStr = conv.contact.phone;
         const to = phoneStr ? phoneStr.replace(/\D/g, "") : "";
         if (!to) return message;
 
         // Rate limit check
-        const cfg = conv.channel.config_json as any;
+        const cfg = conv.channel.config_json as Record<string, string | undefined>;
         const phoneNumberId = cfg?.phone_number_id;
         if (phoneNumberId && !this.whatsAppRateLimiter.canSend(phoneNumberId)) {
           this.logger.warn(`WhatsApp rate limit reached for ${phoneNumberId}`);
@@ -367,14 +367,14 @@ export class ConversationsController {
           conversation_id: conversationId,
           workspace_id: user.workspace_id,
           delivery_status: "DISPATCH_FAILED",
-          delivery_error: (message as any).delivery_error ?? null,
+          delivery_error: (message as { delivery_error?: string | null }).delivery_error ?? null,
         });
       }
     }
 
-    if (conv?.channel?.type === "TELEGRAM" && (conv.contact as any)?.telegram_chat_id) {
+    if (conv?.channel?.type === "TELEGRAM" && conv.contact.telegram_chat_id) {
       try {
-        const chatId = (conv.contact as any).telegram_chat_id;
+        const chatId = conv.contact.telegram_chat_id;
         this.logger.log(
           `[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
         );
@@ -436,7 +436,7 @@ export class ConversationsController {
           conversation_id: conversationId,
           workspace_id: user.workspace_id,
           delivery_status: "DISPATCH_FAILED",
-          delivery_error: (message as any).delivery_error ?? null,
+          delivery_error: (message as { delivery_error?: string | null }).delivery_error ?? null,
         });
       }
     }
@@ -496,7 +496,7 @@ export class ConversationsController {
    * Mark last inbound WhatsApp message as read on Meta
    */
   @Post(':id/read-receipt')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async markAsRead(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') conversationId: string,
@@ -536,7 +536,7 @@ export class ConversationsController {
    * Send typing indicator to WhatsApp user
    */
   @Post(':id/typing')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async typingIndicator(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') conversationId: string,

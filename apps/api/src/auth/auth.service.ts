@@ -55,6 +55,12 @@ export class AuthService {
       throw new UnauthorizedException("Usuario inactivo o suspendido.");
     }
 
+    if (!user.email_verified) {
+      throw new UnauthorizedException(
+        "EMAIL_NOT_VERIFIED: Verificá tu email antes de ingresar. Revisá tu bandeja de entrada o solicitá un nuevo enlace.",
+      );
+    }
+
     // Auto-detect workspace if no slug provided
     let effectiveSlug = workspaceSlug;
     if (!effectiveSlug) {
@@ -259,6 +265,25 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: { email_verified: true, email_verification_token: null },
+    });
+  }
+
+  async resendVerificationEmailByAddress(email: string): Promise<void> {
+    // Always return success — never reveal whether the email exists
+    if (!email || typeof email !== "string") return;
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      select: { id: true, name: true, email: true, email_verified: true, email_verification_token: true },
+    });
+    if (!user || user.email_verified) return;
+
+    const token = randomBytes(32).toString("hex");
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { email_verification_token: token },
+    });
+    await this.sendVerificationEmail(user.email, user.name, token).catch((err) => {
+      this.logger.warn(`Failed to send verification email to ${user.email}: ${err?.message}`);
     });
   }
 

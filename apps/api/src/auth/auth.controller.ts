@@ -161,6 +161,14 @@ export class AuthController {
     return this.authService.resendVerificationEmail(user.id);
   }
 
+  /** POST /auth/resend-verification-email — public: resend by email address (pre-login) */
+  @Post("resend-verification-email")
+  @Throttle({ auth: { limit: 5, ttl: 3_600_000 } })
+  @HttpCode(HttpStatus.OK)
+  resendVerificationByEmail(@Body("email") email: string) {
+    return this.authService.resendVerificationEmailByAddress(email);
+  }
+
   /** GET /auth/my-workspaces — list all workspaces the user belongs to */
   @Get("my-workspaces")
   @UseGuards(JwtAuthGuard)

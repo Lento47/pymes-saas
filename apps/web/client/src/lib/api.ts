@@ -274,6 +274,7 @@ export const api = {
   getMe: () => request<Record<string, any>>("GET", "/api/auth/me"),
   verifyEmail: (token: string) => request<void>("POST", "/api/auth/verify-email", { token }),
   resendVerificationEmail: () => request<void>("POST", "/api/auth/resend-verification"),
+  resendVerificationByEmail: (email: string) => request<void>("POST", "/api/auth/resend-verification-email", { email }),
   requestPasswordReset: (email: string) => request<{ message: string }>("POST", "/api/auth/request-password-reset", { email }),
   resetPassword: (token: string, newPassword: string) => request<{ message: string }>("POST", "/api/auth/reset-password", { token, newPassword }),
   generateSummary: () => request<Record<string, any>>("POST", "/api/summaries/generate"),
