@@ -19,6 +19,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";
 import VerifyEmail from "@/pages/verify-email";
+import ResetPassword from "@/pages/reset-password";
 import Pricing from "@/pages/pricing";
 import ProductPage from "@/pages/product";
 import SeoLandingPage from "@/pages/seo-landing-page";
@@ -201,6 +202,8 @@ function AppRouter() {
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/forgot-password" component={ResetPassword} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/setup" component={SetupPage} />
