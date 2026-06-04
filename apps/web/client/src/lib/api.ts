@@ -358,8 +358,12 @@ export const api = {
   updateLandingConfig: (data: Record<string, any>) => request<Record<string, any>>("PATCH", "/api/workspaces/current/landing-config", data),
   uploadLandingImage: (formData: FormData) => request<{ url: string; key: string }>("POST", "/api/workspaces/current/landing-config/image", formData, { isFormData: true }),
   testAiConnection: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/workspaces/current/ai/test", data),
-  createCheckout: (priceId: string) => request<Record<string, any>>("POST", "/api/billing/checkout", { priceId }),
+  // ── Billing (PayPal subscriptions) ──────────────────────────────────────
+  // createCheckout(planId) → { checkoutUrl, subscriptionId }
+  // Redirect user to checkoutUrl. On return, call confirmPayPalSubscription.
+  createCheckout: (planId: string) => request<Record<string, any>>("POST", "/api/billing/checkout", { planId }),
   getBillingPrices: () => request<Record<string, any>>("GET", "/api/billing/prices"),
+  getBillingPlanDetails: () => request<Record<string, any>>("GET", "/api/billing/plan-details"),
   getAddonPrices: () => request<Record<string, any>>("GET", "/api/billing/addon-prices"),
   createAddonCheckout: (addonKey: string) => request<Record<string, any>>("POST", "/api/billing/checkout-addon", { addonKey }),
   getBillingPortal: () => request<Record<string, any>>("GET", "/api/billing/portal"),
@@ -371,9 +375,11 @@ export const api = {
     ).toString() : "";
     return request<Record<string, any>>("GET", `/api/billing/invoices${qs}`);
   },
-  getSubscription: () => request<Record<string, any>>("GET", "/api/workspaces/current/subscription"),
+  getSubscription: () => request<Record<string, any>>("GET", "/api/billing/subscription"),
+  confirmPayPalSubscription: (subscriptionId: string, planId: string, interval?: "MONTHLY" | "YEARLY") =>
+    request<Record<string, any>>("POST", "/api/billing/subscription/confirm", { subscriptionId, planId, interval }),
   cancelPlan: () => request<Record<string, any>>("POST", "/api/billing/cancel"),
-  changePlan: (priceId: string) => request<Record<string, any>>("POST", "/api/billing/change-plan", { priceId }),
+  changePlan: (planId: string) => request<Record<string, any>>("POST", "/api/billing/change-plan", { planId }),
   getApiKeys: () => request<Record<string, any>>("GET", "/api/workspaces/current/api-keys"),
   updateApiKeys: (data: Record<string, any>) => request<Record<string, any>>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<Record<string, any>>("GET", "/api/workspaces/current/members"),
