@@ -389,6 +389,8 @@ model User {
   status            UserStatus @default(ACTIVE)
   is_platform_admin  Boolean   @default(false)
   terms_accepted_at  DateTime?
+  email_verified         Boolean   @default(false)
+  email_verification_token String? @unique
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

@@ -18,6 +18,7 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";
+import VerifyEmail from "@/pages/verify-email";
 import Pricing from "@/pages/pricing";
 import ProductPage from "@/pages/product";
 import SeoLandingPage from "@/pages/seo-landing-page";
@@ -98,11 +99,58 @@ function AppLoader() {
   );
 }
 
+function EmailVerificationBanner() {
+  const { user } = useAuth();
+  const [dismissed, setDismissed] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
+  const [resent, setResent] = React.useState(false);
+
+  if (!user || user.email_verified !== false || dismissed) return null;
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const { api } = await import("@/lib/api");
+      await api.resendVerificationEmail();
+      setResent(true);
+    } catch {
+      // ignore
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-700">
+      <span>
+        Verificá tu email para acceder a todas las funciones.{' '}
+        {resent ? (
+          <span className="font-medium">Revisá tu bandeja de entrada.</span>
+        ) : (
+          <button
+            onClick={handleResend}
+            disabled={resending}
+            className="font-medium underline underline-offset-2 hover:no-underline disabled:opacity-50"
+          >
+            {resending ? 'Enviando…' : 'Reenviar email'}
+          </button>
+        )}
+      </span>
+      <button onClick={() => setDismissed(true)} className="shrink-0 opacity-60 hover:opacity-100 text-amber-700 leading-none">✕</button>
+    </div>
+  );
+}
+
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
   if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
   if (!isAuthenticated) return <Redirect to="/login" />;
-  return <AppSidebar>{children}</AppSidebar>;
+  return (
+    <>
+      <EmailVerificationBanner />
+      <AppSidebar>{children}</AppSidebar>
+    </>
+  );
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
@@ -152,6 +200,7 @@ function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/setup" component={SetupPage} />

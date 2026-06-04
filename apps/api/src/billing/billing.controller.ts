@@ -22,6 +22,7 @@ import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { AuditService } from "../audit/audit.service";
 
 // ─── Env vars required for PayPal subscriptions ───────────────────────────
 //   PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
@@ -42,6 +43,7 @@ export class BillingController {
     private readonly billingInvoice: BillingInvoiceService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
   ) {}
 
   private getAppBaseUrl(): string {
@@ -95,6 +97,13 @@ export class BillingController {
       );
 
       this.logger.log(`Checkout: workspace=${user.workspace_id} plan=${planId} sub=${subscriptionId}`);
+      void this.audit.log(user.workspace_id, {
+        user_id: user.id,
+        action: "subscription.checkout_initiated",
+        entity_type: "subscription",
+        entity_id: subscriptionId,
+        after: { plan_id: planId, subscription_id: subscriptionId },
+      });
       return { checkoutUrl: approvalUrl, subscriptionId };
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
@@ -122,6 +131,13 @@ export class BillingController {
         user.email,
         body.interval ?? "MONTHLY",
       );
+      void this.audit.log(user.workspace_id, {
+        user_id: user.id,
+        action: "subscription.activated",
+        entity_type: "subscription",
+        entity_id: body.subscriptionId,
+        after: { plan_id: body.planId, interval: body.interval ?? "MONTHLY", provider: "PAYPAL" },
+      });
       return { success: true, message: "Suscripción activada correctamente." };
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
@@ -160,6 +176,13 @@ export class BillingController {
         data: { plan: "FREE" },
       });
 
+      void this.audit.log(user.workspace_id, {
+        user_id: user.id,
+        action: "subscription.cancelled",
+        entity_type: "subscription",
+        entity_id: sub.provider_subscription_id,
+        after: { cancelled_by: "user", provider: "PAYPAL" },
+      });
       return { success: true, message: "Suscripción cancelada." };
     } catch (err) {
       if (err instanceof BadRequestException) throw err;

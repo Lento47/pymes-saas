@@ -272,6 +272,8 @@ export const api = {
   },
   logout: () => request<Record<string, any>>("POST", "/api/auth/logout"),
   getMe: () => request<Record<string, any>>("GET", "/api/auth/me"),
+  verifyEmail: (token: string) => request<void>("POST", "/api/auth/verify-email", { token }),
+  resendVerificationEmail: () => request<void>("POST", "/api/auth/resend-verification"),
   generateSummary: () => request<Record<string, any>>("POST", "/api/summaries/generate"),
   getTodaySummary: () => request<Record<string, any>>("GET", "/api/summaries/daily/today"),
   getDailySummaries: (params?: Record<string, string>) => {

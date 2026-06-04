@@ -144,6 +144,23 @@ export class AuthController {
     return this.authService.resetPassword(token, newPassword);
   }
 
+  /** POST /auth/verify-email — confirm email with token from registration email */
+  @Post("verify-email")
+  @Throttle({ auth: { limit: 20, ttl: 900_000 } })
+  @HttpCode(HttpStatus.OK)
+  verifyEmail(@Body("token") token: string) {
+    return this.authService.verifyEmail(token);
+  }
+
+  /** POST /auth/resend-verification — resend verification email for authenticated user */
+  @Post("resend-verification")
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ auth: { limit: 3, ttl: 3_600_000 } })
+  @HttpCode(HttpStatus.OK)
+  resendVerification(@CurrentUser() user: AuthUser) {
+    return this.authService.resendVerificationEmail(user.id);
+  }
+
   /** GET /auth/my-workspaces — list all workspaces the user belongs to */
   @Get("my-workspaces")
   @UseGuards(JwtAuthGuard)

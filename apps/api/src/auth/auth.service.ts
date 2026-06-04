@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 
 import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../common/prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { createHash, randomBytes, randomUUID } from "crypto";
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly demoData: DemoDataService,
+    private readonly config: ConfigService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
 
@@ -149,6 +151,8 @@ export class AuthService {
 
     const password_hash = await bcrypt.hash(dto.password, 10);
 
+    const verificationToken = randomBytes(32).toString("hex");
+
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -156,6 +160,8 @@ export class AuthService {
         status: "ACTIVE",
         ...(password_hash && { password_hash }),
         terms_accepted_at: new Date(),
+        email_verified: false,
+        email_verification_token: verificationToken,
       },
     });
 
@@ -194,6 +200,11 @@ export class AuthService {
       // Silent — demo data population failures are non-critical
     });
 
+    // Send verification email (fire-and-forget — never block registration)
+    this.sendVerificationEmail(dto.email, dto.name, verificationToken).catch((err) => {
+      this.logger.warn(`Failed to send verification email to ${dto.email}: ${err?.message}`);
+    });
+
     const access_token = this.signToken({
       sub: user.id,
       email: user.email,
@@ -228,7 +239,64 @@ export class AuthService {
         slug: workspace.slug,
         plan: workspace.plan,
       },
+      email_verified: false,
     };
+  }
+
+  // ── Email verification ─────────────────────────────────────────────────────
+
+  async verifyEmail(token: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email_verification_token: token },
+    });
+    if (!user) throw new BadRequestException("Token de verificación inválido o expirado.");
+    if (user.email_verified) return;
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { email_verified: true, email_verification_token: null },
+    });
+  }
+
+  async resendVerificationEmail(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("Usuario no encontrado.");
+    if (user.email_verified) throw new BadRequestException("El email ya fue verificado.");
+
+    const token = randomBytes(32).toString("hex");
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { email_verification_token: token },
+    });
+    await this.sendVerificationEmail(user.email, user.name, token);
+  }
+
+  private async sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
+    const apiKey = this.config.get<string>("RESEND_API_KEY");
+    if (!apiKey) {
+      this.logger.log(`[dev] Email verification token for ${email}: ${token}`);
+      return;
+    }
+
+    const appUrl = this.config.get<string>("APP_URL") ?? "https://pymeshub.lat";
+    const link = `${appUrl}/#/verify-email?token=${token}`;
+
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
+
+    await resend.emails.send({
+      from: "PymesHub <no-reply@pymeshub.lat>",
+      to: email,
+      subject: "Verificá tu email — PymesHub",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+          <h2 style="font-size:20px;font-weight:600;color:#111827;margin-bottom:8px">Verificá tu dirección de email</h2>
+          <p style="color:#6B7280;font-size:14px;margin-bottom:24px">Hola ${name}, gracias por registrarte en PymesHub. Hacé clic en el botón de abajo para confirmar tu email.</p>
+          <a href="${link}" style="display:inline-block;background:#3F3CBB;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600">Verificar email</a>
+          <p style="color:#9CA3AF;font-size:12px;margin-top:24px">Si no creaste una cuenta en PymesHub, podés ignorar este email.</p>
+        </div>
+      `,
+    });
   }
 
   async ssoLogin(workspaceId: string, email: string) {
@@ -1160,7 +1228,7 @@ export class AuthService {
 
     const userData = await this.prisma.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { avatar_url: true, name: true },
+      select: { avatar_url: true, name: true, email_verified: true },
     });
 
     return {
@@ -1171,6 +1239,7 @@ export class AuthService {
       role: user.role,
       is_owner: user.is_owner,
       is_platform_admin: user.is_platform_admin,
+      email_verified: userData.email_verified,
       workspace,
     };
   }
