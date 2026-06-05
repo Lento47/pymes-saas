@@ -44,6 +44,7 @@ import { TtsModule } from "./tts/tts.module";
 import { ApiTokensModule } from "./api-tokens/api-tokens.module";
 import { SanitizeModule } from "./common/sanitize/sanitize.module";
 import { DataRetentionModule } from "./common/data-retention/data-retention.module";
+import { CacheModule } from "./common/cache/cache.module";
 import { BillingModule } from "./billing/billing.module";
 import { RoutingModule } from "./routing/routing.module";
 import { PlanThrottlerGuard } from "./common/plan-limits/plan-throttler.guard";
@@ -87,6 +88,7 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     PlanLimitsModule,
     SanitizeModule,
     DataRetentionModule,
+    CacheModule,
 
     AuthModule,
     WorkspacesModule,

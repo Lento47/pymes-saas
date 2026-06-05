@@ -149,6 +149,12 @@ export class WorkspacesController {
     return landing_config;
   }
 
+  @Get("current/ai-usage")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  getAiTokenUsage(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.planLimits.getAiTokenUsage(workspaceId);
+  }
+
   @Get("current/ai-settings")
   async getAiSettings(@CurrentUser("workspace_id") workspaceId: string) {
     const workspace = await this.service.getCurrent(workspaceId);
