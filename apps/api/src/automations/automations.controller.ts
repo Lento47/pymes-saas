@@ -23,9 +23,11 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { FeaturesService } from "../features/features.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 @Controller("automations")
+@RequirePermission(Permission.WORKSPACE_UPDATE)
 export class AutomationsController {
   constructor(
     private readonly automationsService: AutomationsService,
