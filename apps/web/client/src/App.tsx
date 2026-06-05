@@ -50,6 +50,7 @@ import AuditLogPage from "@/pages/settings/audit";
 import PlatformSettingsPage from "@/pages/settings/platform";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
+import HelpCenterPage from "@/pages/help-center";
 import HelpDocumentPage from "@/pages/help-document";
 import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
@@ -341,6 +342,9 @@ function AppRouter() {
       </Route>
       <Route path="/support">
         {() => <ProtectedLayout><SupportPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/help-center">
+        {() => <ProtectedLayout><HelpCenterPage /></ProtectedLayout>}
       </Route>
       <Route path="/inventory">
         {() => <ProtectedLayout><InventoryPage /></ProtectedLayout>}

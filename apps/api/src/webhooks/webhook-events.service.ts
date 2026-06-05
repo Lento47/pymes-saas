@@ -156,7 +156,8 @@ export class WebhookEventsService {
     });
     if (!event) return;
 
-    if (event.attempts >= 4) {
+    // 5 attempts: exponential backoff 1m → 5m → 15m → 30m, then FAILED (dead-letter)
+    if (event.attempts >= 5) {
       await this.prisma.webhookEvent.update({
         where: { id: eventId },
         data: {
@@ -167,11 +168,11 @@ export class WebhookEventsService {
         },
       });
       this.logger.error(
-        `Webhook event FAILED (max attempts) — id=${eventId} attempts=${event.attempts} error=${error}`,
+        `Webhook event FAILED (max attempts=5) — id=${eventId} attempts=${event.attempts} error=${error}`,
       );
     } else {
-      const delays = [0, 60_000, 300_000];
-      const delay = delays[event.attempts - 1] ?? 300_000;
+      const delays = [60_000, 300_000, 900_000, 1_800_000]; // 1m, 5m, 15m, 30m
+      const delay = delays[event.attempts - 1] ?? 1_800_000;
       const nextRetryAt = new Date(Date.now() + delay);
 
       await this.prisma.webhookEvent.update({
@@ -188,6 +189,72 @@ export class WebhookEventsService {
         `Webhook event RETRYABLE — id=${eventId} attempts=${event.attempts} next_retry_at=${nextRetryAt.toISOString()} error=${error}`,
       );
     }
+  }
+
+  /**
+   * Daily reconciliation: re-queues FAILED events from the past 24 h that still
+   * haven't been picked up, and returns a count of what was reset.
+   * Called by the reconciliation cron at 03:00 UTC.
+   */
+  async reconcileStaleFailedEvents(): Promise<number> {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const result = await this.prisma.rawQuery<{ id: string }[]>(`
+      UPDATE "webhook_events"
+      SET
+        status = 'PENDING'::"WebhookEventStatus",
+        attempts = 0,
+        next_retry_at = NULL,
+        locked_at = NULL,
+        locked_by = NULL,
+        last_error = CONCAT('[reconciled] ', last_error),
+        updated_at = NOW()
+      WHERE status = 'FAILED'::"WebhookEventStatus"
+        AND created_at >= $1
+      RETURNING id;
+    `, cutoff);
+
+    return result?.length ?? 0;
+  }
+
+  /**
+   * Returns a summary of webhook event processing health for the admin dashboard.
+   * Scoped to the last 24 h.
+   */
+  async getSyncStatus(): Promise<{
+    last24h: { pending: number; processing: number; processed: number; retryable: number; failed: number };
+    stuckCount: number;
+  }> {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const counts = await this.prisma.rawQuery<{ status: string; cnt: string }[]>(`
+      SELECT status, COUNT(*) AS cnt
+      FROM "webhook_events"
+      WHERE created_at >= $1
+      GROUP BY status
+    `, since);
+
+    const byStatus: Record<string, number> = {};
+    for (const row of counts ?? []) {
+      byStatus[row.status] = parseInt(row.cnt, 10);
+    }
+
+    const stuckRows = await this.prisma.rawQuery<{ cnt: string }[]>(`
+      SELECT COUNT(*) AS cnt
+      FROM "webhook_events"
+      WHERE status = 'PROCESSING'::"WebhookEventStatus"
+        AND locked_at < NOW() - INTERVAL '5 minutes'
+    `);
+
+    return {
+      last24h: {
+        pending: byStatus["PENDING"] ?? 0,
+        processing: byStatus["PROCESSING"] ?? 0,
+        processed: byStatus["PROCESSED"] ?? 0,
+        retryable: byStatus["RETRYABLE"] ?? 0,
+        failed: byStatus["FAILED"] ?? 0,
+      },
+      stuckCount: parseInt(stuckRows?.[0]?.cnt ?? "0", 10),
+    };
   }
 
   async sweepStuck(): Promise<number> {

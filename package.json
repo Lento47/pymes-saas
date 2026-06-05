@@ -12,8 +12,15 @@
     "build:desktop": "pnpm --filter @pymeshub/desktop tauri:build:cloud",
     "build:desktop:cloud": "pnpm --filter @pymeshub/desktop tauri:build:cloud",
     "test:api": "pnpm --filter saas-api test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report e2e/report",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r check"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "wait-on": "^8.0.1"
   },
   "engines": {
     "node": ">=22",
