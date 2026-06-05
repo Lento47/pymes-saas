@@ -14,7 +14,7 @@ export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get()
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(@CurrentUser("workspace_id") workspaceId: string, @Query() filters: FilterAuditDto) {
     return this.auditService.findAll(workspaceId, filters);
   }

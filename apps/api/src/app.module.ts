@@ -73,8 +73,10 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env" }),
     ThrottlerModule.forRoot([
-      { name: "default", ttl: 60_000, limit: 100 },
-      { name: "auth", ttl: 15 * 60_000, limit: 10 },
+      { name: "default", ttl: 60_000, limit: 100 },   // IP no autenticada: 100/min
+      { name: "auth", ttl: 15 * 60_000, limit: 10 },  // login/register: 10/15min
+      { name: "webhook", ttl: 60_000, limit: 200 },   // webhooks WA/Telegram: 200/min
+      { name: "ai", ttl: 60_000, limit: 30 },          // rutas de agente IA: 30/min
     ]),
     ScheduleModule.forRoot(),
 

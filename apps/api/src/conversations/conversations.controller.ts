@@ -39,10 +39,12 @@ import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
+import { Throttle } from "@nestjs/throttler";
 import { AgentRunService } from "../ai/agent-run.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { EventsGateway } from "../gateways/events.gateway";
+import { AuditService } from "../audit/audit.service";
 
 class StartAgentRunDto {
   @IsOptional()
@@ -73,6 +75,7 @@ export class ConversationsController {
     private readonly aiConversationControl: AiConversationControlService,
     @Inject(forwardRef(() => FlowiseAutoReplyService))
     private readonly flowiseAutoReply: FlowiseAutoReplyService,
+    private readonly audit: AuditService,
   ) {}
 
   // ── Conversations ──────────────────────────────────────────────────────────
@@ -114,11 +117,18 @@ export class ConversationsController {
     WorkspaceUserRole.ADMIN,
     WorkspaceUserRole.OWNER,
   )
-  findOne(
-    @CurrentUser("workspace_id") workspaceId: string,
+  async findOne(
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.service.findOne(workspaceId, id);
+    const result = await this.service.findOne(user.workspace_id, id);
+    void this.audit.log(user.workspace_id, {
+      user_id: user.id,
+      action: "conversation.viewed",
+      entity_type: "conversation",
+      entity_id: id,
+    });
+    return result;
   }
 
   @Patch(":id")
@@ -593,6 +603,7 @@ export class ConversationsController {
   /** One-shot AI reply — responds once, does NOT delegate permanently. */
   @Post(":id/ai-control/reply-once")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ ai: { limit: 30, ttl: 60_000 } })
   async replyOnce(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,
@@ -603,6 +614,7 @@ export class ConversationsController {
   /** Delegate AI permanently + respond immediately (same as delegate-to-ai). */
   @Post(":id/ai-control/start")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ ai: { limit: 30, ttl: 60_000 } })
   async startAiControl(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,
@@ -637,6 +649,7 @@ export class ConversationsController {
 
   @Post(":id/start-agent")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ ai: { limit: 30, ttl: 60_000 } })
   async startAgentRun(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,
