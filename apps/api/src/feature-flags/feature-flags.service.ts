@@ -6,6 +6,7 @@ export type WorkspaceProfile = "emprende" | "business" | "enterprise";
 export type FeatureFlag =
   | "automations" | "pipeline" | "ai_assistant" | "hacienda"
   | "message_templates" | "invite_codes" | "agent" | "invoice_reminders" | "credit_notes"
+  | "calls"
   | "dashboard_basic" | "whatsapp_inbox" | "contacts_basic"
   | "followups_basic" | "templates_basic" | "ai_assist_basic" | "pipeline_sales"
   | "advanced_workflows" | "omnichannel_advanced" | "enterprise_analytics"
@@ -22,7 +23,7 @@ const PROFILE_FEATURES: Record<WorkspaceProfile, Record<string, boolean>> = {
     developer_tools: false, ai_autonomous_agents: false, complex_billing: false,
     admin_diagnostics: false, invoices: false, documents: false, tasks: false,
     automations: false, pipeline: false, ai_assistant: false, hacienda: false,
-    message_templates: false, agent: false, credit_notes: false,
+    message_templates: false, agent: false, credit_notes: false, calls: false,
   },
   business: {
     dashboard_basic: true, whatsapp_inbox: true, contacts_basic: true,
@@ -31,7 +32,7 @@ const PROFILE_FEATURES: Record<WorkspaceProfile, Record<string, boolean>> = {
     enterprise_analytics: true, developer_tools: true, ai_autonomous_agents: true,
     complex_billing: true, admin_diagnostics: true, invoices: true, documents: true,
     tasks: true, automations: true, pipeline: true, ai_assistant: true, hacienda: true,
-    message_templates: true, agent: true, credit_notes: true,
+    message_templates: true, agent: true, credit_notes: true, calls: true,
   },
   enterprise: {
     dashboard_basic: true, whatsapp_inbox: true, contacts_basic: true,
@@ -40,7 +41,7 @@ const PROFILE_FEATURES: Record<WorkspaceProfile, Record<string, boolean>> = {
     enterprise_analytics: true, developer_tools: true, ai_autonomous_agents: true,
     complex_billing: true, admin_diagnostics: true, invoices: true, documents: true,
     tasks: true, automations: true, pipeline: true, ai_assistant: true, hacienda: true,
-    message_templates: true, agent: true, credit_notes: true,
+    message_templates: true, agent: true, credit_notes: true, calls: true,
   },
 };
 
@@ -109,6 +110,12 @@ export class FeatureFlagsService implements OnModuleInit {
         name: "Credit Notes",
         description: "Create and submit credit notes",
         required_plan: "GROWTH" as const,
+      },
+      {
+        key: "calls",
+        name: "Voice & Video Calls",
+        description: "WebRTC audio/video calling between workspace members",
+        required_plan: "STARTER" as const,
       },
     ];
     for (const flag of defaults) {

@@ -6,7 +6,7 @@ import v8 from "node:v8";
 const startedAt = new Date();
 
 interface HealthCheck {
-  status: "ok" | "error";
+  status: "ok" | "warn" | "error";
   detail?: string;
 }
 
@@ -25,7 +25,7 @@ export class HealthController {
     return this.ready();
   }
 
-  /** Liveness: always returns 200 if the process is alive (K8s liveness probe). */
+  /** Liveness: always 200 if process is alive. */
   @Get("live")
   live() {
     return {
@@ -35,23 +35,28 @@ export class HealthController {
       started_at: startedAt.toISOString(),
       timestamp: new Date().toISOString(),
       version: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? null,
+      env: process.env.NODE_ENV ?? "development",
     };
   }
 
-  /** Readiness: checks all dependencies. Always returns 200 so Railway's
-   *  health monitoring doesn't flag false negatives. The `healthy` boolean
-   *  and per-check status tell you what's actually broken. */
+  /** Readiness: checks all dependencies. Returns 200 always; use `healthy` boolean. */
   @Get("ready")
   async ready() {
     const checks: Record<string, HealthCheck> = {};
 
     await this.checkDatabase(checks);
-    this.checkRequiredConfig(checks);
-    this.checkStorageConfig(checks);
     this.checkRedisConfig(checks);
+    this.checkStorageConfig(checks);
+    this.checkPayPalConfig(checks);
+    this.checkEmailConfig(checks);
+    this.checkWhatsAppConfig(checks);
+    this.checkTelegramConfig(checks);
+    this.checkRequiredConfig(checks);
     this.checkMemory(checks);
 
-    const healthy = Object.values(checks).every((check) => check.status === "ok");
+    const errors = Object.values(checks).filter((c) => c.status === "error");
+    const warnings = Object.values(checks).filter((c) => c.status === "warn");
+    const healthy = errors.length === 0;
 
     if (!healthy) {
       const failures = Object.entries(checks)
@@ -62,55 +67,35 @@ export class HealthController {
     }
 
     return {
-      status: healthy ? "ok" : "degraded",
+      status: healthy ? (warnings.length > 0 ? "degraded" : "ok") : "unhealthy",
       healthy,
       service: "pymes-api",
       uptime_seconds: Math.floor(process.uptime()),
-      checks,
-      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV ?? "development",
       version: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? null,
+      checks,
+      summary: {
+        ok: Object.values(checks).filter((c) => c.status === "ok").length,
+        warn: warnings.length,
+        error: errors.length,
+      },
+      timestamp: new Date().toISOString(),
     };
   }
 
-  // ── Private checkers ──
+  // ── Private checkers ────────────────────────────────────────────────────────
 
   private async checkDatabase(checks: Record<string, HealthCheck>) {
     try {
       const start = Date.now();
-      await this.prisma.rawQuery<Array<{ ok: number }>>("SELECT 1 AS ok");
+      await this.prisma.$queryRaw`SELECT 1`;
       checks.database = { status: "ok", detail: `${Date.now() - start}ms` };
     } catch (error) {
       checks.database = {
         status: "error",
-        detail: error instanceof Error ? error.message : "Database check failed",
+        detail: error instanceof Error ? error.message : "Database unreachable",
       };
     }
-  }
-
-  private checkRequiredConfig(checks: Record<string, HealthCheck>) {
-    const required = ["DATABASE_URL", "JWT_SECRET"];
-    const missing = required.filter((key) => !this.config.get<string>(key));
-    checks.config = {
-      status: missing.length === 0 ? "ok" : "error",
-      detail: missing.length === 0 ? undefined : `Missing required env: ${missing.join(", ")}`,
-    };
-  }
-
-  private checkStorageConfig(checks: Record<string, HealthCheck>) {
-    const driver = this.config.get<string>("STORAGE_DRIVER") ?? "local";
-
-    if (driver === "s3" || driver === "minio") {
-      const missing = ["STORAGE_BUCKET", "STORAGE_ACCESS_KEY", "STORAGE_SECRET_KEY"].filter(
-        (key) => !this.config.get<string>(key),
-      );
-      checks.storage = {
-        status: missing.length === 0 ? "ok" : "error",
-        detail: missing.length === 0 ? driver : `Missing storage env: ${missing.join(", ")}`,
-      };
-      return;
-    }
-
-    checks.storage = { status: "ok", detail: driver };
   }
 
   private checkRedisConfig(checks: Record<string, HealthCheck>) {
@@ -119,11 +104,78 @@ export class HealthController {
       this.config.get<string>("REDIS_HOST") ||
       this.config.get<string>("UPSTASH_REDIS_REST_URL")
     );
+    checks.redis = hasRedis
+      ? { status: "ok", detail: "configured" }
+      : { status: "warn", detail: "not configured — throttling and session caching use in-memory fallback" };
+  }
 
-    // Redis is optional — degrade gracefully instead of failing readiness.
-    checks.redis = {
-      status: "ok",
-      detail: hasRedis ? "configured" : "Not configured. Queueing, throttling, and workers may be unavailable.",
+  private checkStorageConfig(checks: Record<string, HealthCheck>) {
+    const driver = this.config.get<string>("STORAGE_DRIVER") ?? "local";
+    if (driver === "s3" || driver === "minio") {
+      const missing = ["STORAGE_BUCKET", "STORAGE_ACCESS_KEY", "STORAGE_SECRET_KEY"].filter(
+        (key) => !this.config.get<string>(key),
+      );
+      checks.storage = missing.length === 0
+        ? { status: "ok", detail: driver }
+        : { status: "error", detail: `Missing storage env: ${missing.join(", ")}` };
+    } else {
+      checks.storage = { status: "warn", detail: `driver=${driver} — local storage not suitable for multi-instance deployments` };
+    }
+  }
+
+  private checkPayPalConfig(checks: Record<string, HealthCheck>) {
+    const missing = ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"].filter(
+      (k) => !this.config.get<string>(k),
+    );
+    const env = this.config.get<string>("PAYPAL_ENVIRONMENT") ?? "sandbox";
+    if (missing.length > 0) {
+      checks.paypal = { status: "error", detail: `Missing: ${missing.join(", ")}` };
+    } else if (env === "sandbox" && process.env.NODE_ENV === "production") {
+      checks.paypal = { status: "warn", detail: "PayPal in sandbox mode on production environment" };
+    } else {
+      checks.paypal = { status: "ok", detail: `env=${env}` };
+    }
+  }
+
+  private checkEmailConfig(checks: Record<string, HealthCheck>) {
+    const resendKey = this.config.get<string>("RESEND_API_KEY");
+    if (!resendKey) {
+      checks.email = { status: "warn", detail: "RESEND_API_KEY not set — verification/reset emails will not send" };
+    } else {
+      checks.email = { status: "ok", detail: "resend configured" };
+    }
+  }
+
+  private checkWhatsAppConfig(checks: Record<string, HealthCheck>) {
+    const verifyToken = this.config.get<string>("WHATSAPP_WEBHOOK_VERIFY_TOKEN");
+    if (!verifyToken) {
+      checks.whatsapp_webhook = {
+        status: "warn",
+        detail: "WHATSAPP_WEBHOOK_VERIFY_TOKEN not set — webhook verification disabled",
+      };
+    } else {
+      checks.whatsapp_webhook = { status: "ok", detail: "verify token configured" };
+    }
+  }
+
+  private checkTelegramConfig(checks: Record<string, HealthCheck>) {
+    const encKey = this.config.get<string>("ENCRYPTION_KEY");
+    if (!encKey) {
+      checks.telegram = { status: "error", detail: "ENCRYPTION_KEY not set — bot tokens cannot be encrypted" };
+    } else {
+      checks.telegram = { status: "ok", detail: "encryption key configured" };
+    }
+  }
+
+  private checkRequiredConfig(checks: Record<string, HealthCheck>) {
+    const required = [
+      "DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET",
+      "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",
+    ];
+    const missing = required.filter((key) => !this.config.get<string>(key));
+    checks.config_required = {
+      status: missing.length === 0 ? "ok" : "error",
+      detail: missing.length === 0 ? "all required vars present" : `Missing: ${missing.join(", ")}`,
     };
   }
 
@@ -133,16 +185,11 @@ export class HealthController {
     const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024);
     const heapLimitMB = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
     const rssMB = Math.round(usage.rss / 1024 / 1024);
-    const externalMB = Math.round(usage.external / 1024 / 1024);
-    const percentOfLimit = Math.round((usage.heapUsed / v8.getHeapStatistics().heap_size_limit) * 100);
-
-    // heapTotal is V8's current allocation, NOT the max. V8 expands it on demand.
-    // Only alert when heapUsed approaches the actual heapSizeLimit (the container cap).
-    const status: "ok" | "error" = percentOfLimit > 90 ? "error" : "ok";
-
+    const pct = Math.round((usage.heapUsed / v8.getHeapStatistics().heap_size_limit) * 100);
+    const status: HealthCheck["status"] = pct > 90 ? "error" : pct > 75 ? "warn" : "ok";
     checks.memory = {
       status,
-      detail: `heap ${heapUsedMB}/${heapTotalMB}MB (${heapLimitMB}MB limit, ${percentOfLimit}%) · rss ${rssMB}MB · ext ${externalMB}MB`,
+      detail: `heap ${heapUsedMB}/${heapTotalMB}MB (${heapLimitMB}MB limit, ${pct}%) rss=${rssMB}MB`,
     };
   }
 }

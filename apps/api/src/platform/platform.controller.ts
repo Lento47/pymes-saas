@@ -24,6 +24,7 @@ import { UpdateWorkspaceBillingDto } from "./dto/update-workspace-billing.dto";
 import { UpdateWorkspaceFeaturesDto } from "./dto/update-workspace-features.dto";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { BillingRecoveryService } from "../billing/billing-recovery.service";
 
 @Controller("platform")
 @UseGuards(JwtAuthGuard, PlatformAdminGuard)
@@ -32,6 +33,7 @@ export class PlatformController {
     private readonly service: PlatformService,
     private readonly platformSettings: PlatformSettingsService,
     private readonly orchestrator: SupportOrchestratorService,
+    private readonly billingRecovery: BillingRecoveryService,
   ) {}
 
   @Get("workspaces")
@@ -212,5 +214,19 @@ export class PlatformController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.updateWorkspaceProfile(slug, body.profile, user.id);
+  }
+
+  // ── Billing recovery (platform admin only) ───────────────────────────────
+
+  /** GET /platform/billing/inconsistencies — detect billing anomalies safely */
+  @Get("billing/inconsistencies")
+  detectBillingInconsistencies() {
+    return this.billingRecovery.detectInconsistencies();
+  }
+
+  /** POST /platform/billing/revert-stale-processing — revert stuck orders to FAILED */
+  @Post("billing/revert-stale-processing")
+  revertStaleProcessingOrders() {
+    return this.billingRecovery.revertStaleProcessingOrders();
   }
 }

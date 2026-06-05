@@ -7,6 +7,7 @@ import { DateSeparator } from "./DateSeparator";
 import { EmptyConversationState } from "./EmptyConversationState";
 import { MessageBubble } from "./MessageBubble";
 import { AITypingBubble, type AgentRun } from "./AITypingBubble";
+import { CallHistoryMessage } from "@/features/calls/CallHistoryMessage";
 
 interface MessageTimelineProps {
   messages: UiMessage[];
@@ -104,17 +105,21 @@ export function MessageTimeline({
           return (
             <div key={msg.id}>
               {showDateSeparator && msg.sentAt && <DateSeparator date={msg.sentAt} />}
-              <MessageBubble
-                message={msg}
-                isConsecutive={isConsecutive}
-                showSenderName={showSenderName}
-                isNew={isNew}
-                contactName={contactName}
-                contactAvatarInitials={contactAvatarInitials}
-                contactAvatarUrl={contactAvatarUrl}
-                quotedMessage={quotedMessage}
-                onReply={onReply}
-              />
+              {msg.raw?.message_type === "CALL" ? (
+                <CallHistoryMessage bodyText={msg.bodyText} />
+              ) : (
+                <MessageBubble
+                  message={msg}
+                  isConsecutive={isConsecutive}
+                  showSenderName={showSenderName}
+                  isNew={isNew}
+                  contactName={contactName}
+                  contactAvatarInitials={contactAvatarInitials}
+                  contactAvatarUrl={contactAvatarUrl}
+                  quotedMessage={quotedMessage}
+                  onReply={onReply}
+                />
+              )}
             </div>
           );
         })}

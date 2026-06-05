@@ -155,6 +155,20 @@ enum MessageType {
   ORDER
   INTERACTIVE
   UNKNOWN
+  CALL
+}
+
+enum CallStatus {
+  RINGING
+  ACTIVE
+  ENDED
+  REJECTED
+  MISSED
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
 }
 
 enum MediaStatus {
@@ -339,6 +353,7 @@ model Workspace {
   runbook_executions    RunbookExecution[]
   support_case_comments SupportCaseComment[]
   orchestration_runs    SupportOrchestrationRun[]
+  calls                 Call[]
 
   // Business+ Enterprise relations
   enterprise_config  WorkspaceEnterpriseConfig?
@@ -414,6 +429,8 @@ model User {
   assigned_orders           Order[]            @relation("OrderAssignee")
   billing_events            BillingEvent[]
   agent_sessions            AgentSession[]
+  calls_made                Call[]             @relation("CallCaller")
+  calls_received            Call[]             @relation("CallCallee")
 
   // Business+ Enterprise relations
   onboarding_projects OnboardingProject[] @relation("OnboardingOwner")
@@ -648,6 +665,7 @@ model Conversation {
   orders             Order[]
   insight            ConversationInsight?
   scheduled_messages ScheduledMessage[]
+  calls              Call[]
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -2339,6 +2357,7 @@ enum CreditTransactionType {
 
 enum PaypalPaymentStatus {
   CREATED
+  PROCESSING
   COMPLETED
   FAILED
 }
@@ -2737,4 +2756,31 @@ model ScheduledMessage {
   @@index([workspace_id])
   @@index([conversation_id])
   @@map("scheduled_messages")
+}
+
+// ── Voice/Video Calls ────────────────────────────────────────────────────────
+model Call {
+  id               String     @id @default(cuid()) @db.VarChar(36)
+  workspace_id     String     @db.VarChar(36)
+  conversation_id  String?    @db.VarChar(36)
+  caller_id        String     @db.VarChar(36)
+  callee_id        String     @db.VarChar(36)
+  type             CallType   @default(AUDIO)
+  status           CallStatus @default(RINGING)
+  created_at       DateTime   @default(now())
+  answered_at      DateTime?
+  ended_at         DateTime?
+  duration_seconds Int        @default(0)
+  quality_json     Json?      @db.JsonB
+
+  workspace    Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  caller       User          @relation("CallCaller", fields: [caller_id], references: [id], onDelete: Cascade)
+  callee       User          @relation("CallCallee", fields: [callee_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([callee_id, status])
+  @@index([caller_id])
+  @@index([conversation_id])
+  @@map("calls")
 }

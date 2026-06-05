@@ -1,4 +1,4 @@
-import { Logger } from "@nestjs/common";
+import { forwardRef, Inject, Logger } from "@nestjs/common";
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -11,6 +11,11 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { Server, Socket } from "socket.io";
 import { PrismaService } from "../common/prisma/prisma.service";
+
+// Lazy-load to avoid circular dependency
+type CallsServiceType = {
+  handleDisconnect(userId: string): Promise<void>;
+};
 
 // ─── Eventos emitidos al cliente ─────────────────────────────────────────────
 // message:new          → nuevo mensaje en una conversación (DTO enriquecido)
@@ -46,11 +51,20 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private readonly logger = new Logger(EventsGateway.name);
+  private callsService: CallsServiceType | null = null;
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {}
+
+  /**
+   * Inject CallsService lazily to avoid circular dependency.
+   * Called from AppModule after all modules are initialized.
+   */
+  setCallsService(service: CallsServiceType) {
+    this.callsService = service;
+  }
 
   // ── Conexión ───────────────────────────────────────────────────────────────
 
@@ -86,6 +100,12 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
+    const userId = client.data.userId as string | undefined;
+    if (userId && this.callsService) {
+      this.callsService.handleDisconnect(userId).catch((err) =>
+        this.logger.error(`Call cleanup failed for ${userId}: ${(err as Error)?.message ?? err}`),
+      );
+    }
     this.logger.log(`Disconnected: ${client.id}`);
   }
 
@@ -250,5 +270,42 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   emitContactUpdated(workspaceId: string, contact: unknown) {
     this.server.to(`workspace:${workspaceId}`).emit("contact:updated", contact);
+  }
+
+  // ── Call signaling (ephemeral, via Socket.IO only) ────────────────────────
+
+  /** Notify callee of incoming call */
+  emitCallRinging(userId: string, call: unknown) {
+    this.server.to(`user:${userId}`).emit("call:ringing", call);
+  }
+
+  /** Notify caller that callee answered */
+  emitCallAnswered(userId: string, call: unknown) {
+    this.server.to(`user:${userId}`).emit("call:answered", call);
+  }
+
+  /** Notify caller that callee rejected */
+  emitCallRejected(userId: string, call: unknown) {
+    this.server.to(`user:${userId}`).emit("call:rejected", call);
+  }
+
+  /** Notify both parties that call ended */
+  emitCallEnded(userId: string, call: unknown) {
+    this.server.to(`user:${userId}`).emit("call:ended", call);
+  }
+
+  /** Forward SDP offer via Socket.IO (ephemeral, never persisted) */
+  emitCallOffer(userId: string, payload: { call_id: string; sdp: string }) {
+    this.server.to(`user:${userId}`).emit("call:offer", payload);
+  }
+
+  /** Forward SDP answer via Socket.IO (ephemeral, never persisted) */
+  emitCallAnswer(userId: string, payload: { call_id: string; sdp: string }) {
+    this.server.to(`user:${userId}`).emit("call:answer", payload);
+  }
+
+  /** Forward ICE candidate to the other party */
+  emitCallIce(userId: string, payload: { call_id: string; candidate: string; sdp_mid: string; sdp_m_line_index: number }) {
+    this.server.to(`user:${userId}`).emit("call:ice", payload);
   }
 }

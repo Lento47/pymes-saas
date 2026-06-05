@@ -21,9 +21,11 @@ import { ConfigureEmailDto } from "./dto/configure-email.dto";
 import { ConfigureWhatsAppDto } from "./dto/configure-whatsapp.dto";
 import { ConfigureTelegramDto } from "./dto/configure-telegram.dto";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("channels")
+@RequirePermission(Permission.CHANNELS_MANAGE)
 export class ChannelsController {
   constructor(
     private readonly channelsService: ChannelsService,

@@ -134,13 +134,13 @@ export default function BillingPage() {
   // ── Confirm PayPal subscription after redirect ──────────────────────────
   useEffect(() => {
     if (!ppSubscriptionId || confirmFired.current || !isAuthenticated) return;
-    const pendingPlanId = sessionStorage.getItem(PAYPAL_PENDING_KEY);
-    if (!pendingPlanId) return;
+    const pendingPlanKey = sessionStorage.getItem(PAYPAL_PENDING_KEY);
+    if (!pendingPlanKey) return;
 
     confirmFired.current = true;
     setConfirmLoading(true);
 
-    api.confirmPayPalSubscription(ppSubscriptionId, pendingPlanId)
+    api.confirmPayPalSubscription(ppSubscriptionId, pendingPlanKey)
       .then(() => {
         sessionStorage.removeItem(PAYPAL_PENDING_KEY);
         setConfirmed(true);
@@ -181,19 +181,13 @@ export default function BillingPage() {
       return;
     }
 
-    const planId = prices?.[`${tier.planKey}_monthly`];
-    if (!planId) {
-      setCheckoutError('El precio del plan no está configurado. Contactá a soporte.');
-      return;
-    }
-
     setCheckoutLoading(tier.planKey);
     setCheckoutError(null);
 
     try {
-      const result = await api.createCheckout(planId);
+      const result = await api.createCheckout(tier.planKey, 'MONTHLY');
       if (result.checkoutUrl) {
-        sessionStorage.setItem(PAYPAL_PENDING_KEY, planId);
+        sessionStorage.setItem(PAYPAL_PENDING_KEY, tier.planKey);
         window.location.href = result.checkoutUrl;
       } else {
         setCheckoutError('No se pudo crear la sesión de pago. Intentá de nuevo.');

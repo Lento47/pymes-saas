@@ -1,4 +1,5 @@
 import { Module, forwardRef } from "@nestjs/common";
+import { AuditModule } from "../audit/audit.module";
 import { AiModule } from "../ai/ai.module";
 import { ConversationsModule } from "../conversations/conversations.module";
 import { HaciendaModule } from "../hacienda/hacienda.module";
@@ -14,6 +15,7 @@ import { RemindersService } from "./reminders.service";
 
 @Module({
   imports: [
+    AuditModule,
     AiModule,
     ConversationsModule,
     HaciendaModule,

@@ -13,6 +13,11 @@ import { OfflineBanner } from "@/components/shared/offline-banner";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
+import { CallProvider, useCallContext } from "@/features/calls/CallProvider";
+import { IncomingCallDialog } from "@/features/calls/IncomingCallDialog";
+import { ActiveCallBar } from "@/features/calls/ActiveCallBar";
+import { CallErrorFallback } from "@/features/calls/CallErrorFallback";
+import { CallPage } from "@/features/calls/CallPage";
 
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
@@ -147,9 +152,20 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return (
-    <>
+    <CallProvider>
       <EmailVerificationBanner />
       <AppSidebar>{children}</AppSidebar>
+      <CallOverlays />
+    </CallProvider>
+  );
+}
+
+function CallOverlays() {
+  return (
+    <>
+      <IncomingCallDialog />
+      <ActiveCallBar />
+      <CallErrorFallback />
     </>
   );
 }
@@ -303,6 +319,9 @@ function AppRouter() {
       </Route>
       <Route path="/contacts/:id">
         {() => <ProtectedLayout><ContactDetail /></ProtectedLayout>}
+      </Route>
+      <Route path="/calls/:id">
+        {() => <ProtectedLayout><CallPage /></ProtectedLayout>}
       </Route>
       <Route path="/tasks" component={TasksFeatureRoute} />
       <Route path="/documents" component={DocumentsFeatureRoute} />
