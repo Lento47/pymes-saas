@@ -47,9 +47,6 @@ export class WhatsAppService {
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
-    this.logger.log(
-      `[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(",")}`,
-    );
     if (!cfg?.access_token_encrypted) {
       this.logger.error(
         `WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`,
@@ -246,9 +243,6 @@ export class WhatsAppService {
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
-    this.logger.log(
-      `[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(",")}`,
-    );
     if (!cfg?.access_token_encrypted) {
       this.logger.error(
         `WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`,
@@ -1150,7 +1144,7 @@ export class WhatsAppService {
 
       const { messageId, conversationId, contactId } = result;
 
-      this.logger.log(
+      this.logger.debug(
         `Message created — workspace=${workspaceId} conversation=${conversationId} message=${messageId} provider_message_id=${providerMessageId} from=${from} type=${msg.type}`,
       );
 

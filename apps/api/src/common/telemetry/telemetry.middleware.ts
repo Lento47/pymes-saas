@@ -3,7 +3,14 @@ import { Request, Response } from "express";
 import { REQUEST_ID_HEADER } from "./request-id.middleware";
 
 // Paths to skip from access logs (too noisy)
-const SILENT_PATHS = new Set(["/api/health", "/api/health/live", "/api/health/ready"]);
+const SILENT_PATHS = new Set([
+  "/api/health", "/api/health/live", "/api/health/ready",
+  "/socket.io", // WebSocket transport — logged at gateway level
+]);
+
+// In production, only log errors/warnings and slow requests (>500ms)
+// to stay under Railway's 500 logs/sec limit.
+const PROD_LOG_ERRORS_ONLY = process.env.NODE_ENV === "production";
 
 // Headers that must never appear in logs
 const SENSITIVE_HEADERS = new Set([
@@ -21,6 +28,13 @@ export class TelemetryMiddleware implements NestMiddleware {
 
     res.on("finish", () => {
       const statusCode = res.statusCode;
+      const durationMs = Date.now() - start;
+
+      // In production: only log errors (5xx), warnings (4xx), or slow requests (>500ms)
+      if (PROD_LOG_ERRORS_ONLY && statusCode < 400 && durationMs < 500) {
+        return;
+      }
+
       const level =
         statusCode >= 500 ? "error" :
         statusCode >= 400 ? "warn" : "info";
@@ -31,14 +45,12 @@ export class TelemetryMiddleware implements NestMiddleware {
         method,
         path,
         status: statusCode,
-        duration_ms: Date.now() - start,
+        duration_ms: durationMs,
         request_id: req.requestId ?? req.headers[REQUEST_ID_HEADER] ?? null,
         workspace_id: req.user?.workspace_id ?? (req.headers["x-workspace-slug"] as string) ?? null,
         user_id: req.user?.id ?? null,
-        // Never include: auth headers, tokens, API keys, secrets
       };
 
-      // Scrub any leaking sensitive header from the path string
       if (!log.path || String(log.path).includes("token") || String(log.path).includes("secret")) {
         log.path = String(log.path).replace(/=[^&?]*/g, "=[REDACTED]");
       }

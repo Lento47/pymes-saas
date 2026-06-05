@@ -390,9 +390,6 @@ export class ConversationsController {
     if (conv?.channel?.type === "TELEGRAM" && conv.contact.telegram_chat_id) {
       try {
         const chatId = conv.contact.telegram_chat_id;
-        this.logger.log(
-          `[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
-        );
 
         // Resolve reply context (DB ID → telegram_message_id)
         let tgReplyId: string | null = null;

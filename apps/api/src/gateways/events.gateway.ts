@@ -92,7 +92,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await client.join(`workspace:${payload.workspace_id}`);
       await client.join(`user:${payload.sub}`);
 
-      this.logger.log(`Connected: ${payload.email} (workspace:${payload.workspace_id})`);
+      this.logger.debug(`Connected: ${payload.email} (workspace:${payload.workspace_id})`);
     } catch {
       this.logger.warn(`Rejected connection: ${client.id} — invalid token`);
       client.disconnect();
@@ -106,7 +106,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.logger.error(`Call cleanup failed for ${userId}: ${(err as Error)?.message ?? err}`),
       );
     }
-    this.logger.log(`Disconnected: ${client.id}`);
+    this.logger.debug(`Disconnected: ${client.id}`);
   }
 
   // ── Eventos del cliente ────────────────────────────────────────────────────
