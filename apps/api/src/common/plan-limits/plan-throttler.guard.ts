@@ -1,6 +1,6 @@
 import { Injectable, ExecutionContext, Logger } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { ThrottlerGuard, ThrottlerException } from "@nestjs/throttler";
+import { ThrottlerGuard, ThrottlerException, ThrottlerLimitDetail } from "@nestjs/throttler";
 import { PrismaService } from "../prisma/prisma.service";
 
 const PLAN_RATE_LIMITS: Record<string, number> = {
@@ -65,7 +65,7 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
 
   protected override async throwThrottlingException(
     context: ExecutionContext,
-    throttlerLimitDetail: Record<string, unknown>,
+    throttlerLimitDetail: ThrottlerLimitDetail,
   ): Promise<void> {
     const req = context.switchToHttp().getRequest<{
       ip?: string;
@@ -78,8 +78,7 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     );
 
     const res = context.switchToHttp().getResponse<{ setHeader: (k: string, v: string) => void }>();
-    const timeToExpire = (throttlerLimitDetail as { timeToExpire?: number }).timeToExpire ?? 60;
-    res.setHeader("Retry-After", String(timeToExpire));
+    res.setHeader("Retry-After", String(throttlerLimitDetail.ttl));
 
     throw new ThrottlerException();
   }

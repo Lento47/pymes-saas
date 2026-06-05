@@ -24,6 +24,8 @@ import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { FeaturesService } from "../features/features.service";
 import { AuditService } from "../audit/audit.service";
+import { RequirePermission } from "../common/permissions/require-permission.decorator";
+import { Permission } from "../common/permissions/permissions";
 
 @Controller("contacts")
 @UseGuards(JwtAuthGuard, RolesGuard)

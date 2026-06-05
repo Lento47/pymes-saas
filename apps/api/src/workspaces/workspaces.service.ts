@@ -2,10 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
-  TooManyRequestsException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as zlib from "zlib";
@@ -638,8 +638,9 @@ export class WorkspacesService {
       const elapsedMs = Date.now() - new Date(lastExport).getTime();
       const remainingH = Math.ceil((24 * 3600_000 - elapsedMs) / 3_600_000);
       if (elapsedMs < 24 * 3600_000) {
-        throw new TooManyRequestsException(
+        throw new HttpException(
           `Ya existe un export reciente. Próximo disponible en ${remainingH}h.`,
+          429,
         );
       }
     }
