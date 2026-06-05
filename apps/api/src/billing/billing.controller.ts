@@ -68,24 +68,25 @@ export class BillingController {
   }
 
   // ── POST /billing/checkout — create PayPal subscription, return approval URL ─
-  // planId = the PayPal plan ID (e.g. P-xxxx from dashboard).
-  // Frontend sends the planId and optionally an interval.
+  // Server-authoritative: client sends planKey + interval; backend resolves planId.
   @Post("checkout")
   @UseGuards(JwtAuthGuard)
   async createCheckout(
     @CurrentUser() user: AuthUser,
-    @Body() body: { planId: string; priceId?: string },
+    @Body() body: { planKey: string; interval?: "MONTHLY" | "YEARLY" },
   ) {
-    // Accept either planId (new) or priceId (compat with old frontend)
-    const planId = body.planId ?? body.priceId;
-    if (!planId) throw new BadRequestException("planId es requerido");
+    if (!body.planKey) throw new BadRequestException("planKey es requerido");
+
+    const interval = body.interval ?? "MONTHLY";
+    const planId = this.paypal.resolvePlanId(body.planKey, interval);
+    if (!planId) {
+      throw new BadRequestException(
+        `Plan "${body.planKey}" (${interval}) no está configurado. Verificá PAYPAL_PLAN_* en las variables de entorno.`,
+      );
+    }
 
     try {
       const base = this.getAppBaseUrl();
-      // PayPal appends ?subscription_id=I-xxx&ba_token=xxx to the return URL.
-      // With hash routing the final URL is: base?subscription_id=xxx#/billing
-      // The frontend reads subscription_id from window.location.search and the
-      // pending planId from sessionStorage (stored before redirect).
       const returnUrl = `${base}/#/billing`;
       const cancelUrl = `${base}/#/billing?pp_canceled=1`;
 
@@ -96,13 +97,15 @@ export class BillingController {
         cancelUrl,
       );
 
-      this.logger.log(`Checkout: workspace=${user.workspace_id} plan=${planId} sub=${subscriptionId}`);
+      this.logger.log(
+        `Checkout: workspace=${user.workspace_id} planKey=${body.planKey} interval=${interval} sub=${subscriptionId}`,
+      );
       void this.audit.log(user.workspace_id, {
         user_id: user.id,
         action: "subscription.checkout_initiated",
         entity_type: "subscription",
         entity_id: subscriptionId,
-        after: { plan_id: planId, subscription_id: subscriptionId },
+        after: { plan_key: body.planKey, interval, subscription_id: subscriptionId },
       });
       return { checkoutUrl: approvalUrl, subscriptionId };
     } catch (err) {
@@ -192,14 +195,22 @@ export class BillingController {
   }
 
   // ── POST /billing/change-plan — cancel old + start new subscription ────────
+  // Server-authoritative: client sends planKey + interval; backend resolves planId.
   @Post("change-plan")
   @UseGuards(JwtAuthGuard)
   async changePlan(
     @CurrentUser() user: AuthUser,
-    @Body() body: { planId: string; priceId?: string },
+    @Body() body: { planKey: string; interval?: "MONTHLY" | "YEARLY" },
   ) {
-    const planId = body.planId ?? body.priceId;
-    if (!planId) throw new BadRequestException("planId es requerido");
+    if (!body.planKey) throw new BadRequestException("planKey es requerido");
+
+    const interval = body.interval ?? "MONTHLY";
+    const planId = this.paypal.resolvePlanId(body.planKey, interval);
+    if (!planId) {
+      throw new BadRequestException(
+        `Plan "${body.planKey}" (${interval}) no está configurado en el servidor.`,
+      );
+    }
 
     try {
       // Cancel existing subscription if any

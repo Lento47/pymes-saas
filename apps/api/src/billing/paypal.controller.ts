@@ -241,8 +241,8 @@ export class PaypalController {
       return { success: true, credits: creditAmount, tokens: 0, newBalance };
 
     } catch (error) {
-      // If PayPal capture itself failed, revert to FAILED so the order can be retried
-      // (don't leave it stuck in PROCESSING forever)
+      // Mark FAILED so the order is not left stuck in PROCESSING.
+      // FAILED is terminal — user must create a new order via /create-order.
       if (!(error instanceof BadRequestException)) {
         await this.prisma.paypalPaymentOrder.updateMany({
           where: { order_id: body.orderId, status: PaypalPaymentStatus.PROCESSING },

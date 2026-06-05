@@ -254,6 +254,17 @@ export class PaypalService {
   }
 
   /**
+   * Server-authoritative lookup: planKey + interval → PayPal plan ID.
+   * Client only sends planKey and interval; backend resolves the real plan ID.
+   */
+  resolvePlanId(planKey: string, interval: "MONTHLY" | "YEARLY"): string | null {
+    const normalised = planKey.toLowerCase() as PlanKey;
+    if (!PLAN_KEYS.includes(normalised)) return null;
+    const suffix = interval === "YEARLY" ? "YEARLY" : "MONTHLY";
+    return this.config.get<string>(`PAYPAL_PLAN_${normalised.toUpperCase()}_${suffix}`) ?? null;
+  }
+
+  /**
    * Resolves the planKey (e.g. "starter") from a PayPal plan ID.
    */
   resolvePlanKeyFromPlanId(planId: string): PlanKey | null {

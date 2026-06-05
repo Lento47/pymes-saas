@@ -181,19 +181,13 @@ export default function BillingPage() {
       return;
     }
 
-    const planId = prices?.[`${tier.planKey}_monthly`];
-    if (!planId) {
-      setCheckoutError('El precio del plan no está configurado. Contactá a soporte.');
-      return;
-    }
-
     setCheckoutLoading(tier.planKey);
     setCheckoutError(null);
 
     try {
-      const result = await api.createCheckout(planId);
+      const result = await api.createCheckout(tier.planKey, 'MONTHLY');
       if (result.checkoutUrl) {
-        sessionStorage.setItem(PAYPAL_PENDING_KEY, planId);
+        sessionStorage.setItem(PAYPAL_PENDING_KEY, tier.planKey);
         window.location.href = result.checkoutUrl;
       } else {
         setCheckoutError('No se pudo crear la sesión de pago. Intentá de nuevo.');
