@@ -19,6 +19,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flags.guard";
 import { RequirePermission, Permission } from "../common/permissions";
+import { AuditService } from "../audit/audit.service";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { FilterInvoicesDto } from "./dto/filter-invoices.dto";
@@ -39,6 +40,7 @@ export class InvoicesController {
     private readonly invoicesService: InvoicesService,
     private readonly remindersService: RemindersService,
     private readonly features: FeaturesService,
+    private readonly audit: AuditService,
   ) {}
 
   @Get()
@@ -50,9 +52,17 @@ export class InvoicesController {
   @Post()
   @Roles(WorkspaceUserRole.AGENT)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  async create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateInvoiceDto) {
-    await this.features.assertEnabled(workspaceId, "billing");
-    return this.invoicesService.create(workspaceId, dto);
+  async create(@CurrentUser() user: AuthUser, @Body() dto: CreateInvoiceDto) {
+    await this.features.assertEnabled(user.workspace_id, "billing");
+    const invoice = await this.invoicesService.create(user.workspace_id, dto);
+    const invoiceId = (invoice as { id?: string })?.id ?? "unknown";
+    void this.audit.log(user.workspace_id, {
+      user_id: user.id,
+      action: "invoice.created",
+      entity_type: "invoice",
+      entity_id: invoiceId,
+    });
+    return invoice;
   }
 
   @Get("overdue")
@@ -113,11 +123,15 @@ export class InvoicesController {
   @Roles(WorkspaceUserRole.AGENT)
   @RequireFeature("hacienda")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  submitToHacienda(
-    @CurrentUser("workspace_id") workspaceId: string,
+  async submitToHacienda(
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.invoicesService.submitToHacienda(workspaceId, id);
+    const result = await this.invoicesService.submitToHacienda(user.workspace_id, id);
+    void this.audit.log(user.workspace_id, {
+      user_id: user.id, action: "invoice.submitted_hacienda", entity_type: "invoice", entity_id: id,
+    });
+    return result;
   }
 
   @Get(":id/hacienda-status")
@@ -131,11 +145,15 @@ export class InvoicesController {
 
   @Delete(":id")
   @Roles(WorkspaceUserRole.AGENT)
-  remove(
-    @CurrentUser("workspace_id") workspaceId: string,
+  async remove(
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.invoicesService.remove(workspaceId, id);
+    const result = await this.invoicesService.remove(user.workspace_id, id);
+    void this.audit.log(user.workspace_id, {
+      user_id: user.id, action: "invoice.deleted", entity_type: "invoice", entity_id: id,
+    });
+    return result;
   }
 
   @Post(":id/reminder")

@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, Optional, Inject, forwardRef } from "@nestjs/common";
 import { AgentChannelScope, HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus, TemplateStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { AuditService } from "../audit/audit.service";
 import { StorageService } from "../common/storage/storage.service";
 import { CloudflareAiService, AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
 import { AiProviderBalancerService } from "./ai-provider-balancer.service";
@@ -132,6 +133,7 @@ export class AiConversationControlService {
     private readonly agentRuntime: AgentRuntimeService,
     @Optional() @Inject(forwardRef(() => ScheduledMessagesService))
     private readonly scheduledMessages?: ScheduledMessagesService,
+    @Optional() private readonly audit?: AuditService,
   ) {}
 
   async startControl(workspaceId: string, conversationId: string) {
@@ -181,6 +183,13 @@ export class AiConversationControlService {
         updated_at: new Date(),
       },
       select: { id: true },
+    });
+
+    void this.audit?.log(workspaceId, {
+      action: "ai.auto_reply_disabled",
+      entity_type: "conversation",
+      entity_id: conversationId,
+      after: { ai_state: "HUMAN_ACTIVE", stopped_by: "agent" },
     });
 
     return { ok: true, ai_state: "HUMAN_ACTIVE" };
@@ -1078,6 +1087,21 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
       }
     }
     this.logger.log(`[invoice_action] invoice=${invoice.id} number=${number} channel=${conv.channel.type}`);
+    // Audit: AI auto-created invoice — requires human review before sending payment
+    void this.audit?.log(workspaceId, {
+      action: "ai.invoice_created",
+      entity_type: "invoice",
+      entity_id: invoice.id,
+      after: {
+        number,
+        channel: conv.channel.type,
+        contact_id: conv.contact.id,
+        total: subtotal,
+        currency,
+        lines: lines.length,
+        ai_generated: true,
+      },
+    });
   }
 
   private async dispatchMessage(
