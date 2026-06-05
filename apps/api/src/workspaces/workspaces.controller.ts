@@ -24,9 +24,11 @@ import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { FeaturesService } from "../features/features.service";
 import { TestAiConnectionDto } from "./dto/test-ai-connection.dto";
 import { BusinessProfileDto } from "./dto/business-profile.dto";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @Controller("workspaces")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.WORKSPACE_READ)
 export class WorkspacesController {
   constructor(
     private readonly service: WorkspacesService,
@@ -160,6 +162,7 @@ export class WorkspacesController {
 
   @Patch("current")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.WORKSPACE_UPDATE)
   updateCurrent(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: UpdateWorkspaceDto) {
     return this.service.updateCurrent(workspaceId, dto);
   }
@@ -183,6 +186,7 @@ export class WorkspacesController {
 
   @Post("current/members/invite")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.MEMBERS_MANAGE)
   async inviteUser(@CurrentUser() user: AuthUser, @Body() dto: InviteUserDto) {
     await this.planLimits.enforceMembers(user.workspace_id);
     return this.service.inviteUser(user.workspace_id, user, dto);
@@ -190,6 +194,7 @@ export class WorkspacesController {
 
   @Patch("current/members/:userId/role")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.MEMBERS_MANAGE)
   changeMemberRole(
     @CurrentUser() user: AuthUser,
     @Param("userId") targetUserId: string,
@@ -200,6 +205,7 @@ export class WorkspacesController {
 
   @Delete("current/members/:userId")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.MEMBERS_MANAGE)
   removeMember(@CurrentUser() user: AuthUser, @Param("userId") targetUserId: string) {
     return this.service.removeMember(user.workspace_id, user, targetUserId);
   }

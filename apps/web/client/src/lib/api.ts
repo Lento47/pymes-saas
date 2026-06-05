@@ -382,8 +382,8 @@ export const api = {
     return request<Record<string, any>>("GET", `/api/billing/invoices${qs}`);
   },
   getSubscription: () => request<Record<string, any>>("GET", "/api/billing/subscription"),
-  confirmPayPalSubscription: (subscriptionId: string, planId: string, interval?: "MONTHLY" | "YEARLY") =>
-    request<Record<string, any>>("POST", "/api/billing/subscription/confirm", { subscriptionId, planId, interval }),
+  confirmPayPalSubscription: (subscriptionId: string, planKey: string, interval?: "MONTHLY" | "YEARLY") =>
+    request<Record<string, any>>("POST", "/api/billing/subscription/confirm", { subscriptionId, planKey, interval }),
   cancelPlan: () => request<Record<string, any>>("POST", "/api/billing/cancel"),
   changePlan: (planKey: string, interval?: "MONTHLY" | "YEARLY") =>
     request<Record<string, any>>("POST", "/api/billing/change-plan", { planKey, interval }),

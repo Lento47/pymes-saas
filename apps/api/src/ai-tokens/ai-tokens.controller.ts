@@ -6,9 +6,11 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { AiTokenMeteringService } from "./ai-token-metering.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("ai-tokens")
+@RequirePermission(Permission.AI_USE)
 export class AiTokensController {
   constructor(private readonly aiTokens: AiTokenMeteringService) {}
 

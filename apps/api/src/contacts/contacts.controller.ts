@@ -22,9 +22,11 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { FeaturesService } from "../features/features.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @Controller("contacts")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.CONTACTS_READ)
 export class ContactsController {
   constructor(
     private readonly service: ContactsService,
@@ -40,6 +42,7 @@ export class ContactsController {
 
   @Post()
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   async create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateContactDto) {
     await this.features.assertEnabled(workspaceId, "contacts");
     return this.service.create(workspaceId, dto);
@@ -55,6 +58,7 @@ export class ContactsController {
 
   @Patch(":id")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   update(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -65,6 +69,7 @@ export class ContactsController {
 
   @Delete(":id")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   remove(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,

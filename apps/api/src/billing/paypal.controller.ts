@@ -18,6 +18,7 @@ import { CREDIT_PACKS } from "../memory/credits.service";
 import { AiTokenMeteringService, AI_TOKEN_PACKS } from "../ai-tokens/ai-token-metering.service";
 import { AuditService } from "../audit/audit.service";
 import { PaypalPaymentStatus } from "@prisma/client";
+import { RequirePermission, Permission } from "../common/permissions";
 
 // ── Server-authoritative pack lookup ─────────────────────────────────────────
 // All packs must be defined server-side. The client ONLY sends packId.
@@ -40,6 +41,7 @@ function resolvePackById(packId: string):
 }
 
 @Controller("billing/paypal")
+@RequirePermission(Permission.BILLING_MANAGE)
 export class PaypalController {
   private readonly logger = new Logger(PaypalController.name);
 

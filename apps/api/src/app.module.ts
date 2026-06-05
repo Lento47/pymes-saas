@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerStorage } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 import { APP_GUARD } from "@nestjs/core";
 import { RedisThrottlerStorage } from "./common/redis-throttler-storage.service";
+import { PermissionGuard } from "./common/permissions/permission.guard";
 
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { StorageModule } from "./common/storage/storage.module";
@@ -154,6 +155,7 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
   ],
   providers: [
     { provide: APP_GUARD, useClass: PlanThrottlerGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
     { provide: ThrottlerStorage, useClass: RedisThrottlerStorage },
     RedisThrottlerStorage,
   ],

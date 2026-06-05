@@ -134,13 +134,13 @@ export default function BillingPage() {
   // ── Confirm PayPal subscription after redirect ──────────────────────────
   useEffect(() => {
     if (!ppSubscriptionId || confirmFired.current || !isAuthenticated) return;
-    const pendingPlanId = sessionStorage.getItem(PAYPAL_PENDING_KEY);
-    if (!pendingPlanId) return;
+    const pendingPlanKey = sessionStorage.getItem(PAYPAL_PENDING_KEY);
+    if (!pendingPlanKey) return;
 
     confirmFired.current = true;
     setConfirmLoading(true);
 
-    api.confirmPayPalSubscription(ppSubscriptionId, pendingPlanId)
+    api.confirmPayPalSubscription(ppSubscriptionId, pendingPlanKey)
       .then(() => {
         sessionStorage.removeItem(PAYPAL_PENDING_KEY);
         setConfirmed(true);

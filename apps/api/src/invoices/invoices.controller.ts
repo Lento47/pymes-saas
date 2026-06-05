@@ -18,6 +18,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flags.guard";
+import { RequirePermission, Permission } from "../common/permissions";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { FilterInvoicesDto } from "./dto/filter-invoices.dto";
@@ -30,6 +31,7 @@ import { FeaturesService } from "../features/features.service";
 
 @Controller("invoices")
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
+@RequirePermission(Permission.INVOICES_MANAGE)
 export class InvoicesController {
   private readonly logger = new Logger(InvoicesController.name);
 

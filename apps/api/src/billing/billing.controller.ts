@@ -23,6 +23,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
 // ─── Env vars required for PayPal subscriptions ───────────────────────────
 //   PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
@@ -35,6 +36,7 @@ import { AuditService } from "../audit/audit.service";
 // ─────────────────────────────────────────────────────────────────────────
 
 @Controller("billing")
+@RequirePermission(Permission.BILLING_MANAGE)
 export class BillingController {
   private readonly logger = new Logger(BillingController.name);
 
@@ -116,30 +118,58 @@ export class BillingController {
   }
 
   // ── POST /billing/subscription/confirm — called after PayPal redirect ─────
-  // Frontend receives ?subscription_id= from PayPal redirect and calls this.
+  // Server-authoritative: client sends planKey + interval; backend resolves planId.
+  // Also verifies the PayPal subscription's plan_id matches the resolved server planId.
   @Post("subscription/confirm")
   @UseGuards(JwtAuthGuard)
   async confirmSubscription(
     @CurrentUser() user: AuthUser,
-    @Body() body: { subscriptionId: string; planId: string; interval?: "MONTHLY" | "YEARLY" },
+    @Body() body: { subscriptionId: string; planKey: string; interval?: "MONTHLY" | "YEARLY" },
   ) {
     if (!body.subscriptionId) throw new BadRequestException("subscriptionId es requerido");
-    if (!body.planId) throw new BadRequestException("planId es requerido");
+    if (!body.planKey) throw new BadRequestException("planKey es requerido");
+
+    const interval = body.interval ?? "MONTHLY";
+
+    // Resolve the authoritative PayPal plan ID from planKey + interval
+    const resolvedPlanId = this.paypal.resolvePlanId(body.planKey, interval);
+    if (!resolvedPlanId) {
+      throw new BadRequestException(
+        `Plan "${body.planKey}" (${interval}) no está configurado en el servidor.`,
+      );
+    }
 
     try {
+      // Verify PayPal subscription exists and its plan_id matches what the server expects
+      const paypalSub = await this.paypal.getSubscription(body.subscriptionId).catch(() => null);
+      if (paypalSub) {
+        if (paypalSub.status !== "ACTIVE" && paypalSub.status !== "APPROVED") {
+          throw new BadRequestException(
+            `La suscripción no está activa en PayPal (status: ${paypalSub.status}).`,
+          );
+        }
+        if (paypalSub.plan_id !== resolvedPlanId) {
+          this.logger.warn(
+            `Plan ID mismatch: expected=${resolvedPlanId} got=${paypalSub.plan_id} ` +
+            `workspace=${user.workspace_id} sub=${body.subscriptionId}`,
+          );
+          throw new BadRequestException("La suscripción no coincide con el plan seleccionado.");
+        }
+      }
+
       await this.paypal.activateSubscriptionInDb(
         user.workspace_id,
         body.subscriptionId,
-        body.planId,
+        resolvedPlanId,
         user.email,
-        body.interval ?? "MONTHLY",
+        interval,
       );
       void this.audit.log(user.workspace_id, {
         user_id: user.id,
         action: "subscription.activated",
         entity_type: "subscription",
         entity_id: body.subscriptionId,
-        after: { plan_id: body.planId, interval: body.interval ?? "MONTHLY", provider: "PAYPAL" },
+        after: { plan_key: body.planKey, plan_id: resolvedPlanId, interval, provider: "PAYPAL" },
       });
       return { success: true, message: "Suscripción activada correctamente." };
     } catch (err) {
