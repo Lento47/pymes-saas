@@ -524,7 +524,7 @@ export const api = {
       "/api/memory/transfer-to-tokens",
       { credits },
     ),
-  createPayPalOrder: (dto: { packId?: string; credits?: number; tokens?: number; price?: number; purchase_type?: "MEMORY_CREDITS" | "AI_TOKENS" }) =>
+  createPayPalOrder: (dto: { packId: string }) =>
     request<{ orderId: string }>("POST", "/api/billing/paypal/create-order", dto),
   capturePayPalOrder: (dto: { orderId: string }) =>
     request<{

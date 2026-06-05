@@ -2339,6 +2339,7 @@ enum CreditTransactionType {
 
 enum PaypalPaymentStatus {
   CREATED
+  PROCESSING
   COMPLETED
   FAILED
 }
