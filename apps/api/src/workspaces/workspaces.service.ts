@@ -5,10 +5,14 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  TooManyRequestsException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import * as zlib from "zlib";
+import { promisify } from "util";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
+import { StorageService } from "../common/storage/storage.service";
 import { UpdateWorkspaceDto } from "./dto/update-workspace.dto";
 import { InviteUserDto } from "./dto/invite-user.dto";
 import { ChangeMemberRoleDto } from "./dto/change-member-role.dto";
@@ -19,6 +23,8 @@ import { EmailService } from "../email/email.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { AuditService } from "../audit/audit.service";
+
+const gzipAsync = promisify(zlib.gzip);
 
 @Injectable()
 export class WorkspacesService {
@@ -33,6 +39,7 @@ export class WorkspacesService {
     private readonly events: EventsGateway,
     private readonly planLimits: PlanLimitsService,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: unknown; workspace_tax_profile?: unknown }>(
@@ -613,6 +620,95 @@ export class WorkspacesService {
       });
     }
     throw new BadRequestException(`Invalid export type. Use: contacts | tasks | conversations`);
+  }
+
+  // ── POST /workspaces/current/data-export ──────────────────────────────────
+  // Full workspace data export: gzip-compressed JSON, uploaded to S3.
+  // Rate-limited to 1 export per 24 hours per workspace.
+
+  async requestDataExport(workspaceId: string, requestingUser: AuthUser): Promise<{ download_url: string; expires_at: string }> {
+    // Rate limit: 1 export / 24h — stored in workspace settings_json
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { id: true, name: true, settings_json: true },
+    });
+    const settings = (workspace.settings_json as Record<string, any>) ?? {};
+    const lastExport: string | undefined = settings.last_data_export_at;
+    if (lastExport) {
+      const elapsedMs = Date.now() - new Date(lastExport).getTime();
+      const remainingH = Math.ceil((24 * 3600_000 - elapsedMs) / 3_600_000);
+      if (elapsedMs < 24 * 3600_000) {
+        throw new TooManyRequestsException(
+          `Ya existe un export reciente. Próximo disponible en ${remainingH}h.`,
+        );
+      }
+    }
+
+    // Collect data — all queries scoped to workspaceId (tenant isolation guaranteed)
+    const [contacts, conversations, tasks, documents, members] = await Promise.all([
+      this.prisma.contact.findMany({
+        where: { workspace_id: workspaceId },
+        select: { id: true, full_name: true, email: true, phone: true, type: true, company_name: true, created_at: true },
+      }),
+      this.prisma.conversation.findMany({
+        where: { workspace_id: workspaceId },
+        select: { id: true, subject: true, status: true, priority: true, category: true, created_at: true, resolved_at: true },
+      }),
+      this.prisma.task.findMany({
+        where: { workspace_id: workspaceId },
+        select: { id: true, title: true, status: true, priority: true, due_at: true, created_at: true, completed_at: true },
+      }),
+      this.prisma.document.findMany({
+        where: { workspace_id: workspaceId },
+        select: { id: true, file_name: true, mime_type: true, file_size: true, created_at: true },
+      }),
+      this.prisma.workspaceUser.findMany({
+        where: { workspace_id: workspaceId },
+        select: { user_id: true, role: true, is_owner: true, created_at: true, user: { select: { email: true, name: true } } },
+      }),
+    ]);
+
+    const exportPayload = {
+      workspace: { id: workspaceId, name: workspace.name },
+      exported_at: new Date().toISOString(),
+      exported_by: requestingUser.email,
+      data: { contacts, conversations, tasks, documents, members },
+    };
+
+    const jsonBuf = Buffer.from(JSON.stringify(exportPayload, null, 2));
+    const compressed = await gzipAsync(jsonBuf);
+
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const storageKey = `exports/${workspaceId}/${ts}.json.gz`;
+    await this.storage.upload(storageKey, compressed, "application/gzip");
+
+    const PRESIGN_SECONDS = 48 * 3600;
+    const downloadUrl = await this.storage.getPresignedUrl(storageKey, PRESIGN_SECONDS);
+    const expiresAt = new Date(Date.now() + PRESIGN_SECONDS * 1000).toISOString();
+
+    // Mark last export time for rate limiting
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: { ...settings, last_data_export_at: new Date().toISOString() } },
+    });
+
+    // Audit log
+    void this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "workspace.data_export",
+      entity_type: "Workspace",
+      entity_id: workspaceId,
+    });
+
+    // In-app bell notification (non-blocking)
+    this.events.emitNotification(requestingUser.id, {
+      type: "data_export_ready",
+      title: "Export de datos listo",
+      body: "Tu export de datos está disponible para descarga (válido 48 horas).",
+      action_url: downloadUrl,
+    });
+
+    return { download_url: downloadUrl, expires_at: expiresAt };
   }
 
   // ── GET /workspaces/current/members ───────────────────────────────────────

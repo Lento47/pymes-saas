@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from "@nestjs/common";
+import * as https from "https";
 import { ErrorReportsService } from "../../error-reports/error-reports.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AiTriageService } from "../../ai/ai-triage.service";
@@ -210,7 +211,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
         : undefined,
     );
 
-    // Surface request_id + case_id to client for support linking
+    // 4) Slack alert for 5xx errors (fire-and-forget; gated on SLACK_WEBHOOK_URL)
+    if (status >= 500) {
+      this.notifySlack(status, request.method, request.originalUrl, msg, request.user?.workspace_id);
+    }
+
+    // 5) Surface the case to the client so the UI can link "Ver ticket".
     response.status(status).json({
       statusCode: status,
       message: status >= 500 && process.env.NODE_ENV === "production"
@@ -220,5 +226,46 @@ export class ApiExceptionFilter implements ExceptionFilter {
       ...(requestId ? { request_id: requestId } : {}),
       ...(diagnosticCaseId ? { case_id: diagnosticCaseId, error_code: errorCode } : {}),
     });
+  }
+
+  private notifySlack(
+    status: number,
+    method: string,
+    url: string,
+    msg: string,
+    workspaceId?: string,
+  ): void {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    const payload = JSON.stringify({
+      text: `🚨 *${status} Error* — PymesHub API`,
+      attachments: [
+        {
+          color: "danger",
+          fields: [
+            { title: "Route", value: `${method} ${url}`, short: true },
+            { title: "Workspace", value: workspaceId ?? "anon", short: true },
+            { title: "Message", value: msg.slice(0, 500) },
+          ],
+          footer: new Date().toISOString(),
+        },
+      ],
+    });
+
+    try {
+      const parsed = new URL(webhookUrl);
+      const req = https.request({
+        hostname: parsed.hostname,
+        path: parsed.pathname + parsed.search,
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) },
+      });
+      req.on("error", () => undefined);
+      req.write(payload);
+      req.end();
+    } catch {
+      // Never let Slack notification break the response
+    }
   }
 }
