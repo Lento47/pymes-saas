@@ -7,7 +7,7 @@ import { CryptoService } from "./crypto.service";
  * Format: { ModelName: Set<"field_name"> }
  *
  * Fields listed here are transparently encrypted on write and decrypted on
- * read via the Prisma $use() middleware registered in onModuleInit().
+ * read via a Prisma Client Extension registered in onModuleInit().
  *
  * Adding a new field here is safe for new records. Existing plaintext records
  * will NOT be decrypted automatically — run a migration script first.
@@ -33,83 +33,124 @@ export class PrismaEncryptionService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.prisma.$use(async (params, next) => {
-      // ── Encrypt on write ───────────────────────────────────────────────────
-      if (params.model && params.action in { create: 1, update: 1, upsert: 1, createMany: 1, updateMany: 1 }) {
-        const fields = ENCRYPTED_FIELDS[params.model];
-        if (fields) {
-          this.encryptParams(params, fields);
-        }
-      }
+    const encryptedFields = ENCRYPTED_FIELDS;
+    const cryptoSvc = this.crypto;
+    const logger = this.logger;
 
-      const result = await next(params);
+    const extended = this.prisma.$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ model, operation, args, query }: {
+            model: string;
+            operation: string;
+            args: any;
+            query: (args: any) => Promise<any>;
+          }) {
+            const fields = encryptedFields[model];
 
-      // ── Decrypt on read ────────────────────────────────────────────────────
-      if (params.model) {
-        const fields = ENCRYPTED_FIELDS[params.model];
-        if (fields) {
-          this.decryptResult(result, fields, params.model);
-        }
-      }
+            // ── Encrypt on write ─────────────────────────────────────────────
+            if (
+              fields &&
+              operation in { create: 1, update: 1, upsert: 1, createMany: 1, updateMany: 1 }
+            ) {
+              encryptParams(args, fields, model, logger, cryptoSvc);
+            }
 
-      return result;
+            const result = await query(args);
+
+            // ── Decrypt on read ──────────────────────────────────────────────
+            if (fields) {
+              decryptResult(result, fields, model, logger, cryptoSvc);
+            }
+
+            return result;
+          },
+        },
+      },
     });
 
+    // Copy extended client properties onto the original PrismaService instance
+    // so that all existing injectors (which hold a reference to this.prisma)
+    // automatically get the encrypted/decrypted behavior.
+    const extProto = Object.getPrototypeOf(extended);
+    for (const key of Object.getOwnPropertyNames(extProto)) {
+      if (key === "constructor") continue;
+      const desc = Object.getOwnPropertyDescriptor(extProto, key);
+      if (desc) Object.defineProperty(this.prisma, key, desc);
+    }
+    for (const key of Object.getOwnPropertyNames(extended)) {
+      const desc = Object.getOwnPropertyDescriptor(extended, key);
+      if (desc) Object.defineProperty(this.prisma, key, desc);
+    }
+
     this.logger.log(
-      `Prisma encryption middleware active for: ${Object.keys(ENCRYPTED_FIELDS).join(", ")}`,
+      `Prisma encryption extension active for: ${Object.keys(encryptedFields).join(", ")}`,
     );
   }
+}
 
-  private encryptParams(params: any, fields: Set<string>): void {
-    const data = params.args?.data;
-    if (!data || typeof data !== "object") return;
+function encryptParams(
+  args: any,
+  fields: Set<string>,
+  model: string,
+  logger: Logger,
+  cryptoSvc: CryptoService,
+): void {
+  // Handle both single-record (data) and bulk (data array) operations
+  const items = Array.isArray(args?.data) ? args.data : args?.data ? [args.data] : [];
 
+  for (const data of items) {
+    if (!data || typeof data !== "object") continue;
     for (const field of fields) {
       if (field in data && data[field] !== null && data[field] !== undefined) {
-        const raw = typeof data[field] === "string"
-          ? data[field]
-          : JSON.stringify(data[field]);
+        const raw =
+          typeof data[field] === "string" ? data[field] : JSON.stringify(data[field]);
         if (!isEncrypted(raw)) {
           try {
-            data[field] = this.crypto.encrypt(raw);
+            data[field] = cryptoSvc.encrypt(raw);
           } catch (err) {
-            this.logger.warn(
-              `Failed to encrypt ${params.model}.${field}: ${(err as Error).message}`,
+            logger.warn(
+              `Failed to encrypt ${model}.${field}: ${(err as Error).message}`,
             );
           }
         }
       }
     }
   }
+}
 
-  private decryptResult(result: any, fields: Set<string>, model: string): void {
-    if (!result) return;
+function decryptResult(
+  result: any,
+  fields: Set<string>,
+  model: string,
+  logger: Logger,
+  cryptoSvc: CryptoService,
+): void {
+  if (!result) return;
 
-    const decrypt = (record: any) => {
-      if (!record || typeof record !== "object") return;
-      for (const field of fields) {
-        if (typeof record[field] === "string" && isEncrypted(record[field])) {
+  const decrypt = (record: any) => {
+    if (!record || typeof record !== "object") return;
+    for (const field of fields) {
+      if (typeof record[field] === "string" && isEncrypted(record[field])) {
+        try {
+          const decrypted = cryptoSvc.decrypt(record[field]);
           try {
-            const decrypted = this.crypto.decrypt(record[field]);
-            // If the original value was JSON, parse it back
-            try {
-              record[field] = JSON.parse(decrypted);
-            } catch {
-              record[field] = decrypted;
-            }
-          } catch (err) {
-            this.logger.warn(
-              `Failed to decrypt ${model}.${field} — returning as-is: ${(err as Error).message}`,
-            );
+            record[field] = JSON.parse(decrypted);
+          } catch {
+            record[field] = decrypted;
           }
+        } catch (err) {
+          logger.warn(
+            `Failed to decrypt ${model}.${field} — returning as-is: ${(err as Error).message}`,
+          );
         }
       }
-    };
-
-    if (Array.isArray(result)) {
-      result.forEach(decrypt);
-    } else {
-      decrypt(result);
     }
+  };
+
+  if (Array.isArray(result)) {
+    result.forEach(decrypt);
+  } else {
+    decrypt(result);
   }
 }
