@@ -35,6 +35,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { RequirePermission, Permission } from "../common/permissions";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
@@ -55,6 +56,7 @@ class StartAgentRunDto {
 
 @Controller("conversations")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.CONVERSATIONS_READ)
 export class ConversationsController {
   private readonly logger = new Logger(ConversationsController.name);
 
@@ -106,6 +108,7 @@ export class ConversationsController {
 
   @Post()
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONVERSATIONS_REPLY)
   create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateConversationDto) {
     return this.service.create(workspaceId, dto);
   }
@@ -143,6 +146,7 @@ export class ConversationsController {
 
   @Post(":id/assign")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONVERSATIONS_ASSIGN)
   assign(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -189,6 +193,7 @@ export class ConversationsController {
 
   @Post(":id/messages")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONVERSATIONS_REPLY)
   async sendMessage(
     @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) conversationId: string,
@@ -469,6 +474,7 @@ export class ConversationsController {
     WorkspaceUserRole.ADMIN,
     WorkspaceUserRole.OWNER,
   )
+  @RequirePermission(Permission.FILES_READ)
   async getMessageMedia(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("messageId", ValidateUUIDPipe) messageId: string,

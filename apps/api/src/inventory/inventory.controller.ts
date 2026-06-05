@@ -18,9 +18,11 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { InventoryService } from "./inventory.service";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @Controller("inventory")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.INVOICES_MANAGE)
 export class InventoryController {
   constructor(private readonly inventory: InventoryService) {}
 

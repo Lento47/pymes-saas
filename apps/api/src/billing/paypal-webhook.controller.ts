@@ -88,7 +88,8 @@ export class PaypalWebhookController {
         this.logger.warn(`Webhook ${event.id}: no payment order for ${orderId}`);
         return;
       }
-      if (paymentOrder.status === "COMPLETED") return;
+      // Skip if already completed or currently being processed by capture-order endpoint
+      if (paymentOrder.status === "COMPLETED" || paymentOrder.status === "PROCESSING") return;
 
       // Webhook is backup path — only runs if capture-order endpoint missed it.
       // Trust the stored credit amount; never derive from USD.
@@ -131,7 +132,7 @@ export class PaypalWebhookController {
       const orderId = event.resource?.id;
       if (!orderId) return;
       await this.prisma.paypalPaymentOrder.updateMany({
-        where: { order_id: orderId, status: "CREATED" },
+        where: { order_id: orderId, status: { in: ["CREATED", "PROCESSING"] } },
         data: { status: "FAILED" },
       });
     } catch (err) {

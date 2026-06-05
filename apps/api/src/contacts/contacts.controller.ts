@@ -27,6 +27,7 @@ import { AuditService } from "../audit/audit.service";
 
 @Controller("contacts")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.CONTACTS_READ)
 export class ContactsController {
   constructor(
     private readonly service: ContactsService,
@@ -43,6 +44,7 @@ export class ContactsController {
 
   @Post()
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   async create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateContactDto) {
     await this.features.assertEnabled(workspaceId, "contacts");
     return this.service.create(workspaceId, dto);
@@ -65,6 +67,7 @@ export class ContactsController {
 
   @Patch(":id")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   update(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -75,6 +78,7 @@ export class ContactsController {
 
   @Delete(":id")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   remove(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,

@@ -15,6 +15,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { RequirePermission, Permission } from "../common/permissions";
 import { AgentService } from "./agent.service";
 import { AgentToolsService } from "./agent-tools.service";
 import { AgentStreamDto } from "./agent.dto";
@@ -29,6 +30,7 @@ import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 
 @Controller("agent")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.AI_USE)
 export class AgentController {
   constructor(
     private readonly agentService: AgentService,

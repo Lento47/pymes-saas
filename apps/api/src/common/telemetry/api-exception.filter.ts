@@ -199,9 +199,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
       });
     }
 
+    const requestId = (request as { requestId?: string }).requestId ??
+      (request.headers?.["x-request-id"] as string) ?? null;
+
     this.logger.error(
-      `${request.method} ${request.originalUrl} -> ${status}: ${msg}`,
-      exception instanceof Error ? exception.stack : undefined,
+      `${request.method} ${request.originalUrl} -> ${status}: ${msg}` +
+      (requestId ? ` [req=${requestId}]` : ""),
+      // Never log stack traces in production to avoid leaking internals
+      process.env.NODE_ENV !== "production" && exception instanceof Error
+        ? exception.stack
+        : undefined,
     );
 
     // 4) Slack alert for 5xx errors (fire-and-forget; gated on SLACK_WEBHOOK_URL)
@@ -212,8 +219,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
     // 5) Surface the case to the client so the UI can link "Ver ticket".
     response.status(status).json({
       statusCode: status,
-      message,
+      message: status >= 500 && process.env.NODE_ENV === "production"
+        ? "Error interno del servidor. Por favor contactá a soporte."
+        : message,
       error: errorName ?? (status >= 500 ? "Internal Server Error" : "Request Error"),
+      ...(requestId ? { request_id: requestId } : {}),
       ...(diagnosticCaseId ? { case_id: diagnosticCaseId, error_code: errorCode } : {}),
     });
   }
