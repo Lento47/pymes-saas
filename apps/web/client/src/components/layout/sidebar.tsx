@@ -9,6 +9,7 @@ import { SearchDialog } from "@/components/shared/search-dialog";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useAuth } from "@/hooks/use-auth";
+import { hasPermission, Permission } from "@/lib/permissions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -143,15 +144,15 @@ const ADMIN_ITEMS = [
 ] as const;
 
 const SETTINGS_ITEMS = [
-  { path: "/settings/workspace", icon: Building2, label: "Workspace" },
-  { path: "/settings/members", icon: Users, label: "Miembros" },
-  { path: "/settings/channels", icon: PlugZap, label: "Canales" },
-  { path: "/settings/departments", icon: Layers, label: "Departamentos" },
-  { path: "/settings/integrations", icon: Plug, label: "Integraciones" },
-  { path: "/settings/ai", icon: BrainCircuit, label: "Inteligencia Artificial" },
-  { path: "/settings/credits", icon: Coins, label: "Créditos IA" },
-  { path: "/settings/templates", icon: FileText, label: "Plantillas" },
-  { path: "/settings/audit", icon: ClipboardList, label: "Auditoría" },
+  { path: "/settings/workspace",    icon: Building2,     label: "Workspace",             permission: Permission.WORKSPACE_READ },
+  { path: "/settings/members",      icon: Users,         label: "Miembros",              permission: Permission.MEMBERS_MANAGE },
+  { path: "/settings/channels",     icon: PlugZap,       label: "Canales",               permission: Permission.CHANNELS_MANAGE },
+  { path: "/settings/departments",  icon: Layers,        label: "Departamentos",         permission: Permission.WORKSPACE_UPDATE },
+  { path: "/settings/integrations", icon: Plug,          label: "Integraciones",         permission: Permission.CHANNELS_MANAGE },
+  { path: "/settings/ai",           icon: BrainCircuit,  label: "Inteligencia Artificial", permission: Permission.AI_MANAGE },
+  { path: "/settings/credits",      icon: Coins,         label: "Créditos IA",           permission: Permission.BILLING_MANAGE },
+  { path: "/settings/templates",    icon: FileText,      label: "Plantillas",            permission: Permission.CONVERSATIONS_REPLY },
+  { path: "/settings/audit",        icon: ClipboardList, label: "Auditoría",             permission: Permission.AUDIT_READ },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -577,7 +578,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </button>
             {!isCollapsed && settingsOpen && (
               <div className="space-y-0.5 pb-1">
-                {SETTINGS_ITEMS.map(({ path, icon: Icon, label }) => {
+                {SETTINGS_ITEMS.filter(({ permission }) =>
+                  hasPermission(user?.role ?? "VIEWER", permission, !!user?.is_platform_admin)
+                ).map(({ path, icon: Icon, label }) => {
                   const active = location === path || location.startsWith(path + "/");
                   return (
                     <Link key={path} href={path}>
