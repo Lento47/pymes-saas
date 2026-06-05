@@ -5,13 +5,15 @@ export class ApiError extends Error {
   readonly status?: number;
   readonly case_id?: string;
   readonly error_code?: string;
-  constructor(message: string, opts: { status?: number; case_id?: string; error_code?: string } = {}) {
-    const suffix = opts.case_id ? ` · Ticket #${opts.case_id.slice(-6)} abierto` : "";
+  readonly request_id?: string;
+  constructor(message: string, opts: { status?: number; case_id?: string; error_code?: string; request_id?: string } = {}) {
+    const suffix = opts.case_id ? ` · Ticket #${opts.case_id.slice(-6)}` : "";
     super(`${message}${suffix}`);
     this.name = "ApiError";
     this.status = opts.status;
     this.case_id = opts.case_id;
     this.error_code = opts.error_code;
+    this.request_id = opts.request_id;
   }
 }
 
@@ -203,12 +205,16 @@ async function request<T>(
     let message: string = raw;
     let case_id: string | undefined;
     let error_code: string | undefined;
+    let request_id: string | undefined;
+    // request_id may be in response header or body
+    request_id = res.headers.get("x-request-id") ?? undefined;
     try {
       const parsed = JSON.parse(raw);
       const msg = parsed.message ?? parsed.error ?? raw;
       message = Array.isArray(msg) ? msg.join(" · ") : String(msg);
       case_id = typeof parsed.case_id === "string" ? parsed.case_id : undefined;
       error_code = typeof parsed.error_code === "string" ? parsed.error_code : undefined;
+      if (typeof parsed.request_id === "string") request_id = parsed.request_id;
     } catch { /* not JSON, use raw text */ }
     if (res.status >= 500 && !path.includes("/error-reports/client")) {
       void reportClientError({
@@ -220,10 +226,10 @@ async function request<T>(
         method,
         status_code: res.status,
         url: `${API_BASE}${path}`,
-        context_json: { path, case_id, error_code },
+        context_json: { path, case_id, error_code, request_id },
       });
     }
-    throw new ApiError(message, { status: res.status, case_id, error_code });
+    throw new ApiError(message, { status: res.status, case_id, error_code, request_id });
   }
 
   const contentType = res.headers.get("content-type");
@@ -708,6 +714,20 @@ export const api = {
     request<Record<string, any>>("POST", `/api/platform/support-cases/${caseId}/orchestrate`, { message }),
   platformGetCaseRuns: (caseId: string) =>
     request<Record<string, any>[]>("GET", `/api/platform/support-cases/${caseId}/runs`),
+
+  // ── Calls (voice/video) ──────────────────────────────────────────────────
+  ringCall: (data: { to_user_id: string; type: "audio" | "video"; conversation_id?: string }) =>
+    request<Record<string, any>>("POST", "/api/calls/ring", data),
+  answerCall: (id: string) =>
+    request<Record<string, any>>("POST", `/api/calls/${id}/answer`),
+  rejectCall: (id: string) =>
+    request<Record<string, any>>("POST", `/api/calls/${id}/reject`),
+  endCall: (id: string) =>
+    request<Record<string, any>>("POST", `/api/calls/${id}/end`),
+  addIceCandidate: (id: string, data: { candidate: string; sdp_mid: string; sdp_m_line_index: number }) =>
+    request<Record<string, any>>("POST", `/api/calls/${id}/ice`, data),
+  getCall: (id: string) =>
+    request<Record<string, any>>("GET", `/api/calls/${id}`),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────

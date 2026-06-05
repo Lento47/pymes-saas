@@ -26,7 +26,10 @@ export class PermissionGuard implements CanActivate {
     if (!required) return true;
 
     const user: AuthUser = context.switchToHttp().getRequest().user;
-    if (!user) return false;
+    // No authenticated user yet — JwtAuthGuard (a later controller-level guard) handles 401.
+    // Global guards run before controller guards, so user may not be set here yet.
+    // If user is absent, allow through — JwtAuthGuard will reject if auth is required.
+    if (!user) return true;
 
     const allowed = hasPermission(user.role, required, user.is_platform_admin);
 

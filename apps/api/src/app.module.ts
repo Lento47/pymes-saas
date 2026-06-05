@@ -1,10 +1,11 @@
-import { Module } from "@nestjs/common";
+import { Module, OnApplicationBootstrap } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerStorage } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 import { APP_GUARD } from "@nestjs/core";
 import { RedisThrottlerStorage } from "./common/redis-throttler-storage.service";
 import { PermissionGuard } from "./common/permissions/permission.guard";
+import { RequestIdMiddleware } from "./common/telemetry/request-id.middleware";
 
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { StorageModule } from "./common/storage/storage.module";
@@ -24,6 +25,8 @@ import { SearchModule } from "./search/search.module";
 import { AuditModule } from "./audit/audit.module";
 import { WorkersModule } from "./workers/workers.module";
 import { EventsModule } from "./gateways/events.module";
+import { EventsGateway } from "./gateways/events.gateway";
+import { CallsService } from "./calls/calls.service";
 import { EmailModule } from "./email/email.module";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { PlanLimitsModule } from "./common/plan-limits/plan-limits.module";
@@ -69,6 +72,7 @@ import { InventoryModule } from "./inventory/inventory.module";
 import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
 import { LearningModule } from "./learning/learning.module";
 import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages.module";
+import { CallsModule } from "./calls/calls.module";
 
 @Module({
   imports: [
@@ -144,6 +148,7 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     AiTokensModule,
     LearningModule,
     ScheduledMessagesModule,
+    CallsModule,
 
     // Metrics
     ProductMetricsModule,
@@ -160,4 +165,18 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     RedisThrottlerStorage,
   ],
 })
-export class AppModule {}
+export class AppModule implements OnApplicationBootstrap {
+  constructor(
+    private readonly eventsGateway: EventsGateway,
+    private readonly callsService: CallsService,
+  ) {}
+
+  onApplicationBootstrap() {
+    // Wire up CallsService into EventsGateway for disconnect cleanup
+    this.eventsGateway.setCallsService(this.callsService);
+  }
+
+  configure(consumer: import("@nestjs/common").MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes("*");
+  }
+}

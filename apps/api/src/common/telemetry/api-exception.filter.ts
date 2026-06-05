@@ -198,16 +198,26 @@ export class ApiExceptionFilter implements ExceptionFilter {
       });
     }
 
+    const requestId = (request as { requestId?: string }).requestId ??
+      (request.headers?.["x-request-id"] as string) ?? null;
+
     this.logger.error(
-      `${request.method} ${request.originalUrl} -> ${status}: ${msg}`,
-      exception instanceof Error ? exception.stack : undefined,
+      `${request.method} ${request.originalUrl} -> ${status}: ${msg}` +
+      (requestId ? ` [req=${requestId}]` : ""),
+      // Never log stack traces in production to avoid leaking internals
+      process.env.NODE_ENV !== "production" && exception instanceof Error
+        ? exception.stack
+        : undefined,
     );
 
-    // 3) Surface the case to the client so the UI can link "Ver ticket".
+    // Surface request_id + case_id to client for support linking
     response.status(status).json({
       statusCode: status,
-      message,
+      message: status >= 500 && process.env.NODE_ENV === "production"
+        ? "Error interno del servidor. Por favor contactá a soporte."
+        : message,
       error: errorName ?? (status >= 500 ? "Internal Server Error" : "Request Error"),
+      ...(requestId ? { request_id: requestId } : {}),
       ...(diagnosticCaseId ? { case_id: diagnosticCaseId, error_code: errorCode } : {}),
     });
   }

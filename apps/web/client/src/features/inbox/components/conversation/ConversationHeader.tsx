@@ -7,11 +7,13 @@ import {
   Loader2,
   MoreHorizontal,
   PauseCircle,
+  Phone,
   Receipt,
   RefreshCw,
   Sparkles,
   Trash2,
   UserPlus,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,6 +71,9 @@ interface ConversationHeaderProps {
   isPausingAi?: boolean;
   currentStatus?: string;
   onStatusChange?: (status: string) => void;
+  onStartAudioCall?: () => void;
+  onStartVideoCall?: () => void;
+  canCall?: boolean;
   className?: string;
 }
 
@@ -100,6 +105,9 @@ export function ConversationHeader({
   currentStatus,
   onStatusChange,
   onCreateTask,
+  onStartAudioCall,
+  onStartVideoCall,
+  canCall,
   className,
 }: ConversationHeaderProps) {
   const hasAiAction = Boolean(onStartAgent || onDelegateToAi || onPauseAi);
@@ -203,6 +211,31 @@ export function ConversationHeader({
         )}
 
         <div className="hidden items-center md:flex" role="group" aria-label="Acciones principales de conversación">
+          {canCall && onStartAudioCall && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={groupedButtonClass}
+              onClick={onStartAudioCall}
+              aria-label="Iniciar llamada de voz"
+            >
+              <Phone className="mr-1.5 h-3.5 w-3.5" />
+              Llamar
+            </Button>
+          )}
+          {canCall && onStartVideoCall && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={groupedButtonClass}
+              onClick={onStartVideoCall}
+              aria-label="Iniciar videollamada"
+            >
+              <Video className="mr-1.5 h-3.5 w-3.5" />
+              Video
+            </Button>
+          )}
+
           {onStatusChange && currentStatus && currentStatus !== "RESOLVED" ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

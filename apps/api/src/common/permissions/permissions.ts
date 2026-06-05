@@ -39,6 +39,9 @@ export const Permission = {
   AI_USE:               "ai.use",
   AI_MANAGE:            "ai.manage",
 
+  // Calls
+  CALLS_INITIATE:       "calls.initiate",
+
   // Audit
   AUDIT_READ:           "audit.read",
 
@@ -75,6 +78,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
   Permission.BILLING_MANAGE,
   Permission.AI_USE,
   Permission.AI_MANAGE,
+  Permission.CALLS_INITIATE,
   Permission.AUDIT_READ,
   Permission.FILES_READ,
   Permission.FILES_MANAGE,
@@ -90,6 +94,7 @@ const MANAGER_PERMISSIONS: Permission[] = [
   Permission.TASKS_MANAGE,
   Permission.INVOICES_MANAGE,
   Permission.AI_USE,
+  Permission.CALLS_INITIATE,
   Permission.AUDIT_READ,
   Permission.FILES_READ,
   Permission.FILES_MANAGE,
@@ -104,6 +109,7 @@ const AGENT_PERMISSIONS: Permission[] = [
   Permission.CONTACTS_MANAGE,
   Permission.TASKS_MANAGE,
   Permission.AI_USE,
+  Permission.CALLS_INITIATE,
   Permission.FILES_READ,
 ];
 

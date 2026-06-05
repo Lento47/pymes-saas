@@ -5,6 +5,7 @@ import { BillingInvoiceService } from "./billing-invoice.service";
 import { PaypalService } from "./paypal.service";
 import { PaypalController } from "./paypal.controller";
 import { PaypalWebhookController } from "./paypal-webhook.controller";
+import { BillingRecoveryService } from "./billing-recovery.service";
 import { MemoryModule } from "../memory/memory.module";
 import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 import { PrismaModule } from "../common/prisma/prisma.module";
@@ -13,7 +14,7 @@ import { AuditModule } from "../audit/audit.module";
 @Module({
   imports: [MemoryModule, AiTokensModule, PrismaModule, AuditModule],
   controllers: [BillingController, PaypalController, PaypalWebhookController],
-  providers: [PlanLimitsService, BillingInvoiceService, PaypalService],
-  exports: [PlanLimitsService, PaypalService],
+  providers: [PlanLimitsService, BillingInvoiceService, PaypalService, BillingRecoveryService],
+  exports: [PlanLimitsService, PaypalService, BillingRecoveryService],
 })
 export class BillingModule {}
