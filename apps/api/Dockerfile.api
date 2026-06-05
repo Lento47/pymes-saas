@@ -3,8 +3,8 @@
 # ─────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-# Install pnpm globally
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm (pinned to match packageManager in package.json)
+RUN corepack enable && corepack prepare pnpm@10.11.1 --activate
 
 WORKDIR /app
 
