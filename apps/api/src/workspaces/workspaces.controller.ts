@@ -103,6 +103,12 @@ export class WorkspacesController {
     return this.service.exportData(workspaceId, type);
   }
 
+  @Post("current/data-export")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  requestDataExport(@CurrentUser() user: AuthUser) {
+    return this.service.requestDataExport(user.workspace_id, user);
+  }
+
   @Get("current/landing-config")
   @Roles(WorkspaceUserRole.ADMIN)
   async getLandingConfig(@CurrentUser("workspace_id") workspaceId: string) {
