@@ -657,3 +657,10 @@ html.marketing-page body {
   font-family: 'Instrument Serif', Georgia, serif;
 }
 
+/* ── Scramble text effect (block characters ░▒▓█) ── */
+.scramble-char {
+  display: inline-block;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  will-change: contents;
+}
+
