@@ -452,8 +452,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@18.3.7(@types/react@19.2.16))(@types/react@19.2.16)(react-dom@18.3.1(react@19.2.7))(react@19.2.7)
       date-fns:
-        specifier: ^3.6.0
-        version: 3.6.0
+        specifier: ^4.4.0
+        version: 4.4.0
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -489,7 +489,7 @@ importers:
         version: 19.2.7
       react-day-picker:
         specifier: ^8.10.1
-        version: 8.10.1(date-fns@3.6.0)(react@19.2.7)
+        version: 8.10.1(date-fns@4.4.0)(react@18.3.1)
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@19.2.7)
@@ -5275,8 +5275,8 @@ packages:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
 
-  date-fns@3.6.0:
-    resolution: {integrity: sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww==}
+  date-fns@4.4.0:
+    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
 
   dayjs@1.11.20:
     resolution: {integrity: sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==}
@@ -14207,7 +14207,7 @@ snapshots:
       es-errors: 1.3.0
       is-data-view: 1.0.2
 
-  date-fns@3.6.0: {}
+  date-fns@4.4.0: {}
 
   dayjs@1.11.20: {}
 
@@ -17242,10 +17242,10 @@ snapshots:
       defu: 6.1.7
       destr: 2.0.5
 
-  react-day-picker@8.10.1(date-fns@3.6.0)(react@19.2.7):
+  react-day-picker@8.10.1(date-fns@4.4.0)(react@18.3.1):
     dependencies:
-      date-fns: 3.6.0
-      react: 19.2.7
+      date-fns: 4.4.0
+      react: 18.3.1
 
   react-dom@18.3.1(react@19.2.7):
     dependencies:
