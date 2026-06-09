@@ -108,19 +108,7 @@ export function PymesHubPlatformLanding() {
               <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-6xl">
                 {t.platform.title}
               </h2>
-              <p className="mt-6 text-lg leading-8 text-slate-600">
-                {/* Scramble #2: "conversations" echoes the H1 "conversación",
-                    reinforcing the core concept in the platform explanation. */}
-                {t.platform.subtitle.split(/(conversations)/i).map((part, i) =>
-                  /conversations/i.test(part) ? (
-                    <ScrambleText key={i} duration={1000} delay={1800}>
-                      {part}
-                    </ScrambleText>
-                  ) : (
-                    <span key={i}>{part}</span>
-                  ),
-                )}
-              </p>
+              <p className="mt-6 text-lg leading-8 text-slate-600">{t.platform.subtitle}</p>
             </div>
             <div className="mt-12">
               <PlatformPillars />
@@ -151,7 +139,19 @@ export function PymesHubPlatformLanding() {
                   )}
                 </h2>
               </div>
-              <p className="text-lg leading-8 text-slate-600">{t.agents.subtitle}</p>
+              <p className="text-lg leading-8 text-slate-600">
+                {/* Scramble #2: "classify" — first AI action verb, reinforces
+                    the intelligent-processing value prop in the agents section. */}
+                {t.agents.subtitle.split(/(classify)/i).map((part, i) =>
+                  /classify/i.test(part) ? (
+                    <ScrambleText key={i} duration={900} delay={1800}>
+                      {part}
+                    </ScrambleText>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  ),
+                )}
+              </p>
             </div>
             <AgentConsole />
           </div>
