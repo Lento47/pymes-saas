@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/marketing/footer";
+import { ScrambleText } from "@/components/marketing/scramble-text";
 import {
   AgentConsole,
   AutomationRecipe,
@@ -49,7 +50,19 @@ export function PymesHubPlatformLanding() {
               <Badge tone="primary">{t.hero.badge}</Badge>
             </div>
             <h1 className="mx-auto max-w-5xl text-balance text-5xl font-semibold tracking-[-0.07em] text-slate-950 sm:text-7xl lg:text-[88px] lg:leading-[0.92]">
-              {t.hero.title}
+              {/* Scramble effect on the core product concept — runs once on mount.
+                  "conversación" (ES) / "conversation" (EN) is the single most
+                  semantically important word in the hero, placed in the final
+                  position of the H1 for maximum visual impact. */}
+              {t.hero.title.split(/(conversación|conversation)/i).map((part, i) =>
+                /conversación|conversation/i.test(part) ? (
+                  <ScrambleText key={i} duration={1400} delay={500}>
+                    {part}
+                  </ScrambleText>
+                ) : (
+                  <span key={i}>{part}</span>
+                ),
+              )}
             </h1>
             <p className="mx-auto mt-7 max-w-3xl text-balance text-lg leading-8 text-slate-600 sm:text-xl">
               {t.hero.subtitle}
