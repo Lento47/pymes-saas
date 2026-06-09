@@ -818,7 +818,7 @@ export function ChannelsTab() {
           {isEmail && <EmailConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isTG && <TelegramConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
-          {!isEmail && !isWA && !isTG && <GenericChannelEditModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
+          {!isEmail && !isWA && !isTG && configChannel && <GenericChannelEditModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
 

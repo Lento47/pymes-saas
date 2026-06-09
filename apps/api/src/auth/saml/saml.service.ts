@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, OnModuleDestroy, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash } from "crypto";
 import { SAML, Profile } from "@node-saml/node-saml";
+import Redis from "ioredis";
 
 export interface SamlIdpConfig {
   entityId: string;
@@ -10,37 +11,60 @@ export interface SamlIdpConfig {
   wantAuthnResponseSigned?: boolean;
 }
 
+// SAML assertion replay window: 10 minutes (well past clock skew)
+const ASSERTION_TTL_SECONDS = 600;
+
 @Injectable()
-export class SamlService {
+export class SamlService implements OnModuleDestroy {
   private readonly logger = new Logger(SamlService.name);
 
-  /**
-   * In-memory cache of consumed SAML response hashes to defeat replay
-   * (C5). Key: sha256(SAMLResponse). Value: expiry epoch ms.
-   * NOTE: single-process only; for multi-instance deployments this MUST
-   * be backed by Redis. Track via TODO so ops migrates before scaling.
-   */
-  private readonly assertionCache = new Map<string, number>();
+  // Redis-backed assertion cache for multi-instance replay protection.
+  // Falls back to in-memory Map if Redis is unavailable (e.g. dev without Redis).
+  private redis: Redis | null = null;
+  private readonly memCache = new Map<string, number>();
 
-  constructor(private readonly config: ConfigService) {}
-
-  private rememberAssertion(id: string, notOnOrAfter: number) {
-    if (this.assertionCache.size > 1000) {
-      const now = Date.now();
-      for (const [k, exp] of this.assertionCache) {
-        if (exp <= now) this.assertionCache.delete(k);
-      }
+  constructor(private readonly config: ConfigService) {
+    const host = config.get<string>("REDIS_HOST") ?? "localhost";
+    const port = parseInt(config.get<string>("REDIS_PORT") ?? "6379", 10);
+    const password = config.get<string>("REDIS_PASSWORD") ?? undefined;
+    const username = config.get<string>("REDIS_USERNAME") ?? undefined;
+    try {
+      this.redis = new Redis({ host, port, password, username, lazyConnect: true,
+        retryStrategy: (t) => Math.min(t * 100, 3000) });
+      this.redis.on("error", () => { this.redis = null; });
+      this.redis.connect().catch(() => { this.redis = null; });
+    } catch {
+      this.redis = null;
     }
-    this.assertionCache.set(id, notOnOrAfter);
   }
 
-  private isReplay(id: string): boolean {
-    const exp = this.assertionCache.get(id);
-    if (!exp) return false;
-    if (exp <= Date.now()) {
-      this.assertionCache.delete(id);
-      return false;
+  async onModuleDestroy() {
+    await this.redis?.quit().catch(() => {});
+  }
+
+  private async rememberAssertion(id: string): Promise<void> {
+    if (this.redis) {
+      await this.redis.set(`saml:seen:${id}`, "1", "EX", ASSERTION_TTL_SECONDS);
+      return;
     }
+    // In-memory fallback — single-process only
+    if (this.memCache.size > 1000) {
+      const now = Date.now();
+      for (const [k, exp] of this.memCache) {
+        if (exp <= now) this.memCache.delete(k);
+      }
+    }
+    this.memCache.set(id, Date.now() + ASSERTION_TTL_SECONDS * 1000);
+  }
+
+  private async isReplay(id: string): Promise<boolean> {
+    if (this.redis) {
+      const exists = await this.redis.exists(`saml:seen:${id}`);
+      return exists === 1;
+    }
+    const exp = this.memCache.get(id);
+    if (!exp) return false;
+    if (exp <= Date.now()) { this.memCache.delete(id); return false; }
     return true;
   }
 
@@ -86,7 +110,7 @@ export class SamlService {
     // the full base64 response and reject if we've seen it within the
     // 10-minute TTL window (well past clock skew).
     const responseHash = createHash("sha256").update(samlResponse).digest("hex");
-    if (this.isReplay(responseHash)) {
+    if (await this.isReplay(responseHash)) {
       this.logger.warn(`SAML replay detected for workspace ${workspaceSlug}`);
       throw new UnauthorizedException("SAML response already consumed.");
     }
@@ -94,9 +118,8 @@ export class SamlService {
     const saml = this.createSaml(sp, idpConfig);
     const result = await saml.validatePostResponseAsync({ SAMLResponse: samlResponse });
 
-    // Successful validation — remember this response hash so future
-    // submissions of the same SAMLResponse are rejected.
-    this.rememberAssertion(responseHash, Date.now() + 10 * 60 * 1000);
+    // Remember assertion hash — rejects replay within TTL window
+    await this.rememberAssertion(responseHash);
 
     const profile: Profile | null = result.profile ?? null;
     const email = ((profile?.[

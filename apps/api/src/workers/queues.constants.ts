@@ -5,4 +5,5 @@ export const QUEUE_NAMES = {
   FOLLOWUP: "followup",
   SUMMARY: "summary",
   HACIENDA: "hacienda",
+  WEBHOOK_EVENTS: "webhook-events",
 } as const;

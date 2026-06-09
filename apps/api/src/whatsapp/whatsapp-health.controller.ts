@@ -1,4 +1,5 @@
 import { Controller, Get, Logger, Query, UseGuards } from '@nestjs/common';
+import { WorkspaceUserRole } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { WhatsAppRateLimiter } from './whatsapp-rate-limiter';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,7 +27,7 @@ export class WhatsAppHealthController {
    * - Recent error messages
    */
   @Get()
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   async getHealth(
     @CurrentUser() user: AuthUser,
     @Query('phone_number_id') phoneNumberId?: string,
@@ -87,7 +88,7 @@ export class WhatsAppHealthController {
 
     return {
       channels: channels.map((ch) => {
-        const cfg = ch.config_json as any;
+        const cfg = ch.config_json as Record<string, string | undefined>;
         return {
           id: ch.id,
           name: ch.name,
@@ -121,7 +122,7 @@ export class WhatsAppHealthController {
    * Real-time rate limit status for all phone numbers in workspace
    */
   @Get('rate-limits')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   getRateLimits() {
     return {
       windows: this.rateLimiter.getAllUsage(),

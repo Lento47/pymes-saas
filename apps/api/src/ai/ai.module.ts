@@ -1,4 +1,5 @@
 import { Module, forwardRef } from "@nestjs/common";
+import { AuditModule } from "../audit/audit.module";
 import { AgentsModule } from "../agents/agents.module";
 import { StorageModule } from "../common/storage/storage.module";
 import { AiService } from "./ai.service";
@@ -85,6 +86,7 @@ import { ScheduledMessagesModule } from "../scheduled-messages/scheduled-message
     forwardRef(() => AgentsModule),
     forwardRef(() => PlatformModule),
     forwardRef(() => ScheduledMessagesModule),
+    AuditModule,
   ],
   providers: [
     AiService,

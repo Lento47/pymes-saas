@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from "@nestjs/common";
+import * as https from "https";
 import { ErrorReportsService } from "../../error-reports/error-reports.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AiTriageService } from "../../ai/ai-triage.service";
@@ -86,15 +87,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse = isHttpException ? exception.getResponse() : null;
-    const message =
-      typeof exceptionResponse === "string"
-        ? exceptionResponse
-        : ((exceptionResponse as any)?.message ??
-          (exception instanceof Error ? exception.message : "Error interno del servidor"));
+    const rawMsg = typeof exceptionResponse === "string"
+      ? exceptionResponse
+      : (((exceptionResponse as { message?: string | string[] })?.message) ??
+        (exception instanceof Error ? exception.message : "Error interno del servidor"));
+    const message: string | string[] = rawMsg;
 
     const errorName =
       typeof exceptionResponse === "object" && exceptionResponse
-        ? (exceptionResponse as any).error
+        ? (exceptionResponse as { error?: string }).error
         : undefined;
 
     if (status === 404) {
@@ -122,7 +123,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         errorCode = matched?.key ?? "UNKNOWN_ERROR";
         const module = matched?.module ?? (request.path?.split("/")[2] || "unknown");
         try {
-          const existing = await (this.prisma as any).supportDiagnosticCase.findFirst({
+          const existing = await this.prisma.supportDiagnosticCase.findFirst({
             where: {
               workspace_id: request.user.workspace_id,
               error_code: errorCode,
@@ -133,7 +134,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
           if (existing) {
             diagnosticCaseId = existing.id;
           } else {
-            const created = await (this.prisma as any).supportDiagnosticCase.create({
+            const created = await this.prisma.supportDiagnosticCase.create({
               data: {
                 workspace_id: request.user.workspace_id,
                 user_id: request.user.id ?? null,
@@ -198,17 +199,73 @@ export class ApiExceptionFilter implements ExceptionFilter {
       });
     }
 
+    const requestId = (request as { requestId?: string }).requestId ??
+      (request.headers?.["x-request-id"] as string) ?? null;
+
     this.logger.error(
-      `${request.method} ${request.originalUrl} -> ${status}: ${msg}`,
-      exception instanceof Error ? exception.stack : undefined,
+      `${request.method} ${request.originalUrl} -> ${status}: ${msg}` +
+      (requestId ? ` [req=${requestId}]` : ""),
+      // Never log stack traces in production to avoid leaking internals
+      process.env.NODE_ENV !== "production" && exception instanceof Error
+        ? exception.stack
+        : undefined,
     );
 
-    // 3) Surface the case to the client so the UI can link "Ver ticket".
+    // 4) Slack alert for 5xx errors (fire-and-forget; gated on SLACK_WEBHOOK_URL)
+    if (status >= 500) {
+      this.notifySlack(status, request.method, request.originalUrl, msg, request.user?.workspace_id);
+    }
+
+    // 5) Surface the case to the client so the UI can link "Ver ticket".
     response.status(status).json({
       statusCode: status,
-      message,
+      message: status >= 500 && process.env.NODE_ENV === "production"
+        ? "Error interno del servidor. Por favor contactá a soporte."
+        : message,
       error: errorName ?? (status >= 500 ? "Internal Server Error" : "Request Error"),
+      ...(requestId ? { request_id: requestId } : {}),
       ...(diagnosticCaseId ? { case_id: diagnosticCaseId, error_code: errorCode } : {}),
     });
+  }
+
+  private notifySlack(
+    status: number,
+    method: string,
+    url: string,
+    msg: string,
+    workspaceId?: string,
+  ): void {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    const payload = JSON.stringify({
+      text: `🚨 *${status} Error* — PymesHub API`,
+      attachments: [
+        {
+          color: "danger",
+          fields: [
+            { title: "Route", value: `${method} ${url}`, short: true },
+            { title: "Workspace", value: workspaceId ?? "anon", short: true },
+            { title: "Message", value: msg.slice(0, 500) },
+          ],
+          footer: new Date().toISOString(),
+        },
+      ],
+    });
+
+    try {
+      const parsed = new URL(webhookUrl);
+      const req = https.request({
+        hostname: parsed.hostname,
+        path: parsed.pathname + parsed.search,
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) },
+      });
+      req.on("error", () => undefined);
+      req.write(payload);
+      req.end();
+    } catch {
+      // Never let Slack notification break the response
+    }
   }
 }

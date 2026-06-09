@@ -672,11 +672,11 @@ export default function CreditsSettingsPage() {
     return () => { socket.off("ai_token_balance_updated", handler); };
   }, []);
 
-  const handleBuy = useCallback(async (packId: string, credits?: number, price?: number) => {
+  const handleBuy = useCallback(async (packId: string) => {
     setBuyingPack(packId);
     setIsCreatingOrder(true);
     try {
-      const { orderId } = await api.createPayPalOrder({ packId, credits, price });
+      const { orderId } = await api.createPayPalOrder({ packId });
       setCurrentOrderId(orderId);
       setShowPayPal(true);
     } catch (err: any) {
@@ -695,7 +695,7 @@ export default function CreditsSettingsPage() {
     setBuyingPack(packId);
     setIsCreatingOrder(true);
     try {
-      const { orderId } = await api.createPayPalOrder({ packId, purchase_type: "AI_TOKENS" });
+      const { orderId } = await api.createPayPalOrder({ packId });
       setCurrentOrderId(orderId);
       setShowPayPal(true);
     } catch (err: any) {
@@ -919,12 +919,6 @@ export default function CreditsSettingsPage() {
             Pagos procesados con PayPal.
           </p>
         </div>
-
-        {/* Custom pack */}
-        <CustomPackSection
-          onBuy={handleBuy}
-          isPending={buyingPack === "custom" || isCreatingOrder}
-        />
 
         {/* Transaction history */}
         <div>

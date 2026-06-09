@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
+import { TemplateStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
 import { parseJsonValue } from "../common/prisma/json";
@@ -142,7 +143,7 @@ export class MessageTemplatesService {
         await this.prisma.messageTemplate.update({
           where: { id: existing.id },
           data: {
-            status: dbStatus as any,
+            status: dbStatus as TemplateStatus,
             body: bodyText || existing.body,
             category,
             external_template_id: tpl.id ?? existing.external_template_id,
@@ -159,7 +160,7 @@ export class MessageTemplatesService {
             category,
             language,
             body: bodyText,
-            status: dbStatus as any,
+            status: dbStatus as TemplateStatus,
           },
         });
         created++;

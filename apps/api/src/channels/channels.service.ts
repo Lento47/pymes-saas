@@ -5,8 +5,10 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { ChannelType, ChannelStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
+import { AuditService } from "../audit/audit.service";
 import { parseJsonValue } from "../common/prisma/json";
 import { ConfigureEmailDto } from "./dto/configure-email.dto";
 import { ConfigureWhatsAppDto } from "./dto/configure-whatsapp.dto";
@@ -32,19 +34,28 @@ export class ChannelsService {
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
     private readonly telegramService: TelegramService,
+    private readonly audit: AuditService,
   ) {}
 
-  async create(workspaceId: string, dto: CreateChannelDto) {
-    return this.prisma.channel.create({
+  async create(workspaceId: string, dto: CreateChannelDto, actorId?: string) {
+    const channel = await this.prisma.channel.create({
       data: {
         workspace_id: workspaceId,
-        type: dto.type as any,
+        type: dto.type as ChannelType,
         name: dto.name,
         provider: dto.provider ?? dto.type.toLowerCase(),
         status: "PENDING_SETUP",
         config_json: {},
       },
     });
+    void this.audit.log(workspaceId, {
+      user_id: actorId,
+      action: "channel.created",
+      entity_type: "channel",
+      entity_id: channel.id,
+      after: { type: dto.type, name: dto.name },
+    });
+    return channel;
   }
 
   async findAll(workspaceId: string, includeInactive = false) {
@@ -65,23 +76,29 @@ export class ChannelsService {
     return this.sanitise(channel);
   }
 
-  async update(workspaceId: string, id: string, dto: UpdateChannelDto) {
+  async update(workspaceId: string, id: string, dto: UpdateChannelDto, actorId?: string) {
     await this.assertOwnership(workspaceId, id);
     const updated = await this.prisma.channel.update({
       where: { id },
       data: {
         ...(dto.name ? { name: dto.name } : {}),
-        ...(dto.status ? { status: dto.status as any } : {}),
+        ...(dto.status ? { status: dto.status as ChannelStatus } : {}),
       },
+    });
+    void this.audit.log(workspaceId, {
+      user_id: actorId,
+      action: "channel.updated",
+      entity_type: "channel",
+      entity_id: id,
+      after: { ...(dto.name && { name: dto.name }), ...(dto.status && { status: dto.status }) },
     });
     return this.sanitise(updated);
   }
 
-  async remove(workspaceId: string, id: string) {
+  async remove(workspaceId: string, id: string, actorId?: string) {
     await this.assertOwnership(workspaceId, id);
     const channel = await this.prisma.channel.findFirst({ where: { id } });
 
-    // Clean up webhooks/integrations before deletion
     if (channel?.type === "TELEGRAM") {
       await this.telegramService.removeWebhook(id).catch((err) => {
         this.logger.warn(
@@ -90,37 +107,46 @@ export class ChannelsService {
       });
     }
 
-    // Soft-delete: mark as INACTIVE to preserve FK integrity with conversations
     await this.prisma.channel.update({
       where: { id },
       data: { status: "INACTIVE" },
+    });
+    void this.audit.log(workspaceId, {
+      user_id: actorId,
+      action: "channel.deactivated",
+      entity_type: "channel",
+      entity_id: id,
+      before: { type: channel?.type, name: channel?.name, status: channel?.status },
     });
     this.logger.log(`Channel ${id} (${channel?.type}) deactivated from workspace ${workspaceId}`);
     return { message: "Canal desactivado." };
   }
 
-  async connect(workspaceId: string, id: string) {
+  async connect(workspaceId: string, id: string, actorId?: string) {
     await this.assertOwnership(workspaceId, id);
-    return this.prisma.channel.update({ where: { id }, data: { status: "ACTIVE" } });
+    const result = await this.prisma.channel.update({ where: { id }, data: { status: "ACTIVE" } });
+    void this.audit.log(workspaceId, { user_id: actorId, action: "channel.connected", entity_type: "channel", entity_id: id });
+    return result;
   }
 
-  async disconnect(workspaceId: string, id: string) {
+  async disconnect(workspaceId: string, id: string, actorId?: string) {
     await this.assertOwnership(workspaceId, id);
     const channel = await this.prisma.channel.findFirst({ where: { id } });
 
-    // Remove Telegram webhook if it's a Telegram channel
     if (channel?.type === "TELEGRAM") {
       this.telegramService.removeWebhook(id).catch((err) => {
         this.logger.warn(`Failed to remove Telegram webhook: ${(err as Error).message}`);
       });
     }
 
-    return this.prisma.channel.update({ where: { id }, data: { status: "INACTIVE" } });
+    const result = await this.prisma.channel.update({ where: { id }, data: { status: "INACTIVE" } });
+    void this.audit.log(workspaceId, { user_id: actorId, action: "channel.disconnected", entity_type: "channel", entity_id: id });
+    return result;
   }
 
   // ── Email (Resend) ─────────────────────────────────────────────────────────
 
-  async configureEmail(workspaceId: string, id: string, dto: ConfigureEmailDto) {
+  async configureEmail(workspaceId: string, id: string, dto: ConfigureEmailDto, actorId?: string) {
     const channel = await this.prisma.channel.findFirst({
       where: { id, workspace_id: workspaceId },
     });
@@ -170,13 +196,14 @@ export class ChannelsService {
     });
 
     this.logger.log(`EMAIL canal ${id} configurado para workspace ${workspaceId}`);
+    void this.audit.log(workspaceId, { user_id: actorId, action: "channel.configured", entity_type: "channel", entity_id: id, after: { type: "EMAIL", from_email: dto.from_email } });
     this.trackQuickStart(workspaceId, "email_connected");
     return this.sanitise(updated);
   }
 
   // ── WhatsApp (Meta) ────────────────────────────────────────────────────────
 
-  async configureWhatsApp(workspaceId: string, id: string, dto: ConfigureWhatsAppDto) {
+  async configureWhatsApp(workspaceId: string, id: string, dto: ConfigureWhatsAppDto, actorId?: string) {
     const channel = await this.prisma.channel.findFirst({
       where: { id, workspace_id: workspaceId },
     });
@@ -242,11 +269,12 @@ export class ChannelsService {
         .filter((k) => newConfig[k as keyof typeof newConfig] != null)
         .join(",")}`,
     );
+    void this.audit.log(workspaceId, { user_id: actorId, action: "channel.configured", entity_type: "channel", entity_id: id, after: { type: "WHATSAPP", phone_number_id: dto.phone_number_id } });
     this.trackQuickStart(workspaceId, "whatsapp_connected");
     return this.sanitise(updated);
   }
 
-  async configureTelegram(workspaceId: string, id: string, dto: ConfigureTelegramDto) {
+  async configureTelegram(workspaceId: string, id: string, dto: ConfigureTelegramDto, actorId?: string) {
     const channel = await this.prisma.channel.findFirst({
       where: { id, workspace_id: workspaceId },
     });
@@ -297,6 +325,7 @@ export class ChannelsService {
       );
     }
 
+    void this.audit.log(workspaceId, { user_id: actorId, action: "channel.configured", entity_type: "channel", entity_id: id, after: { type: "TELEGRAM" } });
     return this.sanitise(updated);
   }
 
@@ -304,7 +333,7 @@ export class ChannelsService {
 
   async findActiveByType(workspaceId: string, type: string) {
     return this.prisma.channel.findFirst({
-      where: { workspace_id: workspaceId, type: type as any, status: "ACTIVE" },
+      where: { workspace_id: workspaceId, type: type as ChannelType, status: ChannelStatus.ACTIVE },
     });
   }
 

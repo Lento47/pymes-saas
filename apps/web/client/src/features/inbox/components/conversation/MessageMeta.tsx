@@ -37,7 +37,6 @@ export function MessageMeta({
           direction={message.direction}
           deliveryStatus={message.deliveryStatus}
           deliveryError={message.deliveryError}
-          variant="light"
         />
       </div>
     );

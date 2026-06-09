@@ -35,14 +35,17 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { RequirePermission, Permission } from "../common/permissions";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
+import { Throttle } from "@nestjs/throttler";
 import { AgentRunService } from "../ai/agent-run.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { EventsGateway } from "../gateways/events.gateway";
+import { AuditService } from "../audit/audit.service";
 
 class StartAgentRunDto {
   @IsOptional()
@@ -53,6 +56,7 @@ class StartAgentRunDto {
 
 @Controller("conversations")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.CONVERSATIONS_READ)
 export class ConversationsController {
   private readonly logger = new Logger(ConversationsController.name);
 
@@ -73,6 +77,7 @@ export class ConversationsController {
     private readonly aiConversationControl: AiConversationControlService,
     @Inject(forwardRef(() => FlowiseAutoReplyService))
     private readonly flowiseAutoReply: FlowiseAutoReplyService,
+    private readonly audit: AuditService,
   ) {}
 
   // ── Conversations ──────────────────────────────────────────────────────────
@@ -103,6 +108,7 @@ export class ConversationsController {
 
   @Post()
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONVERSATIONS_REPLY)
   create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateConversationDto) {
     return this.service.create(workspaceId, dto);
   }
@@ -114,11 +120,18 @@ export class ConversationsController {
     WorkspaceUserRole.ADMIN,
     WorkspaceUserRole.OWNER,
   )
-  findOne(
-    @CurrentUser("workspace_id") workspaceId: string,
+  async findOne(
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.service.findOne(workspaceId, id);
+    const result = await this.service.findOne(user.workspace_id, id);
+    void this.audit.log(user.workspace_id, {
+      user_id: user.id,
+      action: "conversation.viewed",
+      entity_type: "conversation",
+      entity_id: id,
+    });
+    return result;
   }
 
   @Patch(":id")
@@ -133,6 +146,7 @@ export class ConversationsController {
 
   @Post(":id/assign")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONVERSATIONS_ASSIGN)
   assign(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -179,6 +193,7 @@ export class ConversationsController {
 
   @Post(":id/messages")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONVERSATIONS_REPLY)
   async sendMessage(
     @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) conversationId: string,
@@ -216,12 +231,12 @@ export class ConversationsController {
     }
 
     // ── Email dispatch ──
-    if (conv.channel.type === "EMAIL" && (conv.contact as any)?.email) {
+    if (conv.channel.type === "EMAIL" && conv.contact.email) {
       try {
         await this.emailService.sendOutbound(
           conv.channel,
-          (conv.contact as any).email,
-          (conv as any).subject ?? "Nuevo mensaje",
+          conv.contact.email,
+          (conv as { subject?: string }).subject ?? "Nuevo mensaje",
           bodyHtml || bodyText,
           bodyText,
         );
@@ -232,14 +247,14 @@ export class ConversationsController {
     }
 
     // ── WhatsApp dispatch ──
-    if (conv.channel.type === "WHATSAPP" && (conv.contact as any)?.phone) {
+    if (conv.channel.type === "WHATSAPP" && conv.contact.phone) {
       try {
-        const phoneStr = (conv.contact as any).phone as string;
+        const phoneStr = conv.contact.phone;
         const to = phoneStr ? phoneStr.replace(/\D/g, "") : "";
         if (!to) return message;
 
         // Rate limit check
-        const cfg = conv.channel.config_json as any;
+        const cfg = conv.channel.config_json as Record<string, string | undefined>;
         const phoneNumberId = cfg?.phone_number_id;
         if (phoneNumberId && !this.whatsAppRateLimiter.canSend(phoneNumberId)) {
           this.logger.warn(`WhatsApp rate limit reached for ${phoneNumberId}`);
@@ -367,17 +382,14 @@ export class ConversationsController {
           conversation_id: conversationId,
           workspace_id: user.workspace_id,
           delivery_status: "DISPATCH_FAILED",
-          delivery_error: (message as any).delivery_error ?? null,
+          delivery_error: (message as { delivery_error?: string | null }).delivery_error ?? null,
         });
       }
     }
 
-    if (conv?.channel?.type === "TELEGRAM" && (conv.contact as any)?.telegram_chat_id) {
+    if (conv?.channel?.type === "TELEGRAM" && conv.contact.telegram_chat_id) {
       try {
-        const chatId = (conv.contact as any).telegram_chat_id;
-        this.logger.log(
-          `[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
-        );
+        const chatId = conv.contact.telegram_chat_id;
 
         // Resolve reply context (DB ID → telegram_message_id)
         let tgReplyId: string | null = null;
@@ -436,7 +448,7 @@ export class ConversationsController {
           conversation_id: conversationId,
           workspace_id: user.workspace_id,
           delivery_status: "DISPATCH_FAILED",
-          delivery_error: (message as any).delivery_error ?? null,
+          delivery_error: (message as { delivery_error?: string | null }).delivery_error ?? null,
         });
       }
     }
@@ -459,6 +471,7 @@ export class ConversationsController {
     WorkspaceUserRole.ADMIN,
     WorkspaceUserRole.OWNER,
   )
+  @RequirePermission(Permission.FILES_READ)
   async getMessageMedia(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("messageId", ValidateUUIDPipe) messageId: string,
@@ -496,7 +509,7 @@ export class ConversationsController {
    * Mark last inbound WhatsApp message as read on Meta
    */
   @Post(':id/read-receipt')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async markAsRead(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') conversationId: string,
@@ -536,7 +549,7 @@ export class ConversationsController {
    * Send typing indicator to WhatsApp user
    */
   @Post(':id/typing')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async typingIndicator(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') conversationId: string,
@@ -593,6 +606,7 @@ export class ConversationsController {
   /** One-shot AI reply — responds once, does NOT delegate permanently. */
   @Post(":id/ai-control/reply-once")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ ai: { limit: 30, ttl: 60_000 } })
   async replyOnce(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,
@@ -603,6 +617,7 @@ export class ConversationsController {
   /** Delegate AI permanently + respond immediately (same as delegate-to-ai). */
   @Post(":id/ai-control/start")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ ai: { limit: 30, ttl: 60_000 } })
   async startAiControl(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,
@@ -637,6 +652,7 @@ export class ConversationsController {
 
   @Post(":id/start-agent")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ ai: { limit: 30, ttl: 60_000 } })
   async startAgentRun(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,

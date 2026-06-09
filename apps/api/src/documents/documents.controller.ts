@@ -25,9 +25,11 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
 @Controller("documents")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.FILES_READ)
 export class DocumentsController {
   constructor(
     private readonly service: DocumentsService,

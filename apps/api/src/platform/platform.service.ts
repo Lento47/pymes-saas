@@ -127,7 +127,7 @@ export class PlatformService {
     const workspace = await this.prisma.workspace.findUnique({ where: { slug } });
     if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
-    const members = (await (this.prisma.workspaceUser as any).findMany({
+    const members = await this.prisma.workspaceUser.findMany({
       where: { workspace_id: workspace.id },
       include: {
         user: {
@@ -142,7 +142,7 @@ export class PlatformService {
         },
       },
       orderBy: { created_at: "asc" },
-    })) as any[];
+    });
 
     return members.map((m) => ({
       id: m.id,
@@ -371,7 +371,7 @@ export class PlatformService {
   // ── GET /platform/users?email=... ────────────────────────────────────────
 
   async searchUsers(email?: string) {
-    return (this.prisma.user as any).findMany({
+    return this.prisma.user.findMany({
       where: email ? { email: { contains: email, mode: "insensitive" } } : undefined,
       select: {
         id: true,
@@ -627,7 +627,7 @@ export class PlatformService {
     }
     if (dto.beta_profile !== undefined) {
       const betaProfile = dto.beta_profile || null;
-      if (betaProfile && !VALID_BETA_PROFILES.includes(betaProfile as any)) {
+      if (betaProfile && !(VALID_BETA_PROFILES as unknown as string[]).includes(betaProfile)) {
         throw new BadRequestException(
           `Perfil comercial inválido. Debe ser: ${VALID_BETA_PROFILES.join(", ")}.`,
         );

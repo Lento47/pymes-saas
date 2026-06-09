@@ -1,20 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
-import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Check, Loader2, AlertTriangle, CalendarDays, CreditCard, Coins, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
-// Maps the ?plan= URL param value to a tier planKey
+// ── Plan data ─────────────────────────────────────────────────────────────
+
 const PLAN_PARAM_MAP: Record<string, string> = {
   emprende: 'emprende',
   starter: 'starter',
   growth: 'growth',
-  business: 'enterprise',
-  enterprise: 'enterprise',
+  business: 'business',
+  enterprise: 'business',
 };
 
 const PRICING_TIERS = [
@@ -39,37 +44,69 @@ const PRICING_TIERS = [
     monthlyUSD: 59,
     monthlyCRC: 29900,
     features: ['2,500 contactos', '500 facturas/mes', '25 automatizaciones', '5 usuarios'],
+    popular: true,
   },
   {
     name: 'Business',
-    planKey: 'enterprise',
+    planKey: 'business',
     monthlyUSD: 119,
     monthlyCRC: 59900,
     features: ['15,000 contactos', '2,000 facturas/mes', '100 automatizaciones', '15 usuarios'],
   },
 ];
 
+const PAYPAL_PENDING_KEY = 'paypal_pending_plan_id';
+
+function statusBadge(status?: string) {
+  if (!status) return null;
+  const map: Record<string, { label: string; className: string }> = {
+    ACTIVE:    { label: 'Activo',        className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+    TRIALING:  { label: 'Prueba',        className: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+    PAST_DUE:  { label: 'Pago pendiente',className: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+    CANCELLED: { label: 'Cancelado',     className: 'bg-red-500/10 text-red-600 border-red-500/20' },
+    MANUAL:    { label: 'Manual',        className: 'bg-muted text-muted-foreground border-border' },
+  };
+  const cfg = map[status.toUpperCase()] ?? map.MANUAL;
+  return <Badge variant="outline" className={cfg.className}>{cfg.label}</Badge>;
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────
+
 export default function BillingPage() {
-  const { workspaceSlug, isAuthenticated } = useAuth();
-  const [location] = useLocation();
-  const params = new URLSearchParams(location.split('?')[1]);
-  const success = params.get('success');
-  const canceled = params.get('canceled');
-  const planParam = params.get('plan'); // e.g. 'starter', 'growth', 'business'
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  // ── PayPal return detection ──────────────────────────────────────────────
+  // PayPal redirects to: base?subscription_id=I-xxx&ba_token=xxx#/billing
+  // We read from window.location.search (before the hash).
+  const searchParams = new URLSearchParams(window.location.search);
+  const ppSubscriptionId = searchParams.get('subscription_id');
+  const ppCanceled = searchParams.get('pp_canceled');
+  const ppPlanParam = searchParams.get('plan'); // from ?plan=starter links
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const autoCheckoutFired = useRef(false);
+  const confirmFired = useRef(false);
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
-    queryKey: ['subscription', workspaceSlug],
+    queryKey: ['subscription'],
     queryFn: () => api.getSubscription(),
-    enabled: !!workspaceSlug && isAuthenticated,
+    enabled: isAuthenticated,
   });
 
-  const { data: portalLink, isLoading: portalLoading } = useQuery({
-    queryKey: ['billingPortal'],
-    queryFn: () => api.getBillingPortal(),
+  const { data: creditsData } = useQuery({
+    queryKey: ['memoryCredits'],
+    queryFn: () => api.getCredits(),
+    enabled: isAuthenticated,
+  });
+
+  const { data: aiTokensData } = useQuery({
+    queryKey: ['aiTokens'],
+    queryFn: () => api.getAiTokens(),
     enabled: isAuthenticated,
   });
 
@@ -94,34 +131,53 @@ export default function BillingPage() {
     [isEmprendeEligible],
   );
 
-  // Auto-trigger checkout when arriving from a ?plan= link (e.g. login?plan=starter)
+  // ── Confirm PayPal subscription after redirect ──────────────────────────
   useEffect(() => {
-    if (autoCheckoutFired.current) return;
-    if (!planParam || pricesLoading || subscriptionLoading || featuresLoading) return;
+    if (!ppSubscriptionId || confirmFired.current || !isAuthenticated) return;
+    const pendingPlanKey = sessionStorage.getItem(PAYPAL_PENDING_KEY);
+    if (!pendingPlanKey) return;
 
-    const targetPlanKey = PLAN_PARAM_MAP[planParam.toLowerCase()];
-    const tier = visiblePricingTiers.find(t => t.planKey === targetPlanKey);
+    confirmFired.current = true;
+    setConfirmLoading(true);
+
+    api.confirmPayPalSubscription(ppSubscriptionId, pendingPlanKey)
+      .then(() => {
+        sessionStorage.removeItem(PAYPAL_PENDING_KEY);
+        setConfirmed(true);
+        qc.invalidateQueries({ queryKey: ['subscription'] });
+        qc.invalidateQueries({ queryKey: ['currentFeatures'] });
+        // Clean URL without reload
+        const cleanUrl = window.location.origin + window.location.pathname + '#/billing';
+        window.history.replaceState(null, '', cleanUrl);
+      })
+      .catch((err: any) => {
+        setCheckoutError(err?.message ?? 'No se pudo confirmar la suscripción.');
+      })
+      .finally(() => setConfirmLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ppSubscriptionId, isAuthenticated]);
+
+  // ── Auto-trigger checkout from ?plan= param ─────────────────────────────
+  useEffect(() => {
+    if (autoCheckoutFired.current || ppSubscriptionId) return;
+    if (!ppPlanParam || pricesLoading || subscriptionLoading || featuresLoading) return;
+
+    const targetPlanKey = PLAN_PARAM_MAP[ppPlanParam.toLowerCase()];
+    const tier = visiblePricingTiers.find((t) => t.planKey === targetPlanKey);
     if (!tier) return;
 
     const isCurrentPlan =
-      subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ||
       subscription?.plan?.toUpperCase() === tier.planKey.toUpperCase();
     if (isCurrentPlan) return;
 
     autoCheckoutFired.current = true;
     handleUpgrade(tier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planParam, prices, pricesLoading, subscriptionLoading, featuresLoading, subscription, visiblePricingTiers]);
+  }, [ppPlanParam, prices, pricesLoading, subscriptionLoading, featuresLoading, subscription, visiblePricingTiers]);
 
   async function handleUpgrade(tier: (typeof PRICING_TIERS)[number]) {
     if (tier.requiresEligibility && !isEmprendeEligible) {
-      setCheckoutError('PymesHub Emprende requiere aprobación previa de PymesHub.');
-      return;
-    }
-
-    const priceId = prices?.[`${tier.planKey}_monthly`];
-    if (!priceId) {
-      setCheckoutError('El precio del plan no está configurado. Contactá a soporte.');
+      setCheckoutError('PymesHub Emprende requiere aprobación previa.');
       return;
     }
 
@@ -129,16 +185,29 @@ export default function BillingPage() {
     setCheckoutError(null);
 
     try {
-      const result = await api.createCheckout(priceId);
+      const result = await api.createCheckout(tier.planKey, 'MONTHLY');
       if (result.checkoutUrl) {
+        sessionStorage.setItem(PAYPAL_PENDING_KEY, tier.planKey);
         window.location.href = result.checkoutUrl;
       } else {
         setCheckoutError('No se pudo crear la sesión de pago. Intentá de nuevo.');
       }
     } catch (err: any) {
-      setCheckoutError(err?.message ?? 'Error en el pago. Intentá de nuevo.');
+      setCheckoutError(err?.message ?? 'Error al iniciar el pago. Intentá de nuevo.');
     } finally {
       setCheckoutLoading(null);
+    }
+  }
+
+  async function handleCancel() {
+    if (!confirm('¿Confirmás cancelar tu suscripción? El acceso al plan actual terminará inmediatamente.')) return;
+    try {
+      await api.cancelPlan();
+      toast({ title: 'Suscripción cancelada correctamente.' });
+      qc.invalidateQueries({ queryKey: ['subscription'] });
+      qc.invalidateQueries({ queryKey: ['currentFeatures'] });
+    } catch (err: any) {
+      toast({ title: 'No se pudo cancelar', description: err?.message, variant: 'destructive' });
     }
   }
 
@@ -150,24 +219,39 @@ export default function BillingPage() {
     );
   }
 
+  const activePlan = subscription?.plan;
+  const activePlanLabel = activePlan
+    ? PRICING_TIERS.find((t) => t.planKey === activePlan.toLowerCase())?.name ?? activePlan
+    : 'Free';
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6 py-4 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Facturación y suscripción</h1>
-        <p className="text-muted-foreground mt-2">Gestioná tu plan y método de pago</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Facturación</h1>
+        <p className="text-sm text-muted-foreground mt-1">Gestioná tu plan y suscripción</p>
       </div>
 
-      {success && (
+      {/* Alerts */}
+      {confirmLoading && (
+        <Alert className="bg-blue-500/10 border-blue-500/20">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+          <AlertDescription className="text-blue-700 ml-2">Confirmando suscripción con PayPal…</AlertDescription>
+        </Alert>
+      )}
+
+      {confirmed && (
         <Alert className="bg-emerald-500/10 border-emerald-500/20">
-          <AlertDescription className="text-emerald-600">
-            ¡Pago exitoso! Tu suscripción fue actualizada.
+          <Check className="h-4 w-4 text-emerald-600" />
+          <AlertDescription className="text-emerald-700 ml-2">
+            ¡Suscripción activada! Tu plan ha sido actualizado.
           </AlertDescription>
         </Alert>
       )}
 
-      {canceled && (
+      {ppCanceled && (
         <Alert className="bg-amber-500/10 border-amber-500/20">
-          <AlertDescription className="text-amber-600">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-700 ml-2">
             El pago fue cancelado. Tu suscripción no cambió.
           </AlertDescription>
         </Alert>
@@ -175,119 +259,136 @@ export default function BillingPage() {
 
       {checkoutError && (
         <Alert className="bg-destructive/10 border-destructive/20">
-          <AlertDescription className="text-destructive">{checkoutError}</AlertDescription>
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-destructive ml-2">{checkoutError}</AlertDescription>
         </Alert>
       )}
 
-      {/* Plan actual */}
+      {/* Current plan */}
       <Card>
-        <CardHeader>
-          <CardTitle>Plan actual</CardTitle>
-          <CardDescription>Tu suscripción activa</CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Plan actual</CardTitle>
+            {subscription?.status && statusBadge(subscription.status)}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           {subscriptionLoading ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-muted-foreground">Cargando información...</span>
+              Cargando…
             </div>
-          ) : subscription ? (
-            <>
-              <div className="flex justify-between items-center">
-                <span className="font-semibold capitalize">{subscription.plan || 'Starter'}</span>
-                <span className="text-sm text-muted-foreground">
-                  ${subscription.monthly_price || 0}/mes
-                </span>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-accent/10">
+                  <CreditCard className="h-4 w-4 text-accent" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{activePlanLabel}</p>
+                  {subscription?.billing_interval && (
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {subscription.billing_interval === 'YEARLY' ? 'Anual' : 'Mensual'}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                Período de facturación: {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
-                {new Date(subscription.current_period_end).toLocaleDateString()}
-              </div>
-              {subscription.trial_ends_at && (
-                <div className="text-sm text-primary">
-                  Prueba termina: {new Date(subscription.trial_ends_at).toLocaleDateString()}
+
+              {subscription?.current_period_start && subscription?.current_period_end && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                  Período:{' '}
+                  {format(new Date(subscription.current_period_start), 'dd MMM yyyy', { locale: es })} –{' '}
+                  {format(new Date(subscription.current_period_end), 'dd MMM yyyy', { locale: es })}
                 </div>
               )}
-              <div className="flex gap-2">
-                {portalLoading ? (
-                  <Button disabled>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Cargando...
-                  </Button>
-                ) : (
-                  <>
-                    {portalLink?.url && (
-                      <Button
-                        onClick={() => window.open(portalLink.url, '_blank')}
-                        variant="outline"
-                      >
-                        Administrar suscripción
-                      </Button>
-                    )}
-                    <Button onClick={() => window.scrollTo(0, document.getElementById('upgrade-plans')?.offsetTop || 0)}>
-                      Ver planes
-                    </Button>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="text-muted-foreground">No hay suscripción activa. Elegí un plan para empezar.</div>
+
+              {subscription?.provider === 'PAYPAL' && activePlan !== 'FREE' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+                  onClick={handleCancel}
+                >
+                  Cancelar suscripción
+                </Button>
+              )}
+
+              {(!subscription || subscription.plan === 'FREE' || !subscription.provider) && (
+                <p className="text-xs text-muted-foreground">
+                  Estás en el plan gratuito. Elegí un plan para desbloquear todas las funciones.
+                </p>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Planes disponibles */}
-      <div id="upgrade-plans" className="space-y-4">
-        <h2 className="text-2xl font-bold">Planes disponibles</h2>
-        {!isEmprendeEligible && (
-          <p className="text-sm text-muted-foreground">
-            PymesHub Emprende está disponible para clientes aprobados. Si aplica para tu negocio,
-            contactá a soporte para revisar elegibilidad.
-          </p>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Separator />
+
+      {/* Plans */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Planes disponibles</h2>
+          {!isEmprendeEligible && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              PymesHub Emprende requiere aprobación previa. Contactá a soporte para revisar elegibilidad.
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {visiblePricingTiers.map((tier) => {
-            const isCurrentPlan =
-              subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ||
-              subscription?.plan?.toUpperCase() === tier.planKey.toUpperCase();
-            const isLoading = checkoutLoading === tier.planKey;
-            const hasPriceId = !!prices?.[`${tier.planKey}_monthly`];
+            const isCurrentPlan = activePlan?.toUpperCase() === tier.planKey.toUpperCase();
+            const isLoadingThis = checkoutLoading === tier.planKey;
+            const hasPlanId = !!prices?.[`${tier.planKey}_monthly`];
 
             return (
-              <Card key={tier.name}>
-                <CardHeader>
-                  <CardTitle>{tier.name}</CardTitle>
+              <Card
+                key={tier.planKey}
+                className={isCurrentPlan ? 'border-accent/40 bg-accent/[0.03]' : undefined}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{tier.name}</CardTitle>
+                    {(tier as any).popular && !isCurrentPlan && (
+                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Popular</Badge>
+                    )}
+                    {isCurrentPlan && (
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-accent/40 text-accent">
+                        Actual
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription>
-                    <div className="text-2xl font-bold text-foreground mt-2">
-                      ${tier.monthlyUSD}
-                      <span className="text-sm text-muted-foreground font-normal">/mes</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <span className="text-xl font-bold text-foreground">${tier.monthlyUSD}</span>
+                    <span className="text-xs text-muted-foreground font-normal">/mes</span>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
                       ₡{tier.monthlyCRC.toLocaleString()}/mes
                     </div>
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
+                <CardContent className="space-y-3 pt-0">
+                  <ul className="space-y-1.5">
                     {tier.features.map((feature) => (
-                      <li key={feature} className="text-sm text-muted-foreground flex items-start">
-                        <Check className="w-4 h-4 text-emerald-500 mr-2 shrink-0" />
+                      <li key={feature} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
                         {feature}
                       </li>
                     ))}
                   </ul>
                   <Button
-                    className="w-full"
+                    size="sm"
+                    className="w-full h-8 text-xs"
                     variant={isCurrentPlan ? 'outline' : 'default'}
-                    disabled={isCurrentPlan || isLoading || !hasPriceId}
+                    disabled={isCurrentPlan || isLoadingThis || !hasPlanId || confirmLoading}
                     onClick={() => handleUpgrade(tier)}
-                    title={!hasPriceId ? 'Precio no configurado' : undefined}
+                    title={!hasPlanId ? 'Plan no configurado' : undefined}
                   >
-                    {isLoading ? (
+                    {isLoadingThis ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Redirigiendo...
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        Redirigiendo…
                       </>
                     ) : isCurrentPlan ? (
                       'Plan actual'
@@ -302,16 +403,71 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Historial de facturación */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Historial de facturación</CardTitle>
-          <CardDescription>Tus facturas y pagos recientes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">No hay facturas aún. La primera aparecerá después del primer pago.</p>
-        </CardContent>
-      </Card>
+      <Separator />
+
+      {/* Unified credits panel */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-foreground">Créditos y tokens</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Memory credits */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
+                    <Coins className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Créditos de memoria</p>
+                    <p className="text-xs text-muted-foreground">Para contactos activos / mes</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold tabular-nums text-foreground">
+                    {creditsData?.balance?.toLocaleString() ?? '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">disponibles</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI tokens */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
+                    <Zap className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Tokens IA</p>
+                    <p className="text-xs text-muted-foreground">Para respuestas automáticas</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold tabular-nums text-foreground">
+                    {aiTokensData?.available != null
+                      ? aiTokensData.available >= 1_000_000
+                        ? `${(aiTokensData.available / 1_000_000).toFixed(1)}M`
+                        : aiTokensData.available >= 1_000
+                          ? `${(aiTokensData.available / 1_000).toFixed(0)}k`
+                          : aiTokensData.available.toLocaleString()
+                      : '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">disponibles</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Para recargar créditos o tokens, visitá la sección de{' '}
+          <a href="#/credits" className="text-accent underline-offset-2 hover:underline">
+            Créditos
+          </a>.
+        </p>
+      </div>
     </div>
   );
 }

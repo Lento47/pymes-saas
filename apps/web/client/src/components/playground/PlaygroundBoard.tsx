@@ -17,7 +17,7 @@ const DEPTS: { key: Department; label: string; color: string; border: string }[]
 ];
 
 const MODULE_TO_DEPT: Record<string, Department> = {
-  billing: "billing", invoices: "billing", paddle: "billing",
+  billing: "billing", invoices: "billing", paypal: "billing",
   settings: "config", channels: "config", routing: "config", workspaces: "config",
   conversations: "care", contacts: "care", notifications: "care",
   documents: "technical", automations: "technical", hacienda: "technical", agent: "technical",

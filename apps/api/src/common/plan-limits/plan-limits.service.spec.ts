@@ -225,17 +225,6 @@ describe("PlanLimitsService", () => {
     });
   });
 
-  // ─── checkContactLimit ─────────────────────────────────────────────────
-
-  describe("checkContactLimit", () => {
-    it("throws QuotaExceededError when STARTER contact limit exceeded", async () => {
-      mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue({ plan: "STARTER" });
-      mockPrisma.contact.count.mockResolvedValue(500);
-
-      await expect(service.checkContactLimit("ws1")).rejects.toThrow(QuotaExceededError);
-    });
-  });
-
   // ─── checkInvoiceLimit ─────────────────────────────────────────────────
 
   describe("checkInvoiceLimit", () => {

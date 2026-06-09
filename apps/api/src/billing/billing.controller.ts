@@ -6,7 +6,6 @@ import {
   Param,
   Post,
   Query,
-  RawBodyRequest,
   Req,
   Res,
   UseGuards,
@@ -16,175 +15,287 @@ import {
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { Request, Response } from "express";
 import { ConfigService } from "@nestjs/config";
-import { PaddleSdkService } from "./paddle-sdk.service";
+import { PaypalService } from "./paypal.service";
 import { BillingInvoiceService } from "./billing-invoice.service";
-import { ChangePlanDto } from "./dto/change-plan.dto";
-import { CreateCheckoutDto } from "./dto/checkout.dto";
 import { FilterBillingInvoicesDto } from "./dto/filter-billing-invoices.dto";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { ApiRolesGuard } from "../api-tokens/api-roles.guard";
-import { RequireApiRole } from "../api-tokens/api-roles.decorator";
-import { ApiRole } from "../api-tokens/api-token.guard";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { AuditService } from "../audit/audit.service";
+import { RequirePermission, Permission } from "../common/permissions";
 
-// ───────────────────────────────────────────────────────────────────────────
-// IMPORTANTE — PADDLE ESTA EN SANDBOX.
-//
-// CUANDO SE PASE A PRODUCCION, ROTAR EN RAILWAY:
-//   - PADDLE_API_KEY              → API KEY DE PROD
-//   - PADDLE_ENVIRONMENT=production
-//   - PADDLE_WEBHOOK_SECRET       → SECRETO DE PROD
-//   - PADDLE_PRICE_*_MONTHLY/ANNUAL → PRICE IDs DE PROD
-//   (LOS DE SANDBOX NO FUNCIONAN EN PROD Y VICEVERSA).
-//
-// LO QUE NO ES IMPORTANTE: EL CODIGO DE ESTE ARCHIVO NO CAMBIA AL PASAR A
-// PROD — TODA LA CONFIGURACION VIVE EN ENV VARS.
-// ───────────────────────────────────────────────────────────────────────────
+// ─── Env vars required for PayPal subscriptions ───────────────────────────
+//   PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
+//   PAYPAL_PLAN_EMPRENDE_MONTHLY, PAYPAL_PLAN_STARTER_MONTHLY,
+//   PAYPAL_PLAN_GROWTH_MONTHLY,   PAYPAL_PLAN_BUSINESS_MONTHLY
+//   PAYPAL_PLAN_*_YEARLY  (optional yearly variants)
+//   PAYPAL_ENVIRONMENT=sandbox|live   (default: sandbox)
+//   PAYPAL_WEBHOOK_ID  (for webhook verification)
+//   VITE_PYMESHUB_API_URL  (used to build return/cancel URLs)
+// ─────────────────────────────────────────────────────────────────────────
+
 @Controller("billing")
+@RequirePermission(Permission.BILLING_MANAGE)
 export class BillingController {
   private readonly logger = new Logger(BillingController.name);
 
   constructor(
-    private readonly paddleService: PaddleSdkService,
+    private readonly paypal: PaypalService,
     private readonly billingInvoice: BillingInvoiceService,
-    private readonly configService: ConfigService,
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
   ) {}
 
-  // PRIMERA COMPRA — CHECKOUT NUEVO. SI EL WORKSPACE YA TIENE SUBSCRIPCION,
-  // USAR `/change-plan` EN VEZ (PRORRATEADO).
+  private getAppBaseUrl(): string {
+    return (
+      this.config.get<string>("CORS_ORIGIN")?.split(",")[0]?.trim() ||
+      "https://pymeshub.lat"
+    );
+  }
+
+  // ── GET /billing/prices — returns PayPal plan IDs keyed by planKey_interval ──
+  @Get("prices")
+  @UseGuards(JwtAuthGuard)
+  getPrices() {
+    return this.paypal.getAvailablePlans();
+  }
+
+  // ── GET /billing/plan-details — full price + planId info ──────────────────
+  @Get("plan-details")
+  @UseGuards(JwtAuthGuard)
+  getPlanDetails() {
+    return this.paypal.getPlanPrices();
+  }
+
+  // ── POST /billing/checkout — create PayPal subscription, return approval URL ─
+  // Server-authoritative: client sends planKey + interval; backend resolves planId.
   @Post("checkout")
   @UseGuards(JwtAuthGuard)
-  async createCheckout(@CurrentUser() user: AuthUser, @Body() dto: CreateCheckoutDto) {
+  async createCheckout(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { planKey: string; interval?: "MONTHLY" | "YEARLY" },
+  ) {
+    if (!body.planKey) throw new BadRequestException("planKey es requerido");
+
+    const interval = body.interval ?? "MONTHLY";
+    const planId = this.paypal.resolvePlanId(body.planKey, interval);
+    if (!planId) {
+      throw new BadRequestException(
+        `Plan "${body.planKey}" (${interval}) no está configurado. Verificá PAYPAL_PLAN_* en las variables de entorno.`,
+      );
+    }
+
     try {
-      const customerId = await this.paddleService.createOrGetCustomer(
-        user.workspace_id,
+      const base = this.getAppBaseUrl();
+      const returnUrl = `${base}/#/billing`;
+      const cancelUrl = `${base}/#/billing?pp_canceled=1`;
+
+      const { subscriptionId, approvalUrl } = await this.paypal.createSubscription(
+        planId,
         user.email,
+        returnUrl,
+        cancelUrl,
       );
 
-      const appUrl =
-        this.configService.get<string>("CORS_ORIGIN")?.split(",")[0] || "https://pymeshub.lat";
-      const result = await this.paddleService.createTransaction(
-        user.workspace_id,
-        customerId,
-        dto.priceId,
-        user.email,
+      this.logger.log(
+        `Checkout: workspace=${user.workspace_id} planKey=${body.planKey} interval=${interval} sub=${subscriptionId}`,
       );
-
-      return result;
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      this.logger.error(`Checkout failed for workspace=${user.workspace_id}:`, error);
-      throw new InternalServerErrorException(
-        "No se pudo iniciar el checkout. Intentalo de nuevo o contacta a soporte.",
-      );
+      void this.audit.log(user.workspace_id, {
+        user_id: user.id,
+        action: "subscription.checkout_initiated",
+        entity_type: "subscription",
+        entity_id: subscriptionId,
+        after: { plan_key: body.planKey, interval, subscription_id: subscriptionId },
+      });
+      return { checkoutUrl: approvalUrl, subscriptionId };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Checkout failed workspace=${user.workspace_id}:`, err);
+      throw new InternalServerErrorException("No se pudo iniciar el pago. Intentá de nuevo.");
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────
-  // CAMBIO DE PLAN — USAR PARA UPGRADE/DOWNGRADE DE UNA SUBSCRIPCION EXISTENTE.
-  //
-  // IMPORTANTE — REGLAS DE COBRO:
-  //   - UPGRADE  → COBRA LA DIFERENCIA PRORRATEADA HOY MISMO.
-  //   - DOWNGRADE → NO COBRA. ENTRA EN VIGOR EN EL PROXIMO CICLO. EL PLAN
-  //                 ACTUAL (CARO) SIGUE ACTIVO HASTA QUE TERMINE EL PERIODO
-  //                 YA PAGADO.
-  //
-  // SI EL WORKSPACE NO TIENE SUBSCRIPCION ACTIVA, ESTE ENDPOINT FALLARA Y
-  // EL FRONTEND DEBE USAR `/checkout` (CHECKOUT NUEVO).
-  // ────────────────────────────────────────────────────────────────────────
-  @Post("change-plan")
+  // ── POST /billing/subscription/confirm — called after PayPal redirect ─────
+  // Server-authoritative: client sends planKey + interval; backend resolves planId.
+  // Also verifies the PayPal subscription's plan_id matches the resolved server planId.
+  @Post("subscription/confirm")
   @UseGuards(JwtAuthGuard)
-  async changePlan(@CurrentUser() user: AuthUser, @Body() dto: ChangePlanDto) {
-    try {
-      return await this.paddleService.changePlan(user.workspace_id, dto.priceId);
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      this.logger.error(`Plan change failed for workspace=${user.workspace_id}:`, error);
-      this.paddleService
-        .createDiagnosticCase(
-          user.workspace_id,
-          `Error al cambiar de plan: ${(error as Error)?.message}`,
-          "PLAN_CHANGE_FAILED",
-          `Workspace ${user.workspace_id} intentó cambiar de plan y falló: ${(error as Error)?.message}`,
-          "critical",
-        )
-        .catch((err) =>
-          this.logger.warn(
-            `Diagnostic case creation failed for workspace=${user.workspace_id}`,
-            err,
-          ),
-        );
-      throw new InternalServerErrorException(
-        "No se pudo cambiar el plan. Intentalo de nuevo o contacta a soporte.",
+  async confirmSubscription(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { subscriptionId: string; planKey: string; interval?: "MONTHLY" | "YEARLY" },
+  ) {
+    if (!body.subscriptionId) throw new BadRequestException("subscriptionId es requerido");
+    if (!body.planKey) throw new BadRequestException("planKey es requerido");
+
+    const interval = body.interval ?? "MONTHLY";
+
+    // Resolve the authoritative PayPal plan ID from planKey + interval
+    const resolvedPlanId = this.paypal.resolvePlanId(body.planKey, interval);
+    if (!resolvedPlanId) {
+      throw new BadRequestException(
+        `Plan "${body.planKey}" (${interval}) no está configurado en el servidor.`,
       );
+    }
+
+    try {
+      // Verify PayPal subscription exists and its plan_id matches what the server expects
+      const paypalSub = await this.paypal.getSubscription(body.subscriptionId).catch(() => null);
+      if (paypalSub) {
+        if (paypalSub.status !== "ACTIVE" && paypalSub.status !== "APPROVED") {
+          throw new BadRequestException(
+            `La suscripción no está activa en PayPal (status: ${paypalSub.status}).`,
+          );
+        }
+        if (paypalSub.plan_id !== resolvedPlanId) {
+          this.logger.warn(
+            `Plan ID mismatch: expected=${resolvedPlanId} got=${paypalSub.plan_id} ` +
+            `workspace=${user.workspace_id} sub=${body.subscriptionId}`,
+          );
+          throw new BadRequestException("La suscripción no coincide con el plan seleccionado.");
+        }
+      }
+
+      await this.paypal.activateSubscriptionInDb(
+        user.workspace_id,
+        body.subscriptionId,
+        resolvedPlanId,
+        user.email,
+        interval,
+      );
+      void this.audit.log(user.workspace_id, {
+        user_id: user.id,
+        action: "subscription.activated",
+        entity_type: "subscription",
+        entity_id: body.subscriptionId,
+        after: { plan_key: body.planKey, plan_id: resolvedPlanId, interval, provider: "PAYPAL" },
+      });
+      return { success: true, message: "Suscripción activada correctamente." };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Confirm subscription failed workspace=${user.workspace_id}:`, err);
+      throw new InternalServerErrorException("No se pudo confirmar la suscripción.");
     }
   }
 
+  // ── POST /billing/cancel — cancel active PayPal subscription ──────────────
   @Post("cancel")
   @UseGuards(JwtAuthGuard)
   async cancelPlan(@CurrentUser() user: AuthUser) {
     try {
-      return await this.paddleService.cancelSubscription(user.workspace_id);
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      this.logger.error(`Cancel plan failed for workspace=${user.workspace_id}:`, error);
-      throw new InternalServerErrorException(
-        "No se pudo cancelar el plan. Intentalo de nuevo o contacta a soporte.",
-      );
+      const sub = await this.prisma.workspaceSubscription.findFirst({
+        where: {
+          workspace_id: user.workspace_id,
+          provider: "PAYPAL",
+          status: { in: ["ACTIVE", "TRIALING"] },
+        },
+        select: { id: true, provider_subscription_id: true },
+      });
+
+      if (!sub?.provider_subscription_id) {
+        throw new BadRequestException("No hay suscripción activa para cancelar.");
+      }
+
+      await this.paypal.cancelSubscription(sub.provider_subscription_id);
+
+      await this.prisma.workspaceSubscription.update({
+        where: { id: sub.id },
+        data: { status: "CANCELLED", cancel_at_period_end: false },
+      });
+
+      await this.prisma.workspace.update({
+        where: { id: user.workspace_id },
+        data: { plan: "FREE" },
+      });
+
+      void this.audit.log(user.workspace_id, {
+        user_id: user.id,
+        action: "subscription.cancelled",
+        entity_type: "subscription",
+        entity_id: sub.provider_subscription_id,
+        after: { cancelled_by: "user", provider: "PAYPAL" },
+      });
+      return { success: true, message: "Suscripción cancelada." };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Cancel failed workspace=${user.workspace_id}:`, err);
+      throw new InternalServerErrorException("No se pudo cancelar el plan.");
     }
   }
 
-  @Post("webhook")
-  async handleWebhook(@Req() request: RawBodyRequest<Request>) {
-    const signature = request.headers["paddle-signature"] as string;
-    const webhookSecret = this.configService.get<string>("PADDLE_WEBHOOK_SECRET");
-
-    if (!signature || !webhookSecret) {
-      throw new BadRequestException("Missing paddle-signature header or webhook secret");
-    }
-
-    let event: Record<string, any>;
-    try {
-      event = await this.paddleService.verifyWebhookSignature(
-        request.rawBody?.toString() || JSON.stringify(request.body),
-        webhookSecret,
-        signature,
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        `Webhook signature verification failed: ${(error as Error).message}`,
-      );
-    }
-
-    await this.paddleService.handleWebhookEvent(event as any);
-
-    return { received: true };
-  }
-
-  @Get("prices")
+  // ── POST /billing/change-plan — cancel old + start new subscription ────────
+  // Server-authoritative: client sends planKey + interval; backend resolves planId.
+  @Post("change-plan")
   @UseGuards(JwtAuthGuard)
-  getAvailablePrices() {
-    return this.paddleService.getAvailablePrices();
+  async changePlan(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { planKey: string; interval?: "MONTHLY" | "YEARLY" },
+  ) {
+    if (!body.planKey) throw new BadRequestException("planKey es requerido");
+
+    const interval = body.interval ?? "MONTHLY";
+    const planId = this.paypal.resolvePlanId(body.planKey, interval);
+    if (!planId) {
+      throw new BadRequestException(
+        `Plan "${body.planKey}" (${interval}) no está configurado en el servidor.`,
+      );
+    }
+
+    try {
+      // Cancel existing subscription if any
+      const existing = await this.prisma.workspaceSubscription.findFirst({
+        where: {
+          workspace_id: user.workspace_id,
+          provider: "PAYPAL",
+          status: { in: ["ACTIVE", "TRIALING"] },
+        },
+        select: { id: true, provider_subscription_id: true },
+      });
+
+      if (existing?.provider_subscription_id) {
+        await this.paypal.cancelSubscription(
+          existing.provider_subscription_id,
+          "Cambio de plan solicitado por el usuario",
+        ).catch((err) => this.logger.warn(`Could not cancel old sub: ${err.message}`));
+        await this.prisma.workspaceSubscription.update({
+          where: { id: existing.id },
+          data: { status: "CANCELLED" },
+        });
+      }
+
+      // Create new subscription
+      const base = this.getAppBaseUrl();
+      const { subscriptionId, approvalUrl } = await this.paypal.createSubscription(
+        planId,
+        user.email,
+        `${base}/#/billing`,
+        `${base}/#/billing?pp_canceled=1`,
+      );
+
+      return { checkoutUrl: approvalUrl, subscriptionId };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Change plan failed workspace=${user.workspace_id}:`, err);
+      throw new InternalServerErrorException("No se pudo cambiar el plan.");
+    }
   }
 
+  // ── GET /billing/portal — no PayPal portal; return null gracefully ─────────
   @Get("portal")
   @UseGuards(JwtAuthGuard)
-  async getBillingPortal(@CurrentUser() user: AuthUser) {
-    try {
-      const url = await this.paddleService.getPortalLink(user.workspace_id);
-      return { url };
-    } catch {
-      return { url: null };
-    }
+  getPortal() {
+    return { url: null };
   }
 
+  // ── GET /billing/invoices ─────────────────────────────────────────────────
   @Get("invoices")
   @UseGuards(JwtAuthGuard)
   async getInvoices(@CurrentUser() user: AuthUser, @Query() filters: FilterBillingInvoicesDto) {
     return this.billingInvoice.findByWorkspace(user.workspace_id, filters);
   }
 
+  // ── GET /billing/invoices/:id/pdf ─────────────────────────────────────────
   @Get("invoices/:id/pdf")
   @UseGuards(JwtAuthGuard)
   async getInvoicePdf(
@@ -201,36 +312,26 @@ export class BillingController {
     res.end(buffer);
   }
 
-  @Post("sync")
-  @UseGuards(JwtAuthGuard, ApiRolesGuard)
-  @RequireApiRole(ApiRole.FOUNDER, ApiRole.WORKSPACE, ApiRole.USER)
-  async syncSubscription(
-    @CurrentUser() user: AuthUser,
-    @Body() dto?: { customerId?: string; subscriptionId?: string },
-  ) {
-    return this.paddleService.syncSubscription(
-      user.workspace_id,
-      dto?.customerId,
-      dto?.subscriptionId,
-    );
-  }
-
-  @Get("addon-prices")
+  // ── GET /billing/subscription — current workspace subscription status ──────
+  @Get("subscription")
   @UseGuards(JwtAuthGuard)
-  getAddonPrices() {
-    return this.paddleService.getAvailableAddonPrices();
-  }
+  async getSubscription(@CurrentUser() user: AuthUser) {
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: {
+        workspace_id: user.workspace_id,
+        status: { in: ["ACTIVE", "TRIALING", "PAST_DUE"] },
+      },
+      orderBy: { created_at: "desc" },
+    });
 
-  @Post("checkout-addon")
-  @UseGuards(JwtAuthGuard)
-  async createAddonCheckout(@CurrentUser() user: AuthUser, @Body("addonKey") addonKey: string) {
-    if (!addonKey) throw new BadRequestException("addonKey is required");
-    const customerId = await this.paddleService.createOrGetCustomer(user.workspace_id, user.email);
-    return this.paddleService.createAddonTransaction(
-      user.workspace_id,
-      customerId,
-      user.email,
-      addonKey,
-    );
+    if (!sub) {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: user.workspace_id },
+        select: { plan: true },
+      });
+      return { plan: ws?.plan ?? "FREE", status: "MANUAL", provider: null };
+    }
+
+    return sub;
   }
 }

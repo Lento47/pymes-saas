@@ -243,7 +243,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
   const [escalated, setEscalated] = useState(false);
   const [caseClosed, setCaseClosed] = useState(false);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
-  const [clarifying, setClarifying] = useState(false);
+  const [clarifying, setClarifying] = useState<boolean | 'sending'>(false);
   const [clarificationQuestions, setClarificationQuestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);

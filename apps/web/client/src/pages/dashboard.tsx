@@ -566,7 +566,7 @@ export default function DashboardPage() {
                             {(conv.subject as string | undefined) || (conv.last_message_preview as string | undefined) || "Sin asunto"}
                           </p>
                         </div>
-                        {conv.updated_at && (
+                        {!!conv.updated_at && (
                           <span className="hidden text-xs text-muted-foreground sm:block">
                             {formatDistanceToNow(new Date(conv.updated_at as string), { addSuffix: true, locale: es })}
                           </span>

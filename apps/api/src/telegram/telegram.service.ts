@@ -6,7 +6,7 @@ import { CryptoService } from "../common/crypto/crypto.service";
 import { MessagesService } from "../conversations/messages.service";
 import { StorageService } from "../common/storage/storage.service";
 import { EventsGateway } from "../gateways/events.gateway";
-import { Telegraf } from "telegraf";
+import { Telegraf, Input } from "telegraf";
 import type { Prisma } from "@prisma/client";
 
 interface TelegramWebhookInfo {
@@ -76,8 +76,8 @@ export class TelegramService {
 
     if (!channel?.config_json) return null;
 
-    const cfg = channel.config_json as any;
-    return cfg.bot_token_encrypted ? this.crypto.decrypt(cfg.bot_token_encrypted) : cfg.bot_token;
+    const cfg = channel.config_json as Record<string, string | undefined>;
+    return cfg.bot_token_encrypted ? this.crypto.decrypt(cfg.bot_token_encrypted) : (cfg.bot_token ?? null);
   }
 
   /**
@@ -145,10 +145,10 @@ export class TelegramService {
       // Do NOT call deleteWebhook() here — it would remove the one we just set.
 
       // Persist the secret on the channel config so the webhook handler can validate it.
-      const existing = (channel.config_json as any) || {};
+      const existing = (channel.config_json as Record<string, unknown>) || {};
       await this.prisma.channel.update({
         where: { id: channelId },
-        data: { config_json: { ...existing, webhook_secret: webhookSecret } as any },
+        data: { config_json: { ...existing, webhook_secret: webhookSecret } },
       });
 
       this.bots.set(channelId, bot);
@@ -181,7 +181,7 @@ export class TelegramService {
     });
     if (!channel) return false;
 
-    let expected = (channel.config_json as any)?.webhook_secret as string | undefined;
+    let expected = (channel.config_json as Record<string, string | undefined>)?.webhook_secret;
     const a = Buffer.from(suppliedSecret, "utf8");
 
     // Try existing secret first
@@ -202,7 +202,7 @@ export class TelegramService {
         where: { id: channelId, type: "TELEGRAM" },
         select: { config_json: true },
       });
-      expected = (refreshed?.config_json as any)?.webhook_secret;
+      expected = (refreshed?.config_json as Record<string, string | undefined>)?.webhook_secret;
       if (expected) {
         const b = Buffer.from(expected, "utf8");
         if (a.length !== b.length) return false;
@@ -218,7 +218,7 @@ export class TelegramService {
       // Recovery failed — accept the webhook temporarily anyway.
     // This happens when ENCRYPTION_KEY changed and bot tokens can't be decrypted.
     // The channel works for now but needs the bot token re-entered via configureTelegram.
-    const existing = (channel.config_json as any) || {};
+    const existing = (channel.config_json as Record<string, unknown>) || {};
     await this.prisma.channel.update({
       where: { id: channelId },
       data: {
@@ -226,7 +226,7 @@ export class TelegramService {
           ...existing,
           webhook_secret: suppliedSecret,
           webhook_recovered_at: new Date().toISOString(),
-        } as any,
+        },
       },
       select: { id: true },
     });
@@ -536,7 +536,7 @@ export class TelegramService {
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
-      const result = await bot.telegram.sendPhoto(chatId, { source } as any, {
+      const result = await bot.telegram.sendPhoto(chatId, Input.fromBuffer(source), {
         caption,
         parse_mode: "HTML",
       });
@@ -564,7 +564,7 @@ export class TelegramService {
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
-      const result = await bot.telegram.sendVideo(chatId, { source } as any, {
+      const result = await bot.telegram.sendVideo(chatId, Input.fromBuffer(source), {
         caption,
         parse_mode: "HTML",
       });
@@ -592,7 +592,7 @@ export class TelegramService {
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
-      const result = await bot.telegram.sendAudio(chatId, { source } as any, {
+      const result = await bot.telegram.sendAudio(chatId, Input.fromBuffer(source), {
         caption,
         parse_mode: "HTML",
       });
@@ -620,7 +620,7 @@ export class TelegramService {
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
-      const result = await bot.telegram.sendVoice(chatId, { source } as any, {
+      const result = await bot.telegram.sendVoice(chatId, Input.fromBuffer(source), {
         caption,
       });
       this.logger.log(`Voice sent to chat ${chatId} in channel ${channelId}`);
@@ -646,7 +646,7 @@ export class TelegramService {
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
-      const result = await bot.telegram.sendSticker(chatId, { source } as any);
+      const result = await bot.telegram.sendSticker(chatId, Input.fromBuffer(source));
       this.logger.log(`Sticker sent to chat ${chatId} in channel ${channelId}`);
       return result;
     } catch (err) {
@@ -670,7 +670,7 @@ export class TelegramService {
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
-      const result = await bot.telegram.sendDocument(chatId, { source } as any, {
+      const result = await bot.telegram.sendDocument(chatId, Input.fromBuffer(source), {
         caption,
         parse_mode: "HTML",
       });

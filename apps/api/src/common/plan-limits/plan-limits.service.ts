@@ -74,6 +74,8 @@ interface PlanLimits {
   ai_context_messages: number | "custom";
   /** Max number of Flowise agent instances per workspace. */
   agents: number | "custom";
+  /** Monthly AI token ceiling (prompt + completion). 0 = no AI access. */
+  ai_tokens_per_month: number | "custom";
 }
 
 export type { PlanLimits };
@@ -97,6 +99,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: 0,
     ai_context_messages: 0,
     agents: 0,
+    ai_tokens_per_month: 0,
   },
   EMPRENDE: {
     users: 1,
@@ -114,6 +117,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: 25,
     ai_context_messages: 10,
     agents: 2,
+    ai_tokens_per_month: 100_000,
   },
   STARTER: {
     users: 1,
@@ -131,6 +135,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: 5,
     ai_context_messages: 12,
     agents: 1,
+    ai_tokens_per_month: 50_000,
   },
   GROWTH: {
     users: 5,
@@ -148,6 +153,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: 15,
     ai_context_messages: 25,
     agents: 3,
+    ai_tokens_per_month: 500_000,
   },
   BUSINESS: {
     users: 15,
@@ -165,6 +171,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: 50,
     ai_context_messages: 40,
     agents: 10,
+    ai_tokens_per_month: 2_000_000,
   },
   ENTERPRISE: {
     users: 15,
@@ -182,6 +189,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: "custom",
     ai_context_messages: 40,
     agents: 10,
+    ai_tokens_per_month: 2_000_000,
   },
   BUSINESS_PLUS: {
     users: "custom",
@@ -199,6 +207,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     agent_executions_per_day: "custom",
     ai_context_messages: 60,
     agents: "custom",
+    ai_tokens_per_month: "custom",
   },
 };
 
@@ -777,6 +786,54 @@ export class PlanLimitsService {
     if (current >= (limit as number)) {
       throw new QuotaExceededError("agentes IA", current, limit, plan, this.getUpgradePlan(plan));
     }
+  }
+
+  /** Check monthly AI token consumption against plan ceiling. Returns status; never throws. */
+  async getAiTokenUsage(workspaceId: string): Promise<{
+    used: number;
+    limit: number | "custom";
+    percentUsed: number;
+    plan: string;
+    warningLevel: "none" | "approaching" | "exceeded";
+  }> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.ai_tokens_per_month;
+
+    // Sum CONSUMPTION transactions in the current calendar month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const result = await this.prisma.aiTokenTransaction.aggregate({
+      where: {
+        workspace_id: workspaceId,
+        type: "CONSUMPTION",
+        created_at: { gte: startOfMonth },
+      },
+      _sum: { total_tokens: true },
+    });
+    const used = Math.abs(result._sum.total_tokens ?? 0);
+
+    if (limit === "custom") {
+      return { used, limit: "custom", percentUsed: 0, plan, warningLevel: "none" };
+    }
+
+    const cap = limit as number;
+    const percentUsed = cap > 0 ? Math.round((used / cap) * 100) : 0;
+    const warningLevel: "none" | "approaching" | "exceeded" =
+      percentUsed >= 100 ? "exceeded" : percentUsed >= 80 ? "approaching" : "none";
+
+    return { used, limit: cap, percentUsed, plan, warningLevel };
+  }
+
+  /** Hard-block AI calls when token quota is exceeded (throws QuotaExceededError). */
+  async enforceAiTokenLimit(workspaceId: string): Promise<void> {
+    const { used, limit, plan } = await this.getAiTokenUsage(workspaceId);
+    if (limit === "custom") return;
+    const cap = limit as number;
+    if (cap === 0) throw new QuotaExceededError("tokens IA por mes", 0, 0, plan, this.getUpgradePlan(plan));
+    if (used >= cap) throw new QuotaExceededError("tokens IA por mes", used, cap, plan, this.getUpgradePlan(plan));
   }
 
   async enforceDiagnosticLimit(workspaceId: string): Promise<void> {

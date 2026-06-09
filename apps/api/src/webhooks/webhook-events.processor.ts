@@ -59,4 +59,14 @@ export class WebhookEventsProcessor {
       this.logger.log(`Sweep recovered ${count} stuck webhook events`);
     }
   }
+
+  @Cron("0 3 * * *") // 03:00 UTC daily
+  async reconcileFailedEvents() {
+    const count = await this.webhookEvents.reconcileStaleFailedEvents();
+    if (count > 0) {
+      this.logger.warn(`[reconcile] Reset ${count} stale FAILED webhook events back to PENDING`);
+    } else {
+      this.logger.log("[reconcile] No stale failed webhook events found");
+    }
+  }
 }

@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from "@nestjs/common";
 import { AgentsController } from "./agents.controller";
 import { AgentsService } from "./agents.service";
 import { FlowiseClient } from "./flowise/flowise.client";
+import { FlowiseHealthService } from "./flowise/flowise-health.service";
 import { AgentRuntimeService } from "./runtime/agent-runtime.service";
 import { AgentGuardrailsService } from "./runtime/agent-guardrails.service";
 import { AgentUsageService } from "./runtime/agent-usage.service";
@@ -24,6 +25,7 @@ import { MemoryModule } from "../memory/memory.module";
   providers: [
     AgentsService,
     FlowiseClient,
+    FlowiseHealthService,
     AgentRuntimeService,
     AgentGuardrailsService,
     AgentUsageService,
@@ -32,7 +34,7 @@ import { MemoryModule } from "../memory/memory.module";
     PrCreationPolicyService,
     SupportOrchestratorService,
   ],
-  exports: [AgentRuntimeService, AgentGuardrailsService, FlowiseSetupService, FlowiseClient, PrCreationPolicyService, SupportOrchestratorService],
+  exports: [AgentRuntimeService, AgentGuardrailsService, FlowiseSetupService, FlowiseClient, FlowiseHealthService, PrCreationPolicyService, SupportOrchestratorService],
 })
 export class AgentsModule implements OnModuleInit {
   constructor(

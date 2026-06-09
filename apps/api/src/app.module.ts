@@ -1,9 +1,11 @@
-import { Module } from "@nestjs/common";
+import { Module, OnApplicationBootstrap } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerStorage } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 import { APP_GUARD } from "@nestjs/core";
 import { RedisThrottlerStorage } from "./common/redis-throttler-storage.service";
+import { PermissionGuard } from "./common/permissions/permission.guard";
+import { RequestIdMiddleware } from "./common/telemetry/request-id.middleware";
 
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { StorageModule } from "./common/storage/storage.module";
@@ -23,6 +25,8 @@ import { SearchModule } from "./search/search.module";
 import { AuditModule } from "./audit/audit.module";
 import { WorkersModule } from "./workers/workers.module";
 import { EventsModule } from "./gateways/events.module";
+import { EventsGateway } from "./gateways/events.gateway";
+import { CallsService } from "./calls/calls.service";
 import { EmailModule } from "./email/email.module";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { PlanLimitsModule } from "./common/plan-limits/plan-limits.module";
@@ -37,11 +41,14 @@ import { HaciendaModule } from "./hacienda/hacienda.module";
 import { PipelineModule } from "./pipeline/pipeline.module";
 import { OrdersModule } from "./orders/orders.module";
 import { HealthModule } from "./health/health.module";
+import { BackupModule } from "./backup/backup.module";
 import { AiModule } from "./ai/ai.module";
 import { AgentsModule } from "./agents/agents.module";
 import { TtsModule } from "./tts/tts.module";
 import { ApiTokensModule } from "./api-tokens/api-tokens.module";
 import { SanitizeModule } from "./common/sanitize/sanitize.module";
+import { DataRetentionModule } from "./common/data-retention/data-retention.module";
+import { CacheModule } from "./common/cache/cache.module";
 import { BillingModule } from "./billing/billing.module";
 import { RoutingModule } from "./routing/routing.module";
 import { PlanThrottlerGuard } from "./common/plan-limits/plan-throttler.guard";
@@ -67,13 +74,16 @@ import { InventoryModule } from "./inventory/inventory.module";
 import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
 import { LearningModule } from "./learning/learning.module";
 import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages.module";
+import { CallsModule } from "./calls/calls.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env" }),
     ThrottlerModule.forRoot([
-      { name: "default", ttl: 60_000, limit: 100 },
-      { name: "auth", ttl: 15 * 60_000, limit: 10 },
+      { name: "default", ttl: 60_000, limit: 100 },   // IP no autenticada: 100/min
+      { name: "auth", ttl: 15 * 60_000, limit: 10 },  // login/register: 10/15min
+      { name: "webhook", ttl: 60_000, limit: 200 },   // webhooks WA/Telegram: 200/min
+      { name: "ai", ttl: 60_000, limit: 30 },          // rutas de agente IA: 30/min
     ]),
     ScheduleModule.forRoot(),
 
@@ -82,6 +92,8 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     CryptoModule,
     PlanLimitsModule,
     SanitizeModule,
+    DataRetentionModule,
+    CacheModule,
 
     AuthModule,
     WorkspacesModule,
@@ -113,6 +125,7 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     AgentsModule,
     ErrorReportsModule,
     HealthModule,
+    BackupModule,
     ApiTokensModule,
     BillingModule,
     RoutingModule,
@@ -141,6 +154,7 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
     AiTokensModule,
     LearningModule,
     ScheduledMessagesModule,
+    CallsModule,
 
     // Metrics
     ProductMetricsModule,
@@ -152,8 +166,23 @@ import { ScheduledMessagesModule } from "./scheduled-messages/scheduled-messages
   ],
   providers: [
     { provide: APP_GUARD, useClass: PlanThrottlerGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
     { provide: ThrottlerStorage, useClass: RedisThrottlerStorage },
     RedisThrottlerStorage,
   ],
 })
-export class AppModule {}
+export class AppModule implements OnApplicationBootstrap {
+  constructor(
+    private readonly eventsGateway: EventsGateway,
+    private readonly callsService: CallsService,
+  ) {}
+
+  onApplicationBootstrap() {
+    // Wire up CallsService into EventsGateway for disconnect cleanup
+    this.eventsGateway.setCallsService(this.callsService);
+  }
+
+  configure(consumer: import("@nestjs/common").MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes("*");
+  }
+}

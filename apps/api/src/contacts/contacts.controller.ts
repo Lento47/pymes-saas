@@ -20,17 +20,23 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { FeaturesService } from "../features/features.service";
+import { AuditService } from "../audit/audit.service";
+import { RequirePermission } from "../common/permissions/require-permission.decorator";
+import { Permission } from "../common/permissions/permissions";
 
 @Controller("contacts")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequirePermission(Permission.CONTACTS_READ)
 export class ContactsController {
   constructor(
     private readonly service: ContactsService,
     private readonly metricsService: ContactMetricsService,
     private readonly planLimits: PlanLimitsService,
     private readonly features: FeaturesService,
+    private readonly audit: AuditService,
   ) {}
 
   @Get()
@@ -40,21 +46,30 @@ export class ContactsController {
 
   @Post()
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   async create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateContactDto) {
     await this.features.assertEnabled(workspaceId, "contacts");
     return this.service.create(workspaceId, dto);
   }
 
   @Get(":id")
-  findOne(
-    @CurrentUser("workspace_id") workspaceId: string,
+  async findOne(
+    @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
-    return this.service.findOne(workspaceId, id);
+    const contact = await this.service.findOne(user.workspace_id, id);
+    this.audit.log(user.workspace_id, {
+      user_id: user.id,
+      action: "contact.viewed",
+      entity_type: "Contact",
+      entity_id: id,
+    }).catch(() => undefined);
+    return contact;
   }
 
   @Patch(":id")
   @Roles(WorkspaceUserRole.AGENT)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   update(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -65,6 +80,7 @@ export class ContactsController {
 
   @Delete(":id")
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequirePermission(Permission.CONTACTS_MANAGE)
   remove(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,

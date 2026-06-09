@@ -414,7 +414,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           CONVERSATION_NOT_FOUND: "No se encontró la conversación.",
           INTENT_NOT_DETECTED: "No se detectó una intención reconocible (pedido, cita, cotización o queja).",
         };
-        const description = data?.reason ? (REASON_MSGS[data.reason] ?? data.reason) : REASON_MSGS.INTENT_NOT_DETECTED;
+        const d = data as { ok?: boolean; run?: unknown; reason?: string };
+        const description = d?.reason ? (REASON_MSGS[d.reason] ?? d.reason) : REASON_MSGS.INTENT_NOT_DETECTED;
         toast({ title: "No se pudo iniciar el agente", description, variant: "destructive" });
       }
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });

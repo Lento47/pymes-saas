@@ -103,7 +103,7 @@ export class PlatformSettingsService {
     if (dto.github_repo_name !== undefined) data.github_repo_name = dto.github_repo_name || null;
 
     // Use upsert so this works even if the row was never created
-    await (this.prisma as any).platformSettings.upsert({
+    await this.prisma.platformSettings.upsert({
       where: { id: SINGLETON_ID },
       create: { id: SINGLETON_ID, ...data },
       update: data,
@@ -116,7 +116,7 @@ export class PlatformSettingsService {
   /** Clear a specific sensitive field (e.g. "reset MiMo key") */
   async clearField(field: "mimo_api_key" | "github_token"): Promise<void> {
     const colMap = { mimo_api_key: "mimo_api_key_enc", github_token: "github_token_enc" } as const;
-    await (this.prisma as any).platformSettings.upsert({
+    await this.prisma.platformSettings.upsert({
       where: { id: SINGLETON_ID },
       create: { id: SINGLETON_ID },
       update: { [colMap[field]]: null },
@@ -126,13 +126,13 @@ export class PlatformSettingsService {
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private async getOrCreate() {
-    const existing = await (this.prisma as any).platformSettings.findUnique({
+    const existing = await this.prisma.platformSettings.findUnique({
       where: { id: SINGLETON_ID },
     });
     if (existing) return existing;
 
     // Create the singleton row on first access
-    return (this.prisma as any).platformSettings.create({
+    return this.prisma.platformSettings.create({
       data: { id: SINGLETON_ID },
     });
   }

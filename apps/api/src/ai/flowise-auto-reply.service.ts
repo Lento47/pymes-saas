@@ -4,8 +4,10 @@ import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { FlowiseClient } from "../agents/flowise/flowise.client";
+import { FlowiseHealthService } from "../agents/flowise/flowise-health.service";
 import { FlowiseSetupService } from "../agents/flowise-setup.service";
 import { AgentGuardrailsService } from "../agents/runtime/agent-guardrails.service";
+import { RedisCacheService } from "../common/cache/redis-cache.service";
 import { isAiBlockedByHuman, parseAiSettings } from "./ai-gating";
 import type { ContextEnrichment } from "./message-router/types";
 import { toWhatsAppMarkdown, toTelegramHtml } from "./whatsapp-markdown.util";
@@ -24,11 +26,13 @@ export class FlowiseAutoReplyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly flowise: FlowiseClient,
+    private readonly flowiseHealth: FlowiseHealthService,
     private readonly flowiseSetup: FlowiseSetupService,
     private readonly events: EventsGateway,
     private readonly whatsapp: WhatsAppService,
     private readonly telegram: TelegramOutboundService,
     private readonly guardrails: AgentGuardrailsService,
+    private readonly cache: RedisCacheService,
   ) {}
 
   /**
@@ -46,6 +50,10 @@ export class FlowiseAutoReplyService {
     options?: FlowiseDispatchOptions,
   ): Promise<boolean> {
     if (!this.flowise.isEnabled) return false;
+    if (this.flowiseHealth.isDegraded) {
+      this.logger.warn(`[flowise] DEGRADED — skipping dispatch for conversation ${conversationId}`);
+      return false;
+    }
 
     try {
       const [workspace, conv] = await Promise.all([
@@ -113,6 +121,17 @@ export class FlowiseAutoReplyService {
       // Phase 3: prepend agent persona + context enrichment to the question
       const question = this.buildQuestion(inboundText, options);
 
+      // FAQ cache: check if we have a recent answer for this question (workspace-scoped, TTL 7d)
+      // Only cache short generic questions — skip if options include context enrichment or force
+      const isCacheable = !options?.force && !options?.contextEnrichment && inboundText.length < 150;
+      if (isCacheable) {
+        const cached = await this.cache.getFaqResponse(workspaceId, inboundText);
+        if (cached) {
+          this.logger.debug(`[flowise-auto-reply] FAQ cache HIT workspace=${workspaceId}`);
+          return this.persistAndSend(workspaceId, conversationId, cached, conv, "flowise-faq-cache");
+        }
+      }
+
       const res = await this.flowise.predict(chatflowId, {
         question,
         sessionId: conversationId,
@@ -121,6 +140,11 @@ export class FlowiseAutoReplyService {
 
       const replyText = res.text?.trim();
       if (!replyText) return false;
+
+      // Store in FAQ cache for cacheable questions
+      if (isCacheable && replyText.length < 1000) {
+        void this.cache.setFaqResponse(workspaceId, inboundText, replyText);
+      }
 
       return this.persistAndSend(workspaceId, conversationId, replyText, conv, "flowise-auto-reply");
     } catch (err: unknown) {
