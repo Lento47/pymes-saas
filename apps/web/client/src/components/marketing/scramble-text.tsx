@@ -2,9 +2,7 @@ import { useScrambleText } from "@/hooks/use-scramble-text";
 
 interface ScrambleTextProps {
   children: string;
-  /** Total duration of the decode animation in ms (default 1400) */
   duration?: number;
-  /** Delay before animation starts in ms (default 300) */
   delay?: number;
   className?: string;
 }
@@ -12,7 +10,7 @@ interface ScrambleTextProps {
 /**
  * Renders text that "decodes" from random block characters (░▒▓█)
  * to the real text. Resolves left-to-right with terminal aesthetics.
- * Runs once on mount.
+ * Runs once on mount. Respects prefers-reduced-motion.
  *
  * Why "conversación": it's the core concept of PymesHub (conversational
  * operations) and sits in the most visually prominent position of the H1.
@@ -23,12 +21,13 @@ export function ScrambleText({
   delay,
   className,
 }: ScrambleTextProps) {
-  const display = useScrambleText(children, { duration, delay });
+  const { display } = useScrambleText(children, { duration, delay });
 
   return (
     <span
       className={className}
       aria-label={children}
+      role="text"
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
       {display.map((item, i) => (

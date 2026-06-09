@@ -664,6 +664,7 @@ html.marketing-page body {
   color: #6366f1;
   text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
   animation: scramble-pulse 0.12s steps(1) infinite;
+  will-change: opacity;
 }
 
 .scramble-resolved {

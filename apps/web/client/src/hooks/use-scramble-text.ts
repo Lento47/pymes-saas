@@ -3,46 +3,57 @@ import { useEffect, useRef, useState, useCallback } from "react";
 const BLOCKS = ["░", "▒", "▓", "█", "▇", "▆", "▅", "▄", "▌", "▐"];
 
 interface ScrambleOptions {
-  /** Total duration of the decode animation in ms (default 1400) */
   duration?: number;
-  /** Delay before animation starts in ms (default 300) */
   delay?: number;
-  /** Characters to scramble with */
   chars?: string[];
 }
 
 interface ScrambleChar {
-  /** The character to display (block or real letter) */
   char: string;
-  /** Whether this position has resolved to the real letter */
   resolved: boolean;
 }
 
 /**
  * Returns an array of ScrambleChar objects that animate from random block
  * characters to the real target text, resolving left-to-right with slight
- * random jitter. Runs once on mount.
+ * random jitter. Runs once on mount. Respects prefers-reduced-motion.
  */
 export function useScrambleText(target: string, options: ScrambleOptions = {}) {
   const { duration = 1400, delay = 300, chars = BLOCKS } = options;
 
   const [display, setDisplay] = useState<ScrambleChar[]>(() =>
-    target.split("").map(() => ({ char: chars[0], resolved: false })),
+    target.split("").map(() => ({
+      char: chars[Math.floor(Math.random() * chars.length)],
+      resolved: false,
+    })),
   );
+  const [done, setDone] = useState(false);
 
   const rafRef = useRef<number>(0);
+  const timeoutRef = useRef<number | NodeJS.Timeout | null>(null);
   const startedRef = useRef(false);
 
   const scramble = useCallback(() => {
+    if (!target) return;
+
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (prefersReduced) {
+      setDisplay(target.split("").map((ch) => ({ char: ch, resolved: true })));
+      setDone(true);
+      return;
+    }
+
     if (startedRef.current) return;
     startedRef.current = true;
+    setDone(false);
 
     const letters = target.split("");
     const total = letters.length;
+    const baseStep = duration / (total + 4);
 
-    // Each position gets a resolve time based on its index (left-to-right)
-    // with random jitter so it's not perfectly sequential
-    const baseStep = duration / (total + 4); // extra slots for jitter room
     const resolveAt = letters.map((_, i) => {
       const base = i * baseStep;
       const jitter = (Math.random() - 0.5) * baseStep * 1.2;
@@ -53,19 +64,23 @@ export function useScrambleText(target: string, options: ScrambleOptions = {}) {
 
     const tick = (now: number) => {
       const elapsed = now - start;
+
       const next: ScrambleChar[] = letters.map((real, i) => {
         if (elapsed >= resolveAt[i]) {
           return { char: real, resolved: true };
         }
-        // Cycle through block characters while unresolved
-        const cycleSpeed = 50 + Math.random() * 30; // ms per cycle
-        const cycleIndex = Math.floor((elapsed + i * 17) / cycleSpeed) % chars.length;
+        const cycleSpeed = 50 + Math.random() * 30;
+        const cycleIndex =
+          Math.floor((elapsed + i * 17) / cycleSpeed) % chars.length;
         return { char: chars[cycleIndex], resolved: false };
       });
+
       setDisplay(next);
 
       if (elapsed < duration) {
         rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setDone(true);
       }
     };
 
@@ -73,12 +88,23 @@ export function useScrambleText(target: string, options: ScrambleOptions = {}) {
   }, [target, duration, chars]);
 
   useEffect(() => {
-    const timer = setTimeout(scramble, delay);
+    startedRef.current = false;
+    setDone(false);
+    setDisplay(
+      target.split("").map(() => ({
+        char: chars[Math.floor(Math.random() * chars.length)],
+        resolved: false,
+      })),
+    );
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(scramble, delay);
+
     return () => {
-      clearTimeout(timer);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       cancelAnimationFrame(rafRef.current);
     };
-  }, [scramble, delay]);
+  }, [target, delay, scramble, chars]);
 
-  return display;
+  return { display, done };
 }
