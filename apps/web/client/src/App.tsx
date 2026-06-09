@@ -13,11 +13,18 @@ import { OfflineBanner } from "@/components/shared/offline-banner";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
+import { CallProvider, useCallContext } from "@/features/calls/CallProvider";
+import { IncomingCallDialog } from "@/features/calls/IncomingCallDialog";
+import { ActiveCallBar } from "@/features/calls/ActiveCallBar";
+import { CallErrorFallback } from "@/features/calls/CallErrorFallback";
+import { CallPage } from "@/features/calls/CallPage";
 
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";
+import VerifyEmail from "@/pages/verify-email";
+import ResetPassword from "@/pages/reset-password";
 import Pricing from "@/pages/pricing";
 import ProductPage from "@/pages/product";
 import SeoLandingPage from "@/pages/seo-landing-page";
@@ -43,6 +50,7 @@ import AuditLogPage from "@/pages/settings/audit";
 import PlatformSettingsPage from "@/pages/settings/platform";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
+import HelpCenterPage from "@/pages/help-center";
 import HelpDocumentPage from "@/pages/help-document";
 import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
@@ -98,11 +106,69 @@ function AppLoader() {
   );
 }
 
+function EmailVerificationBanner() {
+  const { user } = useAuth();
+  const [dismissed, setDismissed] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
+  const [resent, setResent] = React.useState(false);
+
+  if (!user || user.email_verified !== false || dismissed) return null;
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const { api } = await import("@/lib/api");
+      await api.resendVerificationEmail();
+      setResent(true);
+    } catch {
+      // ignore
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-700">
+      <span>
+        Verificá tu email para acceder a todas las funciones.{' '}
+        {resent ? (
+          <span className="font-medium">Revisá tu bandeja de entrada.</span>
+        ) : (
+          <button
+            onClick={handleResend}
+            disabled={resending}
+            className="font-medium underline underline-offset-2 hover:no-underline disabled:opacity-50"
+          >
+            {resending ? 'Enviando…' : 'Reenviar email'}
+          </button>
+        )}
+      </span>
+      <button onClick={() => setDismissed(true)} className="shrink-0 opacity-60 hover:opacity-100 text-amber-700 leading-none">✕</button>
+    </div>
+  );
+}
+
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
   if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
   if (!isAuthenticated) return <Redirect to="/login" />;
-  return <AppSidebar>{children}</AppSidebar>;
+  return (
+    <CallProvider>
+      <EmailVerificationBanner />
+      <AppSidebar>{children}</AppSidebar>
+      <CallOverlays />
+    </CallProvider>
+  );
+}
+
+function CallOverlays() {
+  return (
+    <>
+      <IncomingCallDialog />
+      <ActiveCallBar />
+      <CallErrorFallback />
+    </>
+  );
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
@@ -152,6 +218,9 @@ function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/forgot-password" component={ResetPassword} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/setup" component={SetupPage} />
@@ -252,6 +321,9 @@ function AppRouter() {
       <Route path="/contacts/:id">
         {() => <ProtectedLayout><ContactDetail /></ProtectedLayout>}
       </Route>
+      <Route path="/calls/:id">
+        {() => <ProtectedLayout><CallPage /></ProtectedLayout>}
+      </Route>
       <Route path="/tasks" component={TasksFeatureRoute} />
       <Route path="/documents" component={DocumentsFeatureRoute} />
       <Route path="/billing" component={BillingFeatureRoute} />
@@ -270,6 +342,9 @@ function AppRouter() {
       </Route>
       <Route path="/support">
         {() => <ProtectedLayout><SupportPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/help-center">
+        {() => <ProtectedLayout><HelpCenterPage /></ProtectedLayout>}
       </Route>
       <Route path="/inventory">
         {() => <ProtectedLayout><InventoryPage /></ProtectedLayout>}

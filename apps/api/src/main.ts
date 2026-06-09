@@ -9,8 +9,29 @@ import { PrismaExceptionFilter } from "./common/prisma/prisma-exception.filter";
 import { ErrorReportsService } from "./error-reports/error-reports.service";
 import { PrismaService } from "./common/prisma/prisma.service";
 import { AiTriageService } from "./ai/ai-triage.service";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 const logger = new Logger("Bootstrap");
+
+// ── Startup env validation ─────────────────────────────────────────────────
+// Fail fast before any network binding if critical config is missing.
+const REQUIRED_ENV_VARS = [
+  "DATABASE_URL",
+  "JWT_SECRET",
+  "JWT_REFRESH_SECRET",
+  "PAYPAL_CLIENT_ID",
+  "PAYPAL_CLIENT_SECRET",
+] as const;
+
+function validateEnv() {
+  const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    logger.error(`Missing required environment variables: ${missing.join(", ")}`);
+    logger.error("Server will not start until all required env vars are set.");
+    process.exit(1);
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 process.on("uncaughtException", (err) => {
   logger.error("UNCAUGHT EXCEPTION — process will exit", err);
@@ -22,6 +43,8 @@ process.on("unhandledRejection", (reason) => {
 });
 
 async function bootstrap() {
+  validateEnv();
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // ✅ SECURITY: Add Helmet.js for HTTP security headers
@@ -96,6 +119,28 @@ async function bootstrap() {
     new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService), aiTriage as any),
   );
   app.useGlobalFilters(new PrismaExceptionFilter());
+  // OpenAPI docs — enabled in dev or when SWAGGER_ENABLED=true
+  if (process.env.NODE_ENV !== "production" || process.env.SWAGGER_ENABLED === "true") {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("PymesHub API")
+      .setDescription("API multi-tenant para PymesHub — CRM + Inbox + Facturación + IA para PYMEs")
+      .setVersion("1.0")
+      .addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" }, "JWT")
+      .addGlobalParameters({
+        in: "header",
+        required: false,
+        name: "x-workspace-slug",
+        schema: { type: "string" },
+        description: "Workspace slug (used by API tokens)",
+      })
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("api/docs", app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+    logger.log(`Swagger docs at http://127.0.0.1:${process.env.PORT ?? 4000}/api/docs`);
+  }
+
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
   await app.listen(port, host);

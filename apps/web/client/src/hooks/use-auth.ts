@@ -20,6 +20,7 @@ export interface AuthUser {
   avatar_url?: string;
   role: string;
   is_platform_admin?: boolean;
+  email_verified?: boolean;
   workspace: {
     id: string;
     name: string;

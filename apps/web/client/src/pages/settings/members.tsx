@@ -13,6 +13,7 @@ import { UserPlus, MoreHorizontal, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions, Permission } from "@/lib/permissions";
 
 type Role = "OWNER" | "ADMIN" | "MANAGER" | "AGENT" | "BILLING" | "VIEWER";
 
@@ -63,9 +64,9 @@ export default function MembersSettingsPage() {
   const [role, setRole] = useState<Role>("AGENT");
 
   const currentRole = (currentUser?.role ?? "VIEWER") as Role;
+  const { can } = usePermissions(currentUser?.role, !!currentUser?.is_platform_admin);
+  const canManageMembers = can(Permission.MEMBERS_MANAGE);
   const isManager = currentRole === "MANAGER";
-  const isAdminOrOwner = ["ADMIN", "OWNER"].includes(currentRole);
-  const canManageMembers = isAdminOrOwner || isManager;
 
   const availableRoles = isManager ? MANAGER_ROLES : INVITABLE_ROLES;
 
@@ -106,6 +107,7 @@ export default function MembersSettingsPage() {
 
   const members = Array.isArray(data) ? data : [];
 
+  const isAdminOrOwner = ["ADMIN", "OWNER"].includes(currentRole);
   const canEditMember = (memberRole: Role, isOwner: boolean) => {
     if (isOwner) return false;
     if (isAdminOrOwner) return memberRole !== "OWNER";

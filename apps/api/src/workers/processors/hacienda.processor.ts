@@ -11,7 +11,7 @@ import { HaciendaXmlBuilderService } from "../../hacienda/hacienda-xml-builder.s
 import { HaciendaXmlValidatorService } from "../../hacienda/hacienda-xml-validator.service";
 import { FiscalSequenceService } from "../../hacienda/fiscal-sequence.service";
 import { parseJsonValue } from "../../common/prisma/json";
-import { HaciendaStatus, WorkspaceUserRole } from "@prisma/client";
+import { FiscalCertificateStatus, HaciendaStatus, WorkspaceUserRole } from "@prisma/client";
 import { QUEUE_NAMES } from "../queues.constants";
 
 interface HaciendaSubmitJobData {
@@ -50,7 +50,7 @@ export class HaciendaProcessor extends WorkerHost {
       this.logger.error(`[hacienda-submit] job=${job.id} invoice=${invoiceId} FAILED: ${message}`);
 
       // On final attempt, mark the invoice as ERROR
-      if (job.attemptsMade >= (job.opts?.attempts ?? 3) - 1) {
+      if (job.attemptsMade >= (job.opts?.attempts ?? 10) - 1) {
         await this.prisma.invoice
           .update({
             where: { id: invoiceId },
@@ -86,6 +86,9 @@ export class HaciendaProcessor extends WorkerHost {
       this.logger.log(`[hacienda-submit] invoice=${invoiceId} already ACEPTADO — skipping`);
       return;
     }
+
+    // Ley 8001 contingency window: invoices older than 8 days cannot be submitted
+    this.checkContingencyDeadline(invoice.issue_date ?? invoice.created_at);
 
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -190,6 +193,18 @@ export class HaciendaProcessor extends WorkerHost {
     this.logger.log(
       `[hacienda-submit] invoice=${invoiceId} → SUBMITTED (location=${recepcionResponse.location})`,
     );
+  }
+
+  /** Ley 8001 — 8-day contingency window. Throws if the invoice is too old. */
+  private checkContingencyDeadline(issueDate: Date): void {
+    const CONTINGENCY_DAYS = 8;
+    const deadline = new Date(issueDate.getTime() + CONTINGENCY_DAYS * 86_400_000);
+    if (new Date() > deadline) {
+      throw new Error(
+        `Factura superó el plazo de contingencia de ${CONTINGENCY_DAYS} días (Ley 8001 CR). ` +
+          `Fecha de emisión: ${issueDate.toISOString()}.`,
+      );
+    }
   }
 
   private formatRecepcionDate(date: Date): string {
@@ -311,6 +326,59 @@ export class HaciendaProcessor extends WorkerHost {
       } catch (err) {
         this.logger.warn(
           `Hacienda poll failed for workspace ${ws.workspace_id}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  // ── Certificate expiry alerts (30/15/7/1 days) ───────────────────────────
+
+  @Cron("0 8 * * *") // 08:00 UTC daily
+  async checkCertificateExpiry(): Promise<void> {
+    const ALERT_DAYS = [30, 15, 7, 1];
+    const now = new Date();
+
+    for (const days of ALERT_DAYS) {
+      const windowStart = new Date(now.getTime() + days * 86_400_000);
+      const windowEnd = new Date(windowStart.getTime() + 86_400_000);
+
+      const expiring = await this.prisma.fiscalCertificate.findMany({
+        where: {
+          status: FiscalCertificateStatus.ACTIVE,
+          valid_until: { gte: windowStart, lt: windowEnd },
+        },
+        select: { workspace_id: true, environment: true, valid_until: true, subject: true },
+      });
+
+      for (const cert of expiring) {
+        // Notify all OWNER and ADMIN members of the workspace
+        const members = await this.prisma.workspaceUser.findMany({
+          where: {
+            workspace_id: cert.workspace_id,
+            role: { in: [WorkspaceUserRole.OWNER, WorkspaceUserRole.ADMIN] },
+          },
+          select: { user_id: true },
+        });
+
+        const body = days === 1
+          ? `Tu certificado fiscal (${cert.environment}) vence HOY. Renuévalo urgentemente para no interrumpir la facturación.`
+          : `Tu certificado fiscal (${cert.environment}) vence en ${days} días (${cert.valid_until?.toLocaleDateString("es-CR")}). Renuévalo para evitar interrupciones.`;
+
+        for (const member of members) {
+          await this.notificationsService
+            .create(cert.workspace_id, {
+              user_id: member.user_id,
+              type: "cert_expiry_alert",
+              title: `Certificado fiscal vence en ${days} día${days === 1 ? "" : "s"}`,
+              body,
+              related_entity_type: "fiscal_certificate",
+              related_entity_id: cert.workspace_id,
+            })
+            .catch((err) => this.logger.warn(`Cert expiry notification failed: ${(err as Error).message}`));
+        }
+
+        this.logger.warn(
+          `[cert-expiry] workspace=${cert.workspace_id} env=${cert.environment} expires_in=${days}d`,
         );
       }
     }

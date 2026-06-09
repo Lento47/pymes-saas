@@ -57,7 +57,7 @@ const TABS: PrerequisiteTab[] = [
     icon: CreditCard,
     title: 'Elegí tu plan',
     description:
-      'PymesHub tiene planes que escalan con tu operación. El método de pago se configura una sola vez vía Paddle y soporta colones (CRC) y dólares (USD).',
+      'PymesHub tiene planes que escalan con tu operación. El pago se configura una sola vez y soporta colones (CRC) y dólares (USD).',
     why: 'Algunas funciones (canales adicionales, automaciones, AI Assistant) sólo están disponibles desde Growth en adelante. Conviene ver los límites antes de empezar a importar datos.',
     checklist: [
       { text: 'Revisá los planes y elegí el que cubra tus volúmenes mensuales.' },

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { InvoiceDocumentType } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import * as crypto from "crypto";
 
@@ -44,14 +45,14 @@ export class FiscalSequenceService {
             workspace_id: params.workspaceId,
             branch_code: branchCode,
             terminal_code: terminalCode,
-            document_type: params.documentType as any,
+            document_type: params.documentType as InvoiceDocumentType,
           },
         },
         create: {
           workspace_id: params.workspaceId,
           branch_code: branchCode,
           terminal_code: terminalCode,
-          document_type: params.documentType as any,
+          document_type: params.documentType as InvoiceDocumentType,
           current_number: 1,
         },
         update: {

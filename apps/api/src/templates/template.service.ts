@@ -1,5 +1,32 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { TriggerType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
+
+type AutomationTemplateBody = {
+  trigger_type: string; // validated as TriggerType at runtime
+  trigger_config_json?: Record<string, unknown> | null;
+  condition_config_json?: Record<string, unknown> | null;
+  action_config_json?: Record<string, unknown> | null;
+};
+
+type MessageTemplateBody = {
+  body?: string;
+  text?: string;
+  subject?: string;
+  channel?: string;
+};
+
+type PipelineStage = { name: string; order?: number; color?: string };
+type AutomationRule = {
+  name: string;
+  description?: string;
+  trigger_type: string;
+  trigger_config_json?: Record<string, unknown>;
+  condition_config_json?: Record<string, unknown> | null;
+  action_config_json?: Record<string, unknown>;
+  enabled?: boolean;
+};
 
 @Injectable()
 export class TemplateService {
@@ -36,16 +63,16 @@ export class TemplateService {
     const template = await this.getSystemTemplate(templateId);
     if (template.type !== "automation") throw new NotFoundException("Not an automation template");
 
-    const body = template.body as any;
+    const body = template.body as AutomationTemplateBody;
     return this.prisma.automationRule.create({
       data: {
         workspace_id: workspaceId,
         name: overrides?.name ?? template.name,
         description: template.description,
-        trigger_type: body.trigger_type,
-        trigger_config_json: body.trigger_config_json ?? {},
-        condition_config_json: body.condition_config_json ?? null,
-        action_config_json: body.action_config_json ?? {},
+        trigger_type: body.trigger_type as TriggerType,
+        trigger_config_json: (body.trigger_config_json ?? {}) as Prisma.InputJsonValue,
+        condition_config_json: body.condition_config_json ? (body.condition_config_json as Prisma.InputJsonValue) : undefined,
+        action_config_json: (body.action_config_json ?? {}) as Prisma.InputJsonValue,
         enabled: true,
       },
     });
@@ -59,7 +86,7 @@ export class TemplateService {
     const template = await this.getSystemTemplate(templateId);
     if (template.type !== "message") throw new NotFoundException("Not a message template");
 
-    const body = template.body as any;
+    const body = template.body as MessageTemplateBody & { language?: string; variables?: string[] };
     return this.prisma.messageTemplate.create({
       data: {
         workspace_id: workspaceId,
@@ -67,7 +94,7 @@ export class TemplateService {
         name: overrides?.name ?? template.name,
         category: template.category,
         language: body.language ?? "es",
-        body: body.body ?? (body as any).text ?? "",
+        body: body.body ?? body.text ?? "",
         status: "DRAFT",
         variables: body.variables ?? undefined,
       },
@@ -95,7 +122,7 @@ export class TemplateService {
     const results: Record<string, number> = { stages: 0, tags: 0, rules: 0 };
 
     // Apply pipeline stages
-    const stages = template.pipeline_stages as any[];
+    const stages = (template.pipeline_stages as PipelineStage[] | null) ?? [];
     if (stages?.length) {
       await this.prisma.dealStage.createMany({
         data: stages.map((s) => ({
@@ -109,17 +136,17 @@ export class TemplateService {
     }
 
     // Apply automation rules — use createMany for atomic batch insert
-    const rules = template.automation_rules as any[];
+    const rules = (template.automation_rules as AutomationRule[] | null) ?? [];
     if (rules?.length) {
       await this.prisma.automationRule.createMany({
         data: rules.map((r) => ({
           workspace_id: workspaceId,
           name: r.name,
           description: r.description,
-          trigger_type: r.trigger_type,
-          trigger_config_json: r.trigger_config_json ?? {},
-          condition_config_json: r.condition_config_json ?? null,
-          action_config_json: r.action_config_json ?? {},
+          trigger_type: r.trigger_type as TriggerType,
+          trigger_config_json: (r.trigger_config_json ?? {}) as Prisma.InputJsonValue,
+          condition_config_json: r.condition_config_json ? (r.condition_config_json as Prisma.InputJsonValue) : undefined,
+          action_config_json: (r.action_config_json ?? {}) as Prisma.InputJsonValue,
           enabled: r.enabled ?? true,
         })),
       });

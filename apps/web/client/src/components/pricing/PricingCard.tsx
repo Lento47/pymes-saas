@@ -1,8 +1,7 @@
 import { useLocation } from 'wouter';
 import type { PricingTier } from '@/data/pricing.data';
-import { Check, ArrowRight, Loader2 } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePaddle } from '@/hooks/use-paddle';
 import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
 import ContactSalesModal from './contact-sales-modal';
@@ -14,58 +13,23 @@ interface PricingCardProps {
 
 export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const [, navigate] = useLocation();
-  const paddle = usePaddle();
-  const { user, isAuthenticated } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { isAuthenticated } = useAuth();
   const [contactOpen, setContactOpen] = useState(false);
 
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
   const isEnterprise = tier.name === 'Business+';
+  const planSlug = tier.name.toLowerCase().replace('+', 'plus');
 
-  const priceId = isAnnual ? tier.paddlePriceIdAnnual : tier.paddlePriceIdMonthly;
-
-  const handleCTA = async () => {
-    // Authenticated users should manage via Billing, not create duplicates
-    if (isAuthenticated && !isEnterprise) {
-      navigate('/settings/billing');
-      return;
-    }
-
-    if (priceId && paddle) {
-      const origin = window.location.origin;
-      const successUrl = isAuthenticated
-        ? `${origin}/billing?paddle=success`
-        : `${origin}/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`;
-
-      setLoading(true);
-      try {
-        await paddle.Checkout.open({
-          items: [{ priceId, quantity: 1 }],
-          customData: {
-            workspaceSlug: user?.workspace?.slug ?? null,
-            plan: tier.name.toLowerCase().replace('+', 'plus'),
-          },
-          settings: {
-            displayMode: 'overlay',
-            theme: 'dark',
-            locale: 'en',
-            successUrl,
-          },
-        });
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // Enterprise with no price ID → contact sales
+  const handleCTA = () => {
     if (isEnterprise) {
       setContactOpen(true);
       return;
     }
-
-    // Fallback: price ID not configured yet
-    navigate(`/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`);
+    if (isAuthenticated) {
+      navigate(`/settings/billing?plan=${planSlug}`);
+    } else {
+      navigate(`/login?plan=${planSlug}`);
+    }
   };
 
   return (
@@ -92,32 +56,23 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
         {isEnterprise ? (
           <div className="text-2xl font-semibold text-foreground">Precio personalizado</div>
         ) : (
-          <>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-semibold text-foreground tabular-nums">${price}</span>
-              <span className="text-xs text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
-            </div>
-          </>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-semibold text-foreground tabular-nums">${price}</span>
+            <span className="text-xs text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
+          </div>
         )}
       </div>
 
       <button
         onClick={handleCTA}
-        disabled={loading}
         className={cn(
-          'mt-5 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
+          'mt-5 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-semibold transition',
           tier.popular
             ? 'bg-primary text-primary-foreground hover:bg-primary/90'
             : 'border border-border text-foreground hover:bg-muted/35'
         )}>
-        {loading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <>
-            {tier.cta}
-            {tier.popular && <ArrowRight className="h-3.5 w-3.5" />}
-          </>
-        )}
+        {tier.cta}
+        {tier.popular && <ArrowRight className="h-3.5 w-3.5" />}
       </button>
 
       <div className="mt-5 border-t border-border pt-5">

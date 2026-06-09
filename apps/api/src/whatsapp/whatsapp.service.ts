@@ -47,9 +47,6 @@ export class WhatsAppService {
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
-    this.logger.log(
-      `[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(",")}`,
-    );
     if (!cfg?.access_token_encrypted) {
       this.logger.error(
         `WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`,
@@ -246,9 +243,6 @@ export class WhatsAppService {
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
-    this.logger.log(
-      `[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(",")}`,
-    );
     if (!cfg?.access_token_encrypted) {
       this.logger.error(
         `WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`,
@@ -430,7 +424,7 @@ export class WhatsAppService {
     targetMessageId: string,
     emoji: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -471,7 +465,7 @@ export class WhatsAppService {
     bodyText: string,
     replyToMessageId: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -509,7 +503,7 @@ export class WhatsAppService {
     messageId: string,
     withTypingIndicator = false,
   ): Promise<void> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -560,7 +554,7 @@ export class WhatsAppService {
       throw new BadGatewayException('Reply buttons: 1–3 buttons required');
     }
 
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -618,7 +612,7 @@ export class WhatsAppService {
       throw new BadGatewayException('List message: max 10 sections, max 10 rows total');
     }
 
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -663,7 +657,7 @@ export class WhatsAppService {
     to: string,
     body: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -706,7 +700,7 @@ export class WhatsAppService {
     languageCode: string,
     components?: Array<Record<string, any>>,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -749,7 +743,7 @@ export class WhatsAppService {
     footer?: string,
     catalogId?: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -797,7 +791,7 @@ export class WhatsAppService {
     productRetailerId: string,
     footer?: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -849,7 +843,7 @@ export class WhatsAppService {
     }>,
     footer?: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -906,7 +900,7 @@ export class WhatsAppService {
     screenId?: string,
     dataPayload?: Record<string, any>,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const cfg = channel.config_json as Record<string, string | undefined>;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -1150,7 +1144,7 @@ export class WhatsAppService {
 
       const { messageId, conversationId, contactId } = result;
 
-      this.logger.log(
+      this.logger.debug(
         `Message created — workspace=${workspaceId} conversation=${conversationId} message=${messageId} provider_message_id=${providerMessageId} from=${from} type=${msg.type}`,
       );
 

@@ -13,7 +13,7 @@ import { isAiBlockedByHuman, parseAiSettings } from "../ai/ai-gating";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { Contact, Priority } from "@prisma/client";
+import { Contact, MessageType, Priority } from "@prisma/client";
 import { AutomationsService } from "../automations/automations.service";
 import { RoutingService } from "../routing/routing.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
@@ -106,9 +106,9 @@ export class MessagesService {
     if (!conv) throw new NotFoundException("Conversación no encontrada.");
 
     // Resolve message_type from media_type or default to TEXT
-    const messageType = dto.media_type
-      ? (dto.media_type.toUpperCase() as any)
-      : 'TEXT';
+    const messageType: MessageType = dto.media_type
+      ? (dto.media_type.toUpperCase() as MessageType)
+      : MessageType.TEXT;
     const hasMedia = !!dto.media_url || !!dto.media_type;
 
     const message = await this.prisma.message.create({
@@ -405,7 +405,7 @@ export class MessagesService {
 
         // ── Media fields ──
         provider: provider,
-        message_type: messageType as any,
+        message_type: messageType,
         has_media: hasMedia,
         media_url: payload.media_url ?? null,
         media_mime_type: payload.media_mime_type ?? null,

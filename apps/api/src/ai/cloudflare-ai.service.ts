@@ -159,7 +159,7 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
 
     const isWorkersAiRunEndpoint = this.chatUrl.includes("/ai/run/");
     const modelOverride = this.normalizeWorkersAiModel(options.model);
-    const maxTokens = options.maxTokens ?? 1024;
+    const maxTokens = options.maxTokens ?? 500;
     const temperature = options.temperature ?? 0.3;
     const chatUrl =
       isWorkersAiRunEndpoint && modelOverride
@@ -172,14 +172,23 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
       ? { messages, max_tokens: maxTokens, temperature }
       : { model: resolvedModel, messages, max_tokens: maxTokens, temperature };
 
-    const res = await fetch(chatUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token}`,
-      },
-      body: JSON.stringify(body),
-    });
+    const llmController = new AbortController();
+    const llmTimer = setTimeout(() => llmController.abort(), 15_000);
+
+    let res: Response;
+    try {
+      res = await fetch(chatUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify(body),
+        signal: llmController.signal,
+      });
+    } finally {
+      clearTimeout(llmTimer);
+    }
 
     if (!res.ok) {
       const text = await res.text();

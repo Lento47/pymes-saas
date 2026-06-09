@@ -74,7 +74,7 @@ export function CustomerMemoryCard({ contactId }: Props) {
         </div>
       )}
 
-      {interests?.length > 0 && (
+      {interests != null && interests.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-1">Intereses</p>
           <div className="flex flex-wrap gap-1">
@@ -87,7 +87,7 @@ export function CustomerMemoryCard({ contactId }: Props) {
         </div>
       )}
 
-      {objections?.length > 0 && (
+      {objections != null && objections.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
             <MessageSquare className="h-3 w-3" /> Objeciones frecuentes

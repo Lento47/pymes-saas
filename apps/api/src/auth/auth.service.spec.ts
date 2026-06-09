@@ -162,7 +162,7 @@ describe("AuthService", () => {
 
   describe("register", () => {
     it("creates user and workspace for new registration", async () => {
-      const dto = { email: "new@example.com", name: "New User", password: "password123" };
+      const dto = { email: "new@example.com", name: "New User", password: "password123", terms_accepted: true };
       const user = { id: "u2", email: dto.email, name: dto.name, avatar_url: null };
       const workspace = {
         id: "w2",
@@ -194,6 +194,7 @@ describe("AuthService", () => {
         email: "owner@customer-company.com",
         name: "Customer Owner",
         password: "password123",
+        terms_accepted: true,
       };
       const user = { id: "u-public", email: dto.email, name: dto.name, avatar_url: null };
       const workspace = {
@@ -229,7 +230,7 @@ describe("AuthService", () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: "u1", email: "existing@example.com" });
 
       await expect(
-        service.register({ email: "existing@example.com", name: "X", password: "pass1234" }),
+        service.register({ email: "existing@example.com", name: "X", password: "pass1234", terms_accepted: true }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -273,6 +274,7 @@ describe("AuthService", () => {
         name: "Invited User",
         password: "password123",
         invite_token: inviteToken,
+        terms_accepted: true,
       });
 
       expect(result.access_token).toBeDefined();

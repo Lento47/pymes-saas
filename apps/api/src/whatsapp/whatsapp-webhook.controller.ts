@@ -48,7 +48,7 @@ export class WhatsAppWebhookController {
   /** POST /inbound/whatsapp/webhook — mensajes entrantes */
   @Post("webhook")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ webhook: { limit: 10, ttl: 60_000 } })
+  @Throttle({ webhook: { limit: 200, ttl: 60_000 } })
   async receiveWebhook(
     @Headers("x-hub-signature-256") signature: string | undefined,
     @Body() payload: Record<string, unknown>,

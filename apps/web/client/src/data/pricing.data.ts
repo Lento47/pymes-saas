@@ -14,8 +14,6 @@ export interface PricingTier {
   };
   popular: boolean;
   cta: string;
-  paddlePriceIdMonthly?: string;
-  paddlePriceIdAnnual?: string;
 }
 
 export interface AddOn {
@@ -23,10 +21,6 @@ export interface AddOn {
   name: string;
   monthlyUSD: number;
   description: string;
-  priceKeyMonthly?: string;
-  priceKeyAnnual?: string;
-  paddlePriceIdMonthly?: string;
-  paddlePriceIdAnnual?: string;
 }
 
 export interface FAQ {
@@ -79,8 +73,6 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Prueba gratuita',
-    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY,
-    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_STARTER_ANNUAL,
   },
   {
     name: 'Growth',
@@ -107,8 +99,6 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: true,
     cta: 'Empieza con Growth',
-    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY,
-    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_GROWTH_ANNUAL,
   },
   {
     name: 'Business',
@@ -137,8 +127,6 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Subir a Business',
-    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY,
-    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_ANNUAL,
   },
   {
     name: 'Business+',
@@ -175,8 +163,6 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Contactar a ventas',
-    paddlePriceIdMonthly: undefined,
-    paddlePriceIdAnnual: undefined,
   },
 ];
 
@@ -186,8 +172,6 @@ export const ADD_ONS: AddOn[] = [
     name: 'Usuario extra',
     monthlyUSD: 8,
     description: 'Agrega otro compañero sin cambiar de plan',
-    priceKeyMonthly: 'extra_user_monthly',
-    priceKeyAnnual: 'extra_user_annual',
   },
   {
     key: 'whatsapp_premium',
@@ -206,8 +190,6 @@ export const ADD_ONS: AddOn[] = [
     name: 'Asistente IA',
     monthlyUSD: 29,
     description: 'Incluye 500k tokens IA/mes + sugerencias y automatizaciones con inteligencia artificial',
-    paddlePriceIdMonthly: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY) || undefined,
-    paddlePriceIdAnnual: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL) || undefined,
   },
   {
     key: 'approvals_signature',
@@ -248,7 +230,7 @@ export const FAQS: FAQ[] = [
   },
   {
     question: '¿Qué métodos de pago aceptan?',
-    answer: 'Aceptamos todas las tarjetas principales (Visa, Mastercard, American Express) vía Paddle. Transferencias bancarias disponibles para planes Business+.',
+    answer: 'Aceptamos tarjetas principales (Visa, Mastercard, American Express) y PayPal. Transferencias bancarias disponibles para planes Business+.',
   },
   {
     question: '¿Hay costos adicionales por WhatsApp o Telegram?',

@@ -150,7 +150,7 @@ export function InboxToolbar({
           return (
             <Badge
               key={chip.value}
-              variant={active ? "secondary" : "ghost"}
+              variant={active ? "secondary" : "outline"}
               className="cursor-pointer shrink-0 px-2.5 py-1 text-[11px] font-medium"
               onClick={() => onChannelTabChange(chip.value)}
             >

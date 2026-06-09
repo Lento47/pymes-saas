@@ -69,10 +69,12 @@ export interface OrchestrateResult {
   tier: string; // SupportProfile name (stored in legacy tier column)
   case_type?: SupportCaseType;
   severity?: SupportSeverity;
-  status: "COMPLETED" | "NEEDS_HUMAN" | "FAILED";
+  status: "COMPLETED" | "NEEDS_HUMAN" | "FAILED" | "NEEDS_CLARIFICATION";
   needs_human_review: boolean;
   stages: StageRecord[];
   summary: string;
+  /** Set when status === 'NEEDS_CLARIFICATION' */
+  questions?: string[];
   /** Total estimated credit cost for this case. */
   total_cost_credits?: number;
 }
@@ -168,10 +170,10 @@ export class SupportOrchestratorService {
         const summary = triageOut.summary || "Se necesita más información para diagnosticar el problema.";
         const clarificationResult: OrchestrateResult = {
           run_id: run.id,
-          tier: profile as any,
+          tier: profile,
           case_type: caseType,
           severity,
-          status: "NEEDS_CLARIFICATION" as any,
+          status: "NEEDS_CLARIFICATION",
           needs_human_review: false,
           stages,
           summary,
@@ -191,7 +193,7 @@ export class SupportOrchestratorService {
         });
 
         // Store the questions in the run for the follow-up to use
-        (clarificationResult as any).questions = triageOut.questions;
+        clarificationResult.questions = triageOut.questions;
 
         this.events?.emitOrchestrationProgress(input.workspace_id, {
           event: "orchestration:done",
