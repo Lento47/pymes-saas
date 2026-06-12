@@ -659,15 +659,14 @@ html.marketing-page body {
 
 /* ── Scramble text effect (block characters ░▒▓█) ── */
 .scramble-active {
-  display: inline-block;
+  display: inline;
   color: #9CA3AF;
   opacity: 0.55;
   animation: scramble-pulse 0.15s steps(1) infinite;
-  will-change: opacity;
 }
 
 .scramble-resolved {
-  display: inline-block;
+  display: inline;
 }
 
 @keyframes scramble-pulse {

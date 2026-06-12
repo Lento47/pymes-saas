@@ -681,11 +681,13 @@ export function ProductPageHero({
   title,
   titleNode,
   subtitle,
+  subtitleNode,
 }: {
   badge: string;
   title: string;
   titleNode?: React.ReactNode;
   subtitle: string;
+  subtitleNode?: React.ReactNode;
 }) {
   const { messages } = useI18n();
   const t = messages.site;
@@ -699,7 +701,7 @@ export function ProductPageHero({
         <h1 className="mx-auto max-w-3xl text-balance text-4xl font-semibold tracking-[-0.06em] text-slate-950 sm:text-6xl lg:text-7xl lg:leading-[0.95]">
           {titleNode ?? title}
         </h1>
-        <p className="mx-auto mt-7 max-w-2xl text-balance text-lg leading-8 text-slate-600">{subtitle}</p>
+        <p className="mx-auto mt-7 max-w-2xl text-balance text-lg leading-8 text-slate-600">{subtitleNode ?? subtitle}</p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/register"

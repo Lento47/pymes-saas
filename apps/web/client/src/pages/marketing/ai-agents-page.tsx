@@ -13,18 +13,6 @@ import { BLOCK_CHARS } from "@/hooks/use-scramble-text";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { applySeoMetadata } from "@/lib/seo";
 
-function scrambleWord(text: string, pattern: RegExp, duration: number, delay: number) {
-  return text.split(pattern).map((part, i) =>
-    pattern.test(part) ? (
-      <ScrambleText key={i} duration={duration} delay={delay} chars={BLOCK_CHARS}>
-        {part}
-      </ScrambleText>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
 export default function AiAgentsPage() {
   const { messages } = useI18n();
   const t = messages.site.agents;
@@ -38,15 +26,16 @@ export default function AiAgentsPage() {
     });
   }, [t]);
 
-  const heroTitleNode = scrambleWord(t.page.title, /(limits|límites)/i, 1100, 400);
-  const automationTitleNode = scrambleWord(au.title, /(powerful|potentes)/i, 900, 800);
-
   return (
     <MarketingShell active="aiAgents">
       <ProductPageHero
         badge={t.page.badge}
         title={t.page.title}
-        titleNode={heroTitleNode}
+        titleNode={
+          <ScrambleText duration={2200} delay={150} chars={BLOCK_CHARS}>
+            {t.page.title}
+          </ScrambleText>
+        }
         subtitle={t.page.subtitle}
       />
       <section className="px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
@@ -59,7 +48,9 @@ export default function AiAgentsPage() {
           <div>
             <SectionLabel>{au.eyebrow}</SectionLabel>
             <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-5xl">
-              {automationTitleNode}
+              <ScrambleText duration={1800} delay={600} chars={BLOCK_CHARS}>
+                {au.title}
+              </ScrambleText>
             </h2>
             <p className="mt-6 text-lg leading-8 text-slate-600">{au.subtitle}</p>
           </div>

@@ -24,9 +24,9 @@ export function useScrambleText(target: string, options: ScrambleOptions = {}) {
   const { duration = 1400, delay = 300, chars = BLOCKS } = options;
 
   const [display, setDisplay] = useState<ScrambleChar[]>(() =>
-    target.split("").map(() => ({
-      char: chars[Math.floor(Math.random() * chars.length)],
-      resolved: false,
+    target.split("").map((ch) => ({
+      char: ch === " " ? " " : chars[Math.floor(Math.random() * chars.length)],
+      resolved: ch === " ",
     })),
   );
   const [done, setDone] = useState(false);
@@ -68,7 +68,7 @@ export function useScrambleText(target: string, options: ScrambleOptions = {}) {
       const elapsed = now - start;
 
       const next: ScrambleChar[] = letters.map((real, i) => {
-        if (elapsed >= resolveAt[i]) {
+        if (real === " " || elapsed >= resolveAt[i]) {
           return { char: real, resolved: true };
         }
         const cycleSpeed = 50 + Math.random() * 30;
@@ -93,9 +93,9 @@ export function useScrambleText(target: string, options: ScrambleOptions = {}) {
     startedRef.current = false;
     setDone(false);
     setDisplay(
-      target.split("").map(() => ({
-        char: chars[Math.floor(Math.random() * chars.length)],
-        resolved: false,
+      target.split("").map((ch) => ({
+        char: ch === " " ? " " : chars[Math.floor(Math.random() * chars.length)],
+        resolved: ch === " ",
       })),
     );
 
