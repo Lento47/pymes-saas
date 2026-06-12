@@ -660,21 +660,19 @@ html.marketing-page body {
 /* ── Scramble text effect (block characters ░▒▓█) ── */
 .scramble-active {
   display: inline-block;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-  color: #6366f1;
-  text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
-  animation: scramble-pulse 0.12s steps(1) infinite;
+  color: #9CA3AF;
+  opacity: 0.55;
+  animation: scramble-pulse 0.15s steps(1) infinite;
   will-change: opacity;
 }
 
 .scramble-resolved {
   display: inline-block;
-  transition: color 0.3s ease, text-shadow 0.4s ease;
 }
 
 @keyframes scramble-pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
+  0% { opacity: 0.55; }
+  50% { opacity: 0.25; }
+  100% { opacity: 0.55; }
 }
 

@@ -3,7 +3,7 @@ import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/telemetry/api-exception.filter";
 import { PrismaExceptionFilter } from "./common/prisma/prisma-exception.filter";

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken, isSessionTimedOut } from "@/lib/api";
+import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, isSessionTimedOut } from "@/lib/api";
 
 function resetAuthAndTheme() {
   history.pushState(null, "", "/login?expired=true");
@@ -85,11 +85,12 @@ function attachWorkspaceUpdateListener() {
   });
 }
 
-// On page load, if we have a stored refresh token, restore the session silently
-const _storedRefreshToken = getRefreshToken();
-if (_storedRefreshToken && !isLoggedIn()) {
-  // Check inactivity timeout — if user was inactive >10min, don't restore
-  if (isSessionTimedOut()) {
+// On page load, attempt silent session restore using the httpOnly refresh cookie.
+// Only show "session expired" to users who had a previous session (slug present).
+// Fresh visitors with no prior session skip straight to the unauthenticated state.
+if (!isLoggedIn()) {
+  const hadPreviousSession = !!getWorkspaceSlug();
+  if (hadPreviousSession && isSessionTimedOut()) {
     resetAuthAndTheme();
     _isRestoring = false;
   } else {
@@ -97,21 +98,22 @@ if (_storedRefreshToken && !isLoggedIn()) {
     _restorePromise = (async () => {
       try {
         const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000));
-        const r = await (Promise.race([api.refresh(_storedRefreshToken), timeout]) as unknown as ReturnType<typeof api.refresh>);
-        setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
+        const r = await (Promise.race([api.refresh(''), timeout]) as unknown as ReturnType<typeof api.refresh>);
+        setAuthState(r.access_token, getWorkspaceSlug()!);
 
         if (r.user) {
           _user = r.user;
-          setAuthState(r.access_token, r.user.workspace.slug, r.refresh_token);
+          setAuthState(r.access_token, r.user.workspace.slug);
         } else {
           const me = await Promise.race([api.getMe(), timeout]) as unknown as AuthUser;
           _user = me;
-          setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
+          setAuthState(r.access_token, me.workspace.slug);
         }
         connectSocket();
         attachWorkspaceUpdateListener();
       } catch {
-        resetAuthAndTheme();
+        // Cookie absent or expired — clear any stale access_token state
+        clearAuthState();
         _user = null;
       } finally {
         _isRestoring = false;
