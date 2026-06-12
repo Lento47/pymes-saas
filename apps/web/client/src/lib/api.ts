@@ -20,10 +20,10 @@ export class ApiError extends Error {
 const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
-// ── Auth state ──
+// ── Auth state (access token in-memory only; slug in storage for reload support) ──
+// ── Refresh token is stored exclusively in httpOnly cookie (set by backend) ──
 let _token: string | null = null;
 let _workspaceSlug: string | null = null;
-let _refreshToken: string | null = null;
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -34,14 +34,14 @@ function getStorage(): Storage {
 export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
-  if (refreshToken) _refreshToken = refreshToken;
+  // refreshToken is no longer stored in storage — it lives in httpOnly cookie
+  // The refreshToken parameter is kept for API compatibility but intentionally ignored
   updateLastActivity();
   try {
     const s = getStorage();
     s.removeItem('pymes_last_slug');
     s.setItem('pymes_slug', slug);
     s.setItem('pymes_token', token);
-    if (refreshToken) s.setItem('pymes_refresh', refreshToken);
   } catch { /* ignore */ }
 }
 
@@ -49,12 +49,12 @@ export function clearAuthState() {
   _token = null;
   const slug = _workspaceSlug;
   _workspaceSlug = null;
-  _refreshToken = null;
   try {
     const s = getStorage();
     if (slug) s.setItem('pymes_last_slug', slug);
     s.removeItem('pymes_slug');
     s.removeItem('pymes_token');
+    // Remove legacy key if present from older sessions
     s.removeItem('pymes_refresh');
     s.removeItem('pymes_last_activity');
   } catch { /* ignore */ }
@@ -70,10 +70,6 @@ export function getAuthToken() {
 export function getWorkspaceSlug() {
   if (_workspaceSlug) return _workspaceSlug;
   try { return getStorage().getItem('pymes_slug') || null; } catch { return null; }
-}
-export function getRefreshToken() {
-  if (_refreshToken) return _refreshToken;
-  try { return getStorage().getItem('pymes_refresh') || null; } catch { return null; }
 }
 export function isLoggedIn() {
   if (_token) return true;
@@ -94,23 +90,18 @@ async function _tryRefresh(): Promise<boolean> {
 
   _refreshPromise = (async () => {
     try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) return false;
-
+      // Refresh token is sent automatically as httpOnly cookie — no body needed
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        credentials: "include",
       });
 
       if (!res.ok) return false;
       const data = await res.json();
       _token = data.access_token;
       try { getStorage().setItem('pymes_token', data.access_token); } catch { /* ignore */ }
-      if (data.refresh_token) {
-        _refreshToken = data.refresh_token;
-        try { getStorage().setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
-      }
+      // Rotated refresh_token is set as httpOnly cookie by the backend — nothing to store here
       try {
         const { getSocket, connectSocket } = await import('../hooks/use-socket');
         const sock = getSocket();
@@ -136,9 +127,9 @@ export async function restoreSession(): Promise<boolean> {
   const slug = getWorkspaceSlug();
   if (slug) _workspaceSlug = slug;
 
-  const refreshToken = getRefreshToken();
-  if (refreshToken) {
-    _refreshToken = refreshToken;
+  // Attempt to restore session using the httpOnly refresh token cookie.
+  // We always try — the backend will reject if the cookie is absent or expired.
+  if (slug) {
     return _tryRefresh();
   }
   return false;
@@ -167,7 +158,7 @@ async function request<T>(
 
   try {
     updateLastActivity();
-    res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, signal: controller.signal });
+    res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, signal: controller.signal, credentials: "include" });
   } catch (error: unknown) {
     clearTimeout(timeout);
     if (!path.includes("/error-reports/client")) {
@@ -190,7 +181,7 @@ async function request<T>(
   if (res.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
     const refreshed = await _tryRefresh();
     if (refreshed) {
-      res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
+      res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, credentials: "include" });
     }
     if (!refreshed || res.status === 401) {
       history.pushState(null, "", "/login?expired=true");
@@ -256,6 +247,7 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-workspace-slug": workspaceSlug },
       body: JSON.stringify({ email, password }),
+      credentials: "include",
     });
     if (!r.ok) {
       const text = await r.text();
@@ -274,7 +266,8 @@ export const api = {
       }
       throw new Error(`${r.status}: ${text}`);
     }
-    return r.json() as Promise<{ access_token: string; refresh_token: string; user: Record<string, any> }>;
+    // refresh_token is no longer in the response body — it is set as httpOnly cookie
+    return r.json() as Promise<{ access_token: string; user: Record<string, any> }>;
   },
   logout: () => request<Record<string, any>>("POST", "/api/auth/logout"),
   getMe: () => request<Record<string, any>>("GET", "/api/auth/me"),

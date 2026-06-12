@@ -25,6 +25,10 @@ export class ConversationsService {
     filters: FilterConversationsDto,
     caller?: { id: string; role: string },
   ) {
+    // HIGH-07: Set Postgres RLS context so the DB enforces workspace isolation
+    // even if the app-layer `where.workspace_id` filter were accidentally removed.
+    await this.prisma.setWorkspaceContext(workspaceId);
+
     const {
       status,
       priority,
@@ -165,6 +169,9 @@ export class ConversationsService {
   // ── GET /conversations/:id ─────────────────────────────────────────────────
 
   async findOne(workspaceId: string, id: string) {
+    // HIGH-07: Set RLS context — findOne is also called internally by update/resolve/remove
+    await this.prisma.setWorkspaceContext(workspaceId);
+
     const conv = await this.prisma.conversation.findFirst({
       where: { id, workspace_id: workspaceId },
       // Explicit select — avoids querying columns not yet in DB

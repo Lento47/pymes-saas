@@ -52,6 +52,78 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$disconnect();
   }
 
+  // ── RLS Context Helpers ─────────────────────────────────────────────────────
+  //
+  // PymesHub uses Postgres Row-Level Security (RLS) on all workspace-scoped
+  // tables. Each policy checks `app.workspace_id` session variable against the
+  // row's workspace_id column.
+  //
+  // IMPORTANT: Call `setWorkspaceContext(workspaceId)` before any query that
+  // reads or writes workspace-scoped tables. The setting is transaction-local
+  // (third arg = true), so it resets automatically after the transaction ends.
+  //
+  // Pattern for services:
+  //
+  //   async findAll(workspaceId: string) {
+  //     await this.prisma.setWorkspaceContext(workspaceId);
+  //     return this.prisma.someModel.findMany({ where: { workspace_id: workspaceId } });
+  //   }
+  //
+  // For operations that span multiple queries (e.g. inside $transaction), call
+  // setWorkspaceContext once at the start of the transaction block.
+  //
+  // Platform admin operations (migrations, platform-level queries) run as the
+  // Postgres superuser which bypasses RLS by default — no context needed.
+
+  /**
+   * Sets the Postgres session variable `app.workspace_id` to the given value.
+   * This activates the RLS workspace_isolation policy for the current
+   * transaction/session. The setting is transaction-local (resets after commit).
+   *
+   * Must be called before any query on workspace-scoped tables.
+   */
+  async setWorkspaceContext(workspaceId: string): Promise<void> {
+    // Validate input: only allow cuid-like strings (alphanumeric, no SQL special chars)
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(workspaceId)) {
+      throw new Error(`Invalid workspaceId format: ${workspaceId}`);
+    }
+    // Use parameterized set_config to prevent any injection risk
+    await this.$executeRaw`SELECT set_config('app.workspace_id', ${workspaceId}, true)`;
+  }
+
+  /**
+   * Clears the workspace context by setting `app.workspace_id` to an empty
+   * string. With the NULLIF guard in RLS policies, an empty string causes all
+   * rows to be hidden — a safe default.
+   *
+   * Call this after operations that should not carry workspace context forward,
+   * or in finally blocks for belt-and-suspenders safety.
+   */
+  async clearWorkspaceContext(): Promise<void> {
+    await this.$executeRaw`SELECT set_config('app.workspace_id', '', true)`;
+  }
+
+  /**
+   * Executes a callback with workspace RLS context set, clearing it afterwards.
+   * Useful for one-off scoped operations outside of a transaction.
+   *
+   * Example:
+   *   const result = await this.prisma.withWorkspaceContext(workspaceId, () =>
+   *     this.prisma.conversation.findMany({ where: { workspace_id: workspaceId } })
+   *   );
+   */
+  async withWorkspaceContext<T>(
+    workspaceId: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    await this.setWorkspaceContext(workspaceId);
+    try {
+      return await fn();
+    } finally {
+      await this.clearWorkspaceContext();
+    }
+  }
+
   /** Helper para limpiar la DB en tests — no llamar en producción */
   async cleanDatabase() {
     if (process.env.NODE_ENV === "production") {

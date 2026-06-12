@@ -3,6 +3,7 @@ import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
+import * as cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/telemetry/api-exception.filter";
 import { PrismaExceptionFilter } from "./common/prisma/prisma-exception.filter";
@@ -67,6 +68,9 @@ async function bootstrap() {
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     }),
   );
+
+  // SECURITY: cookie-parser required for httpOnly refresh token cookie
+  app.use(cookieParser());
 
   app.setGlobalPrefix("api");
   app.useGlobalPipes(

@@ -8,7 +8,6 @@ import {
   HttpStatus,
   MethodNotAllowedException,
   Post,
-  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -26,6 +25,14 @@ import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { CurrentUser } from "./decorators/current-user.decorator";
 import { AuthUser } from "./strategies/jwt.strategy";
 import { RefreshTokenService } from "./refresh-token.service";
+
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: "strict" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/api/auth",
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+};
 
 @Controller("auth")
 export class AuthController {
@@ -45,16 +52,35 @@ export class AuthController {
   @Post("login")
   @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto, @Headers("x-workspace-slug") workspaceSlug: string | undefined) {
-    return this.authService.login(dto, workspaceSlug);
+  async login(
+    @Body() dto: LoginDto,
+    @Headers("x-workspace-slug") workspaceSlug: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto, workspaceSlug);
+    if (result.refresh_token) {
+      res.cookie("refresh_token", result.refresh_token, REFRESH_COOKIE_OPTIONS);
+      const { refresh_token: _rt, ...safeResult } = result;
+      return safeResult;
+    }
+    return result;
   }
 
   /** POST /auth/register */
   @Post("register")
   @Throttle({ auth: { limit: 3, ttl: 3600_000 } })
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(dto);
+    if (result.refresh_token) {
+      res.cookie("refresh_token", result.refresh_token, REFRESH_COOKIE_OPTIONS);
+      const { refresh_token: _rt, ...safeResult } = result;
+      return safeResult;
+    }
+    return result;
   }
 
   /** POST /auth/invite-preview */
@@ -68,8 +94,17 @@ export class AuthController {
   @Post("accept-invite")
   @Throttle({ auth: { limit: 10, ttl: 600_000 } })
   @HttpCode(HttpStatus.OK)
-  acceptInvite(@Body() dto: AcceptInviteDto) {
-    return this.authService.acceptInvite(dto);
+  async acceptInvite(
+    @Body() dto: AcceptInviteDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.acceptInvite(dto);
+    if (result.refresh_token) {
+      res.cookie("refresh_token", result.refresh_token, REFRESH_COOKIE_OPTIONS);
+      const { refresh_token: _rt, ...safeResult } = result;
+      return safeResult;
+    }
+    return result;
   }
 
   /** POST /auth/invite-code-preview */
@@ -99,24 +134,36 @@ export class AuthController {
 
   /**
    * POST /auth/refresh
-   * Body: { refresh_token: string }
-   * Returns new access_token + refresh_token (rotation).
+   * Reads refresh_token from httpOnly cookie (preferred) or request body (transition fallback).
+   * Returns new access_token; rotated refresh_token is set as httpOnly cookie.
    */
   @Post("refresh")
   @Throttle({ auth: { limit: 20, ttl: 3600_000 } })
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body("refresh_token") rawToken: string) {
+  async refresh(
+    @Req() req: Request,
+    @Body("refresh_token") bodyToken: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // Prefer cookie; fall back to body for transition period
+    const rawToken: string | undefined = req.cookies?.["refresh_token"] ?? bodyToken;
     if (!rawToken) throw new UnauthorizedException("refresh_token requerido.");
     const { accessToken, refreshToken } = await this.refreshTokenService.rotate(rawToken);
-    return { access_token: accessToken, refresh_token: refreshToken };
+    // Always set the rotated token as httpOnly cookie
+    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
+    return { access_token: accessToken };
   }
 
   /** POST /auth/logout — revokes all refresh tokens for the session */
   @Post("logout")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(@CurrentUser() user: AuthUser) {
+  async logout(
+    @CurrentUser() user: AuthUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     await this.refreshTokenService.revokeAll(user.id, user.workspace_id);
+    res.clearCookie("refresh_token", { path: "/api/auth" });
     return { message: "Sesión cerrada." };
   }
 
