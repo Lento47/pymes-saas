@@ -67,6 +67,7 @@ export class StorageService {
           Key: key,
           Body: buffer,
           ContentType: mimeType,
+          ServerSideEncryption: "AES256",
         }),
       );
       return { key, size: buffer.length };
