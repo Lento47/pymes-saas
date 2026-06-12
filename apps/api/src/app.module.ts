@@ -50,6 +50,7 @@ import { SanitizeModule } from "./common/sanitize/sanitize.module";
 import { DataRetentionModule } from "./common/data-retention/data-retention.module";
 import { CacheModule } from "./common/cache/cache.module";
 import { BillingModule } from "./billing/billing.module";
+import { PaypalWebhookModule } from "./billing/paypal-webhook.module";
 import { RoutingModule } from "./routing/routing.module";
 import { PlanThrottlerGuard } from "./common/plan-limits/plan-throttler.guard";
 import { SamlModule } from "./auth/saml/saml.module";
@@ -128,6 +129,7 @@ import { CallsModule } from "./calls/calls.module";
     BackupModule,
     ApiTokensModule,
     BillingModule,
+    PaypalWebhookModule,
     RoutingModule,
     SamlModule,
     I18nModule,

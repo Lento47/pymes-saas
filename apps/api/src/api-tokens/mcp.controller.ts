@@ -9,7 +9,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { Request as ExpressRequest, Response } from "express";
 
 // ApiTokenGuard injects workspace_id into the request object
@@ -110,7 +110,7 @@ export class McpController {
   private mcpSessions = new Map<string, number>();
 
   private newSessionId(): string {
-    return `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `mcp-${randomUUID()}`;
   }
 
   @Get()

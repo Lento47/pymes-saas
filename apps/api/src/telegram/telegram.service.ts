@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, BadRequestException, NotFoundException, forwardRef } from "@nestjs/common";
+import { Injectable, Inject, Logger, BadRequestException, NotFoundException, UnauthorizedException, forwardRef } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { PrismaService } from "../common/prisma/prisma.service";
@@ -8,6 +8,7 @@ import { StorageService } from "../common/storage/storage.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { Telegraf, Input } from "telegraf";
 import type { Prisma } from "@prisma/client";
+import { isValidOutboundUrl } from "../common/utils/url-safety";
 
 interface TelegramWebhookInfo {
   url: string;
@@ -844,5 +845,44 @@ export class TelegramService {
     if (mediaType === "audio" || mediaType === "voice") return "audio/ogg";
     if (mediaType === "video") return "video/mp4";
     return "application/octet-stream";
+  }
+
+  // CRIT-02: Validate incoming secret against stored secret BEFORE re-registering.
+  // Never persist an attacker-supplied value on failure.
+  async recoverWebhook(channelId: string, incomingSecret: string | undefined): Promise<void> {
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: channelId, type: "TELEGRAM" },
+      select: { id: true, workspace_id: true, config_json: true },
+    });
+
+    if (!channel?.config_json) {
+      throw new UnauthorizedException("Webhook recovery failed — re-enter bot token in settings");
+    }
+
+    const cfg = channel.config_json as Record<string, unknown>;
+    const storedSecret = cfg.webhook_secret as string | undefined;
+
+    if (storedSecret) {
+      if (!incomingSecret || incomingSecret !== storedSecret) {
+        throw new UnauthorizedException("Webhook recovery failed — re-enter bot token in settings");
+      }
+    }
+
+    await this.registerWebhook(channel.workspace_id, channelId);
+  }
+
+  // CRIT-03: Validate media URL against SSRF blocklist before any network request.
+  async sendMediaUrl(channelId: string, chatId: string, mediaUrl: string, caption?: string): Promise<void> {
+    if (!isValidOutboundUrl(mediaUrl)) {
+      throw new BadRequestException("Invalid media URL");
+    }
+
+    const bot = this.bots.get(channelId);
+    if (!bot) {
+      this.logger.warn(`No bot instance for channel ${channelId}`);
+      return;
+    }
+
+    await bot.telegram.sendPhoto(chatId, { url: mediaUrl }, caption ? { caption } : undefined);
   }
 }

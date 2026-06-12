@@ -1,4 +1,4 @@
-import { BadGatewayException, Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
 import * as crypto from "node:crypto";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
@@ -7,6 +7,7 @@ import { extractWhatsAppMediaFromMessage, extractInteractiveContent } from "../c
 import { parseJsonValue } from "../common/prisma/json";
 import { MessagesService } from "../conversations/messages.service";
 import { WebhookEventsService } from "../webhooks/webhook-events.service";
+import { isValidOutboundUrl } from "../common/utils/url-safety";
 import { EventsGateway } from "../gateways/events.gateway";
 import * as path from "path";
 import { MessageDeliveryStatus } from "@prisma/client";
@@ -1712,5 +1713,50 @@ export class WhatsAppService {
       mediaData.mime_type || fileRes.headers.get("content-type") || "application/octet-stream";
 
     return { buffer, contentType };
+  }
+
+  // CRIT-03: Validate media URL against SSRF blocklist before any network request.
+  async sendMediaUrl(
+    channel: Record<string, unknown>,
+    to: string,
+    mediaUrl: string,
+    mediaType: "image" | "video" | "audio" | "document" = "image",
+    caption?: string,
+  ): Promise<{ message_id: string }> {
+    if (!isValidOutboundUrl(mediaUrl)) {
+      throw new BadRequestException("Invalid media URL");
+    }
+
+    const cfg = channel.config_json as Record<string, unknown>;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted as string);
+    const phoneNumberId = cfg.phone_number_id as string;
+
+    const mediaPayload: Record<string, unknown> = { link: mediaUrl };
+    if (caption && mediaType !== "audio") {
+      mediaPayload["caption"] = caption;
+    }
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: mediaType,
+        [mediaType]: mediaPayload,
+      }),
+    });
+
+    const data = (await res.json()) as { messages?: Array<{ id: string }>; error?: { message: string } };
+
+    if (!res.ok) {
+      this.logger.error("Meta API media error:", JSON.stringify(data));
+      throw new BadGatewayException(data?.error?.message ?? "Error enviando media por WhatsApp");
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? "unknown" };
   }
 }

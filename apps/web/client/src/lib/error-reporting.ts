@@ -35,7 +35,7 @@ function getSessionId() {
 
 function getWorkspaceSlug() {
   try {
-    return localStorage.getItem(LS_SLUG_KEY) ?? undefined;
+    return sessionStorage.getItem(LS_SLUG_KEY) ?? localStorage.getItem(LS_SLUG_KEY) ?? undefined;
   } catch {
     return undefined;
   }

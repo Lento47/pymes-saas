@@ -212,7 +212,11 @@ export class WorkspacesService {
 
     // Merge raw settings_json overrides (used by SAML config, etc.)
     if (settings_json && typeof settings_json === "object") {
-      Object.assign(nextSettings, settings_json);
+      const DANGEROUS_KEYS = ["__proto__", "constructor", "prototype"];
+      const safeSettings = Object.fromEntries(
+        Object.entries(settings_json as Record<string, unknown>).filter(([k]) => !DANGEROUS_KEYS.includes(k))
+      );
+      Object.assign(nextSettings, safeSettings);
     }
 
     const setOrUnset = (key: string, value: string | undefined) => {
