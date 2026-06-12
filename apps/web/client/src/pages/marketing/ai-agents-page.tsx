@@ -13,6 +13,38 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { applySeoMetadata } from "@/lib/seo";
 import { ShieldCheck } from "lucide-react";
 
+// Fake but realistic agent trace log shown per agent
+const TRACES: Record<string, { fn: string; result: string }[]> = {
+  reception: [
+    { fn: "classify_intent(message)",      result: '"consulta_facturacion"'   },
+    { fn: "check_business_hours()",        result: "open: true"               },
+    { fn: "requires_human_handoff()",      result: "false"                    },
+    { fn: "prepare_response(template)",    result: "draft ready"              },
+    { fn: "escalate_if_needed(0.85)",      result: "confidence: 0.97"         },
+  ],
+  sales: [
+    { fn: "detect_buying_intent(message)", result: '"alta"'                   },
+    { fn: "lookup_customer_history(id)",   result: "2 prev interactions"      },
+    { fn: "create_followup_task()",        result: "task_id: T-4821"          },
+    { fn: "suggest_template(intent)",      result: "template: sales_v3"       },
+    { fn: "requires_approval()",          result: "true → pending review"    },
+  ],
+  support: [
+    { fn: "read_knowledge_base(query)",    result: "3 articles found"         },
+    { fn: "summarize_context(thread)",     result: "298 tokens"               },
+    { fn: "confidence_score()",            result: "0.61 → below threshold"   },
+    { fn: "escalate_to_human(reason)",     result: "low_confidence"           },
+    { fn: "prepare_handoff_summary()",     result: "ready"                    },
+  ],
+  billing: [
+    { fn: "extract_invoice_fields(msg)",   result: "missing: [amount, date]"  },
+    { fn: "request_missing_data(fields)",  result: "2 fields requested"       },
+    { fn: "prepare_draft(data)",           result: "draft_id: D-9043"         },
+    { fn: "requires_user_review()",        result: "true → blocked"           },
+    { fn: "notify_team(draft_id)",         result: "notification sent"        },
+  ],
+};
+
 export default function AiAgentsPage() {
   const { messages } = useI18n();
   const t = messages.site.agents;
@@ -35,6 +67,7 @@ export default function AiAgentsPage() {
 
   return (
     <MarketingShell active="aiAgents">
+
       {/* ── Hero ── */}
       <ProductPageHero
         badge={t.page.badge}
@@ -47,54 +80,93 @@ export default function AiAgentsPage() {
         subtitle={t.page.subtitle}
       />
 
-      {/* ── Agent Console — dark ── */}
-      <section className="bg-slate-950 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      {/* ── Agent Console — light, as designed ── */}
+      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-7xl">
-          <p className="mb-3 font-mono text-[11px] tracking-[0.18em] text-indigo-400 uppercase">
-            agent.console
-          </p>
           <AgentConsole />
         </div>
       </section>
 
-      {/* ── Capabilities grid — dark ── */}
-      <section className="border-t border-slate-800 bg-slate-950 px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <p className="mb-8 font-mono text-[11px] tracking-[0.18em] text-slate-500 uppercase">
-            agent.capabilities[]
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {agentList.map((agent) => (
-              <div
-                key={agent.id}
-                className="flex flex-col rounded-xl border border-slate-800 bg-slate-900 p-5"
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="font-mono text-[10px] tracking-widest text-indigo-400 uppercase">
-                    {agent.id}
-                  </span>
-                  <span className="font-mono text-[10px] text-slate-600">{agent.status}</span>
-                </div>
-                <p className="mb-4 text-sm font-semibold leading-snug text-slate-100">
-                  {agent.name}
-                </p>
-                <ul className="mt-auto space-y-2.5">
-                  {Object.values(agent.checks).map((check, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="mt-px font-mono text-indigo-500 select-none">›</span>
-                      <span className="font-mono text-[11px] leading-5 text-slate-400">{check}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+      {/* ── Agent trace + capabilities — dark ── */}
+      <section className="bg-slate-950 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-7xl space-y-16">
+
+          {/* Trace logs */}
+          <div>
+            <p className="mb-8 font-mono text-[11px] tracking-[0.2em] text-slate-500 uppercase">
+              agent.trace_log[]
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {agentList.map((agent) => {
+                const trace = TRACES[agent.id] ?? [];
+                return (
+                  <div
+                    key={agent.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+                  >
+                    <div className="mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="font-mono text-[11px] text-slate-300">
+                        agent/{agent.id}
+                      </span>
+                      <span className="ml-auto font-mono text-[10px] text-indigo-400">
+                        {agent.status}
+                      </span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {trace.map((line, i) => (
+                        <li key={i} className="flex items-baseline gap-3">
+                          <span className="font-mono text-[10px] text-slate-600 select-none">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span className="font-mono text-[11px] text-indigo-300">
+                            {line.fn}
+                          </span>
+                          <span className="ml-auto font-mono text-[11px] text-slate-500 shrink-0">
+                            {line.result}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Guardrail banner */}
-          <div className="mt-8 flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-900/60 px-5 py-4">
+          {/* Capabilities grid */}
+          <div>
+            <p className="mb-8 font-mono text-[11px] tracking-[0.2em] text-slate-500 uppercase">
+              agent.capabilities[]
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {agentList.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+                >
+                  <p className="mb-4 text-sm font-semibold text-slate-100">{agent.name}</p>
+                  <ul className="space-y-2.5">
+                    {Object.values(agent.checks).map((check, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-px font-mono text-[11px] text-indigo-500 select-none">›</span>
+                        <span className="font-mono text-[11px] leading-5 text-slate-400">
+                          {check}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Guardrail */}
+          <div className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-900/60 px-5 py-4">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
             <p className="font-mono text-[11px] leading-5 text-slate-400">{t.guardrail}</p>
           </div>
+
         </div>
       </section>
 
