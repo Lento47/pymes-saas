@@ -120,8 +120,11 @@ export class WhatsAppWebhookController {
         Buffer.from(signature),
         Buffer.from(expected),
       );
-    } catch {
-      return false;
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      // SECURITY: Any error in signature verification must reject the webhook,
+      // never silently allow it through (e.g. crypto errors, malformed signature)
+      throw new UnauthorizedException('Webhook signature verification failed');
     }
   }
 }

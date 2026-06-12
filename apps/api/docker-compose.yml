@@ -4,7 +4,7 @@ services:
     container_name: pymes-pg
     environment:
       POSTGRES_USER: ${DB_USER:-pymes}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-pymes123}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
       POSTGRES_DB: ${DB_NAME:-saas_db}
     ports:
       - "5433:5432"
@@ -39,7 +39,7 @@ services:
     container_name: pymes-minio
     environment:
       MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minio}
-      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minio123}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:?STORAGE_SECRET_KEY must be set}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -62,7 +62,7 @@ services:
     env_file: .env
     environment:
       # Red Docker: sustituye localhost/127.0.0.1 del .env local
-      DATABASE_URL: postgresql://${DB_USER:-pymes}:${DB_PASSWORD:-pymes123}@postgres:5432/${DB_NAME:-saas_db}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-pymes}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:-saas_db}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       STORAGE_ENDPOINT: http://minio:9000

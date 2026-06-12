@@ -8,9 +8,21 @@ import {
   MessageBody,
   ConnectedSocket,
 } from "@nestjs/websockets";
+import { WsException } from "@nestjs/websockets";
 import { JwtService } from "@nestjs/jwt";
 import { Server, Socket } from "socket.io";
 import { PrismaService } from "../common/prisma/prisma.service";
+
+// ─── Security limits ──────────────────────────────────────────────────────────
+const MAX_CONNECTIONS_PER_WORKSPACE = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000; // 60 seconds
+const RATE_LIMIT_MAX_EVENTS = 100;   // max events per window per socket
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RateLimitEntry {
+  count: number;
+  windowStart: number;
+}
 
 // Lazy-load to avoid circular dependency
 type CallsServiceType = {
@@ -53,6 +65,12 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(EventsGateway.name);
   private callsService: CallsServiceType | null = null;
 
+  /** Active connection count per workspace. */
+  private readonly workspaceConnections = new Map<string, number>();
+
+  /** Per-socket sliding-window rate limit state. */
+  private readonly rateLimitMap = new Map<string, RateLimitEntry>();
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
@@ -64,6 +82,41 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   setCallsService(service: CallsServiceType) {
     this.callsService = service;
+  }
+
+  // ── Internal helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Returns true if the socket has exceeded the rate limit for the current
+   * window. Increments the counter on each call.
+   */
+  private isRateLimited(socketId: string): boolean {
+    const now = Date.now();
+    let entry = this.rateLimitMap.get(socketId);
+
+    if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+      entry = { count: 1, windowStart: now };
+      this.rateLimitMap.set(socketId, entry);
+      return false;
+    }
+
+    entry.count += 1;
+    return entry.count > RATE_LIMIT_MAX_EVENTS;
+  }
+
+  /** Clean up per-socket tracking state on disconnect. */
+  private cleanupSocket(client: Socket): void {
+    this.rateLimitMap.delete(client.id);
+
+    const workspaceId: string | undefined = client.data?.workspaceId;
+    if (workspaceId) {
+      const current = this.workspaceConnections.get(workspaceId) ?? 0;
+      if (current <= 1) {
+        this.workspaceConnections.delete(workspaceId);
+      } else {
+        this.workspaceConnections.set(workspaceId, current - 1);
+      }
+    }
   }
 
   // ── Conexión ───────────────────────────────────────────────────────────────
@@ -83,19 +136,34 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         role: string;
       }>(token);
 
+      // ── Connection cap per workspace ────────────────────────────────────────
+      const workspaceId = payload.workspace_id;
+      const currentCount = this.workspaceConnections.get(workspaceId) ?? 0;
+
+      if (currentCount >= MAX_CONNECTIONS_PER_WORKSPACE) {
+        this.logger.warn(
+          `Connection cap reached for workspace ${workspaceId} — rejecting ${client.id}`,
+        );
+        client.disconnect(true);
+        return;
+      }
+
+      this.workspaceConnections.set(workspaceId, currentCount + 1);
+      // ───────────────────────────────────────────────────────────────────────
+
       // Guardar contexto en el socket
       client.data.userId = payload.sub;
-      client.data.workspaceId = payload.workspace_id;
+      client.data.workspaceId = workspaceId;
       client.data.role = payload.role;
 
       // Unirse a rooms automáticas
-      await client.join(`workspace:${payload.workspace_id}`);
+      await client.join(`workspace:${workspaceId}`);
       await client.join(`user:${payload.sub}`);
 
-      this.logger.debug(`Connected: ${payload.email} (workspace:${payload.workspace_id})`);
+      this.logger.debug(`Connected: ${payload.email} (workspace:${workspaceId})`);
     } catch {
       this.logger.warn(`Rejected connection: ${client.id} — invalid token`);
-      client.disconnect();
+      client.disconnect(true);
     }
   }
 
@@ -107,6 +175,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
     }
     this.logger.debug(`Disconnected: ${client.id}`);
+    this.cleanupSocket(client);
   }
 
   // ── Eventos del cliente ────────────────────────────────────────────────────
@@ -115,8 +184,20 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage("join:conversation")
   async handleJoinConversation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() conversationId: string,
+    @MessageBody() conversationId: unknown,
   ) {
+    // ── Rate limit ────────────────────────────────────────────────────────────
+    if (this.isRateLimited(client.id)) {
+      this.logger.warn(`Rate limit exceeded for socket ${client.id} — disconnecting`);
+      client.disconnect(true);
+      throw new WsException('Rate limit exceeded');
+    }
+
+    // ── DTO validation ────────────────────────────────────────────────────────
+    if (typeof conversationId !== 'string' || conversationId.trim() === '') {
+      throw new WsException('Invalid payload: conversationId must be a non-empty string');
+    }
+
     const workspaceId = client.data.workspaceId as string | undefined;
     if (!workspaceId) {
       return { ok: false, error: "Unauthenticated" };
@@ -136,15 +217,34 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage("leave:conversation")
   async handleLeaveConversation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() conversationId: string,
+    @MessageBody() conversationId: unknown,
   ) {
+    // ── Rate limit ────────────────────────────────────────────────────────────
+    if (this.isRateLimited(client.id)) {
+      this.logger.warn(`Rate limit exceeded for socket ${client.id} — disconnecting`);
+      client.disconnect(true);
+      throw new WsException('Rate limit exceeded');
+    }
+
+    // ── DTO validation ────────────────────────────────────────────────────────
+    if (typeof conversationId !== 'string' || conversationId.trim() === '') {
+      throw new WsException('Invalid payload: conversationId must be a non-empty string');
+    }
+
     await client.leave(`conversation:${conversationId}`);
     return { ok: true };
   }
 
   /** Ping de keepalive */
   @SubscribeMessage("ping")
-  handlePing() {
+  handlePing(@ConnectedSocket() client: Socket) {
+    // ── Rate limit ────────────────────────────────────────────────────────────
+    if (this.isRateLimited(client.id)) {
+      this.logger.warn(`Rate limit exceeded for socket ${client.id} — disconnecting`);
+      client.disconnect(true);
+      throw new WsException('Rate limit exceeded');
+    }
+
     return { pong: true, ts: Date.now() };
   }
 

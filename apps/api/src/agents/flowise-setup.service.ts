@@ -66,22 +66,17 @@ export class FlowiseSetupService {
   ) {}
 
   /**
-   * Returns the overrideConfig.vars object injected at prediction time
-   * so Flowise Custom Tools can access $vars.GITHUB_TOKEN, $vars.RAILWAY_TOKEN, etc.
+   * Returns the overrideConfig.vars object injected at prediction time.
+   *
+   * SECURITY (HIGH-05): Only forward non-secret tenant context (WORKSPACE_SLUG).
+   * API keys (GITHUB_TOKEN, RAILWAY_API_TOKEN, RAILWAY_SERVICE_ID,
+   * PYMESHUB_FOUNDER_API_KEY, GATEWAY_KEY_DEEPSEEK) must be configured
+   * server-side in Flowise's tool/credential settings — never passed here,
+   * as they would be exposed to the Flowise runtime and to prompt injection
+   * from untrusted inbound messages.
    */
   getPredictionVars(workspaceSlug?: string): Record<string, string> {
     const vars: Record<string, string> = {};
-    const gh = this.config.get<string>("GITHUB_TOKEN");
-    const rw = this.config.get<string>("RAILWAY_API_TOKEN");
-    const rwSvc = this.config.get<string>("RAILWAY_SERVICE_ID");
-    const pk = this.config.get<string>("PYMESHUB_FOUNDER_API_KEY");
-    const ds = this.config.get<string>("GATEWAY_KEY_DEEPSEEK");
-
-    if (gh) vars.GITHUB_TOKEN = gh;
-    if (rw) vars.RAILWAY_TOKEN = rw;
-    if (rwSvc) vars.RAILWAY_SERVICE_ID = rwSvc;
-    if (pk) vars.PYMESHUB_API_KEY = pk;
-    if (ds) vars.GATEWAY_KEY_DEEPSEEK = ds;
     if (workspaceSlug) vars.WORKSPACE_SLUG = workspaceSlug;
     return vars;
   }

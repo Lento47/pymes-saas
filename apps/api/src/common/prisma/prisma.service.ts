@@ -20,8 +20,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       keepAlive: true,
       keepAliveInitialDelayMillis: 30000,
       application_name: `pymeshub-api-${process.pid}`,
+      // SECURITY (HIGH-09): Enforce SSL certificate validation in production.
+      // rejectUnauthorized: false would allow MITM attacks by accepting any cert.
       ssl: isProduction
-        ? { rejectUnauthorized: false }
+        ? { rejectUnauthorized: true }
         : false,
     });
 

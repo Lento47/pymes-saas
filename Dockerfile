@@ -38,5 +38,10 @@ EXPOSE 4000
 COPY entrypoint.sh /app/
 RUN chmod +x /app/entrypoint.sh
 
+# Security: do not run as root
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser
+USER appuser
+
 # Run migrations then start API
 ENTRYPOINT ["/app/entrypoint.sh"]
