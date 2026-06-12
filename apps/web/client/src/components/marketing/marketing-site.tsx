@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle,
@@ -679,10 +679,12 @@ export function FinalCta() {
 export function ProductPageHero({
   badge,
   title,
+  titleNode,
   subtitle,
 }: {
   badge: string;
   title: string;
+  titleNode?: React.ReactNode;
   subtitle: string;
 }) {
   const { messages } = useI18n();
@@ -695,7 +697,7 @@ export function ProductPageHero({
           <Badge tone="primary">{badge}</Badge>
         </div>
         <h1 className="mx-auto max-w-3xl text-balance text-4xl font-semibold tracking-[-0.06em] text-slate-950 sm:text-6xl lg:text-7xl lg:leading-[0.95]">
-          {title}
+          {titleNode ?? title}
         </h1>
         <p className="mx-auto mt-7 max-w-2xl text-balance text-lg leading-8 text-slate-600">{subtitle}</p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
