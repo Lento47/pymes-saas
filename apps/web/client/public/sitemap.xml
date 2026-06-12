@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://pymeshub.lat/</loc></url>
-  <url><loc>https://pymeshub.lat/pricing</loc></url>
-  <url><loc>https://pymeshub.lat/whatsapp-shared-inbox</loc></url>
-  <url><loc>https://pymeshub.lat/crm-for-smbs</loc></url>
-  <url><loc>https://pymeshub.lat/client-management</loc></url>
-  <url><loc>https://pymeshub.lat/workflow-automation</loc></url>
-  <url><loc>https://pymeshub.lat/whatsapp-crm</loc></url>
-  <url><loc>https://pymeshub.lat/invoicing</loc></url>
-  <url><loc>https://pymeshub.lat/team-inbox</loc></url>
-  <url><loc>https://pymeshub.lat/documentation</loc></url>
-  <url><loc>https://pymeshub.lat/legal</loc></url>
+  <url><loc>https://pymeshub.lat/</loc><priority>1.0</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://pymeshub.lat/pricing</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://pymeshub.lat/platform</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/ai-agents</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/billing-workflows</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/security</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/whatsapp-shared-inbox</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/crm-for-smbs</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/client-management</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/workflow-automation</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/whatsapp-crm</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/invoicing</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/team-inbox</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/documentation</loc><priority>0.5</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/legal</loc><priority>0.4</priority><changefreq>yearly</changefreq></url>
 </urlset>
