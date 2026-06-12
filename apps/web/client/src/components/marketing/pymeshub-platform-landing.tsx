@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/marketing/footer";
 import { ScrambleText } from "@/components/marketing/scramble-text";
+import { BLOCK_CHARS } from "@/hooks/use-scramble-text";
 import {
   AgentConsole,
   AutomationRecipe,
@@ -130,7 +131,7 @@ export function PymesHubPlatformLanding() {
                       the controlled-AI value prop without overwhelming. */}
                   {t.agents.title.split(/(prepares)/i).map((part, i) =>
                     /prepares/i.test(part) ? (
-                      <ScrambleText key={i} duration={900} delay={2400}>
+                      <ScrambleText key={i} duration={900} delay={2400} chars={BLOCK_CHARS}>
                         {part}
                       </ScrambleText>
                     ) : (
@@ -144,7 +145,7 @@ export function PymesHubPlatformLanding() {
                     the intelligent-processing value prop in the agents section. */}
                 {t.agents.subtitle.split(/(classify)/i).map((part, i) =>
                   /classify/i.test(part) ? (
-                    <ScrambleText key={i} duration={900} delay={1800}>
+                    <ScrambleText key={i} duration={900} delay={1800} chars={BLOCK_CHARS}>
                       {part}
                     </ScrambleText>
                   ) : (

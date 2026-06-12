@@ -5,23 +5,17 @@ interface ScrambleTextProps {
   duration?: number;
   delay?: number;
   className?: string;
+  chars?: string[];
 }
 
-/**
- * Renders text that "decodes" from random block characters (░▒▓█)
- * to the real text. Resolves left-to-right with terminal aesthetics.
- * Runs once on mount. Respects prefers-reduced-motion.
- *
- * Why "conversación": it's the core concept of PymesHub (conversational
- * operations) and sits in the most visually prominent position of the H1.
- */
 export function ScrambleText({
   children,
   duration,
   delay,
   className,
+  chars,
 }: ScrambleTextProps) {
-  const { display } = useScrambleText(children, { duration, delay });
+  const { display } = useScrambleText(children, { duration, delay, chars });
 
   return (
     <span
