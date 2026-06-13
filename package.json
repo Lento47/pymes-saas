@@ -47,7 +47,8 @@
       "postcss": ">=8.5.10",
       "@opentelemetry/exporter-prometheus": ">=0.217.0",
       "@nestjs/core": ">=11.1.18",
-      "ioredis": "5.11.0"
+      "ioredis": "5.11.0",
+      "esbuild": ">=0.28.1"
     }
   }
 }
