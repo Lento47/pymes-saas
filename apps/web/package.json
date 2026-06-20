@@ -58,7 +58,7 @@
     "express": "^5.0.1",
     "framer-motion": "^12.40.0",
     "helmet": "^8.2.0",
-    "http-proxy-middleware": "^4.1.0",
+    "http-proxy-middleware": "^4.1.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
     "nanoid": "^5.1.11",
