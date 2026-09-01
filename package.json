@@ -19,7 +19,7 @@
     "typecheck": "pnpm -r check"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.62.1",
     "wait-on": "^8.0.1"
   },
   "engines": {
