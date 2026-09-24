@@ -1,0 +1,11 @@
+# Wrangler's build output and local state — the local D1 database lives in .wrangler.
+/dist
+/.wrangler
+/.turbo
+/node_modules
+
+# Local secrets. `.dev.vars.example` documents the shape and is committed; a filled-in
+# copy is never.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

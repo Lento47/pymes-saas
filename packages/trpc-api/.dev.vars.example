@@ -1,0 +1,66 @@
+# Local secrets for `wrangler dev`, as an example. Copy to `.dev.vars` and fill in.
+#
+#   cp apps/api/.dev.vars.example apps/api/.dev.vars
+#
+# `.dev.vars` is gitignored and is never committed. Nothing here ships: a deployed
+# Worker gets these with `wrangler secret put NAME`, which is why they are not in
+# `wrangler.toml` — a secret in a committed file is a secret in the git history, and
+# rotating it does not remove it from there.
+#
+# With none of this set the Worker still boots and still serves its public reads, and
+# answers every authenticated request with 401 rather than trusting a token it cannot
+# verify, and every `/auth/*` route with 503. That is the intended behaviour of an
+# unconfigured install, not a bug: it fails closed.
+
+# ---------------------------------------------------------------------------
+# Better Auth — identity, in D1. It answers "who is this person" and owns nothing
+# else: no products, no orders, no memberships. Those live in D1, written only by this
+# Worker, and Better Auth's own accounts live there too, in `user` and the `auth_*`
+# tables. There is no second project and no second key to point at.
+# ---------------------------------------------------------------------------
+
+# The signing secret for every session Better Auth issues. `apps/api/src/auth.ts`
+# builds no instance unless it is at least 32 characters, and with no instance
+# `/auth/*` answers 503 `auth_not_configured` while every authenticated route answers
+# 401 — the fail-closed state described above.
+#
+# There is deliberately no placeholder on the next line. The check is a length check,
+# so a fake 32-character value would be *accepted*: the Worker would sign real sessions
+# with a secret in the repository, and anyone who reads it can mint a session for any
+# user. Committed is committed — visibility does not enter into it, and a secret in git
+# history is one `git push` from being read. An empty one cannot be mistaken for a
+# working install.
+# Generate with: openssl rand -base64 32
+# AUTH_SECRET=""
+
+# `AUTH_URL` is not here, because it is not a secret: `wrangler.toml` already sets it
+# in `[vars]` for `wrangler dev` (`http://localhost:8787`) and per environment for a
+# deploy. Set it in this file only to point a local Worker somewhere else, and remember
+# that it is what decides whether session cookies are marked `Secure`.
+# AUTH_URL="http://localhost:8787"
+
+# `CORS_ORIGINS` is not here either, and this file could not set it if it were: a name
+# the config already declares takes the config's value, and `wrangler.toml` declares
+# this one in every environment. Dev's `[vars]` names `http://localhost:3000` — the web
+# dev server — so a local sign-in works once `AUTH_SECRET` above is set. Point the local
+# Worker at a different web origin with `--var CORS_ORIGINS:…`, which *does* override a
+# declared entry, and remember that no allowed origin means the browser's `/auth/*`
+# request is answered 403 with no `Access-Control-*` header at all — a sign-in that
+# fails while the Worker's log looks healthy. `docs/environment.md` has the measurements.
+
+# ---------------------------------------------------------------------------
+# Supabase placeholders — kept, and not read. Identity is `AUTH_SECRET` above and
+# lives in this Worker's own D1 database; nothing here imports these names today.
+# They stay so the option of Supabase-backed identity remains open and a `.dev.vars`
+# copied from an older revision still resolves rather than silently configuring
+# nothing. Setting them on their own does not sign anybody in.
+#
+# Server-side only, either way. A service-role key or a JWT secret in a browser or a
+# phone bundle is a public write credential for every table, so neither may leave
+# this file and `wrangler secret put`.
+# ---------------------------------------------------------------------------
+SUPABASE_URL="https://placeholder-project.supabase.co"
+SUPABASE_ANON_KEY="PLACEHOLDER_SUPABASE_ANON_KEY"
+SUPABASE_SERVICE_ROLE_KEY="PLACEHOLDER_SUPABASE_SERVICE_ROLE_KEY"
+SUPABASE_JWT_SECRET="PLACEHOLDER_SUPABASE_JWT_SECRET"
+# SUPABASE_JWT_AUDIENCE="authenticated"

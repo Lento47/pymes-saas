@@ -1,0 +1,38 @@
+{
+	"name": "@pymeshub/db",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"exports": {
+		".": "./src/index.ts",
+		"./client": "./src/client.ts",
+		"./geo": "./src/geo.ts",
+		"./schema": "./src/schema.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "bun test",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate:local": "wrangler d1 migrations apply pymhubdb --local -c ../../apps/api/wrangler.toml",
+		"db:migrate:remote": "wrangler d1 migrations apply pymhubdb --remote --env production -c ../../apps/api/wrangler.toml",
+		"db:migrate:staging": "wrangler d1 migrations apply pymeshub-staging --remote --env staging -c ../../apps/api/wrangler.toml",
+		"db:seed": "bun run src/seed.ts && wrangler d1 execute pymhubdb --local -c ../../apps/api/wrangler.toml --file ./seed.sql && wrangler d1 execute pymhubdb --local -c ../../apps/api/wrangler.toml --file ./seed-credentials.sql",
+		"db:seed:remote": "bun run src/seed.ts && wrangler d1 execute pymhubdb --remote --env production -c ../../apps/api/wrangler.toml --file ./seed.sql",
+		"db:seed:staging": "bun run src/seed.ts && wrangler d1 execute pymeshub-staging --remote --env staging -c ../../apps/api/wrangler.toml --file ./seed.sql",
+		"lint": "biome check .",
+		"clean": "rm -rf .turbo node_modules seed.sql seed-credentials.sql"
+	},
+	"dependencies": {
+		"@pymeshub/shared": "workspace:*",
+		"drizzle-orm": "^0.45.2"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20260920.1",
+		"@pymeshub/typescript-config": "workspace:*",
+		"@types/node": "^26.6.2",
+		"drizzle-kit": "^0.31.10",
+		"typescript": "7.0.2",
+		"wrangler": "^4.135.0"
+	}
+}

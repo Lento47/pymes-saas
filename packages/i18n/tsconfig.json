@@ -1,0 +1,23 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "@pymeshub/typescript-config/internal-package.json",
+	"compilerOptions": {
+		/**
+		 * `es2022` and no `DOM`, exactly like the Worker preset. This package is imported
+		 * by a Worker, a browser and a phone, so the only library it may lean on is one
+		 * all three have — and a `lib` that includes `DOM` would happily typecheck
+		 * `document` in code that is about to run inside a Durable Object.
+		 *
+		 * `Intl.DateTimeFormat` and `Intl.NumberFormat` come from this lib — and this lib
+		 * is also why `Intl.PluralRules` used to *typecheck* here while crashing on every
+		 * phone: a `lib` entry says a type exists, never that the runtime has it. Hermes
+		 * ships the first two and not the third, so `plural()` below carries its own
+		 * table instead of reaching for the platform. Nothing in this package needs
+		 * `Intl.PluralRules` any more, which is the point.
+		 */
+		"lib": ["es2022"],
+		"types": ["bun"]
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules"]
+}

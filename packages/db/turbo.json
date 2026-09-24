@@ -1,0 +1,44 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"db:generate": {
+			"cache": false,
+			"inputs": ["$TURBO_DEFAULT$", "src/schema.ts", "drizzle.config.ts"],
+			"outputs": ["migrations/**"]
+		},
+		"db:migrate:local": {
+			"cache": false,
+			"passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+		},
+		"db:migrate:remote": {
+			"cache": false,
+			"passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+		},
+		"db:migrate:staging": {
+			"cache": false,
+			"passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+		},
+		"db:seed": {
+			"cache": false,
+			"outputs": ["seed.sql"]
+		},
+		"db:seed:remote": {
+			"cache": false,
+			"outputs": ["seed.sql"],
+			"passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+		},
+		"db:seed:staging": {
+			"cache": false,
+			"outputs": ["seed.sql"],
+			"passThroughEnv": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+		},
+		"check-types": {
+			"dependsOn": ["$TURBO_EXTENDS$"],
+			"inputs": ["$TURBO_DEFAULT$", "src/**", "test/**", "tsconfig.json"]
+		},
+		"test": {
+			"inputs": ["$TURBO_DEFAULT$", "src/**", "test/**"]
+		}
+	}
+}

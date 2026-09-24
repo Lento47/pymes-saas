@@ -1,0 +1,13 @@
+{
+	"name": "@pymeshub/typescript-config",
+	"version": "0.0.0",
+	"private": true,
+	"license": "MIT",
+	"exports": {
+		"./base.json": "./base.json",
+		"./internal-package.json": "./internal-package.json",
+		"./nextjs.json": "./nextjs.json",
+		"./react-library.json": "./react-library.json",
+		"./worker.json": "./worker.json"
+	}
+}

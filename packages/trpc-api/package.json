@@ -1,0 +1,45 @@
+{
+	"name": "api",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"exports": {
+		"./app-router": "./src/app-router.ts"
+	},
+	"scripts": {
+		"build": "wrangler deploy --dry-run --env production --outdir dist",
+		"check-types": "tsc --noEmit",
+		"deploy": "wrangler deploy --env production",
+		"deploy:staging": "wrangler deploy --env staging",
+		"dev": "wrangler dev",
+		"dev:remote": "wrangler dev --remote --env staging",
+		"lint": "biome check .",
+		"tail": "wrangler tail --env production --format pretty",
+		"tail:staging": "wrangler tail --env staging --format pretty",
+		"test": "bun test",
+		"clean": "rm -rf .turbo dist .wrangler node_modules"
+	},
+	"dependencies": {
+		"@better-auth/drizzle-adapter": "^1.7.5",
+		"@hono/trpc-server": "^0.4.2",
+		"@pymeshub/auth": "workspace:*",
+		"@pymeshub/db": "workspace:*",
+		"@pymeshub/env": "workspace:*",
+		"@pymeshub/shared": "workspace:*",
+		"@trpc/server": "^11.19.0",
+		"better-auth": "^1.7.5",
+		"drizzle-orm": "^0.45.2",
+		"hono": "^4.13.8",
+		"superjson": "^2.2.6",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20260920.1",
+		"@pymeshub/typescript-config": "workspace:*",
+		"@types/bun": "^1.4.2",
+		"@types/node": "^26.6.2",
+		"typescript": "7.0.2",
+		"wrangler": "^4.135.0"
+	}
+}

@@ -1,0 +1,26 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		/**
+		 * The `SUPABASE_*` names are declared here and **nothing in this package
+		 * reads them** — identity is Better Auth in the Worker's D1 database, and
+		 * the marketplace client reaches it over `/auth/*`. They are kept the same
+		 * way the placeholders are kept in `.env.example`: so that moving identity
+		 * back onto Supabase does not rediscover, silently, that Turborepo hides an
+		 * undeclared variable from the task that needed it.
+		 *
+		 * There is no `auth:generate` any more. Better Auth's CLI generated a
+		 * schema file for Prisma to migrate, and Prisma is not in this stack.
+		 */
+		"check-types": {
+			"passThroughEnv": [
+				"SUPABASE_URL",
+				"SUPABASE_ANON_KEY",
+				"SUPABASE_SERVICE_ROLE_KEY",
+				"SUPABASE_JWT_SECRET",
+				"SUPABASE_JWT_AUDIENCE"
+			]
+		}
+	}
+}

@@ -1,0 +1,9 @@
+# Emitted by `db:seed` from src/seed.ts. Generated, and large enough that a diff
+# of it belongs in a review of the seed rather than in the tree.
+seed.sql
+
+# Also emitted by `db:seed`, and ignored for the same reason — but it would be ignored
+# even if it were small. It carries a password hash for every seeded account, and the
+# password behind it is written in plain text in src/seed.ts. Both facts belong in a
+# local database; neither belongs in a commit.
+seed-credentials.sql
