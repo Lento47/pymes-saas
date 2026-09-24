@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { businessHoursSchema } from "./business";
+import { businessHoursEntrySchema, businessHoursSchema } from "./business";
 import { latitudeSchema, longitudeSchema, shortText } from "./common";
 
 export const LOCATION_OPERATIONAL_STATUSES = [
@@ -66,6 +66,23 @@ export const merchantLocationSchema = z.object({
 	status: z.enum(LOCATION_OPERATIONAL_STATUSES),
 	pausedAt: z.date().nullable(),
 	resumeAt: z.date().nullable(),
+	/**
+	 * The one opening window that matters right now: today's `businessHoursEntrySchema`
+	 * for this location, resolved on the server against the shop's timezone.
+	 *
+	 * Derived rather than stored — a location's `hours` is a week's entries and the
+	 * question a caller actually asks is "is it open this minute" — which is why it is
+	 * **optional** here and not a column. Absent means the read has nothing to say about
+	 * today (no hours recorded, or the timezone has not rolled over yet); `null` means
+	 * today's entry exists and says `isClosed`. `app/(business)/index.tsx` draws the
+	 * dashboard's today line only when one is there, and its guard treats both the same
+	 * way, so the distinction costs a reader nothing and keeps the writer honest.
+	 *
+	 * One day's entry rather than a bare `{opensMinute, closesMinute}` pair: it is the
+	 * same object `hours` holds, so the minute range and the closes-after-opens rule
+	 * live in one place instead of a second copy of both.
+	 */
+	todayHours: businessHoursEntrySchema.nullable().optional(),
 	createdAt: z.date(),
 });
 export type MerchantLocation = z.infer<typeof merchantLocationSchema>;

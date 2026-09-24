@@ -429,54 +429,54 @@ export default function MerchantHome() {
 								</Text>
 								{selectedLocation ? (
 									<View style={styles.operatingState}>
-									<Pressable
-										onPress={() => setLocationPickerOpen(true)}
-										disabled={(locations.data?.length ?? 0) < 2}
-										disabledOpacity={1}
-										accessibilityRole="button"
-										accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
-										accessibilityHint={
-											(locations.data?.length ?? 0) > 1
-												? t("biz.locations.select")
-												: undefined
-										}
-										style={styles.locationLine}
-									>
-										<Ionicons
-											name="location-outline"
-											size={14}
-											color={colors.mutedForeground}
-										/>
-										<Text variant="label" tone="muted" numberOfLines={1}>
-											{(locations.data?.length ?? 0) === 1 &&
-											selectedLocation.name === shop.businessName
-												? (selectedLocation.city ?? selectedLocation.name)
-												: [selectedLocation.name, selectedLocation.city]
-														.filter(Boolean)
-														.join(" · ")}
-										</Text>
-										{(locations.data?.length ?? 0) > 1 ? (
+										<Pressable
+											onPress={() => setLocationPickerOpen(true)}
+											disabled={(locations.data?.length ?? 0) < 2}
+											disabledOpacity={1}
+											accessibilityRole="button"
+											accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
+											accessibilityHint={
+												(locations.data?.length ?? 0) > 1
+													? t("biz.locations.select")
+													: undefined
+											}
+											style={styles.locationLine}
+										>
 											<Ionicons
-												name="chevron-down"
+												name="location-outline"
 												size={14}
 												color={colors.mutedForeground}
 											/>
+											<Text variant="label" tone="muted" numberOfLines={1}>
+												{(locations.data?.length ?? 0) === 1 &&
+												selectedLocation.name === shop.businessName
+													? (selectedLocation.city ?? selectedLocation.name)
+													: [selectedLocation.name, selectedLocation.city]
+															.filter(Boolean)
+															.join(" · ")}
+											</Text>
+											{(locations.data?.length ?? 0) > 1 ? (
+												<Ionicons
+													name="chevron-down"
+													size={14}
+													color={colors.mutedForeground}
+												/>
+											) : null}
+										</Pressable>
+										{selectedLocation.todayHours ? (
+											<Text variant="caption" tone="muted">
+												{t("biz.dashboard.today")} ·{" "}
+												{formatMinuteOfDay(
+													selectedLocation.todayHours.opensMinute,
+													intlLocale,
+												)}
+												–
+												{formatMinuteOfDay(
+													selectedLocation.todayHours.closesMinute,
+													intlLocale,
+												)}
+											</Text>
 										) : null}
-									</Pressable>
-									{selectedLocation.todayHours ? (
-										<Text variant="caption" tone="muted">
-											{t("biz.dashboard.today")} ·{" "}
-											{formatMinuteOfDay(
-												selectedLocation.todayHours.opensMinute,
-												intlLocale,
-											)}
-											–
-											{formatMinuteOfDay(
-												selectedLocation.todayHours.closesMinute,
-												intlLocale,
-											)}
-										</Text>
-									) : null}
 									</View>
 								) : null}
 								{selectedLocation ? (

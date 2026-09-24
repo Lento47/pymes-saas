@@ -19,6 +19,7 @@
     "typecheck": "pnpm -r check"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
     "@playwright/test": "^1.49.0",
     "wait-on": "^8.0.1"
   },
@@ -27,7 +28,11 @@
     "pnpm": ">=10"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["tesseract.js", "sharp", "bcrypt"],
+    "onlyBuiltDependencies": [
+      "tesseract.js",
+      "sharp",
+      "bcrypt"
+    ],
     "overrides": {
       "protobufjs": ">=7.5.8",
       "@protobufjs/utf8": ">=1.1.1",
