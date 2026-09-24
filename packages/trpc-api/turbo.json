@@ -1,0 +1,19 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"outputs": ["dist/**"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"deploy": {
+			"cache": false
+		},
+		"deploy:staging": {
+			"cache": false
+		}
+	}
+}

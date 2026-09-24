@@ -1,0 +1,17 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "./base.json",
+	"compilerOptions": {
+		"module": "Preserve",
+		"moduleResolution": "Bundler",
+		"noEmit": true,
+		/**
+		 * No DOM lib, deliberately. A Worker has `fetch` and `crypto.subtle` and
+		 * no document, so a `lib` that includes DOM is a `lib` that will happily
+		 * typecheck `localStorage` in code that can never run — and the failure
+		 * then appears at runtime in production rather than here.
+		 */
+		"lib": ["es2022"],
+		"types": ["@cloudflare/workers-types"]
+	}
+}

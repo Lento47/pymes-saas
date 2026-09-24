@@ -1,0 +1,288 @@
+# The PymesHub API — one Worker serving the web app, iOS and Android.
+#
+# Three clients, one database, one authorisation model. That is the whole reason this
+# is a Worker with D1 behind it rather than three backends: a storefront a customer
+# browses in a browser and the same storefront on their phone are the same rows, and
+# the only way to keep them that way is for there to be one writer.
+#
+# What is *not* here: R2. Images are uploaded to a Worker route and stored in R2 in the
+# target design, but the Cloudflare token in this repo has no R2 scope yet, so the
+# binding is omitted rather than added and left to fail at deploy. Uploads are the one
+# feature this blocks; see `docs/environment.md`.
+
+name = "pymeshub-api"
+main = "src/index.ts"
+compatibility_date = "2025-09-20"
+
+# `nodejs_compat` for the transitive dependencies that reach for a Node builtin.
+# Deliberately *not* `nodejs_compat_populate_process_env`: a Worker reads its
+# configuration from `env`, and a `process.env` that appears to work would invite
+# exactly the module-scope config read that `packages/auth` was rewritten to remove.
+compatibility_flags = ["nodejs_compat"]
+
+# Both are inherited by `[env.staging]` and `[env.production]`, which do not redeclare
+# them, so each deployed Worker also answers on
+# `pymeshub-api.<subdomain>.workers.dev` (and `pymeshub-api-staging.…`) beside the origin
+# its `AUTH_URL` names. Worth having: it is the URL a deploy can be smoke-tested at before
+# DNS points anywhere. It is not what gates access — `CORS_ORIGINS` refuses every browser
+# origin it does not name, and the native clients send no `Origin` header at all. The
+# origin `AUTH_URL` names is bound by the `routes` entry inside each environment block
+# below — `workers_dev` only decides whether this second hostname stays. Set
+# `workers_dev = false` inside an environment block if a second hostname is not wanted.
+workers_dev = true
+preview_urls = true
+
+# ---------------------------------------------------------------------------
+# Non-secret configuration. Secrets are never in this file — set them with
+# `wrangler secret put NAME` (see .dev.vars.example for the local equivalents).
+# ---------------------------------------------------------------------------
+[vars]
+ENVIRONMENT = "development"
+API_VERSION = "0.1.0"
+# This block is the **local dev** one — `ENVIRONMENT` above says so — and a dev Worker
+# that names no origin refuses every browser call to `/auth/*` and to `POST /trpc/*`
+# with a 403, which is a sign-in that never leaves the browser. It was `""` here, so
+# `bun run dev` could not sign anybody in even with `AUTH_SECRET` set, and
+# `bun run test:e2e`'s signed-in project could not pass on a fresh clone.
+#
+# Two origins, and both are dev servers on this machine:
+#
+# - `:3000` is the Next app.
+# - `:4173` is Expo's web target — the same React Native screens, rendered through
+#   `react-native-web` in a browser. It has an `Origin` header like any other page, so a
+#   screen that fetches is refused without it, and rendering those screens in a browser
+#   is the only way to see them at all on a machine with no simulator.
+#
+# The doctrine is unchanged and still what a deploy gets: empty allows **no** browser
+# origin rather than all of them, the native apps send no `Origin` header and are
+# unaffected, and `[env.staging.vars]` and `[env.production.vars]` each name their own
+# real origins. Every deploy script passes `--env`, so neither line here is ever in a
+# deployed Worker's allowlist; a bare `wrangler deploy` would take them, and would
+# already be wrong for a second reason — `AUTH_URL` on the next line is localhost too.
+CORS_ORIGINS = "http://localhost:3000,http://localhost:4173"
+AUTH_URL = "http://localhost:8787"
+
+# ---------------------------------------------------------------------------
+# D1 — the only durable store. Migrations live in packages/db/migrations and are
+# applied with `wrangler d1 migrations apply pymhubdb`, which is why the binding and
+# the database name must agree with `packages/db/package.json`'s scripts.
+# ---------------------------------------------------------------------------
+[[d1_databases]]
+binding = "DB"
+database_name = "pymhubdb"
+database_id = "add40616-4e4e-4851-9f2d-0eca6380ca3b"
+migrations_dir = "../../packages/db/migrations"
+
+# ---------------------------------------------------------------------------
+# KV — cache and rate-limit counters. Never a source of truth: everything written
+# here is recomputable from D1, so evicting a key costs a query and not a fact.
+#
+# All three `[[kv_namespaces]]` blocks now carry an `id`. They were minted per account
+# with `wrangler kv namespace create <title>` — an id cannot be invented, which is why
+# these were absent until the namespaces were actually created — and the titles are
+# `pymeshub-cache` (the id below, reused by production) and `pymeshub-cache-staging`.
+# Named after the project rather than after the other applications in the same account,
+# because a wrong id here binds this Worker's cache to someone else's namespace and
+# presents as a cache that never hits rather than as an error.
+#
+# Which id goes where follows the **Worker**, not the block count. There are two
+# deployments here, not three: `[env.production]` deliberately repeats the top-level
+# `name` — and carries the same `database_id` above — so `wrangler deploy` and
+# `wrangler deploy --env production` are the same Worker. Those two blocks must
+# therefore hold the *same* id, and the note that used to stand here said the opposite
+# ("run the command again for each environment rather than reusing one id"). Two
+# different ids would have the two deploy paths rebind one Worker's `CACHE` to two
+# different namespaces on alternate deploys — so a cache that looks like it keeps
+# missing would really be two caches. Staging is the deployment that needs its own id.
+#
+# `wrangler dev` runs against a simulated namespace and needs no id at all, and
+# `wrangler deploy --dry-run` lists the binding without one, so nothing before a real
+# deploy said the line was missing. That is worth remembering: the gap was invisible
+# until the deploy that needed it.
+# ---------------------------------------------------------------------------
+[[kv_namespaces]]
+binding = "CACHE"
+id = "55e69dde0bbf4e1f872ed48fe546cd23"
+
+# ---------------------------------------------------------------------------
+# Queues — order events, so the request that places an order does not wait for a
+# notification to be written. At-least-once, which is why the consumer's writes carry
+# a `dedupeKey` and its insert is `onConflictDoNothing`.
+# ---------------------------------------------------------------------------
+[[queues.producers]]
+binding = "ORDER_EVENTS"
+queue = "pymeshub-order-events"
+
+[[queues.consumers]]
+queue = "pymeshub-order-events"
+max_batch_size = 20
+max_batch_timeout = 10
+max_retries = 5
+# A message that has failed five times is not going to succeed on a sixth. The
+# dead-letter queue is where it goes to be looked at rather than retried forever.
+dead_letter_queue = "pymeshub-order-events-dlq"
+
+# ---------------------------------------------------------------------------
+# The outbox sweep. Every minute, take whatever is unpublished in `outbox_event`
+# and send it.
+#
+# The request path already publishes inline, so this normally finds nothing and
+# costs one indexed read. It exists for the case where that inline send failed —
+# a queue hiccup, or an isolate evicted between the batch committing and the send
+# returning — where it is the difference between a late notification and a
+# customer who was never told.
+#
+# Every minute because the delay it bounds is a customer waiting for a bell. A
+# coarser schedule would make a queue blip look like a missing feature.
+#
+# `triggers` is inherited by the environments below — wrangler copies the cron into
+# every environment block whether or not one is written there — and so now is what a
+# scheduled run needs to read and write: `[env.staging]` and `[env.production]` each
+# declare their own `d1_databases`, `kv_namespaces`, `queues` and
+# `durable_objects.bindings`. That used to be the gap: an environment inherited the
+# cron and none of the bindings, so the sweep there found no `DB` and did nothing
+# while looking scheduled. Anything bound at the top level and not repeated below is
+# still missing in the environments.
+#
+# Which fields an environment inherits is a short list, and the sentence that stood
+# here had it backwards: **`triggers` and `migrations` are inherited; `vars` is not.**
+# Wrangler 4 marks `vars`, `d1_databases`, `kv_namespaces`, `queues` and
+# `durable_objects` as *not inheritable*, and says so out loud — an environment that
+# leaves out `[env.<name>.vars]` while the top level has a `[vars]` gets
+#
+#   "vars" exists at the top level, but not on "env.<name>". This is not what you
+#   probably want, since "vars" is not inherited by environments.
+#
+# and **no vars at all**, not the top level's as a default. Every name the Worker reads
+# at runtime therefore has to be written in each block below — which is why all four
+# appear three times — and a new one added only at the top level is absent from every
+# deploy. `wrangler deploy --dry-run --env production` prints the resolved list; that is
+# how this was checked, and how it should be checked again.
+# ---------------------------------------------------------------------------
+[triggers]
+crons = ["* * * * *"]
+
+# ---------------------------------------------------------------------------
+# One room per live order, for the socket the order's live view is served over at
+# `/orders/:id/live`. Hibernation-capable, so the customer who eventually watches a
+# pizza over that socket for twenty minutes does not keep an isolate awake for twenty
+# minutes.
+#
+# Nothing holds that socket yet: both clients poll (`orders.byId`, and `orders.track`
+# on web), so this room currently fans out to nobody. This note used to say the apps
+# held it while they watched a delivery, which was the intended shape rather than the
+# shipped one — and the distinction is the whole reason hibernation was chosen, so it
+# is worth keeping accurate. See `docs/api-surface.md`, "Live updates".
+# ---------------------------------------------------------------------------
+[[durable_objects.bindings]]
+name = "ORDER_ROOM"
+class_name = "OrderRoom"
+
+# `new_sqlite_classes` rather than `new_classes`: a DO on the SQLite backend is the
+# one Cloudflare offers on the free plan, and the migration tag is permanent — moving
+# to the KV backend later would mean a second class and a data migration for an object
+# that holds one event and a socket set.
+#
+# Written once, here, and inherited by both environments below: `migrations` *is*
+# an inheritable field, unlike the bindings. Redefining it inside `[env.staging]` or
+# `[env.production]` would replace this list for that environment rather than add to
+# it, so the copy of `durable_objects.bindings` those blocks carry is the only part
+# that has to be repeated.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["OrderRoom"]
+
+[observability]
+enabled = true
+
+[env.staging]
+name = "pymeshub-api-staging"
+
+# The hostname this Worker is reached at, bound as a Cloudflare **custom domain** so that
+# the deploy creates the DNS record and the route with it. `AUTH_URL` below names the same
+# origin, `CORS_ORIGINS` allows it as a browser origin, and the smoke test in
+# `docs/environment.md` curls it — but a Worker with no `routes` binds only
+# `pymeshub-api-staging.<subdomain>.workers.dev`, so all three would address a name nothing
+# answers on. That is the one deploy failure here that arrives with no error attached: the
+# upload succeeds, the version is live, and the origin its own config names is not.
+#
+# `custom_domain = true` requires the zone to be in this account, and the hostname to have
+# no DNS record already; either one stops the deploy with an error instead of publishing a
+# Worker nobody can reach. Confirm both before deploying rather than being surprised by it,
+# and delete this line to deploy to the `workers.dev` hostname alone.
+#
+# Per environment rather than once at the top level, because the top-level `name` is
+# production's: one entry up there would bind the local dev environment to a production
+# hostname.
+routes = [{ pattern = "api-staging.pymeshub.lat", custom_domain = true }]
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+API_VERSION = "0.2.0"
+AUTH_URL = "https://api-staging.pymeshub.lat"
+CORS_ORIGINS = "https://staging.pymeshub.lat"
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "pymeshub-staging"
+database_id = "fe386601-8828-466b-a6fd-85ef4992dc22"
+# This one is `pymeshub-staging`, created by `wrangler d1 create pymeshub-staging`, and
+# it is deliberately not production's id above — an id pasted between environments points
+# staging at production's rows, which is the mistake the separate `database_name` exists
+# to prevent. Read the two ids side by side before editing either: the wrong one here is
+# not a staging bug, it is a migration applied against live orders.
+migrations_dir = "../../packages/db/migrations"
+# Staging's **own** id, from `wrangler kv namespace create pymeshub-cache-staging` — this
+# is a different Worker, so it gets a different namespace. See the top-level KV note.
+[[env.staging.kv_namespaces]]
+binding = "CACHE"
+id = "87ab3d4a4f19467faa2f8aca56504d66"
+[[env.staging.queues.producers]]
+binding = "ORDER_EVENTS"
+queue = "pymeshub-order-events-staging"
+[[env.staging.queues.consumers]]
+queue = "pymeshub-order-events-staging"
+max_batch_size = 20
+max_batch_timeout = 10
+max_retries = 5
+dead_letter_queue = "pymeshub-order-events-staging-dlq"
+[[env.staging.durable_objects.bindings]]
+name = "ORDER_ROOM"
+class_name = "OrderRoom"
+
+[env.production]
+name = "pymeshub-api"
+
+# Production's own hostname, bound for the reasons the staging block above gives and one
+# more: `apps/web/wrangler.jsonc` compiles this origin into the browser bundle as `API_URL`,
+# so a deploy with no route would ship a web app whose every request, and the documented
+# `curl`, go to a name that answers nothing.
+routes = [{ pattern = "api.pymeshub.lat", custom_domain = true }]
+
+[env.production.vars]
+ENVIRONMENT = "production"
+API_VERSION = "0.2.0"
+AUTH_URL = "https://api.pymeshub.lat"
+CORS_ORIGINS = "https://pymeshub.lat,https://www.pymeshub.lat"
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "pymhubdb"
+database_id = "add40616-4e4e-4851-9f2d-0eca6380ca3b"
+migrations_dir = "../../packages/db/migrations"
+# The **same** id as the top-level block, not a new one: this is the same Worker (the
+# `name` and the `database_id` below are both deliberate repeats of the top level), so
+# one namespace serves both deploy paths. See the note on the top-level KV block.
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "55e69dde0bbf4e1f872ed48fe546cd23"
+[[env.production.queues.producers]]
+binding = "ORDER_EVENTS"
+queue = "pymeshub-order-events"
+[[env.production.queues.consumers]]
+queue = "pymeshub-order-events"
+max_batch_size = 20
+max_batch_timeout = 10
+max_retries = 5
+dead_letter_queue = "pymeshub-order-events-dlq"
+[[env.production.durable_objects.bindings]]
+name = "ORDER_ROOM"
+class_name = "OrderRoom"

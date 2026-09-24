@@ -1,0 +1,26 @@
+{
+	"name": "@pymeshub/auth",
+	"version": "0.0.0",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./marketplace-client": "./src/marketplace-client.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"lint": "biome check .",
+		"test": "bun test",
+		"clean": "rm -rf .turbo node_modules"
+	},
+	"dependencies": {
+		"@pymeshub/env": "workspace:*"
+	},
+	"devDependencies": {
+		"@pymeshub/typescript-config": "workspace:*",
+		"@types/bun": "^1.4.2",
+		"@types/node": "^26.6.2",
+		"typescript": "7.0.2"
+	}
+}

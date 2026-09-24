@@ -1,0 +1,261 @@
+/**
+ * Spanish — the platform operator's side. Not a shopkeeper's screen with more
+ * buttons: this is the one surface where every action is about somebody else's
+ * business, so the copy is written to make the consequence legible before the click.
+ *
+ * Two rules run through it:
+ *
+ * - **Suspending someone is described by what it does, not by how it feels.**
+ *   "Suspender" alone is a word; `admin.businesses.suspend.help` says the storefront
+ *   disappears and no orders come in. An operator who does not know that will suspend
+ *   a shop on a Friday night.
+ * - **Nothing here is phrased as permanent, because nothing here is.** Every one of
+ *   these is reversible and the copy says so, which is what makes the button safe to
+ *   press when it is genuinely needed.
+ *
+ * Every count in this file is a `key` / `key_plural` pair, read with `tp`. The platform
+ * operator's tables are the densest count surface in the product — a column of "{count}
+ * pedidos" down a page of users is mostly rows of one — and all of them were read with
+ * `t()`, which does no plural selection at all, so a customer with a single order was
+ * listed as "1 pedidos". The pairs below are the fix, and `t()` will not accept them:
+ * see `SingularKey` in `../index.ts`.
+ */
+export const admin = {
+	"admin.title": "Administración",
+	"admin.nav.overview": "Resumen",
+	"admin.nav.businesses": "Negocios",
+	"admin.nav.users": "Usuarios",
+	"admin.nav.orders": "Pedidos",
+	"admin.nav.payouts": "Pagos",
+	"admin.nav.categories": "Categorías",
+	"admin.nav.audit": "Auditoría",
+	"admin.nav.settings": "Ajustes",
+
+	"admin.overview.title": "Resumen",
+	"admin.overview.businesses": "Negocios",
+	"admin.overview.businesses.active": "{count} activo",
+	"admin.overview.businesses.active_plural": "{count} activos",
+	"admin.overview.users": "Usuarios",
+	"admin.overview.orders": "Pedidos",
+	"admin.overview.orders.today": "{count} hoy",
+	"admin.overview.gmv": "Ventas de la plataforma",
+	"admin.overview.commission": "Comisión",
+	"admin.overview.pendingReview": "Por revisar",
+	"admin.overview.recentSignups": "Negocios nuevos",
+	"admin.overview.recentOrders": "Pedidos recientes",
+	"admin.overview.empty": "Sin actividad todavía",
+
+	"admin.businesses.title": "Negocios",
+	"admin.businesses.search": "Buscar por nombre, correo o dirección web",
+	"admin.businesses.empty": "No hay negocios que coincidan",
+	"admin.businesses.filter.all": "Todos",
+	"admin.businesses.filter.verified": "Verificados",
+	"admin.businesses.filter.unverified": "Sin verificar",
+	"admin.businesses.filter.suspended": "Suspendidos",
+	"admin.businesses.status.VERIFIED": "Verificado",
+	"admin.businesses.status.PENDING": "Sin verificar",
+	"admin.businesses.status.SUSPENDED": "Suspendido",
+	"admin.businesses.status.DRAFT": "Borrador",
+	"admin.businesses.status.ACTIVE": "Activo",
+	"admin.businesses.status.CLOSED": "Cerrado",
+	"admin.businesses.volume": "Ventas",
+	"admin.businesses.suspendedBecause": "Suspendido: {reason}",
+	"admin.businesses.owner": "Dueño",
+	"admin.businesses.products": "{count} producto",
+	"admin.businesses.products_plural": "{count} productos",
+	"admin.businesses.orders": "{count} pedido",
+	"admin.businesses.orders_plural": "{count} pedidos",
+	"admin.businesses.joined": "Se unió {date}",
+	"admin.businesses.verify": "Verificar",
+	"admin.businesses.verify.help":
+		"Le pone la marca de verificado. Sube la confianza de los clientes y no cambia nada más.",
+	"admin.businesses.unverify": "Quitar la verificación",
+	"admin.businesses.suspend": "Suspender",
+	"admin.businesses.suspend.help":
+		"Su negocio desaparece de la app y no entran pedidos nuevos. Los pedidos en curso siguen su camino.",
+	"admin.businesses.suspend.reason": "Motivo (lo ve el dueño)",
+	"admin.businesses.suspend.confirm": "¿Suspender {name}?",
+	"admin.businesses.unsuspend": "Reactivar",
+	"admin.businesses.unsuspend.help":
+		"Vuelve a aparecer en la app tal como estaba.",
+	"admin.businesses.impersonate": "Ver como el negocio",
+	"admin.businesses.impersonate.help":
+		"Abres su panel para revisar algo. Queda registrado en la auditoría con tu nombre.",
+	"admin.businesses.impersonate.banner": "Estás viendo el panel de {name}",
+	"admin.businesses.impersonate.exit": "Salir",
+	"admin.businesses.commission": "Comisión",
+	"admin.businesses.commission.help":
+		"Porcentaje vacío significa que usa el de la plataforma.",
+	"admin.businesses.detail": "Detalle del negocio",
+	"admin.businesses.members": "Equipo",
+	"admin.businesses.notFound": "No encontramos este negocio",
+
+	"admin.users.title": "Usuarios",
+	"admin.users.search": "Buscar por nombre o correo",
+	"admin.users.empty": "No hay usuarios que coincidan",
+	"admin.users.filter.all": "Todos",
+	"admin.users.filter.admins": "Administradores",
+	"admin.users.filter.suspended": "Suspendidos",
+	"admin.users.suspended": "Suspendido",
+	"admin.users.role.customer": "Cliente",
+	"admin.users.role.business": "Negocio",
+	"admin.users.role.admin": "Administrador",
+	"admin.users.businesses": "{count} negocio",
+	"admin.users.businesses_plural": "{count} negocios",
+	"admin.users.orders": "{count} pedido",
+	"admin.users.orders_plural": "{count} pedidos",
+	"admin.users.lastSeen": "Última vez {date}",
+	"admin.users.neverSeen": "Nunca entró",
+	"admin.users.suspend": "Suspender cuenta",
+	"admin.users.suspend.help":
+		"No puede entrar. Sus pedidos y sus negocios se quedan como están.",
+	"admin.users.suspend.reason": "Motivo (queda en la auditoría)",
+	"admin.users.suspend.confirm": "¿Suspender la cuenta de {name}?",
+	"admin.users.unsuspend": "Reactivar cuenta",
+	"admin.users.makeAdmin": "Dar acceso de administrador",
+	"admin.users.makeAdmin.help":
+		"Ve todo lo de esta sección y puede suspender cuentas. Dáselo a pocas personas.",
+	"admin.users.makeAdmin.confirm": "¿{name} pasa a ser administrador?",
+	"admin.users.removeAdmin": "Quitar acceso de administrador",
+	"admin.users.cantSuspendSelf": "No puedes suspender tu propia cuenta",
+	"admin.users.cantDemoteSelf":
+		"No puedes quitarte tu propio acceso de administrador",
+	"admin.users.notFound": "No encontramos este usuario",
+
+	"admin.orders.title": "Pedidos",
+	"admin.orders.search": "Buscar por código, negocio o cliente",
+	"admin.orders.empty": "No hay pedidos que coincidan",
+	"admin.orders.filter.all": "Todos",
+	"admin.orders.filter.active": "En curso",
+	"admin.orders.filter.completed": "Entregados",
+	"admin.orders.filter.cancelled": "Cancelados",
+	"admin.orders.business": "Negocio",
+	"admin.orders.customer": "Cliente",
+	"admin.orders.code": "Código",
+	"admin.orders.total": "Total",
+	"admin.orders.notFound": "No encontramos este pedido",
+	"admin.orders.forceCancel": "Cancelar el pedido",
+	"admin.orders.forceCancel.help":
+		"Se cancela aunque el negocio no quiera. Úsalo cuando algo se atascó, no para corregir un pedido normal.",
+	"admin.orders.forceCancel.reason": "Motivo (queda en la auditoría)",
+	"admin.orders.forceCancel.confirm": "¿Cancelar el pedido {code}?",
+
+	"admin.categories.title": "Categorías",
+	"admin.categories.add": "Agregar categoría",
+	"admin.categories.edit": "Editar categoría",
+	"admin.categories.empty": "Todavía no hay categorías",
+	"admin.categories.name": "Nombre",
+	"admin.categories.slug": "Identificador",
+	"admin.categories.slug.help":
+		"Se usa en la dirección web. No lo cambies si ya está en uso.",
+	"admin.categories.icon": "Ícono",
+	"admin.categories.order": "Orden",
+	"admin.categories.order.help": "Número más bajo aparece primero.",
+	"admin.categories.nameEn": "Nombre en inglés",
+	"admin.categories.parent": "Categoría madre",
+	"admin.categories.parent.none": "Sin categoría madre",
+	"admin.categories.products": "{count} producto",
+	"admin.categories.products_plural": "{count} productos",
+	"admin.categories.visible": "Visible",
+	"admin.categories.hidden": "Oculta",
+	"admin.categories.hide": "Ocultar",
+	"admin.categories.show": "Mostrar",
+	"admin.categories.delete.confirm": "¿Eliminar esta categoría?",
+	"admin.categories.delete.help":
+		"Se borra para siempre y no se puede deshacer. Si todavía tiene productos, la API se niega a borrarla.",
+	"admin.categories.delete.hasProducts":
+		"Tiene productos, así que se oculta en vez de borrarse",
+	"admin.categories.slug.taken": "Ese identificador ya existe",
+
+	"admin.audit.title": "Auditoría",
+	"admin.audit.subtitle":
+		"Todo lo que cambió alguien con acceso de administrador.",
+	"admin.audit.empty": "Sin movimientos todavía",
+	"admin.audit.actor": "Quién",
+	"admin.audit.action": "Qué hizo",
+	"admin.audit.target": "Sobre qué",
+	"admin.audit.when": "Cuándo",
+	"admin.audit.action.BUSINESS_VERIFIED": "Verificó un negocio",
+	"admin.audit.action.BUSINESS_SUSPENDED": "Suspendió un negocio",
+	"admin.audit.action.BUSINESS_UNSUSPENDED": "Reactivó un negocio",
+	"admin.audit.action.USER_SUSPENDED": "Suspendió una cuenta",
+	"admin.audit.action.USER_UNSUSPENDED": "Reactivó una cuenta",
+	"admin.audit.action.ADMIN_GRANTED": "Dio acceso de administrador",
+	"admin.audit.action.ADMIN_REVOKED": "Quitó acceso de administrador",
+	"admin.audit.action.ORDER_CANCELLED": "Canceló un pedido",
+	"admin.audit.action.COMMISSION_CHANGED": "Cambió una comisión",
+	"admin.audit.action.BUSINESS_DELETED": "Eliminó un negocio",
+	"admin.audit.action.ORDER_REFUNDED": "Reembolsó un pedido",
+	"admin.audit.action.PRODUCT_UNPUBLISHED": "Despublicó un producto",
+	"admin.audit.action.PAYOUT_MARKED_PAID": "Registró un pago",
+	"admin.audit.action.CATEGORY_CREATED": "Creó una categoría",
+	"admin.audit.action.CATEGORY_UPDATED": "Editó una categoría",
+	"admin.audit.action.CATEGORY_DELETED": "Eliminó una categoría",
+	"admin.audit.filter.action": "Filtrar por acción",
+	"admin.audit.filter.all": "Todas",
+	"admin.audit.export": "Descargar CSV",
+	"admin.audit.reason": "Motivo",
+
+	"admin.payouts.title": "Pagos",
+	"admin.payouts.search": "Buscar por negocio",
+	"admin.payouts.empty": "No hay pagos que coincidan",
+	"admin.payouts.filter.from": "Desde",
+	"admin.payouts.filter.to": "Hasta",
+	"admin.payouts.business": "Negocio",
+	"admin.payouts.period": "Del {from} al {to}",
+	"admin.payouts.amount": "Monto",
+	"admin.payouts.orders": "{count} pedido",
+	"admin.payouts.orders_plural": "{count} pedidos",
+	"admin.payouts.reference": "Referencia",
+	"admin.payouts.reference.none": "Sin registrar",
+	"admin.payouts.paidAt": "Registrado {date}",
+	"admin.payouts.status.PENDING": "Por pagar",
+	"admin.payouts.status.PAID": "Pagado",
+	"admin.payouts.status.FAILED": "Falló",
+	"admin.payouts.markPaid": "Marcar como pagado",
+	"admin.payouts.markPaid.help":
+		"Registra que el dinero ya salió. No mueve nada por su cuenta: deja constancia en la auditoría con tu nombre.",
+	"admin.payouts.markPaid.reference": "Referencia del banco o de SINPE",
+	"admin.payouts.markPaid.reference.help":
+		"Es lo que después te deja cuadrar este pago contra el banco. Sin ella, el pago no se puede reconciliar.",
+	"admin.payouts.markPaid.reason": "Motivo (queda en la auditoría)",
+	"admin.payouts.markPaid.confirm": "¿Marcar como pagado el pago de {name}?",
+
+	"admin.settings.title": "Ajustes de la plataforma",
+	"admin.settings.commission": "Comisión por defecto",
+	"admin.settings.commission.help":
+		"Se aplica a los negocios que no tienen una propia.",
+	"admin.settings.currency": "Moneda",
+	"admin.settings.currency.help": "No se puede cambiar con pedidos ya hechos.",
+	"admin.settings.maintenance": "Modo mantenimiento",
+	"admin.settings.maintenance.help":
+		"La app queda solo para administradores. Los pedidos en curso no se interrumpen.",
+	"admin.settings.supportEmail": "Correo de soporte",
+	"admin.settings.supportEmail.help":
+		"Aparece en los mensajes de error que ve la gente.",
+	"admin.settings.save": "Guardar ajustes",
+	"admin.settings.saved": "Ajustes guardados",
+
+	"admin.forbidden.title": "Esta sección es para administradores",
+	"admin.forbidden.body":
+		"Tu cuenta puede usar la app, pero no entrar aquí. Si crees que es un error, pídele a alguien del equipo que te dé acceso de administrador.",
+
+	"admin.common.backToApp": "Volver a la app",
+	"admin.common.readOnly": "Solo lectura con tu rol",
+	"admin.common.sort": "Ordenar",
+	"admin.common.sort.newest": "Más recientes",
+	"admin.common.sort.name": "Nombre",
+	"admin.common.sort.orders": "Más pedidos",
+	"admin.common.sort.revenue": "Más ventas",
+	"admin.common.filter": "Filtrar",
+	"admin.common.clear": "Limpiar",
+	"admin.common.actions": "Acciones",
+	"admin.common.name": "Nombre",
+	"admin.common.role": "Rol",
+	"admin.common.status": "Estado",
+	"admin.common.joined": "Se unió",
+	"admin.common.results": "Mostrando {from}–{to} de {total}",
+	"admin.common.noResults": "Sin resultados",
+	"admin.common.actionDone": "Hecho. Queda registrado en la auditoría.",
+	"admin.common.exported": "Descarga lista",
+} as const;

@@ -1,0 +1,31 @@
+{
+	"name": "@pymeshub/env",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"exports": {
+		".": {
+			"react-native": "./src/no-fs.ts",
+			"browser": "./src/no-fs.ts",
+			"default": "./src/index.ts"
+		},
+		"./load": {
+			"react-native": "./src/no-fs.ts",
+			"browser": "./src/no-fs.ts",
+			"default": "./src/load.ts"
+		}
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"lint": "biome check .",
+		"test": "bun test",
+		"clean": "rm -rf .turbo node_modules"
+	},
+	"devDependencies": {
+		"@pymeshub/typescript-config": "workspace:*",
+		"@types/bun": "^1.4.2",
+		"@types/node": "^26.6.2",
+		"typescript": "7.0.2"
+	}
+}
