@@ -28,6 +28,12 @@ const apiUrl =
 	process.env.API_URL ||
 	"http://localhost:8787";
 process.env.EXPO_PUBLIC_API_URL = apiUrl;
+
+const mapStyleUrl =
+	process.env.EXPO_PUBLIC_MAP_STYLE_URL ||
+	"https://demotiles.maplibre.org/style.json";
+process.env.EXPO_PUBLIC_MAP_STYLE_URL = mapStyleUrl;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
 	...config,
 	name: "PymesHub",
@@ -126,7 +132,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	// transform cache is not keyed on the value, so a `EXPO_PUBLIC_*` name changed without
 	// `--clear` can keep serving the old one. This manifest is regenerated on every start,
 	// so the fallback is a map drawn from the current value rather than a map that is
-	// silently the previous one. `undefined` when unset, which `optionalString` in
-	// `lib/env.ts` turns into the absent capability rather than an empty string.
-	extra: { apiUrl, mapStyleUrl: process.env.EXPO_PUBLIC_MAP_STYLE_URL },
+	// silently the previous one. Local development uses MapLibre's demo style; an EAS or
+	// production build can replace it with `EXPO_PUBLIC_MAP_STYLE_URL`.
+	extra: { apiUrl, mapStyleUrl },
 });
