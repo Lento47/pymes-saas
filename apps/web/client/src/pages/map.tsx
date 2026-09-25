@@ -1,8 +1,11 @@
 import { useCallback, useRef, useState } from "react";
-import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from "maplibre-gl";
+import mapLibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const STYLE_URL = "https://maps.pymeshub.lat/styles/pymeshub/style.json";
+
+setWorkerUrl(mapLibreWorkerUrl);
 
 type MapStatus = "loading" | "ready" | "error";
 
