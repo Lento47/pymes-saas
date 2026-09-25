@@ -44,6 +44,13 @@ export type Env = {
 	 */
 	ORDER_ROOM: DurableObjectNamespace;
 
+	/**
+	 * R2. Image bytes - a courier's vehicle photo today, avatars and product
+	 * images when they arrive. Served back through `GET /uploads/*`, so nothing
+	 * stores a presigned URL and every stored path stays valid.
+	 */
+	MEDIA: R2Bucket;
+
 	/** `production`, `staging`, `development`. Decides log format and error detail. */
 	ENVIRONMENT: string;
 	/** Reported by `health.check` and on every log line, so a deploy is identifiable. */

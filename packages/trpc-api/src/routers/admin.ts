@@ -1,11 +1,14 @@
 import {
 	adminActionInput,
 	adminCategoryInput,
+	adminCourierDecisionInput,
+	adminCourierListInput,
 	adminListInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
 
 import * as admin from "../services/admin";
+import * as adminContent from "../services/admin-content";
 import { adminProcedure, router } from "../trpc";
 
 /**
@@ -50,6 +53,18 @@ export const adminRouter = router({
 		.input(adminListInput)
 		.query(({ ctx, input }) => admin.users(ctx, input)),
 
+	user: adminProcedure
+		.input(z.object({ id: z.string() }))
+		.query(({ ctx, input }) => admin.userDetail(ctx, input)),
+
+	courierProfiles: adminProcedure
+		.input(adminCourierListInput)
+		.query(({ ctx, input }) => admin.courierProfiles(ctx, input)),
+
+	reviewCourier: adminProcedure
+		.input(adminCourierDecisionInput)
+		.mutation(({ ctx, input }) => admin.reviewCourier(ctx, input)),
+
 	suspendUser: adminProcedure
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.suspendUser(ctx, input)),
@@ -61,6 +76,26 @@ export const adminRouter = router({
 	orders: adminProcedure
 		.input(adminListInput)
 		.query(({ ctx, input }) => admin.orders(ctx, input)),
+
+	products: adminProcedure
+		.input(adminListInput)
+		.query(({ ctx, input }) => adminContent.products(ctx, input)),
+
+	unpublishProduct: adminProcedure
+		.input(adminActionInput)
+		.mutation(({ ctx, input }) => admin.unpublishProduct(ctx, input)),
+
+	promotions: adminProcedure
+		.input(adminListInput)
+		.query(({ ctx, input }) => adminContent.promotions(ctx, input)),
+
+	courierInvites: adminProcedure
+		.input(adminListInput)
+		.query(({ ctx, input }) => adminContent.courierInvites(ctx, input)),
+
+	reviews: adminProcedure
+		.input(adminListInput)
+		.query(({ ctx, input }) => adminContent.reviews(ctx, input)),
 
 	/** Cancels an order the business would not. A reason is required. */
 	cancelOrder: adminProcedure

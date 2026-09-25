@@ -25,6 +25,16 @@ export const MEMBERSHIP_ROLES = [
 export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 export const membershipRoleSchema = z.enum(MEMBERSHIP_ROLES);
 
+export const ACTOR_ROLES = [
+	"merchant_owner",
+	"merchant_manager",
+	"merchant_staff",
+	"merchant_kitchen",
+	"merchant_finance",
+] as const;
+export type ActorRole = (typeof ACTOR_ROLES)[number];
+export const actorRoleSchema = z.enum(ACTOR_ROLES);
+
 /**
  * The names of the things a role can be granted.
  *

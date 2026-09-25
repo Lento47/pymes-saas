@@ -18,6 +18,14 @@ export const auth = {
 	"auth.signUp.submit": "Create account",
 	"auth.signUp.hasAccount": "Already have an account?",
 
+	"auth.signUp.business.title": "Register your business",
+	"auth.signUp.business.subtitle": "Create an account to open your shop.",
+	"auth.signUp.delivery.title": "Register as a courier",
+	"auth.signUp.delivery.subtitle": "Create an account to accept deliveries.",
+	"auth.signUp.notCustomer": "Not a customer?",
+	"auth.signUp.businessOption": "Register as a business",
+	"auth.signUp.courierOption": "Register as a courier",
+
 	"auth.field.email": "Email",
 	"auth.field.email.placeholder": "you@example.com",
 	"auth.field.password": "Password",

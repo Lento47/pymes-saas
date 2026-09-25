@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { addToCartInput } from "@pymeshub/shared";
+import { order as orderTable } from "@pymeshub/db";
+import { addToCartInput, startOfMarketDay } from "@pymeshub/shared";
+import { eq } from "drizzle-orm";
 
 import { appRouter } from "../src/routers";
 import {
@@ -84,5 +86,30 @@ describe("orders.stats todayRevenueByCurrency", () => {
 		]);
 
 		test.close();
+	});
+
+	test("the today count turns over at Costa Rica midnight", async () => {
+		const { test: testWorld, order, manager } = await placedOrder("boundary");
+		try {
+			const marketStart = startOfMarketDay(new Date());
+			await testWorld.db
+				.update(orderTable)
+				.set({ placedAt: new Date(marketStart.getTime() - 1) })
+				.where(eq(orderTable.id, order.id));
+			expect(
+				(await manager.orders.stats({ businessId: "biz_stats_boundary" }))
+					.today,
+			).toBe(0);
+			await testWorld.db
+				.update(orderTable)
+				.set({ placedAt: marketStart })
+				.where(eq(orderTable.id, order.id));
+			expect(
+				(await manager.orders.stats({ businessId: "biz_stats_boundary" }))
+					.today,
+			).toBe(1);
+		} finally {
+			testWorld.close();
+		}
 	});
 });

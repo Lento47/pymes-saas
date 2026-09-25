@@ -64,6 +64,12 @@ export const merchantLocationSchema = z.object({
 	lat: z.number().nullable(),
 	lng: z.number().nullable(),
 	status: z.enum(LOCATION_OPERATIONAL_STATUSES),
+	todayHours: z
+		.object({
+			opensMinute: z.number().int().min(0).max(1440),
+			closesMinute: z.number().int().min(0).max(1440),
+		})
+		.nullable(),
 	pausedAt: z.date().nullable(),
 	resumeAt: z.date().nullable(),
 	createdAt: z.date(),

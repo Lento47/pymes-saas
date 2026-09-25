@@ -4,6 +4,9 @@ import {
 	business as businessTable,
 	cartItem as cartItemTable,
 	cart as cartTable,
+	courierProfile as courierProfileTable,
+	deliveryOffer as deliveryOfferTable,
+	delivery as deliveryTable,
 	merchantLocation as locationTable,
 	membership as membershipTable,
 	notification as notificationTable,
@@ -31,15 +34,16 @@ import {
 	encodeCursor,
 	isPaymentMethodEnabled,
 	isTerminalStatus,
+	MARKET_TIME_ZONE,
 	MAX_CART_LINES,
 	MAX_LINE_QUANTITY,
 	newId,
 	newOrderReference,
+	type OperationalPulse,
 	ORDER_STATUSES,
 	type OrderActor,
 	type OrderDetail,
 	type OrderListInput,
-	type OrderStats,
 	type OrderStatus,
 	type OrderSummary,
 	type OrderTracking,
@@ -54,6 +58,7 @@ import {
 	type ReorderSkipReason,
 	type ReportLocationInput,
 	requiresCollection,
+	startOfMarketDay,
 } from "@pymeshub/shared";
 import {
 	and,
@@ -64,6 +69,7 @@ import {
 	inArray,
 	isNull,
 	like,
+	lt,
 	lte,
 	type SQL,
 	sql,
@@ -82,6 +88,7 @@ import {
 import { type OrderEventEnvelope, orderEvent, outboxRowOf } from "../events";
 import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
+import { prepareDeliveryForOrder } from "./delivery-dispatch";
 import type { BusinessContext, UserContext } from "./helpers";
 import {
 	batchOf,
@@ -89,7 +96,6 @@ import {
 	likePattern,
 	orNotFound,
 	publicBusiness,
-	startOfUtcDay,
 } from "./helpers";
 import { operationalStatus } from "./locations";
 import {
@@ -260,7 +266,8 @@ export async function place(
 		);
 	}
 
-	const addressId = await resolveAddress(ctx, input);
+	const deliveryAddress = await resolveAddress(ctx, input);
+	const addressId = deliveryAddress?.id ?? null;
 
 	// Every price, re-read from the rows. The cart line's own `unitPriceMinor` was a price
 	// at the time of adding and may have moved since; `priceDeltaMinor` comes from the
@@ -349,12 +356,36 @@ export async function place(
 	// that: the ledger row survived the refusal with no order behind it, and every later
 	// retry of that id answered `existingOrderFor`'s "your previous order did not finish"
 	// until it gave up — so the retry the message asks for could never succeed.
-	const claimRow = await claim(ctx, input.clientRequestId);
-	if (!claimRow) return existingOrderFor(ctx, input.clientRequestId);
-
 	const now = new Date();
 	const orderId = newId("order");
 	const reference = newOrderReference();
+	const preparedDelivery = deliveryAddress
+		? await prepareDeliveryForOrder(ctx.db, {
+				orderId,
+				businessId: business.id,
+				businessName: business.name,
+				businessPhone: business.phone,
+				customerId: ctx.user.id,
+				customerName: ctx.user.name,
+				location,
+				dropoff: {
+					name: deliveryAddress.label || ctx.user.name || "",
+					line1: deliveryAddress.line1,
+					line2: deliveryAddress.line2,
+					city: deliveryAddress.city,
+					region: deliveryAddress.region ?? "",
+					postalCode: deliveryAddress.postalCode,
+					lat: deliveryAddress.lat,
+					lng: deliveryAddress.lng,
+					phone: deliveryAddress.phone ?? ctx.user.phone,
+					instructions: deliveryAddress.instructions,
+				},
+				now,
+			})
+		: null;
+
+	const claimRow = await claim(ctx, input.clientRequestId);
+	if (!claimRow) return existingOrderFor(ctx, input.clientRequestId);
 
 	// One batch, so the order, its lines, its first event, the cart that produced it and
 	// the ledger row either all land or none do. D1 has no `begin`/`commit`; this is the
@@ -387,6 +418,7 @@ export async function place(
 			createdAt: now,
 			updatedAt: now,
 		}),
+		...(preparedDelivery?.statements ?? []),
 		...priced.map((line) =>
 			ctx.db.insert(orderItemTable).values({
 				id: newId("orderItem"),
@@ -598,11 +630,11 @@ function delay(ms: number): Promise<void> {
 async function resolveAddress(
 	ctx: UserContext,
 	input: PlaceOrderInput,
-): Promise<string | null> {
+): Promise<typeof addressTable.$inferSelect | null> {
 	if (input.fulfilment !== "DELIVERY") return null;
 
 	const rows = await ctx.db
-		.select({ id: addressTable.id })
+		.select()
 		.from(addressTable)
 		.where(
 			and(
@@ -620,7 +652,7 @@ async function resolveAddress(
 		});
 	}
 
-	return address.id;
+	return address;
 }
 
 /**
@@ -773,6 +805,34 @@ export async function advance(
 		throw new NotFoundError("No encontramos ese pedido");
 	}
 
+	const linkedDelivery =
+		order.fulfilment === "DELIVERY" &&
+		(input.to === "OUT_FOR_DELIVERY" || input.to === "COMPLETED")
+			? (
+					await ctx.db
+						.select({
+							id: deliveryTable.id,
+							status: deliveryTable.status,
+							courierUserId: deliveryTable.courierUserId,
+						})
+						.from(deliveryTable)
+						.where(eq(deliveryTable.orderId, order.id))
+						.limit(1)
+				)[0]
+			: null;
+	if (linkedDelivery) {
+		if (actor !== "COURIER" || linkedDelivery.courierUserId !== ctx.user.id) {
+			throw new ValidationError("El repartidor debe confirmar este paso");
+		}
+		const expectedDeliveryStatus =
+			input.to === "OUT_FOR_DELIVERY" ? "AT_PICKUP" : "PICKED_UP";
+		if (linkedDelivery.status !== expectedDeliveryStatus) {
+			throw new ConflictError("La entrega todavía no llegó a este paso", {
+				deliveryStatus: linkedDelivery.status,
+			});
+		}
+	}
+
 	if (
 		!canTransition({
 			from: order.status,
@@ -854,7 +914,9 @@ const LOCATE_WINDOW_SECONDS = 60;
  *
  * The assignee must already be a COURIER member of the shop: an id, not a
  * typed name, because a name typed at dispatch is a different person every
- * time it is spelled differently. The row's name and phone are copied from
+ * time it is spelled differently. When the member has a courier profile, it
+ * must be VERIFIED and available; legacy members without a profile remain
+ * assignable until they create one. The row's name and phone are copied from
  * the member's profile at assignment — denormalised the way `actorName` is,
  * so a courier who is later removed keeps their name on the runs they rode.
  * Reassigning while still READY overwrites; once the run left, the courier is
@@ -913,15 +975,58 @@ export async function assign(
 		throw new ValidationError("Esa persona no es repartidora de esta tienda");
 	}
 
-	await ctx.db
-		.update(orderTable)
-		.set({
-			courierUserId: courier.id,
-			courierName: courier.name,
-			courierPhone: courier.phone,
-			updatedAt: new Date(),
+	const profile = await ctx.db
+		.select({
+			isAvailable: courierProfileTable.isAvailable,
+			verificationStatus: courierProfileTable.verificationStatus,
 		})
-		.where(eq(orderTable.id, order.id));
+		.from(courierProfileTable)
+		.where(eq(courierProfileTable.userId, courier.id))
+		.limit(1);
+	if (
+		profile[0] &&
+		(!profile[0].isAvailable || profile[0].verificationStatus !== "VERIFIED")
+	) {
+		throw new ValidationError("Este repartidor no está disponible ahora mismo");
+	}
+
+	const now = new Date();
+	await ctx.db.batch(
+		batchOf([
+			ctx.db
+				.update(orderTable)
+				.set({
+					courierUserId: courier.id,
+					courierName: courier.name,
+					courierPhone: courier.phone,
+					updatedAt: now,
+				})
+				.where(eq(orderTable.id, order.id)),
+			ctx.db
+				.update(deliveryTable)
+				.set({
+					courierUserId: courier.id,
+					status: "AT_PICKUP",
+					acceptedAt: now,
+					startedToPickupAt: now,
+					arrivedPickupAt: now,
+					updatedAt: now,
+				})
+				.where(eq(deliveryTable.orderId, order.id)),
+			ctx.db
+				.update(deliveryOfferTable)
+				.set({ status: "CANCELLED", respondedAt: now })
+				.where(
+					and(
+						eq(
+							deliveryOfferTable.deliveryId,
+							sql`(select id from delivery where order_id = ${order.id})`,
+						),
+						eq(deliveryOfferTable.status, "PENDING"),
+					),
+				),
+		]),
+	);
 
 	return detail(ctx, order.id, actorFor(ctx, order));
 }
@@ -1099,27 +1204,72 @@ async function applyMove(
 	// The status, the timeline row and the event row, in one batch. That is the whole point
 	// of the outbox: "the order moved" and "there is an event about it" are one write, so
 	// there is no instant at which one is true and the other is not.
-	await ctx.db.batch(
-		batchOf([
-			ctx.db.update(orderTable).set(patch).where(eq(orderTable.id, order.id)),
-			ctx.db.insert(orderEventTable).values({
-				id: newId("orderEvent"),
-				orderId: order.id,
-				fromStatus: order.status,
-				toStatus: move.to,
-				actor: move.actor,
-				// Null for SYSTEM and COURIER: not every move was made by a signed-in user,
-				// and a fabricated actor id would put a name on an event nobody can back.
-				actorUserId:
-					move.actor === "SYSTEM" || move.actor === "COURIER"
-						? null
-						: move.actorUserId,
-				note: move.note,
-				createdAt: now,
-			}),
-			ctx.db.insert(outboxTable).values(outboxRowOf(envelope, now)),
-		]),
-	);
+	const statements: BatchItem<"sqlite">[] = [
+		ctx.db.update(orderTable).set(patch).where(eq(orderTable.id, order.id)),
+		ctx.db.insert(orderEventTable).values({
+			id: newId("orderEvent"),
+			orderId: order.id,
+			fromStatus: order.status,
+			toStatus: move.to,
+			actor: move.actor,
+			// SYSTEM has no account. Every signed-in courier keeps their own id so
+			// delivery metrics can attribute the action to the person who made it.
+			actorUserId: move.actor === "SYSTEM" ? null : move.actorUserId,
+			note: move.note,
+			createdAt: now,
+		}),
+		ctx.db.insert(outboxTable).values(outboxRowOf(envelope, now)),
+	];
+	if (move.to === "OUT_FOR_DELIVERY") {
+		statements.push(
+			ctx.db
+				.update(deliveryTable)
+				.set({ status: "PICKED_UP", pickedUpAt: now, updatedAt: now })
+				.where(
+					and(
+						eq(deliveryTable.orderId, order.id),
+						eq(deliveryTable.courierUserId, move.actorUserId),
+						eq(deliveryTable.status, "AT_PICKUP"),
+					),
+				),
+		);
+	}
+	if (move.to === "COMPLETED") {
+		statements.push(
+			ctx.db
+				.update(deliveryTable)
+				.set({ status: "DELIVERED", deliveredAt: now, updatedAt: now })
+				.where(
+					and(
+						eq(deliveryTable.orderId, order.id),
+						eq(deliveryTable.courierUserId, move.actorUserId),
+						eq(deliveryTable.status, "PICKED_UP"),
+					),
+				),
+		);
+	}
+	if (move.to === "CANCELLED" || move.to === "REJECTED") {
+		statements.push(
+			ctx.db
+				.update(deliveryTable)
+				.set({ status: "CANCELLED", cancelledAt: now, updatedAt: now })
+				.where(eq(deliveryTable.orderId, order.id)),
+			ctx.db
+				.update(deliveryOfferTable)
+				.set({ status: "CANCELLED", respondedAt: now })
+				.where(
+					and(
+						eq(
+							deliveryOfferTable.deliveryId,
+							sql`(select id from delivery where order_id = ${order.id})`,
+						),
+						eq(deliveryOfferTable.status, "PENDING"),
+					),
+				),
+		);
+	}
+
+	await ctx.db.batch(batchOf(statements));
 
 	await announce(ctx, envelope, move.to, now, move.note);
 
@@ -1348,7 +1498,7 @@ async function assertLocationInBusiness(
 export async function stats(
 	ctx: BusinessContext,
 	input: { businessId: string; locationId?: string },
-): Promise<OrderStats> {
+): Promise<OperationalPulse> {
 	// The scope comes from the membership the middleware injected, never from the input.
 	const businessId = ctx.membership.businessId;
 	if (input.locationId)
@@ -1357,9 +1507,57 @@ export async function stats(
 		eq(orderTable.businessId, businessId),
 		...(input.locationId ? [eq(orderTable.locationId, input.locationId)] : []),
 	];
-	const todayStart = startOfUtcDay(new Date());
+	const now = new Date();
+	const todayStart = startOfMarketDay(now);
+	const business = orNotFound(
+		(
+			await ctx.db
+				.select({ currency: businessTable.currency })
+				.from(businessTable)
+				.where(eq(businessTable.id, businessId))
+				.limit(1)
+		)[0],
+	);
+	const salesFor = async (from: Date, to: Date) => {
+		const [row] = await ctx.db
+			.select({
+				grossSalesMinor: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' then ${orderTable.totalMinor} else 0 end), 0)`,
+				discountsMinor: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' then ${orderTable.discountMinor} else 0 end), 0)`,
+				refundsMinor: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' and ${orderTable.paymentStatus} = 'REFUNDED' then ${orderTable.totalMinor} else 0 end), 0)`,
+				orderCount: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' then 1 else 0 end), 0)`,
+			})
+			.from(orderTable)
+			.where(
+				and(
+					...scope,
+					eq(orderTable.currency, business.currency),
+					gte(orderTable.placedAt, from),
+					lt(orderTable.placedAt, to),
+				),
+			);
+		return {
+			grossSalesMinor: Number(row?.grossSalesMinor ?? 0),
+			discountsMinor: Number(row?.discountsMinor ?? 0),
+			refundsMinor: Number(row?.refundsMinor ?? 0),
+			orderCount: Number(row?.orderCount ?? 0),
+		};
+	};
+	const previousDayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+	const previousDayEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+	const previousWeekStart = new Date(
+		todayStart.getTime() - 7 * 24 * 60 * 60 * 1000,
+	);
+	const previousWeekEnd = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-	const [active, today, revenue, todayRevenue] = await Promise.all([
+	const [
+		active,
+		today,
+		revenue,
+		todayRevenue,
+		current,
+		previousDay,
+		previousWeek,
+	] = await Promise.all([
 		ctx.db
 			.select({ count: sql<number>`count(*)` })
 			.from(orderTable)
@@ -1380,7 +1578,7 @@ export async function stats(
 			.where(and(...scope, eq(orderTable.status, "COMPLETED")))
 			.groupBy(orderTable.currency),
 		// Today's completed revenue, for the merchant home's pulse band: the same
-		// COMPLETED-only meaning as the all-time query below, scoped to the UTC day
+		// COMPLETED-only meaning as the all-time query below, scoped to the market day
 		// `today` above is counted against. A client-side sum over a listed page is
 		// not this — a page is not the day, and the day is not a page.
 		ctx.db
@@ -1398,7 +1596,24 @@ export async function stats(
 				),
 			)
 			.groupBy(orderTable.currency),
+		salesFor(todayStart, now),
+		salesFor(previousDayStart, previousDayEnd),
+		salesFor(previousWeekStart, previousWeekEnd),
 	]);
+
+	const grossSalesMinor = current.grossSalesMinor;
+	const discountsMinor = current.discountsMinor;
+	const refundsMinor = current.refundsMinor;
+	const orderCount = current.orderCount;
+	const merchantNetSalesMinor = Math.max(0, grossSalesMinor - refundsMinor);
+	const previousDayNet = Math.max(
+		0,
+		previousDay.grossSalesMinor - previousDay.refundsMinor,
+	);
+	const previousWeekNet = Math.max(
+		0,
+		previousWeek.grossSalesMinor - previousWeek.refundsMinor,
+	);
 
 	return {
 		active: Number(active[0]?.count ?? 0),
@@ -1413,6 +1628,31 @@ export async function stats(
 			revenueMinor: Number(row.revenueMinor),
 			orderCount: Number(row.orderCount),
 		})),
+		period: {
+			from: todayStart,
+			to: now,
+			timezone: MARKET_TIME_ZONE,
+		},
+		grossSalesMinor,
+		discountsMinor,
+		refundsMinor,
+		merchantNetSalesMinor,
+		orderCount,
+		averageOrderValueMinor:
+			orderCount > 0 ? Math.round(grossSalesMinor / orderCount) : 0,
+		currency: business.currency,
+		comparisons: [
+			{
+				period: "previous_day",
+				salesDeltaMinor: merchantNetSalesMinor - previousDayNet,
+				orderDelta: orderCount - previousDay.orderCount,
+			},
+			{
+				period: "previous_week",
+				salesDeltaMinor: merchantNetSalesMinor - previousWeekNet,
+				orderDelta: orderCount - previousWeek.orderCount,
+			},
+		],
 	};
 }
 

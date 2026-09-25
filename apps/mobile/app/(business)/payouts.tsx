@@ -1,4 +1,4 @@
-import { formatMoney } from "@pymeshub/shared";
+import { formatMoney, roleCan } from "@pymeshub/shared";
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
@@ -11,16 +11,23 @@ import { line } from "@/components/skeletons";
 import { Text } from "@/components/text";
 import { formatDay } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import { space, TEXT_STACK_GAP } from "@/theme";
 
 export default function PayoutsScreen() {
 	const trpc = useTRPC();
 	const { t, tp, intlLocale } = useT();
+	const merchantScope = useMerchantScope();
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
-	const shop = (shops.data ?? []).find((one) => one.role !== "COURIER");
+	const shop =
+		(shops.data ?? []).find(
+			(one) =>
+				one.role !== "COURIER" && one.businessId === merchantScope.businessId,
+		) ?? (shops.data ?? []).find((one) => one.role !== "COURIER");
 	const businessId = shop?.businessId ?? "";
-	const enabled = !!businessId;
+	const canRead = !!shop && roleCan(shop.role, "payouts:read");
+	const enabled = !!businessId && canRead;
 	const payouts = useQuery(
 		trpc.payouts.list.queryOptions({ businessId }, { enabled }),
 	);
@@ -47,6 +54,30 @@ export default function PayoutsScreen() {
 		return (
 			<Screen title={t("biz.payouts.title")}>
 				<PayoutsSkeleton loadingLabel={t("state.loading")} />
+			</Screen>
+		);
+	}
+
+	if (!shop) {
+		return (
+			<Screen title={t("biz.payouts.title")}>
+				<Text tone="muted">{t("state.empty")}</Text>
+			</Screen>
+		);
+	}
+
+	if (!canRead) {
+		return (
+			<Screen
+				title={t("biz.payouts.title")}
+				subtitle={shop.businessName}
+				scroll
+			>
+				<EmptyState
+					icon="wallet-outline"
+					title={t("biz.permission.title")}
+					body={t("biz.permission.body")}
+				/>
 			</Screen>
 		);
 	}

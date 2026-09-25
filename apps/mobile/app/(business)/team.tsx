@@ -1,3 +1,4 @@
+import { roleCan } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
@@ -10,7 +11,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
-import { Screen } from "@/components/screen";
+import { Screen, ScreenSection } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
@@ -21,6 +22,7 @@ import { useSession } from "@/lib/auth/session";
 import { formatDay } from "@/lib/format";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import { MIN_TOUCH_TARGET, space, TEXT_STACK_GAP } from "@/theme";
 
@@ -41,22 +43,55 @@ export default function TeamScreen() {
 	const toast = useToast();
 	const { session } = useSession();
 	const insets = useSafeAreaInsets();
+	const merchantScope = useMerchantScope();
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
-	const shop = (shops.data ?? []).find((one) => one.role !== "COURIER");
+	const shop =
+		(shops.data ?? []).find(
+			(one) =>
+				one.role !== "COURIER" && one.businessId === merchantScope.businessId,
+		) ?? (shops.data ?? []).find((one) => one.role !== "COURIER");
 	const businessId = shop?.businessId ?? "";
 	const enabled = !!businessId;
-	const staff = useQuery(
-		trpc.business.staff.queryOptions({ businessId }, { enabled }),
-	);
-
+	const canManage = !!shop && roleCan(shop.role, "staff:manage");
 	const [inviteOpen, setInviteOpen] = useState(false);
 	const [inviteEmail, setInviteEmail] = useState("");
-	const [inviteRole, setInviteRole] = useState<"OWNER" | "MANAGER">("MANAGER");
+	const [inviteRole, setInviteRole] = useState<StaffRole>("STAFF");
 	const [inviteSubmitted, setInviteSubmitted] = useState(false);
+	const [courierSearch, setCourierSearch] = useState("");
+	const [directorySearch, setDirectorySearch] = useState("");
+	const [selectedCourierId, setSelectedCourierId] = useState<string | null>(
+		null,
+	);
 	const [roleMember, setRoleMember] = useState<StaffMemberView | null>(null);
 	const [nextRole, setNextRole] = useState<StaffRole>("STAFF");
 	const [removeMember, setRemoveMember] = useState<StaffMemberView | null>(
 		null,
+	);
+
+	const staff = useQuery(
+		trpc.business.staff.queryOptions(
+			{ businessId },
+			{ enabled: enabled && canManage },
+		),
+	);
+	const courierDirectory = useQuery(
+		trpc.couriers.directory.queryOptions(
+			{ businessId, search: directorySearch },
+			{
+				enabled:
+					enabled &&
+					canManage &&
+					inviteOpen &&
+					inviteRole === "COURIER" &&
+					directorySearch.length >= 2,
+			},
+		),
+	);
+	const pendingInvites = useQuery(
+		trpc.couriers.pendingForBusiness.queryOptions(
+			{ businessId },
+			{ enabled: enabled && canManage },
+		),
 	);
 
 	const refreshStaff = async () => {
@@ -77,6 +112,30 @@ export default function TeamScreen() {
 			},
 		}),
 	);
+	const inviteCourier = useMutation(
+		trpc.couriers.invite.mutationOptions({
+			onSuccess: async (row) => {
+				toast.show(t("biz.courier.invite.sent", { name: row.courierName }));
+				await cache.invalidateQueries({
+					queryKey: trpc.couriers.pathKey(),
+				});
+				setInviteOpen(false);
+				setCourierSearch("");
+				setDirectorySearch("");
+				setSelectedCourierId(null);
+				setInviteSubmitted(false);
+			},
+		}),
+	);
+	const cancelInvite = useMutation(
+		trpc.couriers.cancelInvite.mutationOptions({
+			onSuccess: async () => {
+				await cache.invalidateQueries({
+					queryKey: trpc.couriers.pathKey(),
+				});
+			},
+		}),
+	);
 	const updateRole = useMutation(
 		trpc.business.updateStaffRole.mutationOptions({
 			onSuccess: async () => {
@@ -94,22 +153,31 @@ export default function TeamScreen() {
 		}),
 	);
 	const inviteFailure = useApiFailure(invite.error);
+	const courierInviteFailure = useApiFailure(inviteCourier.error);
+	const directoryFailure = useApiFailure(courierDirectory.error);
+	const cancelFailure = useApiFailure(cancelInvite.error);
 	const roleFailure = useApiFailure(updateRole.error);
 	const removeFailure = useApiFailure(remove.error);
 
 	const waiting = useSkeletonHold(
-		shops.isPending || (enabled && staff.isPending),
+		shops.isPending || (enabled && canManage && staff.isPending),
 	);
-	const failed = shops.error ?? staff.error;
+	const failed = shops.error ?? (canManage ? staff.error : null);
 	const isOwner = shop?.role === "OWNER";
 	const emailValid = EMAIL_SHAPE.test(inviteEmail.trim());
-	const inviteRoles: readonly ("OWNER" | "MANAGER")[] = isOwner
-		? ["OWNER", "MANAGER"]
-		: ["MANAGER"];
+	const inviteRoles: readonly StaffRole[] = isOwner
+		? ["OWNER", "MANAGER", "STAFF", "COURIER"]
+		: ["STAFF", "COURIER"];
 
 	const submitInvite = () => {
 		setInviteSubmitted(true);
-		if (!emailValid || !businessId) return;
+		if (!businessId || !inviteRoles.includes(inviteRole)) return;
+		if (inviteRole === "COURIER") {
+			if (!selectedCourierId) return;
+			inviteCourier.mutate({ businessId, profileId: selectedCourierId });
+			return;
+		}
+		if (!emailValid) return;
 		invite.mutate({
 			businessId,
 			email: inviteEmail.trim(),
@@ -148,6 +216,26 @@ export default function TeamScreen() {
 		return (
 			<Screen title={t("biz.staff.title")}>
 				<TeamSkeleton loadingLabel={t("state.loading")} />
+			</Screen>
+		);
+	}
+
+	if (!shop) {
+		return (
+			<Screen title={t("biz.staff.title")}>
+				<Text tone="muted">{t("state.empty")}</Text>
+			</Screen>
+		);
+	}
+
+	if (!canManage) {
+		return (
+			<Screen title={t("biz.staff.title")} subtitle={shop.businessName} scroll>
+				<EmptyState
+					icon="people-outline"
+					title={t("biz.permission.title")}
+					body={t("biz.permission.body")}
+				/>
 			</Screen>
 		);
 	}
@@ -217,6 +305,42 @@ export default function TeamScreen() {
 						<EmptyState title={t("biz.staff.empty")} />
 					)}
 				</View>
+				{pendingInvites.data?.length ? (
+					<ScreenSection title={t("biz.courier.invitesForBusiness")}>
+						<View style={styles.cards}>
+							{pendingInvites.data.map((pending) => (
+								<Card key={pending.id} style={styles.pendingCard}>
+									<ListRow
+										title={pending.courierName}
+										subtitle={t("biz.courier.invite.pending")}
+										divider={false}
+									/>
+									<Button
+										label={t("biz.courier.invite.cancel")}
+										variant="ghost"
+										size="sm"
+										loading={
+											cancelInvite.isPending &&
+											cancelInvite.variables?.inviteId === pending.id
+										}
+										disabled={cancelInvite.isPending}
+										onPress={() =>
+											cancelInvite.mutate({
+												businessId,
+												inviteId: pending.id,
+											})
+										}
+									/>
+								</Card>
+							))}
+						</View>
+					</ScreenSection>
+				) : null}
+				{cancelFailure.message ? (
+					<Text tone="destructive" accessibilityRole="alert">
+						{cancelFailure.message}
+					</Text>
+				) : null}
 			</Screen>
 
 			<Sheet
@@ -233,9 +357,21 @@ export default function TeamScreen() {
 						]}
 					>
 						<Button
-							label={t("biz.staff.invite.send")}
-							onPress={submitInvite}
-							loading={invite.isPending}
+							label={
+								inviteRole === "COURIER"
+									? selectedCourierId
+										? t("biz.courier.invite.send")
+										: t("action.close")
+									: t("biz.staff.invite.send")
+							}
+							onPress={() => {
+								if (inviteRole === "COURIER" && !selectedCourierId) {
+									setInviteOpen(false);
+									return;
+								}
+								submitInvite();
+							}}
+							loading={invite.isPending || inviteCourier.isPending}
 							disabled={!businessId}
 							fullWidth
 						/>
@@ -243,18 +379,91 @@ export default function TeamScreen() {
 				}
 			>
 				<View style={styles.sheetFields}>
-					<Field
-						label={t("biz.staff.invite.email")}
-						value={inviteEmail}
-						onChangeText={setInviteEmail}
-						error={
-							inviteSubmitted && !emailValid ? t("form.invalidEmail") : null
-						}
-						help={t("biz.staff.invite.help")}
-						keyboardType="email-address"
-						autoCapitalize="none"
-						autoComplete="email"
-					/>
+					{inviteRole === "COURIER" ? (
+						<>
+							<Field
+								label={t("biz.courier.search")}
+								value={courierSearch}
+								onChangeText={(value) => {
+									setCourierSearch(value);
+									setSelectedCourierId(null);
+									setInviteSubmitted(false);
+									if (value.trim().length < 2) setDirectorySearch("");
+								}}
+								onSubmitEditing={() => setDirectorySearch(courierSearch.trim())}
+								help={t("biz.courier.search.help")}
+								autoCapitalize="words"
+								clearButtonMode="while-editing"
+							/>
+							<Button
+								label={t("biz.courier.search.action")}
+								variant="secondary"
+								size="sm"
+								fullWidth
+								onPress={() => setDirectorySearch(courierSearch.trim())}
+								disabled={courierSearch.trim().length < 2}
+							/>
+							{directorySearch.length < 2 ? (
+								<Text tone="muted">{t("biz.courier.search.hint")}</Text>
+							) : courierDirectory.isPending ? (
+								<Skeleton style={styles.directoryCard} />
+							) : courierDirectory.isError ? (
+								<Text tone="destructive" accessibilityRole="alert">
+									{directoryFailure.message}
+								</Text>
+							) : courierDirectory.data?.length ? (
+								<View style={styles.directoryResults}>
+									{courierDirectory.data.map((courier) => (
+										<Card key={courier.profileId} style={styles.directoryCard}>
+											<ListRow
+												title={courier.displayName}
+												subtitle={courier.serviceArea}
+												state={t("biz.courier.directoryVerified")}
+												divider={false}
+											/>
+											<Button
+												label={
+													courier.isMember
+														? t("biz.courier.invite.alreadyMember")
+														: courier.isInvited
+															? t("biz.courier.invite.alreadySent")
+															: t("biz.courier.invite.send")
+												}
+												disabled={courier.isMember || courier.isInvited}
+												selected={selectedCourierId === courier.profileId}
+												onPress={() => {
+													setSelectedCourierId(courier.profileId);
+													setInviteSubmitted(false);
+												}}
+												size="sm"
+												variant="ghost"
+											/>
+										</Card>
+									))}
+								</View>
+							) : (
+								<Text tone="muted">{t("biz.courier.search.empty")}</Text>
+							)}
+							{courierInviteFailure.message ? (
+								<Text tone="destructive" accessibilityRole="alert">
+									{courierInviteFailure.message}
+								</Text>
+							) : null}
+						</>
+					) : (
+						<Field
+							label={t("biz.staff.invite.email")}
+							value={inviteEmail}
+							onChangeText={setInviteEmail}
+							error={
+								inviteSubmitted && !emailValid ? t("form.invalidEmail") : null
+							}
+							help={t("biz.staff.invite.help")}
+							keyboardType="email-address"
+							autoCapitalize="none"
+							autoComplete="email"
+						/>
+					)}
 					<Text variant="label" bold>
 						{t("biz.staff.invite.role")}
 					</Text>
@@ -263,13 +472,17 @@ export default function TeamScreen() {
 							<Button
 								key={role}
 								label={t(`biz.staff.role.${role}`)}
-								// A picker settling on a value: the haptic answers the tap that
-								// changes the role, and re-tapping the one already on commits
-								// nothing — `./business`'s ShopChips is the in-tree rule.
 								onPress={() => {
 									if (role === inviteRole) return;
 									selection();
 									setInviteRole(role);
+									setInviteSubmitted(false);
+									setInviteEmail("");
+									setCourierSearch("");
+									setDirectorySearch("");
+									setSelectedCourierId(null);
+									invite.reset();
+									inviteCourier.reset();
 								}}
 								selected={inviteRole === role}
 								choiceRole="radio"
@@ -279,7 +492,7 @@ export default function TeamScreen() {
 						))}
 					</View>
 					<Text tone="muted">{roleHelp(inviteRole)}</Text>
-					{inviteFailure.message ? (
+					{inviteRole !== "COURIER" && inviteFailure.message ? (
 						<Text tone="destructive" accessibilityRole="alert">
 							{inviteFailure.message}
 						</Text>
@@ -319,7 +532,7 @@ export default function TeamScreen() {
 				<View style={styles.sheetFields}>
 					<Text bold>{roleMember?.name}</Text>
 					<View style={styles.roleChoices}>
-						{STAFF_ROLES.map((role) => (
+						{STAFF_ROLES.filter((role) => role !== "COURIER").map((role) => (
 							<Button
 								key={role}
 								label={t(`biz.staff.role.${role}`)}
@@ -449,6 +662,9 @@ const styles = StyleSheet.create({
 		paddingTop: space.sm,
 	},
 	sheetFields: { gap: space.md },
+	directoryResults: { gap: space.sm },
+	directoryCard: { minHeight: MIN_TOUCH_TARGET, gap: space.sm },
+	pendingCard: { gap: space.sm },
 	roleChoices: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
 	sheetActions: { paddingHorizontal: space.lg, gap: space.sm },
 });

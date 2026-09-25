@@ -1,0 +1,122 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			// Prisma Client output — regenerated, never edited.
+			"!**/src/generated",
+			// Drizzle's migration journal and snapshots — regenerated, never edited.
+			// `db:generate` rewrites both in its own two-space style, so formatting
+			// them here only moves the failure to the next migration: lint goes red
+			// again the moment anyone generates one, on a file nobody wrote by hand.
+			"!packages/db/migrations/meta",
+			// Vendored shadcn/ui source. Left in upstream formatting so that
+			// `shadcn add --diff <component>` stays readable when re-syncing.
+			// use-mobile.ts arrives the same way, pulled in by `sidebar`.
+			"!packages/ui/src/components",
+			"!packages/ui/src/hooks/use-mobile.ts",
+			"!**/.next",
+			"!**/dist",
+			// Static assets, not source.
+			"!**/*.svg",
+			// Agent tooling, managed outside this repo.
+			"!.claude",
+			"!.agents",
+			"!skills-lock.json"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended"
+		}
+	},
+	"css": {
+		"parser": {
+			// Tailwind v4 uses @theme / @apply in globals.css.
+			"tailwindDirectives": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		},
+		"parser": {
+			// NestJS relies on parameter decorators (@Inject, @Session, @Body).
+			"unsafeParameterDecoratorsEnabled": true
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"overrides": [
+		{
+			// Replaces eslint-config-next / eslint-plugin-react.
+			"includes": ["apps/web/**"],
+			"linter": {
+				"domains": {
+					"next": "recommended",
+					"react": "recommended"
+				}
+			}
+		},
+		{
+			// Nest resolves constructor dependencies from `design:paramtypes`
+			// metadata, which only exists for value imports. Rewriting them to
+			// `import type` erases the metadata and breaks DI at runtime.
+			"includes": ["apps/api/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"useImportType": "off"
+					}
+				}
+			}
+		},
+		{
+			// tsconfig files are JSONC by specification — TypeScript reads the
+			// comments and the presets in this package carry the reasoning for
+			// each compiler option. Strict JSON is the wrong parser for them, and
+			// it fails as a *parse* error, so the file also stops being formatted.
+			"includes": ["packages/typescript-config/**/*.json"],
+			"json": {
+				"parser": {
+					"allowComments": true
+				}
+			}
+		},
+		{
+			// The e2e suite reads its own credentials. Declared here the way
+			// `globalPassThroughEnv` declares them for turbo — biome's rule exists
+			// to catch a variable nobody wrote down anywhere.
+			"includes": ["e2e/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noUndeclaredEnvVars": {
+							"level": "on",
+							"options": {
+								"allowedEnvVars": ["E2E_.*"]
+							}
+						}
+					}
+				}
+			}
+		}
+	]
+}

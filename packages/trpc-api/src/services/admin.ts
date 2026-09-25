@@ -3,6 +3,7 @@ import {
 	auditLog as auditLogTable,
 	business as businessTable,
 	category as categoryTable,
+	courierProfile as courierProfileTable,
 	membership as membershipTable,
 	orderEvent as orderEventTable,
 	order as orderTable,
@@ -14,6 +15,8 @@ import {
 	type AdminAction,
 	type AdminBusinessRow,
 	type AdminCategoryInput,
+	type AdminCourierListInput,
+	type AdminCourierRow,
 	type AdminListInput,
 	type AdminMetrics,
 	type AdminOrderRow,
@@ -574,6 +577,252 @@ export async function grantAdmin(
 	]);
 
 	return readUserRow(ctx.db, input.userId);
+}
+
+// ---------------------------------------------------------------------------
+// People — one account, every profile it owns
+// ---------------------------------------------------------------------------
+
+/**
+ * One person with everything the console needs to answer "what is wrong with
+ * this account": their memberships, their courier profile, their recent orders
+ * and the audit trail that touched them.
+ */
+export async function userDetail(
+	ctx: UserContext,
+	input: { id: string },
+): Promise<{
+	user: AdminUserRow;
+	courierProfile: AdminCourierRow | null;
+	recentOrders: AdminOrderRow[];
+	auditLog: AuditLogEntry[];
+}> {
+	const user = await readUserRow(ctx.db, input.id);
+	const courier = await ctx.db
+		.select({
+			profile: courierProfileTable,
+			userName: userTable.name,
+			userEmail: userTable.email,
+		})
+		.from(courierProfileTable)
+		.innerJoin(userTable, eq(courierProfileTable.userId, userTable.id))
+		.where(eq(courierProfileTable.userId, input.id))
+		.limit(1);
+
+	const [orders, profileAudit] = await Promise.all([
+		ctx.db
+			.select({
+				order: orderTable,
+				businessName: businessTable.name,
+				customerName: userTable.name,
+			})
+			.from(orderTable)
+			.innerJoin(businessTable, eq(orderTable.businessId, businessTable.id))
+			.innerJoin(userTable, eq(orderTable.customerId, userTable.id))
+			.where(eq(orderTable.customerId, input.id))
+			.orderBy(desc(orderTable.placedAt))
+			.limit(10),
+		courier[0]
+			? auditEntriesFor(ctx.db, {
+					targetId: courier[0].profile.id,
+					limit: 25,
+				})
+			: Promise.resolve([]),
+	]);
+
+	return {
+		user,
+		courierProfile: courier[0] ? adminCourierRowOf(courier[0]) : null,
+		recentOrders: orders.map((row) =>
+			adminOrderRowOf({
+				order: row.order,
+				businessName: row.businessName,
+				customerName: row.customerName,
+			}),
+		),
+		auditLog: [
+			...(await auditEntriesFor(ctx.db, { targetId: input.id, limit: 25 })),
+			...profileAudit,
+		].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Courier review
+// ---------------------------------------------------------------------------
+
+function adminCourierRowOf(row: {
+	profile: typeof courierProfileTable.$inferSelect;
+	userName: string;
+	userEmail: string;
+}): AdminCourierRow {
+	return {
+		...row.profile,
+		userName: row.userName,
+		userEmail: row.userEmail,
+	};
+}
+
+export async function courierProfiles(
+	ctx: UserContext,
+	input: AdminCourierListInput,
+): Promise<{ rows: AdminCourierRow[]; total: number }> {
+	const offset = offsetOf(input.cursor);
+	const conditions = [];
+	if (input.search) {
+		const pattern = likePattern(input.search);
+		conditions.push(
+			or(
+				like(courierProfileTable.displayName, pattern),
+				like(courierProfileTable.serviceArea, pattern),
+				like(userTable.name, pattern),
+				like(userTable.email, pattern),
+			),
+		);
+	}
+	if (input.status)
+		conditions.push(eq(courierProfileTable.verificationStatus, input.status));
+	const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+	const [rows, counted] = await Promise.all([
+		ctx.db
+			.select({
+				profile: courierProfileTable,
+				userName: userTable.name,
+				userEmail: userTable.email,
+			})
+			.from(courierProfileTable)
+			.innerJoin(userTable, eq(courierProfileTable.userId, userTable.id))
+			.where(where)
+			.orderBy(desc(courierProfileTable.createdAt), asc(courierProfileTable.id))
+			.limit(input.limit)
+			.offset(offset),
+		ctx.db
+			.select({ total: sql<number>`count(*)` })
+			.from(courierProfileTable)
+			.innerJoin(userTable, eq(courierProfileTable.userId, userTable.id))
+			.where(where),
+	]);
+
+	return {
+		rows: rows.map(adminCourierRowOf),
+		total: Number(counted[0]?.total ?? 0),
+	};
+}
+
+export async function reviewCourier(
+	ctx: UserContext,
+	input: {
+		profileId: string;
+		decision: "VERIFIED" | "REJECTED";
+		reason?: string;
+	},
+): Promise<AdminCourierRow> {
+	const rows = await ctx.db
+		.select({
+			profile: courierProfileTable,
+			userName: userTable.name,
+			userEmail: userTable.email,
+		})
+		.from(courierProfileTable)
+		.innerJoin(userTable, eq(courierProfileTable.userId, userTable.id))
+		.where(eq(courierProfileTable.id, input.profileId))
+		.limit(1);
+	const row = orNotFound(rows[0]);
+	if (row.profile.verificationStatus === input.decision) {
+		return adminCourierRowOf(row);
+	}
+
+	const now = new Date();
+	const action =
+		input.decision === "VERIFIED" ? "courier.verify" : "courier.reject";
+	const reason =
+		input.decision === "REJECTED"
+			? requireReason(action, input.reason)
+			: (input.reason ?? "");
+
+	await ctx.db.batch([
+		ctx.db
+			.update(courierProfileTable)
+			.set({
+				verificationStatus: input.decision,
+				reviewedAt: now,
+				reviewedByUserId: ctx.user.id,
+				updatedAt: now,
+			})
+			.where(eq(courierProfileTable.id, input.profileId)),
+		auditStatement(ctx, {
+			action,
+			targetType: "courier_profile",
+			targetId: input.profileId,
+			before: { verificationStatus: row.profile.verificationStatus },
+			after: { verificationStatus: input.decision },
+			reason: reason || null,
+			now,
+		}),
+	]);
+
+	return adminCourierRowOf({
+		profile: {
+			...row.profile,
+			verificationStatus: input.decision,
+			reviewedAt: now,
+			reviewedByUserId: ctx.user.id,
+			updatedAt: now,
+		},
+		userName: row.userName,
+		userEmail: row.userEmail,
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Products
+// ---------------------------------------------------------------------------
+
+/**
+ * Take a product out of the storefront without touching the shop's own copy.
+ *
+ * `ARCHIVED` is the same terminal state the business's own archive uses: an
+ * order line can still point at the row, and an operator who needs to put it
+ * back can do so from the shop's product form. The reason is required because
+ * this is the action that removes a saleable item from customers' view.
+ */
+export async function unpublishProduct(
+	ctx: UserContext,
+	input: { targetId: string; reason?: string },
+): Promise<{ ok: true }> {
+	const reason = requireReason("product.unpublish", input.reason);
+	const rows = await ctx.db
+		.select({ product: productTable })
+		.from(productTable)
+		.where(eq(productTable.id, input.targetId))
+		.limit(1);
+	const row = orNotFound(rows[0]);
+
+	if (row.product.status === "ARCHIVED") return { ok: true };
+
+	const now = new Date();
+	await ctx.db.batch([
+		ctx.db
+			.update(productTable)
+			.set({
+				status: "ARCHIVED",
+				isFeatured: false,
+				updatedAt: now,
+			})
+			.where(eq(productTable.id, input.targetId)),
+		auditStatement(ctx, {
+			action: "product.unpublish",
+			targetType: "product",
+			targetId: input.targetId,
+			before: { status: row.product.status },
+			after: { status: "ARCHIVED" },
+			reason,
+			now,
+		}),
+	]);
+
+	return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

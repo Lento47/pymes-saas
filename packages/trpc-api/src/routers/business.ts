@@ -5,6 +5,7 @@ import {
 	locationCreateInput,
 	locationPauseInput,
 	locationScopeInput,
+	MARKET_TIME_ZONE,
 	membershipRoleSchema,
 } from "@pymeshub/shared";
 import { z } from "zod";
@@ -123,9 +124,10 @@ export const businessRouter = router({
 		.query(({ ctx }) => businesses.staff(ctx)),
 
 	/**
-	 * The one business procedure that can be used to probe which addresses have an account,
-	 * so it is rate-limited per caller before anything is read — the limit is a property of
-	 * the action, not of the target, and a manager adding a real colleague hits it never.
+	 * Staff invitations still use an existing account's email. Couriers do not: they use
+	 * `couriers.invite`, which searches only reviewed, opted-in profiles and waits for the
+	 * courier's acceptance. This procedure refuses COURIER rather than leaving two ways to
+	 * grant the same role.
 	 */
 	inviteStaff: businessProcedure("staff:manage")
 		.input(
@@ -180,6 +182,12 @@ export const businessRouter = router({
 			z.object({
 				businessId: z.string(),
 				locationId: z.string(),
+				timezone: z.literal(MARKET_TIME_ZONE),
+				// The window decides the bars: an hours-wide read comes back bucketed
+				// hourly, a month-spanning one monthly, so the client's plot gets one bar
+				// per unit instead of ninety slivers. Every existing caller omits it and
+				// keeps the day buckets the response has always carried.
+				granularity: z.enum(["hour", "day", "month"]).default("day"),
 				from: z.date(),
 				to: z.date(),
 			}),

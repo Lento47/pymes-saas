@@ -124,14 +124,13 @@ export function useResolvedRole(): ResolvedRole {
 	) {
 		resolved = { state: "ready", role: preference, degraded: null };
 	} else if (preference === "delivery") {
-		// The courier in waiting: the identification was made at sign-in/sign-up (`auth.role.*`),
-		// and the membership that makes the board work arrives later, when a shop adds this
-		// person by email (`inviteStaff` in `apps/api/src/services/businesses.ts` — deliberately
-		// not an invitation flow). Degrading this device to the customer stack would send a
-		// newly identified courier to the shopping feed with a notice about a membership that
-		// never existed; the delivery tree instead draws its own state for it
-		// (`biz.courier.pending.*`), and nothing there 403s — `myBusinesses` is the session's
-		// own read, and the board mounts only once a `COURIER` row answers.
+		// The courier in waiting: the identification was made at sign-in/sign-up
+		// (`auth.role.*`), and the membership that makes the board work arrives later,
+		// after the courier creates a profile and accepts a business invitation. Degrading
+		// this device to the customer stack would send a newly identified courier to the
+		// shopping feed; the delivery tree instead draws its own pending state
+		// (`biz.courier.pending.*`), and nothing there 403s — `myBusinesses` is the
+		// session's own read, and the board mounts only once a `COURIER` row answers.
 		resolved = { state: "ready", role: "delivery", degraded: "pending" };
 	} else {
 		// The preference outlived the entitlement: the shop was closed, the courier was

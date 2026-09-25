@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
 	formatMoney,
 	MAX_LINE_QUANTITY,
@@ -12,7 +12,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
@@ -36,11 +36,7 @@ import {
 	MerchantOrderRow,
 	ROW_MIN_HEIGHT,
 } from "@/components/merchant-order-row";
-import {
-	MerchantPulse,
-	type MerchantPulseData,
-	pulseBandHeight,
-} from "@/components/merchant-pulse";
+import { MerchantPulse, pulseBandHeight } from "@/components/merchant-pulse";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
@@ -52,12 +48,13 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { messageFor, toApiFailure, useApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
-import { formatDayMonth, formatMinuteOfDay } from "@/lib/format";
+import { formatMarketDayMonth, formatMinuteOfDay } from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import {
+	icon,
 	MIN_TOUCH_TARGET,
 	radius,
 	space,
@@ -100,16 +97,88 @@ type Attention = MerchantHomeData["attention"][number];
 type PauseDuration = 15 | 30 | 60 | undefined;
 type PauseStage = "duration" | "confirm" | null;
 
+function withInventory<T extends object>(
+	inventory: T,
+	quantity: number,
+	maxOrderQuantity: number,
+): T {
+	return {
+		...inventory,
+		...("quantity" in inventory ? { quantity } : {}),
+		...("stockQuantity" in inventory ? { stockQuantity: quantity } : {}),
+		...("maxOrderQuantity" in inventory ? { maxOrderQuantity } : {}),
+	} as T;
+}
+
 function withAvailability(product: ProductCard, quantity: number): ProductCard {
+	const maxOrderQuantity = Math.max(1, Math.min(MAX_LINE_QUANTITY, quantity));
+	const inventory = (product.availability as { inventory?: object }).inventory;
 	return {
 		...product,
 		availability: {
 			...product.availability,
 			inStock: quantity > 0,
 			quantity,
-			maxOrderQuantity: Math.max(1, Math.min(MAX_LINE_QUANTITY, quantity)),
-		},
+			maxOrderQuantity,
+			...(inventory
+				? { inventory: withInventory(inventory, quantity, maxOrderQuantity) }
+				: {}),
+		} as ProductCard["availability"],
 	};
+}
+
+function productNameOf(product: unknown): string | null {
+	if (typeof product === "string") return product;
+	if (
+		product &&
+		typeof product === "object" &&
+		"name" in product &&
+		typeof product.name === "string"
+	) {
+		return product.name;
+	}
+	return null;
+}
+
+function alertRoute(action: Attention["action"]) {
+	switch (action) {
+		case "open_orders":
+			return "/business" as const;
+		case "open_catalog":
+		case "open_inventory":
+			return "/products" as const;
+		case "open_settings":
+			return "/(business)/merchant-settings" as const;
+		case "open_payouts":
+			return "/(business)/payouts" as const;
+		case "retry_payment":
+			return "/(business)/payments" as const;
+		case "contact_support":
+			return "/(business)/support" as const;
+		default:
+			return null;
+	}
+}
+
+function alertIcon(alert: Attention) {
+	switch (alert.type) {
+		case "new_order":
+		case "order_delay":
+			return "receipt-outline" as const;
+		case "inventory_low":
+		case "inventory_zero":
+			return "cube-outline" as const;
+		case "store_offline":
+			return "storefront-outline" as const;
+		case "payment_issue":
+			return "card-outline" as const;
+		case "settlement_issue":
+			return "cash-outline" as const;
+		case "catalog_issue":
+			return "pricetag-outline" as const;
+		default:
+			return "alert-circle-outline" as const;
+	}
 }
 
 export default function MerchantHome() {
@@ -121,6 +190,7 @@ export default function MerchantHome() {
 	const { colors } = useTheme();
 	const scope = useMerchantScope();
 	const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+	const [statusSheetOpen, setStatusSheetOpen] = useState(false);
 	const [pauseStage, setPauseStage] = useState<PauseStage>(null);
 	const [pauseDuration, setPauseDuration] = useState<PauseDuration>();
 
@@ -134,12 +204,6 @@ export default function MerchantHome() {
 	const shop =
 		shopList.find((one) => one.businessId === scope.businessId) ?? shopList[0];
 	const businessId = shop?.businessId;
-	const analyticsRange = useMemo(() => {
-		const to = new Date();
-		const from = new Date(to);
-		from.setUTCHours(0, 0, 0, 0);
-		return { from, to };
-	}, []);
 	const locations = useQuery(
 		trpc.business.locations.queryOptions(
 			{ businessId: businessId ?? "" },
@@ -151,25 +215,6 @@ export default function MerchantHome() {
 		locations.data?.find((location) => location.isDefault) ??
 		locations.data?.[0];
 	const locationId = selectedLocation?.id;
-	const analytics = useQuery(
-		trpc.business.analytics.queryOptions(
-			{
-				businessId: businessId ?? "",
-				locationId: locationId ?? "",
-				from: analyticsRange.from,
-				to: analyticsRange.to,
-			},
-			{
-				enabled:
-					signedIn &&
-					!!businessId &&
-					!!locationId &&
-					(shop?.role === "OWNER" || shop?.role === "MANAGER"),
-				refetchInterval: 5_000,
-			},
-		),
-	);
-
 	const home = useQuery(
 		trpc.business.home.queryOptions(
 			{ businessId: businessId ?? "", locationId: locationId ?? "" },
@@ -188,35 +233,9 @@ export default function MerchantHome() {
 	);
 	const failed = shops.error ?? locations.error ?? home.error;
 
-	const dateLabel = formatDayMonth(new Date(), intlLocale);
+	const dateLabel = formatMarketDayMonth(new Date(), intlLocale);
 
-	/**
-	 * The pulse's three figures, from the reads above and nothing else. The money
-	 * entry is matched on the shop's own currency: a repriced shop whose today
-	 * revenue arrived in another code draws dashes, not another currency's figure
-	 * under this one's label. The orders column counts every order placed today;
-	 * the average divides the completed revenue by the completed count, the set it
-	 * came from — both honest numbers, neither invented.
-	 */
-	const pulse: MerchantPulseData | null = home.data
-		? (() => {
-				const entry = home.data.pulse.todayRevenueByCurrency.find(
-					(one) => one.currency === home.data.location.currency,
-				);
-				return {
-					currency: home.data.location.currency,
-					netMinor: entry?.revenueMinor ?? null,
-					orderCount: home.data.pulse.today,
-					avgTicketMinor:
-						entry && entry.orderCount > 0
-							? Math.round(entry.revenueMinor / entry.orderCount)
-							: null,
-					salesDeltaPct: null,
-					ordersDelta: null,
-					ticketDeltaPct: null,
-				};
-			})()
-		: null;
+	const pulse = home.data?.pulse ?? null;
 
 	const orders = home.data?.orders ?? [];
 
@@ -368,6 +387,14 @@ export default function MerchantHome() {
 		(locationPaused || selectedLocation.status === "open");
 	const selectedPauseDuration =
 		pauseDuration === undefined ? undefined : pauseDuration;
+	const locationLabel = selectedLocation
+		? selectedLocation.name === shop?.businessName
+			? (selectedLocation.city ??
+				((locations.data?.length ?? 0) > 1 ? t("biz.locations.title") : null))
+			: [selectedLocation.name, selectedLocation.city]
+					.filter(Boolean)
+					.join(" · ")
+		: null;
 
 	return (
 		<>
@@ -411,137 +438,100 @@ export default function MerchantHome() {
 				) : (
 					<>
 						<View style={styles.merchantHeader}>
-							<Image
-								uri={home.data?.location.logoUrl}
-								style={[styles.merchantLogo, { borderColor: colors.border }]}
-								radiusToken="md"
-								accessibilityElementsHidden
-							>
-								{home.data?.location.logoUrl ? null : (
-									<Text variant="title" bold>
-										{shop.businessName.trim().charAt(0).toUpperCase()}
-									</Text>
-								)}
-							</Image>
-							<View style={styles.merchantIdentity}>
-								<Text variant="title" bold numberOfLines={1}>
-									{shop.businessName}
-								</Text>
-								{selectedLocation ? (
-									<View style={styles.operatingState}>
-									<Pressable
-										onPress={() => setLocationPickerOpen(true)}
-										disabled={(locations.data?.length ?? 0) < 2}
-										disabledOpacity={1}
-										accessibilityRole="button"
-										accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
-										accessibilityHint={
-											(locations.data?.length ?? 0) > 1
-												? t("biz.locations.select")
-												: undefined
-										}
-										style={styles.locationLine}
-									>
-										<Ionicons
-											name="location-outline"
-											size={14}
-											color={colors.mutedForeground}
-										/>
-										<Text variant="label" tone="muted" numberOfLines={1}>
-											{(locations.data?.length ?? 0) === 1 &&
-											selectedLocation.name === shop.businessName
-												? (selectedLocation.city ?? selectedLocation.name)
-												: [selectedLocation.name, selectedLocation.city]
-														.filter(Boolean)
-														.join(" · ")}
+							<View style={styles.merchantBrand}>
+								<Image
+									uri={home.data?.location.logoUrl}
+									style={[styles.merchantLogo, { borderColor: colors.border }]}
+									radiusToken="md"
+									accessibilityElementsHidden
+								>
+									{home.data?.location.logoUrl ? null : (
+										<Text variant="title" bold>
+											{shop.businessName.trim().charAt(0).toUpperCase()}
 										</Text>
-										{(locations.data?.length ?? 0) > 1 ? (
+									)}
+								</Image>
+								<View style={styles.merchantIdentity}>
+									<Text variant="title" bold numberOfLines={1}>
+										{shop.businessName}
+									</Text>
+									{selectedLocation && locationLabel ? (
+										<Pressable
+											onPress={() => setLocationPickerOpen(true)}
+											disabled={(locations.data?.length ?? 0) < 2}
+											disabledOpacity={1}
+											accessibilityRole="button"
+											accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
+											accessibilityHint={
+												(locations.data?.length ?? 0) > 1
+													? t("biz.locations.select")
+													: undefined
+											}
+											style={styles.locationLine}
+										>
 											<Ionicons
-												name="chevron-down"
-												size={14}
+												name="location-outline"
+												size={icon.inline}
 												color={colors.mutedForeground}
 											/>
-										) : null}
-									</Pressable>
-									{selectedLocation.todayHours ? (
-										<Text variant="caption" tone="muted">
-											{t("biz.dashboard.today")} ·{" "}
-											{formatMinuteOfDay(
-												selectedLocation.todayHours.opensMinute,
-												intlLocale,
-											)}
-											–
-											{formatMinuteOfDay(
-												selectedLocation.todayHours.closesMinute,
-												intlLocale,
-											)}
-										</Text>
+											<Text variant="label" tone="muted" numberOfLines={1}>
+												{locationLabel}
+											</Text>
+											{(locations.data?.length ?? 0) > 1 ? (
+												<Ionicons
+													name="chevron-down"
+													size={icon.inline}
+													color={colors.mutedForeground}
+												/>
+											) : null}
+										</Pressable>
 									) : null}
-									</View>
-								) : null}
-								{selectedLocation ? (
+								</View>
+							</View>
+							{selectedLocation ? (
+								<View style={styles.operatingState}>
 									<Pressable
-										onPress={() => {
-											if (locationPaused) {
-												resume.mutate({
-													businessId,
-													locationId: selectedLocation.id,
-												});
-												return;
-											}
-											setPauseDuration(undefined);
-											setPauseStage("duration");
-										}}
-										disabled={
-											!canManageOperatingState ||
-											pause.isPending ||
-											resume.isPending
-										}
+										onPress={() => setStatusSheetOpen(true)}
+										disabled={pause.isPending || resume.isPending}
 										disabledOpacity={1}
 										accessibilityRole="button"
 										accessibilityLabel={t(
 											`biz.locations.status.${selectedLocation.status}`,
 										)}
-										accessibilityHint={
-											canManageOperatingState
-												? t(
-														locationPaused
-															? "biz.locations.resume"
-															: "biz.locations.pause",
-													)
-												: undefined
-										}
 										style={[
 											styles.statusControl,
-											{ backgroundColor: colors.muted },
+											{
+												backgroundColor: colors.muted,
+												borderColor: colors.border,
+											},
 										]}
 									>
-										<View
-											style={[
-												styles.statusDot,
-												{
-													backgroundColor:
-														selectedLocation.status === "open"
-															? colors.success
-															: locationPaused
-																? colors.warning
-																: colors.mutedForeground,
-												},
-											]}
-										/>
-										<Text variant="label" bold>
-											{t(`biz.locations.status.${selectedLocation.status}`)}
-										</Text>
-										{canManageOperatingState ? (
-											<Ionicons
-												name={locationPaused ? "play-outline" : "chevron-down"}
-												size={16}
-												color={colors.foreground}
+										<View style={styles.statusLine}>
+											<View
+												style={[
+													styles.statusDot,
+													{
+														backgroundColor:
+															selectedLocation.status === "open"
+																? colors.success
+																: locationPaused
+																	? colors.warning
+																	: colors.mutedForeground,
+													},
+												]}
 											/>
-										) : null}
+											<Text variant="label" bold>
+												{t(`biz.locations.status.${selectedLocation.status}`)}
+											</Text>
+										</View>
+										<Ionicons
+											name="chevron-forward"
+											size={icon.control}
+											color={colors.mutedForeground}
+										/>
 									</Pressable>
-								) : null}
-							</View>
+								</View>
+							) : null}
 						</View>
 						{pause.error || resume.error ? (
 							<View style={styles.pad}>
@@ -593,29 +583,33 @@ export default function MerchantHome() {
 						<MerchantInsight
 							items={[
 								{
-									label: t("biz.dashboard.topProducts"),
-									value: analytics.data?.topProducts[0]?.name ?? null,
+									label: t("biz.insight.estimatedMargin"),
+									value:
+										home.data?.insights.estimatedMarginPercent == null
+											? null
+											: `${home.data.insights.estimatedMarginPercent}%`,
+								},
+								{
+									label: t("biz.insight.topProduct"),
+									value: productNameOf(home.data?.insights.topProduct),
 								},
 								{
 									label: t("biz.insight.avgPreparation"),
 									value:
-										analytics.data?.operations.avg_preparation_seconds == null
+										home.data?.insights.averagePreparationMinutes == null
 											? null
 											: t("unit.minutes", {
-													count: Math.round(
-														analytics.data.operations.avg_preparation_seconds /
-															60,
-													),
+													count: home.data.insights.averagePreparationMinutes,
 												}),
 								},
 								{
-									label: t("biz.insight.avgOrder"),
+									label: t("biz.payouts.net"),
 									value:
-										analytics.data?.averageOrderMinor == null
+										home.data?.insights.projectedPayoutMinor == null
 											? null
 											: formatMoney(
-													analytics.data.averageOrderMinor,
-													analytics.data.currency,
+													home.data.insights.projectedPayoutMinor,
+													home.data.location.currency,
 													{ locale: intlLocale },
 												),
 								},
@@ -627,30 +621,12 @@ export default function MerchantHome() {
 								<SectionHeader title={t("biz.home.attention")} />
 								{/* All but the last row drop the trailing hairline the row's own
 						    default draws — the rhythm the board's rows keep with `last`, so
-						    a card of rows never ends in a line for nobody. */}
+								a card of rows never ends in a line for nobody. */}
 								{home.data.attention.map((alert, index) => (
 									<AttentionRow
-										key={alert.type}
-										label={t(
-											alert.type === "new_order"
-												? "biz.home.newOrders"
-												: "biz.home.outOfStock",
-										)}
-										count={alert.count}
-										severity={alert.severity}
-										icon={
-											alert.type === "new_order"
-												? "receipt-outline"
-												: "alert-circle-outline"
-										}
+										key={alert.id}
+										alert={alert}
 										last={index === home.data.attention.length - 1}
-										onPress={() =>
-											router.push(
-												alert.action.type === "OPEN_ORDERS"
-													? "/business"
-													: "/products",
-											)
-										}
 									/>
 								))}
 							</View>
@@ -825,6 +801,72 @@ export default function MerchantHome() {
 				</Card>
 			</Sheet>
 			<Sheet
+				open={statusSheetOpen}
+				onClose={() => setStatusSheetOpen(false)}
+				title={t("biz.locations.status.title")}
+				closeLabel={t("action.close")}
+			>
+				<Card>
+					<View style={styles.statusSheetState}>
+						<View style={styles.statusLine}>
+							<View
+								style={[
+									styles.statusDot,
+									{
+										backgroundColor:
+											selectedLocation?.status === "open"
+												? colors.success
+												: locationPaused
+													? colors.warning
+													: colors.mutedForeground,
+									},
+								]}
+							/>
+							<Text variant="label" bold>
+								{selectedLocation
+									? t(`biz.locations.status.${selectedLocation.status}`)
+									: null}
+							</Text>
+						</View>
+						{selectedLocation?.todayHours ? (
+							<Text variant="caption" tone="muted">
+								{t("biz.dashboard.today")} ·{" "}
+								{formatMinuteOfDay(
+									selectedLocation.todayHours.opensMinute,
+									intlLocale,
+								)}
+								–
+								{formatMinuteOfDay(
+									selectedLocation.todayHours.closesMinute,
+									intlLocale,
+								)}
+							</Text>
+						) : null}
+					</View>
+					{canManageOperatingState && businessId && selectedLocation ? (
+						<ListRow
+							title={t(
+								locationPaused ? "biz.locations.resume" : "biz.locations.pause",
+							)}
+							chevron
+							divider={false}
+							onPress={() => {
+								setStatusSheetOpen(false);
+								if (locationPaused) {
+									resume.mutate({
+										businessId,
+										locationId: selectedLocation.id,
+									});
+									return;
+								}
+								setPauseDuration(undefined);
+								setPauseStage("duration");
+							}}
+						/>
+					) : null}
+				</Card>
+			</Sheet>
+			<Sheet
 				open={pauseStage === "duration"}
 				onClose={() => {
 					setPauseStage(null);
@@ -926,29 +968,22 @@ function MerchantInsight({
 	);
 }
 
-function AttentionRow({
-	label,
-	count,
-	severity,
-	icon,
-	last,
-	onPress,
-}: {
-	label: string;
-	count: number;
-	severity: Attention["severity"];
-	icon: "receipt-outline" | "alert-circle-outline";
-	last: boolean;
-	onPress: () => void;
-}) {
+function AttentionRow({ alert, last }: { alert: Attention; last: boolean }) {
 	const { colors } = useTheme();
-	const semantic = severity === "high" ? colors.destructive : colors.warning;
+	const route = alertRoute(alert.action);
+	const semantic =
+		alert.severity === "critical"
+			? colors.destructive
+			: alert.severity === "warning"
+				? colors.warning
+				: colors.primary;
 
 	return (
 		<Pressable
 			accessibilityRole="button"
-			accessibilityLabel={`${label}: ${count}`}
-			onPress={onPress}
+			accessibilityLabel={alert.title}
+			accessibilityHint={alert.description}
+			onPress={route ? () => router.push(route) : undefined}
 			style={({ pressed }) => [
 				styles.attentionRow,
 				{ borderBottomColor: colors.border },
@@ -957,15 +992,15 @@ function AttentionRow({
 			]}
 		>
 			<View style={[styles.attentionRail, { backgroundColor: semantic }]} />
-			<Ionicons name={icon} size={20} color={semantic} />
-			<Text style={styles.attentionCopy}>
-				{label} <Text bold>{count}</Text>
-			</Text>
-			<Ionicons
-				name="chevron-forward"
-				size={20}
-				color={colors.mutedForeground}
-			/>
+			<Ionicons name={alertIcon(alert)} size={20} color={semantic} />
+			<Text style={styles.attentionCopy}>{alert.title}</Text>
+			{route ? (
+				<Ionicons
+					name="chevron-forward"
+					size={20}
+					color={colors.mutedForeground}
+				/>
+			) : null}
 		</Pressable>
 	);
 }
@@ -981,12 +1016,14 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 			accessibilityLabel={loadingLabel}
 		>
 			<View style={styles.merchantHeader}>
-				<Skeleton style={styles.skeletonLogo} />
-				<View style={styles.skeletonIdentity}>
-					<Skeleton style={[styles.skeletonName, line("title", fontScale)]} />
-					<Skeleton style={[styles.skeletonMeta, line("label", fontScale)]} />
-					<Skeleton style={styles.skeletonStatus} />
+				<View style={styles.merchantBrand}>
+					<Skeleton style={styles.skeletonLogo} />
+					<View style={styles.skeletonIdentity}>
+						<Skeleton style={[styles.skeletonName, line("title", fontScale)]} />
+						<Skeleton style={[styles.skeletonMeta, line("label", fontScale)]} />
+					</View>
 				</View>
+				<Skeleton style={styles.skeletonStatus} />
 			</View>
 			{/* The pulse band's stand-in: full-bleed, at the band's own height, scaled where
 			    the band scales. The measure is `./merchant-pulse`'s own — the wait and the
@@ -1027,30 +1064,35 @@ const styles = StyleSheet.create({
 	pad: { paddingHorizontal: space.lg },
 	merchantHeader: {
 		minHeight: 124,
-		flexDirection: "row",
-		alignItems: "flex-start",
-		gap: 14,
+		gap: space.sm,
 		paddingHorizontal: space.xl,
 		paddingTop: space.md,
-		paddingBottom: space.lg,
+		paddingBottom: space.sm,
 	},
+	merchantBrand: { flexDirection: "row", alignItems: "center", gap: space.md },
 	merchantLogo: { width: 56, height: 56, borderWidth: 1 },
 	merchantIdentity: { flex: 1, alignItems: "flex-start", gap: TEXT_STACK_GAP },
 	locationLine: { flexDirection: "row", alignItems: "center", gap: space.xs },
-	operatingState: { alignItems: "flex-start", gap: space.xs },
+	operatingState: { alignSelf: "flex-start" },
 	statusControl: {
 		minHeight: MIN_TOUCH_TARGET,
 		flexDirection: "row",
 		alignItems: "center",
-		alignSelf: "flex-start",
 		gap: space.sm,
+		borderWidth: 1,
+		borderRadius: radius.md,
 		paddingHorizontal: space.md,
-		borderRadius: radius.sm,
 	},
+	statusLine: { flexDirection: "row", alignItems: "center", gap: space.sm },
 	statusDot: { width: 8, height: 8, borderRadius: radius.full },
+	statusSheetState: {
+		gap: space.xs,
+		paddingHorizontal: space.md,
+		paddingVertical: space.md,
+	},
 	skeletonLogo: { width: 56, height: 56 },
 	skeletonIdentity: { flex: 1, gap: TEXT_STACK_GAP },
-	skeletonStatus: { width: 100, minHeight: MIN_TOUCH_TARGET },
+	skeletonStatus: { minHeight: MIN_TOUCH_TARGET },
 	skeletonName: { width: "55%" },
 	skeletonMeta: { width: "40%" },
 	insight: {

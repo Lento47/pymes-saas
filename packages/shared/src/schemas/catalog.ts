@@ -193,10 +193,35 @@ export const productListInput = z.object({
 });
 export type ProductListInput = z.infer<typeof productListInput>;
 
+export type AvailabilitySchedule = z.infer<typeof businessHoursSchema>;
+
+export const PRODUCT_UNAVAILABLE_REASONS = [
+	"merchant_disabled",
+	"out_of_stock",
+	"schedule",
+	"location_closed",
+	"platform_disabled",
+] as const;
+export type ProductUnavailableReason =
+	(typeof PRODUCT_UNAVAILABLE_REASONS)[number];
+export const productUnavailableReasonSchema = z.enum(
+	PRODUCT_UNAVAILABLE_REASONS,
+);
+
+export const productInventorySchema = z.object({
+	trackInventory: z.boolean(),
+	stockQuantity: z.number().int().min(0),
+});
+export type ProductInventory = z.infer<typeof productInventorySchema>;
+
 export const productAvailabilitySchema = z.object({
 	inStock: z.boolean(),
 	quantity: z.number().int().min(0).nullable(),
 	maxOrderQuantity: z.number().int().min(1),
+	enabled: z.boolean(),
+	schedule: businessHoursSchema.optional(),
+	unavailableReason: productUnavailableReasonSchema.nullable(),
+	inventory: productInventorySchema.optional(),
 });
 export type ProductAvailability = z.infer<typeof productAvailabilitySchema>;
 
@@ -209,16 +234,39 @@ export function availabilityOf(product: {
 	trackInventory: boolean;
 	stockQuantity: number;
 	status: ProductStatus;
+	enabled?: boolean;
+	schedule?: AvailabilitySchedule;
+	unavailableReason?: ProductUnavailableReason | null;
+	locationClosed?: boolean;
+	platformDisabled?: boolean;
 }): ProductAvailability {
-	const inStock =
-		product.status === "ACTIVE" &&
-		(!product.trackInventory || product.stockQuantity > 0);
+	const enabled = product.enabled ?? true;
+	const outOfStock = product.trackInventory && product.stockQuantity <= 0;
+	const unavailableReason =
+		product.unavailableReason ??
+		(product.platformDisabled
+			? "platform_disabled"
+			: !enabled
+				? "merchant_disabled"
+				: product.locationClosed
+					? "location_closed"
+					: product.status !== "ACTIVE" || outOfStock
+						? "out_of_stock"
+						: null);
+	const inStock = unavailableReason === null;
 	return {
 		inStock,
 		quantity: product.trackInventory ? product.stockQuantity : null,
 		maxOrderQuantity: product.trackInventory
 			? Math.max(1, Math.min(20, product.stockQuantity))
 			: 20,
+		enabled,
+		...(product.schedule ? { schedule: product.schedule } : {}),
+		unavailableReason,
+		inventory: {
+			trackInventory: product.trackInventory,
+			stockQuantity: product.stockQuantity,
+		},
 	};
 }
 
@@ -252,6 +300,7 @@ export const productCardSchema = z.object({
 	rating: z.number().min(0).max(5).nullable(),
 	reviewCount: z.number().int().min(0),
 	availability: productAvailabilitySchema,
+	locationScope: z.enum(["all_locations", "selected_locations"]),
 	prepTimeMinutes: z.number().int().nullable(),
 	seller: sellerSummarySchema,
 });

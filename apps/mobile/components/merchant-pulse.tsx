@@ -1,10 +1,13 @@
 import type { MessageKey } from "@pymeshub/i18n";
-import { formatMoney, isCurrency } from "@pymeshub/shared";
+import {
+	formatMoney,
+	isCurrency,
+	type OperationalPulse,
+} from "@pymeshub/shared";
 import { Fragment } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 
-import { formatOneDecimal } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { duration, staggerDelay } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
@@ -49,9 +52,8 @@ import { Text } from "./text";
  * text, because no height was ever written down to stop it.
  *
  * Every line is only what the API sent. A metric with no value prints an em dash, and a
- * delta of `null` renders nothing at all: `salesDeltaPct` is null exactly when yesterday
- * had no base, and "+0.0%" over a day with no base would be a claim about a number nobody
- * measured. The same honesty governs the entrance (§15): the figures arrive as text that
+ * delta of `null` renders nothing at all: the server omits a comparison when there is no
+ * base. The same honesty governs the entrance (§15): the figures arrive as text that
  * fades up, and nothing counts from zero — a count-up is a second, invented number shown
  * on the way to the true one.
  *
@@ -87,28 +89,17 @@ import { Text } from "./text";
 /**
  * The band's numbers, as the dashboard read returns them.
  *
- * `null` is absence, not zero — every field below can carry it, and the band renders each
- * one as the absence it is rather than as a figure invented around it.
+ * The fields are the server's pulse values. Missing comparisons render as absence rather
+ * than as a delta invented around them.
  */
-export type MerchantPulseData = {
-	/** ISO 4217 code, as the business record carries it. */
-	currency: string;
-	/** Minor units, never divided here — `formatMoney` owns the exponent. */
-	netMinor: number | null;
-	/** Orders today, or `null` when none are counted yet. */
-	orderCount: number | null;
-	/** Minor units, like `netMinor`. */
-	avgTicketMinor: number | null;
-	/**
-	 * Percent to one decimal, e.g. `11.8`. `null` when yesterday had no base — the one case
-	 * that renders nothing rather than a sign, and the reason the band never invents a
-	 * percentage.
-	 */
-	salesDeltaPct: number | null;
-	/** The integer difference, e.g. `6`. `null` for the same reason the percentages are. */
-	ordersDelta: number | null;
-	ticketDeltaPct: number | null;
-};
+export type MerchantPulseData = Pick<
+	OperationalPulse,
+	| "merchantNetSalesMinor"
+	| "orderCount"
+	| "averageOrderValueMinor"
+	| "currency"
+	| "comparisons"
+>;
 
 /**
  * What a metric with no value prints.
@@ -170,22 +161,33 @@ const COLUMNS: ReadonlyArray<PulseColumn> = [
 		flex: 44,
 		labelKey: "biz.pulse.netSales",
 		value: (data, intlLocale) =>
-			moneyOrNothing(data.netMinor, data.currency, intlLocale),
-		delta: (data, intlLocale) => signedPercent(data.salesDeltaPct, intlLocale),
+			moneyOrNothing(data.merchantNetSalesMinor, data.currency, intlLocale),
+		delta: (data, intlLocale) => {
+			const previousDay = data.comparisons?.find(
+				({ period }) => period === "previous_day",
+			);
+			return previousDay
+				? signedMoney(previousDay.salesDeltaMinor, data.currency, intlLocale)
+				: null;
+		},
 	},
 	{
 		flex: 24,
 		labelKey: "biz.dashboard.ordersToday",
-		value: (data) =>
-			data.orderCount === null ? NO_VALUE : String(data.orderCount),
-		delta: (data) => signedCount(data.ordersDelta),
+		value: (data) => String(data.orderCount),
+		delta: (data) => {
+			const previousDay = data.comparisons?.find(
+				({ period }) => period === "previous_day",
+			);
+			return previousDay ? signedCount(previousDay.orderDelta) : null;
+		},
 	},
 	{
 		flex: 32,
 		labelKey: "biz.pulse.avgTicket",
 		value: (data, intlLocale) =>
-			moneyOrNothing(data.avgTicketMinor, data.currency, intlLocale),
-		delta: (data, intlLocale) => signedPercent(data.ticketDeltaPct, intlLocale),
+			moneyOrNothing(data.averageOrderValueMinor, data.currency, intlLocale),
+		delta: () => null,
 	},
 ];
 
@@ -271,20 +273,15 @@ function moneyOrNothing(
 }
 
 /**
- * A percent delta, signed, or nothing when there is no base.
- *
- * `formatOneDecimal` carries the minus on a fall (`-3,1` in `es-CR`), so the only sign
- * this adds is the rise's — and a zero takes neither, because a day exactly level with
- * yesterday has no direction and "+0.0%" would claim one. `null` renders nothing at all:
- * yesterday with no base is not yesterday with zero sales, and a percentage invented from
- * an absent base is the one number this band must never print.
+ * A money delta, signed, or nothing when there is no comparison.
  */
-function signedPercent(
-	delta: number | null,
+function signedMoney(
+	delta: number,
+	currency: string,
 	intlLocale: string,
 ): string | null {
-	if (delta === null) return null;
-	const body = formatOneDecimal(delta, intlLocale);
+	if (!isCurrency(currency)) return null;
+	const body = formatMoney(delta, currency, { locale: intlLocale });
 	return delta > 0 ? `+${body}` : body;
 }
 

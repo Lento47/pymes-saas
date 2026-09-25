@@ -17,7 +17,7 @@ import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { space } from "@/theme";
+import { radius, space, useTheme } from "@/theme";
 
 type PauseDuration = 15 | 30 | 60 | undefined;
 
@@ -26,6 +26,7 @@ export default function MerchantLocations() {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
+	const { colors } = useTheme();
 	const scope = useMerchantScope();
 	const [pauseTarget, setPauseTarget] = useState<MerchantLocation | null>(null);
 	const [confirmDuration, setConfirmDuration] = useState<
@@ -99,39 +100,76 @@ export default function MerchantLocations() {
 					<Text>{t("biz.onboarding.notLive")}</Text>
 				) : (
 					<Card>
-						{(locations.data ?? []).map((location, index, all) => {
+						{(locations.data ?? []).map((location, index) => {
 							const paused =
 								location.status === "paused_manual" ||
 								location.status === "paused_capacity";
 							const manageable = paused || location.status === "open";
 							return (
-								<ListRow
+								<View
 									key={location.id}
-									title={location.name}
-									subtitle={`${t(`biz.locations.status.${location.status}`)}${location.resumeAt ? ` · ${new Intl.DateTimeFormat(intlLocale, { hour: "numeric", minute: "2-digit" }).format(location.resumeAt)}` : ""}`}
-									divider={index < all.length - 1}
-									trailing={
-										canManage && manageable ? (
-											<Button
-												label={t(
-													paused
-														? "biz.locations.resume"
-														: "biz.locations.pause",
-												)}
-												variant="secondary"
-												disabled={pause.isPending || resume.isPending}
-												onPress={() => {
-													if (paused)
-														resume.mutate({
-															businessId,
-															locationId: location.id,
-														});
-													else setPauseTarget(location);
-												}}
-											/>
-										) : undefined
-									}
-								/>
+									style={[
+										styles.locationItem,
+										index > 0 && styles.locationDivider,
+										index > 0 && { borderTopColor: colors.border },
+									]}
+								>
+									<View style={styles.locationIdentity}>
+										<Text variant="heading" bold>
+											{location.name}
+										</Text>
+										{location.city ? (
+											<Text variant="label" tone="muted">
+												{location.city}
+											</Text>
+										) : null}
+									</View>
+									<View style={styles.locationStatus}>
+										<View
+											style={[
+												styles.statusDot,
+												{
+													backgroundColor:
+														location.status === "open"
+															? colors.success
+															: paused
+																? colors.warning
+																: colors.mutedForeground,
+												},
+											]}
+										/>
+										<Text variant="label" bold>
+											{t(`biz.locations.status.${location.status}`)}
+										</Text>
+										{location.resumeAt ? (
+											<Text variant="caption" tone="muted">
+												·{" "}
+												{new Intl.DateTimeFormat(intlLocale, {
+													hour: "numeric",
+													minute: "2-digit",
+												}).format(location.resumeAt)}
+											</Text>
+										) : null}
+									</View>
+									{canManage && manageable ? (
+										<Button
+											label={t(
+												paused ? "biz.locations.resume" : "biz.locations.pause",
+											)}
+											variant="secondary"
+											fullWidth
+											disabled={pause.isPending || resume.isPending}
+											onPress={() => {
+												if (paused)
+													resume.mutate({
+														businessId,
+														locationId: location.id,
+													});
+												else setPauseTarget(location);
+											}}
+										/>
+									) : null}
+								</View>
 							);
 						})}
 					</Card>
@@ -192,4 +230,15 @@ export default function MerchantLocations() {
 	);
 }
 
-const styles = StyleSheet.create({ error: { marginTop: space.lg } });
+const styles = StyleSheet.create({
+	error: { marginTop: space.lg },
+	locationItem: { gap: space.sm },
+	locationDivider: {
+		borderTopWidth: StyleSheet.hairlineWidth,
+		marginTop: space.lg,
+		paddingTop: space.lg,
+	},
+	locationIdentity: { gap: space.xs },
+	locationStatus: { flexDirection: "row", alignItems: "center", gap: space.sm },
+	statusDot: { width: 8, height: 8, borderRadius: radius.full },
+});

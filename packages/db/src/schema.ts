@@ -79,6 +79,44 @@ export const MEMBERSHIP_ROLES = [
 ] as const;
 export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 
+export const COURIER_VERIFICATION_STATUSES = [
+	"PENDING",
+	"VERIFIED",
+	"REJECTED",
+] as const;
+export type CourierVerificationStatus =
+	(typeof COURIER_VERIFICATION_STATUSES)[number];
+
+export const COURIER_INVITE_STATUSES = [
+	"PENDING",
+	"ACCEPTED",
+	"DECLINED",
+	"EXPIRED",
+	"CANCELLED",
+] as const;
+export type CourierInviteStatus = (typeof COURIER_INVITE_STATUSES)[number];
+
+export const DELIVERY_STATUSES = [
+	"SEARCHING",
+	"OFFERED",
+	"ACCEPTED",
+	"TO_PICKUP",
+	"AT_PICKUP",
+	"PICKED_UP",
+	"DELIVERED",
+	"CANCELLED",
+] as const;
+export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+export const DELIVERY_OFFER_STATUSES = [
+	"PENDING",
+	"ACCEPTED",
+	"DECLINED",
+	"EXPIRED",
+	"CANCELLED",
+] as const;
+export type DeliveryOfferStatus = (typeof DELIVERY_OFFER_STATUSES)[number];
+
 export const PRODUCT_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
@@ -333,6 +371,121 @@ export const membership = sqliteTable(
 		// Every request resolves the caller's memberships before it resolves
 		// anything else, so this is the hottest read in the tenancy model.
 		index("membership_user_idx").on(table.userId),
+	],
+);
+
+/**
+ * A courier's public, opt-in profile. The account row is not enough: a
+ * business must be able to find a person who chose to be discoverable without
+ * exposing an email address or turning every account into a directory row.
+ *
+ * Verification is a platform decision. A business cannot write this table, and
+ * a profile that changes meaningful fields returns to PENDING for review.
+ */
+export const courierProfile = sqliteTable(
+	"courier_profile",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		displayName: text("display_name").notNull(),
+		serviceArea: text("service_area").notNull(),
+		bio: text("bio"),
+		/**
+		 * The vehicle a courier rides, added with the profile's own photo work:
+		 * what the platform reviews is the person, but what a delivery run needs
+		 * is a plate to identify the vehicle and a picture a business can
+		 * recognize it by. Nullable: a courier without a vehicle row yet is the
+		 * normal state before the first delivery.
+		 */
+		vehicleName: text("vehicle_name"),
+		vehiclePlate: text("vehicle_plate"),
+		vehiclePhotoUrl: text("vehicle_photo_url"),
+		isAvailable: integer("is_available", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		verificationStatus: text("verification_status")
+			.$type<CourierVerificationStatus>()
+			.notNull()
+			.default("PENDING"),
+		reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+		reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("courier_profile_user_unique").on(table.userId),
+		index("courier_profile_directory_idx").on(
+			table.verificationStatus,
+			table.isAvailable,
+		),
+	],
+);
+
+/**
+ * A business's request for a courier. It is deliberately a separate row from
+ * membership: acceptance is the only event that creates a COURIER membership.
+ */
+export const courierInvite = sqliteTable(
+	"courier_invite",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id")
+			.notNull()
+			.references(() => business.id, { onDelete: "cascade" }),
+		courierUserId: text("courier_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		profileId: text("profile_id")
+			.notNull()
+			.references(() => courierProfile.id, { onDelete: "cascade" }),
+		invitedByUserId: text("invited_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		status: text("status")
+			.$type<CourierInviteStatus>()
+			.notNull()
+			.default("PENDING"),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		respondedAt: integer("responded_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("courier_invite_pending_unique")
+			.on(table.businessId, table.courierUserId)
+			.where(sql`${table.status} = 'PENDING'`),
+		index("courier_invite_business_status_idx").on(
+			table.businessId,
+			table.status,
+			table.createdAt,
+		),
+		index("courier_invite_courier_status_idx").on(
+			table.courierUserId,
+			table.status,
+			table.createdAt,
+		),
+	],
+);
+
+/** The courier's latest foreground position. History is deliberately not kept. */
+export const courierPresence = sqliteTable(
+	"courier_presence",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		lat: real("lat").notNull(),
+		lng: real("lng").notNull(),
+		accuracyMeters: real("accuracy_meters"),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("courier_presence_user_unique").on(table.userId),
+		index("courier_presence_updated_idx").on(table.updatedAt),
 	],
 );
 
@@ -623,6 +776,132 @@ export const order = sqliteTable(
 			table.status,
 			table.placedAt,
 		),
+	],
+);
+
+/**
+ * One physical delivery for one DELIVERY order. Both stops are snapshots: an
+ * edited address must not move a run that a courier already accepted.
+ */
+export const delivery = sqliteTable(
+	"delivery",
+	{
+		id: text("id").primaryKey(),
+		orderId: text("order_id")
+			.notNull()
+			.references(() => order.id, { onDelete: "restrict" }),
+		businessId: text("business_id")
+			.notNull()
+			.references(() => business.id, { onDelete: "restrict" }),
+		customerId: text("customer_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		courierUserId: text("courier_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		status: text("status").$type<DeliveryStatus>().notNull().default("SEARCHING"),
+		pickupName: text("pickup_name").notNull(),
+		pickupLine1: text("pickup_line1").notNull(),
+		pickupLine2: text("pickup_line2"),
+		pickupCity: text("pickup_city").notNull(),
+		pickupRegion: text("pickup_region").notNull(),
+		pickupPostalCode: text("pickup_postal_code"),
+		pickupLat: real("pickup_lat"),
+		pickupLng: real("pickup_lng"),
+		pickupPhone: text("pickup_phone"),
+		pickupInstructions: text("pickup_instructions"),
+		dropoffName: text("dropoff_name").notNull(),
+		dropoffLine1: text("dropoff_line1").notNull(),
+		dropoffLine2: text("dropoff_line2"),
+		dropoffCity: text("dropoff_city").notNull(),
+		dropoffRegion: text("dropoff_region").notNull(),
+		dropoffPostalCode: text("dropoff_postal_code"),
+		dropoffLat: real("dropoff_lat"),
+		dropoffLng: real("dropoff_lng"),
+		dropoffPhone: text("dropoff_phone"),
+		dropoffInstructions: text("dropoff_instructions"),
+		acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
+		startedToPickupAt: integer("started_to_pickup_at", { mode: "timestamp_ms" }),
+		arrivedPickupAt: integer("arrived_pickup_at", { mode: "timestamp_ms" }),
+		pickedUpAt: integer("picked_up_at", { mode: "timestamp_ms" }),
+		deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
+		cancelledAt: integer("cancelled_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("delivery_order_unique").on(table.orderId),
+		index("delivery_courier_status_idx").on(table.courierUserId, table.status),
+		index("delivery_business_status_idx").on(table.businessId, table.status),
+	],
+);
+
+/** One timed offer in the automatic dispatch sequence. */
+export const deliveryOffer = sqliteTable(
+	"delivery_offer",
+	{
+		id: text("id").primaryKey(),
+		deliveryId: text("delivery_id")
+			.notNull()
+			.references(() => delivery.id, { onDelete: "cascade" }),
+		courierUserId: text("courier_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		status: text("status")
+			.$type<DeliveryOfferStatus>()
+			.notNull()
+			.default("PENDING"),
+		distanceToPickupKm: real("distance_to_pickup_km"),
+		workloadAtOffer: integer("workload_at_offer").notNull().default(0),
+		ratingAtOffer: real("rating_at_offer"),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		respondedAt: integer("responded_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("delivery_offer_courier_unique").on(
+			table.deliveryId,
+			table.courierUserId,
+		),
+		uniqueIndex("delivery_offer_pending_unique")
+			.on(table.deliveryId)
+			.where(sql`${table.status} = 'PENDING'`),
+		uniqueIndex("delivery_offer_accepted_unique")
+			.on(table.deliveryId)
+			.where(sql`${table.status} = 'ACCEPTED'`),
+		index("delivery_offer_courier_status_idx").on(
+			table.courierUserId,
+			table.status,
+			table.expiresAt,
+		),
+	],
+);
+
+/** Exactly one rating in each direction after a delivered run. */
+export const deliveryRating = sqliteTable(
+	"delivery_rating",
+	{
+		id: text("id").primaryKey(),
+		deliveryId: text("delivery_id")
+			.notNull()
+			.references(() => delivery.id, { onDelete: "cascade" }),
+		fromUserId: text("from_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		toUserId: text("to_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		fromRole: text("from_role").$type<"CUSTOMER" | "COURIER">().notNull(),
+		rating: integer("rating").notNull(),
+		comment: text("comment"),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("delivery_rating_direction_unique").on(
+			table.deliveryId,
+			table.fromRole,
+		),
+		index("delivery_rating_recipient_idx").on(table.toUserId, table.createdAt),
 	],
 );
 
@@ -973,6 +1252,14 @@ export type NewBusiness = typeof business.$inferInsert;
 export type Membership = typeof membership.$inferSelect;
 export type NewMembership = typeof membership.$inferInsert;
 
+export type CourierProfile = typeof courierProfile.$inferSelect;
+export type NewCourierProfile = typeof courierProfile.$inferInsert;
+
+export type CourierInvite = typeof courierInvite.$inferSelect;
+export type NewCourierInvite = typeof courierInvite.$inferInsert;
+export type CourierPresence = typeof courierPresence.$inferSelect;
+export type NewCourierPresence = typeof courierPresence.$inferInsert;
+
 export type Category = typeof category.$inferSelect;
 export type NewCategory = typeof category.$inferInsert;
 
@@ -996,6 +1283,12 @@ export type NewAddress = typeof address.$inferInsert;
 
 export type Order = typeof order.$inferSelect;
 export type NewOrder = typeof order.$inferInsert;
+export type Delivery = typeof delivery.$inferSelect;
+export type NewDelivery = typeof delivery.$inferInsert;
+export type DeliveryOffer = typeof deliveryOffer.$inferSelect;
+export type NewDeliveryOffer = typeof deliveryOffer.$inferInsert;
+export type DeliveryRating = typeof deliveryRating.$inferSelect;
+export type NewDeliveryRating = typeof deliveryRating.$inferInsert;
 
 export type OrderItem = typeof orderItem.$inferSelect;
 export type NewOrderItem = typeof orderItem.$inferInsert;

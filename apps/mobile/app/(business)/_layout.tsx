@@ -193,6 +193,14 @@ export default function BusinessLayout() {
 			    the menu and the rail, and a tab for it would be a door to a screen
 			    with no tab state. `href: null` keeps it mounted and out of the bar. */}
 				<Tabs.Screen name="product-form" options={{ href: null }} />
+				<Tabs.Screen name="merchant-settings" options={{ href: null }} />
+				<Tabs.Screen name="store-profile" options={{ href: null }} />
+				<Tabs.Screen name="business-hours" options={{ href: null }} />
+				<Tabs.Screen name="payments" options={{ href: null }} />
+				<Tabs.Screen name="promotions" options={{ href: null }} />
+				<Tabs.Screen name="settlements" options={{ href: null }} />
+				<Tabs.Screen name="support" options={{ href: null }} />
+				<Tabs.Screen name="activity" options={{ href: null }} />
 				<Tabs.Screen name="merchant-order/[id]" options={{ href: null }} />
 				<Tabs.Screen name="locations" options={{ href: null }} />
 				<Tabs.Screen name="payouts" options={{ href: null }} />

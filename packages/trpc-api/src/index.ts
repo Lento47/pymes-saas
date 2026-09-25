@@ -1,11 +1,13 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import { createDb } from "@pymeshub/db";
 import { createApp } from "./app";
 import type { Env } from "./env";
 import type { OrderEventEnvelope } from "./events";
 import { createLogger } from "./logging";
 import { publishPending } from "./outbox";
 import { handleQueue } from "./queue";
+import { sweepExpiredOffers } from "./services/delivery-dispatch";
 
 /**
  * The Worker.
@@ -55,5 +57,6 @@ export default {
 			queue: "outbox",
 		});
 		await publishPending(env, logger);
+		await sweepExpiredOffers(createDb(env.DB));
 	},
 } satisfies ExportedHandler<Env, OrderEventEnvelope>;

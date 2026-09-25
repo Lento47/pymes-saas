@@ -71,6 +71,27 @@
       "when": 1790192067176,
       "tag": "0009_merchant_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790310239800,
+      "tag": "0010_magenta_tomorrow_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1790311897192,
+      "tag": "0011_clean_red_wolf",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1790319590565,
+      "tag": "0012_chemical_lethal_legion",
+      "breakpoints": true
     }
   ]
 }

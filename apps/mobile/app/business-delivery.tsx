@@ -29,25 +29,15 @@ import { useTRPC } from "@/lib/trpc/context";
 import { MIN_TOUCH_TARGET, radius, space } from "@/theme";
 
 /**
- * Step three of opening a shop: delivery numbers and the first courier.
+ * Step three of opening a shop: delivery numbers.
  *
  * At the root beside the form that leads here, for the reason that file
  * states: the reader is not yet anyone the business tree would let in.
  *
- * Fee, radius and prep time land through `business.update`; the courier's
- * email, when given, becomes a COURIER membership through
- * `business.inviteStaff` — which refuses an address with no account, so the
- * form states that rule beside the field rather than letting the round trip
- * discover it. Either write may fail while the other succeeded: the settings
- * save first, and an invite refusal leaves the screen open on the saved
- * numbers with the sentence about the email, so retrying cannot double-apply
- * anything. The toast fires only when everything asked for is done.
- *
- * Skippable on purpose: a pickup-only shop has no delivery to configure, and
- * a shop whose courier has no account yet should not be held at this screen
- * waiting for one. After this step nothing on the phone edits these three
- * numbers again — the board's settings editor for them is still to come —
- * so this screen is where a shop's fee, radius and prep time are set.
+ * Courier invitations are deliberately not collected here. A courier joins
+ * only after creating an in-app profile, receiving a platform review, and
+ * accepting an invitation from Team. This screen stays skippable so a shop can
+ * finish opening while that happens.
  */
 export default function BusinessDelivery() {
 	const { businessId } = useLocalSearchParams<{ businessId?: string }>();
@@ -77,22 +67,12 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	const [fee, setFee] = useState("");
 	const [radius, setRadius] = useState("");
 	const [prep, setPrep] = useState("");
-	const [courierEmail, setCourierEmail] = useState("");
 	const [submitted, setSubmitted] = useState(false);
 	const [saving, setSaving] = useState(false);
-	// Which write refused, when one did. The sentence itself is derived in
-	// render from the matching mutation's error — storing the message in the
-	// callback would read the render the press happened on, not the one the
-	// refusal arrived in.
-	const [failedStep, setFailedStep] = useState<"update" | "invite" | null>(
-		null,
-	);
 	const prefilled = useRef(false);
 
 	const update = useMutation(trpc.business.update.mutationOptions());
-	const invite = useMutation(trpc.business.inviteStaff.mutationOptions());
 	const updateFailure = useApiFailure(update.error);
-	const inviteFailure = useApiFailure(invite.error);
 
 	const waiting = useSkeletonHold(
 		status === "loading" || (signedIn && settings.isPending),
@@ -128,7 +108,6 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 			? Number(prep.trim())
 			: null;
 	};
-	const emailOk = !courierEmail.trim() || EMAIL_SHAPE.test(courierEmail.trim());
 	const numbersOk =
 		parseFee() !== null && parseRadius() !== null && parsePrep() !== null;
 
@@ -153,11 +132,10 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	};
 
 	const submit = () => {
-		if (update.isPending || invite.isPending) return;
+		if (update.isPending) return;
 		setSubmitted(true);
-		if (!numbersOk || !emailOk) return;
+		if (!numbersOk) return;
 		setSaving(true);
-		setFailedStep(null);
 		const feeMinor = parseFee() ?? 0;
 		const radiusKm = parseRadius() ?? 0;
 		const prepMinutes = parsePrep() ?? 0;
@@ -169,57 +147,24 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 				prepTimeMinutes: prepMinutes,
 			},
 			{
-				onSuccess: () => {
-					const email = courierEmail.trim().toLowerCase();
-					if (!email) {
-						setSaving(false);
-						finishOnboarding();
-						return;
-					}
-					invite.mutate(
-						{ businessId, email, role: "COURIER" },
-						{
-							onSuccess: async () => {
-								setSaving(false);
-								await cache.invalidateQueries({
-									queryKey: trpc.business.pathKey(),
-								});
-								finishOnboarding();
-							},
-							onError: async () => {
-								// The numbers already landed; only the invite
-								// failed, so the screen stays open on them with
-								// the refusal, and the toast stays silent.
-								setSaving(false);
-								setFailedStep("invite");
-								await cache.invalidateQueries({
-									queryKey: trpc.business.pathKey(),
-								});
-							},
-						},
-					);
-				},
-				onError: () => {
+				onSuccess: async () => {
 					setSaving(false);
-					setFailedStep("update");
+					await cache.invalidateQueries({
+						queryKey: trpc.business.pathKey(),
+					});
+					finishOnboarding();
 				},
+				onError: () => setSaving(false),
 			},
 		);
 	};
 
 	const edited = (apply: () => void) => {
 		apply();
-		setFailedStep(null);
 		if (update.isError) update.reset();
-		if (invite.isError) invite.reset();
 	};
 
-	const failure =
-		failedStep === "update"
-			? updateFailure.message
-			: failedStep === "invite"
-				? inviteFailure.message
-				: null;
+	const failure = updateFailure.message;
 
 	const ready = signedIn && !!settings.data && !waiting;
 	const deliveryOn = settings.data?.deliveryEnabled ?? true;
@@ -233,9 +178,8 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	 * assertion on the failure line below is the whole of Android's announcement of this
 	 * sentence, and iOS, which ignores the prop, has to be told. Guarded by the platform rather
 	 * than announced on both: a sentence a live region has already spoken is not read twice, it
-	 * is read as two sentences. `failure` is already one value for the screen — the two writes
-	 * share it and `failedStep` picks the sentence — so this is one announcement per step that
-	 * failed, and editing clears `failedStep` before the next attempt.
+	 * is read as two sentences. `failure` is one value for the screen, so this is one
+	 * announcement for the save attempt.
 	 */
 	useEffect(() => {
 		if (Platform.OS !== "ios" || !failure) return;
@@ -313,20 +257,9 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 
 									<AnimateIn index={1}>
 										<ScreenSection title={t("biz.onboarding.delivery.courier")}>
-											<Field
-												label={t("biz.onboarding.delivery.courier")}
-												value={courierEmail}
-												onChangeText={(value) =>
-													edited(() => setCourierEmail(value))
-												}
-												error={
-													submitted && !emailOk ? t("form.invalidEmail") : null
-												}
-												help={t("biz.onboarding.delivery.courierHelp")}
-												keyboardType="email-address"
-												autoComplete="email"
-												autoCapitalize="none"
-											/>
+											<Text tone="muted">
+												{t("biz.onboarding.delivery.courierHelp")}
+											</Text>
 										</ScreenSection>
 									</AnimateIn>
 								</>
@@ -392,9 +325,6 @@ const MAX_PREP_MINUTES = 600;
 /** The fee's, from the same schema (`deliveryFeeMinor`), so both fail in the field. */
 const MAX_FEE_MINOR = 10_000_000;
 
-/** Same shape check as the profile form: worth stopping for, not a full RFC. */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /**
  * The hairline `./button` draws on every variant, at `borderWidth: 1` — the same two
  * points `./skeletons`' private `HAIRLINE` counts into the control boxes it mirrors,
@@ -411,9 +341,9 @@ const SKELETON_NUMBER_FIELDS = ["fee", "radius", "prep"] as const;
  * draws its form, because these screens are one onboarding ladder and their waits should
  * read alike.
  *
- * The delivery section's three number fields and the courier section's one email field
- * each draw `./field`'s triple — label, box, message line — under their own real
- * `ScreenSection` titles, which are the screen's copy rather than facts a read carries.
+ * The delivery section's three number fields draw `./field`'s triple — label, box,
+ * message line — under their own real `ScreenSection` title. The courier section is a
+ * short explanation, so its wait is one text line rather than a fake input.
  * The skip button is drawn at `./button`'s own `md` sum: the label's `heading` line at the
  * reader's scale, `space.md` of vertical padding twice and the hairline twice, over
  * `MIN_TOUCH_TARGET`, at the button's `radius.sm` corner. Every text height goes through
@@ -450,11 +380,7 @@ function DeliverySkeleton({ loadingLabel }: { loadingLabel: string }) {
 			</ScreenSection>
 
 			<ScreenSection title={t("biz.onboarding.delivery.courier")}>
-				<View style={formStyles.field}>
-					<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-					<Skeleton style={formStyles.input} />
-					<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				</View>
+				<Skeleton style={{ width: "80%", ...line("body", fontScale) }} />
 			</ScreenSection>
 
 			<Skeleton

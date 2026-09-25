@@ -41,6 +41,7 @@ import { Text } from "@/components/text";
 import { categoryPickerRows } from "@/lib/category-scope";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
@@ -154,6 +155,7 @@ function Menu() {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { colors } = useTheme();
+	const merchantScope = useMerchantScope();
 
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
 
@@ -167,7 +169,10 @@ function Menu() {
 	);
 
 	const [pickedId, setPickedId] = useState<string | null>(null);
-	const shop = owned.find((one) => one.businessId === pickedId) ?? owned[0];
+	const shop =
+		owned.find((one) => one.businessId === merchantScope.businessId) ??
+		owned.find((one) => one.businessId === pickedId) ??
+		owned[0];
 
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [shopOpen, setShopOpen] = useState(false);
@@ -551,7 +556,10 @@ function Menu() {
 									// A picker settling on a value: the haptic answers the tap that
 									// changes the shop, not a re-tap of the one already on
 									// (`./business`'s ShopChips rule).
-									if (!selected) selection();
+									if (!selected) {
+										selection();
+										merchantScope.selectBusiness(one.businessId);
+									}
 									setPickedId(one.businessId);
 									// The category belongs to the shop it was chosen under, so
 									// changing shops drops it rather than carrying an id that

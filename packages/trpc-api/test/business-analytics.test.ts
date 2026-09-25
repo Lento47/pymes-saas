@@ -4,7 +4,7 @@ import {
 	orderItem as orderItemTable,
 	order as orderTable,
 } from "@pymeshub/db";
-import { businessAnalyticsSchema } from "@pymeshub/shared";
+import { businessAnalyticsSchema, MARKET_TIME_ZONE } from "@pymeshub/shared";
 
 import { appRouter } from "../src/routers";
 import {
@@ -34,8 +34,10 @@ async function addOrder(
 		totalMinor: number;
 		acceptedAt?: Date;
 		readyAt?: Date;
+		placedAt?: Date;
 	},
 ) {
+	const orderPlacedAt = input.placedAt ?? placedAt;
 	await db.insert(orderTable).values({
 		id: input.id,
 		reference: `REF-${input.id}`,
@@ -50,11 +52,11 @@ async function addOrder(
 		subtotalMinor: input.subtotalMinor,
 		discountMinor: input.discountMinor ?? 0,
 		totalMinor: input.totalMinor,
-		placedAt,
+		placedAt: orderPlacedAt,
 		acceptedAt: input.acceptedAt,
 		readyAt: input.readyAt,
-		createdAt: placedAt,
-		updatedAt: placedAt,
+		createdAt: orderPlacedAt,
+		updatedAt: orderPlacedAt,
 	});
 	await db.insert(orderItemTable).values({
 		id: `itm_${input.id}`,
@@ -126,6 +128,18 @@ test("analytics scopes every aggregate to its location and refuses foreign locat
 			discountMinor: 50,
 			totalMinor: 950,
 		});
+		// This is still September 20 at 23:30 in Costa Rica.
+		await addOrder(testWorld.db, {
+			id: "ord_analytics_late",
+			businessId,
+			locationId: firstLocationId,
+			customerId: customer.id,
+			productId: firstProduct.id,
+			status: "COMPLETED",
+			subtotalMinor: 700,
+			totalMinor: 700,
+			placedAt: new Date("2026-09-21T05:30:00.000Z"),
+		});
 		await addOrder(testWorld.db, {
 			id: "ord_analytics_second",
 			businessId,
@@ -151,9 +165,10 @@ test("analytics scopes every aggregate to its location and refuses foreign locat
 
 		const window = {
 			businessId,
-			from: new Date("2026-09-20T00:00:00.000Z"),
-			to: new Date("2026-09-20T23:59:59.999Z"),
-		};
+			from: new Date("2026-09-20T06:00:00.000Z"),
+			to: new Date("2026-09-21T05:59:59.999Z"),
+			timezone: MARKET_TIME_ZONE,
+		} as const;
 		const analytics = businessAnalyticsSchema.parse(
 			await owner.business.analytics({
 				...window,
@@ -161,32 +176,57 @@ test("analytics scopes every aggregate to its location and refuses foreign locat
 			}),
 		);
 		expect(analytics.orders).toEqual({
-			total: 2,
+			total: 3,
 			accepted: 1,
-			completed: 1,
+			completed: 2,
 			cancelled: 0,
 			active: 1,
 		});
 		expect(analytics.sales).toEqual({
 			refunds_minor: 1900,
-			discounts_minor: 150,
+			discounts_minor: 100,
 		});
-		expect(analytics.revenue).toEqual({ grossMinor: 2850, netMinor: 950 });
+		expect(analytics.revenue).toEqual({ grossMinor: 2600, netMinor: 700 });
 		expect(analytics.operations).toEqual({
 			avg_accept_seconds: 60,
 			avg_preparation_seconds: 180,
 		});
-		expect(analytics.averageOrderMinor).toBe(1425);
+		expect(analytics.averageOrderMinor).toBe(1300);
 		expect(analytics.customers).toEqual({ total: 1, repeat: 1 });
 		expect(analytics.ordersByDay).toEqual([
-			{ day: "2026-09-20", orderCount: 2, revenueMinor: 2850 },
+			{ day: "2026-09-20", orderCount: 3, revenueMinor: 2600 },
+		]);
+		// The same window at the other two granularities: hourly splits the three orders
+		// by their Costa Rica wall hour (06:00 for two, 23:30 for the late one — still
+		// September 20), and monthly folds them into the month's single bucket.
+		const hourly = businessAnalyticsSchema.parse(
+			await owner.business.analytics({
+				...window,
+				locationId: firstLocationId,
+				granularity: "hour",
+			}),
+		);
+		expect(hourly.ordersByDay).toEqual([
+			{ day: "2026-09-20 06:00", orderCount: 2, revenueMinor: 1900 },
+			// The bucket truncates to the hour — the order itself placed at 23:30.
+			{ day: "2026-09-20 23:00", orderCount: 1, revenueMinor: 700 },
+		]);
+		const monthly = businessAnalyticsSchema.parse(
+			await owner.business.analytics({
+				...window,
+				locationId: firstLocationId,
+				granularity: "month",
+			}),
+		);
+		expect(monthly.ordersByDay).toEqual([
+			{ day: "2026-09", orderCount: 3, revenueMinor: 2600 },
 		]);
 		expect(analytics.topProducts).toEqual([
 			{
 				productId: firstProduct.id,
 				name: `Producto ${firstProduct.id}`,
 				quantity: 2,
-				revenueMinor: 3000,
+				revenueMinor: 2700,
 			},
 		]);
 		const second = businessAnalyticsSchema.parse(

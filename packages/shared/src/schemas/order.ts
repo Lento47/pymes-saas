@@ -385,6 +385,7 @@ export type ReviewListInput = z.infer<typeof reviewListInput>;
 export const orderStatsSchema = z.object({
 	/** Orders that have not reached COMPLETED, CANCELLED or REJECTED. */
 	active: z.number().int().min(0),
+	/** Orders placed since midnight in Costa Rica. */
 	today: z.number().int().min(0),
 	revenueByCurrency: z.array(
 		z.object({
@@ -395,7 +396,7 @@ export const orderStatsSchema = z.object({
 	),
 	/**
 	 * Today's completed revenue, same entries as `revenueByCurrency` and the same
-	 * COMPLETED-only meaning, scoped to the UTC day `stats()` already reads `today`
+	 * COMPLETED-only meaning, scoped to the Costa Rica day `stats()` reads `today`
 	 * against. A second field rather than a narrowed `revenueByCurrency` because that
 	 * one is every completed order ever and the web dashboard reads it as exactly
 	 * that (`dashboard-view.tsx` says a card labelled "today" showing all time is
@@ -411,6 +412,39 @@ export const orderStatsSchema = z.object({
 	),
 });
 export type OrderStats = z.infer<typeof orderStatsSchema>;
+
+export const OPERATIONAL_PULSE_COMPARISONS = [
+	"previous_day",
+	"previous_week",
+] as const;
+export type OperationalPulseComparisonPeriod =
+	(typeof OPERATIONAL_PULSE_COMPARISONS)[number];
+
+export const operationalPulseComparisonSchema = z.object({
+	period: z.enum(OPERATIONAL_PULSE_COMPARISONS),
+	salesDeltaMinor: z.number().int(),
+	orderDelta: z.number().int(),
+});
+export type OperationalPulseComparison = z.infer<
+	typeof operationalPulseComparisonSchema
+>;
+
+export const operationalPulseSchema = orderStatsSchema.extend({
+	period: z.object({
+		from: z.date(),
+		to: z.date(),
+		timezone: z.string().min(1),
+	}),
+	grossSalesMinor: z.number().int().min(0),
+	discountsMinor: z.number().int().min(0),
+	refundsMinor: z.number().int().min(0),
+	merchantNetSalesMinor: z.number().int(),
+	orderCount: z.number().int().min(0),
+	averageOrderValueMinor: z.number().int().min(0),
+	currency: currencySchema,
+	comparisons: z.array(operationalPulseComparisonSchema).optional(),
+});
+export type OperationalPulse = z.infer<typeof operationalPulseSchema>;
 
 /**
  * Reordering — buying the same things again, and the reason it is a procedure.

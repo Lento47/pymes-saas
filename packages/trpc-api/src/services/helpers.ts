@@ -4,6 +4,7 @@ import {
 } from "@pymeshub/db";
 import {
 	type BusinessHoursEntry,
+	MARKET_UTC_OFFSET_MINUTES,
 	MEMBERSHIP_ROLES,
 	type MembershipRole,
 } from "@pymeshub/shared";
@@ -135,8 +136,6 @@ export function orNotFound<T>(row: T | undefined): T {
  * When a second market with a real DST rule arrives, this becomes a column on
  * `business` — not a branch here.
  */
-const MARKET_UTC_OFFSET_MINUTES = -6 * 60;
-
 /** The business's local weekday and minute-of-day, from an instant. */
 export function localDayAndMinute(at: Date): {
 	day: number;

@@ -20,6 +20,14 @@ export const auth = {
 	"auth.signUp.submit": "Crear cuenta",
 	"auth.signUp.hasAccount": "¿Ya tienes cuenta?",
 
+	"auth.signUp.business.title": "Registra tu negocio",
+	"auth.signUp.business.subtitle": "Crea una cuenta para abrir tu tienda.",
+	"auth.signUp.delivery.title": "Regístrate como repartidor",
+	"auth.signUp.delivery.subtitle": "Crea una cuenta para aceptar entregas.",
+	"auth.signUp.notCustomer": "¿No eres cliente?",
+	"auth.signUp.businessOption": "Regístrate como negocio",
+	"auth.signUp.courierOption": "Regístrate como repartidor",
+
 	"auth.field.email": "Correo",
 	"auth.field.email.placeholder": "tu@correo.com",
 	"auth.field.password": "Contraseña",

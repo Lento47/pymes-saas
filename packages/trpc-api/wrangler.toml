@@ -5,10 +5,12 @@
 # browses in a browser and the same storefront on their phone are the same rows, and
 # the only way to keep them that way is for there to be one writer.
 #
-# What is *not* here: R2. Images are uploaded to a Worker route and stored in R2 in the
-# target design, but the Cloudflare token in this repo has no R2 scope yet, so the
-# binding is omitted rather than added and left to fail at deploy. Uploads are the one
-# feature this blocks; see `docs/environment.md`.
+# What is *not* here: nothing about images is missing any more. Photos go in
+# through `uploads.image` (tRPC, base64) and come back out through the
+# `GET /uploads/*` route in `src/app.ts`, both against the `MEDIA` binding
+# declared per environment below - per environment because Wrangler 4 does not
+# inherit R2 config, and a bucket named only at the top level is a deploy that
+# fails naming it. See `docs/environment.md`.
 
 name = "pymeshub-api"
 main = "src/index.ts"
@@ -72,6 +74,17 @@ binding = "DB"
 database_name = "pymhubdb"
 database_id = "add40616-4e4e-4851-9f2d-0eca6380ca3b"
 migrations_dir = "../../packages/db/migrations"
+
+# ---------------------------------------------------------------------------
+# R2 - image bytes. One bucket per deployment, for the reason KV is split below:
+# a staging upload must never sit beside a production photograph, and the
+# failure mode of a shared bucket is a test picture published as someone's
+# vehicle photo. Created with `wrangler r2 bucket create <name>`; `wrangler dev`
+# runs against a simulated bucket and needs no real one before the first deploy.
+# ---------------------------------------------------------------------------
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pymeshub-media"
 
 # ---------------------------------------------------------------------------
 # KV — cache and rate-limit counters. Never a source of truth: everything written
@@ -231,6 +244,11 @@ database_id = "fe386601-8828-466b-a6fd-85ef4992dc22"
 # to prevent. Read the two ids side by side before editing either: the wrong one here is
 # not a staging bug, it is a migration applied against live orders.
 migrations_dir = "../../packages/db/migrations"
+# Staging's **own** bucket - see the top-level R2 note: a staging upload beside a
+# production photograph is the failure this split exists to prevent.
+[[env.staging.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pymeshub-media-staging"
 # Staging's **own** id, from `wrangler kv namespace create pymeshub-cache-staging` — this
 # is a different Worker, so it gets a different namespace. See the top-level KV note.
 [[env.staging.kv_namespaces]]
@@ -268,6 +286,12 @@ binding = "DB"
 database_name = "pymhubdb"
 database_id = "add40616-4e4e-4851-9f2d-0eca6380ca3b"
 migrations_dir = "../../packages/db/migrations"
+# The **same** bucket as the top-level block, not a new one: this is the same Worker
+# (the `name` and the `database_id` above are both deliberate repeats of the top level),
+# so one bucket serves both deploy paths - the KV block below makes the same point.
+[[env.production.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pymeshub-media"
 # The **same** id as the top-level block, not a new one: this is the same Worker (the
 # `name` and the `database_id` below are both deliberate repeats of the top level), so
 # one namespace serves both deploy paths. See the note on the top-level KV block.

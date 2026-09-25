@@ -67,6 +67,7 @@ import {
 	type OrderItem as OrderItemShape,
 	type OrderSummary,
 	type OrderTracking,
+	type ProductAvailability,
 	type Payout,
 	type ProductCard,
 	type ProductDetail,
@@ -103,6 +104,37 @@ const NEW_PRODUCT_DAYS = 14;
 const POPULAR_SOLD_COUNT = 20;
 
 const DAY_MS = 86_400_000;
+
+type ProductMapperRow = ProductRow & {
+	locationScope?: ProductCard["locationScope"];
+	availability?: Partial<ProductAvailability>;
+};
+
+function productAvailabilityOf(row: ProductMapperRow): ProductAvailability {
+	const nested = row.availability;
+	const legacy = availabilityOf({
+		trackInventory: row.trackInventory,
+		stockQuantity: row.stockQuantity,
+		status: row.status,
+	});
+
+	if (!nested) return legacy;
+
+	return {
+		inStock: nested.inStock ?? legacy.inStock,
+		quantity: nested.quantity === undefined ? legacy.quantity : nested.quantity,
+		maxOrderQuantity: nested.maxOrderQuantity ?? legacy.maxOrderQuantity,
+		enabled: nested.enabled ?? legacy.enabled,
+		...(nested.schedule ? { schedule: nested.schedule } : {}),
+		unavailableReason:
+			nested.unavailableReason === undefined
+				? legacy.unavailableReason
+				: nested.unavailableReason,
+		...("inventory" in nested && nested.inventory
+			? { inventory: nested.inventory }
+			: {}),
+	};
+}
 
 export function currencyOf(value: string): Currency {
 	return value as Currency;
@@ -279,7 +311,7 @@ function badgesOf(
 }
 
 export function productCardOf(
-	row: ProductRow,
+	row: ProductMapperRow,
 	business: BusinessRow,
 	options: { now?: Date } = {},
 ): ProductCard {
@@ -297,11 +329,8 @@ export function productCardOf(
 		badges: badgesOf(row, business, now),
 		rating: row.ratingCount > 0 ? row.ratingAvg : null,
 		reviewCount: row.ratingCount,
-		availability: availabilityOf({
-			trackInventory: row.trackInventory,
-			stockQuantity: row.stockQuantity,
-			status: row.status,
-		}),
+		availability: productAvailabilityOf(row),
+		locationScope: row.locationScope ?? "all_locations",
 		prepTimeMinutes: row.prepTimeMinutes,
 		seller: sellerSummaryOf(business),
 	};

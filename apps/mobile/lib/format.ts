@@ -1,10 +1,8 @@
 /**
  * Dates and times, in the reader's own convention.
  *
- * The one exception is `formatMinuteOfDay` at the foot of the file, and it is the exception
- * because it is not a reader's clock at all: it is a shop's *timetable*, printed the same way on
- * every device, and it is re-exported from `@pymeshub/i18n` so the browser and the phone cannot
- * hold two of it.
+ * Shop timetables and the merchant pulse use the market clock, so an owner travelling
+ * sees the same business day the API counts.
  *
  * Money is **not** here. Money is an integer in the currency's minor unit and it is
  * formatted by `formatMoney` / `<Price>` and by nothing else — a second formatter is a
@@ -32,9 +30,16 @@
  * here to preserve. Catching would invent a behaviour; storing only what was built means the throw
  * repeats exactly as often as it did before.
  */
+import { MARKET_TIME_ZONE } from "@pymeshub/shared";
+
 const DATE_SHAPES = {
 	day: { day: "2-digit", month: "2-digit", year: "numeric" },
 	dayMonth: { day: "numeric", month: "short" },
+	marketDayMonth: {
+		day: "numeric",
+		month: "short",
+		timeZone: MARKET_TIME_ZONE,
+	},
 	clock: { hour: "numeric", minute: "2-digit" },
 	stamp: {
 		day: "2-digit",
@@ -97,6 +102,14 @@ export function formatDayMonth(
 	intlLocale: string,
 ): string {
 	return dateFormatterFor("dayMonth", intlLocale).format(asDate(value));
+}
+
+/** The merchant pulse's day, in Costa Rica regardless of the device timezone. */
+export function formatMarketDayMonth(
+	value: Date | string | number,
+	intlLocale: string,
+): string {
+	return dateFormatterFor("marketDayMonth", intlLocale).format(asDate(value));
 }
 
 /** `2:30 p. m.` in `es-CR`, `2:30 PM` in `en-US`. */

@@ -23,12 +23,14 @@ import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { Field } from "@/components/field";
 import { Image } from "@/components/image";
 import { MapView } from "@/components/map";
 import { MoneyLine } from "@/components/money-line";
 import { OrderTimeline } from "@/components/order-timeline";
 import { Price } from "@/components/price";
 import { useRefreshControl } from "@/components/pull-refresh";
+import { RatingInput, type RatingValue } from "@/components/rating-input";
 import { ReorderOutcome } from "@/components/reorder-outcome";
 import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
@@ -38,7 +40,7 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { toApiFailure } from "@/lib/api-error";
 import { formatClock, formatDay } from "@/lib/format";
-import { light, warning } from "@/lib/haptics";
+import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
 import { useTRPC } from "@/lib/trpc/context";
@@ -496,6 +498,10 @@ function OrderDetail() {
 					reachedAt={reachedAt}
 				/>
 
+				{order.fulfilment === "DELIVERY" ? (
+					<CustomerDeliveryRating orderId={order.id} />
+				) : null}
+
 				{/* The code, in the place the customer it belongs to reads the screen in: what is
 				    happening, then what they will be asked for, then what they bought. It is drawn
 				    when the API sends one rather than when this file reasons that a `PICKUP` order
@@ -864,6 +870,93 @@ function OrderDetail() {
 				onConfirm={confirmCancel}
 			/>
 		</View>
+	);
+}
+
+function CustomerDeliveryRating({ orderId }: { orderId: string }) {
+	const { t } = useT();
+	const trpc = useTRPC();
+	const cache = useQueryClient();
+	const [rating, setRating] = useState<RatingValue>(0);
+	const [comment, setComment] = useState("");
+	const delivery = useQuery(
+		trpc.deliveries.byOrder.queryOptions(
+			{ orderId },
+			{
+				refetchInterval: (query) =>
+					query.state.data?.status === "DELIVERED" ? false : 5_000,
+			},
+		),
+	);
+	const rate = useMutation(
+		trpc.deliveries.rate.mutationOptions({
+			onSuccess: async () => {
+				success();
+				await cache.invalidateQueries({ queryKey: trpc.deliveries.pathKey() });
+			},
+			onError: warning,
+		}),
+	);
+
+	if (delivery.isError) return <ErrorState error={delivery.error} />;
+	if (delivery.data?.status !== "DELIVERED") return null;
+
+	const detail = delivery.data;
+	const rated = detail.ratings.customerToCourier ?? rate.data;
+	return (
+		<AnimateIn index={4} reorder>
+			<Card>
+				<View style={styles.stack}>
+					<Text variant="heading" bold>
+						{t("delivery.rateCourier.title")}
+					</Text>
+					{rated ? (
+						<Text variant="body" tone="muted">
+							{t("delivery.rateCourier.thanks")}
+						</Text>
+					) : (
+						<>
+							<Text variant="body" tone="muted">
+								{t("delivery.rateCourier.subtitle")}
+							</Text>
+							<RatingInput
+								value={rating}
+								onChange={setRating}
+								label={t("review.rating")}
+								optionLabel={(value) =>
+									t("review.stars", { count: value, stars: 5 })
+								}
+								disabled={rate.isPending}
+							/>
+							<Field
+								label={t("review.comment")}
+								placeholder={t("review.comment.placeholder")}
+								value={comment}
+								onChangeText={setComment}
+								multiline
+								maxLength={500}
+								editable={!rate.isPending}
+							/>
+							{rate.error ? <ErrorState error={rate.error} /> : null}
+							<Button
+								label={t("delivery.rateCourier.submit")}
+								fullWidth
+								loading={rate.isPending}
+								disabled={rating === 0 || rate.isPending}
+								onPress={() => {
+									if (rating === 0) return;
+									rate.mutate({
+										deliveryId: detail.id,
+										rating,
+										comment: comment.trim() || undefined,
+									});
+								}}
+							/>
+						</>
+					)}
+				</View>
+			</Card>
+		</AnimateIn>
 	);
 }
 

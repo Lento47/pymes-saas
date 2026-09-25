@@ -15,7 +15,13 @@
 
 import { z } from "zod";
 import { BUSINESS_STATUSES } from "./business";
+import { PRODUCT_STATUSES, PROMOTION_KINDS } from "./catalog";
 import { currencySchema, shortText } from "./common";
+import {
+	COURIER_INVITE_STATUSES,
+	COURIER_VERIFICATION_STATUSES,
+	courierProfileSchema,
+} from "./courier";
 
 export const ADMIN_ACTIONS = [
 	"business.suspend",
@@ -33,6 +39,8 @@ export const ADMIN_ACTIONS = [
 	"category.create",
 	"category.update",
 	"category.delete",
+	"courier.verify",
+	"courier.reject",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 export const adminActionSchema = z.enum(ADMIN_ACTIONS);
@@ -61,6 +69,7 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	"business.delete",
 	"user.suspend",
 	"order.cancel",
+	"product.unpublish",
 	"payout.mark_paid",
 ];
 
@@ -114,6 +123,45 @@ export const adminUserRowSchema = z.object({
 });
 export type AdminUserRow = z.infer<typeof adminUserRowSchema>;
 
+export const adminCourierListInput = z.object({
+	search: z.string().trim().max(120).optional(),
+	status: z.enum(COURIER_VERIFICATION_STATUSES).optional(),
+	cursor: z.string().max(200).optional(),
+	limit: z.number().int().min(1).max(50).default(25),
+});
+export type AdminCourierListInput = z.infer<typeof adminCourierListInput>;
+
+export const adminCourierRowSchema = courierProfileSchema.extend({
+	userName: z.string(),
+	userEmail: z.string(),
+	reviewedAt: z.date().nullable(),
+	reviewedByUserId: z.string().nullable(),
+});
+export type AdminCourierRow = z.infer<typeof adminCourierRowSchema>;
+
+export const adminCourierDecisionInput = z.object({
+	profileId: z.string(),
+	decision: z.enum(["VERIFIED", "REJECTED"]),
+	reason: z.string().trim().max(500).optional(),
+});
+export type AdminCourierDecisionInput = z.infer<
+	typeof adminCourierDecisionInput
+>;
+
+export const adminCourierInviteRowSchema = z.object({
+	id: z.string(),
+	businessId: z.string(),
+	businessName: z.string(),
+	courierUserId: z.string(),
+	courierName: z.string(),
+	profileId: z.string(),
+	status: z.enum(COURIER_INVITE_STATUSES),
+	createdAt: z.date(),
+	expiresAt: z.date(),
+	respondedAt: z.date().nullable(),
+});
+export type AdminCourierInviteRow = z.infer<typeof adminCourierInviteRowSchema>;
+
 export const adminOrderRowSchema = z.object({
 	id: z.string(),
 	reference: z.string(),
@@ -126,6 +174,64 @@ export const adminOrderRowSchema = z.object({
 	placedAt: z.date(),
 });
 export type AdminOrderRow = z.infer<typeof adminOrderRowSchema>;
+
+export const adminProductRowSchema = z.object({
+	id: z.string(),
+	businessId: z.string(),
+	businessName: z.string(),
+	categoryId: z.string().nullable(),
+	categoryName: z.string().nullable(),
+	name: z.string(),
+	description: z.string().nullable(),
+	imageUrl: z.string().nullable(),
+	sku: z.string().nullable(),
+	priceMinor: z.number().int(),
+	currency: currencySchema,
+	status: z.enum(PRODUCT_STATUSES),
+	isFeatured: z.boolean(),
+	ratingAvg: z.number(),
+	ratingCount: z.number().int().min(0),
+	soldCount: z.number().int().min(0),
+	stockQuantity: z.number().int().min(0),
+	trackInventory: z.boolean(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+});
+export type AdminProductRow = z.infer<typeof adminProductRowSchema>;
+
+export const adminPromotionRowSchema = z.object({
+	id: z.string(),
+	businessId: z.string(),
+	businessName: z.string(),
+	code: z.string(),
+	kind: z.enum(PROMOTION_KINDS),
+	value: z.number().int(),
+	currency: currencySchema,
+	isActive: z.boolean(),
+	minOrderMinor: z.number().int().nullable(),
+	maxRedemptions: z.number().int().nullable(),
+	redemptions: z.number().int().min(0),
+	startsAt: z.date().nullable(),
+	endsAt: z.date().nullable(),
+});
+export type AdminPromotionRow = z.infer<typeof adminPromotionRowSchema>;
+
+export const adminReviewRowSchema = z.object({
+	id: z.string(),
+	orderId: z.string(),
+	orderReference: z.string(),
+	businessId: z.string(),
+	businessName: z.string(),
+	customerId: z.string(),
+	customerName: z.string(),
+	productId: z.string().nullable(),
+	productName: z.string().nullable(),
+	rating: z.number().int().min(1).max(5),
+	comment: z.string().nullable(),
+	replyText: z.string().nullable(),
+	createdAt: z.date(),
+});
+export type AdminReviewRow = z.infer<typeof adminReviewRowSchema>;
 
 /**
  * Platform metrics. Money is grouped by currency and never added across them —

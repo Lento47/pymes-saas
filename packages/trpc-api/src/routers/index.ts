@@ -4,6 +4,8 @@ import { businessRouter } from "./business";
 import { businessesRouter } from "./businesses";
 import { cartRouter } from "./cart";
 import { catalogRouter } from "./catalog";
+import { couriersRouter } from "./couriers";
+import { deliveriesRouter } from "./deliveries";
 import { favoritesRouter } from "./favorites";
 import { healthRouter } from "./health";
 import { notificationsRouter } from "./notifications";
@@ -11,6 +13,7 @@ import { ordersRouter } from "./orders";
 import { payoutsRouter } from "./payouts";
 import { productsRouter } from "./products";
 import { reviewsRouter } from "./reviews";
+import { uploadsRouter } from "./uploads";
 import { usersRouter } from "./users";
 
 /**
@@ -32,6 +35,8 @@ export const appRouter = router({
 	products: productsRouter,
 	users: usersRouter,
 	cart: cartRouter,
+	couriers: couriersRouter,
+	deliveries: deliveriesRouter,
 	orders: ordersRouter,
 	favorites: favoritesRouter,
 	notifications: notificationsRouter,
@@ -39,6 +44,7 @@ export const appRouter = router({
 	reviews: reviewsRouter,
 	payouts: payoutsRouter,
 	admin: adminRouter,
+	uploads: uploadsRouter,
 });
 
 export type AppRouter = typeof appRouter;

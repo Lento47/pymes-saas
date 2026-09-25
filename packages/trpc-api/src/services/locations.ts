@@ -10,11 +10,11 @@ import {
 	type MerchantLocation,
 	newId,
 } from "@pymeshub/shared";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import { ForbiddenError, ValidationError } from "../errors";
 import type { BusinessContext } from "./helpers";
-import { isOpenAt, orNotFound } from "./helpers";
+import { isOpenAt, localDayAndMinute, orNotFound } from "./helpers";
 
 type LocationRow = typeof locationTable.$inferSelect;
 type BusinessRow = typeof businessTable.$inferSelect;
@@ -42,6 +42,10 @@ function locationOf(
 	const pauseIsCurrent =
 		location.pauseReason !== null &&
 		(location.resumeAt === null || location.resumeAt > now);
+	const { day } = localDayAndMinute(now);
+	const today = (location.hours ?? business.hours)?.find(
+		(entry) => entry.day === day,
+	);
 	return {
 		id: location.id,
 		businessId: location.businessId,
@@ -56,6 +60,13 @@ function locationOf(
 		lat: location.lat,
 		lng: location.lng,
 		status: operationalStatus(location, business, now),
+		todayHours:
+			today && !today.isClosed
+				? {
+						opensMinute: today.opensMinute,
+						closesMinute: today.closesMinute,
+					}
+				: null,
 		pausedAt: pauseIsCurrent ? location.pausedAt : null,
 		resumeAt: pauseIsCurrent ? location.resumeAt : null,
 		createdAt: location.createdAt,
@@ -102,7 +113,11 @@ export async function list(ctx: BusinessContext): Promise<MerchantLocation[]> {
 		.select()
 		.from(locationTable)
 		.where(eq(locationTable.businessId, businessId))
-		.orderBy(asc(locationTable.createdAt), asc(locationTable.id));
+		.orderBy(
+			desc(locationTable.isDefault),
+			asc(locationTable.createdAt),
+			asc(locationTable.id),
+		);
 	const now = new Date();
 	return rows.map((row) => locationOf(row, business, now));
 }
