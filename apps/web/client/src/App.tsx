@@ -90,6 +90,7 @@ import AdminLogin from "@/pages/admin/login";
 import AdminLandingEditor from "@/pages/admin/landing-editor";
 import AdminRouterMetrics from "@/pages/admin/router-metrics";
 import BusinessProfilePage from "@/pages/business-profile";
+import MapPage from "@/pages/map";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -305,6 +306,9 @@ function AppRouter() {
       </Route>
       <Route path="/security">
         {() => <SecurityPage />}
+      </Route>
+      <Route path="/map">
+        {() => <MapPage />}
       </Route>
       <Route path="/crm" component={CrmFeatureRoute} />
       <Route path="/analytics" component={AnalyticsFeatureRoute} />
