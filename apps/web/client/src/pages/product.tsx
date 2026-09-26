@@ -176,11 +176,11 @@ function OrbitGraphic() {
   return (
     <div className="app-panel relative mx-auto mt-8 h-56 w-56 rounded-lg p-5">
       <div className="grid h-full grid-cols-2 gap-3">
-        {["Bandeja", "Facturas", "Tareas", "Pipeline"].map((label) => (
+        {["Pedidos", "Entregas", "Pagos", "Catálogo"].map((label) => (
           <div key={label} className="rounded-md border border-border-subtle bg-muted/20 p-3">
             <span className="mb-3 block h-2 w-8 rounded-full bg-primary/45" />
             <p className="font-marketing text-xs font-semibold text-foreground">{label}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">Operativo</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">En vivo</p>
           </div>
         ))}
       </div>

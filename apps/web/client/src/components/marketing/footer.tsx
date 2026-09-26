@@ -5,13 +5,13 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_LINKS = [
-  { href: "/inbox", key: "inboxUnified" },
-  { href: "/crm", key: "crm" },
-  { href: "/tasks", key: "tasks" },
-  { href: "/documents", key: "documents" },
-  { href: "/billing", key: "billing" },
-  { href: "/automations", key: "automations" },
-  { href: "/analytics", key: "analytics" },
+  { href: "/categories", key: "categories" },
+  { href: "/search", key: "search" },
+  { href: "/orders", key: "orders" },
+  { href: "/favorites", key: "favorites" },
+  { href: "/cart", key: "cart" },
+  { href: "/product", key: "howItWorks" },
+  { href: "/pricing", key: "pricing" },
 ] as const;
 
 const SOLUTIONS_LINKS = [
@@ -38,6 +38,8 @@ const RESOURCES_LINKS = [
   { href: "/changelog", key: "changelog" },
 ] as const;
 
+// Los documentos legales del marketplace agregados en la fase de storefront
+// van primero: son los que rigen pedidos y entregas.
 const LEGAL_LINKS = [
   { href: "/legal/privacy-policy", key: "privacy" },
   { href: "/legal/terms-of-service", key: "terms" },

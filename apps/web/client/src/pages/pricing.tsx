@@ -36,8 +36,8 @@ export default function PricingPage() {
                 <Link href="/login" className="whitespace-nowrap text-sm font-medium text-gray-600 transition hover:text-gray-900">
                   Ingresar
                 </Link>
-                <Link href="/login" className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:gap-2 sm:px-5 sm:py-2.5" style={{ background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)" }}>
-                  Comenzar
+                <Link href="/register" className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:gap-2 sm:px-5 sm:py-2.5" style={{ background: "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)" }}>
+                  Registrar mi comercio
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
@@ -101,14 +101,14 @@ export default function PricingPage() {
               ))}
             </div>
 
-            {/* Channel billing disclaimer */}
+            {/* Fees disclaimer */}
             <div className="mt-8 rounded-md border border-border/60 bg-muted/30 px-5 py-3.5">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">WhatsApp Business:</span>{" "}
-                PymesHub se conecta con tu propia cuenta de WhatsApp Business (WABA).
-                Los cargos por mensajes de plantilla que aplique Meta se cobran directamente a tu cuenta de Meta — no están incluidos en tu suscripción de PymesHub.{" "}
-                <span className="font-medium text-foreground">Telegram:</span>{" "}
-                El uso normal de Telegram no genera cargos adicionales de la plataforma.
+                <span className="font-medium text-foreground">Sin comisión por pedido:</span>{" "}
+                el plan incluye el uso de la plataforma; no cobramos un porcentaje de cada venta.
+                Los cargos de procesamiento de pagos en línea que apliquen corresponden al proveedor de pagos.{" "}
+                <span className="font-medium text-foreground">Efectivo contra entrega:</span>{" "}
+                el dinero queda en tu caja, como siempre, y el pago queda registrado en el pedido.
               </p>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function PricingPage() {
                 <tbody className="divide-y divide-border">
                   {[
                     { label: 'Miembros del equipo', key: 'users' },
-                    { label: 'Comprobantes/mes', key: 'invoicesPerMonth' },
+                    { label: 'Pedidos/mes', key: 'invoicesPerMonth' },
                     { label: 'Automatizaciones', key: 'automations' },
                     { label: 'Almacenamiento', key: 'storageGB' },
                   ].map((row) => (
@@ -369,9 +369,9 @@ export default function PricingPage() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
-                onClick={() => navigate('/login?plan=growth')}
+                onClick={() => navigate('/register?plan=growth')}
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90">
-                {copy.cta?.primary || 'Empezar prueba gratuita'}
+                {copy.cta?.primary || 'Registrar mi comercio'}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <a

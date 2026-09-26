@@ -17,6 +17,7 @@ import {
   Receipt,
   Search,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   UserRound,
   Users,
@@ -223,26 +224,26 @@ export function MarketingHeader({ active }: { active?: keyof typeof SITE_ROUTES 
    ────────────────────────────────────────────────────────────────────────── */
 export function ProductMockup() {
   const rows = [
-    ["María Rodríguez", "WhatsApp · Invoice request", "Needs human", "2m", true],
-    ["Café Nube", "Telegram · Support", "AI active", "14m", false],
-    ["Carlos Ríos", "Email · Sales", "Waiting client", "1h", false],
+    ["Soda Doña Elba", "Casado · 2 refrescos", "En camino", "12m", true],
+    ["Farma Central", "Farmacia · Receta", "Preparando", "25m", false],
+    ["Ferretería El Martillo", "Ferretería · Herramientas", "Entregado", "1h", false],
   ] as const;
   return (
     <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_32px_120px_rgba(15,23,42,0.16)]">
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white">
-            <Layers3 className="h-4 w-4" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white">
+            <ShoppingBag className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-900">PymesHub Command Center</p>
-            <p className="text-[10px] text-slate-500">Inbox · Customer context · AI · Billing</p>
+            <p className="text-xs font-semibold text-slate-900">PymesHub · Tus pedidos</p>
+            <p className="text-[10px] text-slate-500">Descubrí · Pedí · Seguí tu entrega</p>
           </div>
         </div>
         <div className="hidden gap-2 sm:flex">
-          <Badge>12 open</Badge>
-          <Badge tone="warning">4 need human</Badge>
-          <Badge tone="success">Online</Badge>
+          <Badge>3 negocios abiertos</Badge>
+          <Badge tone="warning">1 en preparación</Badge>
+          <Badge tone="success">Entrega hoy</Badge>
         </div>
       </div>
       <div className="grid min-h-[430px] grid-cols-1 md:grid-cols-[270px_minmax(0,1fr)_300px]">
@@ -250,18 +251,18 @@ export function ProductMockup() {
           <div className="border-b border-slate-200 p-3">
             <div className="flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-400">
               <Search className="h-3.5 w-3.5" />
-              Search conversations
+              Buscar negocios y productos
             </div>
             <div className="mt-2 flex gap-1">
-              <Badge tone="primary">Mine</Badge>
-              <Badge>Unread</Badge>
-              <Badge>Invoices</Badge>
+              <Badge tone="primary">Cerca de mí</Badge>
+              <Badge>Abiertos</Badge>
+              <Badge>Ofertas</Badge>
             </div>
           </div>
           {rows.map(([name, meta, status, time, activeRow]) => (
             <div
               key={name}
-              className={cn("border-b border-slate-200 p-3", activeRow ? "bg-indigo-50" : "bg-white/50")}
+              className={cn("border-b border-slate-200 p-3", activeRow ? "bg-amber-50" : "bg-white/50")}
             >
               <div className="flex gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600 ring-1 ring-slate-200">
@@ -273,7 +274,7 @@ export function ProductMockup() {
                     <span className="text-[10px] text-slate-400">{time}</span>
                   </div>
                   <p className="mt-1 truncate text-[11px] text-slate-500">{meta}</p>
-                  <p className="mt-1 text-[10px] font-medium text-indigo-600">{status}</p>
+                  <p className="mt-1 text-[10px] font-medium text-amber-600">{status}</p>
                 </div>
               </div>
             </div>
@@ -283,37 +284,37 @@ export function ProductMockup() {
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                MR
+                SE
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900">María Rodríguez</p>
-                <p className="text-xs text-slate-500">WhatsApp · Needs human · Daniel</p>
+                <p className="text-sm font-semibold text-slate-900">Soda Doña Elba</p>
+                <p className="text-xs text-slate-500">Casado con pollo · Entrega a domicilio · ₡4 500</p>
               </div>
             </div>
-            <Badge tone="primary">AI ready</Badge>
+            <Badge tone="success">En camino · 15 min</Badge>
           </div>
           <div className="flex-1 space-y-4 bg-[linear-gradient(to_bottom,#ffffff,#F8FAFC)] p-4">
-            <div className="text-center text-[11px] text-slate-400">Today</div>
+            <div className="text-center text-[11px] text-slate-400">Hoy</div>
             <div className="flex gap-2">
               <div className="mt-auto h-6 w-6 rounded-full bg-slate-100" />
               <div className="max-w-[76%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm">
-                Hola, necesito factura del servicio de instalación de ayer.
+                ¡Buen día! Tu pedido está confirmado: 1 casado con pollo y 2 refrescos.
               </div>
             </div>
-            <div className="mx-auto max-w-sm rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-center text-[11px] font-medium text-indigo-700">
-              AI detected invoice request · 2 details missing
+            <div className="mx-auto max-w-sm rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-medium text-amber-700">
+              Pedido confirmado · Salimos en 10 minutos
             </div>
             <div className="flex justify-end">
-              <div className="max-w-[76%] rounded-2xl rounded-br-md border border-indigo-100 bg-indigo-50 px-3.5 py-2.5 text-sm text-slate-800">
-                Con gusto. Para prepararla, ¿me confirmás el servicio y el monto?
+              <div className="max-w-[76%] rounded-2xl rounded-br-md border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-sm text-slate-800">
+                Perfecto, pago en efectivo. Lo espero afuera.
               </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-900">Invoice draft prepared</p>
-                <Badge tone="warning">Review required</Badge>
+                <p className="text-xs font-semibold text-slate-900">Pedido #1042 en camino</p>
+                <Badge tone="warning">Entrega estimada 15 min</Badge>
               </div>
-              <p className="mt-1 text-xs text-slate-500">The team reviews details before final actions.</p>
+              <p className="mt-1 text-xs text-slate-500">Confirmado → Preparando → En camino → Entregado</p>
             </div>
           </div>
           <div className="border-t border-slate-200 bg-slate-50 p-3">
@@ -321,8 +322,8 @@ export function ProductMockup() {
               <button className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                 +
               </button>
-              <div className="flex-1 text-sm text-slate-400">Write a reply...</div>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white">
+              <div className="flex-1 text-sm text-slate-400">Escribile al comercio…</div>
+              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-white">
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -330,14 +331,14 @@ export function ProductMockup() {
         </section>
         <aside className="border-t border-slate-200 bg-slate-50 p-4 md:border-l md:border-t-0">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Customer context</p>
-            <p className="mt-4 text-sm font-semibold text-slate-900">María Rodríguez</p>
-            <p className="mt-1 text-xs text-slate-500">New customer · WhatsApp · Billing intent</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Tu pedido</p>
+            <p className="mt-4 text-sm font-semibold text-slate-900">Soda Doña Elba</p>
+            <p className="mt-1 text-xs text-slate-500">Entrega a domicilio · Barrio Amón</p>
             <div className="mt-4 space-y-3">
               {[
-                ["Intent", "Invoice request"],
-                ["Missing", "Product, amount"],
-                ["Next step", "Ask for details"],
+                ["Artículos", "3"],
+                ["Total", "₡4 500"],
+                ["Pago", "Efectivo"],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0">
                   <span className="text-xs text-slate-500">{k}</span>
@@ -347,13 +348,13 @@ export function ProductMockup() {
             </div>
           </div>
           <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Actions</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Acciones</p>
             <div className="mt-3 grid gap-2">
-              <button className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">
-                Prepare invoice
+              <button className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white">
+                Ver mi pedido
               </button>
               <button className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
-                Create task
+                Pedir de nuevo
               </button>
             </div>
           </div>
