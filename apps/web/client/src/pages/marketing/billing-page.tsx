@@ -25,28 +25,28 @@ export default function BillingPage() {
   }, [t]);
 
   return (
-    <MarketingShell active="billing">
+    <MarketingShell>
       <ProductPageHero badge={t.page.badge} title={t.page.title} subtitle={t.page.subtitle} />
       <section className="px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
             <SectionLabel>{t.eyebrow}</SectionLabel>
-            <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-5xl">
+            <h2 className="text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">
               {t.title}
             </h2>
-            <p className="mt-6 text-lg leading-8 text-slate-600">{t.subtitle}</p>
+            <p className="mt-6 text-lg leading-8 text-slate-400">{t.subtitle}</p>
           </div>
           <BillingFlow />
         </div>
       </section>
-      <section className="border-t border-slate-200 bg-white px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <section className="border-y border-white/10 bg-white/[0.02] px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
             <SectionLabel>{au.eyebrow}</SectionLabel>
-            <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-5xl">
+            <h2 className="text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">
               {au.title}
             </h2>
-            <p className="mt-6 text-lg leading-8 text-slate-600">{au.subtitle}</p>
+            <p className="mt-6 text-lg leading-8 text-slate-400">{au.subtitle}</p>
           </div>
           <AutomationRecipe />
         </div>

@@ -13,35 +13,32 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { applySeoMetadata } from "@/lib/seo";
 import { ShieldCheck } from "lucide-react";
 
-// Fake but realistic agent trace log shown per agent
-const TRACES: Record<string, { fn: string; result: string }[]> = {
+// Live order operations shown per merchant workflow — same data a merchant
+// sees on their panel, no code-style logs.
+const TRACE_STEPS: Record<string, { step: string; detail: string }[]> = {
   reception: [
-    { fn: "classify_intent(message)",      result: '"consulta_facturacion"'   },
-    { fn: "check_business_hours()",        result: "open: true"               },
-    { fn: "requires_human_handoff()",      result: "false"                    },
-    { fn: "prepare_response(template)",    result: "draft ready"              },
-    { fn: "escalate_if_needed(0.85)",      result: "confidence: 0.97"         },
+    { step: "Pedido #1042 recibido",     detail: "3 artículos · nota: \"sin cebolla\"" },
+    { step: "Dirección confirmada",      detail: "Barrio Amón · 1.2 km" },
+    { step: "Pago elegido",              detail: "Efectivo contra entrega" },
+    { step: "Pedido confirmado",         detail: "Cliente notificado · sale en 10 min" },
   ],
   sales: [
-    { fn: "detect_buying_intent(message)", result: '"alta"'                   },
-    { fn: "lookup_customer_history(id)",   result: "2 prev interactions"      },
-    { fn: "create_followup_task()",        result: "task_id: T-4821"          },
-    { fn: "suggest_template(intent)",      result: "template: sales_v3"       },
-    { fn: "requires_approval()",          result: "true → pending review"    },
+    { step: "Pedido #1039 entregado",    detail: "₡6 800 en efectivo" },
+    { step: "Pedido #1040 entregado",    detail: "₡4 200 con tarjeta" },
+    { step: "Pedido #1041 transferencia",detail: "Comprobante registrado" },
+    { step: "Cierre del día",            detail: "12 pedidos · ₡58 400 registrados" },
   ],
   support: [
-    { fn: "read_knowledge_base(query)",    result: "3 articles found"         },
-    { fn: "summarize_context(thread)",     result: "298 tokens"               },
-    { fn: "confidence_score()",            result: "0.61 → below threshold"   },
-    { fn: "escalate_to_human(reason)",     result: "low_confidence"           },
-    { fn: "prepare_handoff_summary()",     result: "ready"                    },
+    { step: "Horario de hoy",            detail: "Abierto · 8:00–19:00" },
+    { step: "Radio de entrega",          detail: "5 km · 25 min promedio" },
+    { step: "Retiro en tienda",          detail: "Disponible" },
+    { step: "Catálogo",                  detail: "34 productos visibles" },
   ],
   billing: [
-    { fn: "extract_invoice_fields(msg)",   result: "missing: [amount, date]"  },
-    { fn: "request_missing_data(fields)",  result: "2 fields requested"       },
-    { fn: "prepare_draft(data)",           result: "draft_id: D-9043"         },
-    { fn: "requires_user_review()",        result: "true → blocked"           },
-    { fn: "notify_team(draft_id)",         result: "notification sent"        },
+    { step: "Pedidos de hoy",            detail: "12 confirmados · 3 en camino" },
+    { step: "Por estado",                detail: "4 preparando · 5 entregados" },
+    { step: "Totales",                   detail: "₡58 400 registrados" },
+    { step: "Resumen",                   detail: "Listo para preparar la entrega" },
   ],
 };
 
@@ -66,7 +63,7 @@ export default function AiAgentsPage() {
   ];
 
   return (
-    <MarketingShell active="aiAgents">
+    <MarketingShell>
 
       {/* ── Hero ── */}
       <ProductPageHero
@@ -80,50 +77,50 @@ export default function AiAgentsPage() {
         subtitle={t.page.subtitle}
       />
 
-      {/* ── Agent Console — light, as designed ── */}
-      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+      {/* ── Merchant workflow selector ── */}
+      <section className="px-4 pb-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-7xl">
           <AgentConsole />
         </div>
       </section>
 
-      {/* ── Agent trace + capabilities — dark ── */}
-      <section className="bg-slate-950 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      {/* ── Live order ops + capabilities — dark ── */}
+      <section className="border-y border-white/10 bg-white/[0.02] px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="mx-auto max-w-7xl space-y-16">
 
-          {/* Trace logs */}
+          {/* Live ops per workflow */}
           <div>
-            <p className="mb-8 font-mono text-[11px] tracking-[0.2em] text-slate-500 uppercase">
-              agent.trace_log[]
+            <p className="mb-8 text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
+              {t.eyebrow} · en vivo
             </p>
             <div className="grid gap-4 md:grid-cols-2">
               {agentList.map((agent) => {
-                const trace = TRACES[agent.id] ?? [];
+                const steps = TRACE_STEPS[agent.id] ?? [];
                 return (
                   <div
                     key={agent.id}
-                    className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
                   >
-                    <div className="mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      <span className="font-mono text-[11px] text-slate-300">
-                        agent/{agent.id}
+                    <div className="mb-4 flex items-center gap-2 border-b border-white/10 pb-3">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        {agent.name}
                       </span>
-                      <span className="ml-auto font-mono text-[10px] text-indigo-400">
+                      <span className="ml-auto text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
                         {agent.status}
                       </span>
                     </div>
-                    <ul className="space-y-1.5">
-                      {trace.map((line, i) => (
+                    <ul className="space-y-2">
+                      {steps.map((line, i) => (
                         <li key={i} className="flex items-baseline gap-3">
-                          <span className="font-mono text-[10px] text-slate-600 select-none">
+                          <span className="text-[10px] text-slate-600 select-none">
                             {String(i + 1).padStart(2, "0")}
                           </span>
-                          <span className="font-mono text-[11px] text-indigo-300">
-                            {line.fn}
+                          <span className="text-[12px] font-medium text-slate-200">
+                            {line.step}
                           </span>
-                          <span className="ml-auto font-mono text-[11px] text-slate-500 shrink-0">
-                            {line.result}
+                          <span className="ml-auto text-[11px] text-slate-500 shrink-0 text-right">
+                            {line.detail}
                           </span>
                         </li>
                       ))}
@@ -136,21 +133,21 @@ export default function AiAgentsPage() {
 
           {/* Capabilities grid */}
           <div>
-            <p className="mb-8 font-mono text-[11px] tracking-[0.2em] text-slate-500 uppercase">
-              agent.capabilities[]
+            <p className="mb-8 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              Lo que incluye cada flujo
             </p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {agentList.map((agent) => (
                 <div
                   key={agent.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+                  className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
                 >
-                  <p className="mb-4 text-sm font-semibold text-slate-100">{agent.name}</p>
+                  <p className="mb-4 text-sm font-semibold text-white">{agent.name}</p>
                   <ul className="space-y-2.5">
                     {Object.values(agent.checks).map((check, i) => (
                       <li key={i} className="flex items-start gap-2">
-                        <span className="mt-px font-mono text-[11px] text-indigo-500 select-none">›</span>
-                        <span className="font-mono text-[11px] leading-5 text-slate-400">
+                        <span className="mt-px text-[11px] text-amber-500/80 select-none">›</span>
+                        <span className="text-[12px] leading-5 text-slate-400">
                           {check}
                         </span>
                       </li>
@@ -162,27 +159,27 @@ export default function AiAgentsPage() {
           </div>
 
           {/* Guardrail */}
-          <div className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-900/60 px-5 py-4">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
-            <p className="font-mono text-[11px] leading-5 text-slate-400">{t.guardrail}</p>
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-5 py-4">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <p className="text-[13px] leading-5 text-slate-300">{t.guardrail}</p>
           </div>
 
         </div>
       </section>
 
-      {/* ── Automation — light ── */}
-      <section className="border-t border-slate-200 bg-white px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      {/* ── Automation — dark ── */}
+      <section className="px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <p className="mb-3 font-mono text-[11px] tracking-[0.18em] text-slate-400 uppercase">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
               {au.eyebrow}
             </p>
-            <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-5xl">
+            <h2 className="text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">
               <ScrambleText duration={1800} delay={600} chars={BLOCK_CHARS}>
                 {au.title}
               </ScrambleText>
             </h2>
-            <p className="mt-6 text-lg leading-8 text-slate-600">{au.subtitle}</p>
+            <p className="mt-6 text-lg leading-8 text-slate-400">{au.subtitle}</p>
           </div>
           <AutomationRecipe />
         </div>

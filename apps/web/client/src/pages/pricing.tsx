@@ -21,19 +21,19 @@ export default function PricingPage() {
   const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
-    <div className="marketing-light-theme relative min-h-screen">
+    <div className="marketplace-theme relative min-h-screen">
 
       <main className="relative z-10">
         {/* Navigation */}
         <section className="px-4 pb-8 pt-6 md:px-8">
           <div className="mx-auto max-w-7xl">
-            <nav className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-md px-5 py-4 md:px-7">
+            <nav className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-md md:px-7">
               <Link href="/">
                 <BrandLockup compact />
               </Link>
               <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                 <LanguageSwitcher variant="marketing" />
-                <Link href="/login" className="whitespace-nowrap text-sm font-medium text-gray-600 transition hover:text-gray-900">
+                <Link href="/login" className="whitespace-nowrap text-sm font-medium text-slate-300 transition hover:text-white">
                   Ingresar
                 </Link>
                 <Link href="/register" className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:gap-2 sm:px-5 sm:py-2.5" style={{ background: "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)" }}>
@@ -48,16 +48,16 @@ export default function PricingPage() {
         {/* Hero Section */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-4xl text-center">
-            <h1 className="font-marketing text-3xl font-bold leading-[1.1] tracking-[-0.04em] text-gray-900 sm:text-4xl md:text-5xl">
+            <h1 className="font-marketing text-3xl font-bold leading-[1.1] tracking-[-0.04em] text-white sm:text-4xl md:text-5xl">
               {copy.hero?.title || 'Planes que crecen contigo'}
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-500 md:text-xl">
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400 md:text-xl">
               {copy.hero?.subtitle || 'Pagá solo por lo que usás. Cancelá cuando quieras.'}
             </p>
 
             {/* Billing Toggle */}
             <div className="mt-10 flex items-center justify-center gap-4">
-              <span className={cn(isAnnual ? 'text-muted-foreground' : 'text-foreground')}>
+              <span className={cn('text-slate-400', isAnnual ? 'opacity-60' : 'text-white')}>
                 Mensual
               </span>
               <button
@@ -76,7 +76,7 @@ export default function PricingPage() {
                   )}
                 />
               </button>
-              <span className={cn(isAnnual ? 'text-foreground' : 'text-muted-foreground')}>
+              <span className={cn('text-slate-400', isAnnual ? 'text-white' : 'opacity-60')}>
                 Anual
               </span>
               {isAnnual && (
@@ -350,7 +350,7 @@ export default function PricingPage() {
 
         {/* CTA Section */}
         <section className="px-4 py-16 md:px-8 md:py-24">
-          <div className="relative mx-auto max-w-3xl overflow-hidden rounded-lg border border-border bg-card"
+          <div className="relative mx-auto max-w-3xl overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]"
             style={{
               backgroundImage: 'url(https://raw.githubusercontent.com/Lento47/PymesHub-invoice/refs/heads/master/readytolunch.png)',
               backgroundSize: 'cover',
@@ -358,7 +358,7 @@ export default function PricingPage() {
               backgroundRepeat: 'no-repeat',
               aspectRatio: '3 / 2',
             }}>
-            <div className="absolute inset-0 bg-background/75" />
+            <div className="absolute inset-0 bg-[#05091d]/80" />
             <div className="relative z-10 flex flex-col items-center justify-center h-full p-8 text-center md:p-12">
             <h2 className="text-3xl font-semibold tracking-[-0.04em] text-foreground md:text-4xl">
               {copy.cta?.title || '¿Listo para empezar?'}

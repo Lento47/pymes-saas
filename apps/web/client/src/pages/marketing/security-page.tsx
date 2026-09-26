@@ -23,7 +23,7 @@ export default function SecurityPage() {
   }, [t]);
 
   return (
-    <MarketingShell active="security">
+    <MarketingShell>
       <ProductPageHero badge={t.page.badge} title={t.page.title} subtitle={t.page.subtitle} />
       <section className="px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
         <div className="mx-auto max-w-7xl">
