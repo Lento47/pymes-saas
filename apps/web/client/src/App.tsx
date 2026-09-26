@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
@@ -12,6 +12,8 @@ import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { OfflineBanner } from "@/components/shared/offline-banner";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DisplayPreferencesProvider, useDisplayPreferences } from "@/components/providers/display-preferences";
+import AccountPage from "@/pages/account";
 import { useAuth } from "@/hooks/use-auth";
 import { CallProvider, useCallContext } from "@/features/calls/CallProvider";
 import { IncomingCallDialog } from "@/features/calls/IncomingCallDialog";
@@ -90,6 +92,19 @@ import AdminLogin from "@/pages/admin/login";
 import AdminLandingEditor from "@/pages/admin/landing-editor";
 import AdminRouterMetrics from "@/pages/admin/router-metrics";
 import BusinessProfilePage from "@/pages/business-profile";
+import MapPage from "@/pages/map";
+import MarketplaceHomePage from "@/pages/marketplace/home";
+import MarketplaceCategoriesPage from "@/pages/marketplace/categories";
+import MarketplaceCategoryPage from "@/pages/marketplace/category";
+import MarketplaceSearchPage from "@/pages/marketplace/search";
+import MarketplaceStorePage from "@/pages/marketplace/store";
+import MarketplaceProductPage from "@/pages/marketplace/product";
+import MarketplaceCartPage from "@/pages/marketplace/cart";
+import MarketplaceCheckoutPage from "@/pages/marketplace/checkout";
+import MarketplaceOrdersPage from "@/pages/marketplace/orders";
+import MarketplaceOrderPage from "@/pages/marketplace/order";
+import MarketplaceFavoritesPage from "@/pages/marketplace/favorites";
+import MarketplaceSignInPage from "@/pages/marketplace/sign-in";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -182,7 +197,9 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
 function RootRoute() {
   const { isAuthenticated, user, initialized } = useAuth();
   if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
-  if (!isAuthenticated) return <Landing />;
+  // A stranger lands on the marketplace storefront, not a product pitch. This is the
+  // public version of PymesHub: browse shops and products, then sign in to order.
+  if (!isAuthenticated) return <MarketplaceHomePage />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
 
@@ -205,14 +222,17 @@ const AnalyticsFeatureRoute = makeFeatureRoute("analytics",   InsightsPage);
 
 function AppRouter() {
   const [location] = useLocation();
+  const { reducedMotion } = useDisplayPreferences();
+  const systemReducedMotion = useReducedMotion();
+  const reduceMotion = reducedMotion || systemReducedMotion;
   const pageKey = "/" + (location.split("/")[1] ?? "");
 
   return (
     <motion.div
       key={pageKey}
-      initial={{ opacity: 0 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
+      transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
     >
     <Switch>
       <Route path="/login" component={Login} />
@@ -306,6 +326,9 @@ function AppRouter() {
       <Route path="/security">
         {() => <SecurityPage />}
       </Route>
+      <Route path="/map">
+        {() => <MapPage />}
+      </Route>
       <Route path="/crm" component={CrmFeatureRoute} />
       <Route path="/analytics" component={AnalyticsFeatureRoute} />
       <Route path="/">
@@ -372,6 +395,9 @@ function AppRouter() {
       </Route>
       <Route path="/settings">
         {() => <Redirect to="/settings/workspace" />}
+      </Route>
+      <Route path="/account/:section?">
+        {(params) => <ProtectedLayout><AccountPage section={params.section} /></ProtectedLayout>}
       </Route>
       <Route path="/settings/workspace">
         {() => <ProtectedLayout><WorkspaceSettingsPage /></ProtectedLayout>}
@@ -442,6 +468,28 @@ function AppRouter() {
       <Route path="/business-profile">
         {() => <BusinessProfilePage />}
       </Route>
+
+      {/* Customer marketplace — the public storefront. */}
+      <Route path="/categories" component={MarketplaceCategoriesPage} />
+      <Route path="/category/:slug">
+        {(params) => <MarketplaceCategoryPage slug={params.slug!} />}
+      </Route>
+      <Route path="/search" component={MarketplaceSearchPage} />
+      <Route path="/store/:slug">
+        {(params) => <MarketplaceStorePage slug={params.slug!} />}
+      </Route>
+      <Route path="/product/:id">
+        {(params) => <MarketplaceProductPage id={params.id!} />}
+      </Route>
+      <Route path="/cart" component={MarketplaceCartPage} />
+      <Route path="/checkout" component={MarketplaceCheckoutPage} />
+      <Route path="/orders" component={MarketplaceOrdersPage} />
+      <Route path="/order/:id">
+        {(params) => <MarketplaceOrderPage id={params.id!} />}
+      </Route>
+      <Route path="/favorites" component={MarketplaceFavoritesPage} />
+      <Route path="/sign-in" component={MarketplaceSignInPage} />
+
       <Route component={NotFound} />
     </Switch>
     </motion.div>
@@ -457,6 +505,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
           <ThemeProvider>
+            <DisplayPreferencesProvider>
             <TooltipProvider>
               <Toaster />
               <Router hook={useWorkspaceHashLocation}>
@@ -465,6 +514,7 @@ export default function App() {
                 <OfflineBanner />
               </Router>
             </TooltipProvider>
+            </DisplayPreferencesProvider>
           </ThemeProvider>
         </I18nProvider>
       </QueryClientProvider>

@@ -17,6 +17,10 @@ interface LegalDocumentPageProps {
 }
 
 const LEGAL_SLUGS = [
+  "marketplace-terms",
+  "delivery-and-orders-policy",
+  "buyer-cancellation-refunds-policy",
+  "merchant-policy",
   "terms-of-service",
   "privacy-policy",
   "data-processing-addendum",

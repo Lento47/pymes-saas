@@ -1,7 +1,14 @@
 import { useSyncExternalStore, useCallback } from "react";
 import { getWorkspaceSlug } from "@/lib/api";
 
-const PUBLIC_PATHS = ["/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation", "/product", "/platform", "/ai-agents", "/billing-workflows", "/security"];
+const PUBLIC_PATHS = [
+  "/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation", "/product",
+  "/platform", "/ai-agents", "/billing-workflows", "/security",
+  // The customer marketplace. These are the storefront's own routes, so they must never
+  // be prefixed with a merchant workspace slug the way the authenticated app's pages are.
+  "/categories", "/category", "/search", "/store", "/cart", "/checkout", "/orders", "/order",
+  "/favorites", "/sign-in",
+];
 
 function isPublicPath(path: string): boolean {
   const cleanPath = path.split("?")[0];

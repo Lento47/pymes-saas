@@ -114,6 +114,26 @@ export default function DocumentationCenterPage() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {[
                   {
+                    href: "/legal/marketplace-terms",
+                    title: "Términos del Marketplace",
+                    desc: "Reglas del catálogo público: pedidos, entregas, cupones y reseñas.",
+                  },
+                  {
+                    href: "/legal/delivery-and-orders-policy",
+                    title: "Pedidos y Entregas",
+                    desc: "El ciclo de un pedido, tiempos, envío y retiro en tienda.",
+                  },
+                  {
+                    href: "/legal/buyer-cancellation-refunds-policy",
+                    title: "Cancelaciones y Reembolsos",
+                    desc: "Cuándo un pedido se cancela sin costo y cómo se devuelve un pago.",
+                  },
+                  {
+                    href: "/legal/merchant-policy",
+                    title: "Política para Negocios",
+                    desc: "Cómo publica su catálogo un negocio y qué roles integran su equipo.",
+                  },
+                  {
                     href: "/legal/terms-of-service",
                     title: "Términos del Servicio",
                     desc: "Reglas de acceso, uso, licencia, pagos y responsabilidad contractual.",
