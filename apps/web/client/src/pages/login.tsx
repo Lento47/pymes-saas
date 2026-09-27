@@ -59,11 +59,11 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-[13px] font-medium text-[#111827]">
+      <label htmlFor={id} className="block text-[13px] font-medium text-slate-200">
         {label}
       </label>
-      <div className="flex min-h-11 items-center gap-2.5 rounded-xl border border-[#DDE1EA] bg-white px-3.5 py-2.5 shadow-[0_1px_0_rgba(15,23,42,0.02)] transition-all focus-within:border-[#4F46E5]/45 focus-within:ring-4 focus-within:ring-[#4F46E5]/10">
-        <span className="text-[#9CA3AF]">{icon}</span>
+      <div className="flex min-h-11 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 transition-all focus-within:border-amber-500/50 focus-within:ring-4 focus-within:ring-amber-500/10">
+        <span className="text-slate-500">{icon}</span>
         <input
           id={id}
           data-testid={`input-${id}`}
@@ -72,11 +72,11 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-[#111827] outline-none placeholder:text-[#A0A7B5]"
+          className="min-w-0 flex-1 bg-transparent text-[14px] text-white outline-none placeholder:text-slate-500"
         />
         {rightAdornment}
       </div>
-      {hint && <p className="text-xs leading-relaxed text-[#6B7280]">{hint}</p>}
+      {hint && <p className="text-xs leading-relaxed text-slate-500">{hint}</p>}
     </div>
   );
 }
@@ -255,19 +255,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-bg marketing-light-theme flex h-dvh flex-col overflow-hidden">
+    <div className="marketplace-theme flex h-dvh flex-col overflow-hidden">
       {/* Top bar */}
       <div className="flex shrink-0 items-center justify-between px-6 pb-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))' }}>
 
         <Link href="/">
-          <a className="rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/40">
-            <BrandLockup compact />
+          <a className="rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40">
+            <BrandLockup compact textClassName="text-sm text-white" />
           </a>
         </Link>
         <div className="flex items-center gap-4">
           <LanguageSwitcher variant="marketing" />
           <Link href="/register">
-            <a className="text-sm font-medium text-[#6B7280] transition hover:text-[#111827]">
+            <a className="text-sm font-medium text-slate-300 transition hover:text-white">
               {copy.createAccount}
             </a>
           </Link>
@@ -279,15 +279,15 @@ export default function LoginPage() {
         <div className="w-full max-w-[27rem]">
 
           {/* Auth card */}
-          <div className="rounded-[1.6rem] border border-[#DDE1EA] bg-white p-7 shadow-[0_28px_90px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
+          <div className="rounded-[1.6rem] border border-white/10 bg-[#070c24] p-7 shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-8">
 
             {/* Expired session banner */}
             {expired && (
-              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-[#FEF9F0] px-4 py-3">
-                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                 <div>
-                  <p className="text-sm font-semibold text-amber-800">Tu sesión ha expirado</p>
-                  <p className="mt-0.5 text-xs leading-5 text-amber-700">
+                  <p className="text-sm font-semibold text-amber-300">Tu sesión ha expirado</p>
+                  <p className="mt-0.5 text-xs leading-5 text-amber-300/70">
                     Por seguridad, la sesión se cierra después de 30 minutos de inactividad.
                   </p>
                 </div>
@@ -296,20 +296,20 @@ export default function LoginPage() {
 
             {/* Email-not-verified gate */}
             {emailNotVerified && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm space-y-3">
-                <p className="font-semibold text-amber-800">Verificá tu email para continuar</p>
-                <p className="text-amber-700 text-xs leading-5">
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-5 text-sm space-y-3">
+                <p className="font-semibold text-amber-300">Verificá tu email para continuar</p>
+                <p className="text-amber-300/70 text-xs leading-5">
                   Enviamos un enlace de verificación a <strong>{email}</strong> cuando creaste tu cuenta.
                   Revisá tu bandeja de entrada (y la carpeta de spam).
                 </p>
                 {resendSent ? (
-                  <p className="text-xs font-medium text-amber-800">Enlace reenviado. Revisá tu email.</p>
+                  <p className="text-xs font-medium text-amber-300">Enlace reenviado. Revisá tu email.</p>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendVerification}
                     disabled={resendLoading}
-                    className="text-xs font-semibold text-amber-800 underline underline-offset-2 hover:no-underline disabled:opacity-50"
+                    className="text-xs font-semibold text-amber-300 underline underline-offset-2 hover:no-underline disabled:opacity-50"
                   >
                     {resendLoading ? 'Enviando…' : 'Reenviar enlace de verificación'}
                   </button>
@@ -320,13 +320,13 @@ export default function LoginPage() {
             {/* Workspace picker */}
             {!emailNotVerified && workspaceOptions.length > 0 ? (
               <div>
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-[#E4E7F0] bg-[#F8F9FF] text-[#4F46E5]">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-amber-400">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <h2 className="mt-4 font-marketing text-center text-2xl font-semibold tracking-[-0.035em] text-[#111827]">
+                <h2 className="mt-4 font-marketing text-center text-2xl font-semibold tracking-[-0.035em] text-white">
                   {copy.workspacePickerTitle}
                 </h2>
-                <p className="mt-2 text-center text-sm leading-6 text-[#6B7280]">
+                <p className="mt-2 text-center text-sm leading-6 text-slate-400">
                   {copy.workspacePickerDescription}
                 </p>
                 <div className="mt-6 space-y-2">
@@ -335,15 +335,15 @@ export default function LoginPage() {
                       key={ws.slug}
                       onClick={(e) => { setWorkspaceOptions([]); handleSubmit(e, ws.slug); }}
                       disabled={loading}
-                      className="w-full rounded-2xl border border-[#DDE1EA] bg-white px-3.5 py-3 text-left transition hover:border-[#C9CEDA] hover:bg-[#FAFBFF] disabled:opacity-50"
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-3.5 py-3 text-left transition hover:border-amber-500/40 hover:bg-white/[0.07] disabled:opacity-50"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#E4E7F0] bg-[#F8F9FF] text-[#6B7280]">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-slate-400">
                           <Building2 className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-[#111827]">{ws.name}</p>
-                          <p className="text-xs text-[#6B7280]">{ws.slug}</p>
+                          <p className="text-sm font-semibold text-white">{ws.name}</p>
+                          <p className="text-xs text-slate-500">{ws.slug}</p>
                         </div>
                       </div>
                     </button>
@@ -351,7 +351,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => setWorkspaceOptions([])}
-                  className="mt-5 w-full text-center text-xs font-medium text-[#6B7280] transition hover:text-[#111827]"
+                  className="mt-5 w-full text-center text-xs font-medium text-slate-500 transition hover:text-white"
                 >
                   {copy.cancel}
                 </button>
@@ -360,13 +360,13 @@ export default function LoginPage() {
               <>
                 {/* Heading */}
                 <div>
-                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#E4E7F0] bg-[#F8F9FF] text-[#4F46E5]">
+                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-amber-400">
                     <ShieldCheck className="h-5 w-5" strokeWidth={1.75} />
                   </div>
-                  <h1 className="font-marketing text-[1.875rem] font-semibold leading-tight tracking-[-0.03em] text-[#111827]">
+                  <h1 className="font-marketing text-[1.875rem] font-semibold leading-tight tracking-[-0.03em] text-white">
                     {copy.welcome}
                   </h1>
-                  <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
                     {copy.description}
                   </p>
                 </div>
@@ -398,7 +398,7 @@ export default function LoginPage() {
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
                           aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                          className="rounded-md p-1 text-[#9CA3AF] transition hover:bg-[#F3F4F6] hover:text-[#6B7280]"
+                          className="rounded-md p-1 text-slate-500 transition hover:bg-white/10 hover:text-slate-300"
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -406,7 +406,7 @@ export default function LoginPage() {
                     />
                     <div className="flex justify-end">
                       <Link href="/forgot-password">
-                        <a className="text-xs font-medium text-[#4F46E5] transition hover:text-[#4338CA]">
+                        <a className="text-xs font-medium text-amber-400 transition hover:text-amber-300">
                           {copy.forgot ?? "¿Olvidaste tu contraseña?"}
                         </a>
                       </Link>
@@ -417,7 +417,7 @@ export default function LoginPage() {
                     type="submit"
                     disabled={loading}
                     data-testid="button-login"
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#4F46E5] px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(79,70,229,0.24)] transition hover:bg-[#4338CA] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-semibold text-[#05091d] shadow-[0_10px_24px_rgba(245,158,11,0.25)] transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.logIn}
                   </button>
@@ -425,18 +425,18 @@ export default function LoginPage() {
 
                 {/* Divider */}
                 <div className="my-5 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-[#EEF1F6]" />
-                  <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#9CA3AF]">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
                     {copy.orContinueWith ?? "o continuá con"}
                   </span>
-                  <div className="h-px flex-1 bg-[#EEF1F6]" />
+                  <div className="h-px flex-1 bg-white/10" />
                 </div>
 
                 {/* SSO — secondary, collapsed by default */}
                 <button
                   type="button"
                   onClick={() => setSsoExpanded((v) => !v)}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#DDE1EA] bg-white px-4 text-sm font-semibold text-[#374151] transition hover:border-[#C9CEDA] hover:bg-[#FAFBFF]"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/[0.08]"
                 >
                   {ssoExpanded ? (
                     <>
@@ -461,7 +461,7 @@ export default function LoginPage() {
                           if (resp?.authResponse?.accessToken) (window as any).handleFbLogin(resp.authResponse.accessToken);
                         }, { config_id: '1375303354406780', scope: 'public_profile' });
                       }}
-                      className="inline-flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-[#DDE1EA] bg-white px-4 text-sm font-medium text-[#374151] transition hover:bg-[#FAFBFF]"
+                      className="inline-flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-200 transition hover:bg-white/[0.08]"
                     >
                       <svg className="h-4 w-4" style={{ color: "#1877F2" }} viewBox="0 0 24 24" fill="currentColor">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -469,17 +469,17 @@ export default function LoginPage() {
                       {copy.facebookLogin}
                     </button>
 
-                    <div className="flex justify-center rounded-xl border border-[#DDE1EA] bg-white p-2">
+                    <div className="flex justify-center rounded-xl border border-white/10 bg-white/[0.04] p-2">
                       <div id="telegram-login-btn" className="w-full" />
                     </div>
                   </div>
                 )}
 
                 {/* Security note — inside card */}
-                <div className="mt-6 rounded-2xl border border-[#EEF1F6] bg-[#FAFBFF] p-3.5">
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
                   <div className="flex gap-2.5">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#4F46E5]" strokeWidth={1.75} />
-                    <p className="text-xs leading-5 text-[#6B7280]">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" strokeWidth={1.75} />
+                    <p className="text-xs leading-5 text-slate-400">
                       Acceso protegido para tu workspace. La IA asiste, pero las acciones sensibles requieren control humano.
                     </p>
                   </div>
@@ -489,7 +489,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer note */}
-          <p className="mt-5 text-center text-xs leading-5 text-[#8A91A1]">
+          <p className="mt-5 text-center text-xs leading-5 text-slate-500">
             PymesHub está construido para operaciones con datos de clientes, conversaciones y facturación.
           </p>
 
