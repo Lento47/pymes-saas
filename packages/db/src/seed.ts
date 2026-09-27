@@ -2201,10 +2201,10 @@ notificationRows.push(
  *
  * - **La Yunta** — `MONTHLY`, paid and current. The 30-day period runs from 4 days
  *   ago, so `lastPaidAt` is recent and nothing is overdue.
- * - **Olla de Carne** — `WEEKLY`, in `GRACE`. The period ended 10 days ago, which is
+ * - **Café El Mirador** — `WEEKLY`, in `GRACE`. The period ended 10 days ago, which is
  *   inside the 30-day grace, so this shop keeps full access and a warning. It is the
  *   state a merchant paying ₡2,000 by hand lands in every few weeks.
- * - **Soda La Esquina** — `PAST_DUE`, 45 days past a period end. Degraded to the
+ * - **Frutería La Cosecha** — `PAST_DUE`, 45 days past a period end. Degraded to the
  *   `WEEKLY` limits, **still listed in the feed**: a shop that stops paying keeps its
  *   customers until 90 days, which is the whole reason the two states are separate.
  */
@@ -2236,7 +2236,7 @@ subscriptionRows.push({
 
 subscriptionRows.push({
 	id: seedId(ID_PREFIXES.subscription, 2),
-	businessId: businessIds.get("olla-carne") as string,
+	businessId: businessIds.get("mirador") as string,
 	plan: "WEEKLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
 	priceMinor: LAUNCH_PRICE_BOOK.weeklyMinor,
@@ -2252,7 +2252,7 @@ subscriptionRows.push({
 
 subscriptionRows.push({
 	id: seedId(ID_PREFIXES.subscription, 3),
-	businessId: businessIds.get("gallo-pinto") as string,
+	businessId: businessIds.get("cosecha") as string,
 	plan: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
 	priceMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
