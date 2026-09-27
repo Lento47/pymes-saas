@@ -490,7 +490,7 @@ export default function LoginPage() {
 
           {/* Footer note */}
           <p className="mt-5 text-center text-xs leading-5 text-slate-500">
-            PymesHub está construido para operaciones con datos de clientes, conversaciones y facturación.
+            PymesHub conecta los negocios de tu barrio con sus clientes — pedí y seguí tu entrega en vivo.
           </p>
 
         </div>
