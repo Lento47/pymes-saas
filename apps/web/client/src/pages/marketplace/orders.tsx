@@ -19,10 +19,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  COMPLETED: "text-emerald-400",
-  CANCELLED: "text-slate-400",
-  REJECTED: "text-red-400",
-  OUT_FOR_DELIVERY: "text-amber-400",
+  COMPLETED: "text-success",
+  CANCELLED: "text-muted-foreground",
+  REJECTED: "text-destructive",
+  OUT_FOR_DELIVERY: "text-link",
 };
 
 function statusLabel(status: string): string {
@@ -43,7 +43,7 @@ export default function MarketplaceOrdersPage() {
   if (loadingSession || (session && isLoading)) {
     return (
       <MarketplaceShell>
-        <Skeleton className="h-48 w-full rounded-3xl bg-white/10" />
+        <Skeleton className="h-48 w-full rounded-xl bg-foreground/[0.07]" />
       </MarketplaceShell>
     );
   }
@@ -81,31 +81,31 @@ export default function MarketplaceOrdersPage() {
 
   return (
     <MarketplaceShell>
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight text-white">Mis pedidos</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">Mis pedidos</h1>
       <ul className="flex flex-col gap-3">
         {data.map((order) => (
           <li key={order.id}>
             <Link
               href={`/order/${order.id}`}
-              className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-amber-500/40"
+              className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition hover:border-primary/50"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-link">
                 <Bike aria-hidden="true" className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-1 text-sm font-medium text-white">{order.headline}</p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="line-clamp-1 text-sm font-medium text-foreground">{order.headline}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {order.reference} · {formatDate(order.placedAt)}
                 </p>
-                <p className={cn("mt-1 text-xs font-medium", STATUS_TONE[order.status] ?? "text-amber-300")}>
+                <p className={cn("mt-1 text-xs font-medium", STATUS_TONE[order.status] ?? "text-link")}>
                   {statusLabel(order.status)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-semibold tabular-nums text-foreground">
                   {money(order.totalMinor, order.currency)}
                 </span>
-                <ChevronRight aria-hidden="true" className="h-4 w-4 text-slate-500" />
+                <ChevronRight aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
           </li>

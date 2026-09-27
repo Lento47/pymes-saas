@@ -57,7 +57,7 @@ export default function MarketplaceFavoritesPage() {
 
   return (
     <MarketplaceShell>
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight text-white">Favoritos</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">Favoritos</h1>
 
       {empty ? (
         <EmptyState

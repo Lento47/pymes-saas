@@ -47,7 +47,7 @@ export default function MarketplaceCheckoutPage() {
   if (loadingSession || (session && cart.isLoading)) {
     return (
       <MarketplaceShell>
-        <Skeleton className="h-64 w-full rounded-3xl bg-white/10" />
+        <Skeleton className="h-64 w-full rounded-xl bg-foreground/[0.07]" />
       </MarketplaceShell>
     );
   }
@@ -106,12 +106,12 @@ export default function MarketplaceCheckoutPage() {
 
   return (
     <MarketplaceShell>
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight text-white">Finalizar pedido</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">Finalizar pedido</h1>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="flex flex-col gap-5">
-          <fieldset className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <legend className="px-1 text-sm font-semibold text-white">Entrega</legend>
+          <fieldset className="rounded-xl border border-border bg-card p-4">
+            <legend className="px-1 text-sm font-semibold text-foreground">Entrega</legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {(["DELIVERY", "PICKUP"] as const).map((value) => (
                 <button
@@ -119,10 +119,10 @@ export default function MarketplaceCheckoutPage() {
                   type="button"
                   onClick={() => setFulfilment(value)}
                   className={cn(
-                    "min-h-12 rounded-lg border px-4 text-left text-sm transition",
+                    "min-h-12 rounded-md border px-4 text-left text-sm transition",
                     effectiveFulfilment === value
-                      ? "border-amber-500 bg-amber-500/10 text-white"
-                      : "border-white/10 text-slate-200 hover:border-white/25",
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                   )}
                 >
                   <span className="font-medium">{value === "DELIVERY" ? "A domicilio" : "Retiro en tienda"}</span>
@@ -140,21 +140,21 @@ export default function MarketplaceCheckoutPage() {
                         type="button"
                         onClick={() => setAddressId(address.id)}
                         className={cn(
-                          "min-h-12 rounded-lg border px-4 text-left text-sm transition",
+                          "min-h-12 rounded-md border px-4 text-left text-sm transition",
                           addressId === address.id
-                            ? "border-amber-500 bg-amber-500/10 text-white"
-                            : "border-white/10 text-slate-200 hover:border-white/25",
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                         )}
                       >
                         <span className="font-medium">{address.label}</span>
-                        <span className="ml-2 text-xs text-slate-400">
+                        <span className="ml-2 text-xs text-muted-foreground">
                           {address.line1}, {address.city}
                         </span>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-400">Todavía no tenés direcciones guardadas.</p>
+                  <p className="text-sm text-muted-foreground">Todavía no tenés direcciones guardadas.</p>
                 )}
 
                 {showAddressForm ? (
@@ -175,7 +175,7 @@ export default function MarketplaceCheckoutPage() {
                   <button
                     type="button"
                     onClick={() => setShowAddressForm(true)}
-                    className="mt-3 text-sm font-semibold text-amber-400 hover:text-amber-300"
+                    className="mt-3 text-sm font-semibold text-link hover:text-link/80"
                   >
                     + Agregar dirección
                   </button>
@@ -184,17 +184,17 @@ export default function MarketplaceCheckoutPage() {
             ) : null}
           </fieldset>
 
-          <fieldset className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <legend className="px-1 text-sm font-semibold text-white">Forma de pago</legend>
+          <fieldset className="rounded-xl border border-border bg-card p-4">
+            <legend className="px-1 text-sm font-semibold text-foreground">Forma de pago</legend>
             <div className="mt-2 flex flex-col gap-2">
               {PAYMENT_METHODS.map((method) => (
                 <label
                   key={method.value}
                   className={cn(
-                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 text-sm transition",
+                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-4 text-sm transition",
                     paymentMethod === method.value
-                      ? "border-amber-500 bg-amber-500/10 text-white"
-                      : "border-white/10 text-slate-200 hover:border-white/25",
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                   )}
                 >
                   <input
@@ -202,7 +202,7 @@ export default function MarketplaceCheckoutPage() {
                     name="payment"
                     checked={paymentMethod === method.value}
                     onChange={() => setPaymentMethod(method.value)}
-                    className="h-4 w-4 accent-amber-500"
+                    className="h-4 w-4 accent-primary"
                   />
                   {method.label}
                 </label>
@@ -210,8 +210,8 @@ export default function MarketplaceCheckoutPage() {
             </div>
           </fieldset>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <label className="text-sm font-semibold text-white" htmlFor="checkout-notes">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <label className="text-sm font-semibold text-foreground" htmlFor="checkout-notes">
               Notas para la tienda
             </label>
             <textarea
@@ -221,14 +221,14 @@ export default function MarketplaceCheckoutPage() {
               rows={3}
               maxLength={500}
               placeholder="Sin cebolla, timbre roto, etc."
-              className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              className="mt-2 w-full rounded-md border border-border bg-background p-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
         </div>
 
-        <aside className="h-fit rounded-2xl border border-white/10 bg-white/5 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-white">Resumen del pedido</h2>
-          <ul className="mb-3 space-y-1.5 text-sm text-slate-300">
+        <aside className="h-fit rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Resumen del pedido</h2>
+          <ul className="mb-3 space-y-1.5 text-sm text-muted-foreground">
             {data.items.map((item) => (
               <li key={item.id} className="flex justify-between gap-3">
                 <span className="min-w-0 truncate">
@@ -238,7 +238,7 @@ export default function MarketplaceCheckoutPage() {
               </li>
             ))}
           </ul>
-          <div className="flex items-center justify-between border-t border-white/10 pt-3 text-base font-semibold text-white">
+          <div className="flex items-center justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
             <span>Total</span>
             <span>{money(data.totals.totalMinor, data.currency)}</span>
           </div>
@@ -247,7 +247,7 @@ export default function MarketplaceCheckoutPage() {
             {placeOrder.isPending ? "Enviando…" : "Confirmar pedido"}
           </AmberButton>
           {!canPlace ? (
-            <p className="mt-2 text-xs text-amber-300">Elegí una dirección para entrega a domicilio.</p>
+            <p className="mt-2 text-xs text-link">Elegí una dirección para entrega a domicilio.</p>
           ) : null}
         </aside>
       </div>
@@ -270,31 +270,31 @@ function AddressForm({
   const [region, setRegion] = useState("");
 
   return (
-    <div className="mt-3 flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
       <Input
         value={label}
         onChange={(event) => setLabel(event.target.value)}
         placeholder="Etiqueta (Casa, Oficina)"
-        className="h-10 border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-400"
+        className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
       />
       <Input
         value={line1}
         onChange={(event) => setLine1(event.target.value)}
         placeholder="Dirección"
-        className="h-10 border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-400"
+        className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
       />
       <div className="grid grid-cols-2 gap-2">
         <Input
           value={city}
           onChange={(event) => setCity(event.target.value)}
           placeholder="Ciudad"
-          className="h-10 border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-400"
+          className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
         />
         <Input
           value={region}
           onChange={(event) => setRegion(event.target.value)}
           placeholder="Provincia"
-          className="h-10 border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-400"
+          className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
         />
       </div>
       <div className="flex gap-2">
@@ -314,7 +314,7 @@ function AddressForm({
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-11 px-3 text-sm text-slate-400 hover:text-white"
+          className="min-h-11 px-3 text-sm text-muted-foreground hover:text-foreground"
         >
           Cancelar
         </button>

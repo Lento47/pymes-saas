@@ -9,9 +9,10 @@ import {
   ProductCardView,
   ProductGrid,
   PromotionCardView,
+  Rail,
   Section,
 } from "@/components/marketplace/cards";
-import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import { AmberButton, MarketplaceShell, OutlineButton } from "@/components/marketplace/public-shell";
 import { useBrowserLocation } from "@/hooks/use-browser-location";
 import { cartErrorMessage, useAddToCart, useFeed, useMarketplaceSession } from "@/lib/marketplace";
 import { useToast } from "@/hooks/use-toast";
@@ -31,45 +32,43 @@ export default function MarketplaceHomePage() {
 
   return (
     <MarketplaceShell>
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-amber-500/15 via-white/5 to-transparent px-6 py-10 sm:px-10">
-        <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-400">
-          <UtensilsCrossed aria-hidden="true" className="h-4 w-4" />
+      {/* Flat, not a gradient. The headline carries the section, and an amber wash behind
+          it would be the one place on the page where the accent competes with the type. */}
+      <section className="rounded-xl border border-border bg-card px-6 py-12 sm:px-10 sm:py-16">
+        <p className="mb-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-link">
+          <UtensilsCrossed aria-hidden="true" className="h-3.5 w-3.5" />
           Pedidos a domicilio
         </p>
-        <h1 className="max-w-2xl text-balance text-3xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
+        <h1 className="max-w-3xl text-balance text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
           Pedí de los negocios de tu barrio, sin llamar a nadie.
         </h1>
-        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+        <p className="mt-5 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
           Restaurantes, farmacias, ferreterías y más — comparás, pedís y seguís tu entrega desde
           PymesHub.
         </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="mt-7 flex flex-wrap items-center gap-3">
           <AmberButton onClick={() => navigate("/categories")}>
             Explorar categorías
             <ArrowRight aria-hidden="true" className="ml-1.5 h-4 w-4" />
           </AmberButton>
-          <button
-            type="button"
-            onClick={request}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 px-4 text-sm font-semibold text-slate-200 transition hover:border-white/30 hover:text-white"
-          >
-            <MapPin aria-hidden="true" className="h-4 w-4" />
+          <OutlineButton onClick={request}>
+            <MapPin aria-hidden="true" className="mr-1.5 h-4 w-4" />
             {status === "granted" ? "Ubicación activa" : "Usar mi ubicación"}
-          </button>
+          </OutlineButton>
         </div>
         {status === "denied" ? (
-          <p className="mt-3 text-xs text-amber-300">
+          <p className="mt-4 text-xs text-link">
             No pudimos usar tu ubicación. Podés seguir explorando por categorías.
           </p>
         ) : null}
       </section>
 
       {isError ? (
-        <div className="mt-7">
+        <div className="mt-8">
           <ErrorState message="No pudimos cargar el inicio." onRetry={() => void refetch()} />
         </div>
       ) : isLoading || !data ? (
-        <div className="mt-7">
+        <div className="mt-8">
           <LoadingGrid />
         </div>
       ) : (
@@ -78,28 +77,28 @@ export default function MarketplaceHomePage() {
             <Section
               title="Categorías"
               action={
-                <Link href="/categories" className="text-xs font-semibold text-amber-400 hover:text-amber-300">
+                <Link href="/categories" className="text-xs font-semibold text-link hover:text-link/80">
                   Ver todas
                 </Link>
               }
             >
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+              <Rail>
                 {data.categories.slice(0, 14).map((category) => (
                   <Link
                     key={category.id}
                     href={`/category/${category.slug}`}
-                    className="min-h-11 shrink-0 rounded-full border border-white/10 bg-white/5 px-4 text-sm leading-[2.75rem] text-slate-200 transition hover:border-amber-500/40 hover:text-white"
+                    className="min-h-11 shrink-0 rounded-md border border-border bg-card px-4 text-sm leading-[2.75rem] text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
                   >
                     {category.name}
                   </Link>
                 ))}
-              </div>
+              </Rail>
             </Section>
           ) : null}
 
           {data.offers.length > 0 ? (
             <Section title="Ofertas">
-              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+              <Rail>
                 {data.offers.slice(0, 8).map((product) => (
                   <div key={product.id} className="w-[15rem] shrink-0">
                     <ProductCardView
@@ -119,17 +118,17 @@ export default function MarketplaceHomePage() {
                     />
                   </div>
                 ))}
-              </div>
+              </Rail>
             </Section>
           ) : null}
 
           {data.promotions.length > 0 ? (
             <Section title="Cupones">
-              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+              <Rail>
                 {data.promotions.slice(0, 6).map((promotion) => (
                   <PromotionCardView key={promotion.id} promotion={promotion} />
                 ))}
-              </div>
+              </Rail>
             </Section>
           ) : null}
 

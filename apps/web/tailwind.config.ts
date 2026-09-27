@@ -18,6 +18,11 @@ export default {
         background:  "hsl(var(--bg) / <alpha-value>)",
         foreground:  "hsl(var(--fg) / <alpha-value>)",
         border:      "hsl(var(--border) / <alpha-value>)",
+        // Links and other accent-coloured *text*. Distinct from `primary`, which is a
+        // fill: amber reads on both storefront palettes as a button, but only on the
+        // dark one as type. `--link` already exists for `app-link`; this exposes it to
+        // Tailwind so the storefront does not need arbitrary values for every link.
+        link:        "hsl(var(--link) / <alpha-value>)",
         elevated:    "hsl(var(--bg-elevated) / <alpha-value>)",
         "bg-hover":  "hsl(var(--bg-hover) / <alpha-value>)",
         input:       "hsl(var(--border) / <alpha-value>)",

@@ -47,8 +47,26 @@ export function createMarketplaceAuthClient(
 		async signIn(email: string, password: string) {
 			await request("sign-in/email", { email, password });
 		},
-		async signUp(email: string, password: string, name: string) {
-			await request("sign-up/email", { email, password, name });
+		/**
+		 * The two assertions, sent because the Worker refuses a sign-up without them.
+		 *
+		 * `packages/trpc-api/src/auth.ts` gates `create.before` on `termsAccepted` and
+		 * `ageConfirmed` being exactly `true`, and throws a 400 naming whichever is
+		 * missing. Both flags are required parameters rather than optional ones so a
+		 * caller cannot forget: a screen that omits them gets a rejection at runtime,
+		 * and a signature that omits them gets a compile error instead.
+		 *
+		 * They travel in the sign-up body and are stripped by the hook before the
+		 * `user` insert — they are not columns on that table. What persists is the
+		 * `account_consent` row the hook's `after` writes.
+		 */
+		async signUp(
+			email: string,
+			password: string,
+			name: string,
+			assertions: { termsAccepted: boolean; ageConfirmed: boolean },
+		) {
+			await request("sign-up/email", { email, password, name, ...assertions });
 		},
 		/**
 		 * Exchange a Supabase access token for the marketplace's own session.

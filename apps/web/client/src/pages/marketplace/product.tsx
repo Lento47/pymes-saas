@@ -50,11 +50,11 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
     return (
       <MarketplaceShell>
         <div className="grid gap-6 lg:grid-cols-2">
-          <Skeleton className="aspect-[4/3] w-full rounded-3xl bg-white/10" />
+          <Skeleton className="aspect-[4/3] w-full rounded-xl bg-foreground/[0.07]" />
           <div className="flex flex-col gap-3">
-            <Skeleton className="h-8 w-2/3 bg-white/10" />
-            <Skeleton className="h-4 w-1/3 bg-white/10" />
-            <Skeleton className="h-24 w-full bg-white/10" />
+            <Skeleton className="h-8 w-2/3 bg-foreground/[0.07]" />
+            <Skeleton className="h-4 w-1/3 bg-foreground/[0.07]" />
+            <Skeleton className="h-24 w-full bg-foreground/[0.07]" />
           </div>
         </div>
       </MarketplaceShell>
@@ -96,12 +96,12 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
   return (
     <MarketplaceShell>
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-          <div className="relative aspect-[4/3] w-full">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="relative aspect-[4/3] w-full bg-elevated">
             {data.imageUrl ? (
               <img src={imageSrc(data.imageUrl) ?? ""} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-amber-500/10 text-4xl font-semibold text-amber-500/70">
+              <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-muted-foreground/50">
                 {data.title.slice(0, 1).toUpperCase()}
               </div>
             )}
@@ -110,9 +110,9 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
 
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">{data.title}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-300">
-              <Link href={`/store/${data.seller.slug}`} className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300">
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">{data.title}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <Link href={`/store/${data.seller.slug}`} className="inline-flex items-center gap-1.5 text-link hover:text-link/80">
                 <Store aria-hidden="true" className="h-4 w-4" />
                 {data.seller.name}
               </Link>
@@ -121,28 +121,30 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold text-white">{money(data.priceMinor, data.currency)}</span>
+            <span className="text-2xl font-semibold tabular-nums text-foreground">
+              {money(data.priceMinor, data.currency)}
+            </span>
             {data.compareAtPriceMinor ? (
-              <span className="text-sm text-slate-500 line-through">
+              <span className="text-sm text-muted-foreground line-through tabular-nums">
                 {money(data.compareAtPriceMinor, data.currency)}
               </span>
             ) : null}
             {data.discountPercent ? (
-              <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-[#05091d]">
+              <span className="rounded bg-primary px-2 py-0.5 text-[11px] font-bold tabular-nums text-primary-foreground">
                 -{data.discountPercent}%
               </span>
             ) : null}
           </div>
 
-          {data.description ? <p className="text-sm leading-6 text-slate-300">{data.description}</p> : null}
+          {data.description ? <p className="text-sm leading-6 text-muted-foreground">{data.description}</p> : null}
 
           {groups.map((group) => {
             const multi = group.kind === "MULTI";
             return (
-              <fieldset key={group.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <legend className="px-1 text-sm font-semibold text-white">
+              <fieldset key={group.id} className="rounded-xl border border-border bg-card p-4">
+                <legend className="px-1 text-sm font-semibold text-foreground">
                   {group.name}
-                  {group.isRequired ? <span className="ml-1 text-amber-400">*</span> : null}
+                  {group.isRequired ? <span className="ml-1 text-link">*</span> : null}
                 </legend>
                 <div className="mt-2 flex flex-col gap-1.5">
                   {group.options.map((option) => {
@@ -154,8 +156,8 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
                         className={cn(
                           "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 text-sm transition",
                           checked
-                            ? "border-amber-500/60 bg-amber-500/10 text-white"
-                            : "border-white/10 text-slate-200 hover:border-white/25",
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                           !option.isAvailable && "cursor-not-allowed opacity-50",
                         )}
                       >
@@ -166,12 +168,12 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
                             checked={checked}
                             disabled={!option.isAvailable}
                             onChange={() => toggleOption(group.id, option.id, multi)}
-                            className="h-4 w-4 accent-amber-500"
+                            className="h-4 w-4 accent-primary"
                           />
                           {option.name}
                         </span>
                         {delta !== 0 ? (
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-muted-foreground tabular-nums">
                             {delta > 0 ? "+" : ""}
                             {money(delta, data.currency)}
                           </span>
@@ -185,7 +187,7 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
           })}
 
           <div className="flex items-center gap-4">
-            <div className="inline-flex items-center rounded-lg border border-white/15">
+            <div className="inline-flex items-center rounded-md border border-border">
               <Button
                 type="button"
                 variant="ghost"
@@ -193,11 +195,11 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
                 aria-label="Quitar una unidad"
                 disabled={quantity <= 1}
                 onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-                className="h-11 w-11 rounded-l-lg rounded-r-none text-white hover:bg-white/10"
+                className="h-11 w-11 rounded-l-md rounded-r-none text-foreground hover:bg-bg-hover"
               >
                 <Minus aria-hidden="true" className="h-4 w-4" />
               </Button>
-              <span aria-live="polite" className="w-10 text-center text-sm font-semibold text-white">
+              <span aria-live="polite" className="w-10 text-center text-sm font-semibold tabular-nums text-foreground">
                 {quantity}
               </span>
               <Button
@@ -207,7 +209,7 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
                 aria-label="Agregar una unidad"
                 disabled={quantity >= data.availability.maxOrderQuantity}
                 onClick={() => setQuantity((value) => value + 1)}
-                className="h-11 w-11 rounded-r-lg rounded-l-none text-white hover:bg-white/10"
+                className="h-11 w-11 rounded-r-md rounded-l-none text-foreground hover:bg-bg-hover"
               >
                 <Plus aria-hidden="true" className="h-4 w-4" />
               </Button>
@@ -230,13 +232,15 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
 
       {data.related.length > 0 ? (
         <section className="mt-10">
-          <h2 className="mb-3 text-lg font-semibold tracking-tight text-white">Más de {data.seller.name}</h2>
+          <h2 className="mb-3 text-xl font-semibold tracking-[-0.01em] text-foreground">
+            Más de {data.seller.name}
+          </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {data.related.map((product) => (
               <Link
                 key={product.id}
                 href={`/product/${product.id}`}
-                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white transition hover:border-amber-500/40"
+                className="rounded-lg border border-border bg-card p-3 text-sm text-foreground transition hover:border-primary/50"
               >
                 {product.title}
               </Link>

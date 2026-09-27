@@ -753,6 +753,105 @@ html.marketing-page body {
   color: hsl(var(--fg));
 }
 
+/* ── Storefront theme — the customer-facing marketplace ──
+   The storefront's own token set, applied to `MarketplaceShell`'s root element so
+   every page inside it renders from tokens rather than hardcoded navy. That is what
+   makes a light theme possible at all: a component written as `bg-card` on
+   `text-foreground` follows this block, where one written as `bg-white/5` on
+   `text-white` could only ever be dark.
+
+   The direction is restrained rather than chunky: hairline 1px borders, flat
+   surfaces with no gradients, a tighter radius, and hierarchy carried by the type
+   scale and by spacing instead of by shadow and glow. Both palettes are written
+   out in full rather than derived — a light theme computed by inverting lightness
+   produces an amber that is unreadable on white.
+
+   `--link` is separate from `--accent` on purpose, and it is the one token that
+   differs in *role* rather than in lightness: amber is legible as a button fill on
+   both palettes, but amber-as-text on white fails contrast, so light mode deepens it
+   to a burnt amber while the fill stays the brand amber. `--accent-fg` stays near-
+   black in both themes, because dark text on amber is the only pairing that reads. */
+.storefront {
+  color-scheme: dark;
+  /* 8px rather than the app's 10px, so `rounded-lg` is the crisp default here. */
+  --radius: 0.5rem;
+
+  --bg:            230 71% 7%;   /* #05091d — the marketing canvas */
+  --bg-card:       230 50% 10%;
+  --bg-elevated:   230 45% 12%;
+  --bg-hover:      230 40% 14%;
+  --bg-active:     230 38% 17%;
+  --border:        230 30% 19%;
+  --border-subtle: 230 30% 15%;
+
+  --fg:            220 20% 97%;
+  --fg-2:          220 12% 66%;
+  --fg-3:          220 10% 46%;
+
+  --accent:        38 92% 50%;   /* #F59E0B */
+  --accent-fg:     230 71% 7%;
+  --link:          38 92% 64%;
+
+  --danger:        0 72% 55%;
+  --danger-fg:     0 0% 100%;
+  --success:       152 60% 46%;
+
+  --background:        var(--bg);
+  --foreground:        var(--fg);
+  --card:              var(--bg-card);
+  --card-foreground:   var(--fg);
+  --popover:           var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --primary:           var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --secondary:         var(--bg-card);
+  --secondary-foreground: var(--fg);
+  --muted:             var(--bg-card);
+  --muted-foreground:  var(--fg-2);
+  --input:             var(--border);
+  --ring:              var(--accent);
+  --destructive:       var(--danger);
+  --destructive-foreground: var(--danger-fg);
+  --button-outline:    hsl(var(--border));
+  --badge-outline:     hsl(var(--border));
+
+  background: hsl(var(--bg));
+  color: hsl(var(--fg));
+}
+
+/* Same tokens, light values. Every storefront component flips with this block and
+   nothing else has to change — no component branches on the theme. */
+html.light .storefront {
+  color-scheme: light;
+
+  --bg:            220 25% 98%;
+  --bg-card:       0 0% 100%;
+  --bg-elevated:   0 0% 100%;
+  --bg-hover:      220 20% 95%;
+  --bg-active:     220 20% 92%;
+  --border:        220 16% 87%;
+  --border-subtle: 220 16% 92%;
+
+  --fg:            228 30% 10%;
+  --fg-2:          228 10% 40%;
+  --fg-3:          228 8% 56%;
+
+  --accent:        38 92% 50%;
+  --accent-fg:     228 30% 10%;
+  /* Burnt amber: the brand amber as text on white is ~1.9:1 and unreadable. */
+  --link:          30 92% 36%;
+
+  --danger:        0 68% 44%;
+  --success:       152 60% 30%;
+}
+
+/* The storefront owns the whole viewport, so `body` has to follow it or the overscroll
+   area above the header shows the app's violet canvas behind a navy page. The class is
+   put on `<html>` by `MarketplaceShell` because `.storefront` cannot reach `body` — it is
+   a descendant of it. */
+html.storefront-page body { background-color: hsl(230 71% 7%); }
+html.storefront-page.light body { background-color: hsl(220 25% 98%); }
+
 /* Faint indigo radial for auth pages — applied to the login root div */
 .auth-bg {
   background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79, 70, 229, 0.05) 0%, transparent 70%);

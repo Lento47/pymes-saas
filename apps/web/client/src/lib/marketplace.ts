@@ -49,7 +49,13 @@ import {
   type PromotionCard,
   type Review,
 } from "@pymeshub/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 
@@ -192,8 +198,45 @@ export type BusinessListInput = {
 export function useBusinesses(input: BusinessListInput) {
   return useQuery({
     queryKey: marketplaceKeys.businesses(input),
-    queryFn: async (): Promise<{ items: BusinessCard[]; nextCursor: string | null }> => {
+    queryFn: async (): Promise<Paged<BusinessCard>> => {
       const raw: Record<string, unknown> = await trpc.businesses.list.query(input);
+      return {
+        items: parseAll(businessCardSchema, asArray(raw?.items)),
+        nextCursor: cursorOf(raw?.nextCursor),
+      };
+    },
+  });
+}
+
+/**
+ * The same paging as `useProductListInfinite`, against `businesses.list`.
+ *
+ * It exists for `/category/:slug`, which draws every shop in a sector and was reading the
+ * first 24 while discarding the `nextCursor` the API had already computed — so a category
+ * with 30 shops could not be browsed to the end and nothing on the page said so.
+ *
+ * Everything documented on `useProductListInfinite` applies here unchanged: `cursor` must
+ * stay out of the query key or the pages never accumulate, `enabled` is for a caller that
+ * has to read something else first, `keepPreviousData` holds the previous rows through a
+ * filter change, and a request made while that previous data is still on screen would send
+ * the wrong cursor. Only the procedure and the schema differ. Do not pass `cursor` in
+ * `input`; the page param supplies it, and it wins the spread either way.
+ */
+export function useBusinessesInfinite(
+  input: BusinessListInput,
+  options: { enabled?: boolean } = {},
+) {
+  return useInfiniteQuery({
+    queryKey: marketplaceKeys.businesses(input),
+    enabled: options.enabled ?? true,
+    placeholderData: keepPreviousData,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage: Paged<BusinessCard>) => lastPage.nextCursor ?? undefined,
+    queryFn: async ({ pageParam }): Promise<Paged<BusinessCard>> => {
+      const raw: Record<string, unknown> = await trpc.businesses.list.query({
+        ...input,
+        ...(pageParam === undefined ? {} : { cursor: pageParam }),
+      });
       return {
         items: parseAll(businessCardSchema, asArray(raw?.items)),
         nextCursor: cursorOf(raw?.nextCursor),
@@ -224,11 +267,68 @@ export function useProduct(id: string) {
   });
 }
 
-export function useProductList(input: Record<string, unknown>) {
-  return useQuery({
+/**
+ * One page of a cursor-paged list, as `products.list` and `businesses.list` both answer it.
+ *
+ * `nextCursor` is `null` at the end of the catalogue rather than merely "not yet": both
+ * services read one row more than they serve to decide, so a null is an answer and not an
+ * absence. The `use*Infinite` hooks below turn exactly that into `hasNextPage`.
+ */
+export type Paged<T> = { items: T[]; nextCursor: string | null };
+
+/**
+ * A shop's products, a page at a time, narrowed by whatever the caller passes through to
+ * `products.list` — `businessId`, `categoryId`, `search`, price bounds.
+ *
+ * ## Why paged and not one bigger `limit`
+ *
+ * `products.list` caps `limit` at 50, and the store page used to ask for exactly that and
+ * then narrow the result in the browser. A shop with 51 products therefore had one no
+ * customer could reach, and the category chips answered from the 50 that happened to load.
+ * The cursor to do this properly was already there — nothing on the API side changed.
+ *
+ * ## Why a plain `useInfiniteQuery` and not the tRPC helper
+ *
+ * `@trpc/tanstack-react-query`'s `infiniteQueryOptions` owns two keys of an infinite
+ * input: it fills `cursor` from the page param — which is what this wants — and it writes
+ * **`direction`** itself, `"forward"` or `"backward"`, overwriting whatever the caller
+ * passed. That is the reason `productListInput` spells its sort direction `sortDirection`
+ * (see the schema, which documents the outage it caused). This module talks to the
+ * low-level `createTRPCClient` and so never meets the injected key; the page param is
+ * spread in by hand instead.
+ *
+ * `cursor` is deliberately absent from the query key. The key must be stable across pages
+ * or each fetch would open a new cache entry and the pages would never accumulate.
+ *
+ * `options.enabled` exists for the storefront, which cannot ask for a shop's products
+ * until it has read the shop. `businessId` is undefined on that first render, and an
+ * unpinned `products.list` is not an empty list — it is every `ACTIVE` product on the
+ * marketplace, so the shop page would fire one request it throws away and briefly hold
+ * another business's catalogue under this one's name.
+ *
+ * `keepPreviousData` holds the last pages while the next key resolves. Changing a category
+ * chip is not a page load, and swapping a grid for a skeleton on every tap makes the
+ * filter feel slower than it is. The caller keeps the stale rows and marks them busy —
+ * `store.tsx` dims the grid off `isFetching` and sets `aria-busy`.
+ */
+export function useProductListInfinite(
+  input: Record<string, unknown>,
+  options: { enabled?: boolean } = {},
+) {
+  return useInfiniteQuery({
     queryKey: marketplaceKeys.products(input),
-    queryFn: async (): Promise<{ items: ProductCard[]; nextCursor: string | null }> => {
-      const raw: Record<string, unknown> = await trpc.products.list.query(input);
+    enabled: options.enabled ?? true,
+    placeholderData: keepPreviousData,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage: Paged<ProductCard>) => lastPage.nextCursor ?? undefined,
+    queryFn: async ({ pageParam }): Promise<Paged<ProductCard>> => {
+      // `cursor` is added only once there is one. A key present with `undefined` is a key
+      // every layer of serialisation has to have an opinion about, and the first page has
+      // no cursor to send.
+      const raw: Record<string, unknown> = await trpc.products.list.query({
+        ...input,
+        ...(pageParam === undefined ? {} : { cursor: pageParam }),
+      });
       return {
         items: parseAll(productCardSchema, asArray(raw?.items)),
         nextCursor: cursorOf(raw?.nextCursor),

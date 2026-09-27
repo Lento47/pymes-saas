@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
 import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { marketplaceAuth } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,8 @@ export default function MarketplaceSignInPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [, navigate] = useLocation();
@@ -31,7 +34,14 @@ export default function MarketplaceSignInPage() {
     try {
       if (mode === "sign-up") {
         if (password.length < 8) throw new Error("auth.error.weakPassword");
-        await marketplaceAuth.signUp(email.trim(), password, name.trim());
+        // Both assertions are required parameters of `signUp` rather than optional ones, and
+        // the Worker refuses a sign-up that arrives without them — they are the record of what
+        // the customer agreed to. So this form has to collect them and send them, rather than
+        // assume them on somebody's behalf.
+        await marketplaceAuth.signUp(email.trim(), password, name.trim(), {
+          termsAccepted,
+          ageConfirmed,
+        });
       }
       await marketplaceAuth.signIn(email.trim(), password);
       // The session is an HttpOnly cookie the Worker just set. Reloading is the honest
@@ -48,16 +58,16 @@ export default function MarketplaceSignInPage() {
   return (
     <MarketplaceShell>
       <div className="mx-auto max-w-md">
-        <h1 className="mb-1 text-2xl font-semibold tracking-tight text-white">
+        <h1 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-foreground">
           {mode === "sign-in" ? "Ingresá a tu cuenta" : "Creá tu cuenta"}
         </h1>
-        <p className="mb-6 text-sm text-slate-400">
+        <p className="mb-6 text-sm text-muted-foreground">
           {mode === "sign-in"
             ? "Para ver tus pedidos, favoritos y direcciones."
             : "Es rápido: solo tu nombre, email y contraseña."}
         </p>
 
-        <div className="mb-5 grid grid-cols-2 rounded-lg border border-white/10 p-1">
+        <div className="mb-5 grid grid-cols-2 rounded-md border border-border bg-card p-1">
           {(["sign-in", "sign-up"] as const).map((value) => (
             <button
               key={value}
@@ -67,8 +77,8 @@ export default function MarketplaceSignInPage() {
                 setError(null);
               }}
               className={cn(
-                "min-h-10 rounded-md text-sm font-medium transition",
-                mode === value ? "bg-amber-500 text-[#05091d]" : "text-slate-300 hover:text-white",
+                "min-h-10 rounded text-sm font-medium transition",
+                mode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {value === "sign-in" ? "Ingresar" : "Crear cuenta"}
@@ -79,31 +89,31 @@ export default function MarketplaceSignInPage() {
         <form onSubmit={submit} className="flex flex-col gap-3">
           {mode === "sign-up" ? (
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-slate-300">Nombre</span>
+              <span className="text-sm text-muted-foreground">Nombre</span>
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
                 autoComplete="name"
-                className="h-11 border-white/10 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-amber-500"
+                className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
               />
             </label>
           ) : null}
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-300">Email</span>
+            <span className="text-sm text-muted-foreground">Email</span>
             <Input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
               autoComplete="email"
-              className="h-11 border-white/10 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-amber-500"
+              className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-300">Contraseña</span>
+            <span className="text-sm text-muted-foreground">Contraseña</span>
             <Input
               type="password"
               value={password}
@@ -111,24 +121,72 @@ export default function MarketplaceSignInPage() {
               required
               minLength={8}
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-              className="h-11 border-white/10 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-amber-500"
+              className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
             />
           </label>
 
+          {mode === "sign-up" ? (
+            <div className="flex flex-col gap-3">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <Checkbox
+                  checked={ageConfirmed}
+                  onCheckedChange={(value) => setAgeConfirmed(value === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs leading-5 text-muted-foreground">
+                  Confirmo que tengo 18 años o más.
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <Checkbox
+                  checked={termsAccepted}
+                  onCheckedChange={(value) => setTermsAccepted(value === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs leading-5 text-muted-foreground">
+                  Acepto los{" "}
+                  <a
+                    href="/legal/terms-of-service"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-link hover:text-link/80"
+                  >
+                    Términos de Servicio
+                  </a>{" "}
+                  y la{" "}
+                  <a
+                    href="/legal/privacy-policy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-link hover:text-link/80"
+                  >
+                    Política de Privacidad
+                  </a>
+                  .
+                </span>
+              </label>
+            </div>
+          ) : null}
+
           {error ? (
-            <p role="alert" className="text-sm text-red-300">
+            <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           ) : null}
 
-          <AmberButton type="submit" disabled={busy} className="mt-1 w-full">
+          <AmberButton
+            type="submit"
+            disabled={busy || (mode === "sign-up" && !(ageConfirmed && termsAccepted))}
+            className="mt-1 w-full"
+          >
             {busy ? "Un momento…" : mode === "sign-in" ? "Ingresar" : "Crear cuenta y continuar"}
           </AmberButton>
         </form>
 
-        <p className="mt-6 text-xs text-slate-400">
+        <p className="mt-6 text-xs text-muted-foreground">
           ¿Tenés un negocio?{" "}
-          <Link href="/login" className="text-amber-400 hover:text-amber-300">
+          <Link href="/login" className="text-link hover:text-link/80">
             Entrá al panel de negocios
           </Link>
         </p>
