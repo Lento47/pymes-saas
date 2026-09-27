@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { planSchema, subscriptionStatusSchema } from "./common";
+import { currencySchema, planSchema, subscriptionStatusSchema } from "./common";
 
 /**
  * What a merchant is told about their own billing.
@@ -26,7 +26,7 @@ export const subscriptionSchema = z.object({
 	netMinor: z.number().int().nullable(),
 	/** The IVA on `priceMinor`, remitted to the state. */
 	ivaMinor: z.number().int().nullable(),
-	currency: z.string(),
+	currency: currencySchema,
 	periodStart: z.date().nullable(),
 	periodEnd: z.date().nullable(),
 	/** Present only while overdue: the last day full access continues. */

@@ -9,6 +9,7 @@ import {
 // module is on the request path and the barrel evaluates every schema in the package.
 import type { PlanOption, Subscription } from "@pymeshub/shared";
 import { newId } from "@pymeshub/shared/ids";
+import { CURRENCIES, type Currency } from "@pymeshub/shared/money";
 import {
 	effectivePlan,
 	GRACE_DAYS,
@@ -171,7 +172,7 @@ function shapeSubscription(
 		priceMinor: row.priceMinor,
 		netMinor: row.priceMinor === null ? null : netOf(row.priceMinor),
 		ivaMinor: row.priceMinor === null ? null : ivaOf(row.priceMinor),
-		currency: row.currency,
+		currency: currencyOf(row.currency),
 		periodStart: row.periodStart,
 		periodEnd: row.periodEnd,
 		gracedUntil:
@@ -181,6 +182,13 @@ function shapeSubscription(
 		listed: STATUS_IS_LISTED[status],
 		priceBookLabel: row.priceBookLabel,
 	};
+}
+
+function currencyOf(value: string): Currency {
+	const currency = CURRENCIES.find((candidate) => candidate === value);
+	if (!currency)
+		throw new ValidationError("La moneda del negocio no es válida");
+	return currency;
 }
 
 function netOf(gross: number): number {

@@ -1,4 +1,4 @@
-CREATE TABLE `courier_profile` (
+CREATE TABLE IF NOT EXISTS `courier_profile` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`display_name` text NOT NULL,
@@ -17,5 +17,5 @@ CREATE TABLE `courier_profile` (
 	FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `courier_profile_user_unique` ON `courier_profile` (`user_id`);--> statement-breakpoint
-CREATE INDEX `courier_profile_directory_idx` ON `courier_profile` (`verification_status`,`is_available`);
+CREATE UNIQUE INDEX IF NOT EXISTS `courier_profile_user_unique` ON `courier_profile` (`user_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `courier_profile_directory_idx` ON `courier_profile` (`verification_status`,`is_available`);

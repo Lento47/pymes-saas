@@ -26,7 +26,7 @@ loadRootEnv();
 const apiUrl =
 	process.env.EXPO_PUBLIC_API_URL ||
 	process.env.API_URL ||
-	"http://localhost:8787";
+	"https://api.pymeshub.lat";
 process.env.EXPO_PUBLIC_API_URL = apiUrl;
 
 const mapStyleUrl =

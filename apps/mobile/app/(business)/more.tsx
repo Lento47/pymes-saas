@@ -77,8 +77,8 @@ export default function MoreScreen() {
 	const staff = useQuery(
 		trpc.business.staff.queryOptions({ businessId }, { enabled }),
 	);
-	const payouts = useQuery(
-		trpc.payouts.list.queryOptions({ businessId }, { enabled }),
+	const subscription = useQuery(
+		trpc.subscription.current.queryOptions({ businessId }, { enabled }),
 	);
 	const reviews = useQuery(
 		trpc.reviews.listForBusiness.queryOptions(
@@ -93,7 +93,7 @@ export default function MoreScreen() {
 		locations.error ??
 		settings.error ??
 		staff.error ??
-		payouts.error ??
+		subscription.error ??
 		reviews.error;
 	const waiting = useSkeletonHold(
 		shops.isPending ||
@@ -101,7 +101,7 @@ export default function MoreScreen() {
 				(locations.isPending ||
 					settings.isPending ||
 					staff.isPending ||
-					payouts.isPending ||
+					subscription.isPending ||
 					reviews.isPending)),
 	);
 
@@ -147,7 +147,7 @@ export default function MoreScreen() {
 						void shops.refetch();
 						void settings.refetch();
 						void staff.refetch();
-						void payouts.refetch();
+						void subscription.refetch();
 						void reviews.refetch();
 					}}
 				/>
@@ -301,11 +301,12 @@ export default function MoreScreen() {
 				<ScreenSection title={t("biz.more.moneyPeople")}>
 					<Card>
 						<ListRow
-							title={t("biz.more.payouts")}
-							subtitle={tp(
-								"biz.more.payoutsSubtitle",
-								payouts.data?.length ?? 0,
-							)}
+							title={t("biz.more.subscription")}
+							subtitle={
+								subscription.data
+									? `${t(`biz.subscription.plan.${subscription.data.plan}`)} · ${t(`biz.subscription.status.${subscription.data.status}`)}`
+									: t("biz.more.subscriptionEmpty")
+							}
 							chevron
 							onPress={() =>
 								router.push({
@@ -454,7 +455,7 @@ type MoreSkeletonRowKey =
 	| "promotions"
 	| "audit"
 	| "catalog"
-	| "payouts"
+	| "subscription"
 	| "team"
 	| "reviews"
 	| "profile";
@@ -485,7 +486,7 @@ const MORE_SKELETON_SHAPE = {
 			"catalog",
 		],
 	},
-	moneyPeople: { rows: ["payouts", "team"] },
+	moneyPeople: { rows: ["subscription", "team"] },
 	feedback: {
 		rows: ["reviews"],
 		reviews: ["first", "second", "third"],

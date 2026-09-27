@@ -292,7 +292,7 @@ name = "pymeshub-api"
 # more: `apps/web/wrangler.jsonc` compiles this origin into the browser bundle as `API_URL`,
 # so a deploy with no route would ship a web app whose every request, and the documented
 # `curl`, go to a name that answers nothing.
-routes = [{ pattern = "api.pymeshub.lat", custom_domain = true }]
+routes = [{ pattern = "api.pymeshub.lat/*", zone_name = "pymeshub.lat" }]
 
 [env.production.vars]
 ENVIRONMENT = "production"
