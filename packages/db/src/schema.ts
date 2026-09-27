@@ -27,7 +27,13 @@
  * created is a client that renders a spinner over a row it already has.
  */
 
-import type { BusinessHoursEntry, LocationPauseReason } from "@pymeshub/shared";
+import type {
+	BusinessHoursEntry,
+	CourierVerificationStatus,
+	LocationPauseReason,
+	Plan,
+	SubscriptionStatus,
+} from "@pymeshub/shared";
 import type { Currency } from "@pymeshub/shared/money";
 import type {
 	FulfilmentKind,
@@ -91,8 +97,11 @@ export type OptionGroupKind = (typeof OPTION_GROUP_KINDS)[number];
 export const PROMOTION_KINDS = ["PERCENT", "FIXED", "FREE_DELIVERY"] as const;
 export type PromotionKind = (typeof PROMOTION_KINDS)[number];
 
-export const PAYOUT_STATUSES = ["PENDING", "PAID", "FAILED"] as const;
-export type PayoutStatus = (typeof PAYOUT_STATUSES)[number];
+// `PAYOUT_STATUSES` went with the `payout` table. It described the settlement of a
+// platform cut of a merchant's sales, which is not what this platform charges: the
+// consumer pays the merchant and the courier directly, and the platform invoices a
+// flat subscription. The subscription's own status lives in `@pymeshub/shared/plans`
+// as `SUBSCRIPTION_STATUSES`, and it means something different — access, not payment.
 
 /**
  * One chosen option, as it was priced at the moment it was chosen. Order lines
@@ -225,6 +234,45 @@ export const business = sqliteTable(
 		/** Fixed at creation: an order is priced in the currency it was made in. */
 		currency: text("currency").$type<Currency>().notNull(),
 		status: text("status").$type<BusinessStatus>().notNull().default("DRAFT"),
+		/**
+		 * The plan this shop is on, denormalised from `subscription`.
+		 *
+		 * Read on every product, location, staff and promotion write — a limit check
+		 * that joined to `subscription` to read a number which changes about once a
+		 * month would be a cost on the hot path with no upside. **The subscription row
+		 * is the record**; this is the fast path, and the two are written together in
+		 * the same batch so they cannot drift.
+		 *
+		 * Defaults to `WEEKLY` because that is the floor: a business with no
+		 * subscription row — a newly created one, or a fixture — can still take orders
+		 * and still run a kitchen. It cannot do anything a paid plan does not also let
+		 * it do, so the default can never be a way to get more.
+		 */
+		plan: text("plan").$type<Plan>().notNull().default("WEEKLY"),
+		/**
+		 * **Unlisted from the customer feed while the merchant's subscription is
+		 * `SUSPENDED`.**
+		 *
+		 * Stored on the business rather than computed per read, because the feed filter
+		 * runs on the hottest public read in the product and a correlated subquery into
+		 * `subscription` on every card would be a query per card. It is written by
+		 * `services/subscription.ts` in the same batch as the status change.
+		 *
+		 * The three states, and why they are three:
+		 *
+		 * - `GRACE` — **true**. Unpaid for ten days of a thirty-day window keeps the
+		 *   storefront. A shop paying ₡2,000 by hand is late by a few days most months,
+		 *   and taking a live shop's customers away for that would lose both.
+		 * - `PAST_DUE` — **still true**. Past thirty days the shop loses its tools, not
+		 *   its customers. Removing it from the feed here would be the wrong punishment:
+		 *   the merchant stopped paying, and the people who ordered from them did nothing
+		 *   wrong. It keeps trading on the floor plan until ninety days.
+		 * - `SUSPENDED` — **false**. Past ninety days the shop has walked away, and a
+		 *   listing is a promise the platform cannot keep.
+		 *
+		 * Unlisted, never deleted: orders, reviews and history stay.
+		 */
+		listed: integer("listed", { mode: "boolean" }).notNull().default(true),
 		isVerified: integer("is_verified", { mode: "boolean" })
 			.notNull()
 			.default(false),
@@ -901,20 +949,108 @@ export const notification = sqliteTable(
 	],
 );
 
-export const payout = sqliteTable("payout", {
-	id: text("id").primaryKey(),
-	businessId: text("business_id")
-		.notNull()
-		.references(() => business.id, { onDelete: "restrict" }),
-	periodStart: integer("period_start", { mode: "timestamp_ms" }).notNull(),
-	periodEnd: integer("period_end", { mode: "timestamp_ms" }).notNull(),
-	grossMinor: integer("gross_minor").notNull(),
-	platformFeeMinor: integer("platform_fee_minor").notNull(),
-	netMinor: integer("net_minor").notNull(),
-	status: text("status").$type<PayoutStatus>().notNull().default("PENDING"),
-	paidAt: integer("paid_at", { mode: "timestamp_ms" }),
-	createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-});
+/**
+ * What a merchant pays, as a version rather than a column.
+ *
+ * The policy is that the price rises as the app gains clients, and the only way that
+ * can be true without ever breaking a merchant is if the price is a *row* rather than
+ * a constant. A subscription names the book it joined under (`priceBookId`), so
+ * inserting a new book raises what new merchants pay and leaves every existing one
+ * exactly where it was.
+ *
+ * `effectiveFrom` is a date and not a boolean `active` flag, so two books can be
+ * staged: a price for March goes in during February and the switch is a date
+ * comparison rather than a migration. Exactly one book is current at a time, and
+ * `d1` has no partial index, so that is enforced by reading the latest row whose
+ * `effectiveFrom` is not in the future.
+ */
+export const priceBook = sqliteTable(
+	"price_book",
+	{
+		id: text("id").primaryKey(),
+		/** For an admin's benefit: "Launch", "2026-Q1". Never shown to a merchant. */
+		label: text("label").notNull(),
+		/**
+		 * IVA-inclusive, in colones. Both figures are what the merchant is invoiced,
+		 * not what the platform keeps — see `netOfIva` in `@pymeshub/shared/plans`.
+		 */
+		weeklyMinor: integer("weekly_minor").notNull(),
+		monthlyMinor: integer("monthly_minor").notNull(),
+		effectiveFrom: integer("effective_from", {
+			mode: "timestamp_ms",
+		}).notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [index("price_book_effective_idx").on(table.effectiveFrom)],
+);
+
+/**
+ * One row per merchant: what they are on, what they pay, and when it is next due.
+ *
+ * **The platform takes a flat fee and no share of any sale.** The consumer pays the
+ * merchant for products and the courier for delivery, so there is no gross, no
+ * commission and no settlement to compute — the `payout` table that modelled a 10%
+ * cut of `gross` was the opposite business and is gone.
+ *
+ * What is stored, and why each part is here rather than derived:
+ *
+ * - `plan` is denormalised onto `business` as well. It is read on every product,
+ *   location and staff write, and a join per write to read a number that changes
+ *   about once a month is a cost with no upside. `business.plan` is the fast path and
+ *   this row is the record.
+ * - `priceMinor` is copied from the book **at the moment the period starts**, not
+ *   read through `priceBookId` at charge time. That is the whole grandfathering
+ *   mechanism: a price rise inserts a book, and a subscription mid-period is
+ *   unaffected because it is not looking at the book any more.
+ * - `periodStart`/`periodEnd` are the charge window, seven or thirty days. A month is
+ *   thirty days and not a calendar month, so the amount a merchant sees is the same
+ *   every time rather than depending on which month they joined.
+ * - `status` is the access decision and is derived from these two dates plus
+ *   `gracedUntil` — see `subscriptionStatusAt` in the service. It is stored rather
+ *   than computed on read so a merchant's dashboard, the storefront and the feed all
+ *   answer with one value and cannot disagree.
+ */
+export const subscription = sqliteTable(
+	"subscription",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id")
+			.notNull()
+			.unique()
+			.references(() => business.id, { onDelete: "cascade" }),
+		plan: text("plan").$type<Plan>().notNull(),
+		/** The book this subscription was priced under. Kept for the audit trail. */
+		priceBookId: text("price_book_id")
+			.notNull()
+			.references(() => priceBook.id, { onDelete: "restrict" }),
+		/**
+		 * Colones, IVA-inclusive, captured when the current period began. Nullable only
+		 * for a subscription that has never been charged — a `TRIAL` row — and a
+		 * merchant on that row has no limit of `products` and no charge either.
+		 */
+		priceMinor: integer("price_minor"),
+		status: text("status")
+			.$type<SubscriptionStatus>()
+			.notNull()
+			.default("ACTIVE"),
+		periodStart: integer("period_start", { mode: "timestamp_ms" }),
+		periodEnd: integer("period_end", { mode: "timestamp_ms" }),
+		/**
+		 * When the grace window closes. Null while current; set the moment a period
+		 * ends unpaid, and compared by the status function rather than by a sweeper,
+		 * so a merchant is not left in a state because a cron did not run.
+		 */
+		gracedUntil: integer("graced_until", { mode: "timestamp_ms" }),
+		/** The last date money was actually received, for the arrears a human chases. */
+		lastPaidAt: integer("last_paid_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("subscription_status_idx").on(table.status),
+		index("subscription_period_end_idx").on(table.periodEnd),
+	],
+);
 
 /**
  * Every admin mutation writes one of these. The table is the answer to "who
@@ -942,8 +1078,22 @@ export const auditLog = sqliteTable(
 );
 
 /**
- * One row per object in R2, so an object whose row is gone — or a row whose
+ * One row per stored object, so an object whose row is gone — or a row whose
  * object is gone — is findable rather than merely paid for.
+ *
+ * The row is an index, and nothing else. The bytes live in the `MEDIA` R2 bucket
+ * under `key`; this table says what an object is, who put it there, how big it is
+ * and what to serve it as. That split is what makes the table this shape: a
+ * `data` blob column would put every storefront image inside D1, whose per-database
+ * ceiling is 10 GB and which Cloudflare documents as unraisable — roughly 5,000
+ * maximum-size images for the whole platform, shared with orders, sessions and the
+ * audit log. R2 has no such ceiling and no egress charge.
+ *
+ * So there is no `data` column. It existed while R2 was unbound and was carried by
+ * `migrations/0010_upload_bytes.sql`, a file that was never added to
+ * `meta/_journal.json` and therefore never applied to any real database — see
+ * `migrations/README-r2.md` for what that meant and why removing the column needed no
+ * new migration.
  */
 export const upload = sqliteTable(
 	"upload",
@@ -960,6 +1110,60 @@ export const upload = sqliteTable(
 	(table) => [uniqueIndex("upload_key_unique").on(table.key)],
 );
 
+/**
+ * A courier's public profile, with the vehicle a run happens in.
+ *
+ * One row per person (`user_id` unique): the profile is the identity a business
+ * reads before it invites somebody to deliver - what they call themselves, where
+ * they ride, and the plate and picture that let a shop recognize the vehicle at
+ * the counter. Nullable vehicle columns are the normal state before the first
+ * delivery, not an error.
+ *
+ * `verificationStatus` is the platform's review mark: a profile starts `PENDING`
+ * and a meaningful edit sends it back there, because a name and an area are the
+ * two facts a review actually checks. Availability is the exception - a courier
+ * turning off for the day must not wait for a reviewer to turn back on - and
+ * nothing here denies a profile that has not been reviewed yet; it simply has
+ * not been shown to anyone.
+ */
+export const courierProfile = sqliteTable(
+	"courier_profile",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		displayName: text("display_name").notNull(),
+		serviceArea: text("service_area").notNull(),
+		bio: text("bio"),
+		vehicleName: text("vehicle_name"),
+		vehiclePlate: text("vehicle_plate"),
+		vehiclePhotoUrl: text("vehicle_photo_url"),
+		isAvailable: integer("is_available", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		verificationStatus: text("verification_status")
+			.$type<CourierVerificationStatus>()
+			.notNull()
+			.default("PENDING"),
+		reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+		reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("courier_profile_user_unique").on(table.userId),
+		// The directory read this index exists for: reviewed and available,
+		// in that order of selectivity.
+		index("courier_profile_directory_idx").on(
+			table.verificationStatus,
+			table.isAvailable,
+		),
+	],
+);
+
 // ---------------------------------------------------------------------------
 // Inferred row types
 // ---------------------------------------------------------------------------
@@ -969,6 +1173,9 @@ export type NewUser = typeof user.$inferInsert;
 
 export type Business = typeof business.$inferSelect;
 export type NewBusiness = typeof business.$inferInsert;
+
+export type MerchantLocation = typeof merchantLocation.$inferSelect;
+export type NewMerchantLocation = typeof merchantLocation.$inferInsert;
 
 export type Membership = typeof membership.$inferSelect;
 export type NewMembership = typeof membership.$inferInsert;
@@ -1015,11 +1222,17 @@ export type NewPromotion = typeof promotion.$inferInsert;
 export type Notification = typeof notification.$inferSelect;
 export type NewNotification = typeof notification.$inferInsert;
 
-export type Payout = typeof payout.$inferSelect;
-export type NewPayout = typeof payout.$inferInsert;
+export type PriceBook = typeof priceBook.$inferSelect;
+export type NewPriceBook = typeof priceBook.$inferInsert;
+
+export type Subscription = typeof subscription.$inferSelect;
+export type NewSubscription = typeof subscription.$inferInsert;
 
 export type AuditLog = typeof auditLog.$inferSelect;
 export type NewAuditLog = typeof auditLog.$inferInsert;
 
 export type Upload = typeof upload.$inferSelect;
 export type NewUpload = typeof upload.$inferInsert;
+
+export type CourierProfile = typeof courierProfile.$inferSelect;
+export type NewCourierProfile = typeof courierProfile.$inferInsert;

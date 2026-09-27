@@ -35,10 +35,19 @@ export const ID_PREFIXES = {
 	favorite: "fav",
 	promotion: "prm",
 	notification: "ntf",
-	payout: "pay",
+	/**
+	 * Dropped with the commission model. It named a per-period settlement of a share
+	 * of a merchant's sales, which is not what the platform charges; the money that
+	 * moves now is a flat subscription, `subscription`. Kept as a comment rather than
+	 * removed silently so a `pay_` id in an old log is explainable.
+	 */
+	// payout: "pay",
+	subscription: "sub",
+	priceBook: "pbk",
 	auditLog: "aud",
 	session: "ses",
 	account: "acc",
+	courierProfile: "cpr",
 	upload: "upl",
 } as const;
 

@@ -6,6 +6,12 @@
 
 import { z } from "zod";
 import { CURRENCIES } from "../money";
+import {
+	PLANS,
+	type Plan,
+	SUBSCRIPTION_STATUSES,
+	type SubscriptionStatus,
+} from "../plans";
 
 export const currencySchema = z.enum(CURRENCIES);
 
@@ -13,6 +19,22 @@ export const idSchema = z.string().min(5).max(64);
 export const businessIdSchema = idSchema.startsWith("biz_");
 export const productIdSchema = idSchema.startsWith("prd_");
 export const orderIdSchema = idSchema.startsWith("ord_");
+export const uploadIdSchema = idSchema.startsWith("upl_");
+
+/**
+ * The plan, as a wire value.
+ *
+ * Built from `PLANS` rather than written out, so adding a plan to the table in
+ * `plans.ts` is enough — a hand-written `z.enum(["WEEKLY", "MONTHLY"]` here would
+ * refuse the third plan on the wire while every other layer accepted it, and the
+ * failure would be a validation error on a value the server had just produced.
+ */
+export const planSchema = z.enum(PLANS);
+export type { Plan };
+
+/** The billing status. Same reasoning: derived from the statuses, not restated. */
+export const subscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);
+export type { SubscriptionStatus };
 
 /**
  * Money, as an integer in the currency's minor unit. The ceiling is deliberately

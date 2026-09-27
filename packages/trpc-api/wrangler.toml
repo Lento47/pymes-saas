@@ -61,6 +61,11 @@ API_VERSION = "0.1.0"
 # already be wrong for a second reason — `AUTH_URL` on the next line is localhost too.
 CORS_ORIGINS = "http://localhost:3000,http://localhost:4173"
 AUTH_URL = "http://localhost:8787"
+# Supabase is an additional identity provider. The publishable key is public by design;
+# no Supabase secret/service-role key belongs in this file.
+SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
+SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
 
 # ---------------------------------------------------------------------------
 # D1 — the only durable store. Migrations live in packages/db/migrations and are
@@ -103,6 +108,29 @@ migrations_dir = "../../packages/db/migrations"
 [[kv_namespaces]]
 binding = "CACHE"
 id = "55e69dde0bbf4e1f872ed48fe546cd23"
+
+# ---------------------------------------------------------------------------
+# R2 — the bytes behind a `/files/:id`.
+#
+# The `upload` table is an index; this bucket is what it points at. The pairing is
+# the point: D1 has a 10 GB per-database ceiling that Cloudflare documents as
+# unraisable, so a marketplace storing product photos in D1 BLOBs has roughly 5,000
+# maximum-size images in total, shared with orders, sessions and the audit log. R2
+# has no such ceiling, costs $0.015/GB-month, and does not charge for egress — which
+# matters here because every storefront image read is an egress event.
+#
+# `pymeshub-media` already exists and was empty; nothing was ever bound to it, so
+# binding it is not a provisioning step. **The deploy token does need R2 scope**
+# (`Workers R2 Storage: Edit`) — the omission this replaces was a missing scope, not
+# a design choice. A token without it fails the deploy rather than silently
+# degrading, but confirm the scope before running `bun run deploy`.
+#
+# Both buckets stay private. `/files/:id` serves the bytes from the Worker, and
+# `maps.pymeshub.lat` is the only public custom domain this account needs.
+# ---------------------------------------------------------------------------
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pymeshub-media"
 
 # ---------------------------------------------------------------------------
 # Queues — order events, so the request that places an order does not wait for a
@@ -221,6 +249,9 @@ ENVIRONMENT = "staging"
 API_VERSION = "0.2.0"
 AUTH_URL = "https://api-staging.pymeshub.lat"
 CORS_ORIGINS = "https://staging.pymeshub.lat"
+SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
+SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "pymeshub-staging"
@@ -236,6 +267,11 @@ migrations_dir = "../../packages/db/migrations"
 [[env.staging.kv_namespaces]]
 binding = "CACHE"
 id = "87ab3d4a4f19467faa2f8aca56504d66"
+# Staging's own bucket, for the same reason staging's own KV id: a wrong bucket name
+# here is a staging deploy that writes into production media.
+[[env.staging.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pymeshub-media-staging"
 [[env.staging.queues.producers]]
 binding = "ORDER_EVENTS"
 queue = "pymeshub-order-events-staging"
@@ -263,6 +299,9 @@ ENVIRONMENT = "production"
 API_VERSION = "0.2.0"
 AUTH_URL = "https://api.pymeshub.lat"
 CORS_ORIGINS = "https://pymeshub.lat,https://www.pymeshub.lat"
+SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
+SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "pymhubdb"
@@ -274,6 +313,12 @@ migrations_dir = "../../packages/db/migrations"
 [[env.production.kv_namespaces]]
 binding = "CACHE"
 id = "55e69dde0bbf4e1f872ed48fe546cd23"
+# The **same** bucket as the top-level block, not a new one: this is the same Worker
+# (the `name` and the `database_id` below are both deliberate repeats of the top
+# level), so one bucket serves both deploy paths.
+[[env.production.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pymeshub-media"
 [[env.production.queues.producers]]
 binding = "ORDER_EVENTS"
 queue = "pymeshub-order-events"

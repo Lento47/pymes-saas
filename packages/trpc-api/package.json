@@ -27,6 +27,8 @@
 		"@pymeshub/db": "workspace:*",
 		"@pymeshub/env": "workspace:*",
 		"@pymeshub/shared": "workspace:*",
+		"@supabase/server": "^1.8.0",
+		"@supabase/supabase-js": "^2.117.2",
 		"@trpc/server": "^11.19.0",
 		"better-auth": "^1.7.5",
 		"drizzle-orm": "^0.45.2",

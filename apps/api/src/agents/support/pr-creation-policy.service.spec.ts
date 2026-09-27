@@ -1,4 +1,5 @@
-import { PrCreationPolicyService, PrProposalInput } from "./pr-creation-policy.service";
+import type { PrProposalInput } from "./pr-creation-policy.service";
+import { PrCreationPolicyService } from "./pr-creation-policy.service";
 
 describe("PrCreationPolicyService", () => {
   const svc = new PrCreationPolicyService();

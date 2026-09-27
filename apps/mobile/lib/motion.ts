@@ -16,13 +16,19 @@
  * How long a transition takes, by what it is for.
  *
  * `instant` is press feedback and the visual twin of a haptic; `standard` is one element
- * changing; `entering` is a block arriving; `sheet` is a screen or sheet itself moving.
- * Nothing exceeds 320ms: a transition a person can notice *as a duration* is a transition
- * that is in the way.
+ * changing; `banner` is a notice arriving over the screen; `entering` is a block arriving;
+ * `sheet` is a screen or sheet itself moving. Nothing exceeds 320ms: a transition a person
+ * can notice *as a duration* is a transition that is in the way.
+ *
+ * `banner` is the one step that sits between two others rather than on a round number:
+ * `interface.md` §24 writes 220ms for the new-order surface, and §41 files banners under
+ * Standard (160-220) rather than Structural (240-320). Running it on `entering` would put a
+ * notice the size of a card on the same clock as a whole block arriving.
  */
 export const duration = {
 	instant: 120,
 	standard: 180,
+	banner: 220,
 	entering: 240,
 	sheet: 320,
 } as const;
@@ -116,6 +122,36 @@ export function staggerDelay(index: number): number {
 
 /** How far an entering item rises, in points. */
 export const ENTER_RISE = 8;
+
+/**
+ * How far the new-order banner falls into place, in points.
+ *
+ * The mirror of `ENTER_RISE` and a different magnitude because it is a different move:
+ * `interface.md` §24's banner drops in from above (`translateY` -12 to 0), which is what a
+ * surface arriving *over* the screen does, while a row rising into a list comes up from
+ * below. Named here rather than typed at the surface for the reason in this file's header,
+ * and 12 is the contract's own number, not a rounding of the rise above it.
+ */
+export const BANNER_DROP = 12;
+
+/**
+ * How long a just-arrived row's highlight takes to fall back to the row's own surface,
+ * and how loud that highlight is while it lasts.
+ *
+ * `interface.md` §43 asks for a lime wash at 8-10% opacity fading back to normal over
+ * 800-1200ms, and these two are that pair. They are magnitudes rather than `duration`
+ * steps because `duration`'s own rule is that nothing exceeds 320ms — a transition a
+ * person can notice *as a duration* is a transition that is in the way — and this is not
+ * a transition the reader waits on. It is a decaying mark: the row has already arrived
+ * and is already readable, and the wash is the second half of the announcement, the half
+ * that says *which* row. `SKELETON_SWEEP` sits outside `duration` for the same reason.
+ *
+ * 1000 is the middle of §43's band. `HIGHLIGHT_OPACITY` is 0.09, the top of the 8-10%
+ * band: a wash that has to survive a near-white row under kitchen lighting is a wash that
+ * wants the whole allowance and nothing past it.
+ */
+export const HIGHLIGHT_FADE = 1000;
+export const HIGHLIGHT_OPACITY = 0.09;
 
 /** The crossfade once an image has loaded. No spinner goes inside an image, ever. */
 export const IMAGE_FADE = 200;

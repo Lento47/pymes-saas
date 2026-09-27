@@ -33,17 +33,27 @@ export type Env = {
 	ORDER_EVENTS: Queue<OrderEventEnvelope>;
 
 	/**
+	 * R2. The bytes behind a `/files/:id`; the `upload` row is only the index.
+	 *
+	 * This is the binding whose absence made `upload.data` exist. D1 caps a database at
+	 * 10 GB with no way to raise it, so a marketplace that stores product photos as
+	 * D1 blobs runs out of platform at roughly 5,000 images — and a storefront read
+	 * is a full blob transfer through the Worker rather than an object fetch. R2 has
+	 * no row ceiling, costs $0.015/GB-month and charges nothing for egress.
+	 */
+	MEDIA: R2Bucket;
+
+	/**
 	 * One Durable Object per live order, for the order's live socket.
 	 *
 	 * The socket is served at `/orders/:id/live` and is not open: no client connects to
 	 * it, and both clients poll instead (`orders.byId`, plus `orders.track` on web). This
 	 * said "the socket the apps hold open", which described a connection the apps never
-	 * make — the endpoint is finished and verified, and nothing holds it yet.
+	 * make - the endpoint is finished and verified, and nothing holds it yet.
 	 *
 	 * Addressed through `orderRoomFor` so the naming rule lives in one place.
 	 */
 	ORDER_ROOM: DurableObjectNamespace;
-
 	/** `production`, `staging`, `development`. Decides log format and error detail. */
 	ENVIRONMENT: string;
 	/** Reported by `health.check` and on every log line, so a deploy is identifiable. */
@@ -53,6 +63,19 @@ export type Env = {
 
 	AUTH_SECRET?: string;
 	AUTH_URL?: string;
+
+	/**
+	 * The optional second identity provider.
+	 *
+	 * These are public coordinates, not Better Auth's `AUTH_SECRET`. The Worker needs the
+	 * project URL and publishable key to verify a user JWT and ask Supabase Auth for the
+	 * authoritative `email_confirmed_at`; the publishable key is safe to ship to a phone
+	 * and is deliberately not a service-role credential. `SUPABASE_SECRET_KEY` is never
+	 * read here: user verification and the session bridge do not need it.
+	 */
+	SUPABASE_URL?: string;
+	SUPABASE_PUBLISHABLE_KEY?: string;
+	SUPABASE_JWKS_URL?: string;
 };
 
 /** The origins a browser may call this API from. `*` is never returned. */

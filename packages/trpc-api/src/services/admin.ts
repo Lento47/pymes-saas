@@ -6,26 +6,33 @@ import {
 	membership as membershipTable,
 	orderEvent as orderEventTable,
 	order as orderTable,
-	payout as payoutTable,
+	user as ownerTable,
+	priceBook as priceBookTable,
 	product as productTable,
+	subscription as subscriptionTable,
 	user as userTable,
 } from "@pymeshub/db";
+import type {
+	AdminAction,
+	AdminBusinessRow,
+	AdminCategoryInput,
+	AdminListInput,
+	AdminMetrics,
+	AdminOrderRow,
+	AdminSubscription,
+	AdminUserRow,
+	AuditLogEntry,
+	Category,
+	Subscription,
+	SubscriptionStatus,
+} from "@pymeshub/shared";
 import {
-	type AdminAction,
-	type AdminBusinessRow,
-	type AdminCategoryInput,
-	type AdminListInput,
-	type AdminMetrics,
-	type AdminOrderRow,
-	type AdminUserRow,
-	type AuditLogEntry,
-	type Category,
 	canTransition,
 	decodeCursor,
 	newId,
-	type Payout,
 	REASON_REQUIRED_ACTIONS,
 } from "@pymeshub/shared";
+import { PLAN_PERIOD_DAYS, subscriptionStatusAt } from "@pymeshub/shared/plans";
 import {
 	and,
 	asc,
@@ -37,12 +44,12 @@ import {
 	lte,
 	notInArray,
 	or,
+	type SQL,
 	sql,
 } from "drizzle-orm";
-
 import { ConflictError, ValidationError } from "../errors";
 import type { UserContext } from "./helpers";
-import { likePattern, orNotFound } from "./helpers";
+import { batchOf, likePattern, orNotFound } from "./helpers";
 import {
 	adminBusinessRowOf,
 	adminOrderRowOf,
@@ -50,8 +57,9 @@ import {
 	auditLogEntryOf,
 	categoryOf,
 	currencyOf,
-	payoutOf,
 } from "./mappers";
+import * as subscriptionService from "./subscription";
+import { DAY_MS } from "./subscription";
 
 /**
  * The platform operator's surface.
@@ -729,210 +737,334 @@ export async function cancelOrder(
 }
 
 // ---------------------------------------------------------------------------
-// Payouts
+// Subscriptions
 // ---------------------------------------------------------------------------
 
-export async function payouts(
+/**
+ * Every merchant's billing, newest debt first.
+ *
+ * This replaces the `payouts` list, and the shape of the question changed with the
+ * business model. The old one asked "which settlement runs are outstanding" and
+ * answered with a gross, a fee and a net. There is no settlement now — the consumer
+ * pays the merchant and the courier directly — so the question is **"who owes us
+ * money, for how long, and at what price"**, and arrears is the number that decides
+ * whether an operator needs to act today.
+ *
+ * `arrearsMinor` is computed in SQL from the stored price rather than summed from
+ * payment rows, because a subscription stores one `priceMinor` and one `periodEnd`
+ * and nothing else: a merchant's debt is "every period since `periodEnd`", which is
+ * arithmetic on two columns rather than a walk over a ledger. The whole-period count
+ * is the same division, and it is what separates "a week late" from "gone for a
+ * month" on the operator's screen.
+ *
+ * `status` is **not** filtered in SQL even when one is asked for. The stored value is
+ * whatever last wrote the row; the derived one is correct for now. Filtering on the
+ * stored column would show an operator a list of shops that are current and shops
+ * that are suspended and nothing in between, which is exactly the population that
+ * needs watching.
+ */
+export async function subscriptions(
 	ctx: UserContext,
-	input: AdminListInput,
-): Promise<{ rows: Payout[]; total: number }> {
+	input: Omit<AdminListInput, "status" | "sort"> & {
+		/** A single billing status, not the business-status array `AdminListInput` carries. */
+		status?: SubscriptionStatus;
+		/**
+		 * `arrears` is the default and the only sort that answers "who needs chasing",
+		 * which is why it leads: an operator opening this table is looking for debt, not
+		 * for a list. `periodEnd` and `businessName` are for finding one shop.
+		 */
+		sort: "arrears" | "periodEnd" | "businessName";
+	},
+): Promise<{ rows: AdminSubscription[]; total: number }> {
+	const now = new Date();
 	const offset = offsetOf(input.cursor);
-	const conditions = [];
+	const conditions: SQL[] = [];
 
-	if (input.search)
-		conditions.push(like(businessTable.name, likePattern(input.search)));
-	if (input.from) conditions.push(gte(payoutTable.periodStart, input.from));
-	if (input.to) conditions.push(lte(payoutTable.periodEnd, input.to));
+	if (input.search) {
+		// `or` returns `undefined` when every argument is, which cannot happen here —
+		// both branches are always `SQL`. The guard rather than a `!` is the honest
+		// spelling of that: this `conditions` array is typed `SQL[]` (the two existing
+		// search filters above are on an untyped `conditions = []`, which is why they
+		// need no guard and also catch nothing).
+		const matches = or(
+			like(businessTable.name, likePattern(input.search)),
+			like(ownerTable.email, likePattern(input.search)),
+		);
+		if (matches) conditions.push(matches);
+	}
+	if (input.from)
+		conditions.push(gte(subscriptionTable.periodStart, input.from));
+	if (input.to) conditions.push(lte(subscriptionTable.periodEnd, input.to));
 
 	const where = conditions.length > 0 ? and(...conditions) : undefined;
 	const direction = input.direction === "asc" ? sql`asc` : sql`desc`;
 
+	/**
+	 * The period length in milliseconds, from the plan the row names.
+	 *
+	 * A subscription stores one `priceMinor` and one `periodEnd`, so arrears is
+	 * "every period since `periodEnd`" and the divisor has to be the plan's own period —
+	 * a weekly row and a monthly row both owe `priceMinor` per period, and using one
+	 * number for both would bill a weekly merchant four times what they owe.
+	 *
+	 * `coalesce(..., 1)` rather than a bare division: a row with no `priceMinor` is a
+	 * trial, and a trial owing money is not a state that exists, so a zero divisor is
+	 * guarded instead of being allowed to make the whole query null.
+	 */
+	const periodMsSql = sql<number>`coalesce(
+		case ${subscriptionTable.plan}
+			when 'WEEKLY' then ${PLAN_PERIOD_DAYS.WEEKLY * DAY_MS}
+			else ${PLAN_PERIOD_DAYS.MONTHLY * DAY_MS}
+		end,
+		1
+	)`;
+
+	/**
+	 * Whole periods owed, floored at one.
+	 *
+	 * `cast(... as integer)` truncates, so 22 days on a 7-day plan is 3 and not 3.14 —
+	 * a fraction of a period is not a thing anybody can pay, and a debt of ₡126 is not
+	 * what "you are late" means to a shop that owes ₡2,000. `max(1, …)` is what makes
+	 * the *first* period count: a shop eleven hours past due still owes one, because
+	 * the period it bought has ended whether or not they have had time to notice.
+	 *
+	 * The two expressions are deliberately identical, and arrears is computed as
+	 * `periodsOwed * priceMinor` rather than re-deriving its own count. Two copies of
+	 * this arithmetic that drift by one is how an operator is told a merchant owes
+	 * ₡8,000 when the period count beside it says three.
+	 */
+	const periodsSql = sql<number>`case
+		when ${subscriptionTable.periodEnd} is null
+			or ${subscriptionTable.periodEnd} > ${now}
+			or ${subscriptionTable.priceMinor} is null
+		then 0
+		else max(1, cast((${now} - ${subscriptionTable.periodEnd}) / ${periodMsSql} as integer))
+	end`;
+	const arrearsSql = sql<number>`(${periodsSql}) * coalesce(${subscriptionTable.priceMinor}, 0)`;
+
 	const [rows, counted] = await Promise.all([
 		ctx.db
 			.select({
-				payout: payoutTable,
+				subscription: subscriptionTable,
 				businessName: businessTable.name,
+				ownerEmail: ownerTable.email,
 				currency: businessTable.currency,
+				arrearsMinor: arrearsSql,
+				periodsOwed: periodsSql,
 			})
-			.from(payoutTable)
-			.innerJoin(businessTable, eq(payoutTable.businessId, businessTable.id))
-			.where(where)
-			.orderBy(
-				sql`${payoutTable.periodStart} ${direction}`,
-				asc(payoutTable.id),
+			.from(subscriptionTable)
+			.innerJoin(
+				businessTable,
+				eq(businessTable.id, subscriptionTable.businessId),
 			)
+			.leftJoin(ownerTable, eq(ownerTable.id, ownerUserIdSql))
+			.where(where)
+			.orderBy(sql`${arrearsSql} ${direction}`, asc(subscriptionTable.id))
 			.limit(input.limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
-			.from(payoutTable)
-			.innerJoin(businessTable, eq(payoutTable.businessId, businessTable.id))
+			.from(subscriptionTable)
+			.innerJoin(
+				businessTable,
+				eq(businessTable.id, subscriptionTable.businessId),
+			)
 			.where(where),
 	]);
 
-	const orderCounts = await orderCountsPerPayout(
-		ctx.db,
-		rows.map((row) => row.payout),
-	);
-	const references = await payoutReferencesFor(
-		ctx.db,
-		rows.map((row) => row.payout.id),
-	);
+	const books = await subscriptionPriceBooks(ctx.db, [
+		...new Set(rows.map((row) => row.subscription.priceBookId)),
+	]);
+
+	const shaped = rows.map((row) => {
+		const status = subscriptionStatusAt(row.subscription, now);
+		return {
+			id: row.subscription.id,
+			businessId: row.subscription.businessId,
+			businessName: row.businessName,
+			ownerEmail: row.ownerEmail,
+			plan: row.subscription.plan,
+			status,
+			priceMinor: row.subscription.priceMinor,
+			currency: currencyOf(row.currency),
+			arrearsMinor: Math.max(0, Math.round(row.arrearsMinor ?? 0)),
+			periodsOwed: Math.max(0, row.periodsOwed ?? 0),
+			periodStart: row.subscription.periodStart,
+			periodEnd: row.subscription.periodEnd,
+			gracedUntil: row.subscription.gracedUntil,
+			lastPaidAt: row.subscription.lastPaidAt,
+			priceBookLabel: books.get(row.subscription.priceBookId) ?? null,
+			suspended: status === "SUSPENDED",
+		};
+	});
 
 	return {
-		rows: rows.map((row) =>
-			payoutOf(row.payout, {
-				businessName: row.businessName,
-				currency: currencyOf(row.currency),
-				orderCount: orderCounts.get(row.payout.id) ?? 0,
-				reference: references.get(row.payout.id) ?? null,
-			}),
-		),
+		// The status filter is applied **after** shaping, and that is not an
+		// optimisation. Filtering in SQL would filter on `subscription.status`, which is
+		// whatever last wrote the row; the shaped value is derived from the dates and is
+		// correct for now. An operator filtering `PAST_DUE` must see the shops that are
+		// past due *today*, not the ones a sweeper happened to write down.
+		//
+		// A consequence worth stating: `total` counts before the status filter, so a
+		// filtered page can come back short. It is the honest number for "how many
+		// subscriptions match this search" and a wrong one for "how many are past due",
+		// and no single field can be both.
+		rows: input.status
+			? shaped.filter((row) => row.status === input.status)
+			: shaped,
 		total: Number(counted[0]?.total ?? 0),
 	};
 }
 
 /**
- * Mark a payout run as paid.
+ * The OWNER's membership on a business — the address a debt reminder goes to.
  *
- * The `reference` is the bank or SINPE reference the operator got back, and it exists
- * only here — there is no column for it, and putting it in the audit entry's `meta` is
- * what makes a payout reconcilable later. Recording that it happened is the point;
- * moving the money is not this system's job yet.
+ * A subquery rather than a join because `membership` has four roles and a business can
+ * have several members: joining it would multiply the row. A scalar subquery with an
+ * `OWNER` filter returns at most one address, which is what the column means.
  */
-export async function markPayoutPaid(
-	ctx: UserContext,
-	input: { payoutId: string; reference: string; reason?: string },
-): Promise<Payout> {
-	const reason = requireReason("payout.mark_paid", input.reason);
+const ownerUserIdSql = sql`(
+	select m.user_id from membership m
+	where m.business_id = ${businessTable.id} and m.role = 'OWNER'
+	order by m.created_at
+	limit 1
+)`;
 
-	const rows = await ctx.db
-		.select({
-			payout: payoutTable,
-			businessName: businessTable.name,
-			currency: businessTable.currency,
-		})
-		.from(payoutTable)
-		.innerJoin(businessTable, eq(payoutTable.businessId, businessTable.id))
-		.where(eq(payoutTable.id, input.payoutId))
-		.limit(1);
-
-	const row = orNotFound(rows[0]);
-	if (row.payout.status === "PAID") {
-		throw new ConflictError("Este pago ya fue registrado");
-	}
-
-	const now = new Date();
-
-	await ctx.db.batch([
-		ctx.db
-			.update(payoutTable)
-			.set({ status: "PAID", paidAt: now })
-			.where(eq(payoutTable.id, input.payoutId)),
-		auditStatement(ctx, {
-			action: "payout.mark_paid",
-			targetType: "payout",
-			targetId: input.payoutId,
-			before: { status: row.payout.status, paidAt: null },
-			after: { status: "PAID", paidAt: now.toISOString() },
-			reason,
-			reference: input.reference,
-			now,
-		}),
-	]);
-
-	const orderCount =
-		(await orderCountsPerPayout(ctx.db, [row.payout])).get(row.payout.id) ?? 0;
-
-	return payoutOf(
-		{ ...row.payout, status: "PAID", paidAt: now },
-		{
-			businessName: row.businessName,
-			currency: currencyOf(row.currency),
-			orderCount,
-			reference: input.reference,
-		},
-	);
+/** Price-book labels for a page of rows, in one read. */
+async function subscriptionPriceBooks(
+	db: Db,
+	ids: readonly string[],
+): Promise<Map<string, string>> {
+	const labels = new Map<string, string>();
+	if (ids.length === 0) return labels;
+	const rows = await db
+		.select({ id: priceBookTable.id, label: priceBookTable.label })
+		.from(priceBookTable)
+		.where(inArray(priceBookTable.id, [...ids]));
+	for (const row of rows) labels.set(row.id, row.label);
+	return labels;
 }
 
 /**
- * The bank references of the payouts an admin marked paid, read back from the audit
- * entries.
+ * Recording that a merchant paid.
  *
- * The payout table has no `reference` column, and adding one would be a migration for
- * a field only an operator ever writes. The audit entry that recorded the payment
- * already carries it, so reading it back is not a workaround — it is the same
- * append-only record, reached from the other side.
+ * The reference is the bank's or SINPE's, and it lives only in the audit entry's
+ * `meta` — there is no column for it, and adding one would be a migration for a field
+ * only an operator ever writes. Reading it back from the audit log is not a
+ * workaround; it is the same append-only record reached from the other side.
  *
- * Exported because `businesses.listPayouts` shows the same reference to the owner, and
- * two implementations of "where is the reference" is how one of them shows nothing.
+ * The status and the next period are written by `subscription.recordPayment`, which
+ * owns the price book. What this adds is the **audit trail and the double-payment
+ * guard**: a second payment for a subscription already in `ACTIVE` with a live period
+ * is a conflict, because it is either a mistake or two people paying the same bill.
  */
-export async function payoutReferencesFor(
+export async function recordSubscriptionPayment(
+	ctx: UserContext,
+	input: { subscriptionId: string; reference: string; reason?: string },
+): Promise<Subscription> {
+	const reason = requireReason("subscription.record_payment", input.reason);
+
+	const rows = await ctx.db
+		.select({ subscription: subscriptionTable })
+		.from(subscriptionTable)
+		.where(eq(subscriptionTable.id, input.subscriptionId))
+		.limit(1);
+	const row = orNotFound(rows[0]);
+
+	const now = new Date();
+	const periodEnded =
+		row.subscription.periodEnd !== null &&
+		row.subscription.periodEnd.getTime() <= now.getTime();
+	// A payment for a period still running is a double payment, not a prepayment:
+	// the platform is not a credit account and a merchant who pays early has made a
+	// mistake an operator should see.
+	if (!periodEnded) {
+		throw new ConflictError(
+			"Este negocio ya tiene un periodo vigente. Registra el pago cuando venza.",
+		);
+	}
+
+	// The price captured when the period began is what was owed, so that is the amount
+	// recorded — including on a row whose `priceMinor` is null, which is a trial and
+	// which `recordPayment` refuses with a named error rather than writing a ₡0 payment.
+	const after = await subscriptionService.recordPayment(
+		ctx,
+		{
+			subscriptionId: input.subscriptionId,
+			amountMinor: row.subscription.priceMinor ?? 0,
+			reference: input.reference,
+		},
+		now,
+	);
+
+	// After the write, not before: the audit entry has to describe the transition that
+	// actually happened, and `after` is the row the merchant is now looking at. An
+	// audit written from a prediction is an audit that can be wrong.
+	await ctx.db.batch(
+		batchOf([
+			auditStatement(ctx, {
+				action: "subscription.record_payment",
+				targetType: "subscription",
+				targetId: input.subscriptionId,
+				before: {
+					status: row.subscription.status,
+					periodEnd: row.subscription.periodEnd?.toISOString() ?? null,
+					gracedUntil: row.subscription.gracedUntil?.toISOString() ?? null,
+					lastPaidAt: row.subscription.lastPaidAt?.toISOString() ?? null,
+				},
+				after: {
+					status: after.status,
+					periodStart: after.periodStart?.toISOString() ?? null,
+					periodEnd: after.periodEnd?.toISOString() ?? null,
+					lastPaidAt: after.lastPaidAt?.toISOString() ?? null,
+					priceMinor: after.priceMinor,
+					priceBookLabel: after.priceBookLabel,
+				},
+				reason,
+				reference: input.reference,
+				now,
+			}),
+		]),
+	);
+
+	return after;
+}
+
+/**
+ * The bank reference of the last recorded payment, read back from the audit log.
+ *
+ * Exported because `businesses.currentSubscription` shows the same reference to the
+ * owner, and two implementations of "where is the reference" is how one of them ends
+ * up showing nothing.
+ */
+export async function subscriptionReferencesFor(
 	db: Db,
-	payoutIds: readonly string[],
+	subscriptionIds: readonly string[],
 ): Promise<Map<string, string>> {
 	const references = new Map<string, string>();
-	if (payoutIds.length === 0) return references;
+	if (subscriptionIds.length === 0) return references;
 
 	const rows = await db
 		.select({ targetId: auditLogTable.targetId, meta: auditLogTable.meta })
 		.from(auditLogTable)
 		.where(
 			and(
-				eq(auditLogTable.action, "payout.mark_paid"),
-				inArray(auditLogTable.targetId, [...payoutIds]),
+				eq(auditLogTable.action, "subscription.record_payment"),
+				inArray(auditLogTable.targetId, [...subscriptionIds]),
 			),
 		)
 		.orderBy(asc(auditLogTable.createdAt));
 
-	// Ascending, so a payout marked paid twice ends with the latest reference — the one
+	// Ascending, so a subscription paid twice ends with the latest reference — the one
 	// that matches the money that actually moved.
 	for (const row of rows) {
 		const meta = row.meta as { reference?: unknown } | null;
-		if (typeof meta?.reference === "string")
+		if (typeof meta?.reference === "string") {
 			references.set(row.targetId, meta.reference);
+		}
 	}
 
 	return references;
-}
-
-/**
- * Orders per payout period.
- *
- * One read for every period in the page, then bucketed in memory, rather than a query
- * per payout: an admin table shows twenty-five of them, and twenty-five round trips
- * for a count is the shape that makes a console feel slow.
- */
-async function orderCountsPerPayout(
-	db: Db,
-	spans: readonly { id: string; periodStart: Date; periodEnd: Date }[],
-): Promise<Map<string, number>> {
-	const counts = new Map<string, number>();
-	if (spans.length === 0) return counts;
-
-	const from = new Date(
-		Math.min(...spans.map((span) => span.periodStart.getTime())),
-	);
-	const to = new Date(
-		Math.max(...spans.map((span) => span.periodEnd.getTime())),
-	);
-
-	const rows = await db
-		.select({ placedAt: orderTable.placedAt })
-		.from(orderTable)
-		.where(and(gte(orderTable.placedAt, from), lte(orderTable.placedAt, to)));
-
-	for (const span of spans) {
-		counts.set(
-			span.id,
-			rows.filter(
-				(row) =>
-					row.placedAt >= span.periodStart && row.placedAt <= span.periodEnd,
-			).length,
-		);
-	}
-
-	return counts;
 }
 
 // ---------------------------------------------------------------------------

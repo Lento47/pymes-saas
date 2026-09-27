@@ -120,6 +120,21 @@ export default function DeliveryScreen() {
 		>
 			<SignedIn>
 				<Runs />
+				{/*
+				    The profile door, on the board itself: the courier tree has no tab bar
+				    and no hub row, so a screen that never offers the way in is a screen with
+				    no way in. It sits under the queue for the same reason the pending state
+				    names its next step - the vehicle a run happens in and the account behind
+				    it belong one tap away from the work.
+				*/}
+				<View style={styles.actions}>
+					<Button
+						label={t("biz.courier.profile")}
+						variant="secondary"
+						fullWidth
+						onPress={() => router.push("/courier-profile")}
+					/>
+				</View>
 			</SignedIn>
 		</Screen>
 	);
@@ -263,23 +278,25 @@ function CourierSharing({ orderId }: { orderId?: string }) {
 	// a control for something already happening.
 	if (status === "granted") return null;
 
-	// The one case worth a band: a courier whose customer cannot see them.
-	if (status !== "denied") return null;
+	// The two cases worth a band: the courier has not granted access, or the
+	// phone's location service is off. In both cases the customer cannot see them.
+	if (status !== "denied" && status !== "unavailable") return null;
 
 	return (
 		<Card>
 			<View style={styles.sharing}>
 				<Text variant="body" bold>
-					{t("location.title")}
+					{t("biz.courier.location.title")}
 				</Text>
-				{/* No sentence under it, and that is the honest form rather than an omission: the
-				    dictionary's only line about a refused permission is `location.denied`, whose
-				    copy is written for a customer and ends "Escribe tu dirección" — wrong advice
-				    for a courier, who has no address to type. `docs/design-mobile.md:484-489`
-				    makes the rule report-and-stop, so the missing string is reported: *the
-				    customer cannot see where you are until you share your location.* */}
+				<Text variant="caption" tone="muted">
+					{t(
+						status === "unavailable"
+							? "biz.courier.location.unavailable"
+							: "biz.courier.location.body",
+					)}
+				</Text>
 				<Button
-					label={t("location.use")}
+					label={t("biz.courier.location.action")}
 					variant="secondary"
 					onPress={request}
 				/>
@@ -498,6 +515,7 @@ function RunsSkeleton({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
 	gap: { gap: space.lg },
+	actions: { gap: space.sm },
 	body: { gap: space.lg },
 	// The run's own column: reference line, headline, stamp and total, then the move. The
 	// same gaps the shop's board uses, because it is the same card with one control taken out.

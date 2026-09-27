@@ -139,12 +139,14 @@ async function request<T>(
   method: string,
   path: string,
   data?: unknown,
-  options?: { isFormData?: boolean; timeout?: number }
+  options?: { isFormData?: boolean; timeout?: number; responseType?: "blob" }
 ): Promise<T> {
   const buildHeaders = (): Record<string, string> => {
     const h: Record<string, string> = {};
-    if (_token) h["Authorization"] = `Bearer ${_token}`;
-    if (_workspaceSlug) h["x-workspace-slug"] = _workspaceSlug;
+    const token = getAuthToken();
+    const workspaceSlug = getWorkspaceSlug();
+    if (token) h["Authorization"] = `Bearer ${token}`;
+    if (workspaceSlug) h["x-workspace-slug"] = workspaceSlug;
     if (!options?.isFormData && data) h["Content-Type"] = "application/json";
     return h;
   };
@@ -223,6 +225,7 @@ async function request<T>(
     throw new ApiError(message, { status: res.status, case_id, error_code, request_id });
   }
 
+  if (options?.responseType === "blob") return await res.blob() as T;
   const contentType = res.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
     return res.json();
@@ -315,6 +318,7 @@ export const api = {
     return request<Record<string, any>>("GET", `/api/invoices${qs}`);
   },
   getInvoice: (id: string) => request<Record<string, any>>("GET", `/api/invoices/${id}`),
+  getInvoiceContacts: (params: { q?: string; page: string }) => request<{ data: { id: string; full_name: string; company_name?: string | null }[]; meta: { total: number; page: number; pages: number } }>("GET", `/api/invoices/contacts?${new URLSearchParams(params)}`),
   createInvoice: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/invoices", data),
   updateInvoice: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/invoices/${id}`, data),
   deleteInvoice: (id: string) => request<Record<string, any>>("DELETE", `/api/invoices/${id}`),
@@ -396,6 +400,7 @@ export const api = {
   updateMe: (data: Record<string, any>) => request<Record<string, any>>("PATCH", "/api/users/me", data),
   changePassword: (data: { current_password: string; new_password: string }) => request<Record<string, any>>("PATCH", "/api/users/me/password", data),
   uploadAvatar: (formData: FormData) => request<Record<string, any>>("POST", "/api/users/me/avatar", formData, { isFormData: true }),
+  getUserAvatar: (userId: string) => request<Blob>("GET", `/api/users/${encodeURIComponent(userId)}/avatar`, undefined, { responseType: "blob" }),
   getChannels: () => request<Record<string, any>>("GET", "/api/channels"),
   getAllChannels: () => request<Record<string, any>>("GET", "/api/channels?include_inactive=true"),
   getWhatsAppConfig: () => request<Record<string, any>>("GET", "/api/channels/whatsapp-config"),

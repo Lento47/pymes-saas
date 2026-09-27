@@ -7,12 +7,12 @@ import {
 	product as productTable,
 	promotion as promotionTable,
 } from "@pymeshub/db";
-import {
-	type BusinessCard,
-	type Category,
-	type ProductCard,
-	type ProductSearchResult,
-	type PromotionCard,
+import type {
+	BusinessCard,
+	Category,
+	ProductCard,
+	ProductSearchResult,
+	PromotionCard,
 } from "@pymeshub/shared";
 import {
 	and,

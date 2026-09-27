@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-declare global {
+declare module 'react' {
   namespace JSX {
     interface IntrinsicElements {
       "chat-bubble-snippet": React.DetailedHTMLProps<

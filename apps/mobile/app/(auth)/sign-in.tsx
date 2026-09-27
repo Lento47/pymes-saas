@@ -13,7 +13,7 @@ import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
 import { getAccountProfile, setAccountProfile } from "@/lib/device-prefs";
 import { useT } from "@/lib/i18n";
-import { icon, space, type, useTheme } from "@/theme";
+import { icon, space, type as typeScale, useTheme } from "@/theme";
 
 /**
  * Entering, and creating, an account.
@@ -66,25 +66,40 @@ import { icon, space, type, useTheme } from "@/theme";
  * arguing with its reader. `components/field.tsx` reserves the line the sentence appears on,
  * so none of this reflows the form or moves the field a thumb is travelling towards.
  *
- * ## The courier is identified at the door
+ * ## The door is asked differently by each side
  *
  * Delivery is a dedicated use — an account that exists to accept and deliver — and the
  * identification happens here, where the session is made, not in a setting the reader
- * finds afterwards. The two-segment group above the fields asks what the session is for:
- * shopping, or the courier's board. It is the same credential either way — one account,
- * one email, one password — and the answer decides only where the verified session lands
- * (`/(delivery)` or `/`) and which device preference is written, which is exactly what
- * `lib/role.ts` reconciles at cold start.
+ * finds afterwards. Both forms ask, and they ask different questions because they are
+ * different questions:
  *
- * The group answers from the device's own last choice (`getAccountProfile`), so a courier
- * signing back in finds "Repartidor" already selected and lands on their board; a fresh
- * install answers "Cliente". The help line under the delivery choice states the dedicated
- * use in the dictionary's words — it is the reason this choice exists at all — and it
- * appears with the selection rather than always, because for a customer it would be a
- * sentence about somebody else.
+ * - **Sign-in** offers the two ways this device can *enter*: shopping, or the courier's
+ *   board. Same credential either way — one account, one email, one password — and the
+ *   answer decides only where the verified session lands (`/(delivery)` or `/`) and which
+ *   device preference is written, which is exactly what `lib/role.ts` reconciles at cold
+ *   start. The group answers from the device's own last choice (`getAccountProfile`), so a
+ *   courier signing back in finds "Repartidor" already selected.
+ * - **Sign-up** offers the three things an account can be *for*: a customer, a business, a
+ *   courier. It is `registrationMode`, not `role`, and it is the input the whole signup is
+ *   shaped by: the title changes to the mode's own, the device profile is written from it,
+ *   and success lands on the mode's first screen — `/new-business` for the shop,
+ *   `/courier-profile` for the courier (their profile and vehicle, before any membership
+ *   exists), `/` for the customer. A sign-up that could not express "business" or
+ *   "delivery" was a sign-up that silently made every account a customer — which is the
+ *   failure this group exists to prevent, and the reason it is above the fields rather
+ *   than behind a setting.
+ *
+ * The help line under a selected mode states that mode's dedicated use in the
+ * dictionary's words — it is the reason the choice exists at all — and it appears with
+ * the selection rather than always, because for a customer it would be a sentence about
+ * somebody else.
  *
  * The choice is disabled while the wait is open, the same rule as the form-switch button:
  * a role swapped mid-flight would change where the in-progress session is about to land.
+ *
+ * What this screen deliberately does **not** ask is which identity provider to use: that
+ * is plumbing, not something a reader picking a role should adjudicate, so sign-in and
+ * sign-up both go through the marketplace's own transport.
  *
  * ## The mark
  *
@@ -177,6 +192,13 @@ const MIN_PASSWORD = 12;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FieldName = "name" | "email" | "password";
+/**
+ * What the new account is *for*, and the only three answers this platform has — see
+ * "The door is asked differently by each side". It is a distinct piece of state from
+ * `role` on purpose: `role` is how this device enters with an account it already has,
+ * and this is what account it is about to make.
+ */
+type RegistrationMode = "customer" | "business" | "delivery";
 
 export default function SignIn() {
 	return <SignInForm />;
@@ -208,8 +230,13 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	// What the session is for, asked at the door (see "The courier is identified at the door"):
 	// seeded from the device's own last answer, so a returning courier finds their role selected.
 	const [role, setRole] = useState<"customer" | "delivery">(() =>
-		getAccountProfile() === "delivery" ? "delivery" : "customer",
+		signingUp || getAccountProfile() !== "delivery" ? "customer" : "delivery",
 	);
+	// What a sign-up is *for*, asked above the fields. The setter is the door's own —
+	// see the docblock: this state being unwritable was exactly how every registration
+	// silently became a customer.
+	const [registrationMode, setRegistrationMode] =
+		useState<RegistrationMode>("customer");
 	const inFlight = useRef(false);
 
 	// Derived, never stored: a second copy of "is this valid" is a second answer that can go
@@ -274,16 +301,27 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		}
 
 		try {
+			// One transport, never chosen by the reader: which provider backs the
+			// credential is plumbing, and a picker for it on this form was asking a
+			// person picking a role to also adjudicate an infrastructure decision.
 			const result = signingUp
 				? await auth.signUp(email.trim(), password, name.trim())
 				: await auth.signIn(email.trim(), password);
 
 			if (result.ok) {
-				// The courier's preference is written before the session's answer arrives, so
-				// the destination tree (`lib/role.ts`) and the cold-start resolver both read the
-				// choice this screen just made. The in-memory copy is set synchronously — the
-				// awaited write is storage's, and nothing here needs to await it.
-				if (role === "delivery") void setAccountProfile("delivery");
+				// The selected profile is authoritative for this session. Persist the
+				// customer choice too: writing only `delivery` left a previous courier
+				// preference on the device, and the root resolver then sent a newly
+				// registered customer to `/(delivery)` immediately after sign-up.
+				await setAccountProfile(
+					signingUp && registrationMode === "delivery"
+						? "delivery"
+						: signingUp && registrationMode === "business"
+							? "business"
+							: role === "delivery"
+								? "delivery"
+								: "customer",
+				);
 				// Recorded, not navigated from. The effect below navigates on the provider's
 				// verified status; this handler only knows the call was accepted.
 				setSent(true);
@@ -301,7 +339,17 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			inFlight.current = false;
 			setPending(false);
 		}
-	}, [auth, email, name, password, problems, role, signingUp, t]);
+	}, [
+		auth,
+		email,
+		name,
+		password,
+		problems,
+		registrationMode,
+		role,
+		signingUp,
+		t,
+	]);
 
 	/**
 	 * A call the API accepted that produced no session.
@@ -338,9 +386,16 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		// the delivery tree — which its own guard re-resolves from the preference this form just
 		// wrote — while everyone else lands at `/`, whose resolver is the one place that knows
 		// the three trees.
-		if (sent && auth.status === "signed-in")
-			router.replace(role === "delivery" ? "/(delivery)" : "/");
-	}, [auth.status, sent, role]);
+		if (sent && auth.status === "signed-in") {
+			if (signingUp && registrationMode === "business") {
+				router.replace("/new-business");
+			} else if (signingUp && registrationMode === "delivery") {
+				router.replace("/courier-profile");
+			} else {
+				router.replace(role === "delivery" ? "/(delivery)" : "/");
+			}
+		}
+	}, [auth.status, registrationMode, role, sent, signingUp]);
 
 	/**
 	 * iOS only, because the slot above is the whole of Android's announcement.
@@ -356,10 +411,20 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		AccessibilityInfo.announceForAccessibility(message);
 	}, [message]);
 
-	const title = t(signingUp ? "auth.signUp.title" : "auth.signIn.title");
-	const subtitle = t(
-		signingUp ? "auth.signUp.subtitle" : "auth.signIn.subtitle",
-	);
+	const title = signingUp
+		? registrationMode === "business"
+			? t("auth.signUp.business.title")
+			: registrationMode === "delivery"
+				? t("auth.signUp.delivery.title")
+				: t("auth.signUp.title")
+		: t("auth.signIn.title");
+	const subtitle = signingUp
+		? registrationMode === "business"
+			? t("auth.signUp.business.subtitle")
+			: registrationMode === "delivery"
+				? t("auth.signUp.delivery.subtitle")
+				: t("auth.signUp.subtitle")
+		: t("auth.signIn.subtitle");
 
 	return (
 		<View style={styles.root}>
@@ -395,27 +460,62 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 					</View>
 				</View>
 
-				{/* The identification at the door — see "The courier is identified at the door"
-				    above. Same credential either way; the answer lands the session. */}
-				<View style={styles.role}>
-					<Segmented
-						label={t("auth.role.label")}
-						value={role}
-						disabled={waiting}
-						onChange={(next) =>
-							setRole(next === "delivery" ? "delivery" : "customer")
-						}
-						options={[
-							{ value: "customer", label: t("auth.role.customer") },
-							{ value: "delivery", label: t("auth.role.delivery") },
-						]}
-					/>
-					{role === "delivery" ? (
-						<Text variant="caption" tone="muted">
-							{t("auth.role.deliveryHelp")}
-						</Text>
-					) : null}
-				</View>
+				{/* The door - see "The door is asked differently by each side" above.
+				    Sign-in asks how this device enters; sign-up asks what the account is for. */}
+				{!signingUp ? (
+					<View style={styles.role}>
+						<Segmented
+							label={t("auth.role.label")}
+							value={role}
+							disabled={waiting}
+							onChange={(next) =>
+								setRole(next === "delivery" ? "delivery" : "customer")
+							}
+							options={[
+								{ value: "customer", label: t("auth.role.customer") },
+								{ value: "delivery", label: t("auth.role.delivery") },
+							]}
+						/>
+						{role === "delivery" ? (
+							<Text variant="caption" tone="muted">
+								{t("auth.role.deliveryHelp")}
+							</Text>
+						) : null}
+					</View>
+				) : (
+					<View style={styles.role}>
+						<Segmented
+							label={t("auth.role.label")}
+							value={registrationMode}
+							disabled={waiting}
+							onChange={(next) =>
+								setRegistrationMode(
+									next === "business" || next === "delivery"
+										? next
+										: "customer",
+								)
+							}
+							options={[
+								{ value: "customer", label: t("auth.role.customer") },
+								{ value: "business", label: t("auth.role.business") },
+								{ value: "delivery", label: t("auth.role.delivery") },
+							]}
+						/>
+						{/* The dedicated use of the selected mode, not of the form: for a
+						    customer either sentence would be about somebody else. The business's
+						    line is its own sign-up subtitle - same words, same claim, one
+						    dictionary entry. */}
+						{registrationMode === "business" ? (
+							<Text variant="caption" tone="muted">
+								{t("auth.signUp.business.subtitle")}
+							</Text>
+						) : registrationMode === "delivery" ? (
+							<Text variant="caption" tone="muted">
+								{t("auth.role.deliveryHelp")}
+							</Text>
+						) : null}
+					</View>
+				)}
 
 				{signingUp ? (
 					<Field
@@ -525,5 +625,5 @@ const styles = StyleSheet.create({
 	role: { gap: space.xs },
 	// `minHeight` is a floor: at 200% Dynamic Type the sentence and the word both grow past
 	// it, and the slot grows with them instead of clipping them.
-	status: { minHeight: type.body.lineHeight, justifyContent: "center" },
+	status: { minHeight: typeScale.body.lineHeight, justifyContent: "center" },
 });

@@ -88,7 +88,9 @@ export class StorageService {
 
   // ── Descargar archivo como Buffer ─────────────────────────────────────────
 
-  async download(key: string): Promise<Buffer> {
+  async download(key: string): Promise<Buffer>;
+  async download(key: string, allowMissing: true): Promise<Buffer | null>;
+  async download(key: string, allowMissing = false): Promise<Buffer | null> {
     try {
       const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
       const response = await this.client.send(command);
@@ -97,7 +99,8 @@ export class StorageService {
       return Buffer.from(body);
     } catch (err) {
       const error = err as Error & { Code?: string; $metadata?: { httpStatusCode?: number } };
-      if (error.Code === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+      if (error.Code === "NoSuchKey" || error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+        if (allowMissing) return null;
         this.logger.warn(`Key not found in storage: ${key}`);
       } else {
         this.logger.error(`Error descargando archivo ${key}:`, err);

@@ -41,7 +41,7 @@ docs/
 ├── technical/                    ← INGENIERIA Y SPECS DEL API
 │   ├── api-deployment/             despliegue del API a Railway
 │   ├── api-spec/                   requisitos del producto (legal acceptance, auditoria, IA, OCR, multi-tenant)
-│   ├── architecture/               diagramas, boundaries, third-party services
+│   ├── architecture/               diagramas, boundaries, Cloudflare, mapas y servicios externos
 │   └── security-audits/            historial de remediaciones de seguridad
 └── templates/                    ← PLANTILLAS REUTILIZABLES
     └── (onboarding, incidentes, privacidad, facturacion, ordenes de servicio)
@@ -80,6 +80,9 @@ Por defecto en cada archivo: owner, ultima revision, proxima revision, estado (v
 4. Convertir `technical/api-spec/compliance-implementation-backlog.md` en backlog tecnico priorizado.
 5. Mantener `risk/risk-register.md`, `risk/subprocessors-list.md` y `business/vendor-risk-register.md` como registros vivos.
 6. Versionar las politicas publicadas y conservar evidencia de aceptacion.
+
+La topologia operativa de Cloudflare y el despliegue de mapas estan documentados en
+[`technical/architecture/cloudflare-and-maps.md`](technical/architecture/cloudflare-and-maps.md).
 
 ## 7. Relacion con la rama frontend
 

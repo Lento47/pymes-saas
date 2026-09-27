@@ -136,8 +136,11 @@ test("a pause committed after checkout's read still aborts its atomic order batc
 test("a merchant can pause one owned location; the server computes resume and checkout respects it", async () => {
 	const testWorld = world();
 	try {
+		// Two branches: the spec pauses one and checks the other still takes orders, and
+		// **no plan allows a second branch**, so the cap is raised for this spec alone.
 		const businessId = await seedBusiness(testWorld.db, {
 			id: "biz_location_one",
+			raiseLimits: { locations: 3 },
 		});
 		const otherBusinessId = await seedBusiness(testWorld.db, {
 			id: "biz_location_other",
@@ -173,9 +176,31 @@ test("a merchant can pause one owned location; the server computes resume and ch
 				})
 			).line1,
 		).toBe("Calle de prueba 2");
-		expect(
-			(await owner.business.locations({ businessId })).map((row) => row.id),
-		).toEqual([locationId, newLocation.id]);
+		// Both locations, and in the order `list` documents: `createdAt`, then `id`.
+		//
+		// The set is compared sorted, and the order is compared against the rule rather
+		// than against a literal. Hardcoding `[locationId, newLocation.id]` asserts
+		// that the seeded row's `createdAt` is strictly earlier than the created one's,
+		// and that is not a promise the code makes: seed and create can land in the same
+		// millisecond, at which point the `id` tiebreaker decides - and `"loc_b6414..."`
+		// sorts before `"loc_biz_location_one"` because `'4'` precedes `'b'`. That made
+		// this the one flaky spec in the suite, failing about a quarter of full-suite
+		// runs and never in isolation, which is the shape of a timing bug rather than a
+		// real defect.
+		//
+		// What is asserted here is the property the query implements, so it holds
+		// whether the two writes shared a millisecond or not.
+		const listed = await owner.business.locations({ businessId });
+		expect(listed.map((row) => row.id).sort()).toEqual(
+			[locationId, newLocation.id].sort(),
+		);
+		const sortKey = (row: { createdAt: Date | null; id: string }) =>
+			[row.createdAt?.getTime() ?? 0, row.id] as const;
+		const keys = listed.map(sortKey);
+		const byRule = [...keys].sort(
+			(a, b) => a[0] - b[0] || a[1].localeCompare(b[1]),
+		);
+		expect(keys).toEqual(byRule);
 		expect(
 			(
 				await refused(

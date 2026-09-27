@@ -45,12 +45,12 @@ export class TasksService {
     if (conversation_id) where.conversation_id = conversation_id;
 
     if (!status && overdue !== "true") {
-      where.status = { notIn: ["DONE", "ARCHIVED"] };
+      where.status = { notIn: ["DONE", "ARCHIVED", "CANCELLED"] };
     }
 
     if (overdue === "true") {
       where.due_at = { lt: new Date() };
-      where.status = { notIn: ["DONE", "ARCHIVED"] };
+      where.status = { notIn: ["DONE", "ARCHIVED", "CANCELLED"] };
       where.completed_at = null;
     }
 
@@ -85,6 +85,7 @@ export class TasksService {
   // ── POST /tasks ────────────────────────────────────────────────────────────
 
   async create(workspaceId: string, user: AuthUser, dto: CreateTaskDto) {
+    await this.validateAssignee(workspaceId, dto.assigned_user_id);
     // Validar que conversation y contact pertenecen al workspace
     if (dto.conversation_id) {
       const conv = await this.prisma.conversation.findFirst({
@@ -146,6 +147,7 @@ export class TasksService {
 
   async update(workspaceId: string, id: string, dto: UpdateTaskDto) {
     await this.findOne(workspaceId, id);
+    await this.validateAssignee(workspaceId, dto.assigned_user_id);
 
     return this.prisma.task.update({
       where: { id },
@@ -162,6 +164,15 @@ export class TasksService {
   }
 
   // ── POST /tasks/:id/complete ───────────────────────────────────────────────
+
+  private async validateAssignee(workspaceId: string, userId?: string | null) {
+    if (userId == null) return;
+    const member = await this.prisma.workspaceUser.findUnique({
+      where: { workspace_id_user_id: { workspace_id: workspaceId, user_id: userId } },
+      select: { user_id: true },
+    });
+    if (!member) throw new BadRequestException("El responsable no pertenece a este espacio de trabajo.");
+  }
 
   async complete(workspaceId: string, id: string) {
     const task = await this.findOne(workspaceId, id);
@@ -223,7 +234,7 @@ export class TasksService {
       where: {
         workspace_id: workspaceId,
         due_at: { lt: now },
-        status: { notIn: ["DONE", "ARCHIVED"] },
+        status: { notIn: ["DONE", "ARCHIVED", "CANCELLED"] },
         completed_at: null,
       },
       include: {

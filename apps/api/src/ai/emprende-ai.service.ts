@@ -129,7 +129,7 @@ export class EmrendeAiService {
     const businessType = this.describeBusinessType(ctx.categories);
     const country = ctx.countryCode ? ` en ${ctx.countryCode}` : "";
 
-    let contextLines = [
+    const contextLines = [
       `Eres el asistente de atención al cliente de "${ctx.workspaceName}"${country}, un negocio de ${businessType}.`,
       `Responde siempre en español, con un tono amigable, directo y profesional, como lo haría un emprendedor latinoamericano.`,
       `Sé conciso. Evita respuestas largas. Si el cliente pregunta por precios, disponibilidad o servicios específicos, responde con lo que sabes del negocio.`,

@@ -94,7 +94,11 @@ type ButtonProps = {
 	size?: ButtonSize;
 	shape?: ButtonShape;
 	disabled?: boolean;
-	/** Shows a spinner in place of the label. The label stays for the screen reader. */
+	/**
+	 * The button is doing the thing it says. The label stays - interface.md §45, "Do not
+	 * replace label completely" - and the spinner joins it in the leading slot instead of
+	 * standing in for it. `accessibilityState.busy` is what announces the state.
+	 */
 	loading?: boolean;
 	/** Leading node — an icon, usually. `@expo/vector-icons` at `label` size and current colour. */
 	icon?: React.ReactNode;
@@ -223,6 +227,35 @@ export function Button({
 	const surface = unavailable ? colors.muted : colors[SURFACES[variant]];
 	const ink = unavailable ? colors.mutedForeground : colors[INKS[variant]];
 
+	/*
+	 * The row's leading mark, and the only part of it that changes between the three
+	 * states: the icon at rest, the tick when chosen, the spinner while the press is in
+	 * flight. Three answers to one slot is what keeps the row around them still - which
+	 * is §45's "Never resize button when loading" made structural rather than measured.
+	 *
+	 * §45's other line is the reason the spinner is here and not over the label: "Do not
+	 * replace label completely. Use: [spinner] Saving…". The words a reader is waiting on
+	 * are the words that stay; the mark beside them is what says the wait started.
+	 */
+	let leading: React.ReactNode = icon;
+	if (loading) {
+		leading = <Spinner color={ink} />;
+	} else if (selected) {
+		leading = (
+			<Animated.View style={tickPop}>
+				<Ionicons
+					name="checkmark"
+					size={TICK_SIZE}
+					color={ink}
+					// The radio's state is announced; an image read after it would say the
+					// same thing a second time. See the note at the top of this file.
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			</Animated.View>
+		);
+	}
+
 	return (
 		<Pressable
 			onPress={onPress}
@@ -259,36 +292,17 @@ export function Button({
 				style,
 			]}
 		>
-			{loading ? (
-				// The label's own line box, so the busy state is exactly the height of the state it
-				// replaces. `./spinner`'s unlabelled variant carries no floor of its own, and the
-				// indicator is shorter than a `heading` line - without this the button would shrink
-				// by the few points between them, which is the same jump in the other direction.
-				<View style={styles.content}>
-					<Spinner color={ink} />
-				</View>
-			) : (
-				<View style={styles.content}>
-					{selected ? (
-						<Animated.View style={tickPop}>
-							<Ionicons
-								name="checkmark"
-								size={TICK_SIZE}
-								color={ink}
-								// The radio's state is announced; an image read after it would say the
-								// same thing a second time. See the note at the top of this file.
-								accessibilityElementsHidden
-								importantForAccessibility="no"
-							/>
-						</Animated.View>
-					) : (
-						icon
-					)}
-					<Text variant="heading" bold style={{ color: ink } as TextStyle}>
-						{label}
-					</Text>
-				</View>
-			)}
+			{/* One row, always. §45's height guarantee lives in `styles.content`'s floor -
+			    the label's own line box - so the busy state is drawn at the height of the state
+			    it continues rather than of the ring inside it. `./spinner`'s unlabelled variant
+			    carries no floor of its own and the indicator is shorter than a `heading` line;
+			    without that floor the button would shrink by the few points between them. */}
+			<View style={styles.content}>
+				{leading}
+				<Text variant="heading" bold style={{ color: ink } as TextStyle}>
+					{label}
+				</Text>
+			</View>
 		</Pressable>
 	);
 }
@@ -311,6 +325,9 @@ const styles = StyleSheet.create({
 	lg: { paddingHorizontal: space.xxl, paddingVertical: space.lg },
 	pill: { borderRadius: radius.full },
 	fullWidth: { alignSelf: "stretch" },
+	// The row's floor is the label's own line box, and it is the whole of §45's "Height
+	// stays identical" / "Never resize button when loading": whatever the leading mark is,
+	// the row is at least as tall as the words in it.
 	content: {
 		flexDirection: "row",
 		alignItems: "center",

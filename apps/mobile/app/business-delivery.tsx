@@ -18,6 +18,7 @@ import { Screen, ScreenSection } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
+import { Switch } from "@/components/switch";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
@@ -34,30 +35,64 @@ import { MIN_TOUCH_TARGET, radius, space } from "@/theme";
  * At the root beside the form that leads here, for the reason that file
  * states: the reader is not yet anyone the business tree would let in.
  *
- * Fee, radius and prep time land through `business.update`; the courier's
- * email, when given, becomes a COURIER membership through
- * `business.inviteStaff` — which refuses an address with no account, so the
- * form states that rule beside the field rather than letting the round trip
- * discover it. Either write may fail while the other succeeded: the settings
- * save first, and an invite refusal leaves the screen open on the saved
- * numbers with the sentence about the email, so retrying cannot double-apply
- * anything. The toast fires only when everything asked for is done.
+ * The two capability switches, the minimum order, the fee, the radius and the
+ * prep time all land through `business.update`; the courier's email, when
+ * given, becomes a COURIER membership through `business.inviteStaff` -- which
+ * refuses an address with no account, so the form states that rule beside the
+ * field rather than letting the round trip discover it. Either write may fail
+ * while the other succeeded: the settings save first, and an invite refusal
+ * leaves the screen open on the saved numbers with the sentence about the
+ * email, so retrying cannot double-apply anything. The toast fires only when
+ * everything asked for is done.
  *
  * Skippable on purpose: a pickup-only shop has no delivery to configure, and
  * a shop whose courier has no account yet should not be held at this screen
- * waiting for one. After this step nothing on the phone edits these three
- * numbers again — the board's settings editor for them is still to come —
- * so this screen is where a shop's fee, radius and prep time are set.
+ * waiting for one. This screen is where a shop's delivery settings are set --
+ * the two switches, the minimum order, and the fee, radius and prep time -- and
+ * it stays that way: `app/(business)/shop-settings.tsx` owns the identity and
+ * deliberately leaves the numbers here rather than splitting one write across
+ * two screens, and `app/(business)/more.tsx` reaches this screen again from
+ * the board.
  */
 export default function BusinessDelivery() {
-	const { businessId } = useLocalSearchParams<{ businessId?: string }>();
+	const { businessId: given } = useLocalSearchParams<{ businessId?: string }>();
+	const trpc = useTRPC();
+	const { status } = useSession();
+	const signedIn = status === "signed-in";
 
-	// No shop to configure: back to the board rather than a form whose save
-	// would have nowhere to go. The effect owns the navigation because render
-	// must stay side-effect free; the null below holds the frame meanwhile.
+	// The parameter wins: onboarding step three knows which shop it is opening,
+	// and `app/new-business.tsx` hands it the one it just created. Without one —
+	// `app/(business)/more.tsx` used to push this screen bare, and a deep link
+	// still can — the shop is the reader's own non-COURIER membership, the same
+	// rule that screen uses to pick it. The bounce this replaces kicked a
+	// merchant straight back to the Orders board from the row they had just
+	// tapped, before the read that names their shop had landed.
+	const shops = useQuery(
+		trpc.business.myBusinesses.queryOptions(undefined, {
+			enabled: signedIn && !given,
+		}),
+	);
+	const owned = (shops.data ?? []).find((one) => one.role !== "COURIER");
+	// `||`, not `??`: a push that carried an empty `businessId` (one a screen can
+	// hold before its own read lands) is a parameter that named nothing, and the
+	// membership answers that the same way it answers no parameter at all.
+	const businessId = given || owned?.businessId;
+
+	// `isPending` only counts when this screen is the one that asked: a query
+	// left `enabled: false` because the parameter already named the shop reports
+	// `isPending` for ever, and that is not a wait — the same trap
+	// `app/(business)/shop-settings.tsx` notes one screen over. A reader with no
+	// membership is not held here either; they are bounced.
+	const resolving = !given && signedIn && shops.isPending;
+
+	// No shop to configure, and now we know it: back to the board rather than a
+	// form whose save would have nowhere to go. The effect owns the navigation
+	// because render must stay side-effect free; the null below holds the frame
+	// meanwhile.
 	useEffect(() => {
+		if (resolving) return;
 		if (!businessId) leaveScreen("/business");
-	}, [businessId]);
+	}, [businessId, resolving]);
 	if (!businessId) return null;
 	return <DeliveryForm businessId={businessId} />;
 }
@@ -78,6 +113,13 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	const [radius, setRadius] = useState("");
 	const [prep, setPrep] = useState("");
 	const [courierEmail, setCourierEmail] = useState("");
+	const [minOrder, setMinOrder] = useState("");
+	// The two capability switches. Saved with the numbers, in the same write, but
+	// a `Switch` holds a boolean and not "untouched": these open on the row's own
+	// values rather than on a sentinel, so there is no third state to clear back
+	// to and a save always says which way each one is on.
+	const [deliveryOn, setDeliveryOn] = useState(true);
+	const [pickupOn, setPickupOn] = useState(true);
 	const [submitted, setSubmitted] = useState(false);
 	const [saving, setSaving] = useState(false);
 	// Which write refused, when one did. The sentence itself is derived in
@@ -107,6 +149,9 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 		setFee(String(settings.data.deliveryFeeMinor));
 		setRadius(String(settings.data.deliveryRadiusKm));
 		setPrep(String(settings.data.prepTimeMinutes));
+		setMinOrder(String(settings.data.minOrderMinor));
+		setDeliveryOn(settings.data.deliveryEnabled);
+		setPickupOn(settings.data.pickupEnabled);
 	}, [settings.data]);
 
 	const parseFee = (): number | null => {
@@ -128,9 +173,25 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 			? Number(prep.trim())
 			: null;
 	};
+	const parseMinOrder = (): number | null => {
+		if (!minOrder.trim()) return 0;
+		// The API's own ceiling on `minOrderMinor`, so a too-large minimum fails
+		// here in the field rather than as a server refusal after the round trip.
+		return /^\d+$/.test(minOrder.trim()) &&
+			Number(minOrder.trim()) <= MAX_MIN_ORDER_MINOR
+			? Number(minOrder.trim())
+			: null;
+	};
 	const emailOk = !courierEmail.trim() || EMAIL_SHAPE.test(courierEmail.trim());
 	const numbersOk =
-		parseFee() !== null && parseRadius() !== null && parsePrep() !== null;
+		parseFee() !== null &&
+		parseRadius() !== null &&
+		parsePrep() !== null &&
+		parseMinOrder() !== null;
+	// At least one way to hand a customer their order. Both off is a shop that
+	// takes no orders at all, which `biz.new.kind.required` says in as many words
+	// -- the same rule `app/new-business.tsx` enforces on the day the shop opens.
+	const kindsValid = deliveryOn || pickupOn;
 
 	/**
 	 * Out of onboarding and into the console, as an owner.
@@ -155,15 +216,19 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	const submit = () => {
 		if (update.isPending || invite.isPending) return;
 		setSubmitted(true);
-		if (!numbersOk || !emailOk) return;
+		if (!numbersOk || !kindsValid || !emailOk) return;
 		setSaving(true);
 		setFailedStep(null);
 		const feeMinor = parseFee() ?? 0;
 		const radiusKm = parseRadius() ?? 0;
 		const prepMinutes = parsePrep() ?? 0;
+		const minOrderMinor = parseMinOrder() ?? 0;
 		update.mutate(
 			{
 				businessId,
+				deliveryEnabled: deliveryOn,
+				pickupEnabled: pickupOn,
+				minOrderMinor,
 				deliveryFeeMinor: feeMinor,
 				deliveryRadiusKm: radiusKm,
 				prepTimeMinutes: prepMinutes,
@@ -221,8 +286,11 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 				? inviteFailure.message
 				: null;
 
+	// `ready`, and not `ready && deliveryOn`: the switches live on this screen
+	// now, so a shop with delivery off has to be able to turn it on -- gating the
+	// save on the old read's value is the screen that cannot make the change it
+	// is asking for.
 	const ready = signedIn && !!settings.data && !waiting;
-	const deliveryOn = settings.data?.deliveryEnabled ?? true;
 
 	/**
 	 * The refusal, read out on iOS, where nothing else will read it.
@@ -261,13 +329,44 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 						/>
 					) : settings.data ? (
 						<>
-							{/* A pickup-only shop has no delivery to configure: the
-							    numbers would be settings for a capability that is
-							    off, so the screen offers the way out instead. */}
-							{deliveryOn ? (
-								<>
-									<AnimateIn index={0}>
-										<ScreenSection title={t("biz.settings.delivery")}>
+							{/* The two ways an order reaches a customer, and the rule that says
+								    at least one has to stay on. Both are always drawn: a pickup-only shop
+								    turning delivery on is the one gesture this screen exists for after
+								    onboarding, and hiding the switch behind the state it controls is a
+								    screen that cannot make the change it is for. */}
+							<AnimateIn index={0}>
+								<ScreenSection title={t("biz.settings.delivery")}>
+									<View style={formStyles.switchRow}>
+										<Switch
+											checked={deliveryOn}
+											onChange={(next) => edited(() => setDeliveryOn(next))}
+											label={t("biz.settings.delivery.enabled")}
+										/>
+										<Text variant="label">
+											{t("biz.settings.delivery.enabled")}
+										</Text>
+									</View>
+
+									{/* The order's floor, and not one of the three numbers below: it stands
+										    whether the order is driven over or walked out, so it is drawn even
+										    when delivery is off. Same minor-unit help the fee states, for the same
+										    reason -- the unit is a rule for programmers. */}
+									<Field
+										label={t("biz.settings.delivery.minOrder")}
+										value={minOrder}
+										onChangeText={(value) => edited(() => setMinOrder(value))}
+										error={
+											submitted && parseMinOrder() === null
+												? t("biz.new.amount.unreadable")
+												: null
+										}
+										help={t("biz.settings.delivery.fee.help")}
+										keyboardType="number-pad"
+										placeholder="0"
+									/>
+
+									{deliveryOn ? (
+										<>
 											<Field
 												label={t("biz.settings.delivery.fee")}
 												value={fee}
@@ -308,40 +407,64 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 												keyboardType="number-pad"
 												placeholder="25"
 											/>
-										</ScreenSection>
-									</AnimateIn>
+										</>
+									) : null}
+								</ScreenSection>
+							</AnimateIn>
 
-									<AnimateIn index={1}>
-										<ScreenSection title={t("biz.onboarding.delivery.courier")}>
-											<Field
-												label={t("biz.onboarding.delivery.courier")}
-												value={courierEmail}
-												onChangeText={(value) =>
-													edited(() => setCourierEmail(value))
-												}
-												error={
-													submitted && !emailOk ? t("form.invalidEmail") : null
-												}
-												help={t("biz.onboarding.delivery.courierHelp")}
-												keyboardType="email-address"
-												autoComplete="email"
-												autoCapitalize="none"
-											/>
-										</ScreenSection>
-									</AnimateIn>
-								</>
-							) : (
-								// The state is not an error and not an empty screen: a pickup-only
-								// shop has nothing to set, and the sentence is what says so —
-								// without it, a form that shows only a skip button reads as a
-								// screen that failed to load its fields.
-								<Text variant="body" tone="muted">
-									{t("biz.onboarding.delivery.pickupOnly")}
-								</Text>
-							)}
+							<AnimateIn index={1}>
+								<ScreenSection title={t("biz.settings.pickup")}>
+									<View style={formStyles.switchRow}>
+										<Switch
+											checked={pickupOn}
+											onChange={(next) => edited(() => setPickupOn(next))}
+											label={t("biz.settings.pickup.enabled")}
+										/>
+										<Text variant="label">
+											{t("biz.settings.pickup.enabled")}
+										</Text>
+									</View>
+									{/* The pair's one rule, stated on the second of the two so the refusal
+										    sits beside the control that would clear it rather than floating
+										    between them. */}
+									{submitted && !kindsValid ? (
+										<Text
+											variant="body"
+											tone="destructive"
+											accessibilityRole="alert"
+										>
+											{t("biz.new.kind.required")}
+										</Text>
+									) : null}
+								</ScreenSection>
+							</AnimateIn>
+
+							{/* A courier delivers: with delivery off the role has nothing to carry, so
+								    the section closes rather than offering an invite to a team that cannot
+								    use one. */}
+							{deliveryOn ? (
+								<AnimateIn index={2}>
+									<ScreenSection title={t("biz.onboarding.delivery.courier")}>
+										<Field
+											label={t("biz.onboarding.delivery.courier")}
+											value={courierEmail}
+											onChangeText={(value) =>
+												edited(() => setCourierEmail(value))
+											}
+											error={
+												submitted && !emailOk ? t("form.invalidEmail") : null
+											}
+											help={t("biz.onboarding.delivery.courierHelp")}
+											keyboardType="email-address"
+											autoComplete="email"
+											autoCapitalize="none"
+										/>
+									</ScreenSection>
+								</AnimateIn>
+							) : null}
 
 							{failure ? (
-								<AnimateIn index={2}>
+								<AnimateIn index={3}>
 									<Text
 										variant="body"
 										tone="destructive"
@@ -353,7 +476,7 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 								</AnimateIn>
 							) : null}
 
-							<AnimateIn index={3}>
+							<AnimateIn index={4}>
 								<Button
 									label={t("biz.onboarding.delivery.skip")}
 									variant="ghost"
@@ -371,7 +494,7 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 				</SignedIn>
 			</Screen>
 
-			{ready && deliveryOn ? (
+			{ready ? (
 				<ActionBar
 					docked
 					primary={{
@@ -392,6 +515,18 @@ const MAX_PREP_MINUTES = 600;
 /** The fee's, from the same schema (`deliveryFeeMinor`), so both fail in the field. */
 const MAX_FEE_MINOR = 10_000_000;
 
+/** The minimum order's, from the same schema (`minOrderMinor`), for the same reason. */
+const MAX_MIN_ORDER_MINOR = 100_000_000;
+
+/**
+ * `components/switch`'s own box, restated for the same reason `HAIRLINE` is:
+ * the control measures itself and exports none of the numbers. The target is
+ * 48 and the track inside it is 44x28 with a 20-point thumb.
+ */
+const SWITCH_TARGET = 48;
+const SWITCH_TRACK_W = 44;
+const SWITCH_TRACK_H = 28;
+
 /** Same shape check as the profile form: worth stopping for, not a full RFC. */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -403,30 +538,47 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 const HAIRLINE = 1;
 
-/** The delivery section's three fields, named so a key never falls to array position. */
-const SKELETON_NUMBER_FIELDS = ["fee", "radius", "prep"] as const;
+/**
+ * The delivery section's number fields, named so a key never falls to array
+ * position. `minOrder` is first because it is drawn first: it stands whether
+ * the order is driven over or walked out.
+ */
+const SKELETON_NUMBER_FIELDS = ["minOrder", "fee", "radius", "prep"] as const;
 
 /**
- * The wait, in the loaded form's own shape — the way `./product-form`'s `FormSkeleton`
- * draws its form, because these screens are one onboarding ladder and their waits should
- * read alike.
+ * The wait, in the loaded form's own shape -- the way `./product-form`'s
+ * `FormSkeleton` draws its form, because these screens are one onboarding ladder
+ * and their waits should read alike.
  *
- * The delivery section's three number fields and the courier section's one email field
- * each draw `./field`'s triple — label, box, message line — under their own real
- * `ScreenSection` titles, which are the screen's copy rather than facts a read carries.
- * The skip button is drawn at `./button`'s own `md` sum: the label's `heading` line at the
- * reader's scale, `space.md` of vertical padding twice and the hairline twice, over
- * `MIN_TOUCH_TARGET`, at the button's `radius.sm` corner. Every text height goes through
- * `./skeletons`' `line()` at the reader's `fontScale` — a height frozen at 100% metrics is
- * exact at 100% and short of the real form at 200% by the growth of its own lines.
- * `Skeleton`'s `label` on the first line is the one announcement for the whole wait.
+ * The two capability switches each draw the control's own track beside its
+ * sentence, the delivery section's four number fields and the courier section's
+ * one email field each draw `./field`'s triple -- label, box, message line --
+ * under their own real `ScreenSection` titles, which are the screen's copy
+ * rather than facts a read carries. The switch rows are drawn at
+ * `components/switch`'s own target rather than at `MIN_TOUCH_TARGET`, for the
+ * reason that file states: the track is 28 tall and the target is the box
+ * around it, so a bar at the touch floor would be a bar the real row does not
+ * pay.
+ *
+ * The skip button is drawn at `./button`'s own `md` sum: the label's `heading`
+ * line at the reader's scale, `space.md` of vertical padding twice and the
+ * hairline twice, over `MIN_TOUCH_TARGET`, at the button's `radius.sm` corner.
+ * Every text height goes through `./skeletons`' `line()` at the reader's
+ * `fontScale` -- a height frozen at 100% metrics is exact at 100% and short of
+ * the real form at 200% by the growth of its own lines. `Skeleton`'s `label` on
+ * the first line is the one announcement for the whole wait.
+ *
+ * The delivery numbers are drawn whether the shop has delivery on or not: the
+ * read has not answered, so the skeleton cannot know, and a wait that guessed
+ * the shorter shape would jump twice for the shop it guessed wrong.
  */
 function DeliverySkeleton({ loadingLabel }: { loadingLabel: string }) {
 	const { t } = useT();
 	const { fontScale } = useWindowDimensions();
 
-	// One `./button` at its `md` size: the label's `heading` line at the reader's scale,
-	// `space.md` of vertical padding twice and the hairline twice, over the touch floor.
+	// One `./button` at its `md` size: the label's `heading` line at the reader's
+	// scale, `space.md` of vertical padding twice and the hairline twice, over the
+	// touch floor.
 	const skipButton = Math.max(
 		MIN_TOUCH_TARGET,
 		HAIRLINE * 2 + space.md * 2 + line("heading", fontScale).height,
@@ -435,10 +587,16 @@ function DeliverySkeleton({ loadingLabel }: { loadingLabel: string }) {
 	return (
 		<View style={styles.content}>
 			<ScreenSection title={t("biz.settings.delivery")}>
+				<View style={formStyles.switchRow}>
+					<Skeleton style={formStyles.switchTrack} />
+					<Skeleton
+						style={[formStyles.switchLabel, line("label", fontScale)]}
+					/>
+				</View>
 				{SKELETON_NUMBER_FIELDS.map((field) => (
 					<View key={field} style={formStyles.field}>
 						<Skeleton
-							label={field === "fee" ? loadingLabel : undefined}
+							label={field === "minOrder" ? loadingLabel : undefined}
 							style={[formStyles.label, line("label", fontScale)]}
 						/>
 						<Skeleton style={formStyles.input} />
@@ -447,6 +605,15 @@ function DeliverySkeleton({ loadingLabel }: { loadingLabel: string }) {
 						/>
 					</View>
 				))}
+			</ScreenSection>
+
+			<ScreenSection title={t("biz.settings.pickup")}>
+				<View style={formStyles.switchRow}>
+					<Skeleton style={formStyles.switchTrack} />
+					<Skeleton
+						style={[formStyles.switchLabel, line("label", fontScale)]}
+					/>
+				</View>
 			</ScreenSection>
 
 			<ScreenSection title={t("biz.onboarding.delivery.courier")}>
@@ -469,16 +636,33 @@ function DeliverySkeleton({ loadingLabel }: { loadingLabel: string }) {
 }
 
 /**
- * The grey field's own rows — `./field`'s wrap gap between the label, the box and the
- * message row (`components/field.tsx`'s `wrap`), the box at the floor the real input pays,
- * the widths shares for words the read does not carry. The same set `./product-form`'s
- * form skeleton draws, restated here because that file's is private to it.
+ * The grey field's own rows -- `./field`'s wrap gap between the label, the box
+ * and the message row (`components/field.tsx`'s `wrap`), the box at the floor
+ * the real input pays, the widths shares for words the read does not carry. The
+ * same set `./product-form`'s form skeleton draws, restated here because that
+ * file's is private to it.
+ *
+ * The switch row is the pair `app/(business)/shop-hours` draws for a day's
+ * `isClosed`: `components/switch` beside the sentence that names it, at the
+ * control's own target with its track at that file's 44x28.
  */
 const formStyles = StyleSheet.create({
 	field: { gap: space.sm },
 	label: { width: "35%" },
 	input: { minHeight: MIN_TOUCH_TARGET },
 	message: { width: "60%" },
+	switchRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		minHeight: SWITCH_TARGET,
+	},
+	switchTrack: {
+		width: SWITCH_TRACK_W,
+		height: SWITCH_TRACK_H,
+		borderRadius: radius.full,
+	},
+	switchLabel: { flex: 1 },
 });
 
 const styles = StyleSheet.create({

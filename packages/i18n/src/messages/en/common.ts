@@ -38,11 +38,20 @@ export const common = {
 	"action.next": "Next",
 	"action.edit": "Edit",
 	"action.delete": "Delete",
+	/* The reversal word — see the Spanish file's note. */
+	"action.undo": "Undo",
 	"action.continue": "Continue",
 	"action.signIn": "Sign in",
 	"action.signOut": "Sign out",
 	"action.signUp": "Create account",
 	"action.viewAll": "View all",
+	/* The photo pair, and the way out of one — see the Spanish file's note. */
+	"action.uploadPhoto": "Upload photo",
+	"action.takePhoto": "Take picture",
+	"action.removePhoto": "Remove photo",
+	/* When the camera is off-limits, not when we broke — see the Spanish file's note. */
+	"state.error.cameraDenied":
+		"No camera access. Turn it on in your phone's settings.",
 
 	"state.loading": "Loading…",
 	"state.saving": "Saving…",
@@ -92,6 +101,8 @@ export const common = {
 	"a11y.goBack": "Go back",
 	/* The toast's hint — see the Spanish file's note on why it is an instruction and not a bare verb. */
 	"a11y.dismissToast": "Close the notice",
+	/* The new-order banner's hint. It is not dismissed, it is opened — see the Spanish file. */
+	"a11y.reviewNewOrder": "Opens the order",
 	"money.minorUnits": "minor units",
 	"action.saving": "Saving…",
 	"action.loadMore": "Load more",

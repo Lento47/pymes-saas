@@ -25,12 +25,12 @@ export function StatusFilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ConversationStatusFilter)}>
-      <SelectTrigger className="h-9 w-[160px] rounded-control border-border bg-foreground/[0.04] text-xs text-muted-foreground">
+      <SelectTrigger aria-label="Estado de conversación" className="h-12 min-w-0 w-full rounded-xl border-border bg-background text-sm text-foreground [&>span]:truncate">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="border-border bg-card">
+      <SelectContent className="app-overlay inbox-filters border-border bg-card">
         {STATUS_OPTIONS.map((s) => (
-          <SelectItem key={s} value={s}>
+          <SelectItem key={s} value={s} className="min-h-11 text-sm">
             {STATUS_LABELS[s] ?? s}
           </SelectItem>
         ))}

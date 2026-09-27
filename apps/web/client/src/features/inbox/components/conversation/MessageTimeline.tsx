@@ -23,8 +23,8 @@ interface MessageTimelineProps {
   agentRun?: AgentRun | null;
   /** Conversation ID for the agent run card actions. */
   agentRunConversationId?: string;
-  scrollRef: React.RefObject<HTMLDivElement>;
-  bottomRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  bottomRef: React.RefObject<HTMLDivElement | null>;
   nearBottom: boolean;
   onScrollToBottom: () => void;
   onScroll?: () => void;

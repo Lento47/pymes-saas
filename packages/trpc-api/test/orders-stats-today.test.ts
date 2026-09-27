@@ -1,4 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import {
+	type Db,
+	merchantLocation as locationTable,
+	order as orderTable,
+} from "@pymeshub/db";
 import { addToCartInput } from "@pymeshub/shared";
 
 import { appRouter } from "../src/routers";
@@ -24,6 +29,168 @@ import {
  */
 
 type Caller = ReturnType<typeof appRouter.createCaller>;
+
+type SeededOrderInput = {
+	id: string;
+	reference: string;
+	customerId: string;
+	businessId: string;
+	locationId: string;
+	status: "COMPLETED" | "PENDING" | "CANCELLED";
+	currency: "CRC" | "USD";
+	totalMinor: number;
+	placedAt: Date;
+};
+
+async function insertOrder(db: Db, input: SeededOrderInput) {
+	const now = new Date();
+	await db.insert(orderTable).values({
+		id: input.id,
+		reference: input.reference,
+		customerId: input.customerId,
+		businessId: input.businessId,
+		locationId: input.locationId,
+		fulfilment: "PICKUP",
+		status: input.status,
+		paymentMethod: "CASH",
+		currency: input.currency,
+		subtotalMinor: input.totalMinor,
+		discountMinor: 0,
+		totalMinor: input.totalMinor,
+		placedAt: input.placedAt,
+		createdAt: now,
+		updatedAt: now,
+	});
+}
+
+async function comparisonFixture() {
+	const test = world();
+	const businessId = await seedBusiness(test.db, {
+		id: "biz_stats_comparison",
+	});
+	const primaryLocationId = `loc_${businessId}`;
+	const secondaryLocationId = "loc_stats_comparison_secondary";
+	await test.db.insert(locationTable).values({
+		id: secondaryLocationId,
+		businessId,
+		name: "Sucursal secundaria",
+		isDefault: false,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	});
+
+	const owner = await seedUser(test.db, { id: "usr_stats_comparison_owner" });
+	await seedMembership(test.db, owner.id, businessId, "OWNER");
+	const customer = await seedUser(test.db, {
+		id: "usr_stats_comparison_customer",
+	});
+	const manager = appRouter.createCaller(await authed(test, owner)) as Caller;
+
+	const foreignBusinessId = await seedBusiness(test.db, {
+		id: "biz_stats_comparison_foreign",
+	});
+
+	const todayStart = new Date();
+	todayStart.setUTCHours(0, 0, 0, 0);
+	const previousStart = new Date(todayStart.getTime() - 86_400_000);
+	const previousAt = new Date(previousStart.getTime() + 3_600_000);
+	const todayAt = new Date(todayStart.getTime() + 3_600_000);
+
+	for (const input of [
+		{
+			id: "ord_stats_comparison_prev_crc_1",
+			reference: "ref_stats_comparison_prev_crc_1",
+			customerId: customer.id,
+			businessId,
+			locationId: primaryLocationId,
+			status: "COMPLETED",
+			currency: "CRC",
+			totalMinor: 1000,
+			placedAt: previousAt,
+		},
+		{
+			id: "ord_stats_comparison_prev_crc_2",
+			reference: "ref_stats_comparison_prev_crc_2",
+			customerId: customer.id,
+			businessId,
+			locationId: primaryLocationId,
+			status: "COMPLETED",
+			currency: "CRC",
+			totalMinor: 1000,
+			placedAt: previousAt,
+		},
+		{
+			id: "ord_stats_comparison_prev_crc_cancelled",
+			reference: "ref_stats_comparison_prev_crc_cancelled",
+			customerId: customer.id,
+			businessId,
+			locationId: primaryLocationId,
+			status: "CANCELLED",
+			currency: "CRC",
+			totalMinor: 9000,
+			placedAt: previousAt,
+		},
+		{
+			id: "ord_stats_comparison_prev_usd",
+			reference: "ref_stats_comparison_prev_usd",
+			customerId: customer.id,
+			businessId,
+			locationId: primaryLocationId,
+			status: "COMPLETED",
+			currency: "USD",
+			totalMinor: 500,
+			placedAt: previousAt,
+		},
+		{
+			id: "ord_stats_comparison_today_crc",
+			reference: "ref_stats_comparison_today_crc",
+			customerId: customer.id,
+			businessId,
+			locationId: primaryLocationId,
+			status: "COMPLETED",
+			currency: "CRC",
+			totalMinor: 4000,
+			placedAt: todayAt,
+		},
+		{
+			id: "ord_stats_comparison_today_crc_pending",
+			reference: "ref_stats_comparison_today_crc_pending",
+			customerId: customer.id,
+			businessId,
+			locationId: primaryLocationId,
+			status: "PENDING",
+			currency: "CRC",
+			totalMinor: 8000,
+			placedAt: todayAt,
+		},
+		{
+			id: "ord_stats_comparison_today_secondary",
+			reference: "ref_stats_comparison_today_secondary",
+			customerId: customer.id,
+			businessId,
+			locationId: secondaryLocationId,
+			status: "COMPLETED",
+			currency: "CRC",
+			totalMinor: 7000,
+			placedAt: todayAt,
+		},
+		{
+			id: "ord_stats_comparison_today_foreign",
+			reference: "ref_stats_comparison_today_foreign",
+			customerId: customer.id,
+			businessId: foreignBusinessId,
+			locationId: `loc_${foreignBusinessId}`,
+			status: "COMPLETED",
+			currency: "CRC",
+			totalMinor: 100000,
+			placedAt: todayAt,
+		},
+	] satisfies SeededOrderInput[]) {
+		await insertOrder(test.db, input);
+	}
+
+	return { test, businessId, primaryLocationId, manager };
+}
 
 async function placedOrder(tag: string) {
 	const test = world();
@@ -81,6 +248,95 @@ describe("orders.stats todayRevenueByCurrency", () => {
 		]);
 		expect(stats.revenueByCurrency).toEqual([
 			{ currency: "CRC", revenueMinor: detail.totalMinor, orderCount: 1 },
+		]);
+
+		test.close();
+	});
+});
+
+describe("orders.stats todayComparisonByCurrency", () => {
+	test("compares completed revenue and orders by currency across UTC days", async () => {
+		const { test, businessId, primaryLocationId, manager } =
+			await comparisonFixture();
+
+		const stats = await manager.orders.stats({
+			businessId,
+			locationId: primaryLocationId,
+		});
+
+		expect(stats.today).toBe(2);
+		expect(stats.todayRevenueByCurrency).toEqual([
+			{ currency: "CRC", revenueMinor: 4000, orderCount: 1 },
+		]);
+		expect(stats.todayComparisonByCurrency).toEqual([
+			{
+				currency: "CRC",
+				salesDeltaPct: 100,
+				ordersDelta: -1,
+				ticketDeltaPct: 300,
+			},
+			{
+				currency: "USD",
+				salesDeltaPct: -100,
+				ordersDelta: -1,
+				ticketDeltaPct: null,
+			},
+		]);
+
+		test.close();
+	});
+
+	test("uses null when yesterday had no completed baseline", async () => {
+		const test = world();
+		const businessId = await seedBusiness(test.db, {
+			id: "biz_stats_comparison_zero",
+		});
+		const locationId = `loc_${businessId}`;
+		const owner = await seedUser(test.db, {
+			id: "usr_stats_comparison_zero_owner",
+		});
+		await seedMembership(test.db, owner.id, businessId, "OWNER");
+		const customer = await seedUser(test.db, {
+			id: "usr_stats_comparison_zero_customer",
+		});
+		const manager = appRouter.createCaller(await authed(test, owner)) as Caller;
+		const todayStart = new Date();
+		todayStart.setUTCHours(0, 0, 0, 0);
+		const previousAt = new Date(todayStart.getTime() - 82_800_000);
+		const todayAt = new Date(todayStart.getTime() + 3_600_000);
+
+		await insertOrder(test.db, {
+			id: "ord_stats_comparison_zero_previous",
+			reference: "ref_stats_comparison_zero_previous",
+			customerId: customer.id,
+			businessId,
+			locationId,
+			status: "CANCELLED",
+			currency: "CRC",
+			totalMinor: 9000,
+			placedAt: previousAt,
+		});
+		await insertOrder(test.db, {
+			id: "ord_stats_comparison_zero_today",
+			reference: "ref_stats_comparison_zero_today",
+			customerId: customer.id,
+			businessId,
+			locationId,
+			status: "COMPLETED",
+			currency: "CRC",
+			totalMinor: 4000,
+			placedAt: todayAt,
+		});
+
+		const stats = await manager.orders.stats({ businessId, locationId });
+
+		expect(stats.todayComparisonByCurrency).toEqual([
+			{
+				currency: "CRC",
+				salesDeltaPct: null,
+				ordersDelta: 1,
+				ticketDeltaPct: null,
+			},
 		]);
 
 		test.close();

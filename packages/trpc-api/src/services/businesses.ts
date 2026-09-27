@@ -1,5 +1,6 @@
 import type { Db } from "@pymeshub/db";
 import {
+	auditLog as auditLogTable,
 	boundingBox,
 	business as businessTable,
 	category as categoryTable,
@@ -9,12 +10,14 @@ import {
 	membership as membershipTable,
 	orderItem as orderItemTable,
 	order as orderTable,
-	payout as payoutTable,
 	product as productTable,
+	subscription as subscriptionTable,
 	user as userTable,
 } from "@pymeshub/db";
 import {
+	type AuditLogEntry,
 	type BusinessAnalytics,
+	type BusinessAuditHistoryInput,
 	type BusinessCard,
 	type BusinessCreateInput,
 	type BusinessListInput,
@@ -29,8 +32,8 @@ import {
 	type MembershipSummary,
 	newId,
 	ORDER_STATUSES,
-	type Payout,
 	type StaffMember,
+	type Subscription,
 	scoreCandidate,
 } from "@pymeshub/shared";
 import {
@@ -38,19 +41,21 @@ import {
 	asc,
 	desc,
 	eq,
+	exists,
 	gte,
 	inArray,
 	isNotNull,
 	like,
 	lte,
+	ne,
 	notInArray,
+	or,
 	type SQL,
 	sql,
 } from "drizzle-orm";
 
 import type { Context } from "../context";
 import { ConflictError, ForbiddenError, ValidationError } from "../errors";
-import { payoutReferencesFor } from "./admin";
 import type { BusinessContext, UserContext } from "./helpers";
 import {
 	assertRole,
@@ -62,15 +67,17 @@ import {
 	roundKm,
 } from "./helpers";
 import {
+	auditLogEntryOf,
 	businessCardOf,
 	businessSettingsOf,
 	categoryOf,
 	currencyOf,
 	membershipSummaryOf,
-	payoutOf,
 	productCardOf,
 	staffMemberOf,
 } from "./mappers";
+import { checkCount } from "./plan-limits";
+import * as subscriptionService from "./subscription";
 
 /**
  * The tenant's own surface, plus the public storefront.
@@ -932,6 +939,32 @@ export async function inviteStaff(
 	if (existing[0])
 		throw new ConflictError("Esa persona ya forma parte del equipo");
 
+	/**
+	 * The plan's staff cap.
+	 *
+	 * **Couriers are excluded**, and the exclusion is the whole point of the filter.
+	 * A courier is a rider the platform routes deliveries to — a per-order relationship
+	 * that comes and goes — and a shop with two couriers on a Tuesday may have none on
+	 * Sunday. Capping staff at 1 or 3 and counting couriers in it would stop a weekly shop
+	 * from having a single rider, which is a shop that cannot deliver at all. The plan
+	 * caps *employees*; riders are not employees.
+	 */
+	const [staff] = await ctx.db
+		.select({ count: sql<number>`count(*)` })
+		.from(membershipTable)
+		.where(
+			and(
+				eq(membershipTable.businessId, businessId),
+				ne(membershipTable.role, "COURIER"),
+			),
+		);
+	checkCount({
+		ctx,
+		limitName: "staffAccounts",
+		resourceType: "cuentas de equipo",
+		current: staff?.count ?? 0,
+	});
+
 	const now = new Date();
 	const id = newMembershipId();
 
@@ -1288,77 +1321,141 @@ async function topProductsOf(
 }
 
 // ---------------------------------------------------------------------------
-// Payouts
+// Billing
 // ---------------------------------------------------------------------------
 
 /**
- * The business's payout runs. OWNER, via `payouts:read`.
+ * The merchant's own subscription. OWNER, via `payouts:read`.
  *
- * `orderCount` is not a column: it is the number of orders in the payout's own period,
- * counted from `order` rather than stored, so it cannot drift from the orders it
- * describes.
+ * **One row, not a history.** This replaced `listPayouts`, which returned a list of
+ * settlement runs, and the change is the point: there is nothing to settle. The
+ * consumer pays the merchant for products and the courier for delivery; the platform
+ * charges a flat fee, so the merchant's only relationship to the money is the fee.
+ *
+ * That makes the whole `payouts:read` surface a single subscription, which is why the
+ * capability name is worth keeping rather than renaming — it is the permission to see
+ * billing, and the permission did not change even though the shape did.
+ *
+ * `null` is a real answer and not a failure: a business created but never billed has
+ * no row, and a dashboard that renders "no data" for that is correct. Returning an
+ * empty list, as the old `listPayouts` did for a shop with no runs, would be a shape
+ * the client has to unwrap to discover the same thing.
  */
-export async function listPayouts(
+export async function currentSubscription(
 	ctx: BusinessContext,
 	_input: { businessId: string },
-): Promise<Payout[]> {
+): Promise<Subscription | null> {
+	return subscriptionService.current(
+		ctx,
+		ctx.membership.businessId,
+		new Date(),
+	);
+}
+
+export async function auditHistory(
+	ctx: BusinessContext,
+	input: BusinessAuditHistoryInput,
+): Promise<{ rows: AuditLogEntry[]; total: number }> {
 	const businessId = ctx.membership.businessId;
-
-	const rows = await ctx.db
-		.select({
-			payout: payoutTable,
-			businessName: businessTable.name,
-			currency: businessTable.currency,
-		})
-		.from(payoutTable)
-		.innerJoin(businessTable, eq(payoutTable.businessId, businessTable.id))
-		.where(eq(payoutTable.businessId, businessId))
-		.orderBy(desc(payoutTable.periodStart));
-
-	if (rows.length === 0) return [];
-
-	const spans = rows.map((row) => row.payout);
-	const spanStart = new Date(
-		Math.min(...spans.map((span) => span.periodStart.getTime())),
-	);
-	const spanEnd = new Date(
-		Math.max(...spans.map((span) => span.periodEnd.getTime())),
-	);
-
-	// One read for every period rather than one per payout, then bucketed in memory. A
-	// payout is a monthly row and a business has a handful, so the alternative is a query
-	// per row to save a scan of a few hundred order rows.
-	const orders = await ctx.db
-		.select({ placedAt: orderTable.placedAt })
-		.from(orderTable)
-		.where(
-			and(
-				eq(orderTable.businessId, businessId),
-				gte(orderTable.placedAt, spanStart),
-				lte(orderTable.placedAt, spanEnd),
+	const decodedCursor =
+		typeof input.cursor === "string"
+			? decodeCursor<{ offset: number }>(input.cursor)
+			: null;
+	const cursorOffset =
+		decodedCursor && Number.isFinite(decodedCursor.offset)
+			? Math.max(0, Math.trunc(decodedCursor.offset))
+			: typeof input.cursor === "number"
+				? input.cursor
+				: 0;
+	const offset =
+		input.cursor !== undefined ? cursorOffset : (input.offset ?? 0);
+	const ownership = or(
+		and(
+			eq(auditLogTable.targetType, "business"),
+			eq(auditLogTable.targetId, businessId),
+		),
+		and(
+			eq(auditLogTable.targetType, "merchant_location"),
+			exists(
+				ctx.db
+					.select({ id: locationTable.id })
+					.from(locationTable)
+					.where(
+						and(
+							eq(locationTable.id, auditLogTable.targetId),
+							eq(locationTable.businessId, businessId),
+						),
+					),
 			),
-		);
-
-	// `payout` stores no reference or method; the reference lives on the audit entry an
-	// admin wrote when marking it paid. Reading it back is the difference between a
-	// settlement a business can reconcile and one it has to take on faith.
-	const references = await payoutReferencesFor(
-		ctx.db,
-		spans.map((span) => span.id),
+		),
+		and(
+			eq(auditLogTable.targetType, "subscription"),
+			exists(
+				ctx.db
+					.select({ id: subscriptionTable.id })
+					.from(subscriptionTable)
+					.where(
+						and(
+							eq(subscriptionTable.id, auditLogTable.targetId),
+							eq(subscriptionTable.businessId, businessId),
+						),
+					),
+			),
+		),
+		and(
+			eq(auditLogTable.targetType, "order"),
+			exists(
+				ctx.db
+					.select({ id: orderTable.id })
+					.from(orderTable)
+					.where(
+						and(
+							eq(orderTable.id, auditLogTable.targetId),
+							eq(orderTable.businessId, businessId),
+						),
+					),
+			),
+		),
+		and(
+			eq(auditLogTable.targetType, "user"),
+			exists(
+				ctx.db
+					.select({ id: membershipTable.id })
+					.from(membershipTable)
+					.where(
+						and(
+							eq(membershipTable.userId, auditLogTable.actorUserId),
+							eq(membershipTable.businessId, businessId),
+						),
+					),
+			),
+		),
 	);
+	const where = and(ownership);
+	const [rows, counted] = await Promise.all([
+		ctx.db
+			.select({ entry: auditLogTable, actorName: userTable.name })
+			.from(auditLogTable)
+			.leftJoin(userTable, eq(auditLogTable.actorUserId, userTable.id))
+			.where(where)
+			.orderBy(
+				input.sortDirection === "asc"
+					? asc(auditLogTable.createdAt)
+					: desc(auditLogTable.createdAt),
+				asc(auditLogTable.id),
+			)
+			.limit(input.limit)
+			.offset(offset),
+		ctx.db
+			.select({ total: sql<number>`count(*)` })
+			.from(auditLogTable)
+			.where(where),
+	]);
 
-	return rows.map((row) =>
-		payoutOf(row.payout, {
-			businessName: row.businessName,
-			currency: currencyOf(row.currency),
-			orderCount: orders.filter(
-				(order) =>
-					order.placedAt >= row.payout.periodStart &&
-					order.placedAt <= row.payout.periodEnd,
-			).length,
-			reference: references.get(row.payout.id) ?? null,
-		}),
-	);
+	return {
+		rows: rows.map((row) => auditLogEntryOf(row.entry, row.actorName)),
+		total: Number(counted[0]?.total ?? 0),
+	};
 }
 
 // ---------------------------------------------------------------------------

@@ -24,8 +24,8 @@ import { Card } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
-import { Image } from "@/components/image";
 import { ListRow } from "@/components/list-row";
+import { PhotoPicker } from "@/components/photo-picker";
 import { Screen, ScreenSection } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -70,14 +70,14 @@ import { icon, MIN_TOUCH_TARGET, media, space, useTheme } from "@/theme";
  * - **Inventory is not here.** `trackInventory` and `stockQuantity` are also absent from
  *   `productDetailSchema`, and stock is `products.setStock`'s own procedure — a stepper rather
  *   than a field in a form that saves once.
- * - **The photo is a URL, not a picker.** `imageUrl` is a string on the wire and
- *   this app has no way to put bytes anywhere: R2 is deliberately unbound
- *   (`HANDOVER.md`), so a picker in front of it would be the lie
- *   `docs/design-mobile.md:570` rules out. What the form does instead is what the
- *   web form already does (`apps/web/components/business/product-form.tsx`): a URL
- *   box with the picture beside it, previewed live through `./image` — a broken
- *   address falls back to the letter, which is the primitive's own honesty, not a
- *   second error state.
+ * - **The photo is a picker, and the bytes land in the API.** `uploads.create`
+ *   takes base64 and a mime type, refuses anything that is not JPEG/PNG/WebP
+ *   under 2 MB, and answers with `/files/:id`, which is what `imageUrlSchema`
+ *   already accepts, so the path is stored on `imageUrl` unchanged and `./image`
+ *   draws it. `components/photo-picker` is the two controls - "Subir foto" and
+ *   "Tomar foto", because they are two acts - and this screen only owns where the
+ *   returned path goes. The preview still falls back to the letter, which is
+ *   `./image`'s honesty rather than a second error state.
  *
  * ## The compare-at rule is checked here first
  *
@@ -114,10 +114,11 @@ import { icon, MIN_TOUCH_TARGET, media, space, useTheme } from "@/theme";
  *
  * Name and price lead, the previous price hangs with price (both money, both `decimal-pad`),
  * description closes the group as the long optional text, category is the pre-filled short
- * list, and the photo URL is last. The photo used to *lead* this form. A box asking for an
- * address is both the least inviting first field and the one nobody can fill well, and it is
- * optional on top of that — so it moved to the end, where an owner who has a URL can find it
- * and one who does not never meets it on the way to "save".
+ * list, and the photo is last. The photo used to *lead* this form. It is the
+ * optional one nobody can fill well in a hurry, and it is on top of that the only
+ * control here that opens a system picker, so it moved to the end, where an owner
+ * who has a picture can find it and one who does not never meets it on the way to
+ * "save".
  */
 
 type Draft = {
@@ -137,16 +138,6 @@ const EMPTY_DRAFT: Draft = {
 	categoryId: null,
 	photo: "",
 };
-
-/** The wire's own shape check, restated before the round trip (`imageUrlSchema`). */
-function photoShapeOk(value: string): boolean {
-	const trimmed = value.trim();
-	return (
-		trimmed === "" ||
-		trimmed.startsWith("/") ||
-		/^https:\/\/[\w.-]+(:\d+)?(\/.*)?$/.test(trimmed)
-	);
-}
 
 export default function ProductFormScreen() {
 	const { t } = useT();
@@ -350,9 +341,7 @@ function Fields({
 		compareAtMinor <= priceMinor;
 
 	const problems = useMemo(() => {
-		const found: Partial<
-			Record<"name" | "price" | "compareAt" | "photo", string>
-		> = {};
+		const found: Partial<Record<"name" | "price" | "compareAt", string>> = {};
 		if (draft.name.trim() === "") found.name = t("form.required");
 		// Unparseable and empty are one failure from here: both leave `priceMinor` null, and
 		// the API's own schema would refuse either.
@@ -361,11 +350,9 @@ function Fields({
 		else if (!compareAtBlank && compareAtMinor === null) {
 			found.compareAt = t("form.required");
 		}
-		if (!photoShapeOk(draft.photo)) found.photo = t("biz.products.photo.rule");
 		return found;
 	}, [
 		draft.name,
-		draft.photo,
 		priceMinor,
 		compareAtTooLow,
 		compareAtBlank,
@@ -607,46 +594,33 @@ function Fields({
 					</ScreenSection>
 				</AnimateIn>
 
-				{/* The photo URL, last. See the file docblock: it is optional, it is the one field
-					nobody can fill well, and it used to *lead* this form — which is the same thing as
-					putting the hardest optional box between an owner and their first save. */}
+				{/* A photo, last. See the file docblock: it is optional, it is the one
+					control here that opens a system picker, and it used to *lead* this form
+					as a URL box, which is the same thing as putting the hardest optional
+					field between an owner and their first save. The preview still falls back
+					to the letter, which is `./image`'s honesty rather than a second error
+					state. */}
 				<AnimateIn index={2}>
-					<View style={styles.photoRow}>
-						<Image
-							uri={draft.photo.trim() || null}
-							radiusToken="md"
-							style={styles.photo}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						>
-							{draft.name.trim() ? (
-								<Text variant="title" tone="action" bold>
-									{draft.name.trim().charAt(0).toUpperCase()}
-								</Text>
-							) : (
-								<Ionicons
-									name="image-outline"
-									size={icon.action}
-									color={colors.mutedForeground}
-								/>
-							)}
-						</Image>
-						<View style={styles.photoField}>
-							<Field
-								label={t("biz.products.photo")}
-								value={draft.photo}
-								onChangeText={(value) =>
-									edited(() => setDraft((was) => ({ ...was, photo: value })))
-								}
-								error={submitted ? (problems.photo ?? null) : null}
-								help={t("biz.products.photo.help")}
-								keyboardType="url"
-								autoCapitalize="none"
-								autoCorrect={false}
-								maxLength={500}
+					<PhotoPicker
+						label={t("biz.products.photo")}
+						value={draft.photo.trim() || null}
+						onChange={(next) =>
+							edited(() => setDraft((was) => ({ ...was, photo: next ?? "" })))
+						}
+						help={t("biz.products.photo.help")}
+					>
+						{draft.name.trim() ? (
+							<Text variant="title" tone="action" bold>
+								{draft.name.trim().charAt(0).toUpperCase()}
+							</Text>
+						) : (
+							<Ionicons
+								name="image-outline"
+								size={icon.action}
+								color={colors.mutedForeground}
 							/>
-						</View>
-					</View>
+						)}
+					</PhotoPicker>
 				</AnimateIn>
 
 				{failure.message ? (
@@ -677,8 +651,8 @@ function Fields({
 /**
  * The form's column, before the reads answer: the four fields (name, price, previous price,
  * description) each its label, box and reserved message row, then the category `Card` with
- * the help line and the one row the list toggles open, and the photo's thumb beside its own
- * `./field` of three rows last. The order is the real form's — required path first, photo
+ * the help line and the one row the list toggles open, and `components/photo-picker`'s
+ * block last: thumb, label, two button bars, message. The order is the real form's — required path first, photo
  * tail — so the skeleton and the form it stands in for are the same page. The heights are the
  * real form's at the reader's text scale, which is why every line goes through `line()` rather
  * than through a fixed number, and the page does not jump when the values land.
@@ -730,15 +704,16 @@ function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 				</Card>
 			</ScreenSection>
 
-			{/* The photo, last — same order as the form. The thumb is `media.row`'s box and
-			    the field beside it is still its three rows, with the label on the first. */}
-			<View style={styles.photoRow}>
+			{/* The photo's block mirrors `components/photo-picker`: thumb, label, two
+			    button bars, and the reserved message row. */}
+			<View style={styles.photoWrap}>
 				<Skeleton style={styles.photo} />
-				<View style={[styles.photoField, formStyles.field]}>
+				<View style={styles.photoField}>
 					<Skeleton
 						label={loadingLabel}
 						style={[formStyles.label, line("label", fontScale)]}
 					/>
+					<Skeleton style={formStyles.input} />
 					<Skeleton style={formStyles.input} />
 					<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
 				</View>
@@ -750,11 +725,11 @@ function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
-	// The picture beside its box: the thumb is `./product-row`'s own 60pt box
+	// The picture above its controls: the thumb is `./product-row`'s own 60pt box
 	// (`media.row`), because it previews the picture the menu row will draw.
-	photoRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+	photoWrap: { gap: space.sm },
 	photo: { width: media.row, height: media.row },
-	photoField: { flex: 1 },
+	photoField: { gap: space.sm },
 	// One step of the scale, applied only to a row whose parent is also on the list (`indentFor`).
 	// Scoped, the sector is absent and its children sit flush as peers; unscoped, the sector is
 	// present and its children step in under it. Either way this is air, never a second row shape.

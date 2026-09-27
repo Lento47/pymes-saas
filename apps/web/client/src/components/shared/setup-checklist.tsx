@@ -4,6 +4,8 @@ import { Check, ChevronRight, Rocket, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 interface ChecklistItem {
   key: string;
@@ -21,8 +23,11 @@ interface SetupChecklistData {
 }
 
 export function SetupChecklist() {
+  const { user } = useAuth();
+  const { locale } = useI18n();
+  const es = locale === "es";
   const { data, isLoading } = useQuery<SetupChecklistData>({
-    queryKey: ["setup-checklist"],
+    queryKey: ["setup-checklist", user?.workspace.id],
     queryFn: () => api.getSetupChecklist() as Promise<SetupChecklistData>,
     staleTime: 60_000,
   });
@@ -38,31 +43,31 @@ export function SetupChecklist() {
   const total = items.length;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="rounded-3xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/35 text-muted-foreground shrink-0">
-            <Rocket className="h-4 w-4" />
+            <Rocket aria-hidden="true" className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Primeros pasos</h3>
-            <p className="text-xs text-muted-foreground">{completed_count} de {total} completados</p>
+            <h2 className="text-sm font-semibold text-foreground">{es ? "Primeros pasos" : "Getting started"}</h2>
+            <p className="text-sm text-muted-foreground">{completed_count} / {total} {es ? "completados" : "completed"}</p>
           </div>
         </div>
         <button
           onClick={() => dismiss.mutate()}
           disabled={dismiss.isPending}
-          className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
-          title="Ocultar"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          aria-label={es ? "Ocultar primeros pasos" : "Hide getting started"}
         >
-          <X className="w-3.5 h-3.5" />
+          <X aria-hidden="true" className="w-4 h-4" />
         </button>
       </div>
 
       <div className="w-full h-1.5 rounded-full bg-border/60 mb-3 overflow-hidden">
         <div
           className={cn(
-            "h-full rounded-full transition-all duration-500",
+            "h-full rounded-full",
             completed_count >= total ? "bg-emerald-500" : "bg-accent",
           )}
           style={{ width: total > 0 ? `${(completed_count / total) * 100}%` : "0%" }}
@@ -74,7 +79,7 @@ export function SetupChecklist() {
           <Link key={item.key} href={item.href}>
             <div
               className={cn(
-                "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-pointer group",
+                "flex min-h-12 items-center gap-2.5 px-2 py-2 rounded-xl transition-colors cursor-pointer group",
                 item.done
                   ? "text-muted-foreground/60"
                   : "text-muted-foreground hover:bg-muted/35 hover:text-foreground",
@@ -88,19 +93,20 @@ export function SetupChecklist() {
                     : "border border-border text-transparent",
                 )}
               >
-                <Check className="w-3 h-3" />
+                <Check aria-hidden="true" className="w-3 h-3" />
               </div>
-              <span className="text-xs flex-1 line-clamp-1">{item.label}</span>
+              <span className="text-sm flex-1 break-words">{item.label}</span>
               {!item.required && !item.done && (
-                <span className="text-[10px] text-muted-foreground/50 shrink-0">opcional</span>
+                <span className="text-xs text-muted-foreground shrink-0">{es ? "opcional" : "optional"}</span>
               )}
               {!item.done && (
-                <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                <ChevronRight aria-hidden="true" className="w-4 h-4 text-muted-foreground shrink-0" />
               )}
             </div>
           </Link>
         ))}
       </div>
+      {dismiss.error && <p role="alert" className="mt-3 text-sm text-destructive">{es ? "No se pudo ocultar. Vuelve a intentarlo." : "Could not hide this. Try again."}</p>}
     </div>
   );
 }

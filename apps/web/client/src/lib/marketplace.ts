@@ -28,6 +28,7 @@ import {
   businessStorefrontSchema,
   cartSchema,
   categorySchema,
+  newRequestId,
   orderDetailSchema,
   orderSummarySchema,
   productCardSchema,
@@ -82,7 +83,13 @@ export const trpc: any = createTRPCClient<any>({
     httpBatchLink({
       url: `${MARKETPLACE_API_URL}/trpc`,
       transformer: superjson,
-      headers: () => ({ "x-client": "web" }),
+      headers: () => ({
+        "x-client": "web",
+        // One id per HTTP request (a batch shares one, server-side included).
+        // The API echoes it on the response and stamps its log line with it, so an
+        // error the console reports can be grepped in `wrangler tail` by value.
+        "x-request-id": newRequestId(),
+      }),
       // The browser carries its session in a cookie, so the request must ask for it. The
       // Worker's CORS policy allows exactly this with `credentials: true` and a strict
       // origin allow-list.

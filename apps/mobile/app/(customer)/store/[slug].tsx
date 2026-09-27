@@ -1,4 +1,3 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName } from "@pymeshub/i18n";
 import {
 	type BusinessCard,
@@ -14,13 +13,7 @@ import {
 } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import {
-	Platform,
-	type ScrollView,
-	StyleSheet,
-	TextInput,
-	View,
-} from "react-native";
+import { Platform, type ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
 	useAnimatedScrollHandler,
 	useSharedValue,
@@ -35,13 +28,13 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { Hero } from "@/components/hero";
 import { HoursTable } from "@/components/hours-table";
 import { ListEnd } from "@/components/list-end";
-import { hitSlopFor, Pressable } from "@/components/pressable";
 import { Price } from "@/components/price";
 import { ProductRow } from "@/components/product-row";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { ReviewList, reviewDistribution } from "@/components/review-list";
 import { ReviewSummary } from "@/components/review-summary";
 import { Screen } from "@/components/screen";
+import { SearchInput } from "@/components/search-input";
 import { useSkeletonHold } from "@/components/skeleton";
 import {
 	ProductRowsSkeleton,
@@ -60,15 +53,7 @@ import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
-import {
-	icon,
-	MIN_TOUCH_TARGET,
-	radius,
-	space,
-	TEXT_STACK_GAP,
-	type,
-	useTheme,
-} from "@/theme";
+import { radius, space, TEXT_STACK_GAP, type } from "@/theme";
 
 /**
  * A shop, and its menu.
@@ -573,7 +558,6 @@ export default function Store() {
 	const { slug } = useLocalSearchParams<{ slug: string }>();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
-	const { colors } = useTheme();
 	const { t, tp, locale, intlLocale } = useT();
 	const { status } = useSession();
 	const bar = useActionBarClearance();
@@ -851,61 +835,18 @@ export default function Store() {
 							</View>
 
 							{/* The field sits last in the head, immediately above the menu it
-							    searches, so the rail sticks directly under it. */}
-							{/* `colors.input`, for the reason `./field` uses it at rest
-							    (`field.tsx:120`): `card` on `background` is 1.017:1, so this
-							    outline is the only boundary the control has and it owes 3:1
-							    (WCAG 1.4.11). `input` measures 3.24:1 on `card` in the light
-							    theme and 3.10:1 in the dark one; `border` is the decorative
-							    hairline at about 1.3:1 and belongs on `./card`, not here. */}
-							<View
-								style={[
-									styles.field,
-									{ backgroundColor: colors.card, borderColor: colors.input },
-								]}
-							>
-								<Ionicons
-									name="search-outline"
-									size={icon.control}
-									color={colors.mutedForeground}
-									accessibilityElementsHidden
-									importantForAccessibility="no"
-								/>
-								<TextInput
-									value={query}
-									onChangeText={setQuery}
-									placeholder={t("store.search.placeholder")}
-									placeholderTextColor={colors.mutedForeground}
-									style={[styles.input, { color: colors.foreground }]}
-									accessibilityLabel={t("search.title")}
-									returnKeyType="search"
-									autoCorrect={false}
-									autoCapitalize="none"
-									clearButtonMode="while-editing"
-								/>
-								{query.length > 0 ? (
-									<Pressable
-										onPress={() => setQuery("")}
-										// The target under the glyph is `./pressable`'s own floor, so
-										// `hitSlopFor` is asked for the answer for a control that is
-										// already that wide — zero — and not for the difference
-										// between the glyph and the floor.
-										hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-										ripple={false}
-										accessibilityRole="button"
-										accessibilityLabel={t("search.clear")}
-										style={styles.iconButton}
-									>
-										<Ionicons
-											name="close-circle"
-											size={icon.control}
-											color={colors.mutedForeground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
-									</Pressable>
-								) : null}
-							</View>
+							    searches, so the rail sticks directly under it. The box itself is
+							    `components/search-input` — same 3:1 outline, same hidden glyphs,
+							    same clear button, as `app/search.tsx`. Only the side inset is
+							    this screen's. */}
+							<SearchInput
+								value={query}
+								onChangeText={setQuery}
+								placeholder={t("store.search.placeholder")}
+								accessibilityLabel={t("search.title")}
+								clearLabel={t("search.clear")}
+								style={styles.searchField}
+							/>
 						</View>
 					)}
 
@@ -1032,28 +973,10 @@ const styles = StyleSheet.create({
 	// *not* share is the read behind them, which an earlier version of this comment claimed
 	// they did: this one is `products.list` scoped by `businessId` with `search`, and that one
 	// is `catalog.search`'s `q` over the whole marketplace.
-	field: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.sm,
-		marginHorizontal: space.lg,
-		paddingHorizontal: space.md,
-		minHeight: MIN_TOUCH_TARGET,
-		borderRadius: radius.md,
-		borderWidth: 1,
-	},
-	// `./pressable`'s base floors the box at `MIN_TOUCH_TARGET` and aligns nothing, so its
-	// child draws at the top of it — which off the line the input beside it is set on.
-	iconButton: { alignItems: "center", justifyContent: "center" },
-	input: {
-		flex: 1,
-		fontSize: type.body.fontSize,
-		minHeight: MIN_TOUCH_TARGET,
-		// The same reset `app/search.tsx`'s field carries, for the same reason: this
-		// is a bare RN `TextInput`, not `./field`, so `./text`'s base style never reaches it
-		// and Android would reserve the font's ascent and descent around the typed value.
-		includeFontPadding: false,
-	},
+	// The outer box only: `components/search-input` owns the skin, the outline token and
+	// the 44pt floor. This screen owns the side inset that lines the field up with the
+	// head above it.
+	searchField: { marginHorizontal: space.lg },
 	// The step between two menu groups is the page's own block gap — `ScreenSection`'s
 	// `marginTop: space.xxl` — because a group is a block and not a line.
 	section: { marginTop: space.xxl, gap: space.md },

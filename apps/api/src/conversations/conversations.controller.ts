@@ -35,7 +35,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
-import { RequirePermission, Permission } from "../common/permissions";
+import { RequirePermission, Permission, PermissionGuard } from "../common/permissions";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
@@ -55,7 +55,7 @@ class StartAgentRunDto {
 }
 
 @Controller("conversations")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionGuard)
 @RequirePermission(Permission.CONVERSATIONS_READ)
 export class ConversationsController {
   private readonly logger = new Logger(ConversationsController.name);

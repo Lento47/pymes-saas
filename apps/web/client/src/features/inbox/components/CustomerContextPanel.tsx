@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { InboxConversation } from "../types";
+import { useAuth } from "@/hooks/use-auth";
+import { hasPermission, Permission } from "@/lib/permissions";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardList, TrendingUp, MessageCircle, Receipt, Target,
@@ -55,13 +58,17 @@ export function CustomerContextPanel({
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const workspacePath = user?.workspace.slug ? `/${user.workspace.slug}` : "";
+  const can = (permission: Permission) => hasPermission(user?.role ?? "", permission, !!user?.is_platform_admin);
+  const canAi = can(Permission.AI_USE);
   const [showMetrics, setShowMetrics] = useState(false);
   const conversationId = conversation?.id ?? "";
 
   const tokensQuery = useQuery({
     queryKey: ["/api/ai-tokens"],
     queryFn: () => api.getAiTokens(),
-    enabled: !!conversation,
+    enabled: !!conversation && canAi,
     staleTime: 30_000,
   });
 
@@ -179,7 +186,7 @@ export function CustomerContextPanel({
         )}
       </div>
 
-      <div className="px-4 py-3 border-b border-border/40 space-y-3">
+      {canAi && <div className="px-4 py-3 border-b border-border/40 space-y-3">
         <SectionHeader label="Agente IA" />
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
           <div className="flex items-center justify-between gap-3">
@@ -230,18 +237,18 @@ export function CustomerContextPanel({
                 Pausar IA
               </button>
             )}
-            {!hasTokens && !tokensQuery.isLoading && (
-              <a
-                href="/settings/credits"
+            {!hasTokens && !tokensQuery.isLoading && can(Permission.BILLING_MANAGE) && (
+              <Link
+                href={`${workspacePath}/settings/credits`}
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/30 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 Comprar tokens IA
-              </a>
+              </Link>
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* AI Context — intent detected */}
       {(() => {
@@ -260,23 +267,23 @@ export function CustomerContextPanel({
             </div>
             {/* Quick-create actions tied to the detected intent */}
             <div className="flex flex-wrap gap-1.5">
-              {(intentKey === "ORDER" || intentKey === "QUOTE") && contactId && (
-                <a
-                  href={`/invoices/new?contact=${contactId}&conversation=${(conversation as any).id}`}
+              {(intentKey === "ORDER" || intentKey === "QUOTE") && contactId && can(Permission.INVOICES_MANAGE) && (
+                <Link
+                  href={`${workspacePath}/invoices?contact_id=${encodeURIComponent(contactId)}`}
                   className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                 >
                   <Receipt className="w-3 h-3 shrink-0" />
-                  + Factura
-                </a>
+                  Ver facturas
+                </Link>
               )}
-              {contactId && (
-                <a
-                  href={`/tasks?contact=${contactId}&conversation=${(conversation as any).id}`}
+              {contactId && can(Permission.TASKS_MANAGE) && (
+                <Link
+                  href={`${workspacePath}/tasks?contact=${contactId}&conversation=${(conversation as any).id}`}
                   className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                 >
                   <ClipboardList className="w-3 h-3 shrink-0" />
                   + Tarea
-                </a>
+                </Link>
               )}
             </div>
           </div>
@@ -302,13 +309,13 @@ export function CustomerContextPanel({
               </button>
             )}
             {contactId && (
-              <a
-                href={`/contacts/${contactId}`}
+              <Link
+                href={`${workspacePath}/contacts/${contactId}`}
                 className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
               >
                 <ExternalLink className="w-3 h-3 shrink-0" />
                 Ver en contactos
-              </a>
+              </Link>
             )}
           </div>
         </div>

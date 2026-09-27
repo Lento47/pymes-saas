@@ -10,6 +10,7 @@ import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useAuth } from "@/hooks/use-auth";
 import { hasPermission, Permission } from "@/lib/permissions";
+import { canAccessAppFeature } from "@/lib/app-access";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import {
   ShieldCheck,
   Sun,
   Users,
+  UserRound,
   X,
   Zap,
 } from "lucide-react";
@@ -98,11 +100,6 @@ interface NavGroup {
   key: NavGroupKey;
   items: NavItem[];
 }
-
-const PLAN_MIN: Record<string, string> = {
-  pipeline: "STARTER",
-  agents: "EMPRENDE",
-};
 
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -158,7 +155,7 @@ const SETTINGS_ITEMS = [
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
-  const { messages } = useI18n();
+  const { messages, locale } = useI18n();
   const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(
@@ -178,7 +175,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   );
   const wsMenuRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [bottomNavHidden, setBottomNavHidden] = useState(false);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -197,19 +193,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     refetchInterval: 30000,
   });
   const { data: features } = useQuery({
-    queryKey: ["/api/workspaces/current/features"],
+    queryKey: ["/api/workspaces/current/features", user?.workspace.id],
     queryFn: api.getCurrentFeatures,
     staleTime: 120_000,
   });
   const { data: overdueData } = useQuery({
-    queryKey: ["/api/tasks/overdue"],
+    queryKey: ["/api/tasks/overdue", user?.workspace.id],
     queryFn: api.getOverdueTasks,
+    enabled: hasPermission(user?.role ?? "", Permission.TASKS_MANAGE, !!user?.is_platform_admin),
     refetchInterval: 60000,
   });
 
   const isBeta = features?.plan === "BETA_INFORMAL";
   const unreadCount = unreadData?.count ?? 0;
-  const overdueCount = Array.isArray(overdueData) ? overdueData.length : 0;
+  const overdueCount = Number(overdueData?.total_overdue ?? 0);
   const ws = user?.workspace?.name ?? copy.workspaceFallback;
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
@@ -217,33 +214,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
   const isCollapsed = !isMobile && !sidebarOpen;
 
-  const isFeatureEnabled = (key: string): boolean => {
-    const map: Record<string, string> = {
-      inbox: "whatsapp_inbox",
-      tasks: "orders",
-      pipeline: "contacts",
-      contacts: "contacts",
-      documents: "contacts",
-      invoices: "billing",
-      automations: "automations",
-      inventory: "orders",
-      agents: "ai_assistant",
-      notifications: "conversations",
-      integrations: "whatsapp_inbox",
-    };
-    const fk = map[key] || key;
-    return features?.features?.[fk] !== false;
-  };
-
-  const canShowNavItem = (key: string): boolean => {
-    const minPlan = PLAN_MIN[key];
-    if (minPlan) {
-      const plan = user?.workspace?.plan ?? "FREE";
-      const order = ["FREE", "EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
-      if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
-    }
-    return isFeatureEnabled(key);
-  };
+  const canShowNavItem = (key: string) => canAccessAppFeature(key, user, features?.features);
 
   const isActive = (p: string) => (p === "/" ? location === "/" : location.startsWith(p));
   const badgeVal = (bk?: string) => (bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0);
@@ -272,27 +243,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = "";
     };
   }, [isMobile, sidebarOpen]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    let lastY = el.scrollTop;
-    const onScroll = () => {
-      const currentY = el.scrollTop;
-      if (currentY > lastY && currentY > 60) {
-        setBottomNavHidden(true);
-      } else if (currentY < lastY) {
-        setBottomNavHidden(false);
-      }
-      lastY = currentY;
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    setBottomNavHidden(false);
-  }, [location]);
 
   useEffect(() => {
     if (location.startsWith("/settings")) setSettingsOpen(true);
@@ -388,6 +338,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       )}
 
       <aside
+        inert={isMobile && !sidebarOpen ? true : undefined}
         className={cn(
           "flex flex-col shrink-0 overflow-hidden border-r border-sidebar-border/80 bg-sidebar text-sidebar-foreground",
           !isMobile && "transition-[width] duration-200 ease-out",
@@ -690,9 +641,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <div
+          <Link href="/account"
             className={cn(
-              "flex items-center rounded-xl border border-border/70 bg-sidebar-accent/30",
+              "flex items-center rounded-xl border border-border/70 bg-sidebar-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               isCollapsed ? "justify-center p-1.5" : "gap-2.5 px-2.5 py-2",
             )}
           >
@@ -707,7 +658,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <p className="truncate text-[10px] capitalize text-muted-foreground/60">{user?.role?.toLowerCase()}</p>
               </div>
             )}
-          </div>
+          </Link>
 
           <Button
             variant="ghost"
@@ -726,7 +677,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-primary/15 bg-[hsl(var(--bg-sidebar))] px-3 py-2.5 pt-safe lg:px-5">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -750,24 +701,26 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <button
             onClick={() => setSearchOpen(true)}
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground md:hidden"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground md:hidden"
             title="Buscar (Ctrl+K)"
             aria-label="Buscar"
           >
             <Search className="h-4 w-4" />
           </button>
 
+          <button type="button" onClick={() => setSidebarOpen(true)} className="min-h-11 min-w-0 flex-1 truncate text-left text-sm font-semibold lg:hidden" aria-label={`${copy.workspaceFallback}: ${ws}`}>
+            {ws}
+          </button>
+
           <NotificationBell />
 
-          {/* Logout — always visible on mobile, hidden on desktop (desktop uses sidebar button) */}
-          <button
-            onClick={logout}
-            title={copy.logout}
-            aria-label={copy.logout}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive lg:hidden"
+          <Link
+            href="/account"
+            aria-label={locale === "es" ? "Mi cuenta" : "Account"}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           >
-            <LogOut className="h-4 w-4" strokeWidth={1.75} />
-          </button>
+            <UserRound aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
+          </Link>
 
           <span className="hidden rounded-md border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-xs font-medium text-primary/80 lg:inline-block">
             {user?.role}
@@ -785,12 +738,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </main>
 
       <MobileBottomNav
-        onMenuClick={() => setSidebarOpen(true)}
-        onLogout={logout}
+        destinations={[
+          ...NAV_GROUPS.flatMap(({ items }) => items).filter(({ key }) => canShowNavItem(key)).map(({ path, icon, key }) => ({ path, icon, label: navLabel(copy, key, isBeta) })),
+          ...SETTINGS_ITEMS.filter(({ permission }) => hasPermission(user?.role ?? "", permission, !!user?.is_platform_admin)).map(({ path, icon, label }) => ({ path, icon, label })),
+          ...(user?.is_platform_admin ? ADMIN_ITEMS.map(({ href, icon, key }) => ({ path: href, icon, label: key === "adminRouterMetrics" ? "Router IA" : key === "adminLanding" ? "Landing Page" : key === "adminSupport" ? (locale === "es" ? "Soporte" : "Support") : copy[key as keyof typeof copy] as string })) : []),
+          { path: "/account", icon: UserRound, label: locale === "es" ? "Mi cuenta" : "Account" },
+          { path: "/help", icon: LifeBuoy, label: copy.help },
+        ]}
         isItemVisible={canShowNavItem}
-        unreadCount={unreadCount}
         overdueCount={overdueCount}
-        hidden={bottomNavHidden}
       />
     </div>
   );

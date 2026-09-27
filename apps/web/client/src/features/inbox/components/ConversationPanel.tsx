@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { hasPermission, Permission } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
@@ -52,6 +54,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { user } = useAuth();
+  const can = (permission: Permission) => hasPermission(user?.role ?? "", permission, !!user?.is_platform_admin);
+  const canReply = can(Permission.CONVERSATIONS_REPLY);
+  const canAssign = can(Permission.CONVERSATIONS_ASSIGN);
+  const canAi = can(Permission.AI_USE);
   useConversationSocket(conversationId || '');
 
   const [message, setMessage] = useState("");
@@ -70,7 +76,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const userTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const id = conversationId || "";
 
-  const { data: conv } = useQuery({
+  const { data: conv, isLoading: conversationLoading, isError: conversationError, refetch: retryConversation } = useQuery({
     queryKey: ["/api/conversations", id],
     queryFn: () => api.getConversation(id),
     enabled: !!id,
@@ -84,12 +90,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   useEffect(() => {
-    if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
+    if (!canReply || !id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
     api.sendReadReceipt(id).catch(() => { /* best-effort */ });
-  }, [id, conv?.channel?.type]);
+  }, [id, conv?.channel?.type, canReply]);
 
   useEffect(() => {
-    if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
+    if (!canReply || !id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
 
     if (message.length > 0) {
       api.sendTypingIndicator(id).catch(() => {});
@@ -102,7 +108,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
-  }, [id, message, conv?.channel?.type]);
+  }, [id, message, conv?.channel?.type, canReply]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -131,9 +137,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const { data: members } = useQuery({
-    queryKey: ["workspace-members"],
+    queryKey: ["workspace-members", user?.workspace.id],
     queryFn: () => api.getMembers(),
-    enabled: !!id,
+    enabled: !!id && canAssign,
     staleTime: 5 * 60_000,
   });
 
@@ -380,7 +386,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const { data: agentRun } = useQuery({
     queryKey: ["agent-run", id],
     queryFn: () => api.getAgentRun(id),
-    enabled: !!id && isEmprendePlus,
+    enabled: !!id && isEmprendePlus && canAi,
     staleTime: 2_000,
     retry: 2,
     refetchInterval: (query) => {
@@ -392,7 +398,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const { data: approvedTemplates } = useQuery({
     queryKey: ["approved-templates", conv?.channel?.type],
     queryFn: () => api.getApprovedTemplates((conv?.channel?.type as string)?.toUpperCase() || "WHATSAPP"),
-    enabled: !!id && !!conv?.channel?.type,
+    enabled: !!id && !!conv?.channel?.type && canReply,
     staleTime: 5 * 60_000,
   });
 
@@ -525,6 +531,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const uiMessages = useMemo(() => msgList.map(normalizeMessage), [msgList]);
 
   if (!id) return null;
+  if (conversationLoading) return <div role="status" className="p-6">Cargando conversación…</div>;
+  if (conversationError || !conv) return <div role="alert" className="space-y-4 p-6"><p>No se pudo cargar la conversación.</p><Button className="min-h-12" onClick={() => retryConversation()}>Reintentar conversación</Button>{onBack && <Button variant="outline" className="min-h-12" onClick={onBack}>Volver a la bandeja</Button>}</div>;
 
   const channelLabel = CHANNEL_LABELS[channelType] || channelType;
   const statusLabel = conversation?.status ? STATUS_LABELS[conversation.status] ?? conversation.status : null;
@@ -551,24 +559,24 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         assigneeName={assigneeName}
         statusDotClass={`${statusDotClass} ${statusDotSize}`}
         onBack={onBack}
-        onAssign={(userId) => assignMut.mutate(userId)}
-        onResolve={() => resolveMut.mutate()}
+        onAssign={canAssign ? (userId) => assignMut.mutate(userId) : undefined}
+        onResolve={canReply ? () => resolveMut.mutate() : undefined}
         currentStatus={conversation?.status}
-        onStatusChange={(status) => statusChangeMut.mutate(status)}
+        onStatusChange={canReply ? (status) => statusChangeMut.mutate(status) : undefined}
         onRefresh={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}
-        onInvoice={() => setShowInvoice(true)}
-        onDelete={() => setShowDelete(true)}
-        onAddContact={() => setShowAddContact(true)}
+        onInvoice={can(Permission.INVOICES_MANAGE) ? () => setShowInvoice(true) : undefined}
+        onDelete={["OWNER", "ADMIN"].includes(user?.role ?? "") ? () => setShowDelete(true) : undefined}
+        onAddContact={can(Permission.CONTACTS_MANAGE) ? () => setShowAddContact(true) : undefined}
         members={memberList as Array<{ user?: { id: string; name?: string }; id: string; name?: string; email?: string }>}
         canResolve={conversation?.status !== "RESOLVED"}
         canSendInvoice={canSendInvoice}
         canAddContact={!conversation?.contact?.id}
-        onCreateTask={() => setShowCreateTask(true)}
-        onDelegateToAi={isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
+        onCreateTask={can(Permission.TASKS_MANAGE) ? () => setShowCreateTask(true) : undefined}
+        onDelegateToAi={canAi && isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
         isDelegatingToAi={delegateToAiMut.isPending}
-        onPauseAi={isEmprendePlus && aiState === "AI_ACTIVE" ? () => stopAiMut.mutate() : undefined}
+        onPauseAi={canAi && isEmprendePlus && aiState === "AI_ACTIVE" ? () => stopAiMut.mutate() : undefined}
         isPausingAi={stopAiMut.isPending}
-        onStartAgent={isEmprendePlus && (agentRun as AgentRun | null | undefined)?.status !== "RUNNING" ? () => startAgentMut.mutate() : undefined}
+        onStartAgent={canAi && isEmprendePlus && (agentRun as AgentRun | null | undefined)?.status !== "RUNNING" ? () => startAgentMut.mutate() : undefined}
         isStartingAgent={startAgentMut.isPending}
       />
 
@@ -588,10 +596,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         animatingMsgId={animatingMsgId}
         onScrollToBottom={scrollToBottom}
         onScroll={handleScroll}
-        onReply={setReplyingTo}
+        onReply={canReply ? setReplyingTo : undefined}
       />
 
-      <MessageComposer
+      {canReply ? <MessageComposer
         value={message}
         onChange={setMessage}
         onSend={handleSend}
@@ -614,7 +622,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           const result = await api.emprendeReply(id, lastInbound?.body_text ?? "");
           return result.reply;
         } : undefined}
-      />
+      /> : <p className="shrink-0 border-t p-4 text-sm text-muted-foreground">Tu rol permite leer esta conversación. Necesitas permiso para responder.</p>}
 
       <InvoiceDialog
         open={showInvoice}

@@ -15,6 +15,7 @@
 import { z } from "zod";
 import { productCardSchema } from "./catalog";
 import { currencySchema } from "./common";
+import { promotionCodeSchema } from "./promotions";
 
 export const CART_STATUSES = ["OPEN", "CHECKED_OUT", "ABANDONED"] as const;
 export type CartStatus = (typeof CART_STATUSES)[number];
@@ -43,13 +44,12 @@ export const updateCartItemInput = z.object({
 });
 export type UpdateCartItemInput = z.infer<typeof updateCartItemInput>;
 
+/**
+ * The code a customer types. One shape, defined in `./promotions` beside the rule
+ * that writes the code, so a shop cannot open a code this would refuse to read.
+ */
 export const applyPromotionInput = z.object({
-	code: z
-		.string()
-		.trim()
-		.min(3)
-		.max(40)
-		.transform((value) => value.toUpperCase()),
+	code: promotionCodeSchema,
 });
 export type ApplyPromotionInput = z.infer<typeof applyPromotionInput>;
 

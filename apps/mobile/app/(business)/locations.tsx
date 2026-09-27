@@ -49,9 +49,20 @@ export default function MerchantLocations() {
 	};
 	const pause = useMutation(
 		trpc.business.pauseLocation.mutationOptions({
-			onSuccess: async () => {
+			onSuccess: async (_data, variables) => {
 				light();
-				toast.show(t("biz.locations.paused"));
+				// §46's trailing Undo. A pause is the protective write this screen exists for and
+				// `resumeLocation` is exactly its reverse, which is the bar for putting a button on
+				// a toast at all — see `components/toast`. The reversal names its target from the
+				// mutation's own variables rather than from whatever row is selected when the
+				// button is pressed, so a merchant who navigates away mid-toast still undoes the
+				// location they paused.
+				toast.show(t("biz.locations.paused"), () => {
+					resume.mutate({
+						businessId: variables.businessId,
+						locationId: variables.locationId,
+					});
+				});
 				await refresh();
 			},
 			onError: () => warning(),

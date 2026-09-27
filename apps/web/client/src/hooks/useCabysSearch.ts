@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 
 interface CabysResult {
@@ -10,28 +10,27 @@ interface CabysResult {
 export function useCabysSearch(query: string) {
   const [results, setResults] = useState<CabysResult[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const search = useCallback(async (q: string) => {
-    if (!q || q.length < 2) {
-      setResults([]);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await api.searchCabys({ q, top: "8" });
-      const items = Array.isArray(data) ? data : data?.cabys || data?.data || data?.results || [];
-      setResults(items);
-    } catch {
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => search(query), 300);
-    return () => clearTimeout(timer);
-  }, [query, search]);
+    let active = true;
+    setResults([]);
+    setError(false);
+    setLoading(query.trim().length >= 2);
+    if (query.trim().length < 2) return;
+    const timer = setTimeout(async () => {
+      try {
+        const data = await api.searchCabys({ q: query.trim(), top: "8" });
+        if (active) setResults(Array.isArray(data) ? data : data?.cabys || data?.data || data?.results || []);
+      } catch {
+        if (active) setError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, 300);
+    return () => { active = false; clearTimeout(timer); };
+  }, [query, attempt]);
 
-  return { results, loading };
+  return { results, loading, error, retry: () => setAttempt(value => value + 1) };
 }

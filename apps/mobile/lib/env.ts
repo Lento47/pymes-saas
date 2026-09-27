@@ -38,6 +38,17 @@ export const env = {
 		Constants.expoConfig?.extra?.apiUrl ||
 		"http://localhost:8787",
 
+	/** The optional second identity provider. Absent means Better Auth only. */
+	supabaseUrl: optionalString(
+		process.env.EXPO_PUBLIC_SUPABASE_URL ||
+			Constants.expoConfig?.extra?.supabaseUrl,
+	),
+	/** Public by design; never the Supabase secret/service-role key. */
+	supabasePublishableKey: optionalString(
+		process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+			Constants.expoConfig?.extra?.supabasePublishableKey,
+	),
+
 	/**
 	 * The basemap's MapLibre style document, or `undefined` when this install has none.
 	 *

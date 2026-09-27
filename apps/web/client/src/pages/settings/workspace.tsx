@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CheckCircle2, AlertTriangle, Upload, Building2, Loader2 } from "lucide-react";
+import { BookOpen, CheckCircle2, AlertTriangle, Upload, Camera, Building2, Loader2, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { SecretInput } from "@/components/settings/secret-input";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
 export default function WorkspaceSettingsPage() {
   const { toast } = useToast();
+  const { logout } = useAuth();
+  const [leaving, setLeaving] = useState(false);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current"],
@@ -23,6 +26,7 @@ export default function WorkspaceSettingsPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [financeOptIn, setFinanceOptIn] = useState(false);
   const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
@@ -209,35 +213,85 @@ export default function WorkspaceSettingsPage() {
 
         {/* ── Perfil del workspace ─────────────────────────────────────── */}
         <section className="space-y-4 border-b border-border pb-6">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Perfil del negocio</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Nombre e imagen que representa a tu negocio dentro de la plataforma.</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Perfil del negocio</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Nombre e imagen que representa a tu negocio dentro de la plataforma.</p>
+            </div>
+            <button
+              type="button"
+              disabled={leaving}
+              onClick={async () => {
+                setLeaving(true);
+                try {
+                  await logout();
+                } finally {
+                  setLeaving(false);
+                }
+              }}
+              className="mobile-tab flex min-h-12 items-center gap-1.5 rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label={leaving ? "Cerrando sesión…" : "Cerrar sesión"}
+            >
+              <LogOut aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span>{leaving ? "Cerrando…" : "Salir"}</span>
+            </button>
           </div>
 
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            {/* Logo upload */}
+            {/* Logo upload — file/camera pickers, never a link */}
             <div className="flex flex-col items-center gap-3">
               <div
-                className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-[hsl(var(--elevated))] transition-colors hover:border-primary/50"
-                onClick={() => logoInputRef.current?.click()}
+                className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-[hsl(var(--elevated))]"
+                aria-hidden="true"
               >
                 {uploadingLogo ? (
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 ) : logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                  <img src={logoUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <Building2 className="h-7 w-7 text-muted-foreground/40" />
                 )}
-                <div className="absolute inset-0 flex items-end justify-center bg-black/0 opacity-0 transition-opacity hover:bg-black/40 hover:opacity-100 pb-1.5">
-                  <Upload className="h-4 w-4 text-white" />
-                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 gap-1.5 rounded-lg px-3 text-xs"
+                  disabled={uploadingLogo}
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Subir foto
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 gap-1.5 rounded-lg px-3 text-xs"
+                  disabled={uploadingLogo}
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  Tomar foto
+                </Button>
               </div>
               <input
                 ref={logoInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); e.target.value = ""; }}
+                aria-label="Subir foto del negocio"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleLogoUpload(f); e.target.value = ""; }}
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                aria-label="Tomar foto del negocio"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleLogoUpload(f); e.target.value = ""; }}
               />
               <p className="text-center text-[11px] text-muted-foreground">PNG, JPG · máx 15 MB</p>
             </div>

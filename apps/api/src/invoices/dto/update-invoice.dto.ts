@@ -82,22 +82,22 @@ export class UpdateInvoiceDto {
 
   @IsOptional()
   @IsString()
-  issue_date?: string;
+  issue_date?: string | null;
 
   @IsOptional()
   @IsString()
   @Length(1, 20)
-  sale_condition?: string;
+  sale_condition?: string | null;
 
   @IsOptional()
   @IsString()
   @Length(1, 20)
-  payment_method?: string;
+  payment_method?: string | null;
 
   @IsOptional()
   @IsString()
   @Length(1, 20)
-  activity_code?: string;
+  activity_code?: string | null;
 
   @IsOptional()
   @IsString()

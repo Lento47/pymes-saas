@@ -120,7 +120,15 @@ Si el usuario responde con desviación del objetivo, realinear antes de continua
 
 ---
 
-## Diseño — Fintech Institucional
+## Diseño — producto móvil y marketing
+
+La interfaz autenticada sigue la dirección actual de [DESIGN.md](DESIGN.md): navegación
+clara, controles cómodos con una mano, perfil accesible y preferencias reales, tomando
+referencias externas como Uber y PedidosYa. Los colores, densidad y componentes de
+la app pueden evolucionar con el pedido del usuario; no imponerle el estilo de la landing.
+Las skills locales están en `.agents/skills/`.
+
+La siguiente tabla conserva las convenciones de **landing/marketing**:
 
 | Regla | Valor |
 |-------|-------|

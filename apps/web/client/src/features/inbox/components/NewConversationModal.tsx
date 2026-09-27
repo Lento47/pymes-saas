@@ -63,7 +63,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-primary hover:bg-primary/90 h-9 text-xs">
+        <Button size="sm" aria-label="Nueva conversación" className="bg-primary hover:bg-primary/90 min-h-12 rounded-xl text-sm">
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva
         </Button>
       </DialogTrigger>

@@ -1,5 +1,5 @@
 import { PlaybookExecutionService } from "./playbook-execution.service";
-import { EmprendePlaybookOutput } from "./emprende-playbooks.service";
+import type { EmprendePlaybookOutput } from "./emprende-playbooks.service";
 
 describe("PlaybookExecutionService", () => {
   function makeOutput(overrides: Partial<EmprendePlaybookOutput> = {}): EmprendePlaybookOutput {

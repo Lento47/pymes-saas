@@ -4,13 +4,16 @@ import { businessRouter } from "./business";
 import { businessesRouter } from "./businesses";
 import { cartRouter } from "./cart";
 import { catalogRouter } from "./catalog";
+import { couriersRouter } from "./couriers";
 import { favoritesRouter } from "./favorites";
 import { healthRouter } from "./health";
 import { notificationsRouter } from "./notifications";
 import { ordersRouter } from "./orders";
-import { payoutsRouter } from "./payouts";
 import { productsRouter } from "./products";
+import { promotionsRouter } from "./promotions";
 import { reviewsRouter } from "./reviews";
+import { subscriptionRouter } from "./subscription";
+import { uploadsRouter } from "./uploads";
 import { usersRouter } from "./users";
 
 /**
@@ -32,12 +35,19 @@ export const appRouter = router({
 	products: productsRouter,
 	users: usersRouter,
 	cart: cartRouter,
+	couriers: couriersRouter,
 	orders: ordersRouter,
 	favorites: favoritesRouter,
 	notifications: notificationsRouter,
 	business: businessRouter,
+	promotions: promotionsRouter,
 	reviews: reviewsRouter,
-	payouts: payoutsRouter,
+	// Was `payouts`, a list of settlement runs. The consumer pays the merchant and the
+	// courier directly, so there is nothing to settle and the namespace now holds the
+	// merchant's own subscription. `payouts:read` survives as the capability name —
+	// it still answers "may this person see what the business owes the platform".
+	subscription: subscriptionRouter,
+	uploads: uploadsRouter,
 	admin: adminRouter,
 });
 

@@ -9,13 +9,13 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { HelpButton } from "@/components/shared/help-button";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { SearchInput } from "@/components/shared/search-input";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, FileImage, FileSpreadsheet, Upload, Search, Loader2, MoreHorizontal, Trash, Download, CloudUpload } from "lucide-react";
+import { FileText, FileImage, FileSpreadsheet, Upload, Loader2, MoreHorizontal, Trash, Download, CloudUpload } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -69,7 +69,9 @@ export default function DocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const params: Record<string, string> = {};
-  if (search) params.search = search;
+  // `FilterDocumentsDto` accepts `q`, not `search` — a `search` key is silently
+  // dropped by the whitelist, so the filter looked broken while the request "worked".
+  if (search) params.q = search;
   if (statusFilter !== "ALL") params.status = statusFilter;
 
   const { data, isLoading } = useQuery({
@@ -201,16 +203,15 @@ export default function DocumentsPage() {
       {/* Filters */}
       {docList.length > 0 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <div className="relative flex-1 w-full sm:min-w-[180px] sm:max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
-            <Input
-              placeholder="Buscar archivos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs bg-card border-border"
-              data-testid="input-search-documents"
-            />
-          </div>
+          <SearchInput
+            placeholder="Buscar archivos..."
+            value={search}
+            onValueChange={setSearch}
+            wrapperClassName="flex-1 w-full sm:min-w-[180px] sm:max-w-[280px]"
+            className="h-8 text-xs bg-card border-border"
+            clearLabel="Limpiar búsqueda"
+            data-testid="input-search-documents"
+          />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] h-8 text-xs bg-card border-border" data-testid="select-doc-status">
               <SelectValue />

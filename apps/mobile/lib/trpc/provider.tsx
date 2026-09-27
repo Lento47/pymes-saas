@@ -1,3 +1,4 @@
+import { newRequestId } from "@pymeshub/shared";
 import {
 	focusManager,
 	QueryClient,
@@ -127,7 +128,14 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 					 */
 					headers: async () => {
 						const token = await accessToken();
-						return token ? { authorization: `Bearer ${token}` } : {};
+						return {
+							// One id per HTTP request — a batch shares it, and the API
+							// echoes it on the response and stamps its own log line with
+							// it, so a failure reported from this phone can be found in
+							// `wrangler tail` without pasting a session token anywhere.
+							"x-request-id": newRequestId(),
+							...(token ? { authorization: `Bearer ${token}` } : {}),
+						};
 					},
 					/**
 					 * A 401 means the token we sent is no longer good, and the honest response

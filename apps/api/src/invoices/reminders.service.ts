@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
 import { ChannelType, ConversationStatus, InvoiceStatus, WorkspaceUserRole } from "@prisma/client";
 import { AiService } from "../ai/ai.service";
 import { PrismaService } from "../common/prisma/prisma.service";
@@ -8,6 +8,7 @@ import { ConversationsService } from "../conversations/conversations.service";
 import { MessagesService } from "../conversations/messages.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { SendReminderDto } from "./dto/send-reminder.dto";
+import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class RemindersService {
@@ -20,6 +21,7 @@ export class RemindersService {
     private readonly messagesService: MessagesService,
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsAppService: WhatsAppService,
+    private readonly emailService: EmailService,
   ) {}
 
   async detectOverdue(workspaceId: string) {
@@ -174,6 +176,7 @@ export class RemindersService {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, workspace_id: workspaceId },
       include: {
+        payments: { select: { amount: true } },
         contact: {
           select: {
             id: true,
@@ -186,6 +189,12 @@ export class RemindersService {
     });
 
     if (!invoice) throw new NotFoundException("Factura no encontrada.");
+
+    const paidCents = invoice.payments.reduce((sum, payment) => sum + Math.round(Number(payment.amount) * 100), 0);
+    const balanceCents = Math.round(Number(invoice.amount) * 100) - paidCents;
+    if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.CANCELLED || balanceCents <= 0) {
+      throw new BadRequestException("La factura no tiene saldo pendiente para enviar.");
+    }
 
     const reminder = await this.prisma.paymentReminder.findFirst({
       where: {
@@ -210,11 +219,15 @@ export class RemindersService {
 
     if (!channel) throw new NotFoundException("Canal no encontrado o inactivo.");
 
+    if (channel.type !== ChannelType.EMAIL && channel.type !== ChannelType.WHATSAPP) {
+      throw new BadRequestException("El recordatorio requiere un canal de correo o WhatsApp.");
+    }
+
     if (channel.type === ChannelType.EMAIL && !invoice.contact.email) {
       throw new BadRequestException("El contacto no tiene email para enviar el recordatorio.");
     }
 
-    if (channel.type === ChannelType.WHATSAPP && !invoice.contact.phone) {
+    if (channel.type === ChannelType.WHATSAPP && !invoice.contact.phone?.replace(/\D/g, "")) {
       throw new BadRequestException("El contacto no tiene teléfono para enviar el recordatorio.");
     }
 
@@ -233,10 +246,16 @@ export class RemindersService {
       body_text: finalDraft,
     });
 
-    // ── Dispatch to external channel ──────────────────────────────────────
-    if (channel.type === ChannelType.WHATSAPP && invoice.contact.phone) {
-      try {
-        const to = invoice.contact.phone.replace(/\D/g, "");
+    // Only mark the reminder sent after the provider accepts the message.
+    let externalId: string;
+    try {
+      if (channel.type === ChannelType.EMAIL) {
+        const escaped = finalDraft.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/\r?\n/g, "<br>");
+        const result = await this.emailService.sendOutbound(channel, invoice.contact.email!, `Recordatorio de pago ${invoice.number}`, escaped, finalDraft);
+        externalId = result.id;
+      } else {
+        const to = invoice.contact.phone!.replace(/\D/g, "");
 
         // Resolve workspace name for {{6}}
         const workspace = await this.prisma.workspace.findUnique({
@@ -248,7 +267,7 @@ export class RemindersService {
         const amountFormatted = new Intl.NumberFormat("es-CR", {
           style: "currency",
           currency: invoice.currency,
-        }).format(Number(invoice.amount));
+        }).format(balanceCents / 100);
 
         // Format due date: "15 de junio, 2026"
         const dueDateFormatted = invoice.due_date
@@ -284,17 +303,14 @@ export class RemindersService {
           },
         );
 
-        // Link the external message ID for delivery status tracking
-        await this.prisma.message.update({
-          where: { id: message.id },
-          data: { external_message_id: waResult.message_id },
-        });
-      } catch (err: any) {
-        this.logger.error(
-          `WhatsApp invoice template dispatch failed for invoice ${invoice.number}: ${err?.message}`,
-        );
+        externalId = waResult.message_id;
       }
+      if (!externalId || externalId === "unknown") throw new Error("Missing provider acknowledgment");
+    } catch {
+      await this.prisma.message.update({ where: { id: message.id }, data: { delivery_status: "FAILED", delivery_error: "El proveedor no confirmó el envío del recordatorio." } });
+      throw new BadGatewayException("El proveedor no confirmó el envío. Conservamos el borrador; revisa el canal y el estado del mensaje antes de reintentar.");
     }
+    await this.prisma.message.update({ where: { id: message.id }, data: { external_message_id: externalId, delivery_status: "SENT", delivery_error: null } });
 
     const updatedReminder = await this.prisma.paymentReminder.update({
       where: { id: reminder.id },

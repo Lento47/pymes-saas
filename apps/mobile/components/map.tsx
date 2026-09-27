@@ -197,6 +197,11 @@ export type MapViewProps = {
 	 * is sent.
 	 */
 	marker?: { lat: number; lng: number } | null;
+	/** The fixed pickup and delivery endpoints for an active delivery. */
+	route?: {
+		pickup: { lat: number; lng: number };
+		destination: { lat: number; lng: number };
+	} | null;
 	/**
 	 * Where the band sits, which is the caller's. The band's *height*, radius, border and
 	 * inset are this file's — a screen that sized the map would be a screen making a decision
@@ -226,6 +231,9 @@ const BAND_HEIGHT = space.huge * 5;
  */
 const STREET_ZOOM = 14;
 
+/** Both ends of a local delivery fit comfortably at this scale. */
+const ROUTE_ZOOM = 12;
+
 /**
  * 2 — the courier pin's ring.
  *
@@ -237,7 +245,7 @@ const STREET_ZOOM = 14;
  */
 const PIN_RING_WIDTH = 2;
 
-export function MapView({ coords, marker, style }: MapViewProps) {
+export function MapView({ coords, marker, route, style }: MapViewProps) {
 	const { colors } = useTheme();
 	const { t } = useT();
 	// Called before the guard below, with the other hooks, because it is a hook: the early
@@ -247,11 +255,17 @@ export function MapView({ coords, marker, style }: MapViewProps) {
 	// Read before the guard rather than after it, so the three reasons to draw nothing are one
 	// `if`: no style, no coordinate, or no MapLibre in this binary.
 	const MapLibre = loadMapLibre();
+	const mapCenter = route
+		? {
+				lat: (route.pickup.lat + route.destination.lat) / 2,
+				lng: (route.pickup.lng + route.destination.lng) / 2,
+			}
+		: coords;
 
 	// Before anything is rendered, which is the whole point: an unconfigured map leaves the
 	// screen exactly as it was rather than leaving a hole in it.
 	const mapStyleUrl = env.mapStyleUrl;
-	if (!mapStyleUrl || !coords || !MapLibre) return null;
+	if (!mapStyleUrl || !mapCenter || !MapLibre) return null;
 
 	const { Camera, Map: MapLibreMap, Marker, UserLocation } = MapLibre;
 
@@ -278,7 +292,43 @@ export function MapView({ coords, marker, style }: MapViewProps) {
 				accessibilityLabel={t("discovery.map.label")}
 				accessible
 			>
-				<Camera center={[coords.lng, coords.lat]} zoom={STREET_ZOOM} />
+				<Camera
+					center={[mapCenter.lng, mapCenter.lat]}
+					zoom={route ? ROUTE_ZOOM : STREET_ZOOM}
+				/>
+
+				{route ? (
+					<>
+						<Marker
+							lngLat={[route.pickup.lng, route.pickup.lat]}
+							anchor="center"
+						>
+							<View
+								style={[
+									styles.pin,
+									{
+										backgroundColor: colors.success,
+										borderColor: colors.card,
+									},
+								]}
+							/>
+						</Marker>
+						<Marker
+							lngLat={[route.destination.lng, route.destination.lat]}
+							anchor="center"
+						>
+							<View
+								style={[
+									styles.pin,
+									{
+										backgroundColor: colors.destructive,
+										borderColor: colors.card,
+									},
+								]}
+							/>
+						</Marker>
+					</>
+				) : null}
 
 				{/* The SDK's location manager, rendered only when a fix already exists — so it
 				    never asks for a permission the customer has not been asked for, and the

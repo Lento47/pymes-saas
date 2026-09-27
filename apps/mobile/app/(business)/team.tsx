@@ -55,6 +55,9 @@ export default function TeamScreen() {
 	const [inviteSubmitted, setInviteSubmitted] = useState(false);
 	const [roleMember, setRoleMember] = useState<StaffMemberView | null>(null);
 	const [nextRole, setNextRole] = useState<StaffRole>("STAFF");
+	const [ownerPromotion, setOwnerPromotion] = useState<StaffMemberView | null>(
+		null,
+	);
 	const [removeMember, setRemoveMember] = useState<StaffMemberView | null>(
 		null,
 	);
@@ -82,6 +85,7 @@ export default function TeamScreen() {
 			onSuccess: async () => {
 				await refreshStaff();
 				setRoleMember(null);
+				setOwnerPromotion(null);
 			},
 		}),
 	);
@@ -115,6 +119,20 @@ export default function TeamScreen() {
 			email: inviteEmail.trim(),
 			role: inviteRole,
 		});
+	};
+
+	const commitRole = (member: StaffMemberView, role: StaffRole) => {
+		if (!businessId) return;
+		updateRole.mutate(
+			{ businessId, userId: member.userId, role },
+			{
+				onError: () => {
+					setNextRole(role);
+					setRoleMember(member);
+					setOwnerPromotion(null);
+				},
+			},
+		);
 	};
 
 	const roleHelp = (role: StaffRole) => {
@@ -303,11 +321,12 @@ export default function TeamScreen() {
 							label={t("action.save")}
 							onPress={() => {
 								if (!roleMember || !businessId) return;
-								updateRole.mutate({
-									businessId,
-									userId: roleMember.userId,
-									role: nextRole,
-								});
+								if (nextRole === "OWNER" && roleMember.role !== "OWNER") {
+									setOwnerPromotion(roleMember);
+									setRoleMember(null);
+									return;
+								}
+								commitRole(roleMember, nextRole);
 							}}
 							loading={updateRole.isPending}
 							disabled={!roleMember || nextRole === roleMember.role}
@@ -345,6 +364,20 @@ export default function TeamScreen() {
 					) : null}
 				</View>
 			</Sheet>
+
+			<ConfirmSheet
+				open={ownerPromotion !== null}
+				onClose={() => setOwnerPromotion(null)}
+				title={t("biz.staff.owner.confirm.title", {
+					name: ownerPromotion?.name ?? "",
+				})}
+				body={t("biz.staff.owner.confirm.body")}
+				confirmLabel={t("biz.staff.owner.confirm.action")}
+				onConfirm={() => {
+					if (!ownerPromotion) return;
+					commitRole(ownerPromotion, "OWNER");
+				}}
+			/>
 
 			<ConfirmSheet
 				open={removeMember !== null}

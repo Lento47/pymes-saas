@@ -43,7 +43,7 @@ export function PageTemplate({
                     size="sm"
                     onClick={action.onClick}
                     asChild={!!action.href}
-                    className="h-8 gap-2 rounded-md text-xs"
+                    className="min-h-11 gap-2 rounded-md px-3 text-xs md:h-8 md:min-h-0"
                   >
                     {action.href ? (
                       <Link href={action.href} className="flex items-center gap-2">

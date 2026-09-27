@@ -3,6 +3,7 @@ import { Redirect, Tabs } from "expo-router";
 import type { ReactNode } from "react";
 import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NewOrderBannerProvider } from "@/components/new-order-banner";
 import { Pressable } from "@/components/pressable";
 import { useT } from "@/lib/i18n";
 import { MerchantScopeProvider } from "@/lib/merchant-scope";
@@ -67,138 +68,146 @@ export default function BusinessLayout() {
 
 	return (
 		<MerchantScopeProvider>
-			<Tabs
-				screenOptions={{
-					headerShown: false,
-					// The navigator's own tab button answers a press with a wide
-					// circular wash; ours answers with the control's rounded frame,
-					// the same feedback every other control in the app gives. Only
-					// the press, the a11y and the laid-out style cross over — the
-					// web pointer handlers and the link props stay behind. The cast
-					// drops the event the navigator's press carries (a web
-					// `MouseEvent` in the union that cannot occur on a phone);
-					// navigation needs no event, and the primitive's contract stays
-					// the `() => void` every other caller holds.
-					tabBarButton: ({
-						onPress,
-						onLongPress,
-						accessibilityState,
-						accessibilityLabel,
-						style,
-						children,
-					}) => (
-						<Pressable
-							onPress={onPress as (() => void) | undefined}
-							onLongPress={
-								(onLongPress ?? undefined) as (() => void) | undefined
-							}
-							accessibilityState={accessibilityState}
-							accessibilityLabel={accessibilityLabel}
-							// The navigator types this as a state callback; what it
-							// hands down is laid-out style, and the pressed answer is
-							// this primitive's own dim and spring.
-							style={style as StyleProp<ViewStyle>}
-						>
-							{children as ReactNode}
-						</Pressable>
-					),
-					tabBarActiveTintColor: colors.foreground,
-					tabBarInactiveTintColor: colors.mutedForeground,
-					tabBarStyle: {
-						backgroundColor: withAlpha(colors.card, BAR_OPACITY),
-						borderTopColor: colors.border,
-						borderTopWidth: StyleSheet.hairlineWidth,
-						height: BUSINESS_TAB_BAR_HEIGHT + insets.bottom,
-						paddingBottom: insets.bottom,
-					},
-					tabBarLabelStyle: { fontSize: TAB_BAR_LABEL_SIZE },
-				}}
-			>
-				<Tabs.Screen
-					name="index"
-					options={{
-						title: t("nav.home"),
-						tabBarAccessibilityLabel: t("nav.home"),
-						tabBarIcon: ({ focused, color, size }) => (
-							<TabMark
-								focused={focused}
-								name="home-outline"
-								color={color}
-								size={size}
-							/>
+			<NewOrderBannerProvider>
+				<Tabs
+					screenOptions={{
+						headerShown: false,
+						// The navigator's own tab button answers a press with a wide
+						// circular wash; ours answers with the control's rounded frame,
+						// the same feedback every other control in the app gives. Only
+						// the press, the a11y and the laid-out style cross over — the
+						// web pointer handlers and the link props stay behind. The cast
+						// drops the event the navigator's press carries (a web
+						// `MouseEvent` in the union that cannot occur on a phone);
+						// navigation needs no event, and the primitive's contract stays
+						// the `() => void` every other caller holds.
+						tabBarButton: ({
+							onPress,
+							onLongPress,
+							accessibilityState,
+							accessibilityLabel,
+							style,
+							children,
+						}) => (
+							<Pressable
+								onPress={onPress as (() => void) | undefined}
+								onLongPress={
+									(onLongPress ?? undefined) as (() => void) | undefined
+								}
+								accessibilityState={accessibilityState}
+								accessibilityLabel={accessibilityLabel}
+								// The navigator types this as a state callback; what it
+								// hands down is laid-out style, and the pressed answer is
+								// this primitive's own dim and spring.
+								style={style as StyleProp<ViewStyle>}
+							>
+								{children as ReactNode}
+							</Pressable>
 						),
+						tabBarActiveTintColor: colors.foreground,
+						tabBarInactiveTintColor: colors.mutedForeground,
+						tabBarStyle: {
+							backgroundColor: withAlpha(colors.card, BAR_OPACITY),
+							borderTopColor: colors.border,
+							borderTopWidth: StyleSheet.hairlineWidth,
+							height: BUSINESS_TAB_BAR_HEIGHT + insets.bottom,
+							paddingBottom: insets.bottom,
+						},
+						tabBarLabelStyle: { fontSize: TAB_BAR_LABEL_SIZE },
 					}}
-				/>
-				<Tabs.Screen
-					name="business"
-					options={{
-						title: t("biz.nav.orders"),
-						tabBarAccessibilityLabel: t("biz.nav.orders"),
-						tabBarIcon: ({ focused, color, size }) => (
-							<TabMark
-								focused={focused}
-								name="receipt-outline"
-								color={color}
-								size={size}
-							/>
-						),
-					}}
-				/>
-				<Tabs.Screen
-					name="products"
-					options={{
-						title: t("biz.nav.menu"),
-						tabBarAccessibilityLabel: t("biz.nav.menu"),
-						tabBarIcon: ({ focused, color, size }) => (
-							<TabMark
-								focused={focused}
-								name="fast-food-outline"
-								color={color}
-								size={size}
-							/>
-						),
-					}}
-				/>
-				<Tabs.Screen
-					name="analytics"
-					options={{
-						title: t("biz.nav.analytics"),
-						tabBarAccessibilityLabel: t("biz.nav.analytics"),
-						tabBarIcon: ({ focused, color, size }) => (
-							<TabMark
-								focused={focused}
-								name="bar-chart-outline"
-								color={color}
-								size={size}
-							/>
-						),
-					}}
-				/>
-				<Tabs.Screen
-					name="more"
-					options={{
-						title: t("biz.nav.more"),
-						tabBarAccessibilityLabel: t("biz.nav.more"),
-						tabBarIcon: ({ focused, color, size }) => (
-							<TabMark
-								focused={focused}
-								name="ellipsis-horizontal"
-								color={color}
-								size={size}
-							/>
-						),
-					}}
-				/>
-				{/* A route in this tree, not a destination of it: the form opens from
+				>
+					<Tabs.Screen
+						name="index"
+						options={{
+							title: t("nav.home"),
+							tabBarAccessibilityLabel: t("nav.home"),
+							tabBarIcon: ({ focused, color, size }) => (
+								<TabMark
+									focused={focused}
+									name="home-outline"
+									color={color}
+									size={size}
+								/>
+							),
+						}}
+					/>
+					<Tabs.Screen
+						name="business"
+						options={{
+							title: t("biz.nav.orders"),
+							tabBarAccessibilityLabel: t("biz.nav.orders"),
+							tabBarIcon: ({ focused, color, size }) => (
+								<TabMark
+									focused={focused}
+									name="receipt-outline"
+									color={color}
+									size={size}
+								/>
+							),
+						}}
+					/>
+					<Tabs.Screen
+						name="products"
+						options={{
+							title: t("biz.nav.menu"),
+							tabBarAccessibilityLabel: t("biz.nav.menu"),
+							tabBarIcon: ({ focused, color, size }) => (
+								<TabMark
+									focused={focused}
+									name="fast-food-outline"
+									color={color}
+									size={size}
+								/>
+							),
+						}}
+					/>
+					<Tabs.Screen
+						name="analytics"
+						options={{
+							title: t("biz.nav.analytics"),
+							tabBarAccessibilityLabel: t("biz.nav.analytics"),
+							tabBarIcon: ({ focused, color, size }) => (
+								<TabMark
+									focused={focused}
+									name="bar-chart-outline"
+									color={color}
+									size={size}
+								/>
+							),
+						}}
+					/>
+					<Tabs.Screen
+						name="more"
+						options={{
+							title: t("biz.nav.more"),
+							tabBarAccessibilityLabel: t("biz.nav.more"),
+							tabBarIcon: ({ focused, color, size }) => (
+								<TabMark
+									focused={focused}
+									name="ellipsis-horizontal"
+									color={color}
+									size={size}
+								/>
+							),
+						}}
+					/>
+					{/* A route in this tree, not a destination of it: the form opens from
 			    the menu and the rail, and a tab for it would be a door to a screen
 			    with no tab state. `href: null` keeps it mounted and out of the bar. */}
-				<Tabs.Screen name="product-form" options={{ href: null }} />
-				<Tabs.Screen name="merchant-order/[id]" options={{ href: null }} />
-				<Tabs.Screen name="locations" options={{ href: null }} />
-				<Tabs.Screen name="payouts" options={{ href: null }} />
-				<Tabs.Screen name="team" options={{ href: null }} />
-				<Tabs.Screen name="reviews" options={{ href: null }} />
-			</Tabs>
+					<Tabs.Screen name="product-form" options={{ href: null }} />
+					<Tabs.Screen name="shop-settings" options={{ href: null }} />
+					<Tabs.Screen name="merchant-settings" options={{ href: null }} />
+					<Tabs.Screen name="shop-hours" options={{ href: null }} />
+					<Tabs.Screen name="promotions" options={{ href: null }} />
+					<Tabs.Screen name="promotion-form" options={{ href: null }} />
+					<Tabs.Screen name="merchant-order/[id]" options={{ href: null }} />
+					<Tabs.Screen name="locations" options={{ href: null }} />
+					<Tabs.Screen name="payouts" options={{ href: null }} />
+					<Tabs.Screen name="team" options={{ href: null }} />
+					<Tabs.Screen name="reviews" options={{ href: null }} />
+					<Tabs.Screen name="audit-history" options={{ href: null }} />
+				</Tabs>
+			</NewOrderBannerProvider>
 		</MerchantScopeProvider>
 	);
 }

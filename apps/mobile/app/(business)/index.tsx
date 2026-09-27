@@ -1,8 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
+import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
+	type FulfilmentKind,
 	formatMoney,
+	isTerminalStatus,
 	MAX_LINE_QUANTITY,
 	type MerchantHome as MerchantHomeData,
+	nextStatuses,
+	ORDER_STATUSES,
+	type OrderStatus,
 	type ProductCard,
 } from "@pymeshub/shared";
 import {
@@ -34,6 +40,7 @@ import {
 } from "@/components/merchant-command-rail";
 import {
 	MerchantOrderRow,
+	type MerchantRowAction,
 	ROW_MIN_HEIGHT,
 } from "@/components/merchant-order-row";
 import {
@@ -52,12 +59,18 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { messageFor, toApiFailure, useApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
-import { formatDayMonth, formatMinuteOfDay } from "@/lib/format";
+import {
+	formatClock,
+	formatDayMonth,
+	formatMinuteOfDay,
+	formatRelative,
+} from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import {
+	icon,
 	MIN_TOUCH_TARGET,
 	radius,
 	space,
@@ -99,6 +112,87 @@ type ProductListData = InfiniteData<ProductListPage>;
 type Attention = MerchantHomeData["attention"][number];
 type PauseDuration = 15 | 30 | 60 | undefined;
 type PauseStage = "duration" | "confirm" | null;
+type CachedOrder = MerchantHomeData["orders"][number];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function isCachedOrder(value: unknown): value is CachedOrder {
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.status === "string" &&
+		(ORDER_STATUSES as readonly string[]).includes(value.status)
+	);
+}
+
+function findCachedOrder(
+	value: unknown,
+	orderId: string,
+): CachedOrder | undefined {
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			const order = findCachedOrder(entry, orderId);
+			if (order) return order;
+		}
+		return undefined;
+	}
+
+	if (!isRecord(value)) return undefined;
+	if (isCachedOrder(value) && value.id === orderId) return value;
+
+	const record = value as Record<string, unknown>;
+	for (const key of ["orders", "items", "pages"]) {
+		const order = findCachedOrder(record[key], orderId);
+		if (order) return order;
+	}
+
+	return undefined;
+}
+
+function replaceCachedOrderStatus<T>(
+	value: T,
+	orderId: string,
+	status: OrderStatus,
+): T {
+	if (Array.isArray(value)) {
+		let changed = false;
+		const next = value.map((entry) => {
+			const replacement = replaceCachedOrderStatus(entry, orderId, status);
+			if (replacement !== entry) changed = true;
+			return replacement;
+		});
+		return changed ? (next as T) : value;
+	}
+
+	if (!isRecord(value)) return value;
+	if (isCachedOrder(value) && value.id === orderId) {
+		return { ...value, status } as T;
+	}
+
+	let changed = false;
+	const next: Record<string, unknown> = { ...value };
+	for (const key of ["orders", "items", "pages"]) {
+		if (!(key in next)) continue;
+		const replacement = replaceCachedOrderStatus(next[key], orderId, status);
+		if (replacement !== next[key]) {
+			next[key] = replacement;
+			changed = true;
+		}
+	}
+
+	return changed ? (next as T) : value;
+}
+
+function moveLabelKey(to: OrderStatus, fulfilment: FulfilmentKind): MessageKey {
+	if (to === "COMPLETED") {
+		return fulfilment === "PICKUP"
+			? "biz.board.markPickedUp"
+			: "biz.board.markDelivered";
+	}
+	return MOVE_LABELS[to];
+}
 
 function withAvailability(product: ProductCard, quantity: number): ProductCard {
 	return {
@@ -186,9 +280,35 @@ export default function MerchantHome() {
 				(shops.isPending ||
 					(!!businessId && (locations.isPending || home.isPending)))),
 	);
-	const failed = shops.error ?? locations.error ?? home.error;
+	const failed =
+		shops.error ?? locations.error ?? home.error ?? analytics.error;
 
 	const dateLabel = formatDayMonth(new Date(), intlLocale);
+	const dashboardQueries = [shops, locations, home, analytics];
+	const latestUpdate = Math.max(
+		...dashboardQueries.map((query) => query.dataUpdatedAt),
+	);
+	const syncing = dashboardQueries.some((query) => query.isFetching);
+	const updateAge = Date.now() - latestUpdate;
+	const relativeUpdate = latestUpdate
+		? formatRelative(latestUpdate, intlLocale)
+		: null;
+	const updateClock = latestUpdate
+		? formatClock(latestUpdate, intlLocale)
+		: null;
+	const updateDescription = relativeUpdate ?? updateClock;
+	const isStale = updateAge >= 5 * 60_000;
+	const freshnessLabel = syncing
+		? t("biz.dashboard.syncing")
+		: updateAge < 60_000
+			? t("biz.dashboard.updatedJustNow")
+			: isStale
+				? t("biz.dashboard.updatedStale", {
+						relative: updateDescription ?? "",
+					})
+				: t("biz.dashboard.updatedRelative", {
+						relative: updateDescription ?? "",
+					});
 
 	/**
 	 * The pulse's three figures, from the reads above and nothing else. The money
@@ -203,6 +323,9 @@ export default function MerchantHome() {
 				const entry = home.data.pulse.todayRevenueByCurrency.find(
 					(one) => one.currency === home.data.location.currency,
 				);
+				const comparison = home.data.pulse.todayComparisonByCurrency.find(
+					(one) => one.currency === home.data.location.currency,
+				);
 				return {
 					currency: home.data.location.currency,
 					netMinor: entry?.revenueMinor ?? null,
@@ -211,14 +334,73 @@ export default function MerchantHome() {
 						entry && entry.orderCount > 0
 							? Math.round(entry.revenueMinor / entry.orderCount)
 							: null,
-					salesDeltaPct: null,
-					ordersDelta: null,
-					ticketDeltaPct: null,
+					salesDeltaPct: comparison?.salesDeltaPct ?? null,
+					ordersDelta: comparison?.ordersDelta ?? 0,
+					ticketDeltaPct: comparison?.ticketDeltaPct ?? null,
 				};
 			})()
 		: null;
 
 	const orders = home.data?.orders ?? [];
+
+	const advance = useMutation(
+		trpc.orders.advance.mutationOptions({
+			onMutate: async ({ orderId, to }) => {
+				const homeKey = trpc.business.home.pathKey();
+				const previousHome = cache.getQueriesData<MerchantHomeData>({
+					queryKey: homeKey,
+				});
+				await cache.cancelQueries({ queryKey: homeKey });
+				cache.setQueriesData<MerchantHomeData>(
+					{ queryKey: homeKey },
+					(current) =>
+						current ? replaceCachedOrderStatus(current, orderId, to) : current,
+				);
+				return { previousHome };
+			},
+			onError: async (error, _variables, context) => {
+				for (const [queryKey, data] of context?.previousHome ?? []) {
+					cache.setQueryData(queryKey, data);
+				}
+				warning();
+
+				if (toApiFailure(error).code !== "CONFLICT") {
+					toast.show(t("biz.board.moveFailed"));
+					return;
+				}
+
+				await cache.invalidateQueries({
+					queryKey: trpc.orders.pathKey(),
+				});
+				let refreshed: CachedOrder | undefined;
+				for (const [, data] of cache.getQueriesData<unknown>({
+					queryKey: trpc.orders.pathKey(),
+				})) {
+					refreshed ??= findCachedOrder(data, _variables.orderId);
+					if (refreshed) break;
+				}
+
+				toast.show(
+					refreshed
+						? t("biz.board.conflict.body", {
+								status: t(statusKey(refreshed.status)),
+							})
+						: t("biz.board.conflict.title"),
+				);
+			},
+			onSuccess: async (_data, variables) => {
+				light();
+				toast.show(
+					t("biz.board.movedTo", {
+						status: t(statusKey(variables.to)),
+					}),
+				);
+				await cache.invalidateQueries({
+					queryKey: trpc.orders.pathKey(),
+				});
+			},
+		}),
+	);
 
 	const setStock = useMutation(
 		trpc.products.setStock.mutationOptions({
@@ -330,6 +512,14 @@ export default function MerchantHome() {
 	const refreshOperatingState = async () => {
 		await Promise.all([locations.refetch(), home.refetch()]);
 	};
+	const refreshDashboard = async () => {
+		await Promise.all([
+			shops.refetch(),
+			locations.refetch(),
+			home.refetch(),
+			analytics.refetch(),
+		]);
+	};
 	const pause = useMutation(
 		trpc.business.pauseLocation.mutationOptions({
 			onMutate: () => {
@@ -337,9 +527,16 @@ export default function MerchantHome() {
 				setPauseStage(null);
 				setPauseDuration(undefined);
 			},
-			onSuccess: async () => {
+			onSuccess: async (_data, variables) => {
 				light();
-				toast.show(t("biz.locations.paused"));
+				// §46's trailing Undo — see `./locations`, which draws the same pair for the same
+				// write, and `components/toast` for why the sentence and the button are siblings.
+				toast.show(t("biz.locations.paused"), () => {
+					resume.mutate({
+						businessId: variables.businessId,
+						locationId: variables.locationId,
+					});
+				});
 				await refreshOperatingState();
 			},
 			onError: () => setPauseStage(null),
@@ -377,27 +574,13 @@ export default function MerchantHome() {
 				padded={false}
 				scroll
 				contentStyle={styles.body}
-				onRefresh={async () => {
-					// Refresh the membership and the dashboard it scopes.
-					await Promise.all([
-						shops.refetch(),
-						locations.refetch(),
-						home.refetch(),
-					]);
-				}}
+				onRefresh={refreshDashboard}
 			>
 				{/* The failure, tested before the absence of data: a `myBusinesses` read that
 		    failed leaves no `shops.data` behind, so the skeleton branch would hold the
 		    screen forever with nothing to say. */}
 				{failed ? (
-					<ErrorState
-						error={failed}
-						onRetry={() => {
-							void shops.refetch();
-							void locations.refetch();
-							void home.refetch();
-						}}
-					/>
+					<ErrorState error={failed} onRetry={() => void refreshDashboard()} />
 				) : waiting || !shops.data ? (
 					<HomeSkeleton loadingLabel={t("state.loading")} />
 				) : !shop || !businessId ? (
@@ -542,6 +725,77 @@ export default function MerchantHome() {
 									</Pressable>
 								) : null}
 							</View>
+							{/* §12's third column. The layout it draws is `logo | identity |
+						    controls (notification, profile)`, and the first two were already
+						    here: this is the pair on the right, top-aligned with the logo so it
+						    answers the *title* rather than floating in the middle of a header
+						    that grows at 200% text.
+
+						    Both doors leave the business tree, and both already exist as root
+						    screens of their own — `app/inbox` is the bell's whole job ("What the
+						    shop has told you: the bell, as a list") and `app/profile` is the
+						    fields `./more` already links to. One bell rather than a second
+						    notifications screen, for the reason `components/home-header` has one
+						    avatar. The profile is an icon and not `home-header`'s initials because
+						    this screen reads the shop and not `users.me`, and a header that drew a
+						    name it never fetched would be the file's own "a control for something
+						    the API has not confirmed" one step earlier. */}
+							<View style={styles.merchantControls}>
+								<Pressable
+									onPress={() => router.push("/inbox")}
+									accessibilityRole="button"
+									accessibilityLabel={t("account.inbox")}
+									accessibilityHint={t("account.inbox.help")}
+									style={styles.headerControl}
+								>
+									<Ionicons
+										name="notifications-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
+								<Pressable
+									onPress={() => router.push("/profile")}
+									accessibilityRole="button"
+									accessibilityLabel={t("account.profile.title")}
+									style={styles.headerControl}
+								>
+									<Ionicons
+										name="person-circle-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
+							</View>
+						</View>
+						<View style={styles.syncRow}>
+							<View style={styles.syncStatus} accessibilityLiveRegion="polite">
+								<Ionicons
+									name={syncing ? "sync-outline" : "cloud-done-outline"}
+									size={20}
+									color={syncing ? colors.primary : colors.mutedForeground}
+									importantForAccessibility="no-hide-descendants"
+									accessibilityElementsHidden
+								/>
+								<Text style={styles.syncLabel}>{freshnessLabel}</Text>
+							</View>
+							<Pressable
+								onPress={refreshDashboard}
+								accessibilityRole="button"
+								accessibilityLabel={t("biz.dashboard.refresh")}
+								accessibilityHint={t("biz.dashboard.refreshHelp")}
+								style={({ pressed }) => [
+									styles.syncControl,
+									pressed ? { backgroundColor: colors.muted } : null,
+									syncing ? { opacity: 0.6 } : null,
+								]}
+							>
+								<Ionicons name="refresh" size={24} color={colors.primary} />
+							</Pressable>
 						</View>
 						{pause.error || resume.error ? (
 							<View style={styles.pad}>
@@ -676,41 +930,74 @@ export default function MerchantHome() {
 							</View>
 						) : (
 							<View>
-								{orders.map((order, index) => (
-									// Full-bleed, like the board's queue: the row pays its own
-									// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
-									// wrapper here would double them and put the ink at 48 points
-									// under a section title sitting at 24.
-									<MerchantOrderRow
-										key={order.id}
-										onPress={() =>
-											router.push({
-												pathname: "/merchant-order/[id]",
-												params: { id: order.id },
-											})
-										}
-										reference={order.reference}
-										headline={order.headline}
-										fulfilmentLabel={t(
-											order.fulfilment === "PICKUP"
-												? "order.pickup"
-												: "order.delivery",
-										)}
-										status={order.status}
-										statusLabel={t(statusKey(order.status))}
-										totalLabel={formatMoney(order.totalMinor, order.currency, {
-											locale: intlLocale,
-										})}
-										urgent={order.status === "PENDING" ? "new" : null}
-										last={index === orders.length - 1}
-									/>
-								))}
+								{orders.map((order, index) => {
+									const actions: MerchantRowAction[] = nextStatuses(
+										order.status,
+										"BUSINESS",
+										order.fulfilment,
+									)
+										.slice(0, 2)
+										.map((to, actionIndex) => ({
+											label: t(moveLabelKey(to, order.fulfilment)),
+											onPress: () =>
+												advance.mutate({
+													orderId: order.id,
+													to,
+													expectedStatus: order.status,
+												}),
+											pending: advance.variables?.orderId === order.id,
+											kind: actionIndex === 0 ? "primary" : "secondary",
+										}));
+
+									return (
+										// Full-bleed, like the board's queue: the row pays its own
+										// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
+										// wrapper here would double them and put the ink at 48 points
+										// under a section title sitting at 24.
+										<MerchantOrderRow
+											key={order.id}
+											onPress={() =>
+												router.push({
+													pathname: "/merchant-order/[id]",
+													params: { id: order.id },
+												})
+											}
+											reference={order.reference}
+											headline={order.headline}
+											fulfilmentLabel={t(
+												order.fulfilment === "PICKUP"
+													? "order.pickup"
+													: "order.delivery",
+											)}
+											status={order.status}
+											statusLabel={t(statusKey(order.status))}
+											totalLabel={formatMoney(
+												order.totalMinor,
+												order.currency,
+												{
+													locale: intlLocale,
+												},
+											)}
+											urgent={order.status === "PENDING" ? "new" : null}
+											last={index === orders.length - 1}
+											actions={actions.length ? actions : undefined}
+										/>
+									);
+								})}
 							</View>
 						)}
 
 						{/* The doors, as the rail (§25) rather than the card it replaces:
-					    every destination is a route in this tree, so no action leads
-					    nowhere. Adding a product is the moment's one filled control. */}
+						    every destination is a route in this tree, so no action leads
+						    nowhere. Adding a product is the moment's one filled control.
+
+						    The five are §25's own list. `orders` and `menu` used to sit here
+						    and were the tab bar's destinations said again in different words;
+						    §25 names the *jobs* instead, which is why `Stock` opens the
+						    catalogue the steppers live on and `Pause` gives the order the
+						    header's status chip also gives. The label names the state the
+						    command moves to — `./switch`'s contract — so the same slot reads
+						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
 						<MerchantCommandRail
 							actions={[
 								{
@@ -725,16 +1012,48 @@ export default function MerchantHome() {
 										}),
 								},
 								{
-									key: "orders",
-									label: t("biz.nav.orders"),
-									icon: "receipt-outline",
-									onPress: () => router.push("/business"),
+									key: "promo",
+									label: t("biz.promotions.title"),
+									icon: "ticket-outline",
+									onPress: () => router.push("/(business)/promotions"),
 								},
 								{
-									key: "menu",
-									label: t("biz.nav.menu"),
-									icon: "fast-food-outline",
+									key: "stock",
+									label: t("biz.products.stock"),
+									icon: "cube-outline",
 									onPress: () => router.push("/products"),
+								},
+								{
+									key: "hours",
+									label: t("biz.settings.hours"),
+									icon: "time-outline",
+									onPress: () => router.push("/(business)/shop-hours"),
+								},
+								{
+									key: "pause",
+									label: locationPaused
+										? t("biz.locations.resume")
+										: t("biz.locations.pause"),
+									icon: locationPaused ? "play-outline" : "pause-outline",
+									disabled:
+										!canManageOperatingState ||
+										pause.isPending ||
+										resume.isPending,
+									onPress: () => {
+										if (!selectedLocation) return;
+										if (locationPaused) {
+											resume.mutate({
+												businessId,
+												locationId: selectedLocation.id,
+											});
+											return;
+										}
+										// §47 names "pause all orders" as one of the writes that
+										// gets a confirmation, and `pauseStage`'s own flow is that
+										// confirmation — a duration, then a `ConfirmSheet`.
+										setPauseDuration(undefined);
+										setPauseStage("duration");
+									},
 								},
 							]}
 						/>
@@ -1023,6 +1342,30 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const SKELETON_ROWS = [0, 1, 2] as const;
 
 const styles = StyleSheet.create({
+	syncRow: {
+		minHeight: 64,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		paddingHorizontal: space.xl,
+		paddingVertical: space.sm,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	syncStatus: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
+	syncLabel: { flexShrink: 1 },
+	syncControl: {
+		width: 48,
+		height: 48,
+		alignItems: "center",
+		justifyContent: "center",
+		borderRadius: radius.sm,
+	},
 	body: { gap: space.lg },
 	pad: { paddingHorizontal: space.lg },
 	merchantHeader: {
@@ -1036,6 +1379,26 @@ const styles = StyleSheet.create({
 	},
 	merchantLogo: { width: 56, height: 56, borderWidth: 1 },
 	merchantIdentity: { flex: 1, alignItems: "flex-start", gap: TEXT_STACK_GAP },
+	// §12's controls, in a row of their own and top-aligned: they belong to the title,
+	// the same rule `./home-header` writes for the avatar beside its own.
+	merchantControls: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: space.xs,
+	},
+	/**
+	 * §28's icon button. The box is 48 rather than `MIN_TOUCH_TARGET`'s 44 because §28
+	 * asks for 48 on both platforms — "Android's current accessibility guidance explicitly
+	 * calls for at least 48dp interactive targets", and its own note is to make both 48 for
+	 * parity. The glyph inside is `icon.action` (20), the middle of §28's 20–22; the drawn
+	 * container *is* the target here, so there is no `hitSlop` to inflate it with.
+	 */
+	headerControl: {
+		width: 48,
+		height: 48,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	locationLine: { flexDirection: "row", alignItems: "center", gap: space.xs },
 	operatingState: { alignItems: "flex-start", gap: space.xs },
 	statusControl: {

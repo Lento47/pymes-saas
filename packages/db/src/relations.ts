@@ -33,12 +33,13 @@ import {
 	order,
 	orderEvent,
 	orderItem,
-	payout,
+	priceBook,
 	product,
 	productOption,
 	productOptionGroup,
 	promotion,
 	review,
+	subscription,
 	upload,
 	user,
 } from "./schema";
@@ -66,8 +67,22 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 	reviews: many(review),
 	favorites: many(favorite),
 	promotions: many(promotion),
-	payouts: many(payout),
 	carts: many(cart),
+	/**
+	 * One subscription per business, enforced by a unique index on
+	 * `subscription.business_id` rather than by this relation. A `one` here would say
+	 * the same thing to the type system, and the constraint is the part that matters:
+	 * two subscriptions for one shop is a double invoice.
+	 */
+	subscription: one(subscription, {
+		fields: [business.id],
+		references: [subscription.businessId],
+	}),
+}));
+
+/** A subscription's price history, kept so a raise can be explained after the fact. */
+export const priceBookRelations = relations(priceBook, ({ many }) => ({
+	subscriptions: many(subscription),
 }));
 
 export const membershipRelations = relations(membership, ({ one }) => ({
@@ -242,10 +257,14 @@ export const notificationRelations = relations(notification, ({ one }) => ({
 	user: one(user, { fields: [notification.userId], references: [user.id] }),
 }));
 
-export const payoutRelations = relations(payout, ({ one }) => ({
+export const subscriptionRelations = relations(subscription, ({ one }) => ({
 	business: one(business, {
-		fields: [payout.businessId],
+		fields: [subscription.businessId],
 		references: [business.id],
+	}),
+	priceBook: one(priceBook, {
+		fields: [subscription.priceBookId],
+		references: [priceBook.id],
 	}),
 }));
 

@@ -28,6 +28,13 @@ export const business = {
 	"biz.dashboard.empty.title": "No orders today yet",
 	"biz.dashboard.empty.body": "When one comes in, it rings here.",
 	"biz.dashboard.viewBoard": "See the board",
+	"biz.dashboard.syncing": "Updating dashboard",
+	"biz.dashboard.updatedJustNow": "Updated just now",
+	"biz.dashboard.updatedRelative": "Updated {relative}",
+	"biz.dashboard.updatedStale": "Data may be out of date · {relative}",
+	"biz.dashboard.refresh": "Refresh dashboard",
+	"biz.dashboard.refreshHelp":
+		"Refresh business, location, orders and analytics",
 	"biz.home.attention": "Needs attention",
 	"biz.home.newOrders": "Orders awaiting response",
 	"biz.home.outOfStock": "Sold-out products",
@@ -81,6 +88,16 @@ export const business = {
 	"biz.board.waitingTooLong": "Waiting {minutes} min already",
 	"biz.board.newOrder": "New order",
 	"biz.board.newOrder.body": "Order {code} · {total}",
+	/*
+	 * The new-order banner's three lines (interface.md §24). The separator lives in the
+	 * dictionary and not in the code, the way `biz.board.movedTo` says it should. `title`
+	 * carries the numeral because `merchant-order-row.tsx` prints it separately and a bare
+	 * reference is not the number the counter recognises.
+	 */
+	"biz.board.newOrder.title": "New order #{reference}",
+	"biz.board.newOrder.meta": "{total} · {items}",
+	/* The banner's one control: the door into the order. "Review" and not "Look". */
+	"biz.board.newOrder.review": "Review",
 	/* A move that went through: the row changed it, the ear confirms it. */
 	"biz.board.movedTo": "Order moved to {status}",
 	/* Each board column's header; the separator lives here, not in the code. */
@@ -146,9 +163,10 @@ export const business = {
 	"biz.products.category.help": "Your shop's line: {sector}.",
 	"biz.products.photo": "Photo",
 	"biz.products.photo.add": "Add photo",
+	/* Teaches the two controls now, not a pasted link — see the Spanish file's note. */
 	"biz.products.photo.help":
-		"Paste the photo's https link; the preview shows right here.",
-	"biz.products.photo.rule": "Must be an https URL or an internal path (/…).",
+		"Pick one from your gallery or take one with the camera.",
+	"biz.products.photo.rule": "Choose a JPEG, PNG or WebP image up to 2 MB.",
 	"biz.products.sku": "Internal code",
 	"biz.products.prepTime": "Preparation time",
 	"biz.products.trackStock": "Track inventory",
@@ -202,7 +220,11 @@ export const business = {
 	"biz.settings.description": "Description",
 	"biz.settings.logo": "Logo",
 	"biz.settings.cover": "Cover image",
+	/* See the Spanish file's note: the same two acts, said where they are shown. */
+	"biz.settings.photo.help":
+		"Pick one from your gallery or take one with the camera.",
 	"biz.settings.category": "Main category",
+	"biz.settings.contact": "Contact",
 	"biz.settings.phone": "Phone",
 	"biz.settings.whatsapp": "WhatsApp",
 	"biz.settings.email": "Contact email",
@@ -276,6 +298,10 @@ export const business = {
 		"Orders and products, without touching the team",
 	"biz.staff.role.STAFF.help": "Only see and advance orders",
 	"biz.staff.changeRole": "Change role",
+	"biz.staff.owner.confirm.title": "Make {name} an owner?",
+	"biz.staff.owner.confirm.body":
+		"They will be able to manage the team, business settings, and payouts.",
+	"biz.staff.owner.confirm.action": "Make owner",
 	"biz.staff.remove": "Remove from team",
 	"biz.staff.remove.confirm": "Remove {name} from the team?",
 	"biz.staff.cantRemoveOwner": "You can't remove yourself as owner",
@@ -346,6 +372,43 @@ export const business = {
 	"biz.courier.pending.title": "No shop has added you yet",
 	"biz.courier.pending.body":
 		"Ask the shop to add you as a courier with the email you signed in with.",
+	"biz.courier.location.title": "Share your location during delivery",
+	"biz.courier.location.body":
+		"The customer can see your position while the order is on the way. Updates stop when the delivery is completed.",
+	"biz.courier.location.unavailable":
+		"Turn on your phone's GPS to share your position during this delivery.",
+	"biz.courier.location.action": "Allow location",
+
+	/* The courier's own profile: identity, vehicle, and the review mark on it. */
+	"biz.courier.profile": "Courier profile",
+	"biz.courier.profileTitle": "Courier profile",
+	"biz.courier.profileSubtitle":
+		"Your profile is shown to businesses only when you allow it.",
+	"biz.courier.displayName": "Name businesses see",
+	"biz.courier.serviceArea": "Where you deliver",
+	"biz.courier.bio": "About you",
+	"biz.courier.bio.help": "A short line helps a business choose you.",
+	"biz.courier.vehicle": "Vehicle",
+	"biz.courier.vehicleName": "Vehicle name",
+	"biz.courier.vehiclePlate": "Plate",
+	"biz.courier.vehiclePhoto": "Vehicle photo",
+	"biz.courier.vehiclePhoto.add": "Add photo",
+	"biz.courier.vehiclePhoto.change": "Change photo",
+	"biz.courier.vehiclePhoto.remove": "Remove photo",
+	"biz.courier.vehiclePhoto.tooLarge": "Use a smaller photo, up to 2 MB.",
+	"biz.courier.availability": "Availability",
+	"biz.courier.available": "Available for invitations",
+	"biz.courier.unavailable": "Not available right now",
+	"biz.courier.save": "Save profile",
+	"biz.courier.saved": "Profile saved",
+	"biz.courier.reviewPending": "Review pending",
+	"biz.courier.reviewPending.body":
+		"PymesHub reviews your profile before it appears in the directory.",
+	"biz.courier.verified": "Verified profile",
+	"biz.courier.rejected": "Profile not approved",
+	"biz.courier.rejected.body":
+		"Update your details and send them for review again.",
+	"biz.courier.directoryVerified": "Verified by PymesHub",
 
 	/* A refused move that is not the conflict below — see the Spanish file's note. */
 	"biz.board.moveFailed": "We couldn't move the order",
@@ -399,6 +462,7 @@ export const business = {
 	"biz.new.submit": "Create business",
 
 	/* The address fields, which `biz.settings.address` introduces but does not name. */
+	"biz.settings.line1": "Street address",
 	"biz.settings.line2": "Landmark or extra detail",
 	"biz.settings.city": "City",
 	"biz.settings.region": "Province",
@@ -436,8 +500,23 @@ export const business = {
 	/* The chart column's voice: the bar is the view; the figure is the speech. */
 	"biz.analytics.chartDay": "{day}: {amount}",
 
+	"biz.more.loading": "Loading",
 	"biz.more.title": "More",
+	"biz.more.auditHistory": "Audit history",
+	"biz.more.subtitle": "Changes and who made them",
+	"biz.auditHistory.emptyState": "No changes recorded yet.",
+	"biz.auditHistory.actor": "Person",
+	"biz.auditHistory.action": "Action",
+	"biz.auditHistory.targetType": "Target type",
+	"biz.auditHistory.targetId": "Target ID",
+	"biz.auditHistory.timestamp": "Timestamp",
+	"biz.auditHistory.before": "Before",
+	"biz.auditHistory.after": "After",
+	"biz.auditHistory.reason": "Reason",
 	"biz.more.business": "Business",
+	"biz.more.signOut": "Sign out",
+	"biz.more.signOutConfirm": "Sign out of PymesHub?",
+	"biz.more.signOutBody": "You can sign in again anytime.",
 	"biz.locations.title": "Locations",
 	"biz.locations.select": "Select location",
 	"biz.locations.current": "Current",
@@ -457,8 +536,52 @@ export const business = {
 	"biz.locations.status.paused_platform": "Paused by the platform",
 	"biz.locations.status.offline": "Offline",
 	"biz.locations.status.suspended": "Suspended",
+	"biz.promotions.title": "Promotions",
+	"biz.promotions.subtitle": "Your shop's discount codes",
+	"biz.promotions.add": "Create promotion",
+	"biz.promotions.edit": "Edit promotion",
+	"biz.promotions.empty.title": "No promotions yet",
+	"biz.promotions.empty.body":
+		"Create a code your customers can use at checkout.",
+	"biz.promotions.code": "Code",
+	"biz.promotions.code.help":
+		"What the customer types at checkout. Stored in uppercase.",
+	"biz.promotions.kind": "Discount type",
+	"biz.promotions.kind.PERCENT": "Percentage",
+	"biz.promotions.kind.FIXED": "Fixed amount",
+	"biz.promotions.kind.FREE_DELIVERY": "Free delivery",
+	"biz.promotions.value": "Discount",
+	"biz.promotions.value.percent": "1 to 100",
+	"biz.promotions.value.fixed": "In your shop's currency",
+	"biz.promotions.minOrder": "Minimum order",
+	"biz.promotions.minOrder.help": "Blank: any order.",
+	"biz.promotions.maxRedemptions": "Maximum uses",
+	"biz.promotions.maxRedemptions.help": "Blank: unlimited.",
+	"biz.promotions.used": "{count} use",
+	"biz.promotions.used_plural": "{count} uses",
+	"biz.promotions.usedOf": "{count} of {max} used",
+	"biz.promotions.open": "Active",
+	"biz.promotions.paused": "Paused",
+	"biz.promotions.pause": "Pause",
+	"biz.promotions.resume": "Resume",
+	"biz.promotions.pausedToast": "Promotion paused",
+	"biz.promotions.resumedToast": "Promotion resumed",
+	"biz.promotions.created": "Promotion created",
+	"biz.promotions.saved": "Promotion saved",
+	"biz.promotions.code.required": "Enter a code of at least 3 characters.",
+	"biz.promotions.value.percent.rule":
+		"The discount must be between 1 and 100.",
+	"biz.promotions.value.fixed.rule": "The discount must be greater than zero.",
+	"biz.promotions.number.rule": "Enter a valid number.",
+	"biz.promotions.code.taken": "A promotion with that code already exists.",
+	"biz.more.empty.title": "No business to manage yet",
+	"biz.more.empty.body":
+		"Create a business to manage its settings, team, payouts and reviews.",
+	"biz.more.empty.action": "Create business",
 	"biz.more.settingsDelivery": "Settings and delivery",
 	"biz.more.settingsFallback": "Business configuration",
+	"biz.more.shopSubtitle": "Name, photos, category and address",
+	"biz.more.hoursSubtitle": "Opening and closing each day",
 	"biz.more.catalog": "Catalog",
 	"biz.more.catalogSubtitle": "Products, stock and availability",
 	"biz.more.moneyPeople": "Money and people",
@@ -475,6 +598,10 @@ export const business = {
 	"biz.more.account": "Account",
 	"biz.more.profile": "Profile",
 	"biz.more.profileSubtitle": "Personal account settings",
+	"biz.more.settings": "Settings",
+	"biz.more.settingsSubtitle": "Theme, notifications and privacy",
+	"biz.more.support": "Support",
+	"biz.more.supportSubtitle": "Help, safety and common questions",
 
 	/* The product form, which is not the business settings form. */
 	"biz.products.save": "Save product",

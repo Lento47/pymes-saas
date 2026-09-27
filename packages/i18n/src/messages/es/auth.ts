@@ -20,6 +20,14 @@ export const auth = {
 	"auth.signUp.submit": "Crear cuenta",
 	"auth.signUp.hasAccount": "¿Ya tienes cuenta?",
 
+	"auth.signUp.business.title": "Registra tu negocio",
+	"auth.signUp.business.subtitle": "Crea una cuenta para abrir tu tienda.",
+	"auth.signUp.delivery.title": "Regístrate como repartidor",
+	"auth.signUp.delivery.subtitle": "Crea una cuenta para aceptar entregas.",
+	"auth.signUp.notCustomer": "¿No eres cliente?",
+	"auth.signUp.businessOption": "Regístrate como negocio",
+	"auth.signUp.courierOption": "Regístrate como repartidor",
+
 	"auth.field.email": "Correo",
 	"auth.field.email.placeholder": "tu@correo.com",
 	"auth.field.password": "Contraseña",
@@ -42,8 +50,13 @@ export const auth = {
 	 */
 	"auth.role.label": "¿Para qué entras?",
 	"auth.role.customer": "Cliente",
+	"auth.role.business": "Negocio",
 	"auth.role.delivery": "Repartidor",
 	"auth.role.deliveryHelp": "Solo para aceptar y entregar pedidos.",
+
+	"auth.provider.label": "Entrar con",
+	"auth.provider.marketplace": "Marketplace",
+	"auth.provider.supabase": "Supabase",
 
 	/**
 	 * One message for both failure modes, deliberately. See the note at the top of
@@ -84,6 +97,15 @@ export const auth = {
 	"account.profile.name": "Nombre",
 	"account.profile.email": "Correo",
 	"account.profile.phone": "Teléfono",
+	/*
+	 * The picture, and the sentence under it. The help is the same wording
+	 * `biz.products.photo.help` carries because it is the same two acts on the same
+	 * kind of control; the key lives here because the thing being pictured is the
+	 * reader rather than a product.
+	 */
+	"account.profile.photo": "Foto de perfil",
+	"account.profile.photo.help":
+		"Elige una de tu galería o toma una con la cámara.",
 	"account.profile.emailLocked": "Tu correo no se cambia desde aquí",
 	"account.addresses.title": "Direcciones",
 	"account.addresses.add": "Agregar dirección",

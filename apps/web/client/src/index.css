@@ -484,8 +484,116 @@ html.light .dash-card {
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
-/* Bottom nav clearance: 52px nav height + home-indicator safe area (0 on older phones, 21–34px on iPhone X+) */
-.pb-nav-safe { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+/* Keep content and keyboard focus above the persistent mobile navigation. */
+.pb-nav-safe { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+.mobile-bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.mobile-feature-sheet { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.mobile-tab { touch-action: manipulation; transition: transform 140ms ease, background-color 140ms ease, color 140ms ease; }
+.mobile-tab:active { transform: scale(0.97); }
+.account-page :is(button, input, select, a):focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
+}
+.account-page [role="switch"]::before { content: ""; position: absolute; inset: -10px -2px; }
+.account-page [role="switch"] { position: relative; }
+.account-page input, .account-page select { font-size: 16px; }
+.account-page .text-sm { font-size: 14px; }
+.account-page h1 { font-size: 28px; }
+.task-page :is(input, select), .task-editor :is(input, select, textarea) { font-size: 16px; }
+.task-page h1 { font-size: 28px; }
+.invoice-page { font-size: 16px; }
+.inbox-page { font-size: 16px; }
+.inbox-page .text-base, .inbox-page :is(input, textarea, select) { font-size: 16px; }
+.inbox-page .text-sm, .inbox-filters .text-sm { font-size: 14px; }
+.inbox-page .text-xs { font-size: 12px; }
+.inbox-page :is(button, input, textarea, select, summary):focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+html[data-large-text="true"] .inbox-page .text-base,
+html[data-large-text="true"] .inbox-page :is(input, textarea, select) { font-size: 18px; }
+html[data-large-text="true"] .inbox-page .text-sm,
+html[data-large-text="true"] .inbox-filters .text-sm { font-size: 16px; }
+html[data-large-text="true"] .inbox-page .text-xs { font-size: 14px; }
+.invoice-editor { font-size: 16px; }
+.invoice-confirm { font-size: 16px; }
+.invoice-confirm .text-sm { font-size: 14px; }
+.invoice-confirm input { font-size: 16px; }
+html[data-large-text="true"] .invoice-confirm .text-sm { font-size: 16px; }
+html[data-large-text="true"] .invoice-confirm input { font-size: 18px; }
+.invoice-editor .text-sm { font-size: 14px; }
+.invoice-editor :is(input, textarea, select), .invoice-editor .text-base { font-size: 16px; }
+.invoice-editor :is(button, input, textarea, select):focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+html[data-large-text="true"] .invoice-editor .text-sm { font-size: 16px; }
+html[data-large-text="true"] .invoice-editor :is(input, textarea, select) { font-size: 18px; }
+.invoice-page .text-sm, .invoice-detail .text-sm, .invoice-menu { font-size: 14px; }
+.invoice-page .text-base, .invoice-detail input, .invoice-detail textarea { font-size: 16px; }
+.invoice-page h1 { font-size: 28px; }
+.invoice-detail > button { min-width: 44px; min-height: 44px; top: 8px; right: 8px; }
+.invoice-detail .text-muted-foreground\/60 { color: hsl(var(--muted-foreground)); }
+.invoice-page [data-testid^="status-badge-"], .invoice-detail [data-testid^="status-badge-"] { font-size: 13px !important; color: inherit !important; line-height: 1.4 !important; white-space: normal !important; }
+.invoice-page :is(button, input, select, summary):focus-visible,
+.invoice-detail :is(button, input, textarea):focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+html[data-large-text="true"] .invoice-page,
+html[data-large-text="true"] .invoice-detail { font-size: 18px; }
+html[data-large-text="true"] :is(.invoice-page, .invoice-detail) .text-sm { font-size: 16px; }
+html[data-large-text="true"] .invoice-detail input { font-size: 18px; }
+.home-page h1 { font-size: 28px; }
+.home-page .text-sm { font-size: 14px; }
+.home-page .text-lg { font-size: 18px; }
+.home-page :is(button, a):focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+.task-page .text-sm, .task-editor .text-sm { font-size: 14px; }
+.task-page .text-base { font-size: 16px; }
+html[data-large-text="true"] .task-page .text-base { font-size: 18px; }
+.task-page :is(button, summary, input, select):focus-visible,
+.task-editor :is(button, input, select, textarea):focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+html[data-large-text="true"] .task-editor .text-sm { font-size: 16px; }
+html[data-large-text="true"] .auth-ui { font-size: 18px; }
+html[data-large-text="true"] .auth-ui .text-sm { font-size: 1rem; }
+html[data-large-text="true"] .auth-ui .text-xs { font-size: 0.875rem; }
+html[data-large-text="true"] .account-page input { font-size: 1.125rem; }
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-reduced-motion="true"] .mobile-tab:active { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .mobile-tab:active { transform: none; }
+}
+@media (max-width: 1023px) {
+  .auth-ui, .mobile-feature-sheet, .app-overlay {
+    --bg: 0 0% 7%; --fg: 0 0% 96%; --fg-2: 0 0% 70%; --fg-3: 0 0% 60%;
+    --bg-card: 0 0% 11%; --bg-elevated: 0 0% 16%; --bg-hover: 0 0% 20%; --bg-active: 0 0% 22%;
+    --accent: 38 92% 50%; --accent-fg: 0 0% 7%;
+    --background: 0 0% 7%; --foreground: 0 0% 96%;
+    --card: 0 0% 11%; --card-foreground: 0 0% 96%;
+    --muted: 0 0% 16%; --muted-foreground: 0 0% 70%;
+    --border: 0 0% 25%; --input: 0 0% 25%;
+    --primary: 38 92% 50%; --primary-foreground: 0 0% 7%;
+    --bg-sidebar: 0 0% 7%; --sidebar-background: 0 0% 7%;
+    background-image: none;
+    color-scheme: dark;
+  }
+  html.light .auth-ui, html.light .mobile-feature-sheet, html.light .app-overlay {
+    --bg: 0 0% 96%; --fg: 0 0% 9%; --fg-2: 0 0% 35%; --fg-3: 0 0% 40%;
+    --bg-card: 0 0% 100%; --bg-elevated: 0 0% 94%; --bg-hover: 0 0% 91%; --bg-active: 0 0% 88%;
+    --background: 0 0% 96%; --foreground: 0 0% 9%;
+    --card: 0 0% 100%; --card-foreground: 0 0% 9%;
+    --muted: 0 0% 91%; --muted-foreground: 0 0% 35%;
+    --border: 0 0% 80%; --input: 0 0% 80%;
+    --bg-sidebar: 0 0% 100%; --sidebar-background: 0 0% 100%;
+    color-scheme: light;
+  }
+  .auth-ui header { padding-top: max(10px, env(safe-area-inset-top)); }
+  .auth-ui .pb-nav-safe { scroll-padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
 
 /* Minimal scrollbars for app shell surfaces */
 * {

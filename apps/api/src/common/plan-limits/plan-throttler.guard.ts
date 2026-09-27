@@ -23,7 +23,7 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     reflector: Reflector,
     private readonly prisma: PrismaService,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     super(options as any, storageService as any, reflector);
   }
 

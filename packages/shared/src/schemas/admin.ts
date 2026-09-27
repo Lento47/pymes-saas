@@ -29,7 +29,14 @@ export const ADMIN_ACTIONS = [
 	"order.cancel",
 	"order.refund",
 	"product.unpublish",
-	"payout.mark_paid",
+	/**
+	 * Was `payout.mark_paid`. Recording that a merchant paid is still an audited act —
+	 * it is money — so the action survives under a name that matches the model. There
+	 * is no `payout.*` action left because there is no payout: the consumer pays the
+	 * merchant and the courier, and the platform invoices a flat subscription.
+	 */
+	"subscription.record_payment",
+	"subscription.create_price_book",
 	"category.create",
 	"category.update",
 	"category.delete",
@@ -41,7 +48,7 @@ export const auditLogEntrySchema = z.object({
 	id: z.string(),
 	actorId: z.string(),
 	actorName: z.string().nullable(),
-	action: adminActionSchema,
+	action: z.string(),
 	targetType: z.string(),
 	targetId: z.string(),
 	/** What it said before and after. Free-form because the targets differ; rendered as a diff. */
@@ -61,7 +68,14 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	"business.delete",
 	"user.suspend",
 	"order.cancel",
-	"payout.mark_paid",
+	"subscription.record_payment",
+	/**
+	 * A price rise changes what every future merchant pays, so it carries a reason the
+	 * same way removing a storefront does. Without one, "why is everyone being charged
+	 * ₡20,000" has no answer in the audit log, which is the only place it can be
+	 * answered from.
+	 */
+	"subscription.create_price_book",
 ];
 
 export const adminListInput = z.object({
@@ -195,19 +209,12 @@ export const adminCategoryInput = z.object({
 });
 export type AdminCategoryInput = z.infer<typeof adminCategoryInput>;
 
-/** A payout run. Recording that it happened is the point; moving the money is not this system's job yet. */
-export const payoutSchema = z.object({
-	id: z.string(),
-	businessId: z.string(),
-	businessName: z.string(),
-	currency: currencySchema,
-	amountMinor: z.number().int(),
-	orderCount: z.number().int(),
-	periodStart: z.date(),
-	periodEnd: z.date(),
-	status: z.enum(["PENDING", "PAID", "FAILED"]),
-	paidAt: z.date().nullable(),
-	method: z.string().nullable(),
-	reference: z.string().nullable(),
-});
-export type Payout = z.infer<typeof payoutSchema>;
+// `payoutSchema` stood here and described a run of settled commission — a gross, a
+// platform fee, a net, and an order count. That was the wrong business: the consumer
+// pays the merchant for products and the courier for delivery, and the platform
+// invoices a flat subscription for the app. There is no gross to settle and no share
+// to compute, so the whole shape is gone rather than renamed.
+//
+// Its replacements are two files, because the two audiences ask different questions:
+//   - `schemas/subscription.ts` — what a merchant is told about their own billing.
+//   - `schemas/admin-subscription.ts` — what an operator is told, including arrears.

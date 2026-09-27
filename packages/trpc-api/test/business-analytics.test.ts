@@ -70,8 +70,12 @@ async function addOrder(
 test("analytics scopes every aggregate to its location and refuses foreign locations", async () => {
 	const testWorld = world();
 	try {
+		// Two branches, for the same reason as `business-home`: **no plan allows a second
+		// one**, and the spec is about whether an aggregate is scoped rather than about
+		// how many branches a merchant may open.
 		const businessId = await seedBusiness(testWorld.db, {
 			id: "biz_analytics",
+			raiseLimits: { locations: 3 },
 		});
 		const foreignBusinessId = await seedBusiness(testWorld.db, {
 			id: "biz_analytics_foreign",

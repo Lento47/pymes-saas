@@ -214,6 +214,16 @@ export const orderDetailSchema = orderSummarySchema.extend({
 	}),
 	items: z.array(orderItemSchema),
 	totals: orderTotalsSchema,
+	pickupLocation: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			line1: z.string().nullable(),
+			city: z.string().nullable(),
+			lat: z.number().nullable(),
+			lng: z.number().nullable(),
+		})
+		.nullable(),
 	deliveryAddress: orderAddressSchema.nullable(),
 	pickupCode: z.string().nullable(),
 	courier: z
@@ -407,6 +417,19 @@ export const orderStatsSchema = z.object({
 			currency: currencySchema,
 			revenueMinor: z.number().int(),
 			orderCount: z.number().int().min(0),
+		}),
+	),
+	/**
+	 * Current UTC day against the immediately preceding UTC day, grouped by the
+	 * currency stored on the orders. The separate array keeps currencies that only
+	 * occurred yesterday visible even when today's revenue is zero.
+	 */
+	todayComparisonByCurrency: z.array(
+		z.object({
+			currency: currencySchema,
+			salesDeltaPct: z.number().nullable(),
+			ordersDelta: z.number().int(),
+			ticketDeltaPct: z.number().nullable(),
 		}),
 	),
 });

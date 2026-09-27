@@ -64,6 +64,7 @@ import {
 	inArray,
 	isNull,
 	like,
+	lt,
 	lte,
 	type SQL,
 	sql,
@@ -1358,47 +1359,127 @@ export async function stats(
 		...(input.locationId ? [eq(orderTable.locationId, input.locationId)] : []),
 	];
 	const todayStart = startOfUtcDay(new Date());
+	const previousStart = new Date(todayStart.getTime() - 86_400_000);
 
-	const [active, today, revenue, todayRevenue] = await Promise.all([
-		ctx.db
-			.select({ count: sql<number>`count(*)` })
-			.from(orderTable)
-			.where(and(...scope, inArray(orderTable.status, [...ACTIVE_STATUSES]))),
-		ctx.db
-			.select({ count: sql<number>`count(*)` })
-			.from(orderTable)
-			.where(and(...scope, gte(orderTable.placedAt, todayStart))),
-		ctx.db
-			.select({
-				currency: orderTable.currency,
-				revenueMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
-				orderCount: sql<number>`count(*)`,
-			})
-			.from(orderTable)
-			// Completed only: a cancelled or refused order never became revenue, and a board
-			// that counts it is a board the owner stops trusting.
-			.where(and(...scope, eq(orderTable.status, "COMPLETED")))
-			.groupBy(orderTable.currency),
-		// Today's completed revenue, for the merchant home's pulse band: the same
-		// COMPLETED-only meaning as the all-time query below, scoped to the UTC day
-		// `today` above is counted against. A client-side sum over a listed page is
-		// not this — a page is not the day, and the day is not a page.
-		ctx.db
-			.select({
-				currency: orderTable.currency,
-				revenueMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
-				orderCount: sql<number>`count(*)`,
-			})
-			.from(orderTable)
-			.where(
-				and(
-					...scope,
-					eq(orderTable.status, "COMPLETED"),
-					gte(orderTable.placedAt, todayStart),
-				),
-			)
-			.groupBy(orderTable.currency),
-	]);
+	const [active, today, revenue, todayRevenue, previousRevenue] =
+		await Promise.all([
+			ctx.db
+				.select({ count: sql<number>`count(*)` })
+				.from(orderTable)
+				.where(and(...scope, inArray(orderTable.status, [...ACTIVE_STATUSES]))),
+			ctx.db
+				.select({ count: sql<number>`count(*)` })
+				.from(orderTable)
+				.where(and(...scope, gte(orderTable.placedAt, todayStart))),
+			ctx.db
+				.select({
+					currency: orderTable.currency,
+					revenueMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
+					orderCount: sql<number>`count(*)`,
+				})
+				.from(orderTable)
+				// Completed only: a cancelled or refused order never became revenue, and a board
+				// that counts it is a board the owner stops trusting.
+				.where(and(...scope, eq(orderTable.status, "COMPLETED")))
+				.groupBy(orderTable.currency),
+			// Today's completed revenue, for the merchant home's pulse band: the same
+			// COMPLETED-only meaning as the all-time query below, scoped to the UTC day
+			// `today` above is counted against. A client-side sum over a listed page is
+			// not this — a page is not the day, and the day is not a page.
+			ctx.db
+				.select({
+					currency: orderTable.currency,
+					revenueMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
+					orderCount: sql<number>`count(*)`,
+				})
+				.from(orderTable)
+				.where(
+					and(
+						...scope,
+						eq(orderTable.status, "COMPLETED"),
+						gte(orderTable.placedAt, todayStart),
+					),
+				)
+				.groupBy(orderTable.currency),
+			ctx.db
+				.select({
+					currency: orderTable.currency,
+					revenueMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
+					orderCount: sql<number>`count(*)`,
+				})
+				.from(orderTable)
+				.where(
+					and(
+						...scope,
+						eq(orderTable.status, "COMPLETED"),
+						gte(orderTable.placedAt, previousStart),
+						lt(orderTable.placedAt, todayStart),
+					),
+				)
+				.groupBy(orderTable.currency),
+		]);
+
+	const currentByCurrency = new Map(
+		todayRevenue.map((row) => [
+			row.currency,
+			{
+				revenueMinor: Number(row.revenueMinor),
+				orderCount: Number(row.orderCount),
+			},
+		]),
+	);
+	const previousByCurrency = new Map(
+		previousRevenue.map((row) => [
+			row.currency,
+			{
+				revenueMinor: Number(row.revenueMinor),
+				orderCount: Number(row.orderCount),
+			},
+		]),
+	);
+	const todayComparisonByCurrency = [
+		...new Set([...currentByCurrency.keys(), ...previousByCurrency.keys()]),
+	].map((currency) => {
+		const current = currentByCurrency.get(currency) ?? {
+			revenueMinor: 0,
+			orderCount: 0,
+		};
+		const previous = previousByCurrency.get(currency) ?? {
+			revenueMinor: 0,
+			orderCount: 0,
+		};
+		const currentTicketMinor =
+			current.orderCount > 0
+				? Math.round(current.revenueMinor / current.orderCount)
+				: null;
+		const previousTicketMinor =
+			previous.orderCount > 0
+				? Math.round(previous.revenueMinor / previous.orderCount)
+				: null;
+
+		return {
+			currency,
+			salesDeltaPct:
+				previous.revenueMinor === 0
+					? null
+					: Math.round(
+							((current.revenueMinor - previous.revenueMinor) /
+								previous.revenueMinor) *
+								100,
+						),
+			ordersDelta: current.orderCount - previous.orderCount,
+			ticketDeltaPct:
+				previousTicketMinor === null || previousTicketMinor === 0
+					? null
+					: currentTicketMinor === null
+						? null
+						: Math.round(
+								((currentTicketMinor - previousTicketMinor) /
+									previousTicketMinor) *
+									100,
+							),
+		};
+	});
 
 	return {
 		active: Number(active[0]?.count ?? 0),
@@ -1413,6 +1494,7 @@ export async function stats(
 			revenueMinor: Number(row.revenueMinor),
 			orderCount: Number(row.orderCount),
 		})),
+		todayComparisonByCurrency,
 	};
 }
 
@@ -1897,33 +1979,46 @@ async function detail(
 		),
 	];
 
-	const [business, customer, address, staff] = await Promise.all([
-		ctx.db
-			.select()
-			.from(businessTable)
-			.where(eq(businessTable.id, row.businessId))
-			.limit(1),
-		ctx.db
-			.select()
-			.from(userTable)
-			.where(eq(userTable.id, row.customerId))
-			.limit(1),
-		row.addressId
-			? ctx.db
-					.select()
-					.from(addressTable)
-					.where(eq(addressTable.id, row.addressId))
-					.limit(1)
-			: Promise.resolve([]),
-		// The names on the events, in one read. A member who leaves keeps their name on the
-		// events they wrote, which is why `orderDetailOf` takes it denormalised.
-		actorIds.length > 0
-			? ctx.db
-					.select({ id: userTable.id, name: userTable.name })
-					.from(userTable)
-					.where(inArray(userTable.id, actorIds))
-			: Promise.resolve([]),
-	]);
+	const [business, customer, address, pickupLocation, staff] =
+		await Promise.all([
+			ctx.db
+				.select()
+				.from(businessTable)
+				.where(eq(businessTable.id, row.businessId))
+				.limit(1),
+			ctx.db
+				.select()
+				.from(userTable)
+				.where(eq(userTable.id, row.customerId))
+				.limit(1),
+			row.addressId
+				? ctx.db
+						.select()
+						.from(addressTable)
+						.where(eq(addressTable.id, row.addressId))
+						.limit(1)
+				: Promise.resolve([]),
+			row.locationId
+				? ctx.db
+						.select()
+						.from(locationTable)
+						.where(
+							and(
+								eq(locationTable.id, row.locationId),
+								eq(locationTable.businessId, row.businessId),
+							),
+						)
+						.limit(1)
+				: Promise.resolve([]),
+			// The names on the events, in one read. A member who leaves keeps their name on the
+			// events they wrote, which is why `orderDetailOf` takes it denormalised.
+			actorIds.length > 0
+				? ctx.db
+						.select({ id: userTable.id, name: userTable.name })
+						.from(userTable)
+						.where(inArray(userTable.id, actorIds))
+				: Promise.resolve([]),
+		]);
 
 	const nameOf = new Map(staff.map((user) => [user.id, user.name]));
 
@@ -1937,6 +2032,7 @@ async function detail(
 			phone: customer[0]?.phone ?? null,
 		},
 		deliveryAddress: address[0] ?? null,
+		pickupLocation: pickupLocation[0] ?? null,
 		events: events.map((event) => ({
 			row: event,
 			actorName: event.actorUserId

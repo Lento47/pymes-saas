@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { HelpButton } from "@/components/shared/help-button";
 import { EmptyState } from "@/components/shared/empty-state";
+import { SearchInput } from "@/components/shared/search-input";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Link } from "wouter";
-import { Users, Plus, Search, Loader2, MoreHorizontal, Pencil, Trash, Upload } from "lucide-react";
+import { Users, Plus, Loader2, MoreHorizontal, Pencil, Trash, Upload } from "lucide-react";
 import { format } from "date-fns";
 import CsvImportModal from "@/components/import/csv-import-modal";
 
@@ -132,16 +133,15 @@ export default function ContactsPage() {
 
       <div className="px-4 md:px-6 py-4 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
-          <Input
-            placeholder="Buscar contactos..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-xs bg-card border-border"
-            data-testid="input-search-contacts"
-          />
-        </div>
+        <SearchInput
+          placeholder="Buscar contactos..."
+          value={search}
+          onValueChange={setSearch}
+          wrapperClassName="flex-1 max-w-xs"
+          className="h-8 text-xs bg-card border-border"
+          clearLabel="Limpiar búsqueda"
+          data-testid="input-search-contacts"
+        />
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs bg-card border-border" data-testid="select-type-filter">
             <SelectValue />

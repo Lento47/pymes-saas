@@ -1,6 +1,8 @@
 import type { ChannelTab, InboxConversation } from "../types";
 import { ConversationListItem } from "./ConversationListItem";
 import { ConversationEmptyState } from "./ConversationEmptyState";
+import { Button } from "@/components/ui/button";
+import type { RefObject } from "react";
 
 function ConversationListSkeleton() {
   return (
@@ -27,30 +29,30 @@ export function ConversationList({
   selectedId,
   onSelect,
   channelTab,
+  isError, isFetching, onRetry, total, page, pages, onPageChange, scrollRef,
 }: {
   conversations: InboxConversation[];
   isLoading: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
   channelTab: ChannelTab;
+  isError: boolean; isFetching: boolean; onRetry: () => void;
+  total: number; page: number; pages: number; onPageChange: (page: number) => void;
+  scrollRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
-    <section className="flex min-h-0 flex-col bg-muted/20 md:bg-card">
-      <div className="hidden shrink-0 items-center justify-between border-b border-border px-4 py-3 md:flex">
+    <section aria-label="Lista de conversaciones" className="flex min-h-0 flex-1 flex-col bg-muted/20 md:bg-card">
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Conversaciones</h2>
-          {!isLoading && (
-            <p className="mt-0.5 text-xs text-muted-foreground/70">
-              {conversations.length} {conversations.length === 1 ? "encontrada" : "encontradas"}
-            </p>
-          )}
+          <p role="status" className="text-sm text-muted-foreground">{isLoading ? "Cargando conversaciones…" : isError ? "No se pudo actualizar la bandeja" : `${total} ${total === 1 ? "conversación" : "conversaciones"}`}</p>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto minimal-scrollbar">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto minimal-scrollbar">
+        {isError && <div role="alert" className="space-y-3 p-4"><p className="text-sm">No se pudieron cargar las conversaciones. {conversations.length > 0 && "La lista anterior puede estar desactualizada."}</p><Button className="min-h-12" variant="outline" onClick={onRetry} disabled={isFetching}>Reintentar conversaciones</Button></div>}
         {isLoading ? (
           <ConversationListSkeleton />
-        ) : conversations.length === 0 ? (
+        ) : conversations.length === 0 && !isError ? (
           <ConversationEmptyState channelTab={channelTab} />
         ) : (
           <div className="space-y-2 px-3 py-3 md:space-y-0 md:px-0 md:py-0">
@@ -65,6 +67,11 @@ export function ConversationList({
           </div>
         )}
       </div>
+      {pages > 1 && <nav aria-label="Páginas de conversaciones" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-background p-3">
+        <Button className="min-h-11" variant="outline" disabled={page <= 1 || isLoading} onClick={() => onPageChange(page - 1)}>Anterior</Button>
+        <span className="text-sm text-muted-foreground">{page} de {pages}</span>
+        <Button className="min-h-11" variant="outline" disabled={page >= pages || isLoading} onClick={() => onPageChange(page + 1)}>Siguiente</Button>
+      </nav>}
     </section>
   );
 }

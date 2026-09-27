@@ -1,6 +1,7 @@
-import { Test, TestingModule } from "@nestjs/testing";
+import type { TestingModule } from "@nestjs/testing";
+import { Test } from "@nestjs/testing";
 import { getQueueToken } from "@nestjs/bullmq";
-import { Job } from "bullmq";
+import type { Job } from "bullmq";
 import { HaciendaProcessor } from "./hacienda.processor";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { StorageService } from "../../common/storage/storage.service";

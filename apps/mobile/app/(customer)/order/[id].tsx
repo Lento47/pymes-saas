@@ -6,7 +6,7 @@ import {
 	type PaymentMethod,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
 	Linking,
@@ -33,6 +33,7 @@ import { ReorderOutcome } from "@/components/reorder-outcome";
 import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
+import { StarMarks } from "@/components/star-input";
 import { statusForeground, statusKey } from "@/components/status-badge";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
@@ -46,6 +47,7 @@ import {
 	icon,
 	MIN_TOUCH_TARGET,
 	media,
+	radius,
 	space,
 	TEXT_STACK_GAP,
 	type,
@@ -335,6 +337,24 @@ function OrderDetail() {
 				}
 			: null;
 	const fresh = ping ? Date.now() - ping.at.getTime() < FRESH_MS : false;
+	const pickupPoint =
+		order.pickupLocation?.lat != null && order.pickupLocation.lng != null
+			? {
+					lat: order.pickupLocation.lat,
+					lng: order.pickupLocation.lng,
+				}
+			: null;
+	const destinationPoint =
+		order.deliveryAddress?.lat != null && order.deliveryAddress.lng != null
+			? {
+					lat: order.deliveryAddress.lat,
+					lng: order.deliveryAddress.lng,
+				}
+			: null;
+	const deliveryRoute =
+		pickupPoint && destinationPoint
+			? { pickup: pickupPoint, destination: destinationPoint }
+			: null;
 
 	/**
 	 * When each step was reached, for the rail's per-step times.
@@ -367,23 +387,37 @@ function OrderDetail() {
 		: "tracking.estimate.ready.otherDay";
 
 	/**
-	 * Which bar this order gets, and the comment that used to stand here.
+	 * Which bar this order gets, and the two facts that pick it.
 	 *
-	 * It said a terminal order had no action left because "there is no reorder endpoint and no
-	 * review route in this app yet". Half of that is now false: `orders.reorder` exists, takes
-	 * `{ orderId, onBusinessConflict }` and answers with the lines it could not bring back, so a
-	 * finished order is not a dead end and the spacer that used to stand where its bar would have
-	 * been is gone with it. The review half is still true — `orderDetailSchema.review` and
-	 * `reviews.list` are both read surfaces and this app has no screen that writes one, so nothing
-	 * here offers to. A control that exists only to look like one is still the thing to avoid; the
-	 * difference is that it is no longer the whole story on this screen.
+	 * A finished order is not a dead end any more. `orders.reorder` exists, takes
+	 * `{ orderId, onBusinessConflict }` and answers with the lines it could not bring back, and
+	 * `app/(customer)/review/[orderId].tsx` writes the review this screen used to have no route
+	 * for -- so the comment that used to stand here, saying a terminal order had nothing left to
+	 * do because "there is no reorder endpoint and no review route in this app yet", is gone with
+	 * the half of it that was wrong and the half that has been overtaken. A control that exists
+	 * only to look like one is still the thing to avoid; the difference is that both of the
+	 * controls on offer now do something.
+	 *
+	 * The review bar is the one that comes first. Writing is the rarer act and the one a customer
+	 * who has just finished the food is thinking about; an order that already carries a review
+	 * falls through to the reorder bar, which is what this screen can still honestly offer after
+	 * that. Both bars carry a summary that says why, and neither fires a haptic for merely being
+	 * tapped -- `lib/haptics.ts`'s vocabulary is for a change this app made.
 	 *
 	 * Which orders can still be cancelled is not decided here and never was: the button reads
 	 * `canCancel` and the sentence beside it reads `order.cancel.tooLate`, both straight off the
-	 * server's state machine — `nextStatuses` and `canCancel` are the API's answer, not a rule
+	 * server's state machine -- `nextStatuses` and `canCancel` are the API's answer, not a rule
 	 * restated in a client.
 	 */
 	const actionable = !isTerminalStatus(order.status);
+	// `orderDetailSchema.review` is `{ id, rating, comment } | null`, and null is the only state
+	// that means "this one is still open for a review". Both of these are read off the order the
+	// API sent rather than reasoned out here, which is the same split the cancel button draws:
+	// the state machine is the server's and this file only looks at it. Hoisted into locals
+	// because the narrowing from `!== null` has to survive the `.map` that draws the marks below
+	// -- property-access narrowing does not cross a function boundary.
+	const wantsReview = order.status === "COMPLETED" && order.review === null;
+	const review = order.review;
 
 	/**
 	 * The shop's number, as a URL scheme can carry it.
@@ -653,6 +687,24 @@ function OrderDetail() {
 							</Text>
 						</View>
 
+						{order.pickupLocation ? (
+							<View style={styles.stack}>
+								<Text variant="body" tone="muted">
+									{t("order.pickupAt")}
+								</Text>
+								<Text variant="body" bold>
+									{order.pickupLocation.name}
+								</Text>
+								{order.pickupLocation.line1 || order.pickupLocation.city ? (
+									<Text variant="caption" tone="muted">
+										{[order.pickupLocation.line1, order.pickupLocation.city]
+											.filter(Boolean)
+											.join(", ")}
+									</Text>
+								) : null}
+							</View>
+						) : null}
+
 						{order.deliveryAddress ? (
 							// A label, the street and the instruction are lines about one thing, so they
 							// stack at the body gap rather than the step separate blocks pay.
@@ -677,32 +729,53 @@ function OrderDetail() {
 							</Text>
 						) : null}
 
-						{/* Where the courier is, which is the one thing this screen could not
-						    answer before: the API has carried the position since
-						    `orders.reportLocation` existed and no client drew it.
-
-						    Drawn only when a ping has landed. A courier who has not shared one —
-						    declined permission, a phone that has not moved, a run still on the
-						    counter — gets no block at all rather than a placeholder: an empty map
-						    frame would be a promise that something is coming, and this screen does
-						    not know that it is.
-
-						    The map centres on the courier rather than on the buyer, because the
-						    buyer already knows where they are. `./map` drops the pin; the SDK's own
-						    location dot is the buyer's, and both on one map is the point. Without a
-						    basemap configured the map renders nothing and the freshness line below
-						    is what remains — which is the honest half: a position and when it was
-						    taken, no picture. */}
-						{ping ? (
+						{/* The trip's fixed endpoints and the courier's latest foreground ping.
+						    Pickup and destination are shown whenever both stored addresses have
+						    coordinates; the moving blue marker appears after the assigned courier
+						    starts sharing. Without a configured basemap, MapView renders nothing
+						    while the address text and ping freshness remain readable. */}
+						{ping || deliveryRoute ? (
 							<View style={styles.group}>
-								<MapView coords={ping} marker={ping} />
-								<Text variant="caption" tone="muted">
-									{fresh
-										? t("order.track.live")
-										: t("order.track.updated", {
-												time: formatClock(ping.at, intlLocale),
-											})}
-								</Text>
+								<MapView
+									coords={ping ?? pickupPoint ?? destinationPoint}
+									marker={ping}
+									route={deliveryRoute}
+								/>
+								{deliveryRoute ? (
+									<View style={styles.routeLegend}>
+										<View style={styles.routeLegendItem}>
+											<View
+												style={[
+													styles.routeDot,
+													{ backgroundColor: colors.success },
+												]}
+											/>
+											<Text variant="caption" tone="muted">
+												{t("order.pickupAt")}
+											</Text>
+										</View>
+										<View style={styles.routeLegendItem}>
+											<View
+												style={[
+													styles.routeDot,
+													{ backgroundColor: colors.destructive },
+												]}
+											/>
+											<Text variant="caption" tone="muted">
+												{t("order.deliveryTo")}
+											</Text>
+										</View>
+									</View>
+								) : null}
+								{ping ? (
+									<Text variant="caption" tone="muted">
+										{fresh
+											? t("order.track.live")
+											: t("order.track.updated", {
+													time: formatClock(ping.at, intlLocale),
+												})}
+									</Text>
+								) : null}
 							</View>
 						) : null}
 
@@ -742,6 +815,33 @@ function OrderDetail() {
 									style={styles.help}
 									onPress={() => void call()}
 								/>
+							</View>
+						) : null}
+
+						{/* The review this order already carries, drawn only once there is one.
+						    `orderDetailSchema.review` is `{ id, rating, comment } | null` and
+						    carries no photos and no author, so this is not `./review-list`'s row:
+						    that one draws a full `Review`, and the read behind this screen does
+						    not return one. Three facts is what the read has -- the question the
+						    customer answered, the marks they chose, and what they wrote -- and
+						    a card that filled in the rest would be filling it in from nothing.
+
+						    The heading is `review.title`, the same words the writing screen opens
+						    with, so the answer sits under the question it was given to. The
+						    marks are `./star-input`'s display half at `icon.inline`, which is
+						    the size `./rating.tsx` draws an average in and the size
+						    `./review-list` draws a posted rating in; the row announces itself
+						    as one sentence and hides its five glyphs from the tree, so a reader
+						    hears the rating once rather than five times. */}
+						{review ? (
+							<View style={styles.group}>
+								<Text variant="body" tone="muted">
+									{t("review.title")}
+								</Text>
+								<StarMarks rating={review.rating} />
+								{review.comment ? (
+									<Text variant="body">{review.comment}</Text>
+								) : null}
 							</View>
 						) : null}
 					</View>
@@ -820,6 +920,32 @@ function OrderDetail() {
 								{t("order.cancel.tooLate")}
 							</Text>
 						)
+					}
+				/>
+			) : wantsReview ? (
+				// The offer to write one. `app/(customer)/review/[orderId].tsx` is the form,
+				// and this is the only place in the app that reaches it -- which is why the
+				// label says what tapping starts rather than what the form does when it
+				// gets there (`review.cta`, against the form's own `review.submit`).
+				//
+				// No haptic: `lib/haptics.ts`'s vocabulary is for a change this app made,
+				// and opening a form is not a write. The summary is the reason to bother,
+				// which is `./action-bar`'s own rule for a bar whose label alone does not
+				// say why -- and it is the same sentence the form opens with, so the offer
+				// and what it opens read as one thought.
+				<ActionBar
+					primary={{
+						label: t("review.cta"),
+						onPress: () =>
+							router.push({
+								pathname: "/review/[orderId]",
+								params: { orderId: id },
+							}),
+					}}
+					summary={
+						<Text variant="caption" tone="muted">
+							{t("review.subtitle")}
+						</Text>
 					}
 				/>
 			) : (
@@ -1032,6 +1158,17 @@ const styles = StyleSheet.create({
 	// two blocks, not one statement: a map and its caption, a line and the control under it.
 	stack: { gap: TEXT_STACK_GAP },
 	group: { gap: space.xs },
+	routeLegend: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
+	routeLegendItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+	},
+	routeDot: {
+		width: space.sm,
+		height: space.sm,
+		borderRadius: radius.full,
+	},
 	line: {
 		flexDirection: "row",
 		alignItems: "baseline",

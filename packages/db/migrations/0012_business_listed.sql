@@ -1,0 +1,1 @@
+ALTER TABLE `business` ADD `listed` integer DEFAULT true NOT NULL;

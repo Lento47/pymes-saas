@@ -49,6 +49,7 @@ import {
 	productDetailOf,
 	productOptionGroupOf,
 } from "./mappers";
+import { checkCount, checkFeature } from "./plan-limits";
 
 /**
  * The catalogue: what a customer browses, and what a business edits.
@@ -246,6 +247,39 @@ export async function create(
 	const business = await readBusiness(ctx.db, businessId);
 
 	assertCompareAtPrice(input.priceMinor, input.compareAtPriceMinor);
+
+	/**
+	 * The plan's product cap, and the real count of **active** products.
+	 *
+	 * `status = 'ACTIVE'` and not every row: an archived product is a row the merchant
+	 * keeps for their records and it is not a product on their storefront, so counting it
+	 * would tell a shop that had cleaned up their menu that they were full. A merchant
+	 * who archives to make room is doing exactly the right thing and should see the
+	 * number go down.
+	 */
+	const [active] = await ctx.db
+		.select({ count: sql<number>`count(${productTable.id})` })
+		.from(productTable)
+		.where(
+			and(
+				eq(productTable.businessId, businessId),
+				eq(productTable.status, "ACTIVE"),
+			),
+		);
+	checkCount({
+		ctx,
+		limitName: "products",
+		resourceType: "productos",
+		current: active?.count ?? 0,
+	});
+
+	/**
+	 * Inventory tracking is a plan feature, and this is the one place it is switched on
+	 * rather than merely counted: a product that tracks stock needs the flag, and a
+	 * product on the weekly plan that silently ignored `trackInventory: true` would look
+	 * to the merchant like a bug rather than a limit.
+	 */
+	if (input.trackInventory) checkFeature(ctx, "inventoryTracking");
 
 	const now = new Date();
 	const id = newId("product");

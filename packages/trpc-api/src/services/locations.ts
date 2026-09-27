@@ -15,6 +15,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { ForbiddenError, ValidationError } from "../errors";
 import type { BusinessContext } from "./helpers";
 import { isOpenAt, orNotFound } from "./helpers";
+import { checkCount } from "./plan-limits";
 
 type LocationRow = typeof locationTable.$inferSelect;
 type BusinessRow = typeof businessTable.$inferSelect;
@@ -131,6 +132,28 @@ export async function create(
 	);
 	if (business.status === "SUSPENDED")
 		throw new ForbiddenError("Este negocio está suspendido por PymesHub");
+
+	/**
+	 * The plan's location cap, checked before the insert.
+	 *
+	 * Both plans allow **one** location today, so this refuses a second one for a weekly
+	 * shop and a third for a monthly shop — and it is the one cap a merchant is most
+	 * likely to hit by accident, because opening a second branch is a normal thing to
+	 * want. The count is the real one: `business.locations` is a relation, not a column,
+	 * and a cap checked against a cached number is a cap that is wrong exactly when it
+	 * matters.
+	 */
+	const existing = await ctx.db
+		.select({ id: locationTable.id })
+		.from(locationTable)
+		.where(eq(locationTable.businessId, businessId));
+	checkCount({
+		ctx,
+		limitName: "locations",
+		resourceType: "sucursal",
+		current: existing.length,
+	});
+
 	const now = new Date();
 	const id = newId("location");
 	await ctx.db.insert(locationTable).values({

@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,6 +13,7 @@ import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
+import { PhotoPicker } from "@/components/photo-picker";
 import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -22,10 +24,10 @@ import { marketplaceAuth } from "@/lib/auth/client";
 import { useSession } from "@/lib/auth/session";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { MIN_TOUCH_TARGET, space, type } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, media, space, type, useTheme } from "@/theme";
 
 /**
- * The fields a customer owns: name, phone, and now the email itself.
+ * The fields a customer owns: name, phone, the email itself, and the picture.
  *
  * The email used to be shown and locked, and the screen said why: `user.email`
  * is the identifier Better Auth matches on, and moving it needed a
@@ -42,8 +44,8 @@ import { MIN_TOUCH_TARGET, space, type } from "@/theme";
  * It counts the fields this screen can actually fill — the name and the phone — against the
  * values the *server* is holding, re-read after a save lands. It does not count unsaved
  * keystrokes, because "complete" would then be a claim the API has not agreed to; and it
- * does not count the avatar, which is a stored field with no control on this screen, because
- * a step nobody can take is not progress, it is a permanent complaint.
+ * does not count the avatar, which has a control but is still a choice: a profile with no
+ * picture is a complete profile, and counting it would turn an option into a debt.
  *
  * The number in the sentence is real. There is no percentage, no bar and no head start —
  * `docs/design-mobile.md` permits endowed progress only when the head start is work the
@@ -98,8 +100,8 @@ import { MIN_TOUCH_TARGET, space, type } from "@/theme";
  * ## The form enters once and then nothing on it moves
  *
  * The blocks arrive in reading order (`./animate-in`): the completion line, the two fields, the
- * account's email, the reserved line that carries the save result. It is the only animation on
- * this screen.
+ * account's email, the picture, the reserved line that carries the save result. It is the only
+ * animation on this screen.
  *
  * There is no `reorder` here, and this is the screen where adding one would be most wrong. The
  * form is built so that it never reflows at all: `./field` reserves a `minHeight` slot under
@@ -208,6 +210,11 @@ function useProfileForm() {
 	const [name, setName] = useState<string | null>(null);
 	const [phone, setPhone] = useState<string | null>(null);
 	const [email, setEmail] = useState<string | null>(null);
+	// `undefined` is "not touched", which is the whole difference between "no picture" and
+	// "leave it alone": `users.updateProfile` reads exactly that distinction
+	// (`if (input.image !== undefined) patch.image = input.image`), so a form that always
+	// sent a value would rewrite the row with what it just read off it.
+	const [image, setImage] = useState<string | null | undefined>(undefined);
 	const [blurred, setBlurred] = useState({
 		name: false,
 		phone: false,
@@ -285,6 +292,10 @@ function useProfileForm() {
 	const nameValue = name ?? stored?.name ?? "";
 	const phoneValue = phone ?? stored?.phone ?? "";
 	const emailValue = email ?? stored?.email ?? "";
+	// Not `??`-chained like the three above: an explicit `null` is a decision (the picture
+	// was taken off) and must win over the stored row, while `undefined` means the reader
+	// never reached it and the row is the truth.
+	const imageValue = image !== undefined ? image : (stored?.image ?? null);
 
 	// Derived, never stored. A second copy of "is this valid" is a second answer, and the
 	// second one is the one that goes stale.
@@ -378,10 +389,16 @@ function useProfileForm() {
 		// then demands 8 digits, and sending the empty string is a rejection for a field the
 		// reader deliberately left blank.
 		save.mutate(
-			{ name: nameValue.trim(), phone: phoneValue.trim() || undefined },
+			{
+				name: nameValue.trim(),
+				phone: phoneValue.trim() || undefined,
+				// Omitted when untouched, `null` when taken off, the stored path when
+				// picked — the three cases `updateProfileInput.image` distinguishes.
+				image,
+			},
 			{ onSettled: () => (inFlight.current = false) },
 		);
-	}, [emailValue, nameValue, phoneValue, problems, save]);
+	}, [emailValue, image, nameValue, phoneValue, problems, save]);
 
 	/**
 	 * How many of the two fillable fields the *server* is still missing.
@@ -409,6 +426,7 @@ function useProfileForm() {
 		nameValue,
 		phoneValue,
 		emailValue,
+		imageValue,
 		nameError: messageFor("name"),
 		phoneError: messageFor("phone"),
 		emailError: messageFor("email"),
@@ -416,6 +434,7 @@ function useProfileForm() {
 		setName,
 		setPhone,
 		setEmail,
+		setImage,
 		setBlurred,
 		message,
 		submit,
@@ -434,6 +453,7 @@ type ProfileForm = ReturnType<typeof useProfileForm>;
 /** The fields, and nothing else: every value here is `useProfileForm`'s. */
 function ProfileFields({ form }: { form: ProfileForm }) {
 	const { t, tp } = useT();
+	const { colors } = useTheme();
 	const { fontScale } = useWindowDimensions();
 
 	return (
@@ -483,12 +503,43 @@ function ProfileFields({ form }: { form: ProfileForm }) {
 				/>
 			</AnimateIn>
 
+			{/* The picture, last. Same rule as `app/(business)/product-form.tsx`: it is
+			    optional, it is the one control here that opens a system picker, and putting
+			    it first would make the hardest optional box the thing standing between a
+			    reader and "Guardar". `radiusToken="full"` because `app/account.tsx` draws the
+			    picture as a circle — a preview with a different corner is a preview of a
+			    different thing. The letter falls back to `./image`'s muted box rather than to
+			    a second error state, and the picture itself only lands on the row when
+			    "Guardar" is pressed: `uploads.create` already stored the bytes, and the
+			    write this screen owns is the one that names them. */}
+			<AnimateIn index={4}>
+				<PhotoPicker
+					label={t("account.profile.photo")}
+					value={form.imageValue}
+					onChange={(next) => form.edited(() => form.setImage(next))}
+					help={t("account.profile.photo.help")}
+					radiusToken="full"
+				>
+					{form.nameValue.trim() ? (
+						<Text variant="title" tone="action" bold>
+							{form.nameValue.trim().charAt(0).toUpperCase()}
+						</Text>
+					) : (
+						<Ionicons
+							name="person-outline"
+							size={icon.action}
+							color={colors.mutedForeground}
+						/>
+					)}
+				</PhotoPicker>
+			</AnimateIn>
+
 			{/* Reserved, because it is the sentence that appears once the button below it has been
 			    pressed — the one moment the reader is looking at both. The button is in the bar
 			    now and cannot move, but this line still holds its own `body` line whether or not
 			    there is anything in it, so the form does not reflow around a refusal either.
 			    It holds only a refusal: the confirmation is the toast (Rule 5). */}
-			<AnimateIn index={4}>
+			<AnimateIn index={5}>
 				<View
 					style={[
 						styles.status,
@@ -518,7 +569,8 @@ function ProfileFields({ form }: { form: ProfileForm }) {
  * The form in grey, in the shape it will have.
  *
  * Three labelled inputs at the sizes the real controls occupy — a skeleton whose blocks do not
- * match what replaces them is a second, smaller layout jump. One block carries the label so the
+ * match what replaces them is a second, smaller layout jump. Then `components/photo-picker`'s
+ * block: thumb, label, two button bars, message. One block carries the label so the
  * wait is announced once.
  *
  * The label lines are composed with the reader's font scale, because a skeleton frozen at
@@ -543,6 +595,21 @@ function ProfileSkeleton({ loadingLabel }: { loadingLabel: string }) {
 			<Skeleton style={{ height: MIN_TOUCH_TARGET }} />
 			<Skeleton style={{ width: "35%", height: line("label") }} />
 			<Skeleton style={{ height: MIN_TOUCH_TARGET }} />
+
+			{/* `components/photo-picker`'s block: thumb, then its label and the two button
+			    bars under it, then the reserved message row. The message is the one reserve
+			    here that is *not* composed with the reader's font scale, because it mirrors
+			    `photo-picker`'s own `styles.message`, which is a bare `type.caption`
+			    height — a skeleton taller than what replaces it is still a layout jump. */}
+			<View style={styles.photoWrap}>
+				<Skeleton style={styles.photo} />
+				<View style={styles.photoField}>
+					<Skeleton style={{ width: "35%", height: line("label") }} />
+					<Skeleton style={{ height: MIN_TOUCH_TARGET }} />
+					<Skeleton style={{ height: MIN_TOUCH_TARGET }} />
+				</View>
+				<Skeleton style={{ height: type.caption.lineHeight }} />
+			</View>
 		</View>
 	);
 }
@@ -556,4 +623,11 @@ const styles = StyleSheet.create({
 	// the reader's font scale at the call site, because a reserve frozen at 100% metrics is
 	// short of the line it holds at 200%.
 	status: { justifyContent: "center" },
+	// The picture's block, mirroring `components/photo-picker`: thumb on its own row, then
+	// the label and the two button bars under it. The thumb is `media.row`, which is the
+	// size that preview will actually draw — a skeleton box at any other number is a
+	// jump of its own when the picture arrives.
+	photoWrap: { gap: space.sm },
+	photo: { width: media.row, height: media.row },
+	photoField: { gap: space.sm },
 });
