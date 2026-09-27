@@ -176,11 +176,11 @@ function OrbitGraphic() {
   return (
     <div className="app-panel relative mx-auto mt-8 h-56 w-56 rounded-lg p-5">
       <div className="grid h-full grid-cols-2 gap-3">
-        {["Bandeja", "Facturas", "Tareas", "Pipeline"].map((label) => (
+        {["Pedidos", "Entregas", "Pagos", "Catálogo"].map((label) => (
           <div key={label} className="rounded-md border border-border-subtle bg-muted/20 p-3">
             <span className="mb-3 block h-2 w-8 rounded-full bg-primary/45" />
             <p className="font-marketing text-xs font-semibold text-foreground">{label}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">Operativo</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">En vivo</p>
           </div>
         ))}
       </div>
@@ -227,26 +227,26 @@ export default function Landing() {
       featured: {
         title: copy.menus.platform.featuredTitle,
         description: copy.menus.platform.featuredDescription,
-        href: "/platform",
+        href: "/categories",
         icon: ShieldCheck,
       },
       links: [
         {
           title: copy.menus.platform.links[0].title,
           description: copy.menus.platform.links[0].description,
-          href: "/security",
+          href: "/search",
           icon: LockKeyhole,
         },
         {
           title: copy.menus.platform.links[1].title,
           description: copy.menus.platform.links[1].description,
-          href: "/documentation/trust-center-overview",
+          href: "/orders",
           icon: ShieldCheck,
         },
         {
           title: copy.menus.platform.links[2].title,
           description: copy.menus.platform.links[2].description,
-          href: "/documentation",
+          href: "/favorites",
           icon: BookOpen,
         },
       ],
@@ -271,13 +271,13 @@ export default function Landing() {
         {
           title: copy.menus.workflows.links[1].title,
           description: copy.menus.workflows.links[1].description,
-          href: "/documentation/workspace-launch-guide",
+          href: "/billing-workflows",
           icon: FileText,
         },
         {
           title: copy.menus.workflows.links[2].title,
           description: copy.menus.workflows.links[2].description,
-          href: "/documentation/support-policy",
+          href: "/security",
           icon: LifeBuoy,
         },
       ],
@@ -302,13 +302,13 @@ export default function Landing() {
         {
           title: copy.menus.insights.links[1].title,
           description: copy.menus.insights.links[1].description,
-          href: "/documentation/sla",
+          href: "/register",
           icon: BookOpen,
         },
         {
           title: copy.menus.insights.links[2].title,
           description: copy.menus.insights.links[2].description,
-          href: "/documentation/support-policy",
+          href: "/pricing",
           icon: LifeBuoy,
         },
       ],
@@ -339,7 +339,7 @@ export default function Landing() {
         {
           title: copy.menus.security.links[2].title,
           description: copy.menus.security.links[2].description,
-          href: "/documentation/trust-center-overview",
+          href: "/ai-agents",
           icon: BookOpen,
         },
       ],

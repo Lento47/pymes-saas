@@ -1,5 +1,6 @@
 import {
 	BUSINESS_STATUSES,
+	businessAuditHistoryInput,
 	businessCreateInput,
 	businessUpdateInput,
 	locationCreateInput,
@@ -117,6 +118,13 @@ export const businessRouter = router({
 				...input,
 				businessId: ctx.membership.businessId,
 			});
+		}),
+
+	auditHistory: businessProcedure("business:settings")
+		.input(businessAuditHistoryInput)
+		.query(({ ctx, input }) => {
+			assertRole(ctx, "OWNER");
+			return businesses.auditHistory(ctx, input);
 		}),
 
 	staff: businessProcedure("staff:manage")

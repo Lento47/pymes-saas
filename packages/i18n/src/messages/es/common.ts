@@ -72,11 +72,36 @@ export const common = {
 	"action.next": "Siguiente",
 	"action.edit": "Editar",
 	"action.delete": "Eliminar",
+	/*
+	 * The word that takes a write back, and the toast's only action — interface.md
+	 * §46's trailing `Undo`. Never drawn on a write that cannot be reversed:
+	 * `components/toast`'s `show()` takes the callback beside the sentence or takes
+	 * nothing, so a toast carrying this word always has a button that does the thing.
+	 */
+	"action.undo": "Deshacer",
 	"action.continue": "Continuar",
 	"action.signIn": "Iniciar sesión",
 	"action.signOut": "Cerrar sesión",
 	"action.signUp": "Crear cuenta",
 	"action.viewAll": "Ver todo",
+	/*
+	 * The photo pair, and the way out of one. "Subir" and "Tomar" are two different
+	 * acts and the buttons say which: a gallery pick and a camera capture are not
+	 * synonyms, and a single "Agregar foto" leaves the owner to discover which one
+	 * the tap opened. `biz.products.photo.add` still exists for the empty state's
+	 * own invitation; these two are the controls.
+	 */
+	"action.uploadPhoto": "Subir foto",
+	"action.takePhoto": "Tomar foto",
+	"action.removePhoto": "Quitar foto",
+	/*
+	 * When the camera is off-limits, not when we broke. "Algo salió mal de nuestro lado"
+	 * would blame the app for a choice the reader made in a system dialog, and the fix is
+	 * in the phone's settings rather than a retry. The sentence names where, because that
+	 * is the only thing left to do.
+	 */
+	"state.error.cameraDenied":
+		"Sin acceso a la cámara. Puedes activarlo en los ajustes del teléfono.",
 
 	"state.loading": "Cargando…",
 	"state.saving": "Guardando…",
@@ -149,6 +174,12 @@ export const common = {
 	 * sentence that was just spoken. Naming it is what makes the hint stand alone.
 	 */
 	"a11y.dismissToast": "Cierra el aviso",
+	/*
+	 * La pista del aviso de pedido nuevo. No se descarta, se abre: la orden sigue ahí
+	 * detrás y el control lleva al operador hasta ella. Por eso es una instrucción con
+	 * objeto y no un verbo suelto — la misma razón que `a11y.dismissToast`.
+	 */
+	"a11y.reviewNewOrder": "Abre el pedido",
 	"money.minorUnits": "unidades mínimas",
 	"action.saving": "Guardando…",
 	"action.loadMore": "Cargar más",

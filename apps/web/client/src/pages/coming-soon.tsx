@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { Footer } from "@/components/marketing/footer";
 
-const ACCENT = "#6757E8";
+const ACCENT = "#F59E0B";
 
 interface ComingSoonPageProps {
   eyebrow: string;
@@ -12,11 +12,11 @@ interface ComingSoonPageProps {
 
 export default function ComingSoonPage({ eyebrow, title, description }: ComingSoonPageProps) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-card px-4 py-4 md:px-8">
+    <div className="min-h-screen bg-[#05091d] text-white flex flex-col">
+      <header className="border-b border-white/10 bg-[#05091d] px-4 py-4 md:px-8">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <Link href="/"><BrandLockup compact /></Link>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition">Inicio</Link>
+          <Link href="/"><BrandLockup compact textClassName="text-white" /></Link>
+          <Link href="/" className="text-sm text-slate-400 hover:text-white transition">Inicio</Link>
         </div>
       </header>
 
@@ -24,14 +24,14 @@ export default function ComingSoonPage({ eyebrow, title, description }: ComingSo
         <div className="max-w-2xl w-full text-center">
           <span
             className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-6"
-            style={{ background: `${ACCENT}18`, color: ACCENT }}
+            style={{ background: "rgba(245,158,11,0.12)", color: ACCENT }}
           >
             {eyebrow}
           </span>
-          <h1 className="font-marketing text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-5">
+          <h1 className="font-marketing text-3xl font-bold tracking-tight text-white sm:text-4xl mb-5">
             {title}
           </h1>
-          <p className="text-base text-muted-foreground leading-relaxed mb-10 max-w-lg mx-auto">
+          <p className="text-base text-slate-400 leading-relaxed mb-10 max-w-lg mx-auto">
             {description}
           </p>
           <p className="text-sm font-medium mb-8" style={{ color: ACCENT }}>
@@ -39,7 +39,7 @@ export default function ComingSoonPage({ eyebrow, title, description }: ComingSo
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground hover:border-border/80 hover:text-foreground transition"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/[0.08] hover:text-white transition"
           >
             ← Volver al inicio
           </Link>

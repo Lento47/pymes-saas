@@ -36,6 +36,14 @@ export const business = {
 	"biz.dashboard.empty.title": "Todavía no hay pedidos hoy",
 	"biz.dashboard.empty.body": "Cuando entre uno, suena aquí.",
 	"biz.dashboard.viewBoard": "Ver el tablero",
+	"biz.dashboard.syncing": "Actualizando el panel",
+	"biz.dashboard.updatedJustNow": "Actualizado hace un momento",
+	"biz.dashboard.updatedRelative": "Actualizado {relative}",
+	"biz.dashboard.updatedStale":
+		"Los datos pueden estar desactualizados \u00b7 {relative}",
+	"biz.dashboard.refresh": "Actualizar el panel",
+	"biz.dashboard.refreshHelp":
+		"Actualizar negocio, ubicaci\u00f3n, pedidos y anal\u00edtica",
 	"biz.home.attention": "Necesita atención",
 	"biz.home.newOrders": "Pedidos por confirmar",
 	"biz.home.outOfStock": "Productos agotados",
@@ -56,7 +64,6 @@ export const business = {
 	"biz.board.caughtUp.body":
 		"Los pedidos nuevos aparecen aquí automáticamente.",
 	"biz.insight.topProduct": "Más vendido",
-	"biz.insight.estimatedMargin": "Margen estimado",
 	"biz.insight.repeat": "Clientes que repiten",
 	"biz.insight.avgPreparation": "Preparación promedio",
 	"biz.insight.avgOrder": "Pedido promedio",
@@ -96,6 +103,19 @@ export const business = {
 	"biz.board.waitingTooLong": "Lleva {minutes} min esperando",
 	"biz.board.newOrder": "Pedido nuevo",
 	"biz.board.newOrder.body": "Pedido {code} · {total}",
+	/*
+	 * Las tres líneas del aviso de pedido nuevo (interface.md §24). El separador vive en el
+	 * diccionario y no en el código, igual que en `biz.board.movedTo` — ver la nota de esa
+	 * clave. `title` lleva el numeral porque `merchant-order-row.tsx` lo imprime aparte y
+	 * una referencia sin `#` no es el número que el mostrador reconoce.
+	 */
+	"biz.board.newOrder.title": "Pedido nuevo #{reference}",
+	"biz.board.newOrder.meta": "{total} · {items}",
+	/*
+	 * El único control del aviso: la puerta a la orden. "Revisar" y no "Ver", porque el
+	 * operador va a *hacer* algo con ese pedido, no solo a mirarlo.
+	 */
+	"biz.board.newOrder.review": "Revisar",
 	/** El anuncio de un movimiento que sí salió: la fila lo cambió, el oído lo confirma. */
 	"biz.board.movedTo": "Pedido movido a {status}",
 	/** El rótulo de cada columna del tablero; el separador vive aquí, no en el código. */
@@ -161,10 +181,13 @@ export const business = {
 	"biz.products.category.help": "El giro de tu negocio: {sector}.",
 	"biz.products.photo": "Foto",
 	"biz.products.photo.add": "Agregar foto",
+	/*
+	 * The help teaches the two controls now, not a pasted link: the picker is what the
+	 * photo row offers, and a sentence about https would describe a box that is gone.
+	 */
 	"biz.products.photo.help":
-		"Pega el enlace https de la foto; la vista previa sale aquí mismo.",
-	"biz.products.photo.rule":
-		"Tiene que ser una URL https o una ruta interna (/…).",
+		"Elige una de tu galería o toma una con la cámara.",
+	"biz.products.photo.rule": "Elige una imagen JPEG, PNG o WebP de hasta 2 MB.",
 	"biz.products.sku": "Código interno",
 	"biz.products.prepTime": "Tiempo de preparación",
 	"biz.products.trackStock": "Llevar inventario",
@@ -218,15 +241,24 @@ export const business = {
 	"biz.settings.description": "Descripción",
 	"biz.settings.logo": "Logo",
 	"biz.settings.cover": "Portada",
+	/*
+	 * The sentence under both picture controls, and the same one
+	 * `account.profile.photo.help` and `biz.products.photo.help` carry: it is the same
+	 * two acts on the same kind of control, said once per place it is shown rather than
+	 * borrowed across namespaces. The shape of each preview is the picture's own job —
+	 * `components/photo-picker` draws the box it is given, so the cover shows as a band
+	 * and the logo as a circle before a word is read.
+	 */
+	"biz.settings.photo.help":
+		"Elige una de tu galería o toma una con la cámara.",
 	"biz.settings.category": "Categoría principal",
+	"biz.settings.contact": "Contacto",
 	"biz.settings.phone": "Teléfono",
 	"biz.settings.whatsapp": "WhatsApp",
 	"biz.settings.email": "Correo de contacto",
 	"biz.settings.address": "Dirección",
 	"biz.settings.address.help":
 		"La usamos para el retiro y para calcular la entrega.",
-	"biz.settings.country": "País",
-	"biz.settings.country.invalid": "Escribe el código de país de 2 letras",
 	"biz.settings.hours": "Horario",
 	"biz.settings.hours.closed": "Cerrado",
 	"biz.settings.hours.copyToAll": "Copiar a todos los días",
@@ -256,7 +288,6 @@ export const business = {
 	"biz.settings.pause": "Pausar el negocio",
 	"biz.settings.pause.help":
 		"Deja de aparecer en la app. Nada se borra y puedes volver cuando quieras.",
-	"biz.settings.publish": "Publicar el negocio",
 	"biz.settings.currency": "Moneda",
 	"biz.settings.hours.opens": "Abre",
 	"biz.settings.hours.closes": "Cierra",
@@ -314,6 +345,10 @@ export const business = {
 	"biz.staff.role.MANAGER.help": "Pedidos y productos, sin tocar el equipo",
 	"biz.staff.role.STAFF.help": "Solo ver y avanzar pedidos",
 	"biz.staff.changeRole": "Cambiar rol",
+	"biz.staff.owner.confirm.title": "¿Convertir a {name} en dueño?",
+	"biz.staff.owner.confirm.body":
+		"Podrá gestionar el equipo, la configuración del negocio y los pagos.",
+	"biz.staff.owner.confirm.action": "Convertir en dueño",
 	"biz.staff.remove": "Quitar del equipo",
 	"biz.staff.remove.confirm": "¿Quitar a {name} del equipo?",
 	"biz.staff.cantRemoveOwner": "No puedes quitarte a ti mismo como dueño",
@@ -341,6 +376,24 @@ export const business = {
 	"biz.payouts.status.FAILED": "Falló",
 	"biz.payouts.paidAt": "Pagado el {date}",
 	"biz.payouts.reference": "Referencia",
+	"biz.subscription.title": "Suscripción",
+	"biz.subscription.note":
+		"Tus ventas se pagan directamente. PymesHub cobra una tarifa fija por el uso de la plataforma.",
+	"biz.subscription.empty": "Este negocio todavía no tiene una suscripción",
+	"biz.subscription.empty.body":
+		"El plan se mostrará aquí cuando se active la primera tarifa.",
+	"biz.subscription.plan": "Plan",
+	"biz.subscription.plan.WEEKLY": "Semanal",
+	"biz.subscription.plan.MONTHLY": "Mensual",
+	"biz.subscription.status": "Estado",
+	"biz.subscription.status.ACTIVE": "Al día",
+	"biz.subscription.status.GRACE": "En período de gracia",
+	"biz.subscription.status.PAST_DUE": "Pago atrasado",
+	"biz.subscription.status.SUSPENDED": "Suspendida",
+	"biz.subscription.period": "Período: {from} – {to}",
+	"biz.subscription.price": "Tarifa",
+	"biz.subscription.iva": "IVA incluido: {amount}",
+	"biz.subscription.lastPaid": "Último pago: {date}",
 
 	"biz.notifications.title": "Avisos",
 	"biz.notifications.empty": "Sin avisos por ahora",
@@ -381,18 +434,34 @@ export const business = {
 	 * pide en la app: llega cuando el negocio suma a la persona por correo, así que la
 	 * pantalla dice el hecho y el paso, y no un permiso negado.
 	 */
-	"biz.courier.pending.title": "Todavía no tienes un equipo de reparto",
+	"biz.courier.pending.title": "Ningún negocio te agregó todavía",
 	"biz.courier.pending.body":
-		"Crea tu perfil de repartidor. Cuando PymesHub lo revise, los negocios podrán invitarte desde la app.",
+		"Pídele al negocio que te agregue como repartidor con el correo con el que entraste.",
+	"biz.courier.location.title": "Comparte tu ubicación durante la entrega",
+	"biz.courier.location.body":
+		"El cliente verá tu posición mientras el pedido esté en camino. Dejamos de actualizarla al completar la entrega.",
+	"biz.courier.location.unavailable":
+		"Activa el GPS del teléfono para compartir tu posición durante esta entrega.",
+	"biz.courier.location.action": "Permitir ubicación",
 
+	/* El perfil del repartidor: identidad, vehículo y la marca de revisión. */
 	"biz.courier.profile": "Perfil de repartidor",
 	"biz.courier.profileTitle": "Perfil de repartidor",
 	"biz.courier.profileSubtitle":
-		"Tu perfil solo se muestra a negocios cuando lo autorizas.",
-	"biz.courier.displayName": "Nombre para los negocios",
-	"biz.courier.serviceArea": "Zona donde repartes",
+		"Tu perfil se muestra a los negocios solo cuando lo permites.",
+	"biz.courier.displayName": "Nombre que ven los negocios",
+	"biz.courier.serviceArea": "Dónde repartes",
 	"biz.courier.bio": "Sobre ti",
 	"biz.courier.bio.help": "Una frase corta ayuda a que el negocio te elija.",
+	"biz.courier.vehicle": "Vehículo",
+	"biz.courier.vehicleName": "Nombre del vehículo",
+	"biz.courier.vehiclePlate": "Placa",
+	"biz.courier.vehiclePhoto": "Foto del vehículo",
+	"biz.courier.vehiclePhoto.add": "Agregar foto",
+	"biz.courier.vehiclePhoto.change": "Cambiar foto",
+	"biz.courier.vehiclePhoto.remove": "Quitar foto",
+	"biz.courier.vehiclePhoto.tooLarge":
+		"Usa una foto más pequeña, de hasta 2 MB.",
 	"biz.courier.availability": "Disponibilidad",
 	"biz.courier.available": "Disponible para invitaciones",
 	"biz.courier.unavailable": "No disponible por ahora",
@@ -400,38 +469,12 @@ export const business = {
 	"biz.courier.saved": "Perfil guardado",
 	"biz.courier.reviewPending": "Revisión pendiente",
 	"biz.courier.reviewPending.body":
-		"PymesHub revisará tu perfil antes de que aparezca en el directorio.",
+		"PymesHub revisa tu perfil antes de que aparezca en el directorio.",
 	"biz.courier.verified": "Perfil verificado",
 	"biz.courier.rejected": "Perfil no aprobado",
 	"biz.courier.rejected.body":
-		"Actualiza tus datos y vuelve a enviarlos a revisión.",
-	"biz.courier.profileRequired": "Crea tu perfil para recibir invitaciones.",
-	"biz.courier.invites": "Invitaciones",
-	"biz.courier.invitesTitle": "Invitaciones de reparto",
-	"biz.courier.invitesSubtitle": "Negocios que quieren que repartas con ellos",
-	"biz.courier.invites.empty.title": "No tienes invitaciones",
-	"biz.courier.invites.empty.body":
-		"Cuando un negocio te invite, aparecerá aquí.",
-	"biz.courier.invite.pending": "Invitación pendiente",
-	"biz.courier.invite.accept": "Aceptar",
-	"biz.courier.invite.decline": "Rechazar",
-	"biz.courier.invite.accepted": "Ahora repartes con este negocio",
-	"biz.courier.invite.declined": "Invitación rechazada",
-	"biz.courier.invite.expired": "Esta invitación expiró",
-	"biz.courier.search": "Buscar repartidor",
-	"biz.courier.search.action": "Buscar",
-	"biz.courier.search.help":
-		"Busca por nombre o zona. No mostramos correos ni teléfonos.",
-	"biz.courier.search.hint": "Escribe al menos dos letras.",
-	"biz.courier.search.empty": "No hay repartidores verificados que coincidan.",
+		"Actualiza tus datos y envíalos a revisión de nuevo.",
 	"biz.courier.directoryVerified": "Verificado por PymesHub",
-	"biz.courier.invite.send": "Enviar invitación",
-	"biz.courier.invite.sent": "Invitación enviada a {name}",
-	"biz.courier.invite.alreadyMember": "Ya está en el equipo",
-	"biz.courier.invite.alreadySent": "Invitación pendiente",
-	"biz.courier.invite.cancel": "Cancelar invitación",
-	"biz.courier.invitesForBusiness": "Invitaciones enviadas",
-	"biz.courier.noPendingInvites": "No hay invitaciones pendientes",
 
 	/*
 	 * A move the API refused for a reason that is not the conflict below: a transition the
@@ -457,9 +500,9 @@ export const business = {
 	"biz.onboarding.delivery.title": "Entrega y reparto",
 	"biz.onboarding.delivery.body":
 		"Costos, zona y quién reparte. Puedes omitirlo y volver desde tu tablero.",
-	"biz.onboarding.delivery.courier": "Repartidor",
+	"biz.onboarding.delivery.courier": "Correo del repartidor",
 	"biz.onboarding.delivery.courierHelp":
-		"Después de guardar, invita a un repartidor verificado desde Equipo.",
+		"Debe tener cuenta en PymesHub; lo agregamos como repartidor de tu tienda.",
 	"biz.onboarding.delivery.skip": "Omitir por ahora",
 	/** El estado que no es un error: una tienda de retiro simplemente no tiene envío. */
 	"biz.onboarding.delivery.pickupOnly":
@@ -498,6 +541,7 @@ export const business = {
 	"biz.new.submit": "Crear negocio",
 
 	/* The address fields, which `biz.settings.address` introduces but does not name. */
+	"biz.settings.line1": "Dirección exacta",
 	"biz.settings.line2": "Señas",
 	"biz.settings.city": "Ciudad",
 	"biz.settings.region": "Provincia",
@@ -513,16 +557,7 @@ export const business = {
 
 	"biz.analytics.title": "Analítica",
 	"biz.analytics.customRange": "Periodo",
-	"biz.analytics.period": "Últimos {unit}",
-	/* Las propias palabras del periodo. `tp` lee el `_plural` según `{count}`. */
-	"biz.analytics.unit.hours": "{count} hora",
-	"biz.analytics.unit.hours_plural": "{count} horas",
-	"biz.analytics.unit.days": "{count} día",
-	"biz.analytics.unit.days_plural": "{count} días",
-	"biz.analytics.unit.months": "{count} mes",
-	"biz.analytics.unit.months_plural": "{count} meses",
-	"biz.analytics.unit.years": "{count} año",
-	"biz.analytics.unit.years_plural": "{count} años",
+	"biz.analytics.range.invalid": "Cantidad inválida: de 1 hasta 2 años.",
 	"biz.analytics.loadError": "No pudimos cargar la analítica.",
 	"biz.analytics.netRevenue": "VENTAS NETAS",
 	"biz.analytics.gross": "{amount} brutos",
@@ -534,26 +569,35 @@ export const business = {
 	"biz.analytics.accepted": "Aceptados",
 	"biz.analytics.refunds": "Reembolsos",
 	"biz.analytics.discounts": "Descuentos",
-	/* Celdas estrechas: la matriz da al rótulo unos 110pt. */
-	"biz.analytics.avgAccept": "Aceptación",
-	"biz.analytics.avgPreparation": "Preparación",
-	/* El título de la gráfica sigue los intervalos con que volvió la lectura. */
-	"biz.analytics.revenueByHour": "Ventas por hora",
+	"biz.analytics.avgAccept": "Aceptación promedio",
+	"biz.analytics.avgPreparation": "Preparación promedio",
 	"biz.analytics.revenueByDay": "Ventas por día",
-	"biz.analytics.revenueByMonth": "Ventas por mes",
-	"biz.analytics.emptyOrders": "Sin ingresos en este periodo.",
+	"biz.analytics.emptyOrders": "No hubo pedidos en este periodo.",
 	"biz.analytics.emptyProducts": "No hubo ventas de productos en este periodo.",
-	/* `tp` rellena `{count}`: un `{quantity}` aquí se imprimiría literal. */
-	"biz.analytics.sold": "{count} vendido",
-	"biz.analytics.sold_plural": "{count} vendidos",
+	"biz.analytics.sold": "{quantity} vendido",
+	"biz.analytics.sold_plural": "{quantity} vendidos",
 	/** El rótulo de la gráfica, oído (la barra es la vista; la cifra es la voz). */
 	"biz.analytics.chartDay": "{day}: {amount}",
 
+	"biz.more.loading": "Cargando",
 	"biz.more.title": "Más",
+	"biz.more.auditHistory": "Historial de auditoría",
+	"biz.more.subtitle": "Cambios y quién los hizo",
+	"biz.auditHistory.emptyState": "Todavía no hay cambios registrados.",
+	"biz.auditHistory.actor": "Persona",
+	"biz.auditHistory.action": "Acción",
+	"biz.auditHistory.targetType": "Tipo de destino",
+	"biz.auditHistory.targetId": "ID del destino",
+	"biz.auditHistory.timestamp": "Fecha y hora",
+	"biz.auditHistory.before": "Antes",
+	"biz.auditHistory.after": "Después",
+	"biz.auditHistory.reason": "Motivo",
 	"biz.more.business": "Negocio",
+	"biz.more.signOut": "Cerrar sesión",
+	"biz.more.signOutConfirm": "¿Cerrar sesión de PymesHub?",
+	"biz.more.signOutBody": "Puedes iniciar sesión cuando quieras.",
 	"biz.locations.title": "Sucursales",
 	"biz.locations.select": "Elegir sucursal",
-	"biz.locations.status.title": "Estado de la tienda",
 	"biz.locations.current": "Actual",
 	"biz.locations.allBusiness": "Todas las sucursales",
 	"biz.locations.subtitle": "Apertura y pedidos por sucursal",
@@ -571,14 +615,59 @@ export const business = {
 	"biz.locations.status.paused_platform": "Pausada por la plataforma",
 	"biz.locations.status.offline": "Sin conexión",
 	"biz.locations.status.suspended": "Suspendida",
+	"biz.promotions.title": "Promociones",
+	"biz.promotions.subtitle": "Códigos de descuento de tu negocio",
+	"biz.promotions.add": "Crear promoción",
+	"biz.promotions.edit": "Editar promoción",
+	"biz.promotions.empty.title": "Todavía no tienes promociones",
+	"biz.promotions.empty.body":
+		"Crea un código que tus clientes puedan usar al pagar.",
+	"biz.promotions.code": "Código",
+	"biz.promotions.code.help":
+		"Lo que el cliente escribe al pagar. Se guarda en mayúsculas.",
+	"biz.promotions.kind": "Tipo de descuento",
+	"biz.promotions.kind.PERCENT": "Porcentaje",
+	"biz.promotions.kind.FIXED": "Monto fijo",
+	"biz.promotions.kind.FREE_DELIVERY": "Envío gratis",
+	"biz.promotions.value": "Descuento",
+	"biz.promotions.value.percent": "Del 1 al 100",
+	"biz.promotions.value.fixed": "En la moneda de tu negocio",
+	"biz.promotions.minOrder": "Pedido mínimo",
+	"biz.promotions.minOrder.help": "Vacío: cualquier pedido.",
+	"biz.promotions.maxRedemptions": "Usos máximos",
+	"biz.promotions.maxRedemptions.help": "Vacío: sin límite.",
+	"biz.promotions.used": "{count} uso",
+	"biz.promotions.used_plural": "{count} usos",
+	"biz.promotions.usedOf": "{count} de {max} usos",
+	"biz.promotions.open": "Activa",
+	"biz.promotions.paused": "Pausada",
+	"biz.promotions.pause": "Pausar",
+	"biz.promotions.resume": "Reanudar",
+	"biz.promotions.pausedToast": "Promoción pausada",
+	"biz.promotions.resumedToast": "Promoción reanudada",
+	"biz.promotions.created": "Promoción creada",
+	"biz.promotions.saved": "Promoción guardada",
+	"biz.promotions.code.required": "Escribe un código de al menos 3 caracteres.",
+	"biz.promotions.value.percent.rule": "El descuento debe ser entre 1 y 100.",
+	"biz.promotions.value.fixed.rule": "El descuento debe ser mayor que cero.",
+	"biz.promotions.number.rule": "Escribe un número válido.",
+	"biz.promotions.code.taken": "Ya existe una promoción con ese código.",
+	"biz.more.empty.title": "Todavía no tienes un negocio",
+	"biz.more.empty.body":
+		"Crea un negocio para gestionar su configuración, equipo, pagos y reseñas.",
+	"biz.more.empty.action": "Crear negocio",
 	"biz.more.settingsDelivery": "Configuración y entrega",
 	"biz.more.settingsFallback": "Configuración del negocio",
+	"biz.more.shopSubtitle": "Nombre, fotos, categoría y dirección",
+	"biz.more.hoursSubtitle": "Apertura y cierre cada día",
 	"biz.more.catalog": "Catálogo",
 	"biz.more.catalogSubtitle": "Productos, existencias y disponibilidad",
 	"biz.more.moneyPeople": "Dinero y equipo",
 	"biz.more.payouts": "Pagos",
 	"biz.more.payoutsSubtitle": "{count} registro de pago",
 	"biz.more.payoutsSubtitle_plural": "{count} registros de pago",
+	"biz.more.subscription": "Suscripción",
+	"biz.more.subscriptionEmpty": "Sin suscripción activa",
 	"biz.more.team": "Equipo",
 	"biz.more.teamSubtitle": "{count} miembro del equipo",
 	"biz.more.teamSubtitle_plural": "{count} miembros del equipo",
@@ -589,10 +678,66 @@ export const business = {
 	"biz.more.account": "Cuenta",
 	"biz.more.profile": "Perfil",
 	"biz.more.profileSubtitle": "Ajustes de tu cuenta",
-	"biz.more.signOut": "Cerrar sesión",
-	"biz.more.signOutConfirm": "¿Cerrar sesión?",
-	"biz.more.signOutBody":
-		"Deberás iniciar sesión de nuevo para administrar este negocio.",
+	"biz.more.settings": "Configuración",
+	"biz.more.settingsSubtitle": "Tema, notificaciones y privacidad",
+	"biz.more.support": "Ayuda",
+	"biz.more.supportSubtitle": "Preguntas, seguridad y asistencia",
+
+	/* The product form, which is not the business settings form. */
+	"biz.products.save": "Guardar producto",
+	"biz.products.created": "Producto agregado",
+	"biz.products.saved": "Producto guardado",
+	"biz.products.archived": "Producto archivado",
+	"biz.products.search": "Buscar por nombre",
+	"biz.products.stock.help": "Cuántos quedan hoy",
+	"biz.products.options.option": "Opción",
+	"biz.products.options.addOption": "Agregar opción",
+	"biz.products.options.priceDelta": "Precio extra",
+	"biz.products.options.remove": "Quitar grupo",
+
+	/* Capabilities merged from master: courier, delivery and merchant operations. */
+	"biz.insight.estimatedMargin": "Margen estimado",
+	"biz.settings.country": "País",
+	"biz.settings.country.invalid": "Escribe el código de país de 2 letras",
+	"biz.settings.publish": "Publicar el negocio",
+	"biz.courier.profileRequired": "Crea tu perfil para recibir invitaciones.",
+	"biz.courier.invites": "Invitaciones",
+	"biz.courier.invitesTitle": "Invitaciones de reparto",
+	"biz.courier.invitesSubtitle": "Negocios que quieren que repartas con ellos",
+	"biz.courier.invites.empty.title": "No tienes invitaciones",
+	"biz.courier.invites.empty.body":
+		"Cuando un negocio te invite, aparecerá aquí.",
+	"biz.courier.invite.pending": "Invitación pendiente",
+	"biz.courier.invite.accept": "Aceptar",
+	"biz.courier.invite.decline": "Rechazar",
+	"biz.courier.invite.accepted": "Ahora repartes con este negocio",
+	"biz.courier.invite.declined": "Invitación rechazada",
+	"biz.courier.invite.expired": "Esta invitación expiró",
+	"biz.courier.search": "Buscar repartidor",
+	"biz.courier.search.action": "Buscar",
+	"biz.courier.search.help":
+		"Busca por nombre o zona. No mostramos correos ni teléfonos.",
+	"biz.courier.search.hint": "Escribe al menos dos letras.",
+	"biz.courier.search.empty": "No hay repartidores verificados que coincidan.",
+	"biz.courier.invite.send": "Enviar invitación",
+	"biz.courier.invite.sent": "Invitación enviada a {name}",
+	"biz.courier.invite.alreadyMember": "Ya está en el equipo",
+	"biz.courier.invite.alreadySent": "Invitación pendiente",
+	"biz.courier.invite.cancel": "Cancelar invitación",
+	"biz.courier.invitesForBusiness": "Invitaciones enviadas",
+	"biz.courier.noPendingInvites": "No hay invitaciones pendientes",
+	"biz.analytics.period": "Últimos {unit}",
+	"biz.analytics.unit.hours": "{count} hora",
+	"biz.analytics.unit.hours_plural": "{count} horas",
+	"biz.analytics.unit.days": "{count} día",
+	"biz.analytics.unit.days_plural": "{count} días",
+	"biz.analytics.unit.months": "{count} mes",
+	"biz.analytics.unit.months_plural": "{count} meses",
+	"biz.analytics.unit.years": "{count} año",
+	"biz.analytics.unit.years_plural": "{count} años",
+	"biz.analytics.revenueByHour": "Ventas por hora",
+	"biz.analytics.revenueByMonth": "Ventas por mes",
+	"biz.locations.status.title": "Estado de la tienda",
 	"biz.more.close": "Cerrar",
 	"biz.more.businessName": "Nombre del negocio",
 	"biz.more.businessNameSubtitle": "Lo que ven tus clientes",
@@ -612,12 +757,8 @@ export const business = {
 	"biz.more.promotionsSubtitle": "Códigos y ofertas visibles",
 	"biz.more.settlements": "Liquidaciones",
 	"biz.more.settlementsSubtitle": "Períodos, referencias y pagos",
-	"biz.more.support": "Ayuda",
-	"biz.more.supportSubtitle": "Guía para operar tu negocio",
 	"biz.more.activity": "Bitácora",
 	"biz.more.activitySubtitle": "Resumen y movimientos recientes",
-
-	/* Las superficies de gestión: todo el texto que aparece fuera del formulario. */
 	"biz.manage.loading": "Cargando",
 	"biz.manage.loadingScope": "Cargando los datos del negocio",
 	"biz.manage.merchantFallback": "Tu negocio",
@@ -698,19 +839,6 @@ export const business = {
 	"biz.manage.time": "Hora",
 	"biz.manage.actor": "Persona",
 	"biz.manage.target": "Destino",
-
-	/* The product form, which is not the business settings form. */
-	"biz.products.save": "Guardar producto",
-	"biz.products.created": "Producto agregado",
-	"biz.products.saved": "Producto guardado",
-	"biz.products.archived": "Producto archivado",
-	"biz.products.search": "Buscar por nombre",
-	"biz.products.stock.help": "Cuántos quedan hoy",
-	"biz.products.options.option": "Opción",
-	"biz.products.options.addOption": "Agregar opción",
-	"biz.products.options.priceDelta": "Precio extra",
-	"biz.products.options.remove": "Quitar grupo",
-
 	"delivery.board.title": "Repartos",
 	"delivery.board.subtitle": "Ofertas y entregas activas",
 	"delivery.board.offers": "Ofertas para aceptar",

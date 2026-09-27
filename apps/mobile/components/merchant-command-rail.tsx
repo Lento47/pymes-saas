@@ -79,6 +79,16 @@ export type MerchantRailAction = {
 	 * (`interface.md` §6) is "this one, now", and two of them is no message at all.
 	 */
 	primary?: boolean;
+	/**
+	 * Whether the command can be given right now.
+	 *
+	 * Named on the action rather than left to the screen to filter out, because a
+	 * command a role cannot give is still a command this bar offers - `./list-row` and
+	 * `./button` keep their unavailable controls on screen for the same reason, and an
+	 * item that disappears is a door the reader cannot find when they get the role.
+	 * `./pressable` owns what an unavailable item looks like.
+	 */
+	disabled?: boolean;
 };
 
 /**
@@ -105,6 +115,7 @@ function RailAction({
 	return (
 		<Pressable
 			onPress={action.onPress}
+			disabled={action.disabled}
 			accessibilityRole="button"
 			accessibilityLabel={action.label}
 			style={[

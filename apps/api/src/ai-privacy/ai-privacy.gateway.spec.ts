@@ -1,5 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
-import { AiAuditLogService } from "./ai-audit-log.service";
+import type { AiAuditLogService } from "./ai-audit-log.service";
 import { AiContextMinimizerService } from "./ai-context-minimizer.service";
 import { AiOutputGuardService } from "./ai-output-guard.service";
 import { AiPrivacyGateway } from "./ai-privacy.gateway";

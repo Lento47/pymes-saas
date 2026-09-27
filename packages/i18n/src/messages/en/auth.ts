@@ -48,8 +48,13 @@ export const auth = {
 	 */
 	"auth.role.label": "What are you here for?",
 	"auth.role.customer": "Customer",
+	"auth.role.business": "Business",
 	"auth.role.delivery": "Courier",
 	"auth.role.deliveryHelp": "Only for accepting and delivering orders.",
+
+	"auth.provider.label": "Sign in with",
+	"auth.provider.marketplace": "Marketplace",
+	"auth.provider.supabase": "Supabase",
 
 	"auth.error.invalidCredentials": "Wrong email or password",
 	"auth.error.emailInUse": "An account already exists with this email",
@@ -84,6 +89,9 @@ export const auth = {
 	"account.profile.name": "Name",
 	"account.profile.email": "Email",
 	"account.profile.phone": "Phone",
+	"account.profile.photo": "Profile photo",
+	"account.profile.photo.help":
+		"Pick one from your gallery or take one with the camera.",
 	"account.profile.emailLocked": "Your email isn't changed from here",
 	"account.addresses.title": "Addresses",
 	"account.addresses.add": "Add address",

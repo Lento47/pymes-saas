@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
@@ -12,6 +12,8 @@ import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { OfflineBanner } from "@/components/shared/offline-banner";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DisplayPreferencesProvider, useDisplayPreferences } from "@/components/providers/display-preferences";
+import AccountPage from "@/pages/account";
 import { useAuth } from "@/hooks/use-auth";
 import { CallProvider, useCallContext } from "@/features/calls/CallProvider";
 import { IncomingCallDialog } from "@/features/calls/IncomingCallDialog";
@@ -79,7 +81,6 @@ import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
 import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import SolutionPage from "@/pages/solutions/SolutionPage";
 import ComingSoonPage from "@/pages/coming-soon";
-import ProductFeaturePage from "@/pages/product-feature-page";
 import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -91,6 +92,18 @@ import AdminLandingEditor from "@/pages/admin/landing-editor";
 import AdminRouterMetrics from "@/pages/admin/router-metrics";
 import BusinessProfilePage from "@/pages/business-profile";
 import MapPage from "@/pages/map";
+import MarketplaceHomePage from "@/pages/marketplace/home";
+import MarketplaceCategoriesPage from "@/pages/marketplace/categories";
+import MarketplaceCategoryPage from "@/pages/marketplace/category";
+import MarketplaceSearchPage from "@/pages/marketplace/search";
+import MarketplaceStorePage from "@/pages/marketplace/store";
+import MarketplaceProductPage from "@/pages/marketplace/product";
+import MarketplaceCartPage from "@/pages/marketplace/cart";
+import MarketplaceCheckoutPage from "@/pages/marketplace/checkout";
+import MarketplaceOrdersPage from "@/pages/marketplace/orders";
+import MarketplaceOrderPage from "@/pages/marketplace/order";
+import MarketplaceFavoritesPage from "@/pages/marketplace/favorites";
+import MarketplaceSignInPage from "@/pages/marketplace/sign-in";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -183,7 +196,9 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
 function RootRoute() {
   const { isAuthenticated, user, initialized } = useAuth();
   if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
-  if (!isAuthenticated) return <Landing />;
+  // A stranger lands on the marketplace storefront, not a product pitch. This is the
+  // public version of PymesHub: browse shops and products, then sign in to order.
+  if (!isAuthenticated) return <MarketplaceHomePage />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
 
@@ -191,7 +206,12 @@ function makeFeatureRoute(slug: string, AppComp: React.ComponentType) {
   return function FeatureRoute() {
     const { isAuthenticated, user, initialized } = useAuth();
     if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
-    if (!isAuthenticated) return <ProductFeaturePage slug={slug} />;
+    if (!isAuthenticated) {
+      // These routes are the authenticated app's own pages. A stranger lands on
+      // the storefront — the CRM-era feature marketing that used to render here
+      // described a product PymesHub no longer is.
+      return <Redirect to="/" />;
+    }
     return <AppSidebar><AppComp /></AppSidebar>;
   };
 }
@@ -206,14 +226,17 @@ const AnalyticsFeatureRoute = makeFeatureRoute("analytics",   InsightsPage);
 
 function AppRouter() {
   const [location] = useLocation();
+  const { reducedMotion } = useDisplayPreferences();
+  const systemReducedMotion = useReducedMotion();
+  const reduceMotion = reducedMotion || systemReducedMotion;
   const pageKey = "/" + (location.split("/")[1] ?? "");
 
   return (
     <motion.div
       key={pageKey}
-      initial={{ opacity: 0 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
+      transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
     >
     <Switch>
       <Route path="/login" component={Login} />
@@ -268,7 +291,7 @@ function AppRouter() {
       <Route path="/customers">{() => <ComingSoonPage eyebrow="Clientes" title="Casos de éxito" description="Descubrí cómo empresas como la tuya usan PymesHub para crecer y atender mejor." />}</Route>
       <Route path="/careers">{() => <ComingSoonPage eyebrow="Carreras" title="Únete al equipo" description="Buscamos personas apasionadas por construir software que cambia la vida de las PYMEs." />}</Route>
       <Route path="/press">{() => <ComingSoonPage eyebrow="Prensa" title="PymesHub en los medios" description="Recursos, logos y contacto para periodistas y comunicadores." />}</Route>
-      <Route path="/blog">{() => <ComingSoonPage eyebrow="Blog" title="Recursos y artículos" description="Estrategias de atención al cliente, automatización y crecimiento para tu empresa." />}</Route>
+      <Route path="/blog">{() => <ComingSoonPage eyebrow="Blog" title="Recursos y artículos" description="Guías para vender en línea, organizar tu catálogo y entregar mejor en tu barrio." />}</Route>
       <Route path="/community">{() => <ComingSoonPage eyebrow="Comunidad" title="Comunidad PymesHub" description="Conectá con otros dueños de empresas, comparte tips y aprende de la experiencia colectiva." />}</Route>
       <Route path="/changelog">{() => <ComingSoonPage eyebrow="Novedades" title="Cambios y actualizaciones" description="Todo lo nuevo en PymesHub: funciones lanzadas, mejoras y correcciones." />}</Route>
       <Route path="/documentation">
@@ -377,6 +400,9 @@ function AppRouter() {
       <Route path="/settings">
         {() => <Redirect to="/settings/workspace" />}
       </Route>
+      <Route path="/account/:section?">
+        {(params) => <ProtectedLayout><AccountPage section={params.section} /></ProtectedLayout>}
+      </Route>
       <Route path="/settings/workspace">
         {() => <ProtectedLayout><WorkspaceSettingsPage /></ProtectedLayout>}
       </Route>
@@ -446,6 +472,28 @@ function AppRouter() {
       <Route path="/business-profile">
         {() => <BusinessProfilePage />}
       </Route>
+
+      {/* Customer marketplace — the public storefront. */}
+      <Route path="/categories" component={MarketplaceCategoriesPage} />
+      <Route path="/category/:slug">
+        {(params) => <MarketplaceCategoryPage slug={params.slug!} />}
+      </Route>
+      <Route path="/search" component={MarketplaceSearchPage} />
+      <Route path="/store/:slug">
+        {(params) => <MarketplaceStorePage slug={params.slug!} />}
+      </Route>
+      <Route path="/product/:id">
+        {(params) => <MarketplaceProductPage id={params.id!} />}
+      </Route>
+      <Route path="/cart" component={MarketplaceCartPage} />
+      <Route path="/checkout" component={MarketplaceCheckoutPage} />
+      <Route path="/orders" component={MarketplaceOrdersPage} />
+      <Route path="/order/:id">
+        {(params) => <MarketplaceOrderPage id={params.id!} />}
+      </Route>
+      <Route path="/favorites" component={MarketplaceFavoritesPage} />
+      <Route path="/sign-in" component={MarketplaceSignInPage} />
+
       <Route component={NotFound} />
     </Switch>
     </motion.div>
@@ -461,6 +509,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
           <ThemeProvider>
+            <DisplayPreferencesProvider>
             <TooltipProvider>
               <Toaster />
               <Router hook={useWorkspaceHashLocation}>
@@ -469,6 +518,7 @@ export default function App() {
                 <OfflineBanner />
               </Router>
             </TooltipProvider>
+            </DisplayPreferencesProvider>
           </ThemeProvider>
         </I18nProvider>
       </QueryClientProvider>

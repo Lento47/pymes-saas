@@ -29,11 +29,11 @@ import type {
 	Category as CategoryRow,
 	ChosenOption,
 	Membership as MembershipRow,
+	MerchantLocation as MerchantLocationRow,
 	Notification as NotificationRow,
 	OrderEvent as OrderEventRow,
 	OrderItem as OrderItemRow,
 	Order as OrderRow,
-	Payout as PayoutRow,
 	ProductOptionGroup as ProductOptionGroupRow,
 	ProductOption as ProductOptionRow,
 	Product as ProductRow,
@@ -44,7 +44,6 @@ import type {
 
 import {
 	type Address,
-	type AdminAction,
 	type AdminBusinessRow,
 	type AdminOrderRow,
 	type AdminUserRow,
@@ -67,12 +66,11 @@ import {
 	type OrderItem as OrderItemShape,
 	type OrderSummary,
 	type OrderTracking,
-	type ProductAvailability,
-	type Payout,
 	type ProductCard,
 	type ProductDetail,
 	type ProductOptionGroup,
 	type PromotionCard,
+	type PromotionDetail,
 	type Review,
 	type SellerSummary,
 	type StaffMember,
@@ -107,34 +105,7 @@ const DAY_MS = 86_400_000;
 
 type ProductMapperRow = ProductRow & {
 	locationScope?: ProductCard["locationScope"];
-	availability?: Partial<ProductAvailability>;
 };
-
-function productAvailabilityOf(row: ProductMapperRow): ProductAvailability {
-	const nested = row.availability;
-	const legacy = availabilityOf({
-		trackInventory: row.trackInventory,
-		stockQuantity: row.stockQuantity,
-		status: row.status,
-	});
-
-	if (!nested) return legacy;
-
-	return {
-		inStock: nested.inStock ?? legacy.inStock,
-		quantity: nested.quantity === undefined ? legacy.quantity : nested.quantity,
-		maxOrderQuantity: nested.maxOrderQuantity ?? legacy.maxOrderQuantity,
-		enabled: nested.enabled ?? legacy.enabled,
-		...(nested.schedule ? { schedule: nested.schedule } : {}),
-		unavailableReason:
-			nested.unavailableReason === undefined
-				? legacy.unavailableReason
-				: nested.unavailableReason,
-		...("inventory" in nested && nested.inventory
-			? { inventory: nested.inventory }
-			: {}),
-	};
-}
 
 export function currencyOf(value: string): Currency {
 	return value as Currency;
@@ -329,7 +300,11 @@ export function productCardOf(
 		badges: badgesOf(row, business, now),
 		rating: row.ratingCount > 0 ? row.ratingAvg : null,
 		reviewCount: row.ratingCount,
-		availability: productAvailabilityOf(row),
+		availability: availabilityOf({
+			trackInventory: row.trackInventory,
+			stockQuantity: row.stockQuantity,
+			status: row.status,
+		}),
 		locationScope: row.locationScope ?? "all_locations",
 		prepTimeMinutes: row.prepTimeMinutes,
 		seller: sellerSummaryOf(business),
@@ -364,6 +339,35 @@ export function promotionCardOf(
 		// disagree with.
 		currency: currencyOf(business.currency),
 		business: sellerSummaryOf(business),
+	};
+}
+
+/**
+ * The same row from the other side of the counter: the shop that owns the code, editing
+ * it. Everything `promotionCardOf` deliberately leaves out is exactly what this one adds,
+ * because the two answers are for two different readers and a single mapper serving both
+ * would be one that ships `redemptions` to a browse rail.
+ *
+ * `currency` is a parameter for the reason it is not one on `promotionCardOf`'s row: the
+ * shop's currency is a join, and this mapper — like every mapper here — does not query.
+ * The service reads the business once and passes it in.
+ */
+export function promotionDetailOf(
+	row: PromotionRow,
+	currency: Currency,
+): PromotionDetail {
+	return {
+		id: row.id,
+		code: row.code,
+		kind: row.kind,
+		value: row.value,
+		currency,
+		minOrderMinor: row.minOrderMinor,
+		maxRedemptions: row.maxRedemptions,
+		redemptions: row.redemptions,
+		startsAt: row.startsAt,
+		endsAt: row.endsAt,
+		isActive: row.isActive,
 	};
 }
 
@@ -634,6 +638,7 @@ export function orderDetailOf(input: {
 	>;
 	customer: { id: string; name: string; phone: string | null };
 	deliveryAddress: AddressRow | null;
+	pickupLocation: MerchantLocationRow | null;
 	events: { row: OrderEventRow; actorName: string | null }[];
 	review: ReviewRow | null;
 	actor: OrderActor;
@@ -667,6 +672,16 @@ export function orderDetailOf(input: {
 		},
 		deliveryAddress: input.deliveryAddress
 			? orderDeliveryAddressOf(input.deliveryAddress)
+			: null,
+		pickupLocation: input.pickupLocation
+			? {
+					id: input.pickupLocation.id,
+					name: input.pickupLocation.name,
+					line1: input.pickupLocation.line1,
+					city: input.pickupLocation.city,
+					lat: input.pickupLocation.lat,
+					lng: input.pickupLocation.lng,
+				}
 			: null,
 		// The reference is what a customer reads at the counter, so it is the pickup
 		// code: two codes for one order would be two things to get wrong. A delivery
@@ -776,36 +791,16 @@ export function notificationOf(row: NotificationRow): Notification {
 	};
 }
 
-export function payoutOf(
-	row: PayoutRow,
-	options: {
-		businessName: string;
-		currency: Currency;
-		orderCount: number;
-		/** Read back from the audit entry that marked it paid; absent until then. */
-		reference?: string | null;
-	},
-): Payout {
-	return {
-		id: row.id,
-		businessId: row.businessId,
-		businessName: options.businessName,
-		currency: options.currency,
-		// What the business is actually owed: gross less the platform's fee. The payout
-		// table stores all three, and the one that moves is the net — a client that
-		// added up gross would show an owner money the platform keeps.
-		amountMinor: row.netMinor,
-		orderCount: options.orderCount,
-		periodStart: row.periodStart,
-		periodEnd: row.periodEnd,
-		status: row.status,
-		paidAt: row.paidAt,
-		// No column holds either, so neither is invented; the reference is recovered
-		// from the audit entry when one exists.
-		method: null,
-		reference: options.reference ?? null,
-	};
-}
+// `payoutOf` stood here and mapped a settlement run: a gross, a platform fee, a net,
+// an order count, and a status of PENDING/PAID/FAILED. All of it described a business
+// this platform does not run. The consumer pays the merchant for products and the
+// courier for delivery — the platform never holds that money — and the merchant pays
+// the platform a flat subscription. There is no gross to net out and no run to settle.
+//
+// A subscription needs no mapper at all: its wire shape is assembled in
+// `services/subscription.ts`, because the interesting part is the **derived** status
+// and the IVA split, and both need `now`. A mapper that received them would be a
+// function whose whole job was to be called with the right clock.
 
 export function userProfileOf(row: UserRow): UserProfile {
 	return {
@@ -861,10 +856,7 @@ export function auditLogEntryOf(
 		id: row.id,
 		actorId: row.actorUserId ?? "",
 		actorName,
-		// Every row in this table was written by `services/admin.ts` with an action from
-		// `ADMIN_ACTIONS`, so anything else is our bug and belongs in the log with the
-		// request id, not silently rendered as an unknown action.
-		action: row.action as AdminAction,
+		action: row.action,
 		targetType: row.targetType,
 		targetId: row.targetId,
 		before: meta.before ?? null,

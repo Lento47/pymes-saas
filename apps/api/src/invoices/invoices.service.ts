@@ -24,6 +24,7 @@ import { QueueService } from "../workers/queue.service";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { FilterInvoicesDto } from "./dto/filter-invoices.dto";
+import { InvoiceContactsDto } from "./dto/invoice-contacts.dto";
 import { CreateInvoicePaymentDto } from "./dto/create-invoice-payment.dto";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -62,6 +63,7 @@ export class InvoicesService {
       contact_id,
       conversation_id,
       overdue_only,
+      q,
       page = 1,
       limit = 20,
     } = filters;
@@ -75,6 +77,12 @@ export class InvoicesService {
     if (issuance_mode) where.issuance_mode = issuance_mode;
     if (contact_id) where.contact_id = contact_id;
     if (conversation_id) where.conversation_id = conversation_id;
+    if (q?.trim()) {
+      where.OR = [
+        { number: { contains: q.trim(), mode: "insensitive" } },
+        { contact: { full_name: { contains: q.trim(), mode: "insensitive" } } },
+      ];
+    }
 
     if (overdue_only) {
       where.due_date = { lt: new Date() };
@@ -117,6 +125,20 @@ export class InvoicesService {
   async findOne(workspaceId: string, id: string) {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
     return this.serializeInvoice(invoice);
+  }
+
+  async findContacts(workspaceId: string, { q, page = 1 }: InvoiceContactsDto) {
+    const where: Prisma.ContactWhereInput = { workspace_id: workspaceId };
+    if (q?.trim()) where.OR = [
+      { full_name: { contains: q.trim(), mode: "insensitive" } },
+      { company_name: { contains: q.trim(), mode: "insensitive" } },
+    ];
+    const limit = 20;
+    const [data, total] = await Promise.all([
+      this.prisma.contact.findMany({ where, select: { id: true, full_name: true, company_name: true }, orderBy: [{ full_name: "asc" }, { id: "asc" }], skip: (page - 1) * limit, take: limit }),
+      this.prisma.contact.count({ where }),
+    ]);
+    return { data, meta: { total, page, pages: Math.ceil(total / limit) } };
   }
 
   async create(workspaceId: string, dto: CreateInvoiceDto) {
@@ -217,6 +239,10 @@ export class InvoicesService {
     const existing = await this.getInvoiceOrThrow(workspaceId, id);
     this.ensureMutableInvoice(existing);
 
+    if (dto.status !== undefined) {
+      this.validateStateTransition(existing.status as InvoiceStatus, dto.status as InvoiceStatus);
+    }
+
     if (dto.contact_id) {
       await this.assertContact(workspaceId, dto.contact_id);
     }
@@ -240,6 +266,15 @@ export class InvoicesService {
     const preparedLines = dto.lines
       ? this.prepareLines(dto.lines, dto.amount ?? Number(existing.amount))
       : null;
+
+    const amountPaid = this.getAmountPaid(existing);
+    if (amountPaid > 0 && dto.currency !== undefined && dto.currency !== existing.currency) {
+      throw new BadRequestException("No se puede cambiar la moneda de una factura con pagos registrados.");
+    }
+    const nextAmount = preparedLines?.totalAmount ?? dto.amount ?? Number(existing.amount);
+    if ((dto.amount !== undefined || preparedLines) && Math.round(nextAmount * 100) < Math.round(amountPaid * 100)) {
+      throw new BadRequestException("El total no puede ser menor que el importe ya pagado.");
+    }
 
     const invoice = await this.prisma.$transaction(async (tx) => {
       if (preparedLines) {
@@ -277,7 +312,7 @@ export class InvoicesService {
           ...(dto.description !== undefined && { description: dto.description }),
           ...(dto.notes !== undefined && { notes_json: dto.notes as Prisma.InputJsonValue }),
           ...(dto.status !== undefined && { status: dto.status }),
-          ...(dto.issue_date !== undefined && { issue_date: new Date(dto.issue_date) }),
+          ...(dto.issue_date !== undefined && { issue_date: dto.issue_date ? new Date(dto.issue_date) : null }),
           ...(dto.sale_condition !== undefined && { sale_condition: dto.sale_condition }),
           ...(dto.payment_method !== undefined && { payment_method: dto.payment_method }),
           ...(dto.activity_code !== undefined && { activity_code: dto.activity_code }),
@@ -299,10 +334,6 @@ export class InvoicesService {
         include: this.invoiceInclude(),
       });
     });
-
-    if (dto.status !== undefined) {
-      this.validateStateTransition(existing.status as InvoiceStatus, dto.status as InvoiceStatus);
-    }
 
     const finalStatus =
       dto.status !== undefined
@@ -761,7 +792,8 @@ export class InvoicesService {
       },
       payments: {
         orderBy: { paid_at: "desc" as const },
-        take: 5,
+        // These records also determine balances and whether a payment is allowed.
+        // A preview limit here silently discards older payments from accounting.
         include: {
           recorded_by_user: {
             select: {
@@ -781,8 +813,7 @@ export class InvoicesService {
 
   private serializeInvoice(invoice: Record<string, any>) {
     const amountPaid = this.getAmountPaid(invoice);
-    const totalAmount = this.parseAmount(invoice.amount);
-    const balanceDue = Math.max(0, totalAmount - amountPaid);
+    const balanceDue = this.getBalanceDue(invoice);
 
     return {
       ...invoice,
@@ -809,14 +840,16 @@ export class InvoicesService {
   }
 
   private getAmountPaid(invoice: Record<string, any>) {
+    // Invoice/payment columns store two decimals; sum integer cents so an exact
+    // final payment is not rejected by binary floating-point subtraction.
     return (invoice.payments ?? []).reduce(
-      (sum: number, payment) => sum + this.parseAmount(payment.amount),
+      (sum: number, payment) => sum + Math.round(this.parseAmount(payment.amount) * 100),
       0,
-    );
+    ) / 100;
   }
 
   private getBalanceDue(invoice: Record<string, any>) {
-    return Math.max(0, this.parseAmount(invoice.amount) - this.getAmountPaid(invoice));
+    return Math.max(0, Math.round(this.parseAmount(invoice.amount) * 100) - Math.round(this.getAmountPaid(invoice) * 100)) / 100;
   }
 
   private validateStateTransition(current: InvoiceStatus, next: InvoiceStatus): void {

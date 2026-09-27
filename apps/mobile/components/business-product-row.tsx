@@ -9,6 +9,7 @@ import { Button } from "./button";
 import { Image } from "./image";
 import { Pressable } from "./pressable";
 import { Price } from "./price";
+import { Switch } from "./switch";
 import { Text } from "./text";
 
 export function BusinessProductRow({
@@ -35,41 +36,21 @@ export function BusinessProductRow({
 				: t("biz.products.outOfStock")
 			: t("biz.products.stockCount", { count: quantity });
 
+	// `./switch` draws it, and this call site only names what it stands for. The
+	// label is the sentence for the *state it will move to*, which is the reading
+	// the row has always had; `./switch`'s contract leaves that choice to the
+	// caller beside the control, and this row's caller is the product's own board.
 	const availabilityControl = onAvailabilityChange ? (
-		<Pressable
-			accessibilityRole="switch"
-			accessibilityLabel={
+		<Switch
+			checked={available}
+			onChange={(next) => onAvailabilityChange(next ? 1 : 0)}
+			label={
 				available
 					? t("biz.products.markSoldOut")
 					: t("biz.products.markAvailable")
 			}
-			accessibilityState={{ checked: available, disabled: availabilityPending }}
 			disabled={availabilityPending}
-			onPress={() => onAvailabilityChange(available ? 0 : 1)}
-			style={styles.switchTarget}
-		>
-			<View
-				style={[
-					styles.switchTrack,
-					{
-						backgroundColor: available ? colors.primary : colors.muted,
-						borderColor: available ? colors.primary : colors.border,
-					},
-				]}
-			>
-				<View
-					style={[
-						styles.switchThumb,
-						{
-							backgroundColor: available
-								? colors.primaryForeground
-								: colors.mutedForeground,
-							transform: [{ translateX: available ? 16 : 0 }],
-						},
-					]}
-				/>
-			</View>
-		</Pressable>
+		/>
 	) : null;
 
 	if (featured) {
@@ -193,23 +174,4 @@ const styles = StyleSheet.create({
 	},
 	rowCopy: { flex: 1, gap: space.xs },
 	rowActions: { flexDirection: "row", alignItems: "center", gap: space.sm },
-	switchTarget: {
-		width: 48,
-		height: 48,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	switchTrack: {
-		width: 44,
-		height: 28,
-		borderRadius: radius.full,
-		borderWidth: 1,
-		padding: 3,
-		justifyContent: "center",
-	},
-	switchThumb: {
-		width: 20,
-		height: 20,
-		borderRadius: radius.full,
-	},
 });

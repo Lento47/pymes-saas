@@ -39,12 +39,13 @@ import {
 	order,
 	orderEvent,
 	orderItem,
-	payout,
+	priceBook,
 	product,
 	productOption,
 	productOptionGroup,
 	promotion,
 	review,
+	subscription,
 	upload,
 	user,
 } from "./schema";
@@ -87,9 +88,16 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 	reviews: many(review),
 	favorites: many(favorite),
 	promotions: many(promotion),
-	payouts: many(payout),
+	subscription: one(subscription, {
+		fields: [business.id],
+		references: [subscription.businessId],
+	}),
 	carts: many(cart),
 	deliveries: many(delivery),
+}));
+
+export const priceBookRelations = relations(priceBook, ({ many }) => ({
+	subscriptions: many(subscription),
 }));
 
 export const membershipRelations = relations(membership, ({ one }) => ({
@@ -350,10 +358,14 @@ export const notificationRelations = relations(notification, ({ one }) => ({
 	user: one(user, { fields: [notification.userId], references: [user.id] }),
 }));
 
-export const payoutRelations = relations(payout, ({ one }) => ({
+export const subscriptionRelations = relations(subscription, ({ one }) => ({
 	business: one(business, {
-		fields: [payout.businessId],
+		fields: [subscription.businessId],
 		references: [business.id],
+	}),
+	priceBook: one(priceBook, {
+		fields: [subscription.priceBookId],
+		references: [priceBook.id],
 	}),
 }));
 

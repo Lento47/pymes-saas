@@ -6,7 +6,7 @@ import {
 import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 
-import { type Context, requireAuthed } from "./context";
+import { type Context, loadBilling, requireAuthed } from "./context";
 import {
 	DomainError,
 	ForbiddenError,
@@ -183,8 +183,29 @@ export function businessProcedure(capability: RoleCapability) {
 			throw new ForbiddenError("Tu rol no permite esta acción");
 		}
 
+		// The tenant is confirmed, so its billing facts can be read. One query here
+		// rather than one per limit check, and it is the reason `business.plan` is
+		// denormalised: a limit is consulted on every product, staff and promotion
+		// write, and a subscription join on each of those is a cost for a number that
+		// changes about once a month.
+		//
+		// **This is not a gate.** It resolves what the merchant has bought so a service
+		// can refuse them; it never refuses on its own. A lapsed shop keeps taking
+		// orders — see `NEVER_GATED` — and a suspended one is filtered out of the feed
+		// rather than locked out of its own dashboard.
+		const billing = await loadBilling(ctx.db, businessId, new Date());
+
 		return next({
-			ctx: { ...ctx, membership: { businessId, role: membership.role } },
+			ctx: {
+				...ctx,
+				membership: { businessId, role: membership.role },
+				// Named, not spread: `loadBilling` returns `plan`/`status` and the context
+				// fields are `businessPlan`/`subscriptionStatus`. Spreading would attach
+				// two fields nothing reads and leave the two that matter undefined, which
+				// typechecks as `any` at the call site and fails at runtime.
+				businessPlan: billing.plan,
+				subscriptionStatus: billing.status,
+			},
 		});
 	});
 }

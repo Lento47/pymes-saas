@@ -11,7 +11,7 @@ import {
 import { eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
-import type { AuthedContext, Context } from "../context";
+import type { AuthedContext, BusinessBilling, Context } from "../context";
 import { ForbiddenError, NotFoundError } from "../errors";
 
 /**
@@ -22,10 +22,18 @@ import { ForbiddenError, NotFoundError } from "../errors";
  * "open now" means.
  */
 
-/** What a `businessProcedure` body is guaranteed to have. */
-export type BusinessContext = AuthedContext & {
-	membership: { businessId: string; role: MembershipRole };
-};
+/**
+ * What a `businessProcedure` body is guaranteed to have.
+ *
+ * The billing pair comes from `trpc.ts` resolving them alongside the membership, in
+ * one query, so `checkCount` costs nothing to call. They are on the context rather than
+ * looked up per check for the reason stated in `trpc.ts`: a limit is consulted on
+ * every product, staff and promotion write.
+ */
+export type BusinessContext = AuthedContext &
+	BusinessBilling & {
+		membership: { businessId: string; role: MembershipRole };
+	};
 
 /** A `protectedProcedure` body, narrowed the way `protectedProcedure` narrows it. */
 export type UserContext = AuthedContext;

@@ -35,6 +35,11 @@ import type { StyleProp, ViewStyle } from "react-native";
  */
 export function MapView(_props: {
 	coords: { lat: number; lng: number } | null;
+	marker?: { lat: number; lng: number } | null;
+	route?: {
+		pickup: { lat: number; lng: number };
+		destination: { lat: number; lng: number };
+	} | null;
 	style?: StyleProp<ViewStyle>;
 }) {
 	return null;

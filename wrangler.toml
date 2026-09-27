@@ -15,5 +15,12 @@ directory = "apps/web/dist/public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
+# Map archive, glyphs and sprite. The PMTiles file is far past the 25 MiB per-file cap
+# that Workers static assets impose, so it lives in R2 and `cloudflare-worker.js` serves
+# it over byte ranges. See `docs/technical/map-hosting.md`.
+[[r2_buckets]]
+binding = "MAP_ASSETS"
+bucket_name = "pymeshub-map-assets"
+
 [vars]
 VITE_PAYPAL_CLIENT_ID = "AWLZKdmWHYdnDnif0OP6AiSlvUzS52dcW2YMmRWzChJbgZk56g8shj9jrFladrlR2i3_82qDfAyj2rg4"

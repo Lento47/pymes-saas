@@ -914,9 +914,7 @@ const LOCATE_WINDOW_SECONDS = 60;
  *
  * The assignee must already be a COURIER member of the shop: an id, not a
  * typed name, because a name typed at dispatch is a different person every
- * time it is spelled differently. When the member has a courier profile, it
- * must be VERIFIED and available; legacy members without a profile remain
- * assignable until they create one. The row's name and phone are copied from
+ * time it is spelled differently. The row's name and phone are copied from
  * the member's profile at assignment — denormalised the way `actorName` is,
  * so a courier who is later removed keeps their name on the runs they rode.
  * Reassigning while still READY overwrites; once the run left, the courier is
@@ -1509,6 +1507,10 @@ export async function stats(
 	];
 	const now = new Date();
 	const todayStart = startOfMarketDay(now);
+	const previousStart = new Date(todayStart.getTime() - 86_400_000);
+	const previousEnd = new Date(now.getTime() - 86_400_000);
+	const previousWeekStart = new Date(todayStart.getTime() - 7 * 86_400_000);
+	const previousWeekEnd = new Date(now.getTime() - 7 * 86_400_000);
 	const business = orNotFound(
 		(
 			await ctx.db
@@ -1542,18 +1544,13 @@ export async function stats(
 			orderCount: Number(row?.orderCount ?? 0),
 		};
 	};
-	const previousDayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
-	const previousDayEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-	const previousWeekStart = new Date(
-		todayStart.getTime() - 7 * 24 * 60 * 60 * 1000,
-	);
-	const previousWeekEnd = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
 	const [
 		active,
 		today,
 		revenue,
 		todayRevenue,
+		previousRevenue,
 		current,
 		previousDay,
 		previousWeek,
@@ -1578,7 +1575,7 @@ export async function stats(
 			.where(and(...scope, eq(orderTable.status, "COMPLETED")))
 			.groupBy(orderTable.currency),
 		// Today's completed revenue, for the merchant home's pulse band: the same
-		// COMPLETED-only meaning as the all-time query below, scoped to the market day
+		// COMPLETED-only meaning as the all-time query below, scoped to the UTC day
 		// `today` above is counted against. A client-side sum over a listed page is
 		// not this — a page is not the day, and the day is not a page.
 		ctx.db
@@ -1596,16 +1593,92 @@ export async function stats(
 				),
 			)
 			.groupBy(orderTable.currency),
+		ctx.db
+			.select({
+				currency: orderTable.currency,
+				revenueMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
+				orderCount: sql<number>`count(*)`,
+			})
+			.from(orderTable)
+			.where(
+				and(
+					...scope,
+					eq(orderTable.status, "COMPLETED"),
+					gte(orderTable.placedAt, previousStart),
+					lt(orderTable.placedAt, todayStart),
+				),
+			)
+			.groupBy(orderTable.currency),
 		salesFor(todayStart, now),
-		salesFor(previousDayStart, previousDayEnd),
+		salesFor(previousStart, previousEnd),
 		salesFor(previousWeekStart, previousWeekEnd),
 	]);
 
-	const grossSalesMinor = current.grossSalesMinor;
-	const discountsMinor = current.discountsMinor;
-	const refundsMinor = current.refundsMinor;
-	const orderCount = current.orderCount;
-	const merchantNetSalesMinor = Math.max(0, grossSalesMinor - refundsMinor);
+	const currentByCurrency = new Map(
+		todayRevenue.map((row) => [
+			row.currency,
+			{
+				revenueMinor: Number(row.revenueMinor),
+				orderCount: Number(row.orderCount),
+			},
+		]),
+	);
+	const previousByCurrency = new Map(
+		previousRevenue.map((row) => [
+			row.currency,
+			{
+				revenueMinor: Number(row.revenueMinor),
+				orderCount: Number(row.orderCount),
+			},
+		]),
+	);
+	const todayComparisonByCurrency = [
+		...new Set([...currentByCurrency.keys(), ...previousByCurrency.keys()]),
+	].map((currency) => {
+		const current = currentByCurrency.get(currency) ?? {
+			revenueMinor: 0,
+			orderCount: 0,
+		};
+		const previous = previousByCurrency.get(currency) ?? {
+			revenueMinor: 0,
+			orderCount: 0,
+		};
+		const currentTicketMinor =
+			current.orderCount > 0
+				? Math.round(current.revenueMinor / current.orderCount)
+				: null;
+		const previousTicketMinor =
+			previous.orderCount > 0
+				? Math.round(previous.revenueMinor / previous.orderCount)
+				: null;
+
+		return {
+			currency,
+			salesDeltaPct:
+				previous.revenueMinor === 0
+					? null
+					: Math.round(
+							((current.revenueMinor - previous.revenueMinor) /
+								previous.revenueMinor) *
+								100,
+						),
+			ordersDelta: current.orderCount - previous.orderCount,
+			ticketDeltaPct:
+				previousTicketMinor === null || previousTicketMinor === 0
+					? null
+					: currentTicketMinor === null
+						? null
+						: Math.round(
+								((currentTicketMinor - previousTicketMinor) /
+									previousTicketMinor) *
+									100,
+							),
+		};
+	});
+	const merchantNetSalesMinor = Math.max(
+		0,
+		current.grossSalesMinor - current.refundsMinor,
+	);
 	const previousDayNet = Math.max(
 		0,
 		previousDay.grossSalesMinor - previousDay.refundsMinor,
@@ -1628,29 +1701,28 @@ export async function stats(
 			revenueMinor: Number(row.revenueMinor),
 			orderCount: Number(row.orderCount),
 		})),
-		period: {
-			from: todayStart,
-			to: now,
-			timezone: MARKET_TIME_ZONE,
-		},
-		grossSalesMinor,
-		discountsMinor,
-		refundsMinor,
+		todayComparisonByCurrency,
+		period: { from: todayStart, to: now, timezone: MARKET_TIME_ZONE },
+		grossSalesMinor: current.grossSalesMinor,
+		discountsMinor: current.discountsMinor,
+		refundsMinor: current.refundsMinor,
 		merchantNetSalesMinor,
-		orderCount,
+		orderCount: current.orderCount,
 		averageOrderValueMinor:
-			orderCount > 0 ? Math.round(grossSalesMinor / orderCount) : 0,
+			current.orderCount > 0
+				? Math.round(current.grossSalesMinor / current.orderCount)
+				: 0,
 		currency: business.currency,
 		comparisons: [
 			{
 				period: "previous_day",
 				salesDeltaMinor: merchantNetSalesMinor - previousDayNet,
-				orderDelta: orderCount - previousDay.orderCount,
+				orderDelta: current.orderCount - previousDay.orderCount,
 			},
 			{
 				period: "previous_week",
 				salesDeltaMinor: merchantNetSalesMinor - previousWeekNet,
-				orderDelta: orderCount - previousWeek.orderCount,
+				orderDelta: current.orderCount - previousWeek.orderCount,
 			},
 		],
 	};
@@ -2137,33 +2209,46 @@ async function detail(
 		),
 	];
 
-	const [business, customer, address, staff] = await Promise.all([
-		ctx.db
-			.select()
-			.from(businessTable)
-			.where(eq(businessTable.id, row.businessId))
-			.limit(1),
-		ctx.db
-			.select()
-			.from(userTable)
-			.where(eq(userTable.id, row.customerId))
-			.limit(1),
-		row.addressId
-			? ctx.db
-					.select()
-					.from(addressTable)
-					.where(eq(addressTable.id, row.addressId))
-					.limit(1)
-			: Promise.resolve([]),
-		// The names on the events, in one read. A member who leaves keeps their name on the
-		// events they wrote, which is why `orderDetailOf` takes it denormalised.
-		actorIds.length > 0
-			? ctx.db
-					.select({ id: userTable.id, name: userTable.name })
-					.from(userTable)
-					.where(inArray(userTable.id, actorIds))
-			: Promise.resolve([]),
-	]);
+	const [business, customer, address, pickupLocation, staff] =
+		await Promise.all([
+			ctx.db
+				.select()
+				.from(businessTable)
+				.where(eq(businessTable.id, row.businessId))
+				.limit(1),
+			ctx.db
+				.select()
+				.from(userTable)
+				.where(eq(userTable.id, row.customerId))
+				.limit(1),
+			row.addressId
+				? ctx.db
+						.select()
+						.from(addressTable)
+						.where(eq(addressTable.id, row.addressId))
+						.limit(1)
+				: Promise.resolve([]),
+			row.locationId
+				? ctx.db
+						.select()
+						.from(locationTable)
+						.where(
+							and(
+								eq(locationTable.id, row.locationId),
+								eq(locationTable.businessId, row.businessId),
+							),
+						)
+						.limit(1)
+				: Promise.resolve([]),
+			// The names on the events, in one read. A member who leaves keeps their name on the
+			// events they wrote, which is why `orderDetailOf` takes it denormalised.
+			actorIds.length > 0
+				? ctx.db
+						.select({ id: userTable.id, name: userTable.name })
+						.from(userTable)
+						.where(inArray(userTable.id, actorIds))
+				: Promise.resolve([]),
+		]);
 
 	const nameOf = new Map(staff.map((user) => [user.id, user.name]));
 
@@ -2177,6 +2262,7 @@ async function detail(
 			phone: customer[0]?.phone ?? null,
 		},
 		deliveryAddress: address[0] ?? null,
+		pickupLocation: pickupLocation[0] ?? null,
 		events: events.map((event) => ({
 			row: event,
 			actorName: event.actorUserId

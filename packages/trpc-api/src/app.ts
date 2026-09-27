@@ -15,16 +15,21 @@ import { corsOrigins, type Env, orderRoomFor } from "./env";
 import { DomainError, InternalError } from "./errors";
 import { createLogger, requestIdFrom } from "./logging";
 import { appRouter } from "./routers";
+import * as uploads from "./services/uploads";
+import { exchangeSupabaseSession } from "./supabase-exchange";
 
 /**
  * The Worker's HTTP surface.
  *
  * Three things live here and nothing else: the request id and its log line, CORS, and
  * the mounts — `/trpc` for everything the clients read and write, `/auth` for Better
- * Auth's own handlers, and `/orders/:id/live` for the socket. REST is
- * deliberately not a second data surface. The one exception is `/health`, which a
- * deploy smoke test hits before it trusts a release and which therefore must not need
- * a session.
+ * Auth's own handlers, `/orders/:id/live` for the socket, and `/files/:id` for a
+ * stored picture. REST is deliberately not a second data surface. The two exceptions
+ * are `/health`, which a deploy smoke test hits before it trusts a release and which
+ * therefore must not need a session, and `/files/:id`, which is not a data surface at
+ * all: it is the same object `uploads.create` returned, served as bytes — the
+ * distinction `apps/api`'s `StorageController` already draws between a document API
+ * and the thing an `<img>` tags at.
  *
  * The error handler is the last piece of `docs/api.md`'s discipline to survive: a
  * failure leaving this Worker is either a domain error carrying a sentence written for
@@ -36,6 +41,7 @@ import { appRouter } from "./routers";
 
 const TRPC_PREFIX = "/trpc";
 const AUTH_PREFIX = "/auth";
+const SUPABASE_AUTH_PREFIX = "/auth-supabase";
 
 /**
  * The CORS policy both browser-facing mounts share.
@@ -55,8 +61,11 @@ function browserCors(origins: string[]): Parameters<typeof cors>[0] {
 		allowMethods: ["GET", "POST", "OPTIONS"],
 		// `set-auth-token` is how the native client is *given* its bearer token — the
 		// Expo app reads it off the response and stores it — so it has to be readable
-		// cross-origin or the token never reaches SecureStore.
-		exposeHeaders: ["x-request-id", "set-auth-token"],
+		// cross-origin or the token never reaches SecureStore. `cf-ray` is
+		// Cloudflare's own edge id: a failure the client logs with both that and our
+		// `x-request-id` can be split into "the edge saw it" and "the Worker saw it"
+		// without asking anyone to reproduce the request first.
+		exposeHeaders: ["x-request-id", "set-auth-token", "cf-ray"],
 		credentials: true,
 		maxAge: 86400,
 	};
@@ -104,11 +113,32 @@ export function createApp() {
 	 * Request id, first, so everything after it — including the error handler — can name
 	 * the request. Taken from `x-request-id` when a client or our own web app supplies
 	 * one, which is what makes a browser error and a Worker log line the same story.
+	 *
+	 * The three response headers beside it are here for the same reason they are not
+	 * per-route: they are properties of *this origin*, not of one endpoint, and a route
+	 * that forgets them is the one that ships without them.
+	 *
+	 * - `X-Content-Type-Options: nosniff` is the one with a concrete bug behind it.
+	 *   `/files/:id` answers with a `Content-Type` read from the `upload` row and a
+	 *   year of `immutable` caching — content-type is the *only* thing standing between
+	 *   a stored file and a browser deciding it is a document, and this header removes
+	 *   the deciding.
+	 * - `X-Frame-Options: DENY`: nothing on this origin is an HTML document, so there
+	 *   is no legitimate frame and refusing one can only be a win.
+	 * - `Referrer-Policy: no-referrer`: a JSON body should never be the reason a URL
+	 *   leaves the machine on a subsequent navigation.
+	 *
+	 * `Cache-Control` is deliberately untouched — `/files/:id` owns its own immutable
+	 * directive and auth already answers `no-store` — and these are set before `next()`
+	 * so preflights and the `/orders/:id/live` upgrade response carry them too.
 	 */
 	app.use("*", async (c, next) => {
 		const requestId = requestIdFrom(c.req.header("x-request-id"));
 		c.set("requestId", requestId);
 		c.header("x-request-id", requestId);
+		c.header("x-content-type-options", "nosniff");
+		c.header("x-frame-options", "DENY");
+		c.header("referrer-policy", "no-referrer");
 		await next();
 	});
 
@@ -192,6 +222,45 @@ export function createApp() {
 		return cors(browserCors(allowed))(c, next);
 	});
 
+	/**
+	 * The second provider's one bridge, mounted outside Better Auth's catch-all.
+	 *
+	 * The client signs in with Supabase first and sends that short-lived access token
+	 * here. The Worker verifies it, links the verified email to the D1 user, and mints a
+	 * normal Better Auth session. After this response the two providers are the same
+	 * session to every existing route; the Supabase token itself never reaches D1, a
+	 * membership query or a role decision.
+	 */
+	app.use(`${SUPABASE_AUTH_PREFIX}/*`, async (c, next) => {
+		const allowed = corsOrigins(c.env);
+		const origin = c.req.header("origin");
+		if (origin && !allowed.includes(origin))
+			return c.json({ error: "forbidden" }, 403);
+		return cors(browserCors(allowed))(c, next);
+	});
+
+	app.post(`${SUPABASE_AUTH_PREFIX}/exchange`, async (c) => {
+		c.header("Cache-Control", "no-store");
+		let body: unknown;
+		try {
+			body = await c.req.json();
+		} catch {
+			return c.json({ error: "invalid_request" }, 400);
+		}
+		const accessToken =
+			typeof body === "object" && body !== null
+				? (body as { accessToken?: unknown }).accessToken
+				: undefined;
+		const result = await exchangeSupabaseSession(
+			accessToken,
+			c.env,
+			createDb(c.env.DB),
+		);
+		if (!result.ok) return c.json({ error: result.code }, result.status);
+		c.header("set-auth-token", result.token);
+		return c.json({ user: result.user });
+	});
+
 	app.on(["GET", "POST"], `${AUTH_PREFIX}/*`, async (c) => {
 		const auth = createAuth(c.env);
 		if (!auth) return c.json({ error: "auth_not_configured" }, 503);
@@ -246,6 +315,40 @@ export function createApp() {
 			{ ok: database === "ok", version: c.env.API_VERSION, db: database },
 			database === "ok" ? 200 : 503,
 		);
+	});
+
+	/**
+	 * A stored picture, as bytes.
+	 *
+	 * **Public, and that is the product rather than a gap.** A product photo sits on a
+	 * storefront a visitor has not signed in to, and React Native's `Image` takes a
+	 * `uri` and no `Authorization` header worth building every call site around. The
+	 * write is authenticated and allow-listed (`services/uploads.ts`); the read is
+	 * id-exact, and `upl_` ids are UUIDs — this is not a directory listing.
+	 *
+	 * Immutable caching is correct because the id names the bytes: a create mints a new
+	 * id, and nothing rewrites the object under an old one. A row whose object is gone
+	 * answers 404 like an id that never existed.
+	 *
+	 * The bytes come out of R2 and the `Content-Type` out of the row, which is why the
+	 * two have to be written together — `uploads.create` sets the object's
+	 * `httpMetadata` from the same `input.mimeType` it records on the row, so a direct
+	 * read of the object and this route cannot disagree about what the picture is.
+	 *
+	 * The status and the body are the whole answer. No JSON error envelope: the client
+	 * on this route is `components/image`, which fails to a muted box on any non-200
+	 * and would show a JSON blob as a broken picture if one were returned with a 200.
+	 */
+	app.get("/files/:id", async (c) => {
+		const row = await uploads.read(c.env, c.req.param("id"));
+		if (!row) return c.body(null, 404);
+
+		return new Response(row.data as unknown as BodyInit, {
+			headers: {
+				"Content-Type": row.mimeType,
+				"Cache-Control": "public, max-age=31536000, immutable",
+			},
+		});
 	});
 
 	app.use(

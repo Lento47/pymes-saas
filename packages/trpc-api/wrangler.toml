@@ -63,6 +63,11 @@ API_VERSION = "0.1.0"
 # already be wrong for a second reason — `AUTH_URL` on the next line is localhost too.
 CORS_ORIGINS = "http://localhost:3000,http://localhost:4173"
 AUTH_URL = "http://localhost:8787"
+# Supabase is an additional identity provider. The publishable key is public by design;
+# no Supabase secret/service-role key belongs in this file.
+SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
+SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
 
 # ---------------------------------------------------------------------------
 # D1 — the only durable store. Migrations live in packages/db/migrations and are
@@ -234,6 +239,9 @@ ENVIRONMENT = "staging"
 API_VERSION = "0.2.0"
 AUTH_URL = "https://api-staging.pymeshub.lat"
 CORS_ORIGINS = "https://staging.pymeshub.lat"
+SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
+SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "pymeshub-staging"
@@ -274,13 +282,16 @@ name = "pymeshub-api"
 # more: `apps/web/wrangler.jsonc` compiles this origin into the browser bundle as `API_URL`,
 # so a deploy with no route would ship a web app whose every request, and the documented
 # `curl`, go to a name that answers nothing.
-routes = [{ pattern = "api.pymeshub.lat", custom_domain = true }]
+routes = [{ pattern = "api.pymeshub.lat/*", zone_name = "pymeshub.lat" }]
 
 [env.production.vars]
 ENVIRONMENT = "production"
 API_VERSION = "0.2.0"
 AUTH_URL = "https://api.pymeshub.lat"
 CORS_ORIGINS = "https://pymeshub.lat,https://www.pymeshub.lat"
+SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
+SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "pymhubdb"

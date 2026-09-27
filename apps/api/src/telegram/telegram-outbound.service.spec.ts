@@ -1,6 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
-import { CryptoService } from "../common/crypto/crypto.service";
-import { PrismaService } from "../common/prisma/prisma.service";
+import type { CryptoService } from "../common/crypto/crypto.service";
+import type { PrismaService } from "../common/prisma/prisma.service";
 import { Telegraf } from "telegraf";
 import { TelegramOutboundService } from "./telegram-outbound.service";
 

@@ -54,7 +54,12 @@ export class ConversationsService {
     if (channel_id) where.channel_id = channel_id;
     if (channel_type) where.channel = { type: channel_type };
     if (category) where.category = { contains: category, mode: "insensitive" };
-    if (q) where.subject = { contains: q, mode: "insensitive" };
+    if (q?.trim()) where.OR = [
+      { subject: { contains: q.trim(), mode: "insensitive" } },
+      { contact: { full_name: { contains: q.trim(), mode: "insensitive" } } },
+      { contact: { email: { contains: q.trim(), mode: "insensitive" } } },
+      { contact: { phone: { contains: q.trim(), mode: "insensitive" } } },
+    ];
     if (department_id) where.department_id = department_id;
 
     // AGENTs only see conversations belonging to their department(s)

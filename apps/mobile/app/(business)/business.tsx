@@ -30,6 +30,7 @@ import {
 	ROW_MIN_HEIGHT,
 } from "@/components/merchant-order-row";
 import { MerchantRejectSheet } from "@/components/merchant-reject-sheet";
+import { useNewOrderBanner } from "@/components/new-order-banner";
 import { hitSlopFor, Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
@@ -43,6 +44,7 @@ import { light, selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { PRESS_SCALE_ROW } from "@/lib/motion";
+import { newOrderSound } from "@/lib/new-order-sound";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
@@ -256,11 +258,12 @@ const BOARD_FILTER_QUERY = {
  * one composition, not a stack of self-contained panels.
  */
 function Board() {
-	const { t, intlLocale } = useT();
+	const { t, tp, intlLocale } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { colors } = useTheme();
 	const toast = useToast();
+	const banner = useNewOrderBanner();
 	const scope = useMerchantScope();
 
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
@@ -390,19 +393,39 @@ function Board() {
 	);
 
 	/**
-	 * The arrival, said once: a poll that lands a new order tells the operator.
+	 * The arrival, said once: a poll that lands a new order raises the banner.
 	 *
 	 * The web board announces the same arrival
 	 * (`apps/web/components/business/order-board.tsx` toasts `biz.board.newOrder` with this
-	 * same body key), and the phone says it through `./toast`, which owns the platform split
-	 * (Android's live region, iOS the explicit announce) — the screen hands it the sentence
-	 * and announces nothing itself. The set of ids already counted is the guard: seeded by
-	 * the first read of each shop, because a shop switch replaces the whole queue and every
-	 * row on it would otherwise read as an arrival, and unchanged by a poll that landed
+	 * same body key), and the phone raises `./new-order-banner` — interface.md §24's surface,
+	 * ink and a lime rail and a door into the order — which owns the platform split (Android's
+	 * live region, iOS the explicit announce). The set of ids already counted is the guard:
+	 * seeded by the first read of each shop, because a shop switch replaces the whole queue and
+	 * every row on it would otherwise read as an arrival, and unchanged by a poll that landed
 	 * nothing, which re-runs this effect over the same ids and says nothing.
+	 *
+	 * A toast would be a missed order. This is the screen an operator glances at between
+	 * service tasks, and a sentence that leaves on its own after 3.2 seconds is a sentence
+	 * that left before the hands were free — so the banner has no timer at all (see the
+	 * component), and the id it raises is the id the effect below takes down when the order
+	 * stops being new.
+	 *
+	 * The same arrival also rings `lib/new-order-sound.ts`, §57's half of the same
+	 * announcement — for the operator who is not looking at this screen, which on a phone
+	 * in a service window is most of the time.
 	 */
 	const arrivals = useRef<Set<string> | null>(null);
 	const arrivalsScope = useRef<string | undefined>(undefined);
+	const alerted = useRef<string | null>(null);
+	/**
+	 * The id §43's wash is on. State rather than a ref because the render has to see
+	 * it: the arrival effect runs *after* the pass that first drew the new row, so a
+	 * ref written there would be read one pass too late and the row would never get
+	 * the prop. It is left set until the next arrival — the row fades the wash out
+	 * itself (`components/merchant-order-row.tsx`), and a board that is re-filtered
+	 * rebuilds its arrival set from scratch.
+	 */
+	const [freshId, setFreshId] = useState<string | null>(null);
 	useEffect(() => {
 		if (board.isPending) return;
 		const seen = arrivals.current;
@@ -420,14 +443,25 @@ function Board() {
 			: undefined;
 		arrivals.current = new Set(orders.map((order) => order.id));
 		if (!arrived) return;
-		toast.show(
-			t("biz.board.newOrder.body", {
-				code: arrived.reference,
+		alerted.current = arrived.id;
+		setFreshId(arrived.id);
+		// Hear it and see it. `lib/new-order-sound.ts` is called from here and not from
+		// `./new-order-banner` because a surface does not decide when news arrives -- the
+		// arrival detector does, which is the same rule `lib/haptics.ts` writes for its own
+		// four names ("called from wherever the change happened, never from a surface"). The
+		// two are one announcement on two channels: §57's chime for a phone in a pocket or a
+		// noisy room, §24's banner for the glance that follows it.
+		newOrderSound();
+		banner.show({
+			orderId: arrived.id,
+			title: t("biz.board.newOrder.title", { reference: arrived.reference }),
+			body: t("biz.board.newOrder.meta", {
 				total: formatMoney(arrived.totalMinor, arrived.currency, {
 					locale: intlLocale,
 				}),
+				items: tp("biz.board.items", arrived.itemCount),
 			}),
-		);
+		});
 	}, [
 		orders,
 		board.isPending,
@@ -435,9 +469,32 @@ function Board() {
 		locationId,
 		filter,
 		t,
+		tp,
 		intlLocale,
-		toast,
+		banner,
 	]);
+
+	/**
+	 * The banner comes down when the order it is about stops being new.
+	 *
+	 * The arrival effect raises it and this one retires it, and the two are separate because
+	 * they answer different questions: "did something arrive" reads the *set* of ids, "is this
+	 * order still waiting" reads the one. A move off `PENDING` — the operator accepted it from
+	 * the row below, or another phone did — ends the banner without anyone having to open it,
+	 * which is the one exit from §24's surface that is not a tap.
+	 *
+	 * `alerted` is the id and not the object, and it is updated on every raise: a second order
+	 * replaces the first on the surface, so the second is the one this watches. An older order
+	 * resolving while a newer one is up leaves the banner alone, correctly.
+	 */
+	useEffect(() => {
+		const id = alerted.current;
+		if (!id) return;
+		const order = orders.find((candidate) => candidate.id === id);
+		if (order && order.status === "PENDING") return;
+		alerted.current = null;
+		banner.dismiss();
+	}, [orders, banner]);
 
 	/**
 	 * The queue, bucketed into the stages it draws.
@@ -834,6 +891,7 @@ function Board() {
 															)}
 															waitLabel={waitLabel}
 															urgent={urgent}
+															justArrived={order.id === freshId}
 															helpLabel={t("action.view")}
 															actions={actionsFor(order)}
 															last={index === stage.orders.length - 1}

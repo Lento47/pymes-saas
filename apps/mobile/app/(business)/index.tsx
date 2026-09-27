@@ -1,8 +1,15 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
+import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
+	type FulfilmentKind,
 	formatMoney,
+	isTerminalStatus,
+	MARKET_TIME_ZONE,
 	MAX_LINE_QUANTITY,
 	type MerchantHome as MerchantHomeData,
+	nextStatuses,
+	ORDER_STATUSES,
+	type OrderStatus,
 	type ProductCard,
 } from "@pymeshub/shared";
 import {
@@ -12,7 +19,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
@@ -34,9 +41,14 @@ import {
 } from "@/components/merchant-command-rail";
 import {
 	MerchantOrderRow,
+	type MerchantRowAction,
 	ROW_MIN_HEIGHT,
 } from "@/components/merchant-order-row";
-import { MerchantPulse, pulseBandHeight } from "@/components/merchant-pulse";
+import {
+	MerchantPulse,
+	type MerchantPulseData,
+	pulseBandHeight,
+} from "@/components/merchant-pulse";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
@@ -48,7 +60,12 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { messageFor, toApiFailure, useApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
-import { formatMarketDayMonth, formatMinuteOfDay } from "@/lib/format";
+import {
+	formatClock,
+	formatDayMonth,
+	formatMinuteOfDay,
+	formatRelative,
+} from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
@@ -94,91 +111,101 @@ type ProductListPage = {
 };
 type ProductListData = InfiniteData<ProductListPage>;
 type Attention = MerchantHomeData["attention"][number];
+type AttentionGroup = Attention & { count: number };
 type PauseDuration = 15 | 30 | 60 | undefined;
 type PauseStage = "duration" | "confirm" | null;
+type CachedOrder = MerchantHomeData["orders"][number];
 
-function withInventory<T extends object>(
-	inventory: T,
-	quantity: number,
-	maxOrderQuantity: number,
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function isCachedOrder(value: unknown): value is CachedOrder {
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.status === "string" &&
+		(ORDER_STATUSES as readonly string[]).includes(value.status)
+	);
+}
+
+function findCachedOrder(
+	value: unknown,
+	orderId: string,
+): CachedOrder | undefined {
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			const order = findCachedOrder(entry, orderId);
+			if (order) return order;
+		}
+		return undefined;
+	}
+
+	if (!isRecord(value)) return undefined;
+	if (isCachedOrder(value) && value.id === orderId) return value;
+
+	const record = value as Record<string, unknown>;
+	for (const key of ["orders", "items", "pages"]) {
+		const order = findCachedOrder(record[key], orderId);
+		if (order) return order;
+	}
+
+	return undefined;
+}
+
+function replaceCachedOrderStatus<T>(
+	value: T,
+	orderId: string,
+	status: OrderStatus,
 ): T {
-	return {
-		...inventory,
-		...("quantity" in inventory ? { quantity } : {}),
-		...("stockQuantity" in inventory ? { stockQuantity: quantity } : {}),
-		...("maxOrderQuantity" in inventory ? { maxOrderQuantity } : {}),
-	} as T;
+	if (Array.isArray(value)) {
+		let changed = false;
+		const next = value.map((entry) => {
+			const replacement = replaceCachedOrderStatus(entry, orderId, status);
+			if (replacement !== entry) changed = true;
+			return replacement;
+		});
+		return changed ? (next as T) : value;
+	}
+
+	if (!isRecord(value)) return value;
+	if (isCachedOrder(value) && value.id === orderId) {
+		return { ...value, status } as T;
+	}
+
+	let changed = false;
+	const next: Record<string, unknown> = { ...value };
+	for (const key of ["orders", "items", "pages"]) {
+		if (!(key in next)) continue;
+		const replacement = replaceCachedOrderStatus(next[key], orderId, status);
+		if (replacement !== next[key]) {
+			next[key] = replacement;
+			changed = true;
+		}
+	}
+
+	return changed ? (next as T) : value;
+}
+
+function moveLabelKey(to: OrderStatus, fulfilment: FulfilmentKind): MessageKey {
+	if (to === "COMPLETED") {
+		return fulfilment === "PICKUP"
+			? "biz.board.markPickedUp"
+			: "biz.board.markDelivered";
+	}
+	return MOVE_LABELS[to];
 }
 
 function withAvailability(product: ProductCard, quantity: number): ProductCard {
-	const maxOrderQuantity = Math.max(1, Math.min(MAX_LINE_QUANTITY, quantity));
-	const inventory = (product.availability as { inventory?: object }).inventory;
 	return {
 		...product,
 		availability: {
 			...product.availability,
 			inStock: quantity > 0,
 			quantity,
-			maxOrderQuantity,
-			...(inventory
-				? { inventory: withInventory(inventory, quantity, maxOrderQuantity) }
-				: {}),
-		} as ProductCard["availability"],
+			maxOrderQuantity: Math.max(1, Math.min(MAX_LINE_QUANTITY, quantity)),
+		},
 	};
-}
-
-function productNameOf(product: unknown): string | null {
-	if (typeof product === "string") return product;
-	if (
-		product &&
-		typeof product === "object" &&
-		"name" in product &&
-		typeof product.name === "string"
-	) {
-		return product.name;
-	}
-	return null;
-}
-
-function alertRoute(action: Attention["action"]) {
-	switch (action) {
-		case "open_orders":
-			return "/business" as const;
-		case "open_catalog":
-		case "open_inventory":
-			return "/products" as const;
-		case "open_settings":
-			return "/(business)/merchant-settings" as const;
-		case "open_payouts":
-			return "/(business)/payouts" as const;
-		case "retry_payment":
-			return "/(business)/payments" as const;
-		case "contact_support":
-			return "/(business)/support" as const;
-		default:
-			return null;
-	}
-}
-
-function alertIcon(alert: Attention) {
-	switch (alert.type) {
-		case "new_order":
-		case "order_delay":
-			return "receipt-outline" as const;
-		case "inventory_low":
-		case "inventory_zero":
-			return "cube-outline" as const;
-		case "store_offline":
-			return "storefront-outline" as const;
-		case "payment_issue":
-			return "card-outline" as const;
-		case "settlement_issue":
-			return "cash-outline" as const;
-		case "catalog_issue":
-			return "pricetag-outline" as const;
-		default:
-			return "alert-circle-outline" as const;
-	}
 }
 
 export default function MerchantHome() {
@@ -190,7 +217,6 @@ export default function MerchantHome() {
 	const { colors } = useTheme();
 	const scope = useMerchantScope();
 	const [locationPickerOpen, setLocationPickerOpen] = useState(false);
-	const [statusSheetOpen, setStatusSheetOpen] = useState(false);
 	const [pauseStage, setPauseStage] = useState<PauseStage>(null);
 	const [pauseDuration, setPauseDuration] = useState<PauseDuration>();
 
@@ -204,6 +230,12 @@ export default function MerchantHome() {
 	const shop =
 		shopList.find((one) => one.businessId === scope.businessId) ?? shopList[0];
 	const businessId = shop?.businessId;
+	const analyticsRange = useMemo(() => {
+		const to = new Date();
+		const from = new Date(to);
+		from.setUTCHours(0, 0, 0, 0);
+		return { from, to };
+	}, []);
 	const locations = useQuery(
 		trpc.business.locations.queryOptions(
 			{ businessId: businessId ?? "" },
@@ -215,6 +247,26 @@ export default function MerchantHome() {
 		locations.data?.find((location) => location.isDefault) ??
 		locations.data?.[0];
 	const locationId = selectedLocation?.id;
+	const analytics = useQuery(
+		trpc.business.analytics.queryOptions(
+			{
+				businessId: businessId ?? "",
+				locationId: locationId ?? "",
+				timezone: MARKET_TIME_ZONE,
+				from: analyticsRange.from,
+				to: analyticsRange.to,
+			},
+			{
+				enabled:
+					signedIn &&
+					!!businessId &&
+					!!locationId &&
+					(shop?.role === "OWNER" || shop?.role === "MANAGER"),
+				refetchInterval: 5_000,
+			},
+		),
+	);
+
 	const home = useQuery(
 		trpc.business.home.queryOptions(
 			{ businessId: businessId ?? "", locationId: locationId ?? "" },
@@ -231,13 +283,115 @@ export default function MerchantHome() {
 				(shops.isPending ||
 					(!!businessId && (locations.isPending || home.isPending)))),
 	);
-	const failed = shops.error ?? locations.error ?? home.error;
+	const failed =
+		shops.error ?? locations.error ?? home.error ?? analytics.error;
 
-	const dateLabel = formatMarketDayMonth(new Date(), intlLocale);
+	const dateLabel = formatDayMonth(new Date(), intlLocale);
+	const dashboardQueries = [shops, locations, home, analytics];
+	const latestUpdate = Math.max(
+		...dashboardQueries.map((query) => query.dataUpdatedAt),
+	);
+	const syncing = dashboardQueries.some((query) => query.isFetching);
+	const updateAge = Date.now() - latestUpdate;
+	const relativeUpdate = latestUpdate
+		? formatRelative(latestUpdate, intlLocale)
+		: null;
+	const updateClock = latestUpdate
+		? formatClock(latestUpdate, intlLocale)
+		: null;
+	const updateDescription = relativeUpdate ?? updateClock;
+	const isStale = updateAge >= 5 * 60_000;
+	const freshnessLabel = syncing
+		? t("biz.dashboard.syncing")
+		: updateAge < 60_000
+			? t("biz.dashboard.updatedJustNow")
+			: isStale
+				? t("biz.dashboard.updatedStale", {
+						relative: updateDescription ?? "",
+					})
+				: t("biz.dashboard.updatedRelative", {
+						relative: updateDescription ?? "",
+					});
 
-	const pulse = home.data?.pulse ?? null;
+	/**
+	 * The pulse's three figures, from the reads above and nothing else. The money
+	 * entry is matched on the shop's own currency: a repriced shop whose today
+	 * revenue arrived in another code draws dashes, not another currency's figure
+	 * under this one's label. The orders column counts every order placed today;
+	 * the average divides the completed revenue by the completed count, the set it
+	 * came from — both honest numbers, neither invented.
+	 */
+	const pulse: MerchantPulseData | null = home.data?.pulse ?? null;
+	const attention = useMemo<AttentionGroup[]>(() => {
+		const grouped = new Map<string, AttentionGroup>();
+		for (const alert of home.data?.attention ?? []) {
+			const key = `${alert.type}:${alert.action ?? ""}`;
+			const current = grouped.get(key);
+			grouped.set(key, current ? { ...current, count: current.count + 1 } : { ...alert, count: 1 });
+		}
+		return [...grouped.values()];
+	}, [home.data?.attention]);
 
 	const orders = home.data?.orders ?? [];
+
+	const advance = useMutation(
+		trpc.orders.advance.mutationOptions({
+			onMutate: async ({ orderId, to }) => {
+				const homeKey = trpc.business.home.pathKey();
+				const previousHome = cache.getQueriesData<MerchantHomeData>({
+					queryKey: homeKey,
+				});
+				await cache.cancelQueries({ queryKey: homeKey });
+				cache.setQueriesData<MerchantHomeData>(
+					{ queryKey: homeKey },
+					(current) =>
+						current ? replaceCachedOrderStatus(current, orderId, to) : current,
+				);
+				return { previousHome };
+			},
+			onError: async (error, _variables, context) => {
+				for (const [queryKey, data] of context?.previousHome ?? []) {
+					cache.setQueryData(queryKey, data);
+				}
+				warning();
+
+				if (toApiFailure(error).code !== "CONFLICT") {
+					toast.show(t("biz.board.moveFailed"));
+					return;
+				}
+
+				await cache.invalidateQueries({
+					queryKey: trpc.orders.pathKey(),
+				});
+				let refreshed: CachedOrder | undefined;
+				for (const [, data] of cache.getQueriesData<unknown>({
+					queryKey: trpc.orders.pathKey(),
+				})) {
+					refreshed ??= findCachedOrder(data, _variables.orderId);
+					if (refreshed) break;
+				}
+
+				toast.show(
+					refreshed
+						? t("biz.board.conflict.body", {
+								status: t(statusKey(refreshed.status)),
+							})
+						: t("biz.board.conflict.title"),
+				);
+			},
+			onSuccess: async (_data, variables) => {
+				light();
+				toast.show(
+					t("biz.board.movedTo", {
+						status: t(statusKey(variables.to)),
+					}),
+				);
+				await cache.invalidateQueries({
+					queryKey: trpc.orders.pathKey(),
+				});
+			},
+		}),
+	);
 
 	const setStock = useMutation(
 		trpc.products.setStock.mutationOptions({
@@ -349,6 +503,14 @@ export default function MerchantHome() {
 	const refreshOperatingState = async () => {
 		await Promise.all([locations.refetch(), home.refetch()]);
 	};
+	const refreshDashboard = async () => {
+		await Promise.all([
+			shops.refetch(),
+			locations.refetch(),
+			home.refetch(),
+			analytics.refetch(),
+		]);
+	};
 	const pause = useMutation(
 		trpc.business.pauseLocation.mutationOptions({
 			onMutate: () => {
@@ -356,9 +518,16 @@ export default function MerchantHome() {
 				setPauseStage(null);
 				setPauseDuration(undefined);
 			},
-			onSuccess: async () => {
+			onSuccess: async (_data, variables) => {
 				light();
-				toast.show(t("biz.locations.paused"));
+				// §46's trailing Undo — see `./locations`, which draws the same pair for the same
+				// write, and `components/toast` for why the sentence and the button are siblings.
+				toast.show(t("biz.locations.paused"), () => {
+					resume.mutate({
+						businessId: variables.businessId,
+						locationId: variables.locationId,
+					});
+				});
 				await refreshOperatingState();
 			},
 			onError: () => setPauseStage(null),
@@ -387,14 +556,6 @@ export default function MerchantHome() {
 		(locationPaused || selectedLocation.status === "open");
 	const selectedPauseDuration =
 		pauseDuration === undefined ? undefined : pauseDuration;
-	const locationLabel = selectedLocation
-		? selectedLocation.name === shop?.businessName
-			? (selectedLocation.city ??
-				((locations.data?.length ?? 0) > 1 ? t("biz.locations.title") : null))
-			: [selectedLocation.name, selectedLocation.city]
-					.filter(Boolean)
-					.join(" · ")
-		: null;
 
 	return (
 		<>
@@ -404,27 +565,13 @@ export default function MerchantHome() {
 				padded={false}
 				scroll
 				contentStyle={styles.body}
-				onRefresh={async () => {
-					// Refresh the membership and the dashboard it scopes.
-					await Promise.all([
-						shops.refetch(),
-						locations.refetch(),
-						home.refetch(),
-					]);
-				}}
+				onRefresh={refreshDashboard}
 			>
 				{/* The failure, tested before the absence of data: a `myBusinesses` read that
 		    failed leaves no `shops.data` behind, so the skeleton branch would hold the
 		    screen forever with nothing to say. */}
 				{failed ? (
-					<ErrorState
-						error={failed}
-						onRetry={() => {
-							void shops.refetch();
-							void locations.refetch();
-							void home.refetch();
-						}}
-					/>
+					<ErrorState error={failed} onRetry={() => void refreshDashboard()} />
 				) : waiting || !shops.data ? (
 					<HomeSkeleton loadingLabel={t("state.loading")} />
 				) : !shop || !businessId ? (
@@ -438,24 +585,24 @@ export default function MerchantHome() {
 				) : (
 					<>
 						<View style={styles.merchantHeader}>
-							<View style={styles.merchantBrand}>
-								<Image
-									uri={home.data?.location.logoUrl}
-									style={[styles.merchantLogo, { borderColor: colors.border }]}
-									radiusToken="md"
-									accessibilityElementsHidden
-								>
-									{home.data?.location.logoUrl ? null : (
-										<Text variant="title" bold>
-											{shop.businessName.trim().charAt(0).toUpperCase()}
-										</Text>
-									)}
-								</Image>
-								<View style={styles.merchantIdentity}>
-									<Text variant="title" bold numberOfLines={1}>
-										{shop.businessName}
+							<Image
+								uri={home.data?.location.logoUrl}
+								style={[styles.merchantLogo, { borderColor: colors.border }]}
+								radiusToken="md"
+								accessibilityElementsHidden
+							>
+								{home.data?.location.logoUrl ? null : (
+									<Text variant="title" bold>
+										{shop.businessName.trim().charAt(0).toUpperCase()}
 									</Text>
-									{selectedLocation && locationLabel ? (
+								)}
+							</Image>
+							<View style={styles.merchantIdentity}>
+								<Text variant="title" bold numberOfLines={1}>
+									{shop.businessName}
+								</Text>
+								{selectedLocation ? (
+									<View style={styles.operatingState}>
 										<Pressable
 											onPress={() => setLocationPickerOpen(true)}
 											disabled={(locations.data?.length ?? 0) < 2}
@@ -471,67 +618,175 @@ export default function MerchantHome() {
 										>
 											<Ionicons
 												name="location-outline"
-												size={icon.inline}
+												size={14}
 												color={colors.mutedForeground}
 											/>
 											<Text variant="label" tone="muted" numberOfLines={1}>
-												{locationLabel}
+												{(locations.data?.length ?? 0) === 1 &&
+												selectedLocation.name === shop.businessName
+													? (selectedLocation.city ?? selectedLocation.name)
+													: [selectedLocation.name, selectedLocation.city]
+															.filter(Boolean)
+															.join(" · ")}
 											</Text>
 											{(locations.data?.length ?? 0) > 1 ? (
 												<Ionicons
 													name="chevron-down"
-													size={icon.inline}
+													size={14}
 													color={colors.mutedForeground}
 												/>
 											) : null}
 										</Pressable>
-									) : null}
-								</View>
-							</View>
-							{selectedLocation ? (
-								<View style={styles.operatingState}>
+										{selectedLocation.todayHours ? (
+											<Text variant="caption" tone="muted">
+												{t("biz.dashboard.today")} ·{" "}
+												{formatMinuteOfDay(
+													selectedLocation.todayHours.opensMinute,
+													intlLocale,
+												)}
+												–
+												{formatMinuteOfDay(
+													selectedLocation.todayHours.closesMinute,
+													intlLocale,
+												)}
+											</Text>
+										) : null}
+									</View>
+								) : null}
+								{selectedLocation ? (
 									<Pressable
-										onPress={() => setStatusSheetOpen(true)}
-										disabled={pause.isPending || resume.isPending}
+										onPress={() => {
+											if (locationPaused) {
+												resume.mutate({
+													businessId,
+													locationId: selectedLocation.id,
+												});
+												return;
+											}
+											setPauseDuration(undefined);
+											setPauseStage("duration");
+										}}
+										disabled={
+											!canManageOperatingState ||
+											pause.isPending ||
+											resume.isPending
+										}
 										disabledOpacity={1}
 										accessibilityRole="button"
 										accessibilityLabel={t(
 											`biz.locations.status.${selectedLocation.status}`,
 										)}
+										accessibilityHint={
+											canManageOperatingState
+												? t(
+														locationPaused
+															? "biz.locations.resume"
+															: "biz.locations.pause",
+													)
+												: undefined
+										}
 										style={[
 											styles.statusControl,
-											{
-												backgroundColor: colors.muted,
-												borderColor: colors.border,
-											},
+											{ backgroundColor: colors.muted },
 										]}
 									>
-										<View style={styles.statusLine}>
-											<View
-												style={[
-													styles.statusDot,
-													{
-														backgroundColor:
-															selectedLocation.status === "open"
-																? colors.success
-																: locationPaused
-																	? colors.warning
-																	: colors.mutedForeground,
-													},
-												]}
-											/>
-											<Text variant="label" bold>
-												{t(`biz.locations.status.${selectedLocation.status}`)}
-											</Text>
-										</View>
-										<Ionicons
-											name="chevron-forward"
-											size={icon.control}
-											color={colors.mutedForeground}
+										<View
+											style={[
+												styles.statusDot,
+												{
+													backgroundColor:
+														selectedLocation.status === "open"
+															? colors.success
+															: locationPaused
+																? colors.warning
+																: colors.mutedForeground,
+												},
+											]}
 										/>
+										<Text variant="label" bold>
+											{t(`biz.locations.status.${selectedLocation.status}`)}
+										</Text>
+										{canManageOperatingState ? (
+											<Ionicons
+												name={locationPaused ? "play-outline" : "chevron-down"}
+												size={16}
+												color={colors.foreground}
+											/>
+										) : null}
 									</Pressable>
-								</View>
-							) : null}
+								) : null}
+							</View>
+							{/* §12's third column. The layout it draws is `logo | identity |
+						    controls (notification, profile)`, and the first two were already
+						    here: this is the pair on the right, top-aligned with the logo so it
+						    answers the *title* rather than floating in the middle of a header
+						    that grows at 200% text.
+
+						    Both doors leave the business tree, and both already exist as root
+						    screens of their own — `app/inbox` is the bell's whole job ("What the
+						    shop has told you: the bell, as a list") and `app/profile` is the
+						    fields `./more` already links to. One bell rather than a second
+						    notifications screen, for the reason `components/home-header` has one
+						    avatar. The profile is an icon and not `home-header`'s initials because
+						    this screen reads the shop and not `users.me`, and a header that drew a
+						    name it never fetched would be the file's own "a control for something
+						    the API has not confirmed" one step earlier. */}
+							<View style={styles.merchantControls}>
+								<Pressable
+									onPress={() => router.push("/inbox")}
+									accessibilityRole="button"
+									accessibilityLabel={t("account.inbox")}
+									accessibilityHint={t("account.inbox.help")}
+									style={styles.headerControl}
+								>
+									<Ionicons
+										name="notifications-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
+								<Pressable
+									onPress={() => router.push("/profile")}
+									accessibilityRole="button"
+									accessibilityLabel={t("account.profile.title")}
+									style={styles.headerControl}
+								>
+									<Ionicons
+										name="person-circle-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
+							</View>
+						</View>
+						<View style={styles.syncRow}>
+							<View style={styles.syncStatus} accessibilityLiveRegion="polite">
+								<Ionicons
+									name={syncing ? "sync-outline" : "cloud-done-outline"}
+									size={20}
+									color={syncing ? colors.primary : colors.mutedForeground}
+									importantForAccessibility="no-hide-descendants"
+									accessibilityElementsHidden
+								/>
+								<Text style={styles.syncLabel}>{freshnessLabel}</Text>
+							</View>
+							<Pressable
+								onPress={refreshDashboard}
+								accessibilityRole="button"
+								accessibilityLabel={t("biz.dashboard.refresh")}
+								accessibilityHint={t("biz.dashboard.refreshHelp")}
+								style={({ pressed }) => [
+									styles.syncControl,
+									pressed ? { backgroundColor: colors.muted } : null,
+									syncing ? { opacity: 0.6 } : null,
+								]}
+							>
+								<Ionicons name="refresh" size={24} color={colors.primary} />
+							</Pressable>
 						</View>
 						{pause.error || resume.error ? (
 							<View style={styles.pad}>
@@ -583,50 +838,67 @@ export default function MerchantHome() {
 						<MerchantInsight
 							items={[
 								{
-									label: t("biz.insight.estimatedMargin"),
-									value:
-										home.data?.insights.estimatedMarginPercent == null
-											? null
-											: `${home.data.insights.estimatedMarginPercent}%`,
-								},
-								{
-									label: t("biz.insight.topProduct"),
-									value: productNameOf(home.data?.insights.topProduct),
+									label: t("biz.dashboard.topProducts"),
+									value: analytics.data?.topProducts[0]?.name ?? null,
 								},
 								{
 									label: t("biz.insight.avgPreparation"),
 									value:
-										home.data?.insights.averagePreparationMinutes == null
+										analytics.data?.operations.avg_preparation_seconds == null
 											? null
 											: t("unit.minutes", {
-													count: home.data.insights.averagePreparationMinutes,
+													count: Math.round(
+														analytics.data.operations.avg_preparation_seconds /
+															60,
+													),
 												}),
 								},
 								{
-									label: t("biz.payouts.net"),
+									label: t("biz.insight.avgOrder"),
 									value:
-										home.data?.insights.projectedPayoutMinor == null
+										analytics.data?.averageOrderMinor == null
 											? null
 											: formatMoney(
-													home.data.insights.projectedPayoutMinor,
-													home.data.location.currency,
+													analytics.data.averageOrderMinor,
+													analytics.data.currency,
 													{ locale: intlLocale },
 												),
 								},
 							]}
 						/>
 
-						{home.data && home.data.attention.length > 0 ? (
+						{attention.length > 0 ? (
 							<View style={styles.pad}>
 								<SectionHeader title={t("biz.home.attention")} />
 								{/* All but the last row drop the trailing hairline the row's own
 						    default draws — the rhythm the board's rows keep with `last`, so
-								a card of rows never ends in a line for nobody. */}
-								{home.data.attention.map((alert, index) => (
+						    a card of rows never ends in a line for nobody. */}
+								{attention.map((alert, index) => (
 									<AttentionRow
-										key={alert.id}
-										alert={alert}
-										last={index === home.data.attention.length - 1}
+										key={`${alert.type}:${alert.action ?? ""}`}
+										label={t(
+											alert.type === "new_order"
+												? "biz.home.newOrders"
+												: "biz.home.outOfStock",
+										)}
+										count={alert.count}
+										severity={alert.severity}
+										icon={
+											alert.type === "new_order"
+												? "receipt-outline"
+												: "alert-circle-outline"
+										}
+										last={index === attention.length - 1}
+										onPress={() =>
+											router.push(
+												alert.action === "open_orders"
+													? "/business"
+													: alert.action === "open_inventory" ||
+														alert.action === "open_catalog"
+														? "/products"
+														: "/more",
+											)
+										}
 									/>
 								))}
 							</View>
@@ -652,41 +924,74 @@ export default function MerchantHome() {
 							</View>
 						) : (
 							<View>
-								{orders.map((order, index) => (
-									// Full-bleed, like the board's queue: the row pays its own
-									// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
-									// wrapper here would double them and put the ink at 48 points
-									// under a section title sitting at 24.
-									<MerchantOrderRow
-										key={order.id}
-										onPress={() =>
-											router.push({
-												pathname: "/merchant-order/[id]",
-												params: { id: order.id },
-											})
-										}
-										reference={order.reference}
-										headline={order.headline}
-										fulfilmentLabel={t(
-											order.fulfilment === "PICKUP"
-												? "order.pickup"
-												: "order.delivery",
-										)}
-										status={order.status}
-										statusLabel={t(statusKey(order.status))}
-										totalLabel={formatMoney(order.totalMinor, order.currency, {
-											locale: intlLocale,
-										})}
-										urgent={order.status === "PENDING" ? "new" : null}
-										last={index === orders.length - 1}
-									/>
-								))}
+								{orders.map((order, index) => {
+									const actions: MerchantRowAction[] = nextStatuses(
+										order.status,
+										"BUSINESS",
+										order.fulfilment,
+									)
+										.slice(0, 2)
+										.map((to, actionIndex) => ({
+											label: t(moveLabelKey(to, order.fulfilment)),
+											onPress: () =>
+												advance.mutate({
+													orderId: order.id,
+													to,
+													expectedStatus: order.status,
+												}),
+											pending: advance.variables?.orderId === order.id,
+											kind: actionIndex === 0 ? "primary" : "secondary",
+										}));
+
+									return (
+										// Full-bleed, like the board's queue: the row pays its own
+										// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
+										// wrapper here would double them and put the ink at 48 points
+										// under a section title sitting at 24.
+										<MerchantOrderRow
+											key={order.id}
+											onPress={() =>
+												router.push({
+													pathname: "/merchant-order/[id]",
+													params: { id: order.id },
+												})
+											}
+											reference={order.reference}
+											headline={order.headline}
+											fulfilmentLabel={t(
+												order.fulfilment === "PICKUP"
+													? "order.pickup"
+													: "order.delivery",
+											)}
+											status={order.status}
+											statusLabel={t(statusKey(order.status))}
+											totalLabel={formatMoney(
+												order.totalMinor,
+												order.currency,
+												{
+													locale: intlLocale,
+												},
+											)}
+											urgent={order.status === "PENDING" ? "new" : null}
+											last={index === orders.length - 1}
+											actions={actions.length ? actions : undefined}
+										/>
+									);
+								})}
 							</View>
 						)}
 
 						{/* The doors, as the rail (§25) rather than the card it replaces:
-					    every destination is a route in this tree, so no action leads
-					    nowhere. Adding a product is the moment's one filled control. */}
+						    every destination is a route in this tree, so no action leads
+						    nowhere. Adding a product is the moment's one filled control.
+
+						    The five are §25's own list. `orders` and `menu` used to sit here
+						    and were the tab bar's destinations said again in different words;
+						    §25 names the *jobs* instead, which is why `Stock` opens the
+						    catalogue the steppers live on and `Pause` gives the order the
+						    header's status chip also gives. The label names the state the
+						    command moves to — `./switch`'s contract — so the same slot reads
+						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
 						<MerchantCommandRail
 							actions={[
 								{
@@ -701,16 +1006,48 @@ export default function MerchantHome() {
 										}),
 								},
 								{
-									key: "orders",
-									label: t("biz.nav.orders"),
-									icon: "receipt-outline",
-									onPress: () => router.push("/business"),
+									key: "promo",
+									label: t("biz.promotions.title"),
+									icon: "ticket-outline",
+									onPress: () => router.push("/(business)/promotions"),
 								},
 								{
-									key: "menu",
-									label: t("biz.nav.menu"),
-									icon: "fast-food-outline",
+									key: "stock",
+									label: t("biz.products.stock"),
+									icon: "cube-outline",
 									onPress: () => router.push("/products"),
+								},
+								{
+									key: "hours",
+									label: t("biz.settings.hours"),
+									icon: "time-outline",
+									onPress: () => router.push("/(business)/shop-hours"),
+								},
+								{
+									key: "pause",
+									label: locationPaused
+										? t("biz.locations.resume")
+										: t("biz.locations.pause"),
+									icon: locationPaused ? "play-outline" : "pause-outline",
+									disabled:
+										!canManageOperatingState ||
+										pause.isPending ||
+										resume.isPending,
+									onPress: () => {
+										if (!selectedLocation) return;
+										if (locationPaused) {
+											resume.mutate({
+												businessId,
+												locationId: selectedLocation.id,
+											});
+											return;
+										}
+										// §47 names "pause all orders" as one of the writes that
+										// gets a confirmation, and `pauseStage`'s own flow is that
+										// confirmation — a duration, then a `ConfirmSheet`.
+										setPauseDuration(undefined);
+										setPauseStage("duration");
+									},
 								},
 							]}
 						/>
@@ -798,72 +1135,6 @@ export default function MerchantHome() {
 							}}
 						/>
 					))}
-				</Card>
-			</Sheet>
-			<Sheet
-				open={statusSheetOpen}
-				onClose={() => setStatusSheetOpen(false)}
-				title={t("biz.locations.status.title")}
-				closeLabel={t("action.close")}
-			>
-				<Card>
-					<View style={styles.statusSheetState}>
-						<View style={styles.statusLine}>
-							<View
-								style={[
-									styles.statusDot,
-									{
-										backgroundColor:
-											selectedLocation?.status === "open"
-												? colors.success
-												: locationPaused
-													? colors.warning
-													: colors.mutedForeground,
-									},
-								]}
-							/>
-							<Text variant="label" bold>
-								{selectedLocation
-									? t(`biz.locations.status.${selectedLocation.status}`)
-									: null}
-							</Text>
-						</View>
-						{selectedLocation?.todayHours ? (
-							<Text variant="caption" tone="muted">
-								{t("biz.dashboard.today")} ·{" "}
-								{formatMinuteOfDay(
-									selectedLocation.todayHours.opensMinute,
-									intlLocale,
-								)}
-								–
-								{formatMinuteOfDay(
-									selectedLocation.todayHours.closesMinute,
-									intlLocale,
-								)}
-							</Text>
-						) : null}
-					</View>
-					{canManageOperatingState && businessId && selectedLocation ? (
-						<ListRow
-							title={t(
-								locationPaused ? "biz.locations.resume" : "biz.locations.pause",
-							)}
-							chevron
-							divider={false}
-							onPress={() => {
-								setStatusSheetOpen(false);
-								if (locationPaused) {
-									resume.mutate({
-										businessId,
-										locationId: selectedLocation.id,
-									});
-									return;
-								}
-								setPauseDuration(undefined);
-								setPauseStage("duration");
-							}}
-						/>
-					) : null}
 				</Card>
 			</Sheet>
 			<Sheet
@@ -968,22 +1239,29 @@ function MerchantInsight({
 	);
 }
 
-function AttentionRow({ alert, last }: { alert: Attention; last: boolean }) {
+function AttentionRow({
+	label,
+	count,
+	severity,
+	icon,
+	last,
+	onPress,
+}: {
+	label: string;
+	count: number;
+	severity: Attention["severity"];
+	icon: "receipt-outline" | "alert-circle-outline";
+	last: boolean;
+	onPress: () => void;
+}) {
 	const { colors } = useTheme();
-	const route = alertRoute(alert.action);
-	const semantic =
-		alert.severity === "critical"
-			? colors.destructive
-			: alert.severity === "warning"
-				? colors.warning
-				: colors.primary;
+	const semantic = severity === "critical" ? colors.destructive : colors.warning;
 
 	return (
 		<Pressable
 			accessibilityRole="button"
-			accessibilityLabel={alert.title}
-			accessibilityHint={alert.description}
-			onPress={route ? () => router.push(route) : undefined}
+			accessibilityLabel={`${label}: ${count}`}
+			onPress={onPress}
 			style={({ pressed }) => [
 				styles.attentionRow,
 				{ borderBottomColor: colors.border },
@@ -992,15 +1270,15 @@ function AttentionRow({ alert, last }: { alert: Attention; last: boolean }) {
 			]}
 		>
 			<View style={[styles.attentionRail, { backgroundColor: semantic }]} />
-			<Ionicons name={alertIcon(alert)} size={20} color={semantic} />
-			<Text style={styles.attentionCopy}>{alert.title}</Text>
-			{route ? (
-				<Ionicons
-					name="chevron-forward"
-					size={20}
-					color={colors.mutedForeground}
-				/>
-			) : null}
+			<Ionicons name={icon} size={20} color={semantic} />
+			<Text style={styles.attentionCopy}>
+				{label} <Text bold>{count}</Text>
+			</Text>
+			<Ionicons
+				name="chevron-forward"
+				size={20}
+				color={colors.mutedForeground}
+			/>
 		</Pressable>
 	);
 }
@@ -1016,14 +1294,12 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 			accessibilityLabel={loadingLabel}
 		>
 			<View style={styles.merchantHeader}>
-				<View style={styles.merchantBrand}>
-					<Skeleton style={styles.skeletonLogo} />
-					<View style={styles.skeletonIdentity}>
-						<Skeleton style={[styles.skeletonName, line("title", fontScale)]} />
-						<Skeleton style={[styles.skeletonMeta, line("label", fontScale)]} />
-					</View>
+				<Skeleton style={styles.skeletonLogo} />
+				<View style={styles.skeletonIdentity}>
+					<Skeleton style={[styles.skeletonName, line("title", fontScale)]} />
+					<Skeleton style={[styles.skeletonMeta, line("label", fontScale)]} />
+					<Skeleton style={styles.skeletonStatus} />
 				</View>
-				<Skeleton style={styles.skeletonStatus} />
 			</View>
 			{/* The pulse band's stand-in: full-bleed, at the band's own height, scaled where
 			    the band scales. The measure is `./merchant-pulse`'s own — the wait and the
@@ -1060,39 +1336,78 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const SKELETON_ROWS = [0, 1, 2] as const;
 
 const styles = StyleSheet.create({
+	syncRow: {
+		minHeight: 64,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		paddingHorizontal: space.xl,
+		paddingVertical: space.sm,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	syncStatus: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
+	syncLabel: { flexShrink: 1 },
+	syncControl: {
+		width: 48,
+		height: 48,
+		alignItems: "center",
+		justifyContent: "center",
+		borderRadius: radius.sm,
+	},
 	body: { gap: space.lg },
 	pad: { paddingHorizontal: space.lg },
 	merchantHeader: {
 		minHeight: 124,
-		gap: space.sm,
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: 14,
 		paddingHorizontal: space.xl,
 		paddingTop: space.md,
-		paddingBottom: space.sm,
+		paddingBottom: space.lg,
 	},
-	merchantBrand: { flexDirection: "row", alignItems: "center", gap: space.md },
 	merchantLogo: { width: 56, height: 56, borderWidth: 1 },
 	merchantIdentity: { flex: 1, alignItems: "flex-start", gap: TEXT_STACK_GAP },
+	// §12's controls, in a row of their own and top-aligned: they belong to the title,
+	// the same rule `./home-header` writes for the avatar beside its own.
+	merchantControls: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: space.xs,
+	},
+	/**
+	 * §28's icon button. The box is 48 rather than `MIN_TOUCH_TARGET`'s 44 because §28
+	 * asks for 48 on both platforms — "Android's current accessibility guidance explicitly
+	 * calls for at least 48dp interactive targets", and its own note is to make both 48 for
+	 * parity. The glyph inside is `icon.action` (20), the middle of §28's 20–22; the drawn
+	 * container *is* the target here, so there is no `hitSlop` to inflate it with.
+	 */
+	headerControl: {
+		width: 48,
+		height: 48,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	locationLine: { flexDirection: "row", alignItems: "center", gap: space.xs },
-	operatingState: { alignSelf: "flex-start" },
+	operatingState: { alignItems: "flex-start", gap: space.xs },
 	statusControl: {
 		minHeight: MIN_TOUCH_TARGET,
 		flexDirection: "row",
 		alignItems: "center",
+		alignSelf: "flex-start",
 		gap: space.sm,
-		borderWidth: 1,
-		borderRadius: radius.md,
 		paddingHorizontal: space.md,
+		borderRadius: radius.sm,
 	},
-	statusLine: { flexDirection: "row", alignItems: "center", gap: space.sm },
 	statusDot: { width: 8, height: 8, borderRadius: radius.full },
-	statusSheetState: {
-		gap: space.xs,
-		paddingHorizontal: space.md,
-		paddingVertical: space.md,
-	},
 	skeletonLogo: { width: 56, height: 56 },
 	skeletonIdentity: { flex: 1, gap: TEXT_STACK_GAP },
-	skeletonStatus: { minHeight: MIN_TOUCH_TARGET },
+	skeletonStatus: { width: 100, minHeight: MIN_TOUCH_TARGET },
 	skeletonName: { width: "55%" },
 	skeletonMeta: { width: "40%" },
 	insight: {

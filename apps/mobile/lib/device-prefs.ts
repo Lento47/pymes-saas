@@ -2,22 +2,23 @@ import type { FulfilmentKind } from "@pymeshub/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * The device's own answers: haptics and the fulfilment checkout starts on.
+ * The device's own answers: haptics, the board's chime, and the fulfilment
+ * checkout starts on.
  *
- * Neither is a fact the marketplace keeps about the person — a haptic setting
- * is a property of the phone, and the fulfilment default is which of two
- * closed options this checkout opens on — so both live in `AsyncStorage`
- * beside the locale (`lib/i18n.tsx`) rather than in D1 behind a procedure.
- * There is no `devicePrefs` procedure on the API for the same reason there is
- * no `recentSearches` one (`lib/recent-searches.ts`): storage outlives the
- * code that wrote it, and a server row would make a second truth.
+ * None is a fact the marketplace keeps about the person — a haptic setting and
+ * a board-sound setting are properties of the phone, and the fulfilment default
+ * is which of two closed options this checkout opens on — so all of them live in
+ * `AsyncStorage` beside the locale (`lib/i18n.tsx`) rather than in D1 behind a
+ * procedure. There is no `devicePrefs` procedure on the API for the same reason
+ * there is no `recentSearches` one (`lib/recent-searches.ts`): storage outlives
+ * the code that wrote it, and a server row would make a second truth.
  *
- * Reads never throw and always answer with something usable: `true` and
+ * Reads never throw and always answer with something usable: `true`, `true` and
  * `"PICKUP"`, the values a fresh install behaves as. An in-memory copy feeds
- * the synchronous readers (`lib/haptics.ts` cannot await inside a press), and
- * `initDevicePrefs()` refreshes it — called once from the root layout and
- * again wherever a screen writes, so a write is never followed by a stale
- * read in the same session.
+ * the synchronous readers (`lib/haptics.ts` and `lib/new-order-sound.ts` cannot
+ * await inside a press or an arrival), and `initDevicePrefs()` refreshes it —
+ * called once from the root layout and again wherever a screen writes, so a
+ * write is never followed by a stale read in the same session.
  */
 
 /**
@@ -31,10 +32,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type AccountProfile = "customer" | "business" | "delivery";
 
 const HAPTICS_KEY = "pymeshub_haptics_enabled";
+const BOARD_SOUND_KEY = "pymeshub_board_sound_enabled";
 const FULFILMENT_KEY = "pymeshub_default_fulfilment";
 const PROFILE_KEY = "pymeshub_account_profile";
 
 let hapticsEnabled = true;
+/**
+ * On until the merchant says otherwise, and that is deliberate rather than
+ * neutral: a missed order costs money in real time, so the silence has to be
+ * asked for. `lib/haptics.ts`'s flag is the same default for a weaker reason —
+ * a buzz nobody asked for is a nudge, while a chime nobody asked for is the one
+ * thing standing between a service window and a refund.
+ */
+let boardSoundEnabled = true;
 let defaultFulfilment: FulfilmentKind = "PICKUP";
 let accountProfile: AccountProfile = "customer";
 
@@ -60,8 +70,9 @@ async function writeBool(key: string, value: boolean): Promise<void> {
 
 /** Refresh the in-memory copy from storage. Safe to call often. */
 export async function initDevicePrefs(): Promise<void> {
-	const [haptics, fulfilment, profile] = await Promise.all([
+	const [haptics, boardSound, fulfilment, profile] = await Promise.all([
 		readBool(HAPTICS_KEY, true),
+		readBool(BOARD_SOUND_KEY, true),
 		(async (): Promise<FulfilmentKind> => {
 			try {
 				const raw = await AsyncStorage.getItem(FULFILMENT_KEY);
@@ -80,6 +91,7 @@ export async function initDevicePrefs(): Promise<void> {
 		})(),
 	]);
 	hapticsEnabled = haptics;
+	boardSoundEnabled = boardSound;
 	defaultFulfilment = fulfilment;
 	accountProfile = profile;
 }
@@ -92,6 +104,16 @@ export function areHapticsEnabled(): boolean {
 export async function setHapticsEnabled(value: boolean): Promise<void> {
 	hapticsEnabled = value;
 	await writeBool(HAPTICS_KEY, value);
+}
+
+/** What `lib/new-order-sound.ts` gates the §57 chime on. */
+export function isBoardSoundEnabled(): boolean {
+	return boardSoundEnabled;
+}
+
+export async function setBoardSoundEnabled(value: boolean): Promise<void> {
+	boardSoundEnabled = value;
+	await writeBool(BOARD_SOUND_KEY, value);
 }
 
 /** What checkout opens on. `"PICKUP"` until the customer says otherwise. */

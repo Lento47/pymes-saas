@@ -44,6 +44,11 @@ import {
 	type OrderActor,
 	type OrderStatus,
 } from "@pymeshub/shared/order-state";
+import {
+	GRACE_DAYS,
+	LAUNCH_PRICE_BOOK,
+	PLAN_PERIOD_DAYS,
+} from "@pymeshub/shared/plans";
 import { type Column, getTableColumns, getTableName } from "drizzle-orm";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 
@@ -62,6 +67,9 @@ import {
 	type NewAddress,
 	type NewAuditLog,
 	type NewBusiness,
+	// `NewSubscription` is imported with the values above, next to the `subscription`
+	// table it describes. Biome sorts named imports before value imports within a
+	// group, so it lives where the formatter puts it rather than where it reads best.
 	type NewCart,
 	type NewCartItem,
 	type NewCategory,
@@ -71,24 +79,26 @@ import {
 	type NewOrder,
 	type NewOrderEvent,
 	type NewOrderItem,
-	type NewPayout,
+	type NewPriceBook,
 	type NewProduct,
 	type NewProductOption,
 	type NewProductOptionGroup,
 	type NewPromotion,
 	type NewReview,
+	type NewSubscription,
 	type NewUser,
 	notification,
 	type OptionGroupKind,
 	order,
 	orderEvent,
 	orderItem,
-	payout,
+	priceBook,
 	product,
 	productOption,
 	productOptionGroup,
 	promotion,
 	review,
+	subscription,
 	user,
 } from "./schema";
 
@@ -1369,7 +1379,8 @@ const orderEventRows: NewOrderEvent[] = [];
 const reviewRows: NewReview[] = [];
 const favoriteRows: NewFavorite[] = [];
 const notificationRows: NewNotification[] = [];
-const payoutRows: NewPayout[] = [];
+const priceBookRows: NewPriceBook[] = [];
+const subscriptionRows: NewSubscription[] = [];
 const auditRows: NewAuditLog[] = [];
 
 // ---------------------------------------------------------------------------
@@ -2123,7 +2134,7 @@ for (const row of productRows) {
 	row.soldCount = productSales.get(row.id) ?? 0;
 }
 
-// --- favorites, notifications, payout, audit --------------------------------
+// --- favorites, notifications, subscriptions, audit --------------------------
 
 favoriteRows.push(
 	{
@@ -2177,17 +2188,83 @@ notificationRows.push(
 	},
 );
 
-payoutRows.push({
-	id: seedId(ID_PREFIXES.payout, 1),
+/**
+ * Subscriptions, and the price book they were priced under.
+ *
+ * Replaces the `payout` row that stood here, which described a 10% platform cut of a
+ * merchant's sales (`grossMinor: 486_500`, `platformFeeMinor: 48_650`) — the opposite
+ * business from the one this platform runs. The consumer pays the merchant and the
+ * courier; the platform invoices a flat fee.
+ *
+ * Three rows deliberately, so the demo shows all three states a merchant can be in
+ * rather than only the happy one:
+ *
+ * - **La Yunta** — `MONTHLY`, paid and current. The 30-day period runs from 4 days
+ *   ago, so `lastPaidAt` is recent and nothing is overdue.
+ * - **Café El Mirador** — `WEEKLY`, in `GRACE`. The period ended 10 days ago, which is
+ *   inside the 30-day grace, so this shop keeps full access and a warning. It is the
+ *   state a merchant paying ₡2,000 by hand lands in every few weeks.
+ * - **Frutería La Cosecha** — `PAST_DUE`, 45 days past a period end. Degraded to the
+ *   `WEEKLY` limits, **still listed in the feed**: a shop that stops paying keeps its
+ *   customers until 90 days, which is the whole reason the two states are separate.
+ */
+priceBookRows.push({
+	id: LAUNCH_PRICE_BOOK.priceBookId,
+	label: LAUNCH_PRICE_BOOK.label,
+	weeklyMinor: LAUNCH_PRICE_BOOK.weeklyMinor,
+	monthlyMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
+	effectiveFrom: daysAgo(120),
+	createdAt: daysAgo(120),
+});
+
+subscriptionRows.push({
+	id: seedId(ID_PREFIXES.subscription, 1),
 	businessId: businessIds.get("yunta") as string,
-	periodStart: daysAgo(38),
-	periodEnd: daysAgo(8),
-	grossMinor: 486_500,
-	platformFeeMinor: 48_650,
-	netMinor: 437_850,
-	status: "PAID",
-	paidAt: daysAgo(6),
-	createdAt: daysAgo(7),
+	plan: "MONTHLY",
+	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
+	priceMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
+	status: "ACTIVE",
+	periodStart: daysAgo(4),
+	periodEnd: new Date(
+		daysAgo(4).getTime() + PLAN_PERIOD_DAYS.MONTHLY * 86_400_000,
+	),
+	gracedUntil: null,
+	lastPaidAt: daysAgo(4),
+	createdAt: daysAgo(94),
+	updatedAt: daysAgo(4),
+});
+
+subscriptionRows.push({
+	id: seedId(ID_PREFIXES.subscription, 2),
+	businessId: businessIds.get("mirador") as string,
+	plan: "WEEKLY",
+	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
+	priceMinor: LAUNCH_PRICE_BOOK.weeklyMinor,
+	status: "GRACE",
+	periodStart: daysAgo(17),
+	periodEnd: daysAgo(10),
+	// 20 days after the period end: inside the 30-day grace, so access is untouched.
+	gracedUntil: new Date(daysAgo(10).getTime() + GRACE_DAYS * 86_400_000),
+	lastPaidAt: daysAgo(17),
+	createdAt: daysAgo(59),
+	updatedAt: daysAgo(10),
+});
+
+subscriptionRows.push({
+	id: seedId(ID_PREFIXES.subscription, 3),
+	businessId: businessIds.get("cosecha") as string,
+	plan: "MONTHLY",
+	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
+	priceMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
+	status: "PAST_DUE",
+	periodStart: daysAgo(75),
+	periodEnd: daysAgo(45),
+	// The grace window ran out; `business.plan` is WEEKLY so the limits have already
+	// fallen, which is what a row in this state should look like.
+	gracedUntil: new Date(daysAgo(45).getTime() + GRACE_DAYS * 86_400_000),
+	lastPaidAt: daysAgo(75),
+	createdAt: daysAgo(75),
+	updatedAt: daysAgo(15),
 });
 
 auditRows.push({
@@ -2278,7 +2355,10 @@ const statements = [
 	insertStatement(review, reviewRows),
 	insertStatement(favorite, favoriteRows),
 	insertStatement(notification, notificationRows),
-	insertStatement(payout, payoutRows),
+	// A price book before its subscriptions: `subscription.price_book_id` references
+	// it, and the order is a foreign-key requirement rather than a preference.
+	insertStatement(priceBook, priceBookRows),
+	insertStatement(subscription, subscriptionRows),
 	insertStatement(auditLog, auditRows),
 ].filter((statement): statement is string => statement !== null);
 
@@ -2346,7 +2426,8 @@ console.log(
 		`favorites ${favoriteRows.length}`,
 		`notifications ${notificationRows.length}`,
 		`promotions ${promotionRows.length}`,
-		`payouts ${payoutRows.length}`,
+		`price books ${priceBookRows.length}`,
+		`subscriptions ${subscriptionRows.length}`,
 		`audit rows ${auditRows.length}`,
 	].join(", "),
 );
@@ -2356,10 +2437,10 @@ console.log(
 console.log("");
 console.log("Apply it with:");
 console.log(
-	"  wrangler d1 execute pymhubdb --local -c ../../apps/api/wrangler.toml --file ./seed.sql",
+	`  wrangler d1 execute pymhubdb --local -c ../trpc-api/wrangler.toml --file ./seed.sql`,
 );
 console.log(
-	"  wrangler d1 execute pymhubdb --local -c ../../apps/api/wrangler.toml --file ./seed-credentials.sql",
+	`  wrangler d1 execute pymhubdb --local -c ../trpc-api/wrangler.toml --file ./seed-credentials.sql`,
 );
 console.log("");
 console.log(

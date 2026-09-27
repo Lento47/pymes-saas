@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ToastProvider } from "@/components/toast";
+import { WelcomeAnimation } from "@/components/welcome-animation";
 import { SessionProvider } from "@/lib/auth/session";
 import { initDevicePrefs } from "@/lib/device-prefs";
 import { I18nProvider } from "@/lib/i18n";
@@ -61,6 +62,7 @@ export default function RootLayout() {
 							<SafeAreaProvider>
 								<ToastProvider>
 									<ThemedStack />
+									<WelcomeAnimation />
 								</ToastProvider>
 							</SafeAreaProvider>
 						</ApiProvider>

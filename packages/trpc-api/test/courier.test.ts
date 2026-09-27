@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { merchantLocation as locationTable } from "@pymeshub/db";
 import { addToCartInput } from "@pymeshub/shared";
+import { eq } from "drizzle-orm";
 
 import { appRouter } from "../src/routers";
 import {
@@ -35,6 +37,15 @@ type Test = ReturnType<typeof world>;
 /** A READY delivery order, a shop owner, and a courier member waiting for runs. */
 async function readyRun(test: Test, orderTag = "courier_000001") {
 	const shopId = await seedBusiness(test.db, { id: `biz_${orderTag}` });
+	await test.db
+		.update(locationTable)
+		.set({
+			line1: "Avenida Central",
+			city: "San José",
+			lat: 9.9325,
+			lng: -84.0796,
+		})
+		.where(eq(locationTable.id, `loc_${shopId}`));
 	await seedProduct(test.db, {
 		id: `prd_${orderTag}`,
 		businessId: shopId,
@@ -50,6 +61,8 @@ async function readyRun(test: Test, orderTag = "courier_000001") {
 		line1: "Calle 1, casa 2",
 		city: "San José",
 		region: "San José",
+		lat: 9.9281,
+		lng: -84.0907,
 	});
 	const order = await buyer.orders.place({
 		fulfilment: "DELIVERY",
@@ -75,7 +88,7 @@ async function readyRun(test: Test, orderTag = "courier_000001") {
 describe("orders.assign", () => {
 	test("a manager hands a READY delivery to a courier of the shop", async () => {
 		const test = world();
-		const { buyer, manager, order, rider } = await readyRun(test);
+		const { buyer, courier, manager, order, rider } = await readyRun(test);
 
 		const assigned = await manager.orders.assign({
 			orderId: order.id,
@@ -92,6 +105,23 @@ describe("orders.assign", () => {
 		// itself never leaves the server, the name is what the screen shows.
 		const tracking = await buyer.orders.track({ id: order.id });
 		expect(tracking.courier?.name).toBe("Cliente de Prueba");
+
+		const detail = await buyer.orders.byId({ id: order.id });
+		expect(detail.pickupLocation).toMatchObject({
+			id: `loc_${detail.business.id}`,
+			line1: "Avenida Central",
+			lat: 9.9325,
+			lng: -84.0796,
+		});
+		expect(detail.deliveryAddress).toMatchObject({
+			line1: "Calle 1, casa 2",
+			lat: 9.9281,
+			lng: -84.0907,
+		});
+
+		const courierDetail = await courier.orders.byId({ id: order.id });
+		expect(courierDetail.pickupLocation?.lat).toBe(9.9325);
+		expect(courierDetail.deliveryAddress?.lat).toBe(9.9281);
 
 		test.close();
 	});
@@ -226,11 +256,16 @@ describe("courier moves and pings", () => {
 			lat: 9.93,
 			lng: -84.09,
 		});
+		await courier.orders.reportLocation({
+			orderId: order.id,
+			lat: 9.931,
+			lng: -84.091,
+		});
 
 		const tracking = await buyer.orders.track({ id: order.id });
 		expect(tracking.status).toBe("OUT_FOR_DELIVERY");
-		expect(tracking.courier?.lat).toBe(9.93);
-		expect(tracking.courier?.lng).toBe(-84.09);
+		expect(tracking.courier?.lat).toBe(9.931);
+		expect(tracking.courier?.lng).toBe(-84.091);
 		expect(tracking.courier?.updatedAt).not.toBeNull();
 
 		await courier.orders.advance({ orderId: order.id, to: "COMPLETED" });

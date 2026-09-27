@@ -39,9 +39,9 @@ const STATUS_TRANSITIONS: Array<{ value: string; label: string }> = [
 ];
 
 const groupedButtonClass =
-  "h-8 rounded-none border-border/70 px-2.5 text-xs first:rounded-l-md last:rounded-r-md -ml-px first:ml-0";
+  "h-11 rounded-none border-border/70 px-2.5 text-xs first:rounded-l-md last:rounded-r-md -ml-px first:ml-0";
 const groupedIconButtonClass =
-  "h-8 w-8 rounded-none border-border/70 p-0 first:rounded-l-md last:rounded-r-md -ml-px first:ml-0";
+  "h-11 w-11 rounded-none border-border/70 p-0 first:rounded-l-md last:rounded-r-md -ml-px first:ml-0";
 
 interface ConversationHeaderProps {
   contactName: string;
@@ -133,7 +133,7 @@ export function ConversationHeader({
       </div>
 
       {onBack && (
-        <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0 sm:hidden" onClick={onBack} aria-label="Volver">
+        <Button variant="ghost" size="sm" className="h-11 w-11 shrink-0 p-0 sm:hidden" onClick={onBack} aria-label="Volver">
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}
@@ -147,7 +147,7 @@ export function ConversationHeader({
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-semibold leading-tight text-foreground">
+        <div className="truncate text-base font-semibold leading-tight text-foreground">
           <SensitiveText text={contactName} />
         </div>
         <div className="mt-px flex flex-wrap items-center gap-1">
@@ -210,7 +210,7 @@ export function ConversationHeader({
           </div>
         )}
 
-        <div className="hidden items-center md:flex" role="group" aria-label="Acciones principales de conversación">
+        <div className="hidden items-center 2xl:flex" role="group" aria-label="Acciones principales de conversación">
           {canCall && onStartAudioCall && (
             <Button
               variant="outline"
@@ -244,7 +244,7 @@ export function ConversationHeader({
                   <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuContent align="end" className="app-overlay inbox-filters w-48 [&_[role=menuitem]]:min-h-11">
                 <DropdownMenuGroup>
                   {STATUS_TRANSITIONS.filter((s) => s.value !== currentStatus).map((s) => (
                     <DropdownMenuItem key={s.value} onClick={() => onStatusChange(s.value)}>
@@ -291,19 +291,19 @@ export function ConversationHeader({
         <div className="flex items-center" role="group" aria-label="Más acciones de conversación">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0" aria-label="Más opciones">
+              <Button variant="outline" size="sm" className="h-11 w-11 p-0" aria-label="Más opciones">
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="app-overlay inbox-filters w-64 max-h-[75dvh] overflow-y-auto [&_[role=menuitem]]:min-h-11">
               <DropdownMenuGroup>
                 {onStatusChange && currentStatus && currentStatus !== "RESOLVED" && (
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="md:hidden">
+                    <DropdownMenuSubTrigger className="2xl:hidden">
                       <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                       Estado
                     </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-44">
+                    <DropdownMenuSubContent className="app-overlay inbox-filters w-48 [&_[role=menuitem]]:min-h-11">
                       {STATUS_TRANSITIONS.filter((s) => s.value !== currentStatus).map((s) => (
                         <DropdownMenuItem key={s.value} onClick={() => onStatusChange(s.value)}>
                           {s.label}
@@ -318,19 +318,19 @@ export function ConversationHeader({
                 )}
 
                 {onResolve && !onStatusChange && (
-                  <DropdownMenuItem onClick={handleResolve} disabled={!canResolve} className="md:hidden">
+                  <DropdownMenuItem onClick={handleResolve} disabled={!canResolve} className="2xl:hidden">
                     <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                     Resolver
                   </DropdownMenuItem>
                 )}
                 {onCreateTask && (
-                  <DropdownMenuItem onClick={onCreateTask} className="md:hidden">
+                  <DropdownMenuItem onClick={onCreateTask} className="2xl:hidden">
                     <CheckSquare className="h-4 w-4 text-muted-foreground" />
                     Crear tarea
                   </DropdownMenuItem>
                 )}
                 {onInvoice && canSendInvoice && (
-                  <DropdownMenuItem onClick={onInvoice} className="md:hidden">
+                  <DropdownMenuItem onClick={onInvoice} className="2xl:hidden">
                     <Receipt className="h-4 w-4 text-muted-foreground" />
                     Crear factura
                   </DropdownMenuItem>
@@ -381,7 +381,7 @@ export function ConversationHeader({
                       <UserPlus className="h-4 w-4 text-muted-foreground" />
                       Asignar a...
                     </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-48">
+                    <DropdownMenuSubContent className="app-overlay inbox-filters w-48 [&_[role=menuitem]]:min-h-11">
                       {memberList.map((m) => {
                         const id = m.user?.id ?? m.id;
                         const name = m.user?.name ?? m.name ?? m.email ?? "Sin nombre";

@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
+import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { StorageService } from "../common/storage/storage.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -139,29 +141,55 @@ export class UsersService {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
       throw new BadRequestException("Formato no permitido. Usá JPEG, PNG o WebP.");
     }
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 2 * 1024 * 1024 || file.buffer.length > 2 * 1024 * 1024) {
       throw new BadRequestException("La imagen no puede superar 2 MB.");
     }
 
-    const ext = file.mimetype.split("/")[1] === "jpeg" ? "jpg" : file.mimetype.split("/")[1];
-    const key = `avatars/${userId}.${ext}`;
-    await this.storage.upload(key, file.buffer, file.mimetype);
+    let image: Buffer;
+    try {
+      const source = sharp(file.buffer, { limitInputPixels: 25_000_000, failOn: "warning" });
+      const metadata = await source.metadata();
+      if (!["jpeg", "png", "webp"].includes(metadata.format)) throw new Error("Unsupported image");
+      // Decode before storing, apply phone orientation and strip image metadata.
+      image = await source.rotate().resize(512, 512, { fit: "inside", withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
+    } catch {
+      throw new BadRequestException("La imagen no es válida. Usá JPEG, PNG o WebP de hasta 25 megapíxeles.");
+    }
 
-    const avatar_url = `/api/users/${userId}/avatar`;
-    await this.prisma.user.update({ where: { id: userId }, data: { avatar_url } });
+    const version = randomUUID();
+    const key = `avatars/${userId}/${version}.webp`;
+    await this.storage.upload(key, image, "image/webp");
+    const avatar_url = `/api/users/${userId}/avatar?v=${version}`;
+    try {
+      await this.prisma.user.update({ where: { id: userId }, data: { avatar_url } });
+    } catch (error) {
+      // A failed profile update must leave the previous photo intact.
+      await this.storage.delete(key);
+      throw error;
+    }
     return { avatar_url };
   }
 
-  async getAvatar(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { avatar_url: true },
-    });
+  async getAvatar(workspaceId: string, userId: string) {
+    // Check current membership on every request, before accessing storage.
+    const user = await this.findOne(workspaceId, userId);
     if (!user?.avatar_url) throw new NotFoundException("Avatar no encontrado.");
 
-    const key = `avatars/${userId}.${user.avatar_url.endsWith(".png") ? "png" : user.avatar_url.endsWith(".webp") ? "webp" : "jpg"}`;
-    const data = await this.storage.download(key);
-    const ext = key.split(".").pop() || "jpg";
-    return { data, contentType: `image/${ext === "jpg" ? "jpeg" : ext}` };
+    // Only stored, server-generated versions select an object; never accept a key from a URL parameter.
+    const version = user.avatar_url.match(/\?v=([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})$/)?.[1];
+    if (version) {
+      const data = await this.storage.download(`avatars/${userId}/${version}.webp`, true);
+      if (!data) throw new NotFoundException("Avatar no encontrado.");
+      return { data, contentType: "image/webp" };
+    }
+
+    // Older uploads stored no extension in avatar_url. Preserve JPEG precedence
+    // and recover PNG/WebP uploads when the JPEG object does not exist.
+    const extensions = user.avatar_url.endsWith(".png") ? ["png"] : user.avatar_url.endsWith(".webp") ? ["webp"] : ["jpg", "png", "webp"];
+    for (const ext of extensions) {
+      const data = await this.storage.download(`avatars/${userId}.${ext}`, true);
+      if (data) return { data, contentType: `image/${ext === "jpg" ? "jpeg" : ext}` };
+    }
+    throw new NotFoundException("Avatar no encontrado.");
   }
 }

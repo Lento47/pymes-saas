@@ -115,6 +115,19 @@ export const businessUpdateInput = businessCreateInput
 	.extend({
 		logoUrl: imageUrlSchema.nullable().optional(),
 		coverUrl: imageUrlSchema.nullable().optional(),
+		/**
+		 * Widened from the create shape's `.optional()` to `.nullable().optional()`
+		 * for the same reason the two pictures are: clearing has to be a write.
+		 *
+		 * Neither create-path field can hold the empty string — `phoneSchema` is
+		 * `min(8)` once punctuation is stripped and `z.string().email()` has to
+		 * parse — so a form that sends `""` on an emptied box is refused, and a form
+		 * that omits the key leaves last week's number standing after the merchant
+		 * deleted it. `null` is the only value that lands as a cleared column, and
+		 * `services/businesses.ts`'s `assignIfPresent` writes whatever is sent.
+		 */
+		phone: phoneSchema.nullable().optional(),
+		email: z.string().email().max(200).nullable().optional(),
 		hours: businessHoursSchema.optional(),
 		pickupEnabled: z.boolean().optional(),
 	});
@@ -198,6 +211,17 @@ export const businessSettingsSchema = businessCardSchema.extend({
 	createdAt: z.date(),
 });
 export type BusinessSettings = z.infer<typeof businessSettingsSchema>;
+
+export const businessAuditHistoryInput = z.object({
+	businessId: z.string(),
+	cursor: z.union([z.string().max(200), z.number().int().min(0)]).optional(),
+	offset: z.number().int().min(0).optional(),
+	sortDirection: z.enum(["asc", "desc"]).default("desc"),
+	limit: z.number().int().min(1).max(100).default(20),
+});
+export type BusinessAuditHistoryInput = z.infer<
+	typeof businessAuditHistoryInput
+>;
 
 /**
  * One person on the team, as the staff screen lists them.

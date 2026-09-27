@@ -19,10 +19,12 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flags.guard";
 import { RequirePermission, Permission } from "../common/permissions";
+import { PermissionGuard } from "../common/permissions/permission.guard";
 import { AuditService } from "../audit/audit.service";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { FilterInvoicesDto } from "./dto/filter-invoices.dto";
+import { InvoiceContactsDto } from "./dto/invoice-contacts.dto";
 import { SendReminderDto } from "./dto/send-reminder.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { CreateInvoicePaymentDto } from "./dto/create-invoice-payment.dto";
@@ -31,7 +33,7 @@ import { RemindersService } from "./reminders.service";
 import { FeaturesService } from "../features/features.service";
 
 @Controller("invoices")
-@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard, RolesGuard, FeatureFlagGuard)
 @RequirePermission(Permission.INVOICES_MANAGE)
 export class InvoicesController {
   private readonly logger = new Logger(InvoicesController.name);
@@ -44,13 +46,13 @@ export class InvoicesController {
   ) {}
 
   @Get()
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   findAll(@CurrentUser("workspace_id") workspaceId: string, @Query() filters: FilterInvoicesDto) {
     return this.invoicesService.findAll(workspaceId, filters);
   }
 
   @Post()
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async create(@CurrentUser() user: AuthUser, @Body() dto: CreateInvoiceDto) {
     await this.features.assertEnabled(user.workspace_id, "billing");
@@ -66,13 +68,13 @@ export class InvoicesController {
   }
 
   @Get("overdue")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   detectOverdue(@CurrentUser("workspace_id") workspaceId: string) {
     return this.remindersService.detectOverdue(workspaceId);
   }
 
   @Get("templates")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   getTemplates(@CurrentUser("workspace_id") workspaceId: string) {
     return this.invoicesService.getTemplates(workspaceId);
   }
@@ -83,8 +85,14 @@ export class InvoicesController {
     return this.invoicesService.getPendingApprovals(workspaceId);
   }
 
+  @Get("contacts")
+  @Roles(WorkspaceUserRole.BILLING)
+  findContacts(@CurrentUser("workspace_id") workspaceId: string, @Query() filters: InvoiceContactsDto) {
+    return this.invoicesService.findContacts(workspaceId, filters);
+  }
+
   @Get(":id")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   findOne(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -93,7 +101,7 @@ export class InvoicesController {
   }
 
   @Patch(":id")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   update(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -103,13 +111,13 @@ export class InvoicesController {
   }
 
   @Post(":id/paid")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   markPaid(@CurrentUser() user: AuthUser, @Param("id", ValidateUUIDPipe) id: string) {
     return this.invoicesService.markPaid(user.workspace_id, user.id, id);
   }
 
   @Post(":id/payments")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   registerPayment(
     @CurrentUser() user: AuthUser,
@@ -120,7 +128,7 @@ export class InvoicesController {
   }
 
   @Post(":id/submit")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   @RequireFeature("hacienda")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async submitToHacienda(
@@ -135,7 +143,7 @@ export class InvoicesController {
   }
 
   @Get(":id/hacienda-status")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   syncHaciendaStatus(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -144,7 +152,7 @@ export class InvoicesController {
   }
 
   @Delete(":id")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   async remove(
     @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -178,7 +186,7 @@ export class InvoicesController {
   }
 
   @Post(":id/credit-note")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   @RequireFeature("credit_notes")
   createCreditNote(
     @CurrentUser("workspace_id") workspaceId: string,
@@ -189,7 +197,7 @@ export class InvoicesController {
   }
 
   @Post(":id/debit-note")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   @RequireFeature("credit_notes")
   createDebitNote(
     @CurrentUser("workspace_id") workspaceId: string,
@@ -200,7 +208,7 @@ export class InvoicesController {
   }
 
   @Post(":id/receiver-message")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   createReceiverMessage(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -210,7 +218,7 @@ export class InvoicesController {
   }
 
   @Post(":id/hacienda-validate")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   @RequireFeature("hacienda")
   validateForHacienda(
     @CurrentUser("workspace_id") workspaceId: string,
@@ -220,7 +228,7 @@ export class InvoicesController {
   }
 
   @Get(":id/hacienda-error-explain")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   explainHaciendaError(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -229,7 +237,7 @@ export class InvoicesController {
   }
 
   @Get(":id/xml-preview")
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.BILLING)
   getXmlPreview(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,

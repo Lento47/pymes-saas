@@ -4,11 +4,15 @@ import {
 	adminCourierDecisionInput,
 	adminCourierListInput,
 	adminListInput,
+	adminSubscriptionsInput,
+	createPriceBookInput,
+	recordPaymentInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
 
 import * as admin from "../services/admin";
 import * as adminContent from "../services/admin-content";
+import * as subscriptions from "../services/subscription";
 import { adminProcedure, router } from "../trpc";
 
 /**
@@ -102,20 +106,43 @@ export const adminRouter = router({
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.cancelOrder(ctx, input)),
 
-	payouts: adminProcedure
-		.input(adminListInput)
-		.query(({ ctx, input }) => admin.payouts(ctx, input)),
+	/**
+	 * Every merchant's billing, arrears first. Replaces `payouts`.
+	 *
+	 * The shape of the question changed with the business: this used to list settlement
+	 * runs with a gross, a fee and a net. There is no settlement now — the consumer pays
+	 * the merchant and the courier, and the platform charges a flat subscription — so
+	 * the question is who owes us money, for how long, and at what price.
+	 */
+	subscriptions: adminProcedure
+		.input(adminSubscriptionsInput)
+		.query(({ ctx, input }) => admin.subscriptions(ctx, input)),
 
-	/** `reference` is the bank's, and it is what makes the payout reconcileable afterwards. */
-	markPayoutPaid: adminProcedure
-		.input(
-			z.object({
-				payoutId: z.string(),
-				reference: z.string().trim().min(3).max(120),
-				reason: z.string().trim().max(500).optional(),
-			}),
-		)
-		.mutation(({ ctx, input }) => admin.markPayoutPaid(ctx, input)),
+	/**
+	 * `reference` is the bank's or SINPE's, and it is the only thing that makes the
+	 * payment reconcileable afterwards — it lives in the audit entry, not a column.
+	 */
+	recordPayment: adminProcedure
+		.input(recordPaymentInput)
+		.mutation(({ ctx, input }) => admin.recordSubscriptionPayment(ctx, input)),
+
+	/**
+	 * Staging a price rise. **This is the "raise the price as the app grows" lever.**
+	 *
+	 * Inserting a `price_book` row raises what new merchants pay from `effectiveFrom`
+	 * and moves nobody already subscribed — their price was captured when their period
+	 * began. A past `effectiveFrom` is refused, because that would reprice everyone who
+	 * joined since, which is the one outcome the design exists to prevent.
+	 */
+	priceBooks: adminProcedure.query(({ ctx }) =>
+		subscriptions.priceBooks(ctx, new Date()),
+	),
+
+	createPriceBook: adminProcedure
+		.input(createPriceBookInput)
+		.mutation(({ ctx, input }) =>
+			subscriptions.createPriceBook(ctx, input, new Date()),
+		),
 
 	categories: adminProcedure.query(({ ctx }) => admin.categories(ctx)),
 

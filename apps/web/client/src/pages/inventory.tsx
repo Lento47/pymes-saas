@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Grid3X3, List, ArrowUpDown, Package, ChevronDown, Loader2, Minus, Upload } from "lucide-react";
+import { Plus, Grid3X3, List, ArrowUpDown, Package, ChevronDown, Loader2, Minus, Upload } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchInput } from "@/components/shared/search-input";
 import { ProductCard } from "@/components/inventory/ProductCard";
 import { ProductDrawer } from "@/components/inventory/ProductDrawer";
 import { CategoryChips } from "@/components/inventory/CategoryChips";
@@ -148,10 +149,14 @@ export default function InventoryPage() {
         {/* Filters */}
         <div className="space-y-3 mb-6">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 w-full sm:min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Buscar por nombre o SKU..." className="pl-9 h-9 text-xs bg-background border-border" />
-            </div>
+            <SearchInput
+              value={search}
+              onValueChange={(value) => { setSearch(value); setPage(1); }}
+              placeholder="Buscar por nombre o SKU..."
+              wrapperClassName="flex-1 w-full sm:min-w-[200px] max-w-sm"
+              className="h-9 text-xs bg-background border-border"
+              clearLabel="Limpiar búsqueda"
+            />
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
               <SelectTrigger className="w-[180px] h-9 text-xs bg-background border-border">
                 <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />

@@ -80,9 +80,13 @@ export class UsersController {
 
   /** GET /users/:id/avatar — mostrar foto de perfil */
   @Get(":id/avatar")
-  async getAvatar(@Param("id", ValidateUUIDPipe) id: string, @Res() res: Response) {
-    const { data, contentType } = await this.service.getAvatar(id);
-    res.set({ "Content-Type": contentType, "Cache-Control": "public, max-age=86400" });
+  async getAvatar(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    const { data, contentType } = await this.service.getAvatar(workspaceId, id);
+    res.set({ "Content-Type": contentType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
     res.send(data);
   }
 }

@@ -15,12 +15,20 @@ import {
 	productOptionGroup as optionGroupTable,
 	productOption as optionTable,
 	order as orderTable,
+	priceBook as priceBookTable,
 	product as productTable,
 	review as reviewTable,
 	session as sessionTable,
+	subscription as subscriptionTable,
 	user as userTable,
 } from "@pymeshub/db";
-import { newOrderReference } from "@pymeshub/shared";
+import type { CountablePlanLimit } from "@pymeshub/shared";
+import { newOrderReference, PLAN_LIMITS } from "@pymeshub/shared";
+import {
+	effectivePlan,
+	STATUS_IS_LISTED,
+	subscriptionStatusAt,
+} from "@pymeshub/shared/plans";
 import { eq } from "drizzle-orm";
 
 import type { Context, Membership, MirrorUser } from "../src/context";
@@ -202,6 +210,84 @@ function kv(): KVNamespace {
 }
 
 /**
+ * An R2 stand-in, and the only binding here that stores bytes.
+ *
+ * A `Map` of `ArrayBuffer` is a faithful stand-in for the two calls `uploads` makes:
+ * `put` and `get` returning an object whose `arrayBuffer()` gives the bytes back. It
+ * is worth having separately from `d1Over` because it is what proves the split - the
+ * row in D1 holds no bytes at all, so a spec that stores a picture and reads it back
+ * is only green if both halves are real and the row alone is not enough.
+ *
+ * `httpMetadata` is kept because `uploads.create` sets it and a spec asserts it: it is
+ * what makes a direct read of the object agree with the `Content-Type` the row names.
+ */
+/**
+ * Raise one plan limit for a spec that needs a shape no plan allows.
+ *
+ * `PLAN_LIMITS` is a plain exported object rather than a frozen one, so a spec can
+ * widen a cap and put it back. It lives here rather than in `@pymeshub/shared` because
+ * a test helper in the package every client imports is a test helper that ships.
+ *
+ * The one limit that needs it is `locations`: **both plans allow exactly one branch**,
+ * so the three specs that prove a read is scoped to a location cannot seed a second
+ * branch at all. They are testing tenant isolation, which is worth testing whatever the
+ * pricing says, and the alternative — relaxing the product, or deleting the coverage —
+ * is worse than a named, local, reversible override.
+ *
+ * A leaked override would make a later spec pass for the wrong reason, so the docblock
+ * on `seedBusiness`'s `raiseLimits` makes restoring the caller's job.
+ */
+function raiseLimit(
+	plan: "WEEKLY" | "MONTHLY",
+	limit: CountablePlanLimit,
+	value: number,
+): void {
+	PLAN_LIMITS[plan][limit] = value;
+}
+
+function r2(): R2Bucket {
+	const store = new Map<
+		string,
+		{ body: ArrayBuffer; httpMetadata?: unknown }
+	>();
+	return {
+		put: async (
+			key: string,
+			value: ArrayBuffer | ArrayBufferView | string,
+			options?: unknown,
+		) => {
+			store.set(key, {
+				body: toArrayBuffer(value),
+				httpMetadata: (options as { httpMetadata?: unknown })?.httpMetadata,
+			});
+			return { key };
+		},
+		get: async (key: string) => {
+			const found = store.get(key);
+			if (!found) return null;
+			return {
+				arrayBuffer: async () => found.body,
+				httpMetadata: found.httpMetadata,
+			} as unknown as R2ObjectBody;
+		},
+	} as unknown as R2Bucket;
+}
+
+/** The three shapes `R2Bucket.put` accepts, as one `ArrayBuffer`. */
+function toArrayBuffer(
+	value: ArrayBuffer | ArrayBufferView | string,
+): ArrayBuffer {
+	if (typeof value === "string") {
+		const out = new Uint8Array(value.length);
+		for (let i = 0; i < value.length; i += 1) out[i] = value.charCodeAt(i);
+		return out.buffer;
+	}
+	if (value instanceof ArrayBuffer) return value;
+	const view = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+	return view.slice().buffer;
+}
+
+/**
  * One message the API handed to the queue.
  *
  * `type` is lifted from the envelope's `eventType` and `eventId` kept alongside, because
@@ -244,6 +330,7 @@ export function world(): TestWorld {
 	const env = {
 		DB: d1Over(sqlite),
 		CACHE: kv(),
+		MEDIA: r2(),
 		ORDER_EVENTS: {
 			send: async (body: unknown) => {
 				const envelope = body as { eventId?: string; eventType?: string };
@@ -308,6 +395,150 @@ export async function seedUser(
 		isAdmin: overrides.isAdmin ?? false,
 		suspendedAt: overrides.suspendedAt ?? null,
 	};
+}
+
+/**
+ * A price book, so a spec can price something.
+ *
+ * Seeded with the launch figures because that is what a fresh install has, and because
+ * a spec that cares about a *different* price inserts its own rather than depending on
+ * this row's numbers. `subscription` specs that care about a price rise insert a second
+ * book with a future `effectiveFrom`.
+ */
+export async function seedPriceBook(
+	db: Db,
+	overrides: {
+		id?: string;
+		label?: string;
+		weeklyMinor?: number;
+		monthlyMinor?: number;
+		effectiveFrom?: Date;
+	} = {},
+): Promise<string> {
+	const id = overrides.id ?? "pbk_test_launch";
+	await db
+		.insert(priceBookTable)
+		.values({
+			id,
+			label: overrides.label ?? "Test",
+			weeklyMinor: overrides.weeklyMinor ?? 2_000,
+			monthlyMinor: overrides.monthlyMinor ?? 10_000,
+			effectiveFrom: overrides.effectiveFrom ?? daysAgo(90),
+			createdAt: new Date(),
+		})
+		.onConflictDoNothing();
+	return id;
+}
+
+/** `n` days before now — the one clock helper the billing specs need. */
+export function daysAgo(n: number): Date {
+	return new Date(Date.now() - n * 86_400_000);
+}
+
+/**
+ * A subscription in a chosen state.
+ *
+ * The state is expressed as **dates**, not as a `status` string, because the status is
+ * derived — `subscriptionStatusAt` reads `periodEnd` and `gracedUntil` and the stored
+ * column is only a cache. A fixture that set `status: "PAST_DUE"` and left the dates
+ * alone would produce a row the API immediately disagrees with, which is exactly the bug
+ * this design removes.
+ *
+ * `daysUntilDue` is the lever: negative is overdue by that many days, and the grace and
+ * hidden windows fall out of it — 10 days late is `GRACE`, 45 is `PAST_DUE`, 120 is
+ * `SUSPENDED`.
+ */
+export async function seedSubscription(
+	db: Db,
+	input: {
+		businessId: string;
+		id?: string;
+		plan?: "WEEKLY" | "MONTHLY";
+		priceBookId?: string;
+		priceMinor?: number | null;
+		/** Negative means the period ended that many days ago. */
+		daysUntilDue?: number;
+		/** Overrides the derived `gracedUntil`; null reproduces the fallback. */
+		gracedUntil?: Date | null;
+		lastPaidAt?: Date | null;
+		/**
+		 * Write a stored `status` that disagrees with the dates, to prove a reader
+		 * derives rather than trusts. Off by default.
+		 */
+		storedStatus?: "ACTIVE" | "GRACE" | "PAST_DUE" | "SUSPENDED";
+	},
+): Promise<string> {
+	const id = input.id ?? `sub_test_${input.businessId}`;
+	const plan = input.plan ?? "WEEKLY";
+	const days = input.daysUntilDue ?? 5;
+	const periodStart = new Date(Date.now() + (days - 7) * 86_400_000);
+	const periodEnd = new Date(Date.now() + days * 86_400_000);
+	const priceBookId = input.priceBookId ?? (await seedPriceBook(db));
+	const row = {
+		id,
+		businessId: input.businessId,
+		plan,
+		priceBookId,
+		priceMinor:
+			input.priceMinor === undefined
+				? plan === "WEEKLY"
+					? 2_000
+					: 10_000
+				: input.priceMinor,
+		status: input.storedStatus ?? ("ACTIVE" as const),
+		periodStart,
+		periodEnd,
+		gracedUntil:
+			input.gracedUntil === undefined
+				? new Date(periodEnd.getTime() + 30 * 86_400_000)
+				: input.gracedUntil,
+		lastPaidAt: input.lastPaidAt === undefined ? periodStart : input.lastPaidAt,
+		createdAt: daysAgo(60),
+		updatedAt: new Date(),
+	};
+
+	// **Upsert, not insert.** `subscription.business_id` carries a unique index — one
+	// subscription per merchant, which is what stops a double invoice — so a second call
+	// for the same business has to *move* the row. `onConflictDoNothing` keeps the
+	// first, and a spec that walks a shop through GRACE → PAST_DUE → SUSPENDED would
+	// then read the first state three times and assert three times against the same
+	// answer.
+	await db
+		.insert(subscriptionTable)
+		.values(row)
+		.onConflictDoUpdate({
+			target: subscriptionTable.businessId,
+			set: {
+				plan: row.plan,
+				priceBookId: row.priceBookId,
+				priceMinor: row.priceMinor,
+				status: row.status,
+				periodStart: row.periodStart,
+				periodEnd: row.periodEnd,
+				gracedUntil: row.gracedUntil,
+				lastPaidAt: row.lastPaidAt,
+				updatedAt: row.updatedAt,
+			},
+		});
+
+	// Keep the denormalised copy in step, because `business.plan` is what a limit check
+	// reads and a fixture that left it at the default would test the wrong thing. The
+	// status is derived from the same dates the service will derive, so the two cannot
+	// disagree — and `effectivePlan` is applied for the same reason, so a lapsed shop's
+	// fixture is already on the floor plan the service will hold it to.
+	const status = subscriptionStatusAt(
+		{ periodEnd, gracedUntil: null, createdAt: daysAgo(60) },
+		new Date(),
+	);
+	await db
+		.update(businessTable)
+		.set({
+			plan: effectivePlan(plan, status),
+			listed: STATUS_IS_LISTED[status],
+		})
+		.where(eq(businessTable.id, input.businessId));
+
+	return id;
 }
 
 /**
@@ -380,14 +611,55 @@ export async function seedBusiness(
 		 * think about visibility is the exception.
 		 */
 		status?: "DRAFT" | "ACTIVE" | "CLOSED" | "SUSPENDED";
+		/**
+		 * The plan, which decides what the shop may do.
+		 *
+		 * Defaults to `MONTHLY`, **not** to the `WEEKLY` floor the schema defaults to, and
+		 * the reason is that most of this suite is about scoping and permissions rather
+		 * than limits: a spec that seeds two locations or two staff members to prove a
+		 * read is scoped correctly would otherwise fail on a quota it is not testing.
+		 * `MONTHLY` permits the widest set, so those specs say what they mean.
+		 *
+		 * A spec that *is* about limits passes `WEEKLY` explicitly, and `plan-limits`
+		 * has one for each capped limit.
+		 */
+		plan?: "WEEKLY" | "MONTHLY";
+		/**
+		 * Raise one plan limit for the duration of a spec, for the cases **no plan can
+		 * express**.
+		 *
+		 * `locations` is one: both the weekly and the monthly plan allow exactly one
+		 * branch, so a spec that needs two to prove a read is scoped to a location has
+		 * nothing to seed. Three such specs exist — `business-home`, `business-analytics`
+		 * and `locations` — and all three are about tenant scoping, which is a property
+		 * worth testing regardless of how many branches a merchant may open.
+		 *
+		 * The alternative would be weakening the product to suit the tests, and the third
+		 * option, deleting the specs, loses the coverage. So this raises the cap, names
+		 * itself after what it is, and returns a restore function the spec must call:
+		 *
+		 * ```ts
+		 * const restore = raiseLimit("MONTHLY", "locations", 3);
+		 * try { … } finally { restore(); }
+		 * ```
+		 *
+		 * A limit that leaked past its spec would make a later spec pass for the wrong
+		 * reason, which is why restoring is the caller's job rather than a fixture
+		 * teardown the harness cannot enforce.
+		 */
+		raiseLimits?: Partial<Record<CountablePlanLimit, number>>;
 	} = {},
 ): Promise<string> {
 	const id = overrides.id ?? "biz_test_shop";
+	for (const [key, value] of Object.entries(overrides.raiseLimits ?? {})) {
+		raiseLimit(overrides.plan ?? "MONTHLY", key as CountablePlanLimit, value);
+	}
 	await db.insert(businessTable).values({
 		id,
 		slug: overrides.slug ?? `tienda-${id}`,
 		name: overrides.name ?? "Tienda de Prueba",
 		currency: "CRC",
+		plan: overrides.plan ?? "MONTHLY",
 		status: overrides.status ?? "ACTIVE",
 		deliveryEnabled: true,
 		pickupEnabled: true,

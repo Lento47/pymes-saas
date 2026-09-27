@@ -12,12 +12,14 @@ import { LearningModule } from "../learning/learning.module";
 import { InvoicesController } from "./invoices.controller";
 import { InvoicesService } from "./invoices.service";
 import { RemindersService } from "./reminders.service";
+import { EmailModule } from "../email/email.module";
 
 @Module({
   imports: [
     AuditModule,
     AiModule,
     ConversationsModule,
+    EmailModule,
     HaciendaModule,
     NotificationsModule,
     FeatureFlagsModule,

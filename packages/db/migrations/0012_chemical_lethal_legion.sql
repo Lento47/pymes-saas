@@ -1,3 +1,3 @@
-ALTER TABLE `courier_profile` ADD `vehicle_name` text;--> statement-breakpoint
-ALTER TABLE `courier_profile` ADD `vehicle_plate` text;--> statement-breakpoint
-ALTER TABLE `courier_profile` ADD `vehicle_photo_url` text;
+-- Vehicle columns are created by both historical 0010 paths.
+-- This retained migration name is a no-op for databases that already applied either path.
+SELECT 1;

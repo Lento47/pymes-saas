@@ -323,6 +323,9 @@ export const customer = {
 
 	"review.title": "How was it?",
 	"review.subtitle": "Your review helps other people know what to expect.",
+	/* The order screen's bar, the one moment this app offers the form. `review.submit` is the
+	   form's own button and says what posting does; this says what tapping here starts. */
+	"review.cta": "Leave a review",
 	"review.rating": "Rating",
 	"review.comment": "Comment",
 	"review.comment.placeholder": "How was your order?",

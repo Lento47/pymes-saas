@@ -18,7 +18,8 @@ export function createMarketplaceAuthClient(
 ) {
 	async function request(path: string, body?: unknown) {
 		const token = storage ? await storage.getItem(TOKEN_KEY) : null;
-		const response = await fetch(`${baseUrl}/auth/${path}`, {
+		const endpoint = path.startsWith("/") ? path : `/auth/${path}`;
+		const response = await fetch(`${baseUrl}${endpoint}`, {
 			method: body === undefined ? "GET" : "POST",
 			credentials: storage ? "omit" : "include",
 			headers: {
@@ -48,6 +49,18 @@ export function createMarketplaceAuthClient(
 		},
 		async signUp(email: string, password: string, name: string) {
 			await request("sign-up/email", { email, password, name });
+		},
+		/**
+		 * Exchange a Supabase access token for the marketplace's own session.
+		 *
+		 * This is deliberately a second endpoint rather than a flag on `request`: the
+		 * bearer that arrives here belongs to Supabase, while every request after the
+		 * exchange belongs to Better Auth. The response is persisted by the same
+		 * `set-auth-token` path as an ordinary sign-in, so the rest of the app never
+		 * needs to know which provider opened the door.
+		 */
+		async exchangeSupabaseSession(accessToken: string) {
+			await request("/auth-supabase/exchange", { accessToken });
 		},
 		async signOut() {
 			await request("sign-out", {});

@@ -1,14 +1,7 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { type ReactNode, useState } from "react";
-import {
-	Platform,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	View,
-} from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
@@ -16,10 +9,11 @@ import { BusinessCard } from "@/components/business-card";
 import { CategoryRail } from "@/components/category-rail";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { hitSlopFor, Pressable } from "@/components/pressable";
+import { Pressable } from "@/components/pressable";
 import { ProductRow } from "@/components/product-row";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { Screen } from "@/components/screen";
+import { SearchInput } from "@/components/search-input";
 import { Segmented } from "@/components/segmented";
 import { useSkeletonHold } from "@/components/skeleton";
 import { SearchResultsSkeleton } from "@/components/skeletons";
@@ -28,7 +22,7 @@ import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
-import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
+import { radius, space, type } from "@/theme";
 
 /**
  * Search, over products and shops at once.
@@ -178,7 +172,6 @@ type SearchMode = "all" | "businesses" | "products";
 export default function SearchScreen() {
 	const trpc = useTRPC();
 	const { t, tp } = useT();
-	const { colors } = useTheme();
 	const { coords } = useDeviceLocation();
 
 	const [query, setQuery] = useState("");
@@ -368,68 +361,17 @@ export default function SearchScreen() {
 			<View style={styles.back}>
 				<BackButton to="/" />
 			</View>
-			{/* `colors.input` and not `colors.border`: this field is `card` on `background`, so
-			    its outline is the only boundary a customer can find, and a control's boundary
-			    owes 3:1 (WCAG 1.4.11). `input` is 3.24:1 on `card` in the light theme and 3.10:1
-			    in the dark one; `border` is the decorative hairline at about 1.3:1, which is
-			    what `./card` and `./list-row` want and what this does not. `./field` draws its
-			    own resting border in the same token (`field.tsx:120`); this field is hand-rolled
-			    because it is a search box and not a labelled form field, and the token is the
-			    part that has to match. */}
-			<View
-				style={[
-					styles.field,
-					{ backgroundColor: colors.card, borderColor: colors.input },
-				]}
-			>
-				{/* Decorative, and hidden the way the clear button below hides its own glyph: the
-				    field announces itself through the `TextInput`'s label, and a mark beside it is a
-				    second thing a reader would land on. `app/store/[slug].tsx` draws the identical
-				    hand-rolled field and hides this same magnifier. */}
-				<Ionicons
-					name="search-outline"
-					size={icon.control}
-					color={colors.mutedForeground}
-					accessibilityElementsHidden
-					importantForAccessibility="no"
-				/>
-				<TextInput
-					value={query}
-					onChangeText={setQuery}
-					placeholder={t("home.search.placeholder")}
-					placeholderTextColor={colors.mutedForeground}
-					style={[styles.input, { color: colors.foreground }]}
-					accessibilityLabel={t("search.title")}
-					returnKeyType="search"
-					autoCorrect={false}
-					autoCapitalize="none"
-					clearButtonMode="while-editing"
-				/>
-				{query.length > 0 ? (
-					<Pressable
-						onPress={() => setQuery("")}
-						// `hitSlopFor`'s answer for a control that is already the floor across,
-						// which is what `./pressable`'s base style lays this out at: the slop
-						// grows the box, it does not supply the floor, and 13 points of it would
-						// clear the row's own `gap` and take the last of the typed query with it.
-						// Android's ripple is off here because a circle rippling inside a
-						// rounded field reads as the field itself being pressed.
-						hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-						ripple={false}
-						accessibilityRole="button"
-						accessibilityLabel={t("search.clear")}
-						style={styles.iconButton}
-					>
-						<Ionicons
-							name="close-circle"
-							size={icon.control}
-							color={colors.mutedForeground}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
-					</Pressable>
-				) : null}
-			</View>
+			{/* One search box, drawn by `components/search-input` — the 3:1 outline, the
+			    hidden glyphs and the clear button's hit slop are its contract, not this
+			    screen's. Only the outer margins are this screen's business. */}
+			<SearchInput
+				value={query}
+				onChangeText={setQuery}
+				placeholder={t("home.search.placeholder")}
+				accessibilityLabel={t("search.title")}
+				clearLabel={t("search.clear")}
+				style={styles.searchField}
+			/>
 
 			{settled.length < 2 ? (
 				<ScrollView
@@ -740,34 +682,11 @@ function Group({
 
 const styles = StyleSheet.create({
 	back: { paddingHorizontal: space.lg, paddingBottom: space.sm },
-	field: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.sm,
-		marginHorizontal: space.lg,
-		marginTop: space.md,
-		paddingHorizontal: space.md,
-		minHeight: MIN_TOUCH_TARGET,
-		borderRadius: radius.md,
-		borderWidth: 1,
-	},
-	input: {
-		flex: 1,
-		fontSize: type.body.fontSize,
-		minHeight: MIN_TOUCH_TARGET,
-		// This field is a bare RN `TextInput` and not `./field`, so it does not receive
-		// `./text`'s base style and has to carry the reset itself — the contract
-		// `docs/design-mobile.md` states and `./field`'s own `input` already keeps. Without
-		// it Android reserves the font's ascent and descent on top of the line box and the
-		// typed query sits low inside a `MIN_TOUCH_TARGET` box that centres on iOS.
-		includeFontPadding: false,
-	},
+	// The outer box only: `components/search-input` owns the skin, the outline token and
+	// the 44pt floor. What this screen owns is where the box sits in its column.
+	searchField: { marginHorizontal: space.lg, marginTop: space.md },
 	scroll: { paddingBottom: space.huge },
 	stateWrap: { paddingHorizontal: space.lg },
-	// `./pressable`'s base floors the box at `MIN_TOUCH_TARGET` and aligns nothing, so its
-	// child draws at the top of it — invisible on a full-width row, 13 points off the line in
-	// a field whose input sits on that line. `./back-button` centres for the same reason.
-	iconButton: { alignItems: "center", justifyContent: "center" },
 	count: { paddingHorizontal: space.lg, marginTop: space.md },
 	mode: { paddingHorizontal: space.lg, marginTop: space.md },
 	// `ScreenSection`'s wrap margin, which a header-less group still needs: the count and the

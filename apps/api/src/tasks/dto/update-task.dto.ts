@@ -21,9 +21,9 @@ export class UpdateTaskDto {
 
   @IsOptional()
   @IsString()
-  assigned_user_id?: string;
+  assigned_user_id?: string | null;
 
   @IsOptional()
   @IsDateString()
-  due_at?: string;
+  due_at?: string | null;
 }

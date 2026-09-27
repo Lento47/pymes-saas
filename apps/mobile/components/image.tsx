@@ -14,6 +14,7 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 
+import { env } from "@/lib/env";
 import { IMAGE_FADE } from "@/lib/motion";
 import { radius, useTheme } from "@/theme";
 
@@ -41,10 +42,31 @@ import { radius, useTheme } from "@/theme";
  * case `children` exists for. So they are spread on the wrapper and the image inside is
  * `accessible={false}`; see the render below.
  *
+ * It also owns resolving a **root-relative** `uri`. `uploads.create` answers with
+ * `/files/:id` — which is exactly what `imageUrlSchema` accepts, so a product's
+ * `imageUrl` and a profile's `image` store that path unchanged — and React Native's
+ * `Image` has no origin to resolve it against. Prefixing `env.apiUrl` here rather than at
+ * every call site is what keeps the rule in one place; `https://…` and the picker's own
+ * `file://`/`content://` cache paths pass through untouched.
+ *
  * The fade survives reduced motion deliberately. It is opacity, not movement — the reader
  * is not being moved anywhere, and `docs/design-mobile.md` keeps opacity precisely because
  * a crossfade still answers "did it register" once every transform is gone.
  */
+
+/**
+ * A stored picture's address, made absolute.
+ *
+ * Only a leading `/` is rewritten. That is the whole rule: the upload path is
+ * root-relative by contract, and anything with a scheme already knows where it lives.
+ */
+function resolveUri(uri: string | null | undefined): string | null {
+	if (!uri) return null;
+	if (uri.startsWith("/")) {
+		return `${env.apiUrl.replace(/\/+$/, "")}${uri}`;
+	}
+	return uri;
+}
 
 const AnimatedImage = Animated.createAnimatedComponent(RNImage);
 
@@ -68,11 +90,14 @@ export function Image({
 	...a11y
 }: ImageProps) {
 	const { colors } = useTheme();
+	const source = resolveUri(uri);
 	// The uri that finished loading, rather than a boolean. A recycled row hands this
 	// component a second `uri`, and comparing the two is what makes the old picture leave:
 	// a plain `loaded` flag would stay true and the new picture would appear as a jump.
+	// Compared on the *resolved* address, so a row that swaps `/files/a` for `/files/b`
+	// still counts as a change even though both share the same origin.
 	const [loadedUri, setLoadedUri] = useState<string | null>(null);
-	const shown = uri !== null && uri !== undefined && loadedUri === uri;
+	const shown = source !== null && loadedUri === source;
 	const fade = useSharedValue(0);
 
 	useEffect(() => {
@@ -102,11 +127,11 @@ export function Image({
 				style,
 			]}
 		>
-			{uri ? (
+			{source ? (
 				<AnimatedImage
-					source={{ uri }}
+					source={{ uri: source }}
 					resizeMode={resizeMode}
-					onLoad={() => setLoadedUri(uri)}
+					onLoad={() => setLoadedUri(source)}
 					onError={() => setLoadedUri(null)}
 					style={[styles.image, animated]}
 					// The label, if there is one, is the box's — see above. Without this the

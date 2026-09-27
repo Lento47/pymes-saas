@@ -2,14 +2,12 @@ import { formatMinuteOfDay, localizedName, weekdayName } from "@pymeshub/i18n";
 import {
 	type BusinessHoursEntry,
 	formatMoney,
-	type Payout,
 	type Review,
 	roleCan,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { ActivityDashboard } from "@/components/merchant-activity-dashboard";
-import { formatDay } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 import { Button } from "./button";
@@ -376,164 +374,6 @@ function StaffSurface({ scope }: { scope: ManagementScope }) {
 	);
 }
 
-function PaymentsSurface({ scope }: { scope: ManagementScope }) {
-	const trpc = useTRPC();
-	const { t, tp, intlLocale } = useT();
-	const canRead = roleCan(scope.role, "payouts:read");
-	const payouts = useQuery(
-		trpc.payouts.list.queryOptions(
-			{ businessId: scope.businessId },
-			{ enabled: canRead },
-		),
-	);
-
-	if (!canRead) {
-		return (
-			<ManagementEmpty
-				title={t("biz.permission.title")}
-				body={t("biz.permission.body")}
-			/>
-		);
-	}
-	if (payouts.error) return <ManagementError error={payouts.error} />;
-	if (payouts.isPending) {
-		return (
-			<ManagementEmpty
-				title={t("biz.manage.loading")}
-				body={t("biz.manage.loadingScope")}
-			/>
-		);
-	}
-
-	const rows = payouts.data ?? [];
-	return (
-		<>
-			<ManagementSection title={t("biz.manage.paymentControls")}>
-				<MetricGrid
-					metrics={[
-						{ label: t("biz.manage.records"), value: String(rows.length) },
-						{
-							label: t("biz.manage.pending"),
-							value: String(
-								rows.filter((row) => row.status === "PENDING").length,
-							),
-						},
-						{
-							label: t("biz.manage.paid"),
-							value: String(rows.filter((row) => row.status === "PAID").length),
-						},
-					]}
-				/>
-			</ManagementSection>
-			<ManagementSection title={t("biz.manage.recentPayments")}>
-				{rows.map((payout) => (
-					<PayoutRow
-						key={payout.id}
-						payout={payout}
-						intlLocale={intlLocale}
-						ordersLabel={tp("biz.payouts.orders", payout.orderCount)}
-					/>
-				))}
-				{rows.length === 0 ? (
-					<ManagementEmpty
-						title={t("biz.manage.noPayments")}
-						body={t("biz.payouts.note")}
-					/>
-				) : null}
-			</ManagementSection>
-		</>
-	);
-}
-
-function SettlementsSurface({ scope }: { scope: ManagementScope }) {
-	const trpc = useTRPC();
-	const { t, intlLocale } = useT();
-	const canRead = roleCan(scope.role, "payouts:read");
-	const payouts = useQuery(
-		trpc.payouts.list.queryOptions(
-			{ businessId: scope.businessId },
-			{ enabled: canRead },
-		),
-	);
-
-	if (!canRead) {
-		return (
-			<ManagementEmpty
-				title={t("biz.permission.title")}
-				body={t("biz.permission.body")}
-			/>
-		);
-	}
-	if (payouts.error) return <ManagementError error={payouts.error} />;
-	if (payouts.isPending) {
-		return (
-			<ManagementEmpty
-				title={t("biz.manage.loading")}
-				body={t("biz.manage.loadingScope")}
-			/>
-		);
-	}
-
-	const rows = payouts.data ?? [];
-	return (
-		<ManagementSection title={t("biz.manage.settlementLedger")}>
-			{rows.map((payout) => (
-				<PayoutRow
-					key={payout.id}
-					payout={payout}
-					intlLocale={intlLocale}
-					ordersLabel={t("biz.manage.orders")}
-					settlement
-				/>
-			))}
-			{rows.length === 0 ? (
-				<ManagementEmpty
-					title={t("biz.manage.noSettlements")}
-					body={t("biz.payouts.note")}
-				/>
-			) : null}
-		</ManagementSection>
-	);
-}
-
-function PayoutRow({
-	payout,
-	intlLocale,
-	ordersLabel,
-	settlement = false,
-}: {
-	payout: Payout;
-	intlLocale: string;
-	ordersLabel: string;
-	settlement?: boolean;
-}) {
-	const { t } = useT();
-	const period = t("biz.payouts.period", {
-		from: formatDay(payout.periodStart, intlLocale),
-		to: formatDay(payout.periodEnd, intlLocale),
-	});
-	const subtitle = settlement
-		? `${payout.reference ?? t("biz.manage.reference")} · ${
-				payout.paidAt
-					? `${t("biz.manage.paidOn")} ${formatDay(payout.paidAt, intlLocale)}`
-					: t(`biz.payouts.status.${payout.status}`)
-			}`
-		: `${ordersLabel} · ${t(`biz.payouts.status.${payout.status}`)}`;
-	return (
-		<ListRow
-			title={period}
-			subtitle={subtitle}
-			trailing={
-				<Text bold tabular>
-					{formatMoney(payout.amountMinor, payout.currency, {
-						locale: intlLocale,
-					})}
-				</Text>
-			}
-		/>
-	);
-}
-
 function PromotionsSurface({ scope }: { scope: ManagementScope }) {
 	const trpc = useTRPC();
 	const { t, intlLocale } = useT();
@@ -708,11 +548,9 @@ export {
 	ActivitySurface,
 	BusinessHoursSurface,
 	LocationsSurface,
-	PaymentsSurface,
 	PromotionsSurface,
 	ReviewsSurface,
 	SettingsSurface,
-	SettlementsSurface,
 	StaffSurface,
 	SupportSurface,
 };

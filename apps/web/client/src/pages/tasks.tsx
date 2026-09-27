@@ -1,404 +1,781 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import { api } from "@/lib/api";
-import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
-import { useRequireAuth } from "@/hooks/use-auth";
+import { useAuth, useRequireAuth } from "@/hooks/use-auth";
+import { hasPermission, Permission } from "@/lib/permissions";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
-import { PageHeader } from "@/components/shared/page-header";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { PriorityDot } from "@/components/shared/priority-dot";
-import { EmptyState } from "@/components/shared/empty-state";
-import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TaskSheet } from "@/components/tasks/TaskSheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Plus, AlertTriangle, Check, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock, ListChecks, Timer, AlertCircle } from "lucide-react";
-import { format, isPast, isToday, isTomorrow } from "date-fns";
-import { cn } from "@/lib/utils";
+import {
+  priorityLabels,
+  statusLabels,
+  taskForm,
+  taskPayload,
+  type TaskRecord,
+  type TaskFormData,
+} from "@/components/tasks/task-model";
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
+import { SearchInput } from "@/components/shared/search-input";
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash,
+} from "lucide-react";
 
-function getInitials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-}
-
-function DueDateLabel({ dateStr }: { dateStr?: string }) {
-  if (!dateStr) return <span className="text-muted-foreground">—</span>;
-  const date = new Date(dateStr);
-  const overdue = isPast(date) && !isToday(date);
-  const today = isToday(date);
-  const tomorrow = isTomorrow(date);
-  const label = today ? "Hoy" : tomorrow ? "Mañana" : format(date, "dd MMM");
-  return (
-    <span className={cn("flex items-center gap-1 text-xs", overdue ? "text-red-400" : today ? "text-amber-400" : "text-muted-foreground")}>
-      {overdue ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
-      {label}
-    </span>
-  );
-}
-
-function toCreateTaskPayload(form: { title: string; description: string; priority: string; dueDate: string; assignedUserId: string }) {
-  const body: Record<string, string> = { title: form.title.trim() };
-  if (form.description?.trim()) body.description = form.description.trim();
-  if (form.priority) body.priority = form.priority;
-  if (form.dueDate) body.due_at = `${form.dueDate}T12:00:00.000Z`;
-  if (form.assignedUserId) body.assigned_user_id = form.assignedUserId;
-  return body;
-}
-
-const PRIORITY_LABELS: Record<string, string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", URGENT: "Urgente" };
-const STATUS_LABELS: Record<string, string> = { ALL: "Todos", TODO: "Por hacer", IN_PROGRESS: "En progreso", BLOCKED: "Bloqueado", DONE: "Listo", OVERDUE: "Vencida", CANCELLED: "Cancelada" };
-const STATUS_OPTIONS = ["ALL", "TODO", "IN_PROGRESS", "BLOCKED", "DONE", "OVERDUE", "CANCELLED"];
-const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"];
-
-function TaskDescription({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  if (!text) return null;
-  const long = text.length > 80;
-  return (
-    <div className="text-[11px] text-muted-foreground max-w-[280px]">
-      {expanded || !long ? (
-        <MarkdownRenderer content={text} />
-      ) : (
-        <MarkdownRenderer content={text.slice(0, 80) + "..."} />
-      )}
-      {long && (
-        <button onClick={() => setExpanded(!expanded)}
-          className="text-[10px] text-primary/70 hover:text-primary ml-1 whitespace-nowrap">
-          {expanded ? "Ver menos" : "Ver más"}
-        </button>
-      )}
-    </div>
-  );
-}
+type TaskPage = {
+  data: TaskRecord[];
+  meta: { total: number; page: number; pages: number };
+};
 
 export default function TasksPage() {
   useRequireAuth();
-  const { messages } = useI18n();
-  const t = messages.tasks;
+  const { user } = useAuth();
+  const { locale } = useI18n();
+  const es = locale === "es";
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [priorityFilter, setPriorityFilter] = useState("ALL");
-  const [search, setSearch] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
+  const [, navigate] = useLocation();
+  const searchParams = new URLSearchParams(useSearch());
+  const status = searchParams.get("status") ?? "ACTIVE";
+  const priority = searchParams.get("priority") ?? "ALL";
+  const query = searchParams.get("q") ?? "";
+  const requestedPage = Number(searchParams.get("page"));
+  const page =
+    Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? requestedPage
+      : 1;
+  const [search, setSearch] = useState(query);
+  useEffect(() => setSearch(query), [query]);
+  const canManage = hasPermission(
+    user?.role ?? "",
+    Permission.TASKS_MANAGE,
+    !!user?.is_platform_admin,
+  );
+  const [editor, setEditor] = useState<{
+    task: TaskRecord | null;
+    key: number;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<TaskRecord | null>(null);
+  const createButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
 
-  const params: Record<string, string> = {};
-  if (statusFilter !== "ALL") params.status = statusFilter;
-  if (priorityFilter !== "ALL") params.priority = priorityFilter;
+  function filters(changes: Record<string, string | null>) {
+    const next = new URLSearchParams(searchParams);
+    next.delete("page");
+    for (const [key, value] of Object.entries(changes)) {
+      if (value && value !== "ACTIVE" && value !== "ALL") next.set(key, value);
+      else next.delete(key);
+    }
+    navigate("/tasks" + (next.size ? "?" + next.toString() : ""));
+  }
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["/api/tasks", statusFilter, priorityFilter],
-    queryFn: () => api.getTasks(Object.keys(params).length ? params : undefined),
+  const params: Record<string, string> = { page: String(page), limit: "20" };
+  if (status === "OVERDUE") params.overdue = "true";
+  else if (status !== "ACTIVE" && statusLabels[locale][status])
+    params.status = status;
+  if (priority in priorityLabels[locale]) params.priority = priority;
+  if (query) params.q = query;
+
+  const tasks = useQuery({
+    queryKey: ["/api/tasks", user?.workspace.id, params],
+    queryFn: () => api.getTasks(params) as unknown as Promise<TaskPage>,
+    enabled: canManage,
   });
-
-  const { data: overdueTasks } = useQuery({
-    queryKey: ["/api/tasks/overdue"],
+  const overdue = useQuery({
+    queryKey: ["/api/tasks/overdue", user?.workspace.id],
     queryFn: () => api.getOverdueTasks(),
+    enabled: canManage,
   });
-  const { data: membersRaw } = useQuery({
-    queryKey: ["/api/workspaces/current/members", "tasks"],
+  const members = useQuery({
+    queryKey: ["/api/workspaces/current/members", user?.workspace.id],
     queryFn: api.getMembers,
+    enabled: canManage && !!editor,
   });
-  const members = Array.isArray(membersRaw) ? membersRaw : (membersRaw as any)?.data || [];
 
-  const createMutation = useMutation({
-    mutationFn: (data: Parameters<typeof toCreateTaskPayload>[0]) =>
-      editingId ? api.updateTask(editingId, toCreateTaskPayload(data)) : api.createTask(toCreateTaskPayload(data)),
+  function refreshTasks() {
+    void queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    void queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
+  }
+  function restoreFocus() {
+    requestAnimationFrame(() => {
+      if (returnFocus.current?.isConnected) returnFocus.current.focus();
+      else createButton.current?.focus();
+    });
+  }
+  const save = useMutation({
+    mutationFn: (form: TaskFormData) =>
+      editor?.task
+        ? api.updateTask(editor.task.id, taskPayload(form, editor.task))
+        : api.createTask(taskPayload(form)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
-      setShowCreate(false);
-      setEditingId(null);
-      setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
-      toast({ title: editingId ? "Tarea actualizada" : "Tarea creada" });
-    },
-    onError: (err) => {
-      toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
+      refreshTasks();
+      setEditor(null);
+      restoreFocus();
+      toast({ title: es ? "Tarea guardada" : "Task saved" });
     },
   });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.deleteTask(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
-      toast({ title: "Tarea eliminada" });
-    },
-    onError: (err) => {
-      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
-    },
-  });
-
-  const completeMutation = useMutation({
+  const complete = useMutation({
     mutationFn: (id: string) => api.completeTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
-      toast({ title: "Tarea completada" });
-    },
-    onError: (err) => {
-      toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
+      refreshTasks();
+      toast({ title: es ? "Tarea completada" : "Task completed" });
     },
   });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteTask(id),
+    onSuccess: () => {
+      refreshTasks();
+      setDeleting(null);
+      createButton.current?.focus();
+      toast({ title: es ? "Tarea eliminada" : "Task deleted" });
+    },
+  });
+  function openEditor(task: TaskRecord | null, trigger?: HTMLElement) {
+    returnFocus.current = trigger ?? (document.activeElement as HTMLElement);
+    save.reset();
+    setEditor({ task, key: Date.now() });
+  }
 
-  const allTasks = Array.isArray(data) ? data : data?.data || [];
-  const overdueList = Array.isArray(overdueTasks) ? overdueTasks : overdueTasks?.data || [];
+  const list = tasks.data?.data ?? [];
+  const meta = tasks.data?.meta;
+  const hasFilters = status !== "ACTIVE" || priority !== "ALL" || !!query;
+  const memberList = Array.isArray(members.data)
+    ? members.data
+    : (members.data?.data ?? []);
+  const priorityText = (value: string) =>
+    priorityLabels[locale][value as keyof typeof priorityLabels.es] ?? value;
 
-  const taskList = search.trim()
-    ? allTasks.filter((t: any) => t.title?.toLowerCase().includes(search.toLowerCase()))
-    : allTasks;
+  function taskDate(task: TaskRecord) {
+    if (!task.due_at) return es ? "Sin fecha" : "No due date";
+    const date = new Date(task.due_at);
+    if (!Number.isFinite(date.getTime()))
+      return es ? "Fecha no disponible" : "Date unavailable";
+    const label = new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+    const late =
+      date.getTime() < Date.now() &&
+      !["DONE", "ARCHIVED", "CANCELLED"].includes(task.status);
+    return late ? (es ? "Vencida · " : "Overdue · ") + label : label;
+  }
+  function completeButton(task: TaskRecord) {
+    const busy = complete.isPending && complete.variables === task.id;
+    const done = task.status === "DONE";
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        className="mobile-tab h-11 w-11 shrink-0 rounded-full p-0"
+        aria-label={
+          (done
+            ? es
+              ? "Completada: "
+              : "Completed: "
+            : es
+              ? "Completar: "
+              : "Complete: ") + task.title
+        }
+        disabled={
+          done ||
+          complete.isPending ||
+          task.status === "ARCHIVED" ||
+          task.status === "CANCELLED"
+        }
+        onClick={() => {
+          complete.reset();
+          complete.mutate(task.id);
+        }}
+      >
+        {busy ? (
+          <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
+        ) : (
+          <Check
+            aria-hidden="true"
+            className={
+              "h-5 w-5 " + (done ? "text-foreground" : "text-muted-foreground")
+            }
+          />
+        )}
+      </Button>
+    );
+  }
+  function options(task: TaskRecord) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="h-11 w-11 shrink-0 rounded-xl p-0"
+            aria-label={(es ? "Opciones: " : "Options: ") + task.title}
+            data-testid={"button-task-options-" + task.id}
+          >
+            <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="app-overlay min-w-48"
+          align="end"
+        >
+          <DropdownMenuItem
+            className="min-h-11"
+            onSelect={() => openEditor(task)}
+          >
+            <Pencil aria-hidden="true" className="mr-2 h-4 w-4" />
+            {es ? "Editar" : "Edit"}
+          </DropdownMenuItem>
+          {!["DONE", "ARCHIVED", "CANCELLED"].includes(task.status) && (
+            <DropdownMenuItem
+              disabled={complete.isPending}
+              className="min-h-11"
+              onSelect={() => complete.mutate(task.id)}
+            >
+              <Check aria-hidden="true" className="mr-2 h-4 w-4" />
+              {es ? "Completar tarea" : "Complete task"}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="min-h-11 text-destructive focus:text-destructive"
+            onSelect={() => {
+              remove.reset();
+              setDeleting(task);
+            }}
+          >
+            <Trash aria-hidden="true" className="mr-2 h-4 w-4" />
+            {es ? "Eliminar" : "Delete"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
-  const openEdit = (task: Record<string, any>) => {
-    setEditingId(task.id);
-    setForm({
-      title: task.title || "",
-      description: task.description || "",
-      priority: task.priority || "MEDIUM",
-      dueDate: task.dueDate || task.due_date
-        ? format(new Date(task.dueDate || task.due_date), "yyyy-MM-dd")
-        : "",
-      assignedUserId: task.assigned_user_id || "",
-    });
-    setShowCreate(true);
-  };
+  if (!canManage)
+    return (
+      <div className="mx-auto max-w-xl space-y-3 px-4 py-8">
+        <h1 className="text-2xl font-bold">{es ? "Tareas" : "Tasks"}</h1>
+        <p>
+          {es
+            ? "Tu rol no permite gestionar tareas en este espacio. Consulta con quien lo administra."
+            : "Your role cannot manage tasks in this workspace. Contact your workspace administrator."}
+        </p>
+      </div>
+    );
 
   return (
-    <TooltipProvider>
-      <div>
-        <PageHeader title={t.title} description="Gestiona y da seguimiento a tus tareas">
-
-          <Button
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => {
-               setEditingId(null);
-               setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
-              setShowCreate(true);
-            }}
-            data-testid="button-create-task"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Nueva tarea
-          </Button>
-        </PageHeader>
-
-        <div className="px-4 md:px-6 py-4 space-y-4">
-        {/* Overdue banner */}
-        {overdueList.length > 0 && (
-          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive" data-testid="alert-overdue">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-xs">
-              Tienes <strong>{overdueList.length}</strong> tarea{overdueList.length > 1 ? "s" : ""} vencida{overdueList.length > 1 ? "s" : ""} que requieren atención.
-            </span>
-          </div>
-        )}
-
-        {/* Stats */}
-        {taskList.length > 0 && (
-          <div className="flex items-center gap-4 flex-wrap text-xs">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <ListChecks className="w-3.5 h-3.5" />
-              <span><strong className="text-foreground">{taskList.length}</strong> totales</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Check className="w-3.5 h-3.5" />
-              <span><strong>{taskList.filter((t: any) => t.status === "DONE").length}</strong> completadas</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Timer className="w-3.5 h-3.5" />
-              <span><strong>{taskList.filter((t: any) => t.status === "IN_PROGRESS").length}</strong> en progreso</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span><strong>{overdueList.length}</strong> vencidas</span>
-            </div>
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <div className="relative flex-1 w-full sm:min-w-[180px] sm:max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
-            <Input
-              placeholder="Buscar tareas..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-xs bg-card border-border pl-8"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-xs bg-card border-border" data-testid="select-task-status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-xs bg-card border-border" data-testid="select-task-priority">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITY_OPTIONS.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p === "ALL" ? "Toda prioridad" : PRIORITY_LABELS[p] || p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {(statusFilter !== "ALL" || priorityFilter !== "ALL" || search) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs text-muted-foreground"
-              onClick={() => { setStatusFilter("ALL"); setPriorityFilter("ALL"); setSearch(""); }}
-            >
-              Limpiar
-            </Button>
-          )}
+    <div className="task-page mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {es ? "Tareas" : "Tasks"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {es ? "Lo que sigue para tu equipo." : "What's next for your team."}
+          </p>
         </div>
+        <Button
+          ref={createButton}
+          className="mobile-tab min-h-12 rounded-2xl"
+          onClick={(event) => openEditor(null, event.currentTarget)}
+          data-testid="button-create-task"
+        >
+          <Plus aria-hidden="true" className="h-5 w-5" />
+          {es ? "Nueva tarea" : "New task"}
+        </Button>
+      </header>
 
-        {isLoading ? (
-          <PageLoader />
-        ) : taskList.length === 0 ? (
-          <EmptyState icon={CheckSquare} title={t.noTasks} description="Crea una tarea para empezar." />
-        ) : (
-          <div className="rounded-lg border border-border overflow-x-auto bg-card">
-            <Table className="min-w-[600px]">
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="w-8" />
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Título</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Estado</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Prioridad</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Vencimiento</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Asignado a</TableHead>
-                  <TableHead className="w-12" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {taskList.map((task: any) => {
-                  const dueStr = task.dueDate || task.due_date || task.due_at;
-                  const assigneeName = task.assigned_user?.name
-                    ? task.assigned_user.name
-                    : null;
+      {Number(overdue.data?.total_overdue) > 0 && (
+        <button
+          type="button"
+          className="mobile-tab flex min-h-14 w-full items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-left"
+          onClick={() => filters({ status: "OVERDUE" })}
+          data-testid="alert-overdue"
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0 text-destructive"
+          />
+          <span className="flex-1 text-sm">
+            <strong>{overdue.data?.total_overdue}</strong>{" "}
+            {es
+              ? Number(overdue.data?.total_overdue) === 1
+                ? "tarea vencida · Revisar"
+                : "tareas vencidas · Revisar"
+              : Number(overdue.data?.total_overdue) === 1
+                ? "overdue task · Review"
+                : "overdue tasks · Review"}
+          </span>
+          <ChevronRight aria-hidden="true" className="h-5 w-5" />
+        </button>
+      )}
+      {overdue.isError && (
+        <div role="status" className="text-sm text-muted-foreground">
+          {es
+            ? "No se pudieron comprobar las tareas vencidas."
+            : "Overdue tasks could not be checked."}
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            onClick={() => void overdue.refetch()}
+          >
+            {es ? "Revisar de nuevo" : "Check again"}
+          </Button>
+        </div>
+      )}
 
-                  return (
-                    <TableRow
-                      key={task.id}
-                      className="border-border hover:bg-foreground/[0.015]"
-                      data-testid={`task-row-${task.id}`}
-                    >
-                      <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              disabled={task.status === "DONE" || completeMutation.isPending}
-                              onClick={() => completeMutation.mutate(task.id)}
-                              className={cn(
-                                "w-5 h-5 rounded border flex items-center justify-center transition-colors",
-                                task.status === "DONE"
-                                  ? "border-border bg-muted text-muted-foreground/60"
-                                  : "border-border hover:border-border/80 hover:bg-muted text-transparent hover:text-muted-foreground"
-                              )}
-                            >
-                              <Check className="w-3 h-3" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>{task.status === "DONE" ? "Completada" : "Marcar como completada"}</TooltipContent>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-start gap-2">
-                          <PriorityDot priority={task.priority} />
-              <div>
-                <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground/60" : "text-foreground")}>
-                  {task.title}
-                </div>
-                <TaskDescription text={task.description || ""} />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={task.status} type="task" />
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {PRIORITY_LABELS[task.priority] || task.priority?.toLowerCase() || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <DueDateLabel dateStr={dueStr} />
-                      </TableCell>
-                      <TableCell>
-                        {assigneeName ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground shrink-0">
-                              {getInitials(assigneeName)}
-                            </div>
-                            <span className="text-xs text-muted-foreground truncate max-w-[80px]">{assigneeName}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/40">Sin asignar</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0" data-testid={`button-task-options-${task.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(task)}>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            {task.status !== "DONE" && (
-                              <DropdownMenuItem onClick={() => completeMutation.mutate(task.id)}>
-                                <Check className="w-4 h-4 mr-2" />
-                                Marcar como completada
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => deleteMutation.mutate(task.id)}
-                            >
-                              <Trash className="w-4 h-4 mr-2" />
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+      <section
+        aria-label={es ? "Filtrar tareas" : "Filter tasks"}
+        className="space-y-3"
+      >
+        <form
+          className="flex gap-2"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            filters({ q: search.trim() });
+          }}
+        >
+          <SearchInput
+            name="search"
+            autoComplete="off"
+            aria-label={es ? "Buscar tareas" : "Search tasks"}
+            placeholder={
+              es
+                ? "Buscar por título o descripción…"
+                : "Search title or description…"
+            }
+            value={search}
+            onValueChange={setSearch}
+            wrapperClassName="min-w-0 flex-1"
+            className="min-h-12 rounded-2xl bg-card pl-11 text-base"
+            iconClassName="left-4 h-5 w-5"
+            clearLabel={es ? "Limpiar búsqueda" : "Clear search"}
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            className="min-h-12 rounded-2xl"
+          >
+            {es ? "Buscar" : "Search"}
+          </Button>
+        </form>
+        <div
+          className="flex gap-2 overflow-x-auto pb-1"
+          aria-label={es ? "Estados frecuentes" : "Common statuses"}
+        >
+          {["ACTIVE", "IN_PROGRESS", "DONE"].map((value) => (
+            <Button
+              key={value}
+              type="button"
+              variant={status === value ? "default" : "outline"}
+              className="mobile-tab min-h-11 shrink-0 rounded-full px-4"
+              aria-pressed={status === value}
+              onClick={() => filters({ status: value })}
+            >
+              {statusLabels[locale][value]}
+            </Button>
+          ))}
+        </div>
+        <details
+          className="rounded-xl border border-border px-3"
+          open={
+            priority !== "ALL" ||
+            !["ACTIVE", "IN_PROGRESS", "DONE"].includes(status)
+              ? true
+              : undefined
+          }
+        >
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+            {es ? "Más filtros" : "More filters"}
+            {priority !== "ALL" ? ` · ${priorityText(priority)}` : ""}
+          </summary>
+          <div className="grid grid-cols-2 gap-3 pb-3">
+            <label className="space-y-1 text-sm">
+              <span>{es ? "Estado" : "Status"}</span>
+              <select
+                value={status}
+                className="min-h-12 w-full rounded-xl border border-border bg-card px-3 text-base text-foreground"
+                onChange={(event) => filters({ status: event.target.value })}
+                data-testid="select-task-status"
+              >
+                {Object.entries(statusLabels[locale]).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span>{es ? "Prioridad" : "Priority"}</span>
+              <select
+                value={priority}
+                className="min-h-12 w-full rounded-xl border border-border bg-card px-3 text-base text-foreground"
+                onChange={(event) => filters({ priority: event.target.value })}
+                data-testid="select-task-priority"
+              >
+                <option value="ALL">{es ? "Todas" : "All"}</option>
+                {Object.entries(priorityLabels[locale]).map(
+                  ([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
           </div>
+        </details>
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            onClick={() => {
+              setSearch("");
+              navigate("/tasks");
+            }}
+          >
+            {es ? "Limpiar filtros" : "Clear filters"}
+          </Button>
         )}
+      </section>
 
-        </div>{/* end px-4 content wrapper */}
+      {complete.error && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-destructive/40 p-4 text-sm"
+        >
+          <p>{complete.error.message}</p>
+          <Button
+            variant="outline"
+            className="mt-2 min-h-11"
+            disabled={complete.isPending}
+            onClick={() =>
+              complete.variables && complete.mutate(complete.variables)
+            }
+          >
+            {es ? "Reintentar completar" : "Retry completion"}
+          </Button>
+        </div>
+      )}
+      {tasks.isLoading ? (
+        <div role="status" className="space-y-3">
+          <span className="sr-only">
+            {es ? "Cargando tareas…" : "Loading tasks…"}
+          </span>
+          {[0, 1, 2].map((value) => (
+            <Skeleton key={value} className="h-36 rounded-3xl" />
+          ))}
+        </div>
+      ) : tasks.isError ? (
+        <div
+          role="alert"
+          className="space-y-3 rounded-3xl border border-border p-5"
+        >
+          <h2 className="font-semibold">
+            {es
+              ? "No se pudieron cargar las tareas"
+              : "Tasks could not be loaded"}
+          </h2>
+          <p className="text-sm text-muted-foreground">{tasks.error.message}</p>
+          <Button
+            variant="outline"
+            className="min-h-11"
+            onClick={() => void tasks.refetch()}
+          >
+            {es ? "Reintentar" : "Try again"}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <p role="status" className="text-sm text-muted-foreground">
+            {tasks.isFetching
+              ? es
+                ? "Actualizando…"
+                : "Updating…"
+              : `${meta?.total ?? list.length} ${es ? "tareas" : "tasks"}`}
+          </p>
+          {list.length === 0 ? (
+            <div className="space-y-3 rounded-3xl border border-border bg-card p-6 text-center">
+              <CheckSquare
+                aria-hidden="true"
+                className="mx-auto h-8 w-8 text-muted-foreground"
+              />
+              <h2 className="text-lg font-semibold">
+                {hasFilters
+                  ? es
+                    ? "Sin coincidencias"
+                    : "No matches"
+                  : es
+                    ? "Todo despejado por aquí"
+                    : "All clear here"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {hasFilters
+                  ? es
+                    ? "Prueba otra búsqueda o cambia los filtros."
+                    : "Try another search or change the filters."
+                  : es
+                    ? "Crea una tarea para organizar lo que sigue."
+                    : "Create a task to organize what's next."}
+              </p>
+            </div>
+          ) : (
+            <>
+              <ul
+                className="space-y-3 md:hidden"
+                aria-label={es ? "Lista de tareas" : "Task list"}
+              >
+                {list.map((task) => (
+                  <li
+                    key={task.id}
+                    className="rounded-3xl border border-border bg-card p-4"
+                    data-testid={"task-card-" + task.id}
+                  >
+                    <div className="flex items-start gap-3">
+                      {completeButton(task)}
+                      <button
+                        className="min-h-11 min-w-0 flex-1 rounded-lg text-left"
+                        onClick={(event) =>
+                          openEditor(task, event.currentTarget)
+                        }
+                      >
+                        <h2
+                          className={
+                            "break-words text-base font-semibold " +
+                            (task.status === "DONE"
+                              ? "line-through text-muted-foreground"
+                              : "")
+                          }
+                        >
+                          {task.title}
+                        </h2>
+                      </button>
+                      {options(task)}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-muted px-3 py-1.5">
+                        {statusLabels[locale][task.status] ?? task.status}
+                      </span>
+                      <span className="rounded-full border border-border px-3 py-1.5">
+                        {priorityText(task.priority)}
+                      </span>
+                    </div>
+                    {task.description && (
+                      <details className="mt-3 text-sm">
+                        <summary className="flex min-h-11 cursor-pointer items-center rounded-lg text-muted-foreground">
+                          {es ? "Ver detalles" : "View details"}
+                        </summary>
+                        <div className="break-words py-2">
+                          <MarkdownRenderer content={task.description} />
+                        </div>
+                      </details>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-2">
+                        <Calendar aria-hidden="true" className="h-4 w-4" />
+                        {taskDate(task)}
+                      </span>
+                      <span className="break-words">
+                        {task.assigned_user?.name ??
+                          (es ? "Sin asignar" : "Unassigned")}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <span className="sr-only">
+                          {es ? "Completar" : "Complete"}
+                        </span>
+                      </TableHead>
+                      <TableHead>{es ? "Tarea" : "Task"}</TableHead>
+                      <TableHead>{es ? "Estado" : "Status"}</TableHead>
+                      <TableHead>{es ? "Prioridad" : "Priority"}</TableHead>
+                      <TableHead>{es ? "Vencimiento" : "Due date"}</TableHead>
+                      <TableHead>{es ? "Responsable" : "Assignee"}</TableHead>
+                      <TableHead>
+                        <span className="sr-only">
+                          {es ? "Opciones" : "Options"}
+                        </span>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {list.map((task) => (
+                      <TableRow
+                        key={task.id}
+                        data-testid={"task-row-" + task.id}
+                      >
+                        <TableCell>{completeButton(task)}</TableCell>
+                        <TableCell>
+                          <button
+                            className="min-h-11 max-w-sm break-words text-left font-medium"
+                            onClick={(event) =>
+                              openEditor(task, event.currentTarget)
+                            }
+                          >
+                            {task.title}
+                          </button>
+                          {task.description && (
+                            <details>
+                              <summary className="min-h-11 cursor-pointer py-3 text-muted-foreground">
+                                {es ? "Ver detalles" : "View details"}
+                              </summary>
+                              <MarkdownRenderer content={task.description} />
+                            </details>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {statusLabels[locale][task.status] ?? task.status}
+                        </TableCell>
+                        <TableCell>{priorityText(task.priority)}</TableCell>
+                        <TableCell>{taskDate(task)}</TableCell>
+                        <TableCell>
+                          {task.assigned_user?.name ??
+                            (es ? "Sin asignar" : "Unassigned")}
+                        </TableCell>
+                        <TableCell>{options(task)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+          {meta && (meta.pages > 1 || page > 1) && (
+            <nav
+              aria-label={es ? "Páginas de tareas" : "Task pages"}
+              className="flex items-center justify-between gap-3"
+            >
+              <Button
+                variant="outline"
+                className="min-h-11"
+                disabled={page <= 1 || tasks.isFetching}
+                onClick={() => filters({ page: String(page - 1) })}
+              >
+                <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                {es ? "Anterior" : "Previous"}
+              </Button>
+              <span className="text-sm tabular-nums">
+                {page} / {Math.max(1, meta.pages)}
+              </span>
+              <Button
+                variant="outline"
+                className="min-h-11"
+                disabled={page >= meta.pages || tasks.isFetching}
+                onClick={() => filters({ page: String(page + 1) })}
+              >
+                {es ? "Siguiente" : "Next"}
+                <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </Button>
+            </nav>
+          )}
+        </>
+      )}
 
-        {/* Create / Edit Sheet */}
+      {editor && (
         <TaskSheet
-          open={showCreate}
-          onOpenChange={setShowCreate}
-          editingId={editingId}
-          initialData={form}
-          onSave={(data) => createMutation.mutate(data)}
-          isSaving={createMutation.isPending}
-          members={members}
+          key={editor.key}
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditor(null);
+              restoreFocus();
+            }
+          }}
+          editingId={editor.task?.id ?? null}
+          initialData={taskForm(editor.task)}
+          onSave={(form) => save.mutate(form)}
+          isSaving={save.isPending}
+          error={save.error?.message}
+          members={memberList}
+          membersLoading={members.isLoading}
+          membersError={members.isError}
+          onRetryMembers={() => void members.refetch()}
         />
-      </div>
-    </TooltipProvider>
+      )}
+      <AlertDialog
+        open={!!deleting}
+        onOpenChange={(open) => {
+          if (!open && !remove.isPending) setDeleting(null);
+        }}
+      >
+        <AlertDialogContent className="app-overlay w-[calc(100%-32px)] rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {es ? "¿Eliminar esta tarea?" : "Delete this task?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="break-words">
+              {deleting?.title}.{" "}
+              {es
+                ? "Esta acción no se puede deshacer."
+                : "This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {remove.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {remove.error.message}
+            </p>
+          )}
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={remove.isPending} className="min-h-11">
+              {es ? "Cancelar" : "Cancel"}
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={remove.isPending}
+              className="min-h-11"
+              onClick={() => deleting && remove.mutate(deleting.id)}
+            >
+              {remove.isPending
+                ? es
+                  ? "Eliminando…"
+                  : "Deleting…"
+                : es
+                  ? "Eliminar tarea"
+                  : "Delete task"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

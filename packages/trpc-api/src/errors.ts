@@ -116,8 +116,11 @@ export class UnauthorizedError extends DomainError {
 
 /** Signed in, and not allowed. Not a member, or a role too low for the action. */
 export class ForbiddenError extends DomainError {
-	constructor(message = "No tienes acceso a este negocio") {
-		super("FORBIDDEN", message);
+	constructor(
+		message = "No tienes acceso a este negocio",
+		options: { details?: Record<string, unknown> } = {},
+	) {
+		super("FORBIDDEN", message, { details: options.details });
 		this.name = "ForbiddenError";
 	}
 }

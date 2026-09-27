@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ArrowRight, CheckCircle2, MessageCircle, ShieldCheck, Workflow } from "lucide-react";
+import { ArrowRight, CheckCircle2, MapPin, ShieldCheck, Bike } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
@@ -23,255 +23,257 @@ interface SeoPageConfig {
   related: string[];
 }
 
+// Los slugs son rutas públicas ya registradas en App.tsx; el contenido cambió al
+// relato de delivery sin romper las URLs.
 export const seoPages: Record<string, SeoPageConfig> = {
   "whatsapp-shared-inbox": {
     slug: "whatsapp-shared-inbox",
-    eyebrow: "WhatsApp shared inbox",
-    title: "WhatsApp shared inbox for SMB teams",
+    eyebrow: "Delivery de comida",
+    title: "Delivery de comida de los restaurantes de tu barrio",
     description:
-      "Centralize WhatsApp conversations, ownership, follow-ups, and customer context so growing teams can reply faster without losing the thread.",
-    primaryKeyword: "WhatsApp shared inbox",
+      "Pedí de sodas, restaurantes y food trucks cercanos con catálogos reales, entrega a domicilio y seguimiento del pedido en vivo.",
+    primaryKeyword: "delivery de comida",
     bullets: [
-      "Assign every WhatsApp conversation",
-      "Track owners and next steps",
-      "Keep customer history in one workspace",
+      "Restaurantes y sodas cerca de vos",
+      "Menús con precios y horarios reales",
+      "Seguí tu pedido hasta la puerta",
     ],
     sections: [
       {
-        title: "One queue for customer conversations",
-        body: "PymesHub helps teams stop working from disconnected phones and personal inboxes. Conversations become shared work with owners, due dates, and visibility for sales, service, and operations.",
+        title: "Todo el barrio, en una sola app",
+        body: "PymesHub reúne los comercios de comida de tu zona en un solo lugar, con catálogos mantenidos por cada negocio. Compará platos, precios y tiempos de entrega sin llamar a nadie.",
       },
       {
-        title: "Built for follow-through, not only replies",
-        body: "Turn a WhatsApp message into a task, client update, invoice follow-up, or pipeline movement without copying context between tools.",
+        title: "Del antojo a la puerta",
+        body: "Armá tu pedido con cantidades y notas especiales, elegí entrega a domicilio o retiro en tienda, pagá en efectivo, tarjeta o transferencia y seguí la entrega en vivo hasta tu dirección.",
       },
     ],
     faqs: [
       {
-        question: "What is a WhatsApp shared inbox?",
+        question: "¿Cómo hago un pedido de comida?",
         answer:
-          "It is a team inbox where multiple people can manage WhatsApp conversations with shared context, assignments, and follow-up workflows.",
+          "Elegís el restaurante o soda, agregás platos al carrito con tus notas, confirmás la entrega y pagás. El comercio recibe el pedido completo y vos lo seguís en vivo.",
       },
       {
-        question: "Who should use it?",
+        question: "¿Puedo pagar en efectivo?",
         answer:
-          "SMBs with sales, support, finance, or operations teams that receive customer requests through WhatsApp and need accountable handoffs.",
+          "Sí. Efectivo contra entrega, tarjeta o transferencia. El estado del pago queda registrado junto a tu pedido.",
       },
     ],
     related: ["whatsapp-crm", "team-inbox", "workflow-automation"],
   },
   "crm-for-smbs": {
     slug: "crm-for-smbs",
-    eyebrow: "CRM for SMBs",
-    title: "CRM for SMBs that run on conversations, tasks, and invoices",
+    eyebrow: "Delivery de abarrotes",
+    title: "Delivery de abarrotes: el mandado, sin salir de casa",
     description:
-      "Manage clients, WhatsApp conversations, tasks, pipeline visibility, and invoices in one CRM workspace for growing SMB teams.",
-    primaryKeyword: "CRM for SMBs",
+      "Pedí abarrotes, frutas y productos básicos de las pulperías y abastecedores de tu zona, con entrega el mismo día.",
+    primaryKeyword: "delivery de abarrotes",
     bullets: [
-      "Unify client records",
-      "Connect pipeline and invoices",
-      "Give teams shared operational visibility",
+      "Pulperías y abastecedores locales",
+      "Mismo peso, mismos precios de siempre",
+      "Entrega el mismo día",
     ],
     sections: [
       {
-        title: "A practical CRM for daily operations",
-        body: "PymesHub keeps customer context close to the work: messages, notes, documents, tasks, deals, and billing follow-ups can live around the same client record.",
+        title: "El mandado de siempre, ahora en línea",
+        body: "Las pulperías y abastecedores de tu barrio publican su catálogo en PymesHub con los precios de siempre. Armá tu lista, mandá el pedido y recibilo en casa el mismo día.",
       },
       {
-        title: "Designed around SMB execution",
-        body: "Instead of forcing a heavy enterprise CRM rollout, teams can organize the operational moments that matter most: who owns the account, what is pending, and what needs to be collected.",
+        title: "Comprás al comercio de siempre",
+        body: "No hay intermediarios: tu pedido va directo a la pulpería de tu barrio. El negocio recibe la lista completa y vos seguís la entrega hasta la puerta.",
       },
     ],
     faqs: [
       {
-        question: "How is PymesHub different from a generic CRM?",
+        question: "¿Los precios son los mismos de la tienda?",
         answer:
-          "PymesHub positions the CRM around conversations, workflows, and invoicing, so customer operations stay connected to revenue follow-through.",
+          "Sí. Cada comercio mantiene su propio catálogo y precios. Lo que ves en la app es lo que cobra el negocio.",
       },
       {
-        question: "Can small teams use it before scaling?",
+        question: "¿Hasta dónde entregan?",
         answer:
-          "Yes. The workspace is designed to make early teams more organized while leaving room for roles, permissions, and repeatable processes.",
+          "Cada comercio define su zona de cobertura. Si estás fuera de su radio, podés elegir retiro en tienda.",
       },
     ],
     related: ["client-management", "whatsapp-crm", "invoicing"],
   },
   "client-management": {
     slug: "client-management",
-    eyebrow: "Client management",
-    title: "Client management software for SMB operations",
+    eyebrow: "Delivery de farmacia",
+    title: "Delivery de farmacia cuando no podés salir",
     description:
-      "Keep client conversations, documents, tasks, invoices, and pipeline updates connected in one operating workspace for growing teams.",
-    primaryKeyword: "client management software",
+      "Medicamentos de venta libre, artículos de cuidado personal y más, entregados por las farmacias de tu comunidad.",
+    primaryKeyword: "delivery de farmacia",
     bullets: [
-      "See customer context quickly",
-      "Coordinate sales and service",
-      "Attach tasks and follow-ups to clients",
+      "Farmacias de tu comunidad",
+      "Artículos de venta libre y cuidado personal",
+      "Pedidos con notas para el farmacéutico",
     ],
     sections: [
       {
-        title: "Client context your team can trust",
-        body: "Customer work gets harder when every update lives in a different inbox, spreadsheet, or billing tool. PymesHub gives teams a shared place to understand the client and move work forward.",
+        title: "Lo que necesitás, sin moverte de casa",
+        body: "Cuando alguien está enfermo en casa, salir no es opción. Las farmacias registradas en PymesHub reciben tu pedido con las notas necesarias y te lo llevan a la puerta.",
       },
       {
-        title: "From first message to long-term account",
-        body: "Capture important conversations, assign next steps, track documents, and keep invoice follow-ups connected to the same operational history.",
+        title: "Claro y sin confusiones",
+        body: "El pedido llega completo al comercio: producto, cantidad y tus notas. El farmacéutico confirma y el estado del pedido se actualiza en vivo hasta la entrega.",
       },
     ],
     faqs: [
       {
-        question: "What should client management software include?",
+        question: "¿Puedo pedir medicamentos con receta?",
         answer:
-          "For SMBs, it should connect contact records, conversation history, tasks, documents, revenue status, and clear ownership.",
+          "La app sirve para productos de venta libre y cuidado personal. Los medicamentos con receta los coordina directamente cada farmacia según su política — podés dejar una nota en el pedido.",
       },
       {
-        question: "Does this replace spreadsheets?",
+        question: "¿Qué tan rápido llega?",
         answer:
-          "It can replace the operational spreadsheets teams use to track clients, follow-ups, and handoffs when those spreadsheets become hard to keep current.",
+          "Depende de cada farmacia: el horario de atención y la hora estimada de entrega son visibles antes de confirmar el pedido.",
       },
     ],
     related: ["crm-for-smbs", "team-inbox", "workflow-automation"],
   },
   "workflow-automation": {
     slug: "workflow-automation",
-    eyebrow: "Workflow automation",
-    title: "Workflow automation for SMB customer operations",
+    eyebrow: "Ferretería a domicilio",
+    title: "Ferretería a domicilio para el proyecto de fin de semana",
     description:
-      "Automate reminders, handoffs, client follow-ups, and invoice next steps from one workspace connected to conversations and pipeline activity.",
-    primaryKeyword: "workflow automation for SMBs",
+      "Herramientas, materiales y repuestos de las ferreterías de tu zona, entregados cuando estás en medio del proyecto.",
+    primaryKeyword: "ferretería a domicilio",
     bullets: [
-      "Trigger reminders from real work",
-      "Reduce manual handoffs",
-      "Keep teams aligned on next steps",
+      "Ferreterías de tu zona",
+      "Herramientas, materiales y repuestos",
+      "Entrega al obraje o a la casa",
     ],
     sections: [
       {
-        title: "Automations tied to customer context",
-        body: "PymesHub focuses workflow automation on practical operational moments: new messages, pending proposals, overdue replies, invoice follow-ups, and internal ownership changes.",
+        title: "Que el proyecto no se detenga",
+        body: "Cuando falta un tornillo a media obra, ir a la ferretería detiene todo. Las ferreterías de PymesHub reciben tu pedido con la lista exacta y lo entregan donde estés trabajando.",
       },
       {
-        title: "Less tool switching, more execution",
-        body: "Teams can standardize follow-through without depending on memory, chat pings, or disconnected task lists.",
+        title: "Pedidos que se entienden a la primera",
+        body: "Cada pedido lleva producto, medida y notas del cliente. La ferretería confirma disponibilidad y el estado del pedido se ve en vivo hasta la entrega.",
       },
     ],
     faqs: [
       {
-        question: "What workflows can SMBs automate first?",
+        question: "¿Puedo pedir materiales por cantidad?",
         answer:
-          "Start with lead assignment, reply reminders, proposal follow-ups, invoice collection reminders, and escalation paths for high-priority clients.",
+          "Sí. El carrito admite cantidades y notas especiales — medidas, colores, referencias — para que la ferretería prepare exactamente lo que necesitás.",
       },
       {
-        question: "Is workflow automation only for large companies?",
+        question: "¿Entregan en obra?",
         answer:
-          "No. SMBs often benefit fastest because a few repeatable rules can remove many manual follow-ups from daily operations.",
+          "Cada ferretería define su zona de entrega, que puede incluir direcciones de obra. Dejá la referencia en las notas del pedido.",
       },
     ],
     related: ["whatsapp-shared-inbox", "team-inbox", "invoicing"],
   },
   "whatsapp-crm": {
     slug: "whatsapp-crm",
-    eyebrow: "WhatsApp CRM",
-    title: "WhatsApp CRM for growing SMBs in LATAM",
+    eyebrow: "Seguimiento de pedidos",
+    title: "Seguí tu pedido en vivo, de la confirmación a la puerta",
     description:
-      "Connect WhatsApp conversations to client records, sales pipeline, tasks, and invoice follow-ups in one CRM workspace.",
-    primaryKeyword: "WhatsApp CRM",
+      "Cada pedido en PymesHub pasa por estados claros — confirmado, preparando, en camino — con hora estimada siempre visible.",
+    primaryKeyword: "seguimiento de pedidos",
     bullets: [
-      "Link chats to clients",
-      "Track revenue follow-ups",
-      "Give teams a shared source of truth",
+      "Estado en vivo del pedido",
+      "Hora estimada de entrega",
+      "Historial para volver a pedir",
     ],
     sections: [
       {
-        title: "A CRM built around how customers actually write",
-        body: "Many SMBs live in WhatsApp. PymesHub turns those customer conversations into structured operational context for sales, service, finance, and leadership.",
+        title: "Nunca más “¿dónde va mi pedido?”",
+        body: "Cada pedido muestra su estado actual: confirmado, preparando, en camino o entregado. La hora estimada se actualiza con el comercio y ves todo sin llamar ni escribir.",
       },
       {
-        title: "Make WhatsApp actionable",
-        body: "Instead of only answering messages, teams can assign ownership, update client records, create tasks, and keep invoice or pipeline next steps visible.",
+        title: "Pedidos anteriores, un toque de distancia",
+        body: "Tu historial guarda cada pedido para que puedas volver a pedir tus favoritos en segundos, con las mismas notas y la misma dirección.",
       },
     ],
     faqs: [
       {
-        question: "Why combine WhatsApp and CRM?",
+        question: "¿Qué estados tiene un pedido?",
         answer:
-          "Because customer intent, objections, documents, payment questions, and support requests often start in WhatsApp and need to become accountable work.",
+          "Confirmado, preparando, en camino y entregado. Si el comercio rechaza o cancela, también queda visible con la razón.",
       },
       {
-        question: "Is this useful beyond sales?",
+        question: "¿Puedo contactar al comercio durante la entrega?",
         answer:
-          "Yes. Support, finance, operations, and leadership all benefit when WhatsApp context is connected to clients and workflows.",
+          "Sí. Cada pedido tiene un espacio para escribirle al comercio por si algo cambia en la entrega.",
       },
     ],
     related: ["whatsapp-shared-inbox", "crm-for-smbs", "client-management"],
   },
   invoicing: {
     slug: "invoicing",
-    eyebrow: "Invoicing workflows",
-    title: "Invoicing workflows connected to clients and conversations",
+    eyebrow: "Pago contra entrega",
+    title: "Pago contra entrega: efectivo, tarjeta o transferencia",
     description:
-      "Keep invoice follow-ups, customer conversations, documents, and pipeline context together so SMB teams can collect with less operational friction.",
-    primaryKeyword: "invoicing workflows",
+      "Pagá como prefieras al recibir tu pedido. El estado del pago queda registrado junto al pedido, sin cuadernos ni capturas.",
+    primaryKeyword: "pago contra entrega",
     bullets: [
-      "Connect billing to client context",
-      "Track payment follow-ups",
-      "Keep finance and sales aligned",
+      "Efectivo contra entrega",
+      "Tarjeta o transferencia en línea",
+      "Estado de pago registrado por pedido",
     ],
     sections: [
       {
-        title: "Invoices should not live outside the customer story",
-        body: "PymesHub keeps billing follow-through close to conversations, documents, tasks, and pipeline status so teams can understand what is blocking payment.",
+        title: "Tu plata, tu momento",
+        body: "El pago contra entrega es la forma más natural de comprar en el barrio: recibís el pedido, contás el efectivo y listo. En PymesHub el pago queda registrado junto al pedido.",
       },
       {
-        title: "Operational visibility for collections",
-        body: "Finance and customer-facing teams can coordinate next steps without losing context in separate spreadsheets or chat threads.",
+        title: "Si preferís pagar en línea",
+        body: "También podés pagar con tarjeta o transferencia al confirmar el pedido. El comercio ve el pago confirmado antes de preparar la entrega.",
       },
     ],
     faqs: [
       {
-        question: "Why connect invoicing with CRM workflows?",
+        question: "¿Puedo pagar con efectivo al recibo?",
         answer:
-          "Because payment questions, approvals, documents, and customer commitments often sit across sales, service, and finance conversations.",
+          "Sí. Elegí efectivo como método de pago al confirmar. Prepará el monto exacto si podés — el repartidor puede no llevar cambio.",
       },
       {
-        question: "Who benefits from invoicing workflows?",
+        question: "¿Cómo sabe el comercio que pagué en línea?",
         answer:
-          "SMB teams that need shared visibility into issued invoices, follow-up ownership, and customer context benefit most.",
+          "El estado del pago se actualiza automáticamente en el pedido. El comercio lo ve antes de preparar tu entrega.",
       },
     ],
     related: ["crm-for-smbs", "workflow-automation", "client-management"],
   },
   "team-inbox": {
     slug: "team-inbox",
-    eyebrow: "Team inbox",
-    title: "Team inbox for sales, support, finance, and operations",
+    eyebrow: "Pedidos para retiro",
+    title: "Retiro en tienda: pedí de antemano, pasá por ello",
     description:
-      "Bring shared customer conversations, assignments, tasks, and follow-ups into one team inbox built for SMB operations.",
-    primaryKeyword: "team inbox",
+      "Armá tu pedido, elegí retiro en tienda y pasá a buscarlo cuando esté listo. Sin filas, sin esperar en el mostrador.",
+    primaryKeyword: "retiro en tienda",
     bullets: [
-      "Route requests to the right owner",
-      "Make handoffs visible",
-      "Coordinate multiple teams around one customer thread",
+      "Pedidos listos cuando llegués",
+      "Sin mínimo de compra",
+      "Pagás al retirar o en línea",
     ],
     sections: [
       {
-        title: "A shared inbox for more than support",
-        body: "PymesHub gives sales, service, finance, and operations teams a common place to manage customer work that starts in conversations and ends in follow-through.",
+        title: "Pedí de antemano, pasá por ello",
+        body: "Si pasás de todos modos frente a la soda o la panadería, el retiro en tienda te ahorra la espera: el pedido se prepara con anticipación y te avisan cuando está listo.",
       },
       {
-        title: "Know what is open, owned, or overdue",
-        body: "A team inbox becomes operational when every conversation can have an owner, next step, status, and related client context.",
+        title: "El mismo catálogo, sin delivery",
+        body: "Retiro en tienda usa el mismo catálogo y los mismos precios que la entrega a domicilio. Vos elegís el método al confirmar el pedido.",
       },
     ],
     faqs: [
       {
-        question: "What is a team inbox?",
+        question: "¿Cómo sé que mi pedido está listo?",
         answer:
-          "A team inbox lets multiple users manage shared customer conversations with ownership, visibility, and response coordination.",
+          "El comercio actualiza el estado del pedido a preparando y luego a listo para retirar. Recibís la confirmación en la app.",
       },
       {
-        question: "How does it help SMB teams?",
+        question: "¿Puedo pagar al retirar?",
         answer:
-          "It reduces missed replies, unclear ownership, and fragmented customer context across departments.",
+          "Sí. Podés pagar en efectivo o con tarjeta al retirar, o pagar en línea al confirmar el pedido.",
       },
     ],
     related: ["whatsapp-shared-inbox", "client-management", "workflow-automation"],
@@ -293,7 +295,7 @@ function createFaqSchema(config: SeoPageConfig) {
   };
 }
 
-const ACCENT = "#4F46E5";
+const ACCENT = "#F59E0B";
 
 export default function SeoLandingPage({ slug }: { slug: string }) {
   const config = seoPages[slug];
@@ -322,7 +324,7 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
   if (!config) return null;
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-[#111827]">
+    <div className="min-h-screen bg-[#05091d] text-slate-100">
       <main>
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-8">
           <Link href="/" aria-label="PymesHub home">
@@ -332,9 +334,9 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
             <LanguageSwitcher variant="marketing" />
             <Link
               href="/pricing"
-              className="font-marketing rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm text-gray-600 transition hover:border-gray-300 hover:text-gray-900"
+              className="font-marketing rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:border-amber-500/40 hover:text-white"
             >
-              Pricing
+              Precios
             </Link>
           </div>
         </nav>
@@ -342,42 +344,41 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
         <section className="px-4 py-14 md:px-8 md:py-20">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
             <article>
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-gray-400">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-amber-400">
                 {config.eyebrow}
               </p>
-              <h1 className="font-marketing mt-5 text-4xl font-bold tracking-[-0.04em] text-gray-900 md:text-5xl">
+              <h1 className="font-marketing mt-5 text-4xl font-bold tracking-[-0.04em] text-white md:text-5xl">
                 {config.title}
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-500">
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">
                 {config.description}
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-marketing text-sm font-semibold text-white transition hover:opacity-90"
-                  style={{ background: ACCENT }}
+                  href="/categories"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-marketing text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
                 >
-                  Empezar gratis <ArrowRight className="h-4 w-4" />
+                  Empezar a pedir <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/"
-                  className="inline-flex items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-6 py-3 font-marketing text-sm font-semibold text-gray-700 transition hover:border-gray-300"
+                  className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-3 font-marketing text-sm font-semibold text-slate-200 transition hover:border-white/25"
                 >
                   Ver PymesHub
                 </Link>
               </div>
             </article>
 
-            <aside className="rounded-2xl border border-[#E5E7EB] bg-white p-6 md:p-8">
+            <aside className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
-                  <MessageCircle className="h-6 w-6" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400">
+                  <MapPin className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="font-marketing text-xs uppercase tracking-[0.24em] text-gray-400">
+                  <p className="font-marketing text-xs uppercase tracking-[0.24em] text-slate-500">
                     Tema principal
                   </p>
-                  <h2 className="font-marketing text-xl font-semibold tracking-[-0.02em] text-gray-900">
+                  <h2 className="font-marketing text-xl font-semibold tracking-[-0.02em] text-white">
                     {config.primaryKeyword}
                   </h2>
                 </div>
@@ -386,10 +387,10 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
                 {config.bullets.map((bullet) => (
                   <div
                     key={bullet}
-                    className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F7F8FC] px-4 py-3"
+                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
                   >
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-gray-400" />
-                    <span className="text-sm text-gray-700">{bullet}</span>
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="text-sm text-slate-300">{bullet}</span>
                   </div>
                 ))}
               </div>
@@ -402,19 +403,19 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
             {config.sections.map((section, index) => (
               <article
                 key={section.title}
-                className="rounded-2xl border border-[#E5E7EB] bg-white p-6 md:p-8"
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
               >
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400">
                   {index === 0 ? (
-                    <Workflow className="h-5 w-5" />
+                    <Bike className="h-5 w-5" />
                   ) : (
                     <ShieldCheck className="h-5 w-5" />
                   )}
                 </div>
-                <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-gray-900">
+                <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white">
                   {section.title}
                 </h2>
-                <p className="mt-4 text-sm leading-7 text-gray-500">
+                <p className="mt-4 text-sm leading-7 text-slate-400">
                   {section.body}
                 </p>
               </article>
@@ -425,10 +426,10 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
         <section className="px-4 pb-20 md:px-8">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-gray-400">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
                 FAQ
               </p>
-              <h2 className="font-marketing mt-3 text-3xl font-bold tracking-[-0.04em] text-gray-900">
+              <h2 className="font-marketing mt-3 text-3xl font-bold tracking-[-0.04em] text-white">
                 Preguntas frecuentes sobre {config.primaryKeyword}
               </h2>
             </div>
@@ -436,12 +437,12 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
               {config.faqs.map((faq) => (
                 <article
                   key={faq.question}
-                  className="rounded-2xl border border-[#E5E7EB] bg-white p-6"
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
                 >
-                  <h3 className="font-marketing text-lg font-semibold text-gray-900">
+                  <h3 className="font-marketing text-lg font-semibold text-white">
                     {faq.question}
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-gray-500">
+                  <p className="mt-3 text-sm leading-7 text-slate-400">
                     {faq.answer}
                   </p>
                 </article>
@@ -450,9 +451,9 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
           </div>
         </section>
 
-        <section className="border-t border-[#E5E7EB] px-4 py-10 md:px-8">
+        <section className="border-t border-white/10 px-4 py-10 md:px-8">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <p className="font-marketing text-sm uppercase tracking-[0.26em] text-gray-400">
+            <p className="font-marketing text-sm uppercase tracking-[0.26em] text-slate-500">
               Páginas relacionadas
             </p>
             <div className="flex flex-wrap gap-3">
@@ -460,7 +461,7 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
                 <Link
                   key={relatedSlug}
                   href={`/${relatedSlug}`}
-                  className="rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm text-gray-600 transition hover:border-gray-300 hover:text-gray-900"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:border-amber-500/40 hover:text-white"
                 >
                   {seoPages[relatedSlug]?.primaryKeyword ?? relatedSlug}
                 </Link>

@@ -9,7 +9,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { AccessibilityInfo, Platform, StyleSheet } from "react-native";
+import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
 import Animated, {
 	Easing,
 	runOnJS,
@@ -22,7 +22,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useT } from "@/lib/i18n";
 import { duration, ENTER_RISE, exitDuration } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
-import { icon, radius, shadow, space, useTheme } from "@/theme";
+import {
+	icon,
+	MIN_TOUCH_TARGET,
+	radius,
+	shadow,
+	space,
+	useTheme,
+} from "@/theme";
 
 import { MEASURE } from "./error-state";
 import { Pressable } from "./pressable";
@@ -75,9 +82,26 @@ import { Text } from "./text";
  * A refusal needs a sentence, a reason and often a retry — `./rollback-notice` for an
  * optimistic write the API refused, `./error-state` for a screen that could not load, both of
  * which are drawn *in* the layout rather than floated over it, because a message you have to
- * act on must not be able to leave on its own after 3.2 seconds. So `show()` takes a message
- * and nothing else: there is no severity to set, and no tone that would make an error
- * reachable from here.
+ * act on must not be able to leave on its own after three seconds. So `show()` takes a
+ * sentence and no severity: there is no tone that would make an error reachable from
+ * here.
+ *
+ * ## The one action it can carry (§46's `Undo`)
+ *
+ * `show(message, undo?)` is the whole of it. The second argument reverses the write the
+ * sentence just confirmed, and it is what turns one line into the pair §46 draws —
+ * `Product unavailable              Undo`. A toast given no callback draws no button,
+ * which is why the word is never a promise the surface cannot keep. This is an action
+ * and not a tone, so the paragraph above still holds: there is no severity here, and a
+ * refusal still cannot arrive by this door.
+ *
+ * The sentence and the action are **siblings**, never one control inside the other. A
+ * `Pressable` is accessible by default, so a button nested in a tappable surface is
+ * swallowed by the accessibility tree {EM} the same trap `./list-row` documents at length
+ * for a `Switch`. The sentence is the tappable half and carries the alert; the action,
+ * when there is one, sits beside it and is its own button. That is also why the
+ * `Pressable`s rather than the surface carry `./pressable`'s 44-point floor: two floors
+ * inside a padded surface would grow this well past the height below.
  *
  * ## The haptic is not here, because it already happened
  *
@@ -111,16 +135,29 @@ import { Text } from "./text";
  * it sooner. The mark is hidden from the tree; the word is the message.
  */
 
-/** How long the sentence stays before it leaves on its own. The contract's 3.2s. */
-const AUTO_DISMISS = 3200;
+/**
+ * How long the sentence stays before it leaves on its own.
+ *
+ * §46 gives "2—3 sec", and the 3.2s this used to hold is outside that window:
+ * long enough to read twice, short enough that a merchant who wants it gone has already
+ * tapped. 2800 is the middle of the window, and the tap-to-dismiss escape below is what
+ * covers the reader who needs longer.
+ */
+const AUTO_DISMISS = 2800;
 
 // The sentence's measure is `./error-state`'s exported `MEASURE` — the same cap the error
 // block puts on its own centred lines, read from there rather than spelled a second time:
 // three message surfaces deriving the same number was three chances to drift.
 
 export type ToastApi = {
-	/** Show `message`, replacing whatever is on screen. The message is already translated. */
-	show: (message: string) => void;
+	/**
+	 * Show `message`, replacing whatever is on screen. The message is already translated.
+	 *
+	 * `undo`, when given, reverses the write the sentence confirms and draws §46's trailing
+	 * button beside it. Omit it and no button is drawn {EM} see the file docblock for why the
+	 * two are siblings rather than one control inside another.
+	 */
+	show: (message: string, undo?: () => void) => void;
 	/** Take the current toast away early. Rarely needed: it leaves on its own. */
 	dismiss: () => void;
 };
@@ -133,7 +170,7 @@ export type ToastApi = {
  * so the auto-dismiss clock would keep running down from the first and iOS would not announce
  * the second. A fresh object every time is what makes two identical sentences two arrivals.
  */
-type Toast = { message: string };
+type Toast = { message: string; undo?: () => void };
 
 const ToastContext = createContext<ToastApi | null>(null);
 
@@ -153,6 +190,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	const [current, setCurrent] = useState<Toast | null>(null);
 	/** The same toast as `current`, readable from a callback without a stale closure. */
 	const shown = useRef<Toast | null>(null);
+	/**
+	 * Set the moment the trailing action is taken, so a second tap during the exit flight is
+	 * a no-op. `shown` is only cleared when that animation *finishes*, so on its own it would
+	 * still be non-null under the finger that pressed twice.
+	 */
+	const acted = useRef(false);
 	const progress = useSharedValue(0);
 
 	const clear = useCallback(() => {
@@ -161,8 +204,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const show = useCallback(
-		(message: string) => {
-			const next = { message };
+		(message: string, undo?: () => void) => {
+			const next = { message, undo };
+			acted.current = false;
 			shown.current = next;
 			setCurrent(next);
 			progress.value = withTiming(1, {
@@ -224,14 +268,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 				<Animated.View
 					style={[styles.host, { bottom: insets.bottom + space.md }, animated]}
 				>
-					<Pressable
-						onPress={dismiss}
-						accessibilityRole="alert"
-						accessibilityLiveRegion="polite"
-						accessibilityHint={t("a11y.dismissToast")}
+					{/* The surface carries no `Pressable` of its own: the two halves below are
+					    siblings, and a tappable surface around them would swallow the action's
+					    button out of the accessibility tree. See the file docblock. */}
+					<View
 						style={[
 							styles.surface,
-							{ backgroundColor: colors.card, borderColor: colors.border },
+							// §46's pair, folded the way `./merchant-pulse` folds §14's identical
+							// two: the surface is `colors.foreground` and the ink on it is
+							// `colors.background`. The contract names `#241922` and `#F6F2E9`;
+							// taking the pair from the keys rather than from those hexes is what
+							// keeps this slab owned by the palette that owns the rest of the
+							// screen. The reasoning, written out at length, is there.
+							{ backgroundColor: colors.foreground },
 							// The `raised` lift, because this is the one surface that floats over a
 							// screen rather than sitting in one. It is above the tab bar because
 							// `ToastProvider` mounts it after the navigator, not because of this —
@@ -239,19 +288,54 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							shadow.raised,
 						]}
 					>
-						{/* The word carries the meaning; this is the second channel, never the only
-						    one — hence a `success` tint on a mark that is hidden from the tree. */}
-						<Ionicons
-							name="checkmark-circle"
-							size={icon.inline}
-							color={colors.success}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
-						<Text variant="body" style={styles.message}>
-							{current.message}
-						</Text>
-					</Pressable>
+						{/* The tappable half, and the one that carries the alert: the sentence
+						    dismisses on tap, with the hint that says it can. Its floor is
+						    `./pressable`'s own 44, paid by this row's padding rather than by a
+						    second floor on the surface. */}
+						<Pressable
+							onPress={dismiss}
+							accessibilityRole="alert"
+							accessibilityLiveRegion="polite"
+							accessibilityHint={t("a11y.dismissToast")}
+							style={styles.message}
+						>
+							{/* The word carries the meaning; this mark is the second channel, never
+							    the only one. §46's surface is two colours and no third, so the mark
+							    is the sentence's own ink rather than a semantic tint — the same rule
+							    `./merchant-pulse` writes for its band. Hidden from the tree. */}
+							<Ionicons
+								name="checkmark-circle"
+								size={icon.inline}
+								color={colors.background}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+							<Text
+								variant="body"
+								style={[styles.sentence, { color: colors.background }]}
+							>
+								{current.message}
+							</Text>
+						</Pressable>
+						{current.undo ? (
+							<Pressable
+								onPress={() => {
+									if (acted.current) return;
+									acted.current = true;
+									const undo = current.undo;
+									dismiss();
+									undo?.();
+								}}
+								accessibilityRole="button"
+								accessibilityLabel={t("action.undo")}
+								style={styles.undo}
+							>
+								<Text variant="label" bold style={{ color: colors.background }}>
+									{t("action.undo")}
+								</Text>
+							</Pressable>
+						) : null}
+					</View>
 				</Animated.View>
 			) : null}
 		</ToastContext>
@@ -285,18 +369,37 @@ const styles = StyleSheet.create({
 		// sentence across an iPad.
 		alignItems: "center",
 	},
+	// No hairline and no padding here. §46's surface is two colours and no third — the
+	// ground and the text — so a border would be a colour the contract does not draw, and
+	// the padding belongs to the tappable halves below because that is where
+	// `./pressable`'s 44-point floor has to be paid.
 	surface: {
 		flexDirection: "row",
-		// Top-aligned, not centred: at 200% text a message that wraps to three lines would
-		// otherwise push the mark to the middle of the block, away from the words it marks.
-		alignItems: "flex-start",
-		gap: space.sm,
 		width: "100%",
 		maxWidth: MEASURE,
-		borderWidth: 1,
 		borderRadius: radius.md,
+	},
+	/**
+	 * The sentence's half: the mark and the words, as one tappable row.
+	 *
+	 * Top-aligned rather than centred — at 200% text a message that wraps to three lines would
+	 * otherwise push the mark to the middle of the block, away from the words it marks.
+	 */
+	message: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: space.sm,
 		padding: space.md,
+		minHeight: MIN_TOUCH_TARGET,
 	},
 	/** The sentence takes the rest of the row and wraps. Never a `numberOfLines`. */
-	message: { flex: 1 },
+	sentence: { flex: 1 },
+	// §46's trailing action. The word is the whole of it; the padding is the target, and the
+	// floor is `./pressable`'s.
+	undo: {
+		justifyContent: "center",
+		paddingHorizontal: space.md,
+		minHeight: MIN_TOUCH_TARGET,
+	},
 });

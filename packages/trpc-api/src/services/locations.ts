@@ -10,11 +10,12 @@ import {
 	type MerchantLocation,
 	newId,
 } from "@pymeshub/shared";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { ForbiddenError, ValidationError } from "../errors";
 import type { BusinessContext } from "./helpers";
 import { isOpenAt, localDayAndMinute, orNotFound } from "./helpers";
+import { checkCount } from "./plan-limits";
 
 type LocationRow = typeof locationTable.$inferSelect;
 type BusinessRow = typeof businessTable.$inferSelect;
@@ -43,7 +44,7 @@ function locationOf(
 		location.pauseReason !== null &&
 		(location.resumeAt === null || location.resumeAt > now);
 	const { day } = localDayAndMinute(now);
-	const today = (location.hours ?? business.hours)?.find(
+	const todayHours = (location.hours ?? business.hours)?.find(
 		(entry) => entry.day === day,
 	);
 	return {
@@ -60,13 +61,7 @@ function locationOf(
 		lat: location.lat,
 		lng: location.lng,
 		status: operationalStatus(location, business, now),
-		todayHours:
-			today && !today.isClosed
-				? {
-						opensMinute: today.opensMinute,
-						closesMinute: today.closesMinute,
-					}
-				: null,
+		todayHours: todayHours && !todayHours.isClosed ? todayHours : null,
 		pausedAt: pauseIsCurrent ? location.pausedAt : null,
 		resumeAt: pauseIsCurrent ? location.resumeAt : null,
 		createdAt: location.createdAt,
@@ -113,11 +108,7 @@ export async function list(ctx: BusinessContext): Promise<MerchantLocation[]> {
 		.select()
 		.from(locationTable)
 		.where(eq(locationTable.businessId, businessId))
-		.orderBy(
-			desc(locationTable.isDefault),
-			asc(locationTable.createdAt),
-			asc(locationTable.id),
-		);
+		.orderBy(asc(locationTable.createdAt), asc(locationTable.id));
 	const now = new Date();
 	return rows.map((row) => locationOf(row, business, now));
 }
@@ -146,6 +137,28 @@ export async function create(
 	);
 	if (business.status === "SUSPENDED")
 		throw new ForbiddenError("Este negocio está suspendido por PymesHub");
+
+	/**
+	 * The plan's location cap, checked before the insert.
+	 *
+	 * Both plans allow **one** location today, so this refuses a second one for a weekly
+	 * shop and a third for a monthly shop — and it is the one cap a merchant is most
+	 * likely to hit by accident, because opening a second branch is a normal thing to
+	 * want. The count is the real one: `business.locations` is a relation, not a column,
+	 * and a cap checked against a cached number is a cap that is wrong exactly when it
+	 * matters.
+	 */
+	const existing = await ctx.db
+		.select({ id: locationTable.id })
+		.from(locationTable)
+		.where(eq(locationTable.businessId, businessId));
+	checkCount({
+		ctx,
+		limitName: "locations",
+		resourceType: "sucursal",
+		current: existing.length,
+	});
+
 	const now = new Date();
 	const id = newId("location");
 	await ctx.db.insert(locationTable).values({

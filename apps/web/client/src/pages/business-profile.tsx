@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Loader2, CheckCircle2, ChevronLeft,
+  Loader2, CheckCircle2, ChevronLeft, LogOut,
   UtensilsCrossed, Briefcase, ShoppingCart, Heart, BookOpen, Laptop,
   Hammer, Truck, Hotel, Scissors, PartyPopper, Leaf, Home, Cog, Building2, HelpCircle,
   Smartphone, MessageCircle, Users, Store, Globe, Plus,
   Receipt, TrendingUp, Package, ClipboardList, Calendar, CreditCard,
+  Car, PawPrint, Pill, Shirt, Gem, Sofa, Wrench, Printer,
+  Dumbbell, Puzzle, Library, Landmark, Droplets,
   User,
 } from "lucide-react";
 
@@ -17,18 +20,31 @@ type IconType = typeof User;
 
 const CATEGORIES: { value: string; label: string; icon: IconType }[] = [
   { value: "alimentacion_bebidas",      label: "Alimentación y bebidas",     icon: UtensilsCrossed },
-  { value: "servicios_profesionales",   label: "Servicios profesionales",    icon: Briefcase       },
   { value: "comercio_ventas",           label: "Comercio y ventas",          icon: ShoppingCart    },
+  { value: "servicios_profesionales",   label: "Servicios profesionales",    icon: Briefcase       },
   { value: "salud_bienestar",           label: "Salud y bienestar",          icon: Heart           },
+  { value: "farmacia_optica",           label: "Farmacia y óptica",          icon: Pill            },
+  { value: "belleza_estetica",          label: "Belleza y estética",         icon: Scissors        },
   { value: "educacion_formacion",       label: "Educación y formación",      icon: BookOpen        },
   { value: "tecnologia_software",       label: "Tecnología y software",      icon: Laptop          },
   { value: "construccion_remodelacion", label: "Construcción y remodelación",icon: Hammer          },
+  { value: "ferreteria_materiales",     label: "Ferretería y materiales",    icon: Wrench          },
+  { value: "automotriz",                label: "Automotriz y talleres",      icon: Car             },
   { value: "transporte_logistica",      label: "Transporte y logística",     icon: Truck           },
   { value: "turismo_hospitalidad",      label: "Turismo y hospitalidad",     icon: Hotel           },
-  { value: "belleza_estetica",          label: "Belleza y estética",         icon: Scissors        },
-  { value: "entretenimiento_eventos",   label: "Entretenimiento y eventos",  icon: PartyPopper     },
-  { value: "agropecuario",              label: "Agropecuario",               icon: Leaf            },
+  { value: "moda_ropa",                 label: "Moda y confección",          icon: Shirt           },
+  { value: "joyeria_accesorios",        label: "Joyería y accesorios",       icon: Gem             },
+  { value: "muebles_decoracion",        label: "Muebles y decoración",       icon: Sofa            },
   { value: "servicios_hogar",           label: "Servicios del hogar",        icon: Home            },
+  { value: "limpieza_mantenimiento",    label: "Limpieza y mantenimiento",   icon: Droplets        },
+  { value: "deporte_fitness",           label: "Deporte y fitness",          icon: Dumbbell        },
+  { value: "mascotas_veterinaria",      label: "Mascotas y veterinaria",     icon: PawPrint        },
+  { value: "entretenimiento_eventos",   label: "Entretenimiento y eventos",  icon: PartyPopper     },
+  { value: "juguetes_hobbies",          label: "Juguetes y hobbies",         icon: Puzzle          },
+  { value: "libros_medios",             label: "Libros y medios",            icon: Library         },
+  { value: "finanzas_seguros",          label: "Finanzas y seguros",         icon: Landmark        },
+  { value: "oficina_papeleria",         label: "Oficina y papelería",        icon: Printer         },
+  { value: "agropecuario",              label: "Agropecuario",               icon: Leaf            },
   { value: "manufactura_artesania",     label: "Manufactura y artesanía",    icon: Cog             },
   { value: "bienes_raices",             label: "Bienes raíces",              icon: Building2       },
   { value: "otro",                      label: "Otro",                       icon: HelpCircle      },
@@ -68,7 +84,7 @@ function MultiChip({ icon: Icon, label, sub, selected, onClick }: {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+        "flex min-h-12 w-full items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
         selected
           ? "border-accent bg-accent/8 hover:bg-accent/10"
           : "border-border bg-card hover:border-border-strong hover:bg-muted/40",
@@ -97,7 +113,7 @@ function RadioChip({ label, sub, selected, onClick }: {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+        "flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
         selected
           ? "border-accent bg-accent/8 hover:bg-accent/10"
           : "border-border bg-card hover:border-border-strong hover:bg-muted/40",
@@ -119,6 +135,7 @@ function RadioChip({ label, sub, selected, onClick }: {
 
 export default function BusinessProfilePage() {
   const { toast } = useToast();
+  const { logout } = useAuth();
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -126,6 +143,7 @@ export default function BusinessProfilePage() {
   const [channels, setChannels] = useState<string[]>([]);
   const [needs, setNeeds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const totalSteps = 4;
 
@@ -196,16 +214,35 @@ export default function BusinessProfilePage() {
     <div className="flex min-h-screen items-start justify-center bg-canvas px-6 py-10">
       <div className="w-full max-w-[520px]">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded bg-accent text-white">
               <span className="text-[11px] font-bold">P</span>
             </div>
             <span className="text-sm font-semibold text-foreground">PymesHub</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            Paso {step + 1} de {totalSteps}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              Paso {step + 1} de {totalSteps}
+            </span>
+            <button
+              type="button"
+              disabled={leaving}
+              onClick={async () => {
+                setLeaving(true);
+                try {
+                  await logout();
+                } finally {
+                  setLeaving(false);
+                }
+              }}
+              className="mobile-tab flex min-h-12 items-center gap-1.5 rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label={leaving ? "Cerrando sesión…" : "Cerrar sesión"}
+            >
+              <LogOut aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span className="hidden sm:inline">{leaving ? "Cerrando…" : "Salir"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Progress bar */}
@@ -221,21 +258,21 @@ export default function BusinessProfilePage() {
 
         <div className="flex flex-col gap-2">{s.content}</div>
 
-        <div className="mt-6 flex items-center gap-2.5">
+        <div className="mt-6 flex flex-wrap items-center gap-2.5">
           {step > 0 && (
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setStep((s) => s - 1)}>
-              <ChevronLeft className="h-3.5 w-3.5" />
+            <Button variant="outline" className="min-h-12 gap-1.5 px-4 text-sm" onClick={() => setStep((s) => s - 1)}>
+              <ChevronLeft className="h-4 w-4" />
               Atrás
             </Button>
           )}
 
           {step < totalSteps - 1 ? (
-            <Button size="sm" className="h-8 text-xs" disabled={!canNext[step]} onClick={() => setStep((s) => s + 1)}>
+            <Button className="min-h-12 px-5 text-sm" disabled={!canNext[step]} onClick={() => setStep((s) => s + 1)}>
               Continuar
             </Button>
           ) : (
-            <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={!canNext[step] || saving} onClick={finish}>
-              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <Button className="min-h-12 gap-1.5 px-5 text-sm" disabled={!canNext[step] || saving} onClick={finish}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               Guardar perfil
             </Button>
           )}
@@ -243,7 +280,7 @@ export default function BusinessProfilePage() {
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline transition-colors"
+            className="ml-auto min-h-12 px-2 text-sm text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
           >
             Cancelar
           </button>

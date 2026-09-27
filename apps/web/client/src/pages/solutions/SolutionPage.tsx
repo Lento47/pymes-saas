@@ -1,16 +1,16 @@
 import { motion } from "framer-motion";
 import { Link, Redirect } from "wouter";
 import {
-  ArrowRight, CheckCircle2, Inbox, Users, Bot, FileText,
-  Calendar, Zap, BarChart2, ShoppingBag, Globe, Repeat,
+  ArrowRight, CheckCircle2, Inbox, Bike, MapPin, Users,
+  ShoppingBag, Globe, Repeat,
   MessageCircle, AlertCircle, Clock, TrendingUp,
 } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { Footer } from "@/components/marketing/footer";
 
-const ACCENT = "#6757E8";
-const BG = "#F7F8FC";
-const BORDER = "#E6E8EF";
+const ACCENT = "#F59E0B";
+const BG = "#05091d";
+const BORDER = "rgba(255,255,255,0.08)";
 
 interface SolutionConfig {
   eyebrow: string;
@@ -25,113 +25,113 @@ interface SolutionConfig {
 
 const SOLUTIONS: Record<string, SolutionConfig> = {
   "small-teams": {
-    eyebrow: "Para equipos pequeños",
-    headline: "Un sistema operativo para tu equipo",
+    eyebrow: "Para sodas y restaurantes",
+    headline: "Tu cocina, entregando pedidos sin caos",
     subtext:
-      "Unificá WhatsApp, email y tareas en un solo lugar. Dejá de perder el tiempo buscando conversaciones y empezá a cerrar más ventas.",
+      "Recibí cada pedido completo — platos, cantidades y notas — sin llamadas ni audios. Tu equipo prepara, tu cliente sigue la entrega.",
     pains: [
-      { icon: AlertCircle, title: "Sin visibilidad del equipo", text: "Nadie sabe quién está atendiendo qué. Los clientes caen entre las grietas." },
-      { icon: MessageCircle, title: "Conversaciones perdidas", text: "Mensajes en teléfonos personales, sin historial ni contexto compartido." },
-      { icon: Clock, title: "Seguimientos olvidados", text: "El cliente esperó, nadie le escribió de vuelta. La venta se enfrió." },
+      { icon: AlertCircle, title: "Pedidos por teléfono", text: "Tomás pedidos mientras cocinás. Se pierden datos, se confunden cantidades, se enfría la comida." },
+      { icon: MessageCircle, title: "WhatsApp saturado", text: "Audios, capturas y '¿me confirmás?' a toda hora. Nadie sabe qué pedido va primero." },
+      { icon: Clock, title: "Entregas a ciegas", text: "El cliente pregunta dónde va su pedido y tenés que parar todo para averiguarlo." },
     ],
     features: [
-      { icon: Inbox, title: "Bandeja omnicanal", text: "WhatsApp, email y web chat en una sola pantalla compartida por todo el equipo." },
-      { icon: Users, title: "Asignación de conversaciones", text: "Asigná cada consulta a la persona correcta en segundos, con contexto completo." },
-      { icon: Bot, title: "Agente IA incluido", text: "Respondé automáticamente fuera de horario y cualificá leads antes de que lleguen al equipo." },
-      { icon: FileText, title: "CRM integrado", text: "Ficha de cliente, historial de conversaciones y deals en un solo lugar." },
+      { icon: Inbox, title: "Pedidos organizados", text: "Cada pedido llega con artículos, dirección y notas del cliente, listo para confirmar." },
+      { icon: Bike, title: "Estado en vivo", text: "Confirmado, preparando, en camino — el cliente lo ve todo sin llamarte." },
+      { icon: ShoppingBag, title: "Catálogo al día", text: "Tu menú con precios y fotos, actualizado por vos. Lo que mostrás es lo que vendés." },
+      { icon: TrendingUp, title: "Resumen del día", text: "Pedidos por estado y totales, listos para cerrar la caja sin sorpresas." },
     ],
     quote:
-      "Antes perdíamos ventas porque nadie sabía quién había atendido qué. Ahora todo el equipo ve el mismo inbox y los clientes sienten la diferencia.",
-    quoteAuthor: "Equipo de ventas, empresa de servicios B2B",
-    ctaHeadline: "Tu equipo merece mejores herramientas",
+      "Antes tomábamos pedidos al teléfono entre los Fuegos. Ahora entran ordenados, con la dirección y las notas, y nadie llama a preguntar dónde va.",
+    quoteAuthor: "Encargada, soda de barrio · Costa Rica",
+    ctaHeadline: "Menos teléfono, más cocina",
   },
 
   retail: {
-    eyebrow: "Para retail",
-    headline: "Atiende más, pierde menos ventas",
+    eyebrow: "Para pulperías y abarrotes",
+    headline: "El mandado de tus vecinos, entregado a tiempo",
     subtext:
-      "Gestioná consultas, pedidos y cobros desde la misma pantalla. Menos tabs abiertos, más ventas cerradas.",
+      "Publicá tu catálogo con los precios de siempre y recibí listas completas de compras, no mensajes sueltos a media tarde.",
     pains: [
-      { icon: MessageCircle, title: "Consultas sin responder", text: "El cliente pregunta por WhatsApp y nadie le contesta a tiempo. La competencia lo atiende primero." },
-      { icon: AlertCircle, title: "Pedidos sin seguimiento", text: "Órdenes que se pierden, entregas que nadie confirmó, clientes que reclaman." },
-      { icon: Clock, title: "Sin historial del cliente", text: "Cada vez que escribe es como si fuera la primera vez. Cero personalización." },
+      { icon: MessageCircle, title: "Listas por chat", text: "El cliente manda su lista por audio o captura. Averiguar qué pidió exactamente toma más que surtirlo." },
+      { icon: AlertCircle, title: "Sin registro de fiados", text: "Quién debe qué queda en la memoria o en un cuaderno que nadie encuentra." },
+      { icon: Clock, title: "Precios desactualizados", text: "Cambiás un precio y tus clientes se enteran cuando ya están en la caja." },
     ],
     features: [
-      { icon: Inbox, title: "Inbox unificado", text: "Todas las consultas de WhatsApp, Instagram y email en una sola bandeja de entrada." },
-      { icon: FileText, title: "Factura desde la conversación", text: "Creá y enviá facturas o cotizaciones directamente desde el chat, sin cambiar de app." },
-      { icon: Bot, title: "Bot de estado de pedido", text: "El agente IA responde al instante sobre estados de entrega, disponibilidad y precios." },
-      { icon: TrendingUp, title: "Historial de compras", text: "Cada cliente llega con su historial: pedidos anteriores, valor total, preferencias." },
+      { icon: ShoppingBag, title: "Catálogo con precios reales", text: "Actualizá precios al instante; el cliente siempre ve lo correcto antes de pedir." },
+      { icon: Inbox, title: "Listas completas", text: "Cada pedido llega con productos, cantidades y sustituciones aceptadas." },
+      { icon: Users, title: "Clientes frecuentes", text: "Historial de compras por cliente para surtir más rápido a los de siempre." },
+      { icon: TrendingUp, title: "Ventas visibles", text: "Qué se vende, cuándo y cuánto — sin hojas de cálculo." },
     ],
     quote:
-      "Antes tardábamos horas en responder consultas de WhatsApp. Hoy el agente responde en segundos y nosotros solo revisamos lo que necesita atención humana.",
-    quoteAuthor: "Dueño, tienda de ropa online · Costa Rica",
-    ctaHeadline: "Más ventas, el mismo equipo",
+      "La gente manda su lista por la app y yo solo surto. Ya no paso media tarde descifrando audios.",
+    quoteAuthor: "Dueño, abastecedor de barrio · Heredia",
+    ctaHeadline: "Tu pulpería, también en línea",
   },
 
   services: {
-    eyebrow: "Para empresas de servicios",
-    headline: "Más clientes recurrentes, menos administración",
+    eyebrow: "Para farmacias",
+    headline: "Lo que se necesita, entregado a la puerta",
     subtext:
-      "Agendá, cotizá y hacé seguimiento de cada cliente desde un solo lugar. Que la administración no te quite tiempo de servicio.",
+      "Recibí pedidos de cuidado personal y venta libre con notas claras, y coordená la entrega sin descifrar letras de médico.",
     pains: [
-      { icon: Calendar, title: "Citas sin confirmar", text: "El cliente agendó, nadie le confirmó, y al final no aparece. Hora perdida." },
-      { icon: FileText, title: "Cotizaciones sin respuesta", text: "Enviaste la propuesta y nunca sabes si la leyeron o si ya eligieron a otro." },
-      { icon: Users, title: "Clientes que no vuelven", text: "Terminás el servicio y el cliente desaparece. Sin seguimiento no hay retención." },
+      { icon: Clock, title: "Pedidos urgentes por llamada", text: "Atender el teléfono mientras atendés el mostrador, con el cliente esperando de ambos lados." },
+      { icon: AlertCircle, title: "Datos confusos", text: "Nombres de productos mal escritos, sin presentación ni cantidad, siempre al teléfono otra vez." },
+      { icon: Globe, title: "¿Hasta dónde entregamos?", text: "Cada pedido llega con la misma pregunta: ¿ustedes llegan hasta allá?" },
     ],
     features: [
-      { icon: Calendar, title: "Gestión de citas", text: "Agenda integrada con confirmación automática por WhatsApp y recordatorios previos." },
-      { icon: FileText, title: "Plantillas de cotización", text: "Enviá propuestas profesionales en segundos directamente desde la conversación." },
-      { icon: Zap, title: "Automatizaciones de seguimiento", text: "Recordatorios de pago, encuestas post-servicio y re-activación de clientes inactivos." },
-      { icon: Users, title: "Ficha de cliente", text: "Historial completo: servicios contratados, pagos, notas y próximos vencimientos." },
+      { icon: Inbox, title: "Pedidos con notas", text: "Producto, cantidad y las notas del cliente visibles antes de confirmar." },
+      { icon: MapPin, title: "Zona de entrega clara", text: "Definí tu radio de cobertura una vez; la app le avisa al cliente por vos." },
+      { icon: ShoppingBag, title: "Catálogo de venta libre", text: "Lo que tenés disponible, con fotos y presentaciones, siempre al día." },
+      { icon: TrendingUp, title: "Pedidos del día", text: "Todo lo que entra, agrupado y con su estado de entrega." },
     ],
     quote:
-      "PymesHub me ayudó a reducir el no-show a la mitad. Los recordatorios automáticos hacen el trabajo que antes me tomaba horas cada semana.",
-    quoteAuthor: "Terapeuta independiente · San José",
-    ctaHeadline: "Enfocate en el servicio, no en la administración",
+      "El pedido llega con el producto y la nota del cliente. Confirmo, preparo y listo. Ya no juego al teléfono.",
+    quoteAuthor: "Farmacia de comunidad · San José",
+    ctaHeadline: "Tu farmacia, sin interrupciones",
   },
 
   agencies: {
-    eyebrow: "Para agencias",
-    headline: "Todos tus clientes, un solo panel",
+    eyebrow: "Para ferreterías",
+    headline: "El material correcto, en la obra correcta",
     subtext:
-      "Manejá múltiples clientes, equipos y canales sin perder el contexto. Más proyectos, la misma energía.",
+      "Recibí listas de materiales completas con medidas y referencias, y entregá donde el cliente está trabajando.",
     pains: [
-      { icon: Repeat, title: "Cambio de contexto constante", text: "Diez clientes, diez WhatsApp, diez grupos. No hay manera de ver el panorama completo." },
-      { icon: BarChart2, title: "Sin reportes por cliente", text: "¿Cuánto tiempo le dedicaste a cada cuenta este mes? No tenés idea." },
-      { icon: Globe, title: "Múltiples números de WhatsApp", text: "Cada cliente en un teléfono diferente. Si alguien falta, nadie puede responder." },
+      { icon: MessageCircle, title: "Listas a media obra", text: "El cliente manda lo que necesita en un mensaje confuso y vos tenés que adivinar la referencia." },
+      { icon: AlertCircle, title: "Existencias al aire", text: "Vendés lo que no tenés y el cliente espera el doble. O tenés stock muerto que no se mueve." },
+      { icon: Clock, title: "Entregas improvisadas", text: "Coordinar cada entrega por teléfono roba el tiempo del mostrador." },
     ],
     features: [
-      { icon: Users, title: "Multi-workspace", text: "Cada cliente en su propio espacio de trabajo, con equipos y permisos separados." },
-      { icon: FileText, title: "CRM por cliente", text: "Contactos, deals y conversaciones organizados por cuenta, no mezclados." },
-      { icon: BarChart2, title: "Reportes de actividad", text: "Mensajes enviados, tiempo de respuesta y conversaciones activas por cliente." },
-      { icon: Zap, title: "Automatizaciones por cliente", text: "Flujos de trabajo personalizados para cada cuenta sin duplicar configuraciones." },
+      { icon: ShoppingBag, title: "Catálogo con existencias", text: "Mostrá solo lo que hay; el cliente no pide lo que no tenés." },
+      { icon: Inbox, title: "Listas estructuradas", text: "Producto, medida y referencia en cada línea del pedido." },
+      { icon: MapPin, title: "Entrega en obra", text: "El cliente deja la referencia de la obra en las notas y tu repartidor llega directo." },
+      { icon: TrendingUp, title: "Lo más pedido", text: "Sabé qué materiales rota'n más y mantené stock de lo que importa." },
     ],
     quote:
-      "Antes necesitaba revisar cinco apps distintas para saber cómo iba cada cliente. Hoy tengo todo en un dashboard y puedo tomar decisiones en tiempo real.",
-    quoteAuthor: "Director de operaciones, agencia digital",
-    ctaHeadline: "Escalá sin caos",
+      "Los pedidos llegan con medidas y referencias. Preparo el pedido y lo mando con el primer viaje.",
+    quoteAuthor: "Ferretería de barrio · Cartago",
+    ctaHeadline: "Menos adivinanzas, más obras terminadas",
   },
 
   ecommerce: {
-    eyebrow: "Para e-commerce",
-    headline: "Convierte consultas en ventas con IA",
+    eyebrow: "Para panaderías y cafeterías",
+    headline: "El pedido de la mañana, resuelto la noche anterior",
     subtext:
-      "Respondé al instante, recuperá carritos y fidelizá clientes automáticamente. Tu tienda abierta las 24 horas.",
+      "Tus clientes frecuentes ordenan con anticipación; vos preparás lo que ya está vendido. Menos desperdicio, más pan caliente.",
     pains: [
-      { icon: MessageCircle, title: "Preguntas sin respuesta", text: "El cliente pregunta el precio o la talla a las 11 PM y compra en otro lado porque nadie respondió." },
-      { icon: ShoppingBag, title: "Carritos abandonados", text: "El 70% de los carritos nunca se pagan. Sin seguimiento automatizado, esa plata se pierde." },
-      { icon: Clock, title: "Sin retención post-venta", text: "El cliente compró una vez y nunca más volviste a hablarle. La retención cuesta diez veces menos que la adquisición." },
+      { icon: MessageCircle, title: "Pedidos por encargo por chat", text: "Encargos de tortas y cajas para la oficina viviendo en un chat que nadie revisa." },
+      { icon: ShoppingBag, title: "Producción a ciegas", text: "Horneás de más y se pierde producto, o de menos y quedás corto con los encargos." },
+      { icon: Clock, title: "Horarios confusos", text: "El cliente no sabe si todavía hay pan o si ya cerró los pedidos del día." },
     ],
     features: [
-      { icon: Bot, title: "Agente IA 24/7", text: "Respondé preguntas de producto, disponibilidad y envíos en segundos, sin intervención humana." },
-      { icon: Zap, title: "Notificaciones proactivas", text: "Confirmación de orden, tracking de envío y encuesta post-entrega enviados automáticamente." },
-      { icon: Repeat, title: "Estado de pedido automático", text: "El cliente pregunta '¿dónde está mi pedido?' y el bot responde con el link de tracking al instante." },
-      { icon: TrendingUp, title: "CRM de compradores", text: "Historial de compras, valor de vida del cliente y segmentación para campañas de re-activación." },
+      { icon: ShoppingBag, title: "Encargos con anticipación", text: "El cliente pide para hoy o para mañana; vos planificás la hornada real." },
+      { icon: Clock, title: "Cortes de pedidos claros", text: "Definí hasta qué hora se pide para cada horario de entrega." },
+      { icon: Inbox, title: "Encargos organizados", text: "Personalización, cantidades y fecha de entrega en cada pedido." },
+      { icon: TrendingUp, title: "Favoritos del barrio", text: "Vos sabé qué se pide más y tené listo lo que siempre falta." },
     ],
     quote:
-      "Implementamos el agente IA en WhatsApp y en tres semanas la tasa de conversión de consultas subió un 40%. Los clientes quieren respuestas rápidas.",
-    quoteAuthor: "Fundadora, tienda de cosméticos online",
-    ctaHeadline: "Tu tienda, abierta las 24 horas",
+      "Los encargos llegan con fecha y detalle. Preparo lo vendido y el pan sale caliente a la hora justa.",
+    quoteAuthor: "Panadería de barrio · Alajuela",
+    ctaHeadline: "Tu horno, siempre con encargo",
   },
 };
 
@@ -144,17 +144,17 @@ export default function SolutionPage({ slug }: { slug: string }) {
   return (
     <div className="min-h-screen" style={{ background: BG }}>
       {/* Nav */}
-      <header className="border-b bg-white px-4 py-4 md:px-8" style={{ borderColor: BORDER }}>
+      <header className="border-b bg-white/[0.02] px-4 py-4 md:px-8" style={{ borderColor: BORDER }}>
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <Link href="/"><BrandLockup compact /></Link>
           <div className="flex items-center gap-4">
-            <Link href="/pricing" className="text-sm text-gray-500 hover:text-gray-900 transition">Ver precios</Link>
+            <Link href="/pricing" className="text-sm text-slate-400 hover:text-white transition">Precios para comercios</Link>
             <Link
               href="/register"
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90"
               style={{ background: ACCENT }}
             >
-              Empezar gratis
+              Registrar mi comercio
             </Link>
           </div>
         </div>
@@ -164,39 +164,39 @@ export default function SolutionPage({ slug }: { slug: string }) {
       <section className="mx-auto max-w-5xl px-4 py-20 md:px-8 text-center">
         <span
           className="inline-block rounded-full px-3 py-1 text-xs font-semibold mb-6"
-          style={{ background: `${ACCENT}15`, color: ACCENT }}
+          style={{ background: "rgba(245,158,11,0.12)", color: ACCENT }}
         >
           {eyebrow}
         </span>
-        <h1 className="font-marketing text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-6 max-w-2xl mx-auto">
+        <h1 className="font-marketing text-4xl font-bold tracking-tight text-white sm:text-5xl mb-6 max-w-2xl mx-auto">
           {headline}
         </h1>
-        <p className="text-lg text-gray-500 max-w-xl mx-auto mb-10 leading-relaxed">
+        <p className="text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed">
           {subtext}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
             style={{ background: ACCENT }}
           >
-            Empezar gratis
+            Registrar mi comercio
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            href="/#demo"
-            className="inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            href="/categories"
+            className="inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
             style={{ borderColor: BORDER }}
           >
-            Ver demo
+            Ver la tienda
           </Link>
         </div>
       </section>
 
       {/* Pain points */}
       <section className="mx-auto max-w-5xl px-4 pb-16 md:px-8">
-        <p className="text-center text-sm font-semibold uppercase tracking-wider text-gray-400 mb-8">
-          ¿Pasa esto en tu empresa?
+        <p className="text-center text-sm font-semibold uppercase tracking-wider text-slate-500 mb-8">
+          ¿Pasa esto en tu negocio?
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           {pains.map(({ icon: Icon, title, text }, idx) => (
@@ -206,14 +206,14 @@ export default function SolutionPage({ slug }: { slug: string }) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
-              className="rounded-2xl border bg-white p-6"
+              className="rounded-2xl border bg-white/[0.03] p-6"
               style={{ borderColor: BORDER }}
             >
-              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-red-50">
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10">
                 <Icon className="h-5 w-5 text-red-400" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
+              <h3 className="text-sm font-semibold text-white mb-1">{title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{text}</p>
             </motion.div>
           ))}
         </div>
@@ -234,18 +234,17 @@ export default function SolutionPage({ slug }: { slug: string }) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
-              className="rounded-2xl border bg-white p-6 flex gap-4"
+              className="rounded-2xl border bg-white/[0.03] p-6 flex gap-4"
               style={{ borderColor: BORDER }}
             >
               <div
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-                style={{ background: `${ACCENT}12` }}
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/10"
               >
                 <Icon className="h-5 w-5" style={{ color: ACCENT }} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
+                <h3 className="text-sm font-semibold text-white mb-1">{title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{text}</p>
               </div>
             </motion.div>
           ))}
@@ -255,7 +254,7 @@ export default function SolutionPage({ slug }: { slug: string }) {
       {/* Social proof */}
       <section className="mx-auto max-w-3xl px-4 py-12 md:px-8">
         <div
-          className="rounded-2xl border bg-white p-8 text-center"
+          className="rounded-2xl border bg-white/[0.03] p-8 text-center"
           style={{ borderColor: BORDER }}
         >
           <div className="flex justify-center mb-5">
@@ -265,37 +264,37 @@ export default function SolutionPage({ slug }: { slug: string }) {
               </svg>
             ))}
           </div>
-          <blockquote className="text-base text-gray-700 leading-relaxed mb-4 italic">
+          <blockquote className="text-base text-slate-200 leading-relaxed mb-4 italic">
             "{quote}"
           </blockquote>
-          <p className="text-xs text-gray-400">{quoteAuthor}</p>
+          <p className="text-xs text-slate-500">{quoteAuthor}</p>
         </div>
       </section>
 
       {/* Feature checklist */}
       <section className="mx-auto max-w-5xl px-4 py-12 md:px-8">
         <div
-          className="rounded-2xl border bg-white px-8 py-10"
+          className="rounded-2xl border bg-white/[0.03] px-8 py-10"
           style={{ borderColor: BORDER }}
         >
-          <h3 className="font-marketing text-base font-semibold text-gray-900 mb-6 text-center">
-            Incluido en todos los planes
+          <h3 className="font-marketing text-base font-semibold text-white mb-6 text-center">
+            Incluido en todos los planes de comercio
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {[
-              "Bandeja omnicanal unificada",
-              "Agente IA personalizable",
-              "CRM de contactos",
-              "Asignación de conversaciones",
-              "Automatizaciones de flujo",
-              "Facturación integrada",
-              "Reportes de actividad",
-              "Soporte por WhatsApp",
-              "Acceso multiusuario",
+              "Tienda propia con catálogo",
+              "Pedidos a domicilio y retiro",
+              "Efectivo, tarjeta o transferencia",
+              "Estado del pedido en vivo",
+              "Notas del cliente en cada pedido",
+              "Zona y horario de entrega propios",
+              "Resumen de pedidos del día",
+              "Soporte local en Costa Rica",
+              "Sin comisión por pedido",
             ].map((item) => (
               <div key={item} className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-500" />
-                <span className="text-sm text-gray-600">{item}</span>
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-amber-400" />
+                <span className="text-sm text-slate-300">{item}</span>
               </div>
             ))}
           </div>
@@ -306,20 +305,19 @@ export default function SolutionPage({ slug }: { slug: string }) {
       <section className="mx-auto max-w-5xl px-4 py-12 md:px-8">
         <div
           className="rounded-3xl px-8 py-14 text-center text-white"
-          style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #8B73F0 100%)` }}
+          style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0.04) 100%)", border: "1px solid rgba(245,158,11,0.25)" }}
         >
           <h2 className="font-marketing text-2xl font-bold tracking-tight mb-3 sm:text-3xl">
             {ctaHeadline}
           </h2>
-          <p className="text-white/70 text-sm mb-8 max-w-md mx-auto">
-            Probá PymesHub gratis por 14 días. Sin tarjeta de crédito, sin contratos.
+          <p className="text-slate-300 text-sm mb-8 max-w-md mx-auto">
+            Registrá tu comercio, armá tu catálogo y empezá a recibir pedidos organizados. Sin costo de instalación, sin comisión por pedido.
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold transition hover:bg-gray-50"
-            style={{ color: ACCENT }}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
           >
-            Empezar gratis
+            Registrar mi comercio
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

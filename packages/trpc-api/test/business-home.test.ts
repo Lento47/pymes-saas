@@ -15,7 +15,14 @@ import {
 test("merchant home scopes orders to one branch and keeps the catalog shop-wide", async () => {
 	const testWorld = world();
 	try {
-		const businessId = await seedBusiness(testWorld.db, { id: "biz_home_one" });
+		// Two branches, so the spec can prove a read is scoped to one. **No plan allows a
+		// second branch** — both are capped at one — so the cap is raised for this spec
+		// alone. The property under test is tenant scoping, not the pricing, and the
+		// alternative is losing the coverage.
+		const businessId = await seedBusiness(testWorld.db, {
+			id: "biz_home_one",
+			raiseLimits: { locations: 3 },
+		});
 		const otherId = await seedBusiness(testWorld.db, { id: "biz_home_other" });
 		await seedProduct(testWorld.db, {
 			id: "prd_home_sold_out",

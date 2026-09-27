@@ -14,3 +14,15 @@ apps/android/
 package-lock.json
 **/package-lock.json
 apps/*/pnpm-lock.yaml
+
+# Local mobile browser traces (screenshots for design review are kept separately).
+.design-reference/test-results/
+
+# Scratch files from an investigation session: `_scan*.py`, `_v*.txt`, `_w*.py`,
+# `_h.txt`. They hardcode absolute paths into one developer's Downloads folder
+# (`_scan.py` opens `C:/Users/<name>/Downloads/interface.md`) and are meaningless
+# outside the session that wrote them. `**/` because the same debris was left in
+# `apps/` and `apps/mobile/` too.
+_*.py
+_*.txt
+**/_*.txt

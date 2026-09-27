@@ -1,14 +1,21 @@
 import type { AuthenticatedUser } from "@pymeshub/auth";
 import {
+	business as businessTable,
 	createDb,
 	type Db,
 	membership as membershipTable,
+	subscription as subscriptionTable,
 	user as userTable,
 } from "@pymeshub/db";
+import {
+	type Plan,
+	type SubscriptionStatus,
+	subscriptionStatusAt,
+} from "@pymeshub/shared/plans";
 import { eq } from "drizzle-orm";
 import { createAuth } from "./auth";
 
-import { type Env } from "./env";
+import type { Env } from "./env";
 import { ForbiddenError, RateLimitError, UnauthorizedError } from "./errors";
 import { createLogger, type Logger } from "./logging";
 
@@ -66,6 +73,30 @@ export type Context = {
 	memberships: Membership[];
 	/** Which client is calling, from `x-client`. Used for logging, never for access. */
 	client: ClientKind;
+	/**
+	 * The plan and billing status of the business this call is *about*, resolved by
+	 * `businessProcedure` and absent on a `Context` that has not named one.
+	 *
+	 * Kept off the base `Context` on purpose. A membership is not a plan: one user can
+	 * belong to three shops on three different plans, so there is no single value to
+	 * put here. `BusinessContext` adds them, and a procedure that has one is a
+	 * procedure that can gate.
+	 */
+};
+
+/**
+ * The billing facts a `businessProcedure` body is guaranteed to have.
+ *
+ * These are read from `business` and `subscription` in the same place the membership
+ * is resolved, so a limit check costs no extra query: the plan is denormalised onto
+ * `business.plan`, and the status is derived from the subscription's dates by
+ * `plan-limits.ts` rather than trusted from a column.
+ */
+export type BusinessBilling = {
+	/** What they pay for — the floor plan, never the effective one. */
+	businessPlan: Plan;
+	/** Derived from `periodEnd`/`gracedUntil` on the subscription, at request time. */
+	subscriptionStatus: SubscriptionStatus;
 };
 
 /**
@@ -92,6 +123,61 @@ async function loadMemberships(db: Db, userId: string): Promise<Membership[]> {
 		.from(membershipTable)
 		.where(eq(membershipTable.userId, userId));
 	return rows.map((row) => ({ businessId: row.businessId, role: row.role }));
+}
+
+/**
+ * A business's plan and its billing status, in one query.
+ *
+ * `business.plan` is denormalised on purpose and is what a limit check reads — a join
+ * here would put a second query on every product, staff and promotion write for a
+ * column that changes about once a month. The **status** is not read from
+ * `subscription.status`, though, and the distinction is the point: the stored value is
+ * whatever last wrote the row, while the derived value is correct for `now`. A
+ * merchant three weeks into grace is `GRACE` today whether or not a sweeper has run,
+ * and one that has never been charged has no subscription row at all — which is
+ * `ACTIVE`, not a crash and not a suspension.
+ */
+export async function loadBilling(
+	db: Db,
+	businessId: string,
+	now: Date,
+): Promise<{ plan: Plan; status: SubscriptionStatus }> {
+	const rows = await db
+		.select({
+			plan: businessTable.plan,
+			periodEnd: subscriptionTable.periodEnd,
+			gracedUntil: subscriptionTable.gracedUntil,
+			subscriptionCreatedAt: subscriptionTable.createdAt,
+		})
+		.from(businessTable)
+		.leftJoin(
+			subscriptionTable,
+			eq(subscriptionTable.businessId, businessTable.id),
+		)
+		.where(eq(businessTable.id, businessId))
+		.limit(1);
+
+	const row = rows[0];
+	if (!row) return { plan: "WEEKLY", status: "ACTIVE" };
+
+	// No subscription row at all — a business created but never billed, or a fixture.
+	// `subscriptionStatusAt` on a zero-date `createdAt` would read as long expired, so
+	// the "never charged" case is answered here rather than inferred from a null
+	// period. A merchant nobody has billed is not in arrears; they are `ACTIVE` on
+	// the floor plan.
+	if (!row.subscriptionCreatedAt) return { plan: row.plan, status: "ACTIVE" };
+
+	return {
+		plan: row.plan,
+		status: subscriptionStatusAt(
+			{
+				periodEnd: row.periodEnd,
+				gracedUntil: row.gracedUntil,
+				createdAt: row.subscriptionCreatedAt,
+			},
+			now,
+		),
+	};
 }
 
 /**

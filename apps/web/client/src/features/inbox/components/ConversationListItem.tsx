@@ -35,8 +35,8 @@ const STATUS_LABELS: Record<string, string> = {
   NEW: "Nuevo",
   OPEN: "Abierto",
   IN_PROGRESS: "En progreso",
-  WAITING_CLIENT: "Esp. cliente",
-  REQUIRES_HUMAN: "Req. humano",
+  WAITING_CLIENT: "Esperando cliente",
+  REQUIRES_HUMAN: "Requiere atención",
   IA_ATTENDING: "IA activa",
   BLOCKED: "Bloqueado",
   PENDING: "Pendiente",
@@ -84,6 +84,8 @@ function ConversationListItemImpl({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`Abrir conversación con ${contactName}`}
+      aria-current={selected ? "page" : undefined}
       className={cn(
         "relative w-full text-left transition-colors md:border-b md:border-border/30 md:last:border-0",
         "rounded-xl border border-border/50 bg-card px-3 py-3 shadow-none md:rounded-none md:border-x-0 md:border-t-0 md:px-4 md:py-3",
@@ -115,13 +117,13 @@ function ConversationListItemImpl({
           {/* ── Name + time ── */}
           <div className="flex items-baseline justify-between gap-2">
             <p className={cn(
-              "truncate text-[13px] leading-snug",
+              "line-clamp-2 text-base leading-snug",
               selected ? "font-semibold text-foreground" : "font-medium text-foreground/90",
             )}>
               {contactName}
             </p>
             {timestamp && (
-              <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/50">
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                 {formatSmartTimestamp(timestamp)}
               </span>
             )}
@@ -130,19 +132,19 @@ function ConversationListItemImpl({
           {/* ── Preview ── */}
           <div className="mt-1">
             {isPrivate ? (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground/40">
+              <span className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Lock className="h-2.5 w-2.5 shrink-0" />
                 Contenido sensible
               </span>
             ) : (
-              <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground/60 md:truncate md:text-[11px]">
+              <p className="line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
                 {preview}
               </p>
             )}
           </div>
 
           {/* ── Meta line: channel + status + assignee ── */}
-          <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground/50 md:mt-1">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <ChannelBadge channel={conversation.channel?.type} />
 
             <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/20" />
@@ -160,7 +162,7 @@ function ConversationListItemImpl({
                 <span className="truncate">{assigneeName}</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-muted-foreground/40">
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
                 <UserRound className="h-3 w-3 shrink-0" />
                 Sin asignar
               </span>

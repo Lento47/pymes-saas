@@ -13,6 +13,11 @@ import {
 } from "react";
 import { AppState } from "react-native";
 import { marketplaceAuth } from "@/lib/auth/client";
+import {
+	supabase,
+	supabaseAccessToken,
+	supabaseSignOut,
+} from "@/lib/auth/supabase";
 /**
  * Who is signed in, for the whole app.
  *
@@ -50,6 +55,15 @@ type SessionValue = {
 	unanswered: boolean;
 	signIn: (email: string, password: string) => Promise<SignInResult>;
 	signUp: (
+		email: string,
+		password: string,
+		name: string,
+	) => Promise<SignInResult>;
+	signInWithSupabase: (
+		email: string,
+		password: string,
+	) => Promise<SignInResult>;
+	signUpWithSupabase: (
 		email: string,
 		password: string,
 		name: string,
@@ -242,9 +256,87 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		},
 		[read],
 	);
+	const signInWithSupabase = useCallback(
+		async (email: string, password: string): Promise<SignInResult> => {
+			if (!supabase) {
+				return { ok: false, messageKey: "auth.error.notConfigured" };
+			}
+			try {
+				const { data, error } = await supabase.auth.signInWithPassword({
+					email,
+					password,
+				});
+				if (error || !data.session) {
+					return {
+						ok: false,
+						messageKey:
+							error?.status === 429
+								? "auth.error.rateLimited"
+								: "auth.error.invalidCredentials",
+					};
+				}
+				await marketplaceAuth.exchangeSupabaseSession(
+					data.session.access_token,
+				);
+				await read();
+				return { ok: true };
+			} catch (error) {
+				return {
+					ok: false,
+					messageKey: authErrorKey(error instanceof Error ? error.message : ""),
+				};
+			}
+		},
+		[read],
+	);
+	const signUpWithSupabase = useCallback(
+		async (
+			email: string,
+			password: string,
+			name: string,
+		): Promise<SignInResult> => {
+			if (!supabase) {
+				return { ok: false, messageKey: "auth.error.notConfigured" };
+			}
+			try {
+				const { data, error } = await supabase.auth.signUp({
+					email,
+					password,
+					options: { data: { name } },
+				});
+				if (error) {
+					return {
+						ok: false,
+						messageKey:
+							error.status === 429
+								? "auth.error.rateLimited"
+								: "auth.error.generic",
+					};
+				}
+				// Supabase may require email confirmation before it returns a session. Do
+				// not pretend that an unverified account is a marketplace session.
+				if (!data.session) {
+					return { ok: false, messageKey: "auth.error.emailNotConfirmed" };
+				}
+				await marketplaceAuth.exchangeSupabaseSession(
+					data.session.access_token,
+				);
+				await read();
+				return { ok: true };
+			} catch (error) {
+				return {
+					ok: false,
+					messageKey: authErrorKey(error instanceof Error ? error.message : ""),
+				};
+			}
+		},
+		[read],
+	);
 	const signOut = useCallback(async () => {
-		// The API deletes the session row; this only follows it and drops the local token.
-		await marketplaceAuth.signOut();
+		// The API deletes the marketplace session; Supabase owns its own refresh token.
+		// Both are cleared so a later sign-in cannot silently reuse the other provider.
+		await Promise.all([marketplaceAuth.signOut(), supabaseSignOut()]);
+		await supabaseAccessToken();
 		setSession(null);
 		setStatus("signed-out");
 	}, []);
@@ -255,10 +347,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			unanswered,
 			signIn,
 			signUp,
+			signInWithSupabase,
+			signUpWithSupabase,
 			signOut,
 			refresh: read,
 		}),
-		[session, status, unanswered, signIn, signUp, signOut, read],
+		[
+			session,
+			status,
+			unanswered,
+			signIn,
+			signUp,
+			signInWithSupabase,
+			signUpWithSupabase,
+			signOut,
+			read,
+		],
 	);
 	return <SessionContext value={value}>{children}</SessionContext>;
 }

@@ -9,7 +9,8 @@
 		"./money": "./src/money.ts",
 		"./order-state": "./src/order-state.ts",
 		"./ids": "./src/ids.ts",
-		"./options": "./src/options.ts"
+		"./options": "./src/options.ts",
+		"./plans": "./src/plans.ts"
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit",

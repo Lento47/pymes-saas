@@ -1,32 +1,26 @@
-import { uploadImageInput } from "@pymeshub/shared";
+import { uploadCreateInput } from "@pymeshub/shared";
 
-import { rateLimit } from "../context";
 import * as uploads from "../services/uploads";
 import { protectedProcedure, router } from "../trpc";
 
 /**
- * The image pipeline's one procedure.
+ * One picture, stored, and the path that draws it.
  *
- * Base64 in a mutation, not multipart: the native client's tRPC connection
- * already carries the session's bearer token, and a `FormData` body would need
- * a second auth story for a single endpoint. The rate limit is generous for a
- * person and tight for anything scripted - thirty pictures an hour is far past
- * what filling a profile needs and short of what a bucket bill notices.
+ * `protectedProcedure` and not `businessProcedure`: a product photo belongs to a
+ * shop, an avatar belongs to a person, and both are the same bytes on the same row.
+ * The caller is whoever is signed in, the row records `ownerUserId`, and the thing
+ * the picture is *attached to* is a write on its own procedure (`products.update`,
+ * `users.updateProfile`) which already knows its tenant. Splitting uploads by
+ * destination would mean the same file landing in two tables depending on a
+ * parameter nobody reads.
+ *
+ * No `delete` here, and that is deliberate for now: an orphaned object costs one
+ * row and is findable by `ownerUserId`, while a delete that is reachable before the
+ * row pointing at it is rewritten is a broken picture on a storefront. Replacing a
+ * photo is a create plus a write on the product — the old row can be swept.
  */
-const IMAGE_LIMIT = 30;
-const IMAGE_WINDOW_SECONDS = 60 * 60;
-
 export const uploadsRouter = router({
-	image: protectedProcedure
-		.input(uploadImageInput)
-		.mutation(async ({ ctx, input }) => {
-			await rateLimit(
-				ctx.env,
-				"uploads:image",
-				ctx.user.id,
-				IMAGE_LIMIT,
-				IMAGE_WINDOW_SECONDS,
-			);
-			return uploads.putImage(ctx, input);
-		}),
+	create: protectedProcedure
+		.input(uploadCreateInput)
+		.mutation(({ ctx, input }) => uploads.create(ctx, input)),
 });

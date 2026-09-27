@@ -17,7 +17,6 @@ import { useMemo, useState } from "react";
 import {
 	ScrollView,
 	StyleSheet,
-	TextInput,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -33,6 +32,7 @@ import { ListRow } from "@/components/list-row";
 import { PaginatedList } from "@/components/paginated-list";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
+import { SearchInput } from "@/components/search-input";
 import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -43,7 +43,7 @@ import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
 
 /**
  * The shop's menu: what the business sells, and the door to changing it.
@@ -177,6 +177,12 @@ function Menu() {
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [shopOpen, setShopOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	/**
+	 * Whether the header is drawing its field or its title. `interface.md` §49: the
+	 * search expands from an icon rather than holding vertical space all day. See the
+	 * header below for what each shape draws and why closing clears the box.
+	 */
+	const [searchOpen, setSearchOpen] = useState(false);
 
 	// The shop's own `categoryId` — a leaf — is what scopes the filter to this shop's
 	// vertical and names it on the row's help line (`@/lib/category-scope`). The read is
@@ -363,44 +369,60 @@ function Menu() {
 								{ borderBottomColor: colors.border },
 							]}
 						>
+							{/* §49's two shapes of one header.
+							    The collapsed one is the title and a 44pt door; the expanded one is the
+							    field and nothing beside it. The contract asks the search to *expand from
+							    an icon* rather than to hold vertical space all day, and the price of that
+							    is a header with two shapes — which is why the toggle names the state it
+moves to (`./switch`'s contract) instead of saying "search" in both.
+ Collapsing clears the box. A query that is no longer on screen is a filter
+							    the reader cannot see the reason for, and this screen already draws a
+							    different empty state for a narrowed list — keeping the text while hiding
+							    the field would narrow the rows behind the reader's back. Clearing is the
+							    one rule that leaves no hidden state. */}
 							<BackButton to="/account" />
-							<View style={styles.catalogCopy}>
-								<Text variant="label" bold>
-									{t("biz.catalog.title")}
-								</Text>
-								<Text variant="caption" tone="muted">
-									{tp("biz.catalog.count", items.length)}
-								</Text>
-							</View>
-							<View
-								style={[
-									styles.catalogSearch,
-									{
-										backgroundColor: colors.card,
-										borderColor: colors.input,
-									},
-								]}
-							>
-								<Ionicons
-									name="search-outline"
-									size={icon.control}
-									color={colors.mutedForeground}
-									accessibilityElementsHidden
-									importantForAccessibility="no"
-								/>
-								<TextInput
+							{searchOpen ? (
+								<SearchInput
 									value={search}
 									onChangeText={setSearch}
 									placeholder={t("biz.catalog.search")}
-									placeholderTextColor={colors.mutedForeground}
-									style={[styles.catalogInput, { color: colors.foreground }]}
 									accessibilityLabel={t("biz.catalog.search")}
-									returnKeyType="search"
-									autoCorrect={false}
-									autoCapitalize="none"
-									clearButtonMode="while-editing"
+									clearLabel={t("search.clear")}
+									style={styles.catalogSearch}
+									autoFocus
 								/>
-							</View>
+							) : (
+								<View style={styles.catalogCopy}>
+									<Text variant="label" bold>
+										{t("biz.catalog.title")}
+									</Text>
+									<Text variant="caption" tone="muted">
+										{tp("biz.catalog.count", items.length)}
+									</Text>
+								</View>
+							)}
+							<Pressable
+								onPress={() => {
+									selection();
+									if (searchOpen) {
+										setSearch("");
+										setSearchOpen(false);
+										return;
+									}
+									setSearchOpen(true);
+								}}
+								accessibilityRole="button"
+								accessibilityLabel={
+									searchOpen ? t("action.close") : t("biz.catalog.search")
+								}
+								style={styles.catalogSearchToggle}
+							>
+								<Ionicons
+									name={searchOpen ? "close-outline" : "search-outline"}
+									size={icon.action}
+									color={colors.foreground}
+								/>
+							</Pressable>
 						</View>
 
 						{/* The read itself failed, and the failure is its own sentence — not the
@@ -653,23 +675,20 @@ const styles = StyleSheet.create({
 		paddingHorizontal: space.md,
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
-	catalogCopy: { minWidth: 64, gap: 2 },
-	catalogSearch: {
-		flex: 1,
-		minHeight: 44,
-		flexDirection: "row",
+	// Grows so the toggle sits at the bar's right edge in the collapsed shape, and
+	// yields the line to `catalogSearch` in the expanded one.
+	catalogCopy: { flex: 1, minWidth: 64, gap: 2 },
+	/** The §49 door: a bare 44pt target, no box to fill — the bar already has one. */
+	catalogSearchToggle: {
+		width: MIN_TOUCH_TARGET,
+		height: MIN_TOUCH_TARGET,
 		alignItems: "center",
-		gap: space.sm,
-		paddingHorizontal: space.sm,
-		borderRadius: radius.md,
-		borderWidth: 1,
+		justifyContent: "center",
 	},
-	catalogInput: {
-		flex: 1,
-		minHeight: 44,
-		fontSize: type.body.fontSize,
-		includeFontPadding: false,
-	},
+	// The outer box only: `components/search-input` owns the skin and the 44pt floor.
+	// This screen owns the flex that makes the field take the header's leftover width
+	// beside the toggle.
+	catalogSearch: { flex: 1 },
 	categoryTabs: {
 		gap: 24,
 		paddingHorizontal: space.lg,

@@ -1,5 +1,5 @@
 import { Transform, Type } from "class-transformer";
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import {
   HaciendaStatus,
   InvoiceDocumentType,
@@ -8,6 +8,11 @@ import {
 } from "@prisma/client";
 
 export class FilterInvoicesDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  q?: string;
+
   @IsOptional()
   @IsEnum(InvoiceStatus)
   status?: InvoiceStatus;

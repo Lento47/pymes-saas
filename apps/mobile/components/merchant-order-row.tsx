@@ -1,15 +1,17 @@
 import type { OrderStatus } from "@pymeshub/shared";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+	Easing,
 	runOnJS,
 	useAnimatedStyle,
 	useSharedValue,
 	withSpring,
+	withTiming,
 } from "react-native-reanimated";
 
-import { spring } from "@/lib/motion";
+import { HIGHLIGHT_FADE, HIGHLIGHT_OPACITY, spring } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import {
 	MIN_TOUCH_TARGET,
@@ -64,6 +66,26 @@ import { Text } from "./text";
  *
  * The row opens the merchant order detail. The smaller action buttons keep their
  * own responders, so an action moves the order without opening its detail.
+ *
+ * ## The wash, and why it is not a tint
+ *
+ * `interface.md` §43 asks the row that has just been inserted to carry a lime wash at
+ * 8-10% opacity and to fade back to the row's surface over 800-1200ms, and
+ * `justArrived` is that wash. It reads against the rule two headings up — "the row is
+ * never tinted" — and it does not break it. §18's objection is to a row whose
+ * background *is its state*: three colours across a list that never go away, where a
+ * reader with a colour vision deficiency is left with greys. This is the opposite shape.
+ * One colour, one second, gone before the operator has finished reading the line — and
+ * what is left after the fade is `background`, in this state as in every other. The rail
+ * still carries urgency, because urgency outlives the announcement and the wash does
+ * not.
+ *
+ * Under reduced motion the wash keeps `HIGHLIGHT_FADE`'s length. §69 replaces
+ * translation, spring and scale with opacity and asks for 100-160ms, and this *is*
+ * opacity with none of those three to replace — shortening it to `instant` would remove
+ * the notice rather than the movement. The chime, §24's banner and this row's own label
+ * are the three channels a reduced-motion reader already has; the wash is the fourth,
+ * and it is the one that says *where* to look.
  */
 export type MerchantRowAction = {
 	label: string;
@@ -153,6 +175,7 @@ export function MerchantOrderRow({
 	helpLabel,
 	actions,
 	onPress,
+	justArrived = false,
 	last = false,
 }: {
 	reference: string;
@@ -172,12 +195,31 @@ export function MerchantOrderRow({
 	/** Up to two; the band is drawn to hold two side by side and no more. */
 	actions?: MerchantRowAction[];
 	onPress: () => void;
+	/**
+	 * This row has just been inserted into the list it is in, and takes §43's wash.
+	 * Read once: the wash starts on the first render that sees this set and never
+	 * again, so a row that merely re-renders — a wait line ticking over, an action
+	 * settling — does not flash. See "The wash, and why it is not a tint" above.
+	 */
+	justArrived?: boolean;
 	last?: boolean;
 }): React.ReactElement {
 	const { colors } = useTheme();
 	const reducedMotion = useReducedMotion();
 	const [revealed, setRevealed] = useState(false);
 	const translateX = useSharedValue(0);
+	const wash = useSharedValue(0);
+	const washed = useRef(false);
+
+	useEffect(() => {
+		if (!justArrived || washed.current) return;
+		washed.current = true;
+		wash.value = HIGHLIGHT_OPACITY;
+		wash.value = withTiming(0, {
+			duration: HIGHLIGHT_FADE,
+			easing: Easing.out(Easing.quad),
+		});
+	}, [justArrived, wash]);
 
 	const setHelpRevealed = (open: boolean) => {
 		setRevealed(open);
@@ -205,6 +247,7 @@ export function MerchantOrderRow({
 	const rowStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: reducedMotion ? 0 : translateX.value }],
 	}));
+	const washStyle = useAnimatedStyle(() => ({ opacity: wash.value }));
 	const helpOpacity = reducedMotion ? (revealed ? 1 : 0) : 1;
 	const rowOpacity = reducedMotion && revealed ? 0 : 1;
 
@@ -245,6 +288,17 @@ export function MerchantOrderRow({
 						rowStyle,
 					]}
 				>
+					{/* §43's wash: the mark that says *which* line just arrived. It is laid in
+					    first so the rail, the words and the tap target all paint over it — it is a
+					    background for one second and never a thing to touch. */}
+					<Animated.View
+						pointerEvents="none"
+						style={[
+							StyleSheet.absoluteFill,
+							{ backgroundColor: colors.primary },
+							washStyle,
+						]}
+					/>
 					<Pressable
 						onPress={() => {
 							setHelpRevealed(false);
