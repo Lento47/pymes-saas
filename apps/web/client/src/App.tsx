@@ -81,7 +81,6 @@ import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
 import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import SolutionPage from "@/pages/solutions/SolutionPage";
 import ComingSoonPage from "@/pages/coming-soon";
-import ProductFeaturePage from "@/pages/product-feature-page";
 import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -207,7 +206,12 @@ function makeFeatureRoute(slug: string, AppComp: React.ComponentType) {
   return function FeatureRoute() {
     const { isAuthenticated, user, initialized } = useAuth();
     if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
-    if (!isAuthenticated) return <ProductFeaturePage slug={slug} />;
+    if (!isAuthenticated) {
+      // These routes are the authenticated app's own pages. A stranger lands on
+      // the storefront — the CRM-era feature marketing that used to render here
+      // described a product PymesHub no longer is.
+      return <Redirect to="/" />;
+    }
     return <AppSidebar><AppComp /></AppSidebar>;
   };
 }
@@ -287,7 +291,7 @@ function AppRouter() {
       <Route path="/customers">{() => <ComingSoonPage eyebrow="Clientes" title="Casos de éxito" description="Descubrí cómo empresas como la tuya usan PymesHub para crecer y atender mejor." />}</Route>
       <Route path="/careers">{() => <ComingSoonPage eyebrow="Carreras" title="Únete al equipo" description="Buscamos personas apasionadas por construir software que cambia la vida de las PYMEs." />}</Route>
       <Route path="/press">{() => <ComingSoonPage eyebrow="Prensa" title="PymesHub en los medios" description="Recursos, logos y contacto para periodistas y comunicadores." />}</Route>
-      <Route path="/blog">{() => <ComingSoonPage eyebrow="Blog" title="Recursos y artículos" description="Estrategias de atención al cliente, automatización y crecimiento para tu empresa." />}</Route>
+      <Route path="/blog">{() => <ComingSoonPage eyebrow="Blog" title="Recursos y artículos" description="Guías para vender en línea, organizar tu catálogo y entregar mejor en tu barrio." />}</Route>
       <Route path="/community">{() => <ComingSoonPage eyebrow="Comunidad" title="Comunidad PymesHub" description="Conectá con otros dueños de empresas, comparte tips y aprende de la experiencia colectiva." />}</Route>
       <Route path="/changelog">{() => <ComingSoonPage eyebrow="Novedades" title="Cambios y actualizaciones" description="Todo lo nuevo en PymesHub: funciones lanzadas, mejoras y correcciones." />}</Route>
       <Route path="/documentation">

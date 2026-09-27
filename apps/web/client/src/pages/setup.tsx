@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import {
   ArrowRight,
-  Building2,
+  Store,
   Check,
   CreditCard,
   FileBadge,
-  MessageSquare,
-  Users,
+  MapPin,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Footer } from '@/components/marketing/footer';
@@ -22,7 +21,7 @@ interface PrerequisiteCheckItem {
 interface PrerequisiteTab {
   value: string;
   label: string;
-  icon: typeof Users;
+  icon: typeof Store;
   title: string;
   description: string;
   why: string;
@@ -34,75 +33,72 @@ interface PrerequisiteTab {
 
 const TABS: PrerequisiteTab[] = [
   {
-    value: 'team',
-    label: 'Equipo',
-    icon: Users,
-    title: 'Invitá a tu equipo',
+    value: 'business',
+    label: 'Tu negocio',
+    icon: Store,
+    title: 'Registrá tu comercio',
     description:
-      'Antes de operar conversaciones o emitir facturas, definí quién hace qué. PymesHub maneja roles (Owner, Admin, Agent, Viewer) y permisos por módulo.',
-    why: 'Sin un Owner activo y al menos un Admin de respaldo, perdés acceso al workspace si la cuenta principal se bloquea.',
+      'Para vender en PymesHub necesitamos los datos básicos de tu negocio: nombre, categoría, teléfono y una descripción corta de lo que vendés. Es lo que ven tus clientes antes de pedir.',
+    why: 'Un perfil completo genera más confianza: los comercios con foto y descripción reciben más pedidos que los que aparecen vacíos.',
     checklist: [
-      { text: 'Definí un Owner principal con email corporativo (no personal).' },
-      { text: 'Asigná al menos un Admin secundario para continuidad.' },
-      { text: 'Identificá agentes que responderán conversaciones.' },
-      { text: 'Decidí qué información ven los Viewers (solo lectura).' },
+      { text: 'Nombre del comercio tal como lo conocen tus clientes.' },
+      { text: 'Categoría: soda, restaurante, pulpería, farmacia, ferretería u otra.' },
+      { text: 'Teléfono de contacto y horario de atención.' },
+      { text: 'Descripción corta de lo que vendés (2 o 3 líneas bastan).' },
     ],
-    ctaLabel: 'Crear workspace',
+    ctaLabel: 'Registrar mi comercio',
     ctaHref: '/register',
-    helpHref: '/documentation/workspace-launch-guide#4-paso-2-configurar-roles-y-accesos',
+  },
+  {
+    value: 'catalog',
+    label: 'Catálogo',
+    icon: FileBadge,
+    title: 'Armá tu catálogo',
+    description:
+      'Tu catálogo es tu vitrina: productos con nombre, precio y descripción. Podés editarlo cuando quieras; los cambios se ven al instante para tus clientes.',
+    why: 'Un catálogo claro evita las preguntas de "¿cuánto cuesta?" por WhatsApp y los pedidos que llegan incompletos.',
+    checklist: [
+      { text: 'Lista de productos o platos con sus precios en colones.' },
+      { text: 'Descripción corta por producto (ingredientes, tamaño, etc.).' },
+      { text: 'Fotos de tus productos estrella, si las tenés.' },
+      { text: 'Disponibilidad: qué vendés todos los días y qué solo a veces.' },
+    ],
+    ctaLabel: 'Empezar gratis',
+    ctaHref: '/register',
   },
   {
     value: 'plan',
-    label: 'Plan y facturación',
+    label: 'Plan',
     icon: CreditCard,
     title: 'Elegí tu plan',
     description:
-      'PymesHub tiene planes que escalan con tu operación. El pago se configura una sola vez y soporta colones (CRC) y dólares (USD).',
-    why: 'Algunas funciones (canales adicionales, automaciones, AI Assistant) sólo están disponibles desde Growth en adelante. Conviene ver los límites antes de empezar a importar datos.',
+      'PymesHub cobra una cuota mensual plana según el volumen de pedidos — sin comisión por venta. El pago se configura una sola vez y soporta colones (CRC) y dólares (USD).',
+    why: 'Sin comisión por pedido: lo que vendés es tuyo. El plan cubre el uso de la plataforma, no un porcentaje de tus ventas.',
     checklist: [
-      { text: 'Revisá los planes y elegí el que cubra tus volúmenes mensuales.' },
-      { text: 'Tené a mano una tarjeta corporativa o débito empresarial.' },
-      { text: 'Decidí si querés facturación mensual o anual (descuento ~17%).' },
-      { text: 'Confirmá los add-ons que necesitás (extra users, AI, inventario).' },
+      { text: 'Estimá tus pedidos por mes para elegir el plan correcto.' },
+      { text: 'Definí si preferís facturación mensual o anual (descuento ~17%).' },
+      { text: 'Revisá los add-ons: avisos por WhatsApp, inventario, reportes.' },
+      { text: 'Tené a mano una tarjeta para el pago recurrente.' },
     ],
     ctaLabel: 'Ver planes',
     ctaHref: '/pricing',
   },
   {
-    value: 'hacienda',
-    label: 'Datos fiscales',
-    icon: FileBadge,
-    title: 'Conectá Hacienda',
+    value: 'delivery',
+    label: 'Entrega',
+    icon: MapPin,
+    title: 'Definí tu zona de entrega',
     description:
-      'Para emitir factura electrónica en Costa Rica necesitás credenciales del portal ATV de Hacienda y el certificado digital (.p12) de la persona o empresa firmante.',
-    why: 'Sin esto las facturas se emiten en modo borrador y no llegan a Hacienda. La configuración toma 10–15 minutos si ya tenés tus credenciales en mano.',
+      'Vos decidís hasta dónde entregás y en qué horarios aceptás pedidos. Los clientes fuera de tu radio pueden usar retiro en tienda.',
+    why: 'Una zona de entrega clara evita rechazos: los pedidos que llegan ya están dentro de tu cobertura.',
     checklist: [
-      { text: 'Cédula jurídica o física registrada en el ATV.' },
-      { text: 'Usuario y clave del ATV (production o sandbox).' },
-      { text: 'Certificado digital .p12 y su PIN.' },
-      { text: 'Actividades económicas registradas en el ATV.' },
+      { text: 'Radio de entrega en kilómetros, o los barrios que cubrís.' },
+      { text: 'Costo de entrega (fijo o por distancia).' },
+      { text: 'Horario en el que aceptás pedidos.' },
+      { text: 'Tiempo aproximado de preparación por pedido.' },
     ],
-    ctaLabel: 'Empezar configuración',
+    ctaLabel: 'Empezar gratis',
     ctaHref: '/register',
-    helpHref: '/documentation/costa-rica-tax-invoicing-guide',
-  },
-  {
-    value: 'channels',
-    label: 'Canales',
-    icon: MessageSquare,
-    title: 'Conectá tus canales de mensajería',
-    description:
-      'PymesHub centraliza WhatsApp, email y Telegram en un solo inbox. Cada canal tiene un proceso de verificación con su proveedor.',
-    why: 'Algunos canales (especialmente WhatsApp Business via Meta) requieren verificación de empresa que puede tomar 1–3 días. Conviene iniciarlo en paralelo con el resto del setup.',
-    checklist: [
-      { text: 'WhatsApp: Meta Business verificado + número dedicado al canal.' },
-      { text: 'Email: dominio propio + DNS (SPF/DKIM) o usar onboarding@resend.dev.' },
-      { text: 'Telegram: bot creado vía @BotFather y token guardado.' },
-      { text: 'Decidí qué canal es la primera fuente de conversaciones.' },
-    ],
-    ctaLabel: 'Crear workspace',
-    ctaHref: '/register',
-    helpHref: '/documentation/workspace-launch-guide#5-paso-3-configurar-canales',
   },
 ];
 
@@ -151,15 +147,15 @@ export default function SetupPage() {
         <section className="px-4 pb-10 pt-6 md:px-8 md:pb-16 md:pt-12">
           <div className="mx-auto max-w-4xl text-center">
             <p className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white/70">
-              <Building2 className="h-3.5 w-3.5" />
-              Pre-requisitos
+              <Store className="h-3.5 w-3.5" />
+              Para comercios
             </p>
             <h1 className="font-marketing mt-6 text-3xl font-extrabold leading-[1.1] tracking-[-0.03em] text-white sm:text-4xl md:text-5xl">
-              Antes de empezar con PymesHub
+              Antes de vender en PymesHub
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-white/70 md:text-xl">
-              Tenés todo listo para arrancar tu workspace en menos de 30 minutos
-              si traés estas piezas preparadas.
+              Con estas cuatro piezas listas, tu comercio puede recibir su
+              primer pedido el mismo día.
             </p>
           </div>
         </section>
@@ -256,17 +252,17 @@ export default function SetupPage() {
             {/* Bottom CTA */}
             <div className="mt-12 rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center md:p-10">
               <h2 className="font-marketing text-2xl font-bold tracking-[-0.02em] text-white md:text-3xl">
-                ¿Tenés todo listo?
+                ¿Listo para vender?
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-base text-white/70 md:text-lg">
-                Creá tu workspace gratis. Te guiamos paso a paso por la configuración.
+                Registrá tu comercio gratis. Sin comisión por pedido: cobrás como siempre, en efectivo o en línea.
               </p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
                 <Link
                   href="/register"
                   className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px]"
                 >
-                  Comenzar gratis
+                  Registrar mi comercio
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
