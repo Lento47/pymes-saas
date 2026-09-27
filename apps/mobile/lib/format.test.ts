@@ -4,6 +4,7 @@ import { formatMinuteOfDay as sharedFormatMinuteOfDay } from "@pymeshub/i18n";
 import {
 	formatClock,
 	formatDay,
+	formatMarketDayMonth,
 	formatMinuteOfDay,
 	formatRelative,
 	formatStamp,
@@ -87,6 +88,11 @@ function removeHermesMissingMembers() {
  */
 const NOW = new Date("2026-09-21T15:00:00Z").getTime();
 const MINUTE = 60_000;
+
+test("merchant pulse labels the Costa Rica day across UTC midnight", () => {
+	expect(formatMarketDayMonth("2026-09-21T05:59:59Z", "en-US")).toBe("Sep 20");
+	expect(formatMarketDayMonth("2026-09-21T06:00:00Z", "en-US")).toBe("Sep 21");
+});
 
 describe("on the engine this suite runs on, constructor present", () => {
 	afterEach(() => {

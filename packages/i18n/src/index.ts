@@ -113,19 +113,17 @@ function parseAcceptLanguage(header: string | null | undefined): string[] {
 
 export type TranslateParams = Record<string, string | number>;
 
-/**
- * The `_plural` sibling of a key, or `never` if there isn't one.
+/** The `_plural` sibling of a key, or `never` if there isn't one.
  *
  * This is what makes the plural convention safe rather than a naming habit: `tp("biz.board.items", 3)`
  * only compiles when `biz.board.items_plural` exists, so forgetting the plural form is a
  * type error at the call site instead of a screen reading "3 artículo".
  */
-type PluralSibling<K extends MessageKey> = Extract<MessageKey, `${K}_plural`>;
-
-/** Every key that has a `_plural` sibling — the only keys `tp` will accept. */
-export type PluralKey = {
-	[K in MessageKey]: PluralSibling<K> extends never ? never : K;
-}[MessageKey];
+// The suffix is removed by distribution rather than by a mapped type over the whole
+// union: with more than a thousand message keys, that mapped type pushed TypeScript's
+// instantiation depth past its limit before it could prove the guard.
+type RemovePluralSuffix<K> = K extends `${infer Base}_plural` ? Base : never;
+export type PluralKey = Extract<RemovePluralSuffix<MessageKey>, MessageKey>;
 
 export type Translator = {
 	/** The message, with `{name}` placeholders filled. */

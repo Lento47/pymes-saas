@@ -119,10 +119,10 @@ const PROFILE_LABEL: Record<AccountProfile, MessageKey> = {
  * A person can be a customer, the owner of a shop and a courier at once, and this hub used to
  * answer that by drawing every set of rows in one list — "Historial de pedidos" and "Tu negocio"
  * as neighbours, which reads as one account rather than one person wearing three hats. The
- * switch at the top now decides it: **Cliente** draws the four customer doors, **Negocio** draws
- * the one owner door (the console, or the onboarding that leads to it when there is no shop yet),
- * **Repartidor** draws the one courier door (`app/delivery.tsx`, the runs assigned to them), and
- * what stays is what belongs to the person either way — identity, completeness, Ajustes, support
+ * switch at the top now decides it: **Cliente** draws the four customer doors,
+ * **Negocio** draws the owner doors (the console, or the onboarding that leads to it when
+ * there is no shop yet), **Repartidor** draws the courier board, profile and invitations,
+ * and what stays is what belongs to the person either way — identity, completeness, Ajustes, support
  * and the way out. The choice is remembered on the device (`lib/device-prefs.ts`): a switch that
  * forgot would put an owner back in the customer hub on every visit.
  *
@@ -366,8 +366,8 @@ export default function AccountScreen() {
 				]
 		: [];
 
-	// The courier's own view, and it is the only row in it: a delivery profile is not a shop and
-	// not a shopper, so it carries neither the shop's board nor the customer's four doors.
+	// The courier's own view: the board, the profile that businesses review, and the
+	// invitations that can add this person to a shop.
 	const deliveryRows: AccountRow[] = [
 		{
 			key: "delivery",
@@ -375,14 +375,33 @@ export default function AccountScreen() {
 			href: "/delivery",
 			icon: "bicycle-outline",
 		},
+		{
+			key: "courier-profile",
+			title: t("biz.courier.profile"),
+			href: "/courier-profile",
+			icon: "person-circle-outline",
+		},
+		{
+			key: "courier-invites",
+			title: t("biz.courier.invites"),
+			href: "/courier-invites",
+			icon: "mail-outline",
+		},
 	];
 
+	const courierSetupRow: AccountRow = {
+		key: "courier-profile",
+		title: t("biz.courier.profile"),
+		href: "/courier-profile",
+		icon: "bicycle-outline",
+	};
 	const accountRows: AccountRow[] = [
 		...(shown === "delivery"
 			? deliveryRows
 			: shown === "business"
 				? ownerRows
 				: customerRows),
+		...(shown === "delivery" ? [] : [courierSetupRow]),
 
 		// Ajustes is the device's, not a profile's: theme, language and haptics do not change
 		// meaning because you are looking at your runs instead of your orders.

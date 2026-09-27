@@ -4,6 +4,7 @@ import {
 	type FulfilmentKind,
 	formatMoney,
 	isTerminalStatus,
+	MARKET_TIME_ZONE,
 	MAX_LINE_QUANTITY,
 	type MerchantHome as MerchantHomeData,
 	nextStatuses,
@@ -110,6 +111,7 @@ type ProductListPage = {
 };
 type ProductListData = InfiniteData<ProductListPage>;
 type Attention = MerchantHomeData["attention"][number];
+type AttentionGroup = Attention & { count: number };
 type PauseDuration = 15 | 30 | 60 | undefined;
 type PauseStage = "duration" | "confirm" | null;
 type CachedOrder = MerchantHomeData["orders"][number];
@@ -250,6 +252,7 @@ export default function MerchantHome() {
 			{
 				businessId: businessId ?? "",
 				locationId: locationId ?? "",
+				timezone: MARKET_TIME_ZONE,
 				from: analyticsRange.from,
 				to: analyticsRange.to,
 			},
@@ -318,28 +321,16 @@ export default function MerchantHome() {
 	 * the average divides the completed revenue by the completed count, the set it
 	 * came from — both honest numbers, neither invented.
 	 */
-	const pulse: MerchantPulseData | null = home.data
-		? (() => {
-				const entry = home.data.pulse.todayRevenueByCurrency.find(
-					(one) => one.currency === home.data.location.currency,
-				);
-				const comparison = home.data.pulse.todayComparisonByCurrency.find(
-					(one) => one.currency === home.data.location.currency,
-				);
-				return {
-					currency: home.data.location.currency,
-					netMinor: entry?.revenueMinor ?? null,
-					orderCount: home.data.pulse.today,
-					avgTicketMinor:
-						entry && entry.orderCount > 0
-							? Math.round(entry.revenueMinor / entry.orderCount)
-							: null,
-					salesDeltaPct: comparison?.salesDeltaPct ?? null,
-					ordersDelta: comparison?.ordersDelta ?? 0,
-					ticketDeltaPct: comparison?.ticketDeltaPct ?? null,
-				};
-			})()
-		: null;
+	const pulse: MerchantPulseData | null = home.data?.pulse ?? null;
+	const attention = useMemo<AttentionGroup[]>(() => {
+		const grouped = new Map<string, AttentionGroup>();
+		for (const alert of home.data?.attention ?? []) {
+			const key = `${alert.type}:${alert.action ?? ""}`;
+			const current = grouped.get(key);
+			grouped.set(key, current ? { ...current, count: current.count + 1 } : { ...alert, count: 1 });
+		}
+		return [...grouped.values()];
+	}, [home.data?.attention]);
 
 	const orders = home.data?.orders ?? [];
 
@@ -876,15 +867,15 @@ export default function MerchantHome() {
 							]}
 						/>
 
-						{home.data && home.data.attention.length > 0 ? (
+						{attention.length > 0 ? (
 							<View style={styles.pad}>
 								<SectionHeader title={t("biz.home.attention")} />
 								{/* All but the last row drop the trailing hairline the row's own
 						    default draws — the rhythm the board's rows keep with `last`, so
 						    a card of rows never ends in a line for nobody. */}
-								{home.data.attention.map((alert, index) => (
+								{attention.map((alert, index) => (
 									<AttentionRow
-										key={alert.type}
+										key={`${alert.type}:${alert.action ?? ""}`}
 										label={t(
 											alert.type === "new_order"
 												? "biz.home.newOrders"
@@ -897,12 +888,15 @@ export default function MerchantHome() {
 												? "receipt-outline"
 												: "alert-circle-outline"
 										}
-										last={index === home.data.attention.length - 1}
+										last={index === attention.length - 1}
 										onPress={() =>
 											router.push(
-												alert.action.type === "OPEN_ORDERS"
+												alert.action === "open_orders"
 													? "/business"
-													: "/products",
+													: alert.action === "open_inventory" ||
+														alert.action === "open_catalog"
+														? "/products"
+														: "/more",
 											)
 										}
 									/>
@@ -1261,7 +1255,7 @@ function AttentionRow({
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
-	const semantic = severity === "high" ? colors.destructive : colors.warning;
+	const semantic = severity === "critical" ? colors.destructive : colors.warning;
 
 	return (
 		<Pressable

@@ -2,11 +2,15 @@ import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { merchantLocation as locationTable } from "@pymeshub/db";
+import {
+	business as businessTable,
+	merchantLocation as locationTable,
+} from "@pymeshub/db";
 import { addToCartInput, merchantLocationSchema } from "@pymeshub/shared";
 import { eq } from "drizzle-orm";
 
 import { appRouter } from "../src/routers";
+import { localDayAndMinute } from "../src/services/helpers";
 import {
 	authed,
 	refused,
@@ -56,6 +60,106 @@ test("location migration backfills existing businesses and orders", () => {
 		expect(order.location_id).toBe(location.id);
 	} finally {
 		sqlite.close();
+	}
+});
+
+test("merchant locations return effective hours for the Costa Rica day", async () => {
+	const testWorld = world();
+	try {
+		const businessId = await seedBusiness(testWorld.db, {
+			id: "biz_location_today_hours",
+		});
+		const ownerUser = await seedUser(testWorld.db, {
+			id: "usr_location_today_hours",
+		});
+		await seedMembership(testWorld.db, ownerUser.id, businessId, "OWNER");
+		const owner = appRouter.createCaller(await authed(testWorld, ownerUser));
+		const businessHours = Array.from({ length: 7 }, (_, day) => ({
+			day,
+			opensMinute: 600,
+			closesMinute: 1200,
+			isClosed: false,
+		}));
+		const branchHours = Array.from({ length: 7 }, (_, day) => ({
+			day,
+			opensMinute: 480,
+			closesMinute: 1080,
+			isClosed: false,
+		}));
+		await testWorld.db
+			.update(businessTable)
+			.set({ hours: businessHours })
+			.where(eq(businessTable.id, businessId));
+		const branch = merchantLocationSchema.parse(
+			await owner.business.createLocation({
+				businessId,
+				name: "Sucursal de Prueba",
+				line1: "Calle de prueba 2",
+				city: "San José",
+				region: "San José",
+				hours: branchHours,
+			}),
+		);
+		const { day: today } = localDayAndMinute(new Date());
+		expect(branch.todayHours).toEqual({
+			day: today,
+			opensMinute: 480,
+			closesMinute: 1080,
+			isClosed: false,
+		});
+		const locations = await owner.business.locations({ businessId });
+		expect(locations.find((row) => row.isDefault)?.todayHours).toEqual({
+			day: today,
+			opensMinute: 600,
+			closesMinute: 1200,
+			isClosed: false,
+		});
+		expect(locations.find((row) => row.id === branch.id)?.todayHours).toEqual(
+			branch.todayHours,
+		);
+		const paused = await owner.business.pauseLocation({
+			businessId,
+			locationId: branch.id,
+			reason: "manual",
+		});
+		expect(paused.todayHours).toEqual(branch.todayHours);
+		const resumed = await owner.business.resumeLocation({
+			businessId,
+			locationId: branch.id,
+		});
+		expect(resumed.todayHours).toEqual(branch.todayHours);
+
+		await testWorld.db
+			.update(locationTable)
+			.set({
+				hours: branchHours.map((entry) => ({
+					...entry,
+					isClosed: true,
+				})),
+			})
+			.where(eq(locationTable.id, branch.id));
+		expect(
+			(
+				await owner.business.locationStatus({
+					businessId,
+					locationId: branch.id,
+				})
+			).todayHours,
+		).toBeNull();
+		await testWorld.db
+			.update(businessTable)
+			.set({ hours: null })
+			.where(eq(businessTable.id, businessId));
+		expect(
+			(
+				await owner.business.locationStatus({
+					businessId,
+					locationId: `loc_${businessId}`,
+				})
+			).todayHours,
+		).toBeNull();
+	} finally {
+		testWorld.close();
 	}
 });
 

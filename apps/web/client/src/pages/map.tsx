@@ -1,38 +1,11 @@
 import { useCallback, useRef, useState } from "react";
-import { addProtocol, Map as MapLibreMap, NavigationControl, setWorkerUrl } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from "maplibre-gl";
 import mapLibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-/**
- * The style the mobile app uses too — one document, served by the Worker that hosts this
- * page, with `{BASE}` resolved to the request origin on the way out.
- *
- * Host is `pymeshub.lat` because that is the hostname the `pymeshubsaas` Worker actually
- * answers on. `app.pymeshub.lat` was the first choice and it does not resolve at all —
- * no DNS record — so a URL there is a dead letter in every build.
- *
- * The previous style lived at `https://maps.pymeshub.lat/styles/pymeshub/style.json`, which
- * does work: it is a public R2 custom domain serving a style whose tiles come from a
- * third-party tile host. Replacing it is the point of this route — see
- * `docs/technical/architecture/cloudflare-and-maps.md`.
- */
-const STYLE_URL = "https://pymeshub.lat/api/map/style.json";
+const STYLE_URL = "https://maps.pymeshub.lat/styles/pymeshub/style.json";
 
 setWorkerUrl(mapLibreWorkerUrl);
-
-/**
- * `pmtiles://` is not a scheme the browser can fetch. MapLibre Native has the protocol
- * compiled in; maplibre-gl does not, so a style whose source is `pmtiles://…` fails
- * before any tile is requested unless this is registered first.
- *
- * At module scope, next to `setWorkerUrl`: both are process-wide and both have to be in
- * place before the first map is constructed. `Protocol` is documented as "must be added
- * once globally" — a second registration would only replace the first, so this must not
- * move into the render body.
- */
-const pmtilesProtocol = new Protocol();
-addProtocol("pmtiles", pmtilesProtocol.tile);
 
 type MapStatus = "loading" | "ready" | "error";
 
@@ -113,37 +86,7 @@ export default function MapPage() {
           <div ref={attachMap} className="h-[72vh] min-h-[420px] w-full" />
         </section>
 
-        <p className="text-xs text-slate-400">
-          {/* ODbL §4.3 attaches the credit to the produced work, so self-hosting the
-              archive discharges none of it. Protomaps is named because their build is
-              what the archive is derived from. This is the legal notice, not branding. */}
-          <a
-            className="underline-offset-2 hover:underline"
-            href="https://protomaps.com"
-            rel="noreferrer"
-            target="_blank"
-          >
-            Protomaps
-          </a>{" "}
-          ©{" "}
-          <a
-            className="underline-offset-2 hover:underline"
-            href="https://www.openstreetmap.org/copyright"
-            rel="noreferrer"
-            target="_blank"
-          >
-            OpenStreetMap
-          </a>{" "}
-          contributors ·{" "}
-          <a
-            className="underline-offset-2 hover:underline"
-            href="https://opendatacommons.org/licenses/odbl/"
-            rel="noreferrer"
-            target="_blank"
-          >
-            ODbL
-          </a>
-        </p>
+        <p className="text-xs text-slate-400">© OpenMapTiles © OpenStreetMap contributors</p>
       </div>
     </main>
   );

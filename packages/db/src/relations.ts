@@ -26,6 +26,12 @@ import {
 	cart,
 	cartItem,
 	category,
+	courierInvite,
+	courierPresence,
+	courierProfile,
+	delivery,
+	deliveryOffer,
+	deliveryRating,
 	favorite,
 	membership,
 	merchantLocation,
@@ -44,7 +50,7 @@ import {
 	user,
 } from "./schema";
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ one, many }) => ({
 	memberships: many(membership),
 	addresses: many(address),
 	carts: many(cart),
@@ -52,6 +58,20 @@ export const userRelations = relations(user, ({ many }) => ({
 	reviews: many(review),
 	favorites: many(favorite),
 	notifications: many(notification),
+	courierProfile: one(courierProfile, {
+		fields: [user.id],
+		references: [courierProfile.userId],
+	}),
+	courierInvites: many(courierInvite),
+	courierPresence: one(courierPresence, {
+		fields: [user.id],
+		references: [courierPresence.userId],
+	}),
+	customerDeliveries: many(delivery, { relationName: "delivery_customer" }),
+	courierDeliveries: many(delivery, { relationName: "delivery_courier" }),
+	deliveryOffers: many(deliveryOffer),
+	deliveryRatingsGiven: many(deliveryRating, { relationName: "delivery_rating_from" }),
+	deliveryRatingsReceived: many(deliveryRating, { relationName: "delivery_rating_to" }),
 	uploads: many(upload),
 }));
 
@@ -61,26 +81,21 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 		references: [category.id],
 	}),
 	memberships: many(membership),
+	courierInvites: many(courierInvite),
 	locations: many(merchantLocation),
 	products: many(product),
 	orders: many(order),
 	reviews: many(review),
 	favorites: many(favorite),
 	promotions: many(promotion),
-	carts: many(cart),
-	/**
-	 * One subscription per business, enforced by a unique index on
-	 * `subscription.business_id` rather than by this relation. A `one` here would say
-	 * the same thing to the type system, and the constraint is the part that matters:
-	 * two subscriptions for one shop is a double invoice.
-	 */
 	subscription: one(subscription, {
 		fields: [business.id],
 		references: [subscription.businessId],
 	}),
+	carts: many(cart),
+	deliveries: many(delivery),
 }));
 
-/** A subscription's price history, kept so a raise can be explained after the fact. */
 export const priceBookRelations = relations(priceBook, ({ many }) => ({
 	subscriptions: many(subscription),
 }));
@@ -92,6 +107,43 @@ export const membershipRelations = relations(membership, ({ one }) => ({
 	}),
 	user: one(user, {
 		fields: [membership.userId],
+		references: [user.id],
+	}),
+}));
+
+export const courierProfileRelations = relations(courierProfile, ({ one }) => ({
+	user: one(user, {
+		fields: [courierProfile.userId],
+		references: [user.id],
+	}),
+	reviewedBy: one(user, {
+		fields: [courierProfile.reviewedByUserId],
+		references: [user.id],
+	}),
+}));
+
+export const courierInviteRelations = relations(courierInvite, ({ one }) => ({
+	business: one(business, {
+		fields: [courierInvite.businessId],
+		references: [business.id],
+	}),
+	courier: one(user, {
+		fields: [courierInvite.courierUserId],
+		references: [user.id],
+	}),
+	profile: one(courierProfile, {
+		fields: [courierInvite.profileId],
+		references: [courierProfile.id],
+	}),
+	invitedBy: one(user, {
+		fields: [courierInvite.invitedByUserId],
+		references: [user.id],
+	}),
+}));
+
+export const courierPresenceRelations = relations(courierPresence, ({ one }) => ({
+	user: one(user, {
+		fields: [courierPresence.userId],
 		references: [user.id],
 	}),
 }));
@@ -194,6 +246,55 @@ export const orderRelations = relations(order, ({ one, many }) => ({
 	items: many(orderItem),
 	events: many(orderEvent),
 	review: one(review),
+	delivery: one(delivery),
+}));
+
+export const deliveryRelations = relations(delivery, ({ one, many }) => ({
+	order: one(order, { fields: [delivery.orderId], references: [order.id] }),
+	business: one(business, {
+		fields: [delivery.businessId],
+		references: [business.id],
+	}),
+	customer: one(user, {
+		fields: [delivery.customerId],
+		references: [user.id],
+		relationName: "delivery_customer",
+	}),
+	courier: one(user, {
+		fields: [delivery.courierUserId],
+		references: [user.id],
+		relationName: "delivery_courier",
+	}),
+	offers: many(deliveryOffer),
+	ratings: many(deliveryRating),
+}));
+
+export const deliveryOfferRelations = relations(deliveryOffer, ({ one }) => ({
+	delivery: one(delivery, {
+		fields: [deliveryOffer.deliveryId],
+		references: [delivery.id],
+	}),
+	courier: one(user, {
+		fields: [deliveryOffer.courierUserId],
+		references: [user.id],
+	}),
+}));
+
+export const deliveryRatingRelations = relations(deliveryRating, ({ one }) => ({
+	delivery: one(delivery, {
+		fields: [deliveryRating.deliveryId],
+		references: [delivery.id],
+	}),
+	fromUser: one(user, {
+		fields: [deliveryRating.fromUserId],
+		references: [user.id],
+		relationName: "delivery_rating_from",
+	}),
+	toUser: one(user, {
+		fields: [deliveryRating.toUserId],
+		references: [user.id],
+		relationName: "delivery_rating_to",
+	}),
 }));
 
 export const orderItemRelations = relations(orderItem, ({ one }) => ({

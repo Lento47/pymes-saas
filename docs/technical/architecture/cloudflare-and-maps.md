@@ -89,14 +89,6 @@ operación necesita leer o escribir un archivo.
 
 ## Mapa completamente alojado en Cloudflare
 
-> **Decisión de host (2026-09-25):** la ruta servida es
-> `https://pymeshub.lat/api/map/*`, sobre el Worker `pymeshubsaas`, **no**
-> `maps.pymeshub.lat`. Ese hostname existe y hoy sirve el estilo de OpenFreeMap, pero es un
-> dominio personalizado de R2 y no puede ejecutar la lógica de rangos que exige PMTiles sin
-> re-apuntar DNS. `app.pymeshub.lat` no tiene registro DNS y queda descartado.
-> El runbook operativo — subir el archivo, puerta de compresión, verificación `206` — está
-> en [`../map-hosting.md`](../map-hosting.md).
-
 La estructura objetivo del bucket es:
 
 ```text

@@ -23,6 +23,7 @@ import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
 import { formatDay } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import { space } from "@/theme";
 
@@ -31,8 +32,13 @@ const PAGE_SIZE = 20;
 export default function ReviewsScreen() {
 	const trpc = useTRPC();
 	const { t } = useT();
+	const merchantScope = useMerchantScope();
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
-	const shop = (shops.data ?? []).find((one) => one.role !== "COURIER");
+	const shop =
+		(shops.data ?? []).find(
+			(one) =>
+				one.role !== "COURIER" && one.businessId === merchantScope.businessId,
+		) ?? (shops.data ?? []).find((one) => one.role !== "COURIER");
 	const businessId = shop?.businessId ?? "";
 	const enabled = !!businessId;
 	const query = useInfiniteQuery(
