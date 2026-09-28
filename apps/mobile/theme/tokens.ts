@@ -441,12 +441,12 @@ export const MIN_TOUCH_TARGET = 44;
  * The disc beside the open/closed word — `./business-card` and `app/store/[slug]` draw it.
  *
  * Two screens say whether a shop is open with the same mark, and neither of them should be
- * the one that owns the size. 7 points: it sits on the same line as the word, at
+ * the one that owns the size. 8 points: it sits on the same line as the word, at
  * `type.label`'s 13, and is sized to read as a mark on that line rather than as a bullet
  * beside it. That is why it is a number of its own and not a step of the spacing scale —
  * the scale's subject is the air between elements, and this is ink.
  */
-export const STATUS_DOT_SIZE = 7;
+export const STATUS_DOT_SIZE = 8;
 
 /**
  * The card lift, expressed the way each platform wants it.

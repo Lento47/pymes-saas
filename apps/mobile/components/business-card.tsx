@@ -472,8 +472,8 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 	},
 	// The text column: the identity stack inside it at the stack's own gap, the `Facts` row
-	// after it at the step between blocks.
-	body: { flex: 1, gap: space.md },
+	// after it one step tighter than before — `space.md` split the card in two.
+	body: { flex: 1, gap: space.sm },
 	// The name, the caption line and the state row are one text stack — see the render.
 	identityStack: { gap: TEXT_STACK_GAP },
 	titleRow: { flexDirection: "row", alignItems: "center", gap: space.xs },

@@ -11,14 +11,7 @@ import { hitSlopFor, Pressable } from "@/components/pressable";
 import { Price } from "@/components/price";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
-import {
-	icon,
-	MIN_TOUCH_TARGET,
-	radius,
-	space,
-	TEXT_STACK_GAP,
-	useTheme,
-} from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 /**
  * One product, as a surface with a photograph on it.
@@ -328,7 +321,8 @@ const styles = StyleSheet.create({
 	wrap: { position: "relative" },
 	// The stack's gap is inside the `Card`, on `body`, because the `Card` is the tile's only
 	// child — a gap on the outer box would be separating one thing from nothing.
-	body: { gap: TEXT_STACK_GAP },
+	// `space.sm`: the name, seller and price need air a 2pt text-stack gap never gave them.
+	body: { gap: space.sm },
 	photo: { width: "100%", aspectRatio: 4 / 3 },
 	priceRow: {
 		flexDirection: "row",

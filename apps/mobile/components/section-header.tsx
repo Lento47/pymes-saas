@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
-		marginBottom: space.md,
+		marginBottom: space.sm,
 	},
 	title: { flexShrink: 1 },
 	// Centre alignment alone: the label's line is centred inside the 44pt box `./pressable`'s

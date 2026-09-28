@@ -391,8 +391,9 @@ export function MapView({ coords, marker, route, style }: MapViewProps) {
 const styles = StyleSheet.create({
 	band: {
 		height: BAND_HEIGHT,
-		// `lg` is the token for sheets and heroes, and this band is part of the hero.
-		borderRadius: radius.lg,
+		// `md`: the card step — the same corner `./card` draws, so the band
+		// reads as one of the feed's surfaces rather than as a hero.
+		borderRadius: radius.md,
 		borderWidth: 1,
 		overflow: "hidden",
 	},

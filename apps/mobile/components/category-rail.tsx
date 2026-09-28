@@ -214,7 +214,7 @@ function Chip({
 					// so the picture is announced by that and not on its own.
 					<Image
 						uri={imageUrl}
-						radiusToken="md"
+						radiusToken="full"
 						style={styles.tileImage}
 						accessibilityElementsHidden
 						importantForAccessibility="no"
@@ -232,8 +232,8 @@ function Chip({
 				)}
 			</View>
 			<Text
-				variant="caption"
-				tone={selected ? "default" : "muted"}
+				variant="label"
+				tone="default"
 				bold={selected}
 				style={styles.tileLabel}
 			>
@@ -243,14 +243,14 @@ function Chip({
 	);
 }
 
-/** Two columns of a phone at the rail's own gap, rounded down to a whole number. */
-const TILE_WIDTH = 76;
+/** A disc per destination, at the rail's own gap — small enough to read as a strip, not a grid. */
+const TILE_WIDTH = 60;
 
 const styles = StyleSheet.create({
 	rail: { paddingHorizontal: space.lg, gap: space.sm },
-	// A tile is a square box with a word under it. The width is fixed at two
-	// chips' worth so five in a row read as one rhythm; the label below wraps
-	// inside that width rather than truncating a category's name.
+	// A tile is a disc with a word under it. The width is fixed so five in a row read
+	// as one rhythm; the label below wraps inside that width rather than
+	// truncating a category's name.
 	tile: {
 		alignItems: "center",
 		gap: space.xs,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
 	tileBox: {
 		width: TILE_WIDTH,
 		height: TILE_WIDTH,
-		borderRadius: radius.md,
+		borderRadius: radius.full,
 		alignItems: "center",
 		justifyContent: "center",
 		// The photograph fills the box and is clipped to its corner.

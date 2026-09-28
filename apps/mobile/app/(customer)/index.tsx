@@ -23,7 +23,6 @@ import {
 import { ActionBar, useActionBarClearance } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { BusinessCard } from "@/components/business-card";
-import { Button } from "@/components/button";
 import { CategoryRail } from "@/components/category-rail";
 import { CouponStrip } from "@/components/coupon-strip";
 import { EmptyState } from "@/components/empty-state";
@@ -603,7 +602,7 @@ function CartSummary({
 
 const styles = StyleSheet.create({
 	fill: { flex: 1 },
-	hero: { marginTop: space.sm },
+	hero: { marginTop: space.md },
 	heroMap: { marginTop: space.md, marginHorizontal: space.lg },
 	// `flex: 1` and not `flexGrow`/`flexShrink`, and the difference is `flexBasis`: RN's
 	// `ScrollView` base style leaves the basis `auto`, so the scroller's hypothetical height
@@ -652,7 +651,6 @@ const styles = StyleSheet.create({
 	strip: { paddingHorizontal: space.lg, marginTop: space.xxl },
 	// The page's own foot, and what the huge gutter is for when there is no bar.
 	endStatement: { paddingBottom: 0 },
-	feedExit: { paddingHorizontal: space.lg },
 	// The searching field: `./hero-search`'s own box and tokens, in its place.
 	searchField: {
 		flexDirection: "row",
@@ -946,13 +944,7 @@ function Feed({
 				onPress={() => router.push("/search")}
 				style={styles.endStatement}
 			/>
-			<View style={styles.feedExit}>
-				<Button
-					variant="ghost"
-					label={t("search.title")}
-					onPress={() => router.push("/search")}
-				/>
-			</View>
+			{/* `ListEnd` is the feed's only exit now: one way out is enough. */}
 		</>
 	);
 }

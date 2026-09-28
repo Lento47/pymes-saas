@@ -429,7 +429,7 @@ export function FeedSkeleton() {
  * two cards while the screen drew five and three — a skeleton that hands the page back
  * taller than it took it is the jump this whole file exists to prevent.
  *
- * `BannerBlock` mirrors `./promo-hero`'s body (a caption line, a `title` line, a chip),
+ * `BannerBlock` mirrors `./promo-hero`'s body (a caption line, a `heading` line, a chip),
  * inside the card's own padding. `TileBlock` mirrors `./product-tile` (a 4:3 photo box and
  * two text lines). Both keep the *shape* rather than the content: no skeleton draws a word.
  */
@@ -441,7 +441,7 @@ function BannerBlock() {
 			<Skeleton
 				style={[feedStyles.bannerCaption, line("caption", fontScale)]}
 			/>
-			<Skeleton style={[feedStyles.bannerTitle, line("title", fontScale)]} />
+			<Skeleton style={[feedStyles.bannerTitle, line("heading", fontScale)]} />
 			<Skeleton style={feedStyles.bannerChip} />
 		</View>
 	);
@@ -483,7 +483,7 @@ const feedStyles = StyleSheet.create({
 	// real width is `window * TILE_RATIO` (`./product-rail`), and a block that imported that
 	// private const would couple the wait to the content's arithmetic. `./product-tile`'s
 	// docblock records the same 172 for the same ratio on a 390pt phone.
-	tile: { width: 172, gap: TEXT_STACK_GAP },
+	tile: { width: 172, gap: space.sm },
 	// The photo's box, at the crop `./product-tile` draws (`width: 100%`, 4:3).
 	tilePhoto: { width: "100%", aspectRatio: 4 / 3 },
 	tileLine: { width: "80%" },
@@ -877,7 +877,7 @@ export function ProductRowsSkeleton() {
  * Each tile is the tile: a `Card`, because the real one is (`app/featured.tsx`'s `<Card`, with
  * no style, so the padding, the radius and the hairline are the same numbers by construction),
  * holding the photograph at the detail page's own 4/3 crop and then the badge, the title, the
- * seller and the price at `TEXT_STACK_GAP` (`app/featured.tsx`'s `body`). The tile used to be
+ * seller and the price at `space.sm` (`./product-tile`'s `body`). The tile used to be
  * drawn without its `Card`, which made every grey tile 34 points shorter than the product
  * that replaced it — the two edges and the `space.lg` of padding above and below.
  *
@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
 		// alone would leave ~20pt short per section.
 		minHeight: MIN_TOUCH_TARGET,
 		marginHorizontal: space.lg,
-		marginBottom: space.md,
+		marginBottom: space.sm,
 	},
 	sectionTitle: { width: "35%" },
 	// A stand-in for the word "Ver todo", not a layout value: the link's width is its word,
@@ -1394,8 +1394,8 @@ const gridStyles = StyleSheet.create({
 	rows: { paddingHorizontal: space.lg, gap: space.md },
 	row: { flexDirection: "row", gap: space.md },
 	// The tile's body, inside its `Card`: the same stack and the same gap the real one uses
-	// (`app/featured.tsx`'s `body`).
-	tile: { flex: 1, gap: TEXT_STACK_GAP },
+	// (`./product-tile`'s `body`).
+	tile: { flex: 1, gap: space.sm },
 	// The detail page's own crop, restated from `app/featured.tsx`'s `photo` — `./image` gives the
 	// box its corner, and its default is the same `sm` this block takes.
 	photo: { width: "100%", aspectRatio: 4 / 3 },

@@ -161,7 +161,7 @@ export function Fact({
 
 	return (
 		<View
-			style={[styles.fact, { backgroundColor: colors.muted }]}
+			style={[styles.fact, { backgroundColor: colors.accent }]}
 			accessible
 			accessibilityLabel={accessibilityLabel}
 		>

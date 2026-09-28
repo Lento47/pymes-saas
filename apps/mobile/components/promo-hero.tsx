@@ -107,7 +107,7 @@ export function PromoHero({
 						{promotion.business.name}
 					</Text>
 
-					<Text variant="title" bold tone="inverse">
+					<Text variant="heading" bold tone="inverse">
 						{benefit}
 					</Text>
 

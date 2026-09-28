@@ -136,10 +136,10 @@ export function HomeHeader({
 	return (
 		<View style={styles.wrap}>
 			<View style={styles.stack}>
-				{/* The title: this screen's `heading`, the register `./section-header` gives
-				    its own titles, so the greeting names the page without out-shouting the
+				{/* The title: this screen's `title`, one step above the `heading` `./section-header` gives its own titles,
+				    so the greeting leads the page without out-shouting the
 				    field below it (`docs/design-mobile.md` Rule 1). */}
-				<Text variant="heading" bold style={styles.title}>
+				<Text variant="title" bold style={styles.title}>
 					{name ? t("home.greeting", { name }) : t("home.greeting.anon")}
 				</Text>
 
