@@ -1,19 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-	AccessibilityInfo,
-	Platform,
-	StyleSheet,
-	useWindowDimensions,
-	View,
-} from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
+import { RollbackNotice } from "@/components/rollback-notice";
 import { Screen, ScreenSection } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -292,23 +287,11 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	// is asking for.
 	const ready = signedIn && !!settings.data && !waiting;
 
-	/**
-	 * The refusal, read out on iOS, where nothing else will read it.
-	 *
-	 * `accessibilityLiveRegion` is Android's and Android's alone — RN declares it on
-	 * `AccessibilityPropsAndroid` with `@platform android`
-	 * (`types_generated/Libraries/Components/View/ViewAccessibility.d.ts:108-110`) — so the
-	 * assertion on the failure line below is the whole of Android's announcement of this
-	 * sentence, and iOS, which ignores the prop, has to be told. Guarded by the platform rather
-	 * than announced on both: a sentence a live region has already spoken is not read twice, it
-	 * is read as two sentences. `failure` is already one value for the screen — the two writes
-	 * share it and `failedStep` picks the sentence — so this is one announcement per step that
-	 * failed, and editing clears `failedStep` before the next attempt.
-	 */
-	useEffect(() => {
-		if (Platform.OS !== "ios" || !failure) return;
-		AccessibilityInfo.announceForAccessibility(failure);
-	}, [failure]);
+	// The refusal line rendered below announces itself on both platforms: the shared notice
+	// carries the role, the live region *and* the iOS call. This screen used to hold its own
+	// copy of all three, with a docblock spelling out the platform split — that note lives in
+	// `components/rollback-notice.tsx` now, stated once for every sentence in the app instead
+	// of once per screen that draws one.
 
 	return (
 		<View style={styles.root}>
@@ -425,17 +408,20 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 										</Text>
 									</View>
 									{/* The pair's one rule, stated on the second of the two so the refusal
-										    sits beside the control that would clear it rather than floating
-										    between them. */}
-									{submitted && !kindsValid ? (
-										<Text
-											variant="body"
-											tone="destructive"
-											accessibilityRole="alert"
-										>
-											{t("biz.new.kind.required")}
-										</Text>
-									) : null}
+									    sits beside the control that would clear it rather than floating
+									    between them — and through the shared notice, like the refusal
+									    below it, so the role and the announcement are one pair in both
+									    places instead of two that happen to agree today. This one is not
+									    a failure — nothing was sent — so it arrives as a sentence rather
+									    than as a throw, and `null` is the form before its first Save. */}
+									<RollbackNotice
+										message={
+											submitted && !kindsValid
+												? t("biz.new.kind.required")
+												: null
+										}
+										inline
+									/>
 								</ScreenSection>
 							</AnimateIn>
 
@@ -463,16 +449,17 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 								</AnimateIn>
 							) : null}
 
+							{/* `assertive`: the sentence answers a Save that was just pressed, so the
+							    reader is already listening. The cart row's line is the app's other
+							    `assertive`, for the same reason — see the notice's docblock for why
+							    politeness is a prop rather than read off the shape. */}
 							{failure ? (
 								<AnimateIn index={3}>
-									<Text
-										variant="body"
-										tone="destructive"
-										accessibilityRole="alert"
-										accessibilityLiveRegion="assertive"
-									>
-										{failure}
-									</Text>
+									<RollbackNotice
+										message={failure}
+										inline
+										politeness="assertive"
+									/>
 								</AnimateIn>
 							) : null}
 

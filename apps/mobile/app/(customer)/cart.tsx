@@ -398,18 +398,18 @@ function Basket() {
 									) : null}
 									{/* The state, and it is a sentence rather than a chip: the API sends a
 									    reason ("agotado hoy"), and a reason belongs where it can be read in
-									    full. It keeps the alert role it had — a line that became
-									    unbuyable while it sat in the basket is the one thing here that
-									    needs to interrupt. */}
-									{item.unavailableReason ? (
-										<Text
-											variant="caption"
-											tone="destructive"
-											accessibilityRole="alert"
-										>
-											{item.unavailableReason}
-										</Text>
-									) : null}
+									    full. It is the shared notice's inline shape, so the role, the live
+									    region and the iOS announcement are one thing that cannot be
+									    half-applied, and it is `assertive`: a line that became unbuyable
+									    while it sat in the basket is news about the control directly
+									    under the reader's thumb. `caption`, because it is one of this
+									    row's captions and not a paragraph of its own. */}
+									<RollbackNotice
+										message={item.unavailableReason}
+										inline
+										variant="caption"
+										politeness="assertive"
+									/>
 								</View>
 							</View>
 

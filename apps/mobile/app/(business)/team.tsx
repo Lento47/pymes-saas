@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
+import { RollbackNotice } from "@/components/rollback-notice";
 import { Screen } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -297,11 +298,11 @@ export default function TeamScreen() {
 						))}
 					</View>
 					<Text tone="muted">{roleHelp(inviteRole)}</Text>
-					{inviteFailure.message ? (
-						<Text tone="destructive" accessibilityRole="alert">
-							{inviteFailure.message}
-						</Text>
-					) : null}
+					{/* The refusal, through the shared notice's inline shape: it carries the alert
+					    role, the live region and the iOS announcement together, which is the
+					    pairing this line did not have when it was a bare `Text`. The sentence
+					    itself is still `useApiFailure`'s, so nothing about the copy changes. */}
+					<RollbackNotice message={inviteFailure.message} inline />
 				</View>
 			</Sheet>
 
@@ -357,11 +358,8 @@ export default function TeamScreen() {
 						))}
 					</View>
 					<Text tone="muted">{roleHelp(nextRole)}</Text>
-					{roleFailure.message ? (
-						<Text tone="destructive" accessibilityRole="alert">
-							{roleFailure.message}
-						</Text>
-					) : null}
+					{/* The same line as the invite sheet's above, for the same reason. */}
+					<RollbackNotice message={roleFailure.message} inline />
 				</View>
 			</Sheet>
 
