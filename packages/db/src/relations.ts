@@ -70,8 +70,12 @@ export const userRelations = relations(user, ({ one, many }) => ({
 	customerDeliveries: many(delivery, { relationName: "delivery_customer" }),
 	courierDeliveries: many(delivery, { relationName: "delivery_courier" }),
 	deliveryOffers: many(deliveryOffer),
-	deliveryRatingsGiven: many(deliveryRating, { relationName: "delivery_rating_from" }),
-	deliveryRatingsReceived: many(deliveryRating, { relationName: "delivery_rating_to" }),
+	deliveryRatingsGiven: many(deliveryRating, {
+		relationName: "delivery_rating_from",
+	}),
+	deliveryRatingsReceived: many(deliveryRating, {
+		relationName: "delivery_rating_to",
+	}),
 	uploads: many(upload),
 }));
 
@@ -148,12 +152,15 @@ export const courierInviteRelations = relations(courierInvite, ({ one }) => ({
 	}),
 }));
 
-export const courierPresenceRelations = relations(courierPresence, ({ one }) => ({
-	user: one(user, {
-		fields: [courierPresence.userId],
-		references: [user.id],
+export const courierPresenceRelations = relations(
+	courierPresence,
+	({ one }) => ({
+		user: one(user, {
+			fields: [courierPresence.userId],
+			references: [user.id],
+		}),
 	}),
-}));
+);
 
 export const merchantLocationRelations = relations(
 	merchantLocation,

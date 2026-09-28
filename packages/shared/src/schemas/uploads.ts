@@ -18,7 +18,8 @@ import { z } from "zod";
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 /** Base64 length ceiling for the raw cap above: ceil(n / 3) * 4, with slack for padding. */
-export const MAX_UPLOAD_BASE64_LENGTH = Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 16;
+export const MAX_UPLOAD_BASE64_LENGTH =
+	Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 16;
 
 export const uploadImageInput = z.object({
 	/** Key namespace: lowercase letters, digits and dashes, first a letter. */
