@@ -1,4 +1,4 @@
-import { ArrowRight, MapPin, UtensilsCrossed } from "lucide-react";
+import { useMemo } from "react";
 import { Link, useLocation } from "wouter";
 
 import {
@@ -8,19 +8,42 @@ import {
   LoadingGrid,
   ProductCardView,
   ProductGrid,
-  PromotionCardView,
   Rail,
   Section,
 } from "@/components/marketplace/cards";
-import { AmberButton, MarketplaceShell, OutlineButton } from "@/components/marketplace/public-shell";
+import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import { HeroBlock } from "@/components/storefront/blocks/hero-block";
+import { DeliveryZoneBlock } from "@/components/storefront/blocks/delivery-zone-block";
+import { OrderJourneyBlock } from "@/components/storefront/blocks/order-journey-block";
+import { OffersBlock } from "@/components/storefront/blocks/offers-block";
+import { SignoffBlock } from "@/components/storefront/blocks/signoff-block";
 import { useBrowserLocation } from "@/hooks/use-browser-location";
-import { cartErrorMessage, useAddToCart, useFeed, useMarketplaceSession } from "@/lib/marketplace";
+import { cartErrorMessage, useAddToCart, useCart, useFeed, useMarketplaceSession } from "@/lib/marketplace";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * The storefront home.
+ *
+ * Five blocks in the art direction: the hero on the light ground, the delivery zone and
+ * the order journey on near-black, then the offers back on light and the sign-off. The
+ * commerce itself — categories, offers, products, shops near you — is still the API's
+ * and still in the same order it was, below the blocks.
+ *
+ * ## Where the line is between display and data
+ *
+ * The blocks *display*: the delivery zone plots the `distanceKm` the API returned, the
+ * offers list the promotion codes it returned, the hero counts what came back. None of
+ * them invent a value, and each one distinguishes empty from unavailable — a denied
+ * location says so, and no offers says so, rather than either rendering as a blank
+ * panel that reads as a bug.
+ *
+ * The rails and grids below are where you actually shop, and they are untouched.
+ */
 export default function MarketplaceHomePage() {
   const { coords, status, request } = useBrowserLocation();
   const { data, isLoading, isError, refetch } = useFeed(coords);
   const { data: session } = useMarketplaceSession();
+  const { data: cart } = useCart();
   const addToCart = useAddToCart();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -30,49 +53,56 @@ export default function MarketplaceHomePage() {
     else navigate("/sign-in");
   };
 
+  /**
+   * The hero's shop count and cart total.
+   *
+   * Both are summed from what actually came back rather than from a query total, and
+   * both are `null` — not zero — when the feed has not resolved, so the panels can be
+   * withheld instead of claiming a business has none. `useMemo` keeps the sum off the
+   * render path when the feed has not changed.
+   */
+  const shopCount = useMemo(
+    () => (data ? data.nearby.length : null),
+    [data],
+  );
+
+  // The cart's own `totals`, which the API computed. Not a client-side sum of the
+  // line items: the total carries discounts, delivery, tax and tip, and re-deriving it
+  // here would disagree with checkout the moment a promotion applied.
+  const cartTotalMinor = cart?.totals.totalMinor ?? null;
+  const cartCurrency = cart?.totals.currency ?? cart?.currency ?? "CRC";
+
   return (
     <MarketplaceShell>
-      {/* Flat, not a gradient. The headline carries the section, and an amber wash behind
-          it would be the one place on the page where the accent competes with the type. */}
-      <section className="rounded-xl border border-border bg-card px-6 py-12 sm:px-10 sm:py-16">
-        <p className="mb-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-link">
-          <UtensilsCrossed aria-hidden="true" className="h-3.5 w-3.5" />
-          Pedidos a domicilio
-        </p>
-        <h1 className="max-w-3xl text-balance text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-          Pedí de los negocios de tu barrio, sin llamar a nadie.
-        </h1>
-        <p className="mt-5 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Restaurantes, farmacias, ferreterías y más — comparás, pedís y seguís tu entrega desde
-          PymesHub.
-        </p>
-        <div className="mt-7 flex flex-wrap items-center gap-3">
-          <AmberButton onClick={() => navigate("/categories")}>
-            Explorar categorías
-            <ArrowRight aria-hidden="true" className="ml-1.5 h-4 w-4" />
-          </AmberButton>
-          <OutlineButton onClick={request}>
-            <MapPin aria-hidden="true" className="mr-1.5 h-4 w-4" />
-            {status === "granted" ? "Ubicación activa" : "Usar mi ubicación"}
-          </OutlineButton>
-        </div>
-        {status === "denied" ? (
-          <p className="mt-4 text-xs text-link">
-            No pudimos usar tu ubicación. Podés seguir explorando por categorías.
-          </p>
-        ) : null}
-      </section>
+      <HeroBlock
+        locationStatus={status}
+        onRequestLocation={request}
+        shopCount={shopCount}
+        currency={cartCurrency}
+        cartTotalMinor={cartTotalMinor}
+        onBrowse={() => navigate("/categories")}
+      />
+
+      <DeliveryZoneBlock
+        businesses={data?.nearby ?? []}
+        hasLocation={status === "granted"}
+        onRequestLocation={request}
+      />
+
+      <OrderJourneyBlock />
+
+      <OffersBlock promotions={data?.promotions ?? []} />
 
       {isError ? (
-        <div className="mt-8">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <ErrorState message="No pudimos cargar el inicio." onRetry={() => void refetch()} />
         </div>
       ) : isLoading || !data ? (
-        <div className="mt-8">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <LoadingGrid />
         </div>
       ) : (
-        <>
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {data.categories.length > 0 ? (
             <Section
               title="Categorías"
@@ -122,16 +152,6 @@ export default function MarketplaceHomePage() {
             </Section>
           ) : null}
 
-          {data.promotions.length > 0 ? (
-            <Section title="Cupones">
-              <Rail>
-                {data.promotions.slice(0, 6).map((promotion) => (
-                  <PromotionCardView key={promotion.id} promotion={promotion} />
-                ))}
-              </Rail>
-            </Section>
-          ) : null}
-
           <Section title="Destacados">
             {data.featured.length > 0 ? (
               <ProductGrid>
@@ -174,8 +194,10 @@ export default function MarketplaceHomePage() {
               />
             )}
           </Section>
-        </>
+        </div>
       )}
+
+      <SignoffBlock />
     </MarketplaceShell>
   );
 }
