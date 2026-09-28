@@ -268,19 +268,46 @@ export default function MenuScreen() {
 							})
 						}
 					/>
-					{/* Last in the card, so it drops the trailing hairline the row's own
-				    default draws — the rhythm every card of `./list-row`s here keeps. */}
 					<ListRow
 						title={t("biz.more.catalog")}
 						subtitle={t("biz.more.catalogSubtitle")}
 						chevron
-						divider={false}
 						onPress={() =>
 							router.push({
 								pathname: "/(business)/products",
 								params: { businessId },
 							})
 						}
+					/>
+					{/* The managed surfaces: profile, hours, log and support live
+					    next to the settings they extend, so no door in this tree
+					    is reachable only from a tab that no longer exists. */}
+					<ListRow
+						title={t("biz.more.storeProfile")}
+						subtitle={t("biz.more.storeProfileSubtitle")}
+						chevron
+						onPress={() => router.push("/(business)/store-profile")}
+					/>
+					<ListRow
+						title={t("biz.more.businessHours")}
+						subtitle={t("biz.more.businessHoursSubtitle")}
+						chevron
+						onPress={() => router.push("/(business)/business-hours")}
+					/>
+					<ListRow
+						title={t("biz.more.activity")}
+						subtitle={t("biz.more.activitySubtitle")}
+						chevron
+						onPress={() => router.push("/(business)/activity")}
+					/>
+					{/* Last in the card, so it drops the trailing hairline the
+					    row's own default draws. */}
+					<ListRow
+						title={t("biz.more.support")}
+						subtitle={t("biz.more.supportSubtitle")}
+						divider={false}
+						chevron
+						onPress={() => router.push("/(business)/support")}
 					/>
 				</Card>
 			</ScreenSection>
@@ -398,7 +425,11 @@ type MoreSkeletonRowKey =
 	| "catalog"
 	| "subscription"
 	| "team"
-	| "reviews";
+	| "reviews"
+	| "storeProfile"
+	| "businessHours"
+	| "activity"
+	| "support";
 type MoreSkeletonReviewKey = "first" | "second" | "third";
 type MoreSkeletonSwitchKey = "sound";
 
@@ -423,6 +454,10 @@ const MORE_SKELETON_SHAPE = {
 			"promotions",
 			"audit",
 			"catalog",
+			"storeProfile",
+			"businessHours",
+			"activity",
+			"support",
 		],
 	},
 	moneyPeople: { rows: ["subscription", "team"] },
