@@ -185,6 +185,16 @@ export default function BusinessLayout() {
 					<Tabs.Screen name="product-form" options={{ href: null }} />
 					<Tabs.Screen name="products" options={{ href: null }} />
 					<Tabs.Screen name="analytics" options={{ href: null }} />
+					{/* Every route file in this group must be declared here: Tabs
+					    auto-registers undeclared files as visible tabs (file-name
+					    label, no icon), which is how six managed screens once
+					    crowded the bar. */}
+					<Tabs.Screen name="activity" options={{ href: null }} />
+					<Tabs.Screen name="payments" options={{ href: null }} />
+					<Tabs.Screen name="settlements" options={{ href: null }} />
+					<Tabs.Screen name="store-profile" options={{ href: null }} />
+					<Tabs.Screen name="business-hours" options={{ href: null }} />
+					<Tabs.Screen name="support" options={{ href: null }} />
 					<Tabs.Screen name="shop-settings" options={{ href: null }} />
 					<Tabs.Screen name="merchant-settings" options={{ href: null }} />
 					<Tabs.Screen name="shop-hours" options={{ href: null }} />
