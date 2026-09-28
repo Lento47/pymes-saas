@@ -137,8 +137,14 @@ export default function BusinessLayout() {
 								accessibilityLabel={accessibilityLabel}
 								// The navigator types this as a state callback; what it
 								// hands down is laid-out style, and the pressed answer is
-								// this primitive's own dim and spring.
-								style={style as StyleProp<ViewStyle>}
+								// this primitive's own dim and spring. Centred, because
+								// the primitive floors the box and aligns nothing — an
+								// uncentred disc pins to the top of the 70pt button and
+								// the icons read high with dead air beneath them.
+								style={[
+									{ alignItems: "center", justifyContent: "center" },
+									style as StyleProp<ViewStyle>,
+								]}
 							>
 								{children as ReactNode}
 							</Pressable>
