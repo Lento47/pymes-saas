@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppState, Linking } from "react-native";
 
 import { useT } from "@/lib/i18n";
+import { usePushNotifications } from "@/lib/push-notifications";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import { Card } from "./card";
 import { ListRow } from "./list-row";
@@ -13,6 +14,7 @@ import { Text } from "./text";
 export function DeviceSettings() {
 	const { t } = useT();
 	const reducedMotion = useReducedMotion();
+	const push = usePushNotifications();
 	const [permission, setPermission] =
 		useState<Location.PermissionStatus | null>(null);
 	const [failed, setFailed] = useState(false);
@@ -61,6 +63,25 @@ export function DeviceSettings() {
 					)}
 					accessibilityHint={t("settings.device.open")}
 					onPress={openSettings}
+					chevron
+				/>
+				<ListRow
+					title={t("settings.push")}
+					subtitle={t("settings.push.help")}
+					state={t(
+						push.status === "granted"
+							? "settings.permission.granted"
+							: push.status === "denied"
+								? "settings.permission.denied"
+								: push.status === "unasked"
+									? "settings.permission.unasked"
+									: "settings.permission.unknown",
+					)}
+					accessibilityHint={t("settings.push.open")}
+					onPress={() => {
+						if (push.status === "unasked") void push.request();
+						else openSettings();
+					}}
 					chevron
 				/>
 				<ListRow

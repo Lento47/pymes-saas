@@ -1,8 +1,10 @@
-const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ??
+const API_BASE =
+  import.meta.env.VITE_PYMESHUB_API_URL ??
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 const LS_SLUG_KEY = "pymes_slug";
 const LS_TOKEN_KEY = "pymes_token";
-const LS_USER_KEY = "pymes_user";
 const SESSION_KEY = "pymes_error_session";
 
 type ErrorReportPayload = {
@@ -35,7 +37,11 @@ function getSessionId() {
 
 function getWorkspaceSlug() {
   try {
-    return sessionStorage.getItem(LS_SLUG_KEY) ?? localStorage.getItem(LS_SLUG_KEY) ?? undefined;
+    return (
+      sessionStorage.getItem(LS_SLUG_KEY) ??
+      localStorage.getItem(LS_SLUG_KEY) ??
+      undefined
+    );
   } catch {
     return undefined;
   }
@@ -49,33 +55,20 @@ function getAuthToken() {
   }
 }
 
-function getUserSnapshot() {
-  try {
-    const raw = localStorage.getItem(LS_USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 function buildPayload(payload: ErrorReportPayload) {
-  const user = getUserSnapshot();
-
-  return {
+  return scrubTelemetryPayload({
     ...payload,
     route: payload.route ?? window.location.pathname,
-    url: payload.url ?? window.location.href,
+    url: payload.url ?? `${window.location.origin}${window.location.pathname}`,
     user_agent: payload.user_agent ?? navigator.userAgent,
     occurred_at: payload.occurred_at ?? new Date().toISOString(),
     workspace_slug: getWorkspaceSlug(),
-    client_user_id: user?.id,
-    client_user_email: user?.email,
     context_json: {
       session_id: getSessionId(),
       viewport: `${window.innerWidth}x${window.innerHeight}`,
       ...payload.context_json,
     },
-  };
+  });
 }
 
 export async function reportClientError(payload: ErrorReportPayload) {
@@ -83,7 +76,9 @@ export async function reportClientError(payload: ErrorReportPayload) {
   const url = `${API_BASE}/api/error-reports/client`;
 
   try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     const token = getAuthToken();
     const workspaceSlug = getWorkspaceSlug();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -127,7 +122,7 @@ export function installGlobalErrorReporting() {
       message:
         typeof reason === "string"
           ? reason
-          : reason?.message ?? "Promesa rechazada sin manejo.",
+          : (reason?.message ?? "Promesa rechazada sin manejo."),
       stack: reason?.stack,
       context_json: {
         reason:
@@ -138,3 +133,4 @@ export function installGlobalErrorReporting() {
     });
   });
 }
+import { scrubTelemetryPayload } from "@pymeshub/shared";

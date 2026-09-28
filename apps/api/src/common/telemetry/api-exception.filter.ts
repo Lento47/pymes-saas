@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from "@nestjs/common";
+import { SentryExceptionCaptured } from "@sentry/nestjs";
 import * as https from "https";
 import { ErrorReportsService } from "../../error-reports/error-reports.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -78,6 +79,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     private readonly triage?: AiTriageService,
   ) {}
 
+  @SentryExceptionCaptured()
   async catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<any>();

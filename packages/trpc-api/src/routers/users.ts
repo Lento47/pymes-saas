@@ -4,7 +4,7 @@ import {
 	updateProfileInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
-
+import * as deletion from "../services/account-deletion";
 import * as users from "../services/users";
 import { protectedProcedure, router } from "../trpc";
 
@@ -49,4 +49,12 @@ export const usersRouter = router({
 	deleteAddress: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(({ ctx, input }) => users.deleteAddress(ctx, input)),
+
+	deletionStatus: protectedProcedure.query(({ ctx }) => deletion.status(ctx)),
+	requestDeletion: protectedProcedure.mutation(({ ctx }) =>
+		deletion.request(ctx),
+	),
+	cancelDeletion: protectedProcedure.mutation(({ ctx }) =>
+		deletion.cancel(ctx),
+	),
 });

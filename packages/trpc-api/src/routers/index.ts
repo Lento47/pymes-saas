@@ -6,6 +6,7 @@ import { cartRouter } from "./cart";
 import { catalogRouter } from "./catalog";
 import { couriersRouter } from "./couriers";
 import { deliveriesRouter } from "./deliveries";
+import { devicesRouter } from "./devices";
 import { favoritesRouter } from "./favorites";
 import { healthRouter } from "./health";
 import { notificationsRouter } from "./notifications";
@@ -38,6 +39,7 @@ export const appRouter = router({
 	cart: cartRouter,
 	couriers: couriersRouter,
 	deliveries: deliveriesRouter,
+	devices: devicesRouter,
 	orders: ordersRouter,
 	favorites: favoritesRouter,
 	notifications: notificationsRouter,

@@ -10,7 +10,7 @@ import {
 
 import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
-import { hitSlopFor, Pressable } from "./pressable";
+import { Pressable } from "./pressable";
 
 /**
  * The app's one search box: magnifier, bare `TextInput`, clear button.
@@ -35,12 +35,14 @@ import { hitSlopFor, Pressable } from "./pressable";
  * reason its own target already names the action — a mark beside a labelled button is
  * a second thing a reader lands on to hear the same word twice.
  *
- * ## The clear button is conditional, and the hit slop is `hitSlopFor(MIN_TOUCH_TARGET)`
+ * ## The clear button is conditional, and it takes no hit slop
  *
- * `./pressable` already floors its box at `MIN_TOUCH_TARGET`, so the slop grows an
- * already-floored control — 13 points of it would clear the row's own `gap` and take
- * the last of the typed query with it. Android's ripple is off because a circle
- * rippling inside a rounded field reads as the field itself being pressed.
+ * The box is already the target: `./pressable` floors every control at
+ * `MIN_TOUCH_TARGET`, and this one is the field's own height besides. A slop on top of
+ * that floor would grow an already-floored control past the field's edge — the 13 points
+ * `hitSlopFor(icon.control)` would add reach into the row's own `gap` and take the last
+ * of the typed query with it. Android's ripple is off because a circle rippling inside a
+ * rounded field reads as the field itself being pressed.
  *
  * ## `includeFontPadding: false` is this component's job
  *
@@ -109,7 +111,6 @@ export function SearchInput({
 			{value.length > 0 ? (
 				<Pressable
 					onPress={() => onChangeText("")}
-					hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
 					ripple={false}
 					accessibilityRole="button"
 					accessibilityLabel={clearLabel}

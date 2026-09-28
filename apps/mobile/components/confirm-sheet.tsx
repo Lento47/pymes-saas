@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useT } from "@/lib/i18n";
 import { space } from "@/theme";
 
-import { Button } from "./button";
+import { Button, type ButtonVariant } from "./button";
 import { Sheet } from "./sheet";
 import { Text } from "./text";
 
@@ -61,6 +61,7 @@ export function ConfirmSheet({
 	title,
 	body,
 	confirmLabel,
+	confirmVariant = "destructive",
 	cancelLabel,
 	onConfirm,
 }: {
@@ -72,6 +73,8 @@ export function ConfirmSheet({
 	body?: string;
 	/** The answer that acts — `auth.signOut.confirm`'s "Cerrar sesión", not "Aceptar". */
 	confirmLabel: string;
+	/** Disclosures confirm a safe forward action; destructive questions keep the default. */
+	confirmVariant?: ButtonVariant;
 	/** Defaults to `action.cancel`. The order screen says "Volver" and passes its own. */
 	cancelLabel?: string;
 	onConfirm: () => void;
@@ -101,7 +104,7 @@ export function ConfirmSheet({
 				>
 					<Button
 						label={confirmLabel}
-						variant="destructive"
+						variant={confirmVariant}
 						size="lg"
 						shape="pill"
 						fullWidth

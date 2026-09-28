@@ -902,12 +902,6 @@ export async function inviteStaff(
 	input: { businessId: string; email: string; role: MembershipRole },
 ): Promise<StaffMember> {
 	const businessId = ctx.membership.businessId;
-	if (input.role === "COURIER") {
-		throw new ValidationError(
-			"Invita repartidores desde el directorio de repartidores",
-			{ field: "role" },
-		);
-	}
 
 	// Creating another OWNER is handing over the business, so `staff:manage` — which a
 	// MANAGER also holds — is not enough for that one case.

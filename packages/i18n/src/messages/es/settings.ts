@@ -32,6 +32,11 @@ export const settings = {
 	"settings.location": "Ubicación",
 	"settings.location.help":
 		"Para mostrar tiendas cercanas. Puedes explorar sin compartir tu ubicación.",
+	"settings.push": "Notificaciones del dispositivo",
+	"settings.push.help":
+		"Avisos de pedidos, entregas y respuestas aunque la app esté cerrada.",
+	"settings.push.open":
+		"Solicita el permiso o abre las notificaciones en los ajustes del teléfono",
 	"settings.permission.granted": "Permitida",
 	"settings.permission.denied": "No permitida",
 	"settings.permission.unasked": "Sin solicitar",

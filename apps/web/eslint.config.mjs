@@ -15,7 +15,7 @@ export default [
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        project: "./tsconfig.json",
+        project: "./tsconfig.eslint.json",
         tsconfigRootDir: import.meta.dirname,
         sourceType: "module",
         ecmaFeatures: { jsx: true },
@@ -29,15 +29,24 @@ export default [
     rules: {
       // ── React ──
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": [
+        "warn",
+        { allowConstantExport: true },
+      ],
 
       // ── TypeScript best practices ──
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_" },
+      ],
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/no-empty-interface": "warn",
       "@typescript-eslint/no-non-null-assertion": "warn",
-      "@typescript-eslint/consistent-type-imports": ["warn", { prefer: "type-imports" }],
+      "@typescript-eslint/consistent-type-imports": [
+        "warn",
+        { prefer: "type-imports" },
+      ],
       "@typescript-eslint/no-floating-promises": "warn",
 
       // ── General ──
@@ -54,7 +63,7 @@ export default [
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        project: "./tsconfig.json",
+        project: "./tsconfig.eslint.json",
         tsconfigRootDir: import.meta.dirname,
         sourceType: "module",
       },
@@ -63,7 +72,10 @@ export default [
       "@typescript-eslint": tseslint,
     },
     rules: {
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_" },
+      ],
       "@typescript-eslint/no-explicit-any": "off",
       "no-console": "off", // server logging is fine
     },

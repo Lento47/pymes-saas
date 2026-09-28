@@ -236,6 +236,9 @@ new_sqlite_classes = ["OrderRoom"]
 [observability]
 enabled = true
 
+[observability.traces]
+enabled = true
+
 [env.staging]
 name = "pymeshub-api-staging"
 

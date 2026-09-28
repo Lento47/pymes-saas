@@ -65,4 +65,9 @@ export const env = {
 		process.env.EXPO_PUBLIC_MAP_STYLE_URL ||
 			Constants.expoConfig?.extra?.mapStyleUrl,
 	),
+	/** Public ingestion coordinate. Events are scrubbed before transmission. */
+	sentryDsn: optionalString(
+		process.env.EXPO_PUBLIC_SENTRY_DSN ||
+			Constants.expoConfig?.extra?.sentryDsn,
+	),
 };

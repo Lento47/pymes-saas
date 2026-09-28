@@ -164,21 +164,6 @@ export function messageFor(
 	return typeof resolved === "string" ? { key: resolved } : resolved;
 }
 
-/**
- * The key alone, for a caller that resolves it into words itself.
- *
- * `lib/favorites.ts` is that caller: it puts the sentence in an `Alert`, which takes a string
- * rather than a key and has no place for an override, so it reads the key and nothing else.
- * A caller that can carry parameters wants `messageFor` — this drops them, and a key with a
- * placeholder rendered through `t(key)` on its own prints the placeholder.
- */
-export function messageKeyFor(
-	failure: ApiFailure,
-	overrides?: FailureOverrides,
-): MessageKey {
-	return messageFor(failure, overrides).key;
-}
-
 export function isUnauthorized(failure: ApiFailure): boolean {
 	return failure.code === "UNAUTHORIZED" || failure.httpStatus === 401;
 }

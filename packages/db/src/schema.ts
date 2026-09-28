@@ -848,6 +848,9 @@ export const order = sqliteTable(
 		 */
 		courierLat: real("courier_lat"),
 		courierLng: real("courier_lng"),
+		courierAccuracy: real("courier_accuracy"),
+		courierHeading: real("courier_heading"),
+		courierSpeed: real("courier_speed"),
 		courierAt: integer("courier_at", { mode: "timestamp_ms" }),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
@@ -1271,6 +1274,80 @@ export const notification = sqliteTable(
 	],
 );
 
+/** One Expo installation token, always owned by the currently signed-in user. */
+export const devicePushToken = sqliteTable(
+	"device_push_token",
+	{
+		token: text("token").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		platform: text("platform").$type<"ios" | "android">().notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [index("device_push_token_user_idx").on(table.userId)],
+);
+
+/**
+ * Durable push work. The queue may redeliver an order event, while Expo tickets
+ * and receipts complete later; this row makes both retries idempotent.
+ */
+export const pushDelivery = sqliteTable(
+	"push_delivery",
+	{
+		id: text("id").primaryKey(),
+		eventId: text("event_id").notNull(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		token: text("token").notNull(),
+		title: text("title").notNull(),
+		body: text("body").notNull(),
+		data: text("data", { mode: "json" }).$type<Record<string, unknown>>(),
+		status: text("status")
+			.$type<"PENDING" | "TICKETED" | "DELIVERED" | "FAILED">()
+			.notNull()
+			.default("PENDING"),
+		receiptId: text("receipt_id"),
+		attempts: integer("attempts").notNull().default(0),
+		lastError: text("last_error"),
+		nextAttemptAt: integer("next_attempt_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("push_delivery_event_token_unique").on(
+			table.eventId,
+			table.token,
+		),
+		index("push_delivery_pending_idx").on(table.status, table.nextAttemptAt),
+		uniqueIndex("push_delivery_receipt_unique").on(table.receiptId),
+	],
+);
+
+/** A cancellable, delayed account-erasure request. */
+export const accountDeletionRequest = sqliteTable(
+	"account_deletion_request",
+	{
+		userId: text("user_id")
+			.primaryKey()
+			.references(() => user.id, { onDelete: "cascade" }),
+		status: text("status")
+			.$type<"SCHEDULED" | "BLOCKED" | "PROCESSING" | "COMPLETED">()
+			.notNull()
+			.default("SCHEDULED"),
+		requestedAt: integer("requested_at", { mode: "timestamp_ms" }).notNull(),
+		scheduledFor: integer("scheduled_for", { mode: "timestamp_ms" }).notNull(),
+		completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+		lastError: text("last_error"),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("account_deletion_due_idx").on(table.status, table.scheduledFor),
+	],
+);
+
 /**
  * What a merchant pays, as a version rather than a column.
  *
@@ -1519,6 +1596,14 @@ export type NewPromotion = typeof promotion.$inferInsert;
 
 export type Notification = typeof notification.$inferSelect;
 export type NewNotification = typeof notification.$inferInsert;
+
+export type DevicePushToken = typeof devicePushToken.$inferSelect;
+export type NewDevicePushToken = typeof devicePushToken.$inferInsert;
+
+export type PushDelivery = typeof pushDelivery.$inferSelect;
+export type NewPushDelivery = typeof pushDelivery.$inferInsert;
+
+export type AccountDeletionRequest = typeof accountDeletionRequest.$inferSelect;
 
 export type PriceBook = typeof priceBook.$inferSelect;
 export type NewPriceBook = typeof priceBook.$inferInsert;

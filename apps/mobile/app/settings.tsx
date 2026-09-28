@@ -440,7 +440,6 @@ export default function Settings() {
 								/>
 								<ListRow
 									title={t("account.sessions.revoke")}
-									divider={false}
 									leading={
 										<Ionicons
 											name="phone-portrait-outline"
@@ -452,6 +451,20 @@ export default function Settings() {
 									}
 									accessibilityHint={t("account.sessions.revokeBody")}
 									onPress={() => setRevokeOpen(true)}
+								/>
+								<ListRow
+									title={t("account.deletion.title")}
+									divider={false}
+									leading={
+										<Ionicons
+											name="trash-outline"
+											size={icon.control}
+											color={colors.destructive}
+											accessibilityElementsHidden
+											importantForAccessibility="no"
+										/>
+									}
+									onPress={() => router.push("/delete-account")}
 								/>
 							</Card>
 							{revokeFailure || revoking ? (

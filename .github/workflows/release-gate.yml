@@ -1,0 +1,117 @@
+name: Production release gate
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate API, web, mobile, and migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.11.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Reject unresolved conflicts
+        shell: bash
+        run: |
+          if rg --hidden --glob '!.git/**' --glob '!pnpm-lock.yaml' '^(<<<<<<< |=======|>>>>>>> )' .; then
+            echo 'Unresolved merge conflict markers found.' >&2
+            exit 1
+          fi
+
+      - name: Check formatting and lint for changed Biome sources
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        run: |
+          base_sha="${PR_BASE_SHA:-$PUSH_BASE_SHA}"
+          if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]]; then
+            base_sha="$(git rev-parse HEAD^)"
+          fi
+
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR "$base_sha" HEAD -- \
+              'apps/mobile/**/*.js' 'apps/mobile/**/*.jsx' \
+              'apps/mobile/**/*.ts' 'apps/mobile/**/*.tsx' \
+              'packages/**/*.js' 'packages/**/*.jsx' \
+              'packages/**/*.ts' 'packages/**/*.tsx' \
+              'packages/**/*.json' 'packages/**/*.jsonc'
+          )
+          if ((${#files[@]})); then
+            pnpm exec biome ci --no-errors-on-unmatched "${files[@]}"
+          else
+            echo 'No changed Biome-managed source files.'
+          fi
+
+      - name: Verify generated D1 migration is committed
+        shell: bash
+        run: |
+          pnpm --filter @pymeshub/db db:generate
+          git diff --exit-code -- packages/db/migrations
+
+      - name: Rehearse D1 migrations
+        shell: bash
+        run: bash scripts/rehearse-d1-migrations.sh
+
+      - name: Type-check shared packages
+        run: |
+          pnpm --filter @pymeshub/shared check-types
+          pnpm --filter @pymeshub/db check-types
+          pnpm --filter @pymeshub/i18n check-types
+
+      - name: Verify Worker API
+        run: |
+          pnpm --filter api check-types
+          pnpm --filter api test
+          pnpm --filter api build
+
+      - name: Verify legacy API
+        run: |
+          pnpm --filter saas-api exec tsc --noEmit
+          pnpm --filter saas-api test -- --runInBand
+          pnpm --filter saas-api build
+
+      - name: Verify web
+        run: |
+          pnpm --filter rest-express lint
+          pnpm --filter rest-express check
+          pnpm --filter rest-express test
+          pnpm --filter rest-express build
+
+      - name: Verify mobile
+        run: |
+          pnpm pilot:mobile:test
+          pnpm --filter mobile check-types
+          pnpm --filter mobile test
+          pnpm --filter mobile build

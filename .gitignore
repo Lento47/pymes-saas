@@ -6,7 +6,15 @@ dist/
 .enterprise-runtime-release/
 .enterprise-runtime-bundle/
 .codex-worktrees/
+.worktrees/
+.wrangler/
+**/.wrangler/
+.turbo/
+**/.turbo/
 apps/android/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/dist/
 
 # Stale lockfiles — only the root pnpm-lock.yaml is authoritative in this pnpm
 # workspace. Per-app and npm lockfiles are not used by CI/Docker and cause

@@ -105,16 +105,21 @@ export const assignCourierInput = z.object({
 export type AssignCourierInput = z.infer<typeof assignCourierInput>;
 
 /**
- * One ping from the courier's phone: where they are, on the order they carry.
- * Foreground only — the app posts while the run is open, roughly every 15
- * seconds — so a stale point means the app went to the background, not that
- * the courier stopped. Readers treat `courierAt` older than a minute as "last
- * seen", never as live.
+ * One ping from the courier's phone: where they are, when the device measured
+ * it, and the optional quality/movement readings the platform supplied. The
+ * server keeps only the newest point for the active run.
  */
 export const reportLocationInput = z.object({
 	orderId: z.string().startsWith("ord_"),
 	lat: latitudeSchema,
 	lng: longitudeSchema,
+	// Optional for a rolling upgrade: SDK builds released before background
+	// tracking did not send it. New clients always do, and the API uses receipt
+	// time only for those older builds.
+	recordedAt: z.date().optional(),
+	accuracy: z.number().finite().min(0).max(10_000).optional(),
+	heading: z.number().finite().min(0).max(360).optional(),
+	speed: z.number().finite().min(0).max(150).optional(),
 });
 export type ReportLocationInput = z.infer<typeof reportLocationInput>;
 
@@ -322,6 +327,9 @@ export const orderTrackingSchema = z.object({
 			phone: z.string().nullable(),
 			lat: z.number().nullable(),
 			lng: z.number().nullable(),
+			accuracy: z.number().nullable(),
+			heading: z.number().nullable(),
+			speed: z.number().nullable(),
 			updatedAt: z.date().nullable(),
 		})
 		.nullable(),

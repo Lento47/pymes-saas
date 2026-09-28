@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import type { Env } from "./env";
 import type { OrderEventEnvelope, OrderEventMessage } from "./events";
 import { createLogger } from "./logging";
+import { deliverPendingPushes, enqueuePushes } from "./push";
 
 /**
  * What happens after an order moves, off the request path.
@@ -70,11 +71,56 @@ function notificationFor(
 				body: `Tienes un pedido nuevo (${event.orderId})`,
 			};
 		case "ORDER_STATUS_CHANGED":
-			return {
-				kind: "ORDER",
-				title: "Pedido actualizado",
-				body: `El pedido pasó de ${event.from} a ${event.to}`,
-			};
+			switch (event.to) {
+				case "ACCEPTED":
+					return {
+						kind: "ORDER",
+						title: "Pedido aceptado",
+						body: "La tienda aceptó el pedido.",
+					};
+				case "PREPARING":
+					return {
+						kind: "ORDER",
+						title: "Preparando tu pedido",
+						body: "La tienda ya comenzó a prepararlo.",
+					};
+				case "READY":
+					return {
+						kind: "ORDER",
+						title: "Pedido listo",
+						body: "El pedido está listo para recoger o enviar.",
+					};
+				case "OUT_FOR_DELIVERY":
+					return {
+						kind: "ORDER",
+						title: "Pedido en camino",
+						body: "El repartidor recogió el pedido.",
+					};
+				case "COMPLETED":
+					return {
+						kind: "ORDER",
+						title: "Pedido entregado",
+						body: "La entrega fue completada.",
+					};
+				case "REJECTED":
+					return {
+						kind: "ORDER",
+						title: "Pedido rechazado",
+						body: "La tienda no pudo aceptar el pedido.",
+					};
+				case "CANCELLED":
+					return {
+						kind: "ORDER",
+						title: "Pedido cancelado",
+						body: "El pedido fue cancelado.",
+					};
+				default:
+					return {
+						kind: "ORDER",
+						title: "Pedido actualizado",
+						body: `El pedido pasó de ${event.from} a ${event.to}`,
+					};
+			}
 		case "ORDER_CANCELLED":
 			return {
 				kind: "ORDER",
@@ -129,14 +175,14 @@ async function notifyCustomer(
 		{ type: "ORDER_STATUS_CHANGED" | "ORDER_CANCELLED" }
 	>,
 	content: { kind: string; title: string; body: string },
-): Promise<void> {
+): Promise<string | null> {
 	const orderRows = await db
 		.select({ customerId: orderTable.customerId })
 		.from(orderTable)
 		.where(eq(orderTable.id, event.orderId))
 		.limit(1);
 	const customerId = orderRows[0]?.customerId;
-	if (!customerId || customerId === event.actorId) return;
+	if (!customerId || customerId === event.actorId) return null;
 
 	const prefs = (
 		await db
@@ -145,7 +191,7 @@ async function notifyCustomer(
 			.where(eq(userTable.id, customerId))
 			.limit(1)
 	)[0];
-	if (prefs?.notifyOrderUpdates === false) return;
+	if (prefs?.notifyOrderUpdates === false) return null;
 
 	await db
 		.insert(notificationTable)
@@ -161,12 +207,13 @@ async function notifyCustomer(
 			dedupeKey: dedupeKeyFor(eventId, customerId),
 		})
 		.onConflictDoNothing();
+	return customerId;
 }
 
 export async function handleQueue(
 	batch: MessageBatch<OrderEventEnvelope>,
 	env: Env,
-	_executionCtx: ExecutionContext,
+	executionCtx: ExecutionContext,
 ): Promise<void> {
 	const logger = createLogger({
 		environment: env.ENVIRONMENT,
@@ -251,12 +298,32 @@ export async function handleQueue(
 			// business-only — the actor needs no notification saying they ordered —
 			// and a move the customer made themselves (their own cancel) tells them
 			// nothing either, which is what the `actorId` check is for.
+			let customerRecipient: string | null = null;
 			if (
 				event.type === "ORDER_STATUS_CHANGED" ||
 				event.type === "ORDER_CANCELLED"
 			) {
-				await notifyCustomer(db, envelope.eventId, event, notification);
+				customerRecipient = await notifyCustomer(
+					db,
+					envelope.eventId,
+					event,
+					notification,
+				);
 			}
+
+			const pushRecipients = customerRecipient
+				? [...new Set([...recipients, customerRecipient])]
+				: recipients;
+			await enqueuePushes(db, envelope.eventId, pushRecipients, {
+				title: notification.title,
+				body: notification.body,
+				data: { orderId: event.orderId, type: event.type },
+			});
+			// The D1 row above is the durable handoff. Sending can outlive this queue
+			// callback, and the scheduled sweep retries anything it leaves pending.
+			executionCtx.waitUntil?.(
+				deliverPendingPushes(env, logger, envelope.eventId),
+			);
 
 			message.ack();
 		} catch (error) {

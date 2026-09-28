@@ -31,6 +31,11 @@ export const settings = {
 	"settings.location": "Location",
 	"settings.location.help":
 		"Used to show nearby shops. You can browse without sharing your location.",
+	"settings.push": "Device notifications",
+	"settings.push.help":
+		"Order, delivery, and reply alerts even when the app is closed.",
+	"settings.push.open":
+		"Requests permission or opens notifications in your phone settings",
 	"settings.permission.granted": "Allowed",
 	"settings.permission.denied": "Not allowed",
 	"settings.permission.unasked": "Not requested",

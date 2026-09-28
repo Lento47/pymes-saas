@@ -1,10 +1,19 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect } from "react";
-import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
+import {
+	AccessibilityInfo,
+	Platform,
+	type StyleProp,
+	StyleSheet,
+	View,
+	type ViewStyle,
+} from "react-native";
 
 import { useApiFailure } from "@/lib/api-error";
+import { useT } from "@/lib/i18n";
 import { icon, radius, space, type, useTheme } from "@/theme";
 
+import { Pressable } from "./pressable";
 import { Text } from "./text";
 
 /**
@@ -53,8 +62,27 @@ import { Text } from "./text";
  * call does.** A comment that claims this and a `useEffect` that does it unconditionally is the
  * shape this defect had — the prose was right and the code was not.
  */
-export function RollbackNotice({ error }: { error: unknown }) {
+export function RollbackNotice({
+	error,
+	onDismiss,
+	style,
+}: {
+	error: unknown;
+	/**
+	 * Make the notice its own dismiss control, for a surface that floats it over a screen.
+	 *
+	 * Omitted by every in-layout caller: the cart and the order screens draw this *in* a
+	 * screen, where the notice belongs to the transaction under it and leaves when that
+	 * transaction does — a tap on a receipt is nothing. The floated surface has no such
+	 * owner, so its notice is the control that ends it, which is the same tap-to-dismiss
+	 * `./toast` gives its own sentence.
+	 */
+	onDismiss?: () => void;
+	/** Placement, for the one caller that floats it. The block's own skin stays here. */
+	style?: StyleProp<ViewStyle>;
+}) {
 	const { colors } = useTheme();
+	const { t } = useT();
 	const { failure, message } = useApiFailure(error);
 
 	const deliberate =
@@ -70,15 +98,13 @@ export function RollbackNotice({ error }: { error: unknown }) {
 
 	if (!error || !sentence) return null;
 
-	return (
-		<View
-			style={[
-				styles.notice,
-				{ backgroundColor: colors.card, borderColor: colors.destructive },
-			]}
-			accessibilityRole="alert"
-			accessibilityLiveRegion="polite"
-		>
+	const surface = [
+		styles.notice,
+		{ backgroundColor: colors.card, borderColor: colors.destructive },
+		style,
+	];
+	const content = (
+		<>
 			<Ionicons
 				name="alert-circle-outline"
 				// `icon.inline` — "a mark on a line of text that is not itself a target", which is
@@ -95,6 +121,34 @@ export function RollbackNotice({ error }: { error: unknown }) {
 			<Text variant="body" tone="destructive" style={styles.sentence}>
 				{sentence}
 			</Text>
+		</>
+	);
+
+	// The dismissable build is a `Pressable` whose *own root* carries the alert — never a
+	// tappable wrapper around an accessible child, which would swallow the role out of the
+	// tree. That is the pairing `./toast` draws for its own sentence, and why this is a
+	// second `return` rather than a `Pressable` around the `View` below.
+	if (onDismiss) {
+		return (
+			<Pressable
+				onPress={onDismiss}
+				accessibilityRole="alert"
+				accessibilityLiveRegion="polite"
+				accessibilityHint={t("a11y.dismissToast")}
+				style={surface}
+			>
+				{content}
+			</Pressable>
+		);
+	}
+
+	return (
+		<View
+			style={surface}
+			accessibilityRole="alert"
+			accessibilityLiveRegion="polite"
+		>
+			{content}
 		</View>
 	);
 }

@@ -27,6 +27,7 @@
 		"@pymeshub/db": "workspace:*",
 		"@pymeshub/env": "workspace:*",
 		"@pymeshub/shared": "workspace:*",
+		"@sentry/cloudflare": "^11.0.0",
 		"@supabase/server": "^1.8.0",
 		"@supabase/supabase-js": "^2.117.2",
 		"@trpc/server": "^11.19.0",

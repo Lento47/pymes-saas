@@ -18,6 +18,11 @@ import {
 	supabaseAccessToken,
 	supabaseSignOut,
 } from "@/lib/auth/supabase";
+import {
+	reconcileTrackingPermissions,
+	stopCourierTracking,
+} from "@/lib/courier-tracking";
+import { revokeStoredPushToken } from "@/lib/push-token";
 /**
  * Who is signed in, for the whole app.
  *
@@ -216,7 +221,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	 */
 	useEffect(() => {
 		const sub = AppState.addEventListener("change", (state) => {
-			if (state === "active") void read();
+			if (state === "active") {
+				void read();
+				void reconcileTrackingPermissions();
+			}
 		});
 		return () => sub.remove();
 	}, [read]);
@@ -335,6 +343,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		[read],
 	);
 	const signOut = useCallback(async () => {
+		// Revoke the local tracking authority before deleting the credential it would
+		// otherwise keep trying to spend from a background task.
+		await Promise.all([
+			stopCourierTracking(),
+			revokeStoredPushToken().catch(() => undefined),
+		]);
 		// The API deletes the marketplace session; Supabase owns its own refresh token.
 		// Both are cleared so a later sign-in cannot silently reuse the other provider.
 		await Promise.all([marketplaceAuth.signOut(), supabaseSignOut()]);

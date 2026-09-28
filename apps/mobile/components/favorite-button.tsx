@@ -19,6 +19,7 @@ import { useReducedMotion } from "@/lib/reduced-motion";
 import { MIN_TOUCH_TARGET, useTheme } from "@/theme";
 
 import { Pressable } from "./pressable";
+import { useRollback } from "./rollback-surface";
 
 /**
  * The heart on a shop and on a dish.
@@ -73,7 +74,8 @@ export function FavoriteButton({
 }) {
 	const { colors } = useTheme();
 	const { t } = useT();
-	const { isFavorited, toggle, signedIn, isPending } = useFavorites();
+	const { isFavorited, toggle, signedIn, isPending, error } = useFavorites();
+	const rollback = useRollback();
 
 	const favorited = isFavorited(target);
 	const name =
@@ -109,6 +111,25 @@ export function FavoriteButton({
 	const pop = useAnimatedStyle(() => ({
 		transform: [{ scale: reduceMotion ? 1 : scale.value }],
 	}));
+
+	/**
+	 * The refusal, said out loud.
+	 *
+	 * `lib/favorites` rolls the heart back and buzzes; the sentence is not its to draw. A
+	 * heart is a 44-point square on a card, so the sentence goes to `./rollback-surface`,
+	 * which floats the app's own notice over the screen. This is the one place that knows a
+	 * write failed *and* that a surface exists, which is the line `lib/` deliberately does
+	 * not cross.
+	 *
+	 * Keyed on the error object and not on a boolean: the mutation hands back the same
+	 * object for the life of a failure, so a re-render of the card does not re-announce it,
+	 * while the next failed tap produces a new one and a new notice. A success clears it to
+	 * `null` as the next write starts.
+	 */
+	useEffect(() => {
+		if (!error) return;
+		rollback.show(error);
+	}, [error, rollback]);
 
 	return (
 		<Pressable

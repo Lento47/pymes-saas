@@ -1,0 +1,36 @@
+# EAS archives the monorepo from the Git root, so keep workspace dependencies but
+# exclude local-only and generated content that cannot affect the mobile build.
+node_modules/
+**/node_modules/
+.env
+*.log
+.DS_Store
+.enterprise-runtime-release/
+.enterprise-runtime-bundle/
+.codex-worktrees/
+.worktrees/
+.git/
+**/.wrangler/
+**/.turbo/
+.design-reference/
+coverage/
+**/coverage/
+apps/android/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/dist/
+
+# Also cover the paths when EAS evaluates this file relative to the app directory.
+/android
+/ios
+/dist
+/.expo
+/expo-env.d.ts
+
+package-lock.json
+**/package-lock.json
+apps/*/pnpm-lock.yaml
+.design-reference/test-results/
+_*.py
+_*.txt
+**/_*.txt

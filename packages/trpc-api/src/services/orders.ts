@@ -1063,15 +1063,43 @@ export async function reportLocation(
 	);
 
 	const now = new Date();
+	// The device timestamp is what makes a queued fix honestly stale. A clock more
+	// than a minute ahead is not allowed to make a position look fresh in the future.
+	const validDeviceTime =
+		input.recordedAt && input.recordedAt.getTime() <= now.getTime() + 60_000
+			? input.recordedAt
+			: null;
+	// Older foreground builds have no device timestamp. Two sequential requests can
+	// land in the same millisecond, so advance receipt time by 1ms instead of treating
+	// the second (newer) fix as a duplicate.
+	const recordedAt =
+		validDeviceTime ??
+		(order.courierAt && now <= order.courierAt
+			? new Date(order.courierAt.getTime() + 1)
+			: now);
+	// Background delivery is at-least-once and an older buffered fix can arrive
+	// after a newer one. Ignoring it is success: the latest known point is already
+	// stored and retrying the old point would never improve it.
+	if (validDeviceTime && order.courierAt && recordedAt <= order.courierAt)
+		return { ok: true };
 	await ctx.db
 		.update(orderTable)
 		.set({
 			courierLat: input.lat,
 			courierLng: input.lng,
-			courierAt: now,
+			courierAccuracy: input.accuracy ?? null,
+			courierHeading: input.heading ?? null,
+			courierSpeed: input.speed ?? null,
+			courierAt: recordedAt,
 			updatedAt: now,
 		})
-		.where(eq(orderTable.id, order.id));
+		.where(
+			and(
+				eq(orderTable.id, order.id),
+				eq(orderTable.courierUserId, ctx.user.id),
+				eq(orderTable.status, "OUT_FOR_DELIVERY"),
+			),
+		);
 
 	return { ok: true };
 }

@@ -4,7 +4,7 @@ import {
 	merchantLocation as locationTable,
 	order as orderTable,
 } from "@pymeshub/db";
-import { addToCartInput } from "@pymeshub/shared";
+import { addToCartInput, startOfMarketDay } from "@pymeshub/shared";
 
 import { appRouter } from "../src/routers";
 import {
@@ -90,8 +90,7 @@ async function comparisonFixture() {
 		id: "biz_stats_comparison_foreign",
 	});
 
-	const todayStart = new Date();
-	todayStart.setUTCHours(0, 0, 0, 0);
+	const todayStart = startOfMarketDay(new Date());
 	const previousStart = new Date(todayStart.getTime() - 86_400_000);
 	const previousAt = new Date(previousStart.getTime() + 3_600_000);
 	const todayAt = new Date(todayStart.getTime() + 3_600_000);
@@ -255,7 +254,7 @@ describe("orders.stats todayRevenueByCurrency", () => {
 });
 
 describe("orders.stats todayComparisonByCurrency", () => {
-	test("compares completed revenue and orders by currency across UTC days", async () => {
+	test("compares completed revenue and orders across marketplace days", async () => {
 		const { test, businessId, primaryLocationId, manager } =
 			await comparisonFixture();
 
@@ -300,8 +299,7 @@ describe("orders.stats todayComparisonByCurrency", () => {
 			id: "usr_stats_comparison_zero_customer",
 		});
 		const manager = appRouter.createCaller(await authed(test, owner)) as Caller;
-		const todayStart = new Date();
-		todayStart.setUTCHours(0, 0, 0, 0);
+		const todayStart = startOfMarketDay(new Date());
 		const previousAt = new Date(todayStart.getTime() - 82_800_000);
 		const todayAt = new Date(todayStart.getTime() + 3_600_000);
 

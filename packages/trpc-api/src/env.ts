@@ -76,6 +76,11 @@ export type Env = {
 	SUPABASE_URL?: string;
 	SUPABASE_PUBLISHABLE_KEY?: string;
 	SUPABASE_JWKS_URL?: string;
+
+	/** Optional when Expo push security is disabled; otherwise a Worker secret. */
+	EXPO_ACCESS_TOKEN?: string;
+	/** Sentry ingestion DSN. Store as a Worker secret; absent disables the SDK. */
+	SENTRY_DSN?: string;
 };
 
 /** The origins a browser may call this API from. `*` is never returned. */

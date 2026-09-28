@@ -4,20 +4,43 @@
 		"appVersionSource": "remote"
 	},
 	"build": {
+		"base": {
+			"node": "24.14.1"
+		},
 		"development": {
+			"extends": "base",
 			"developmentClient": true,
 			"distribution": "internal"
 		},
 		"preview": {
+			"extends": "base",
 			"distribution": "internal",
 			"channel": "preview"
 		},
 		"production": {
+			"extends": "base",
 			"autoIncrement": true,
-			"channel": "production"
+			"channel": "production",
+			"distribution": "store",
+			"android": {
+				"buildType": "app-bundle"
+			}
+		},
+		"apk": {
+			"extends": "production",
+			"environment": "production",
+			"distribution": "internal",
+			"android": {
+				"buildType": "apk"
+			}
 		}
 	},
 	"submit": {
-		"production": {}
+		"production": {
+			"android": {
+				"track": "internal",
+				"releaseStatus": "draft"
+			}
+		}
 	}
 }

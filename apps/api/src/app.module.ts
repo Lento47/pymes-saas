@@ -1,4 +1,5 @@
 import { Module, OnApplicationBootstrap } from "@nestjs/common";
+import { SentryModule } from "@sentry/nestjs/setup";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerStorage } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -79,6 +80,7 @@ import { CallsModule } from "./calls/calls.module";
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env" }),
     ThrottlerModule.forRoot([
       { name: "default", ttl: 60_000, limit: 100 },   // IP no autenticada: 100/min

@@ -46,14 +46,30 @@ const supabasePublishableKey =
 process.env.EXPO_PUBLIC_SUPABASE_URL = supabaseUrl;
 process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY = supabasePublishableKey;
 
+// EAS injects this for linked projects. Keeping the explicit environment fallback
+// makes local release builds deterministic and gives push-token registration the
+// stable project identity Expo requires.
+const easProjectId = process.env.EAS_PROJECT_ID || undefined;
+const googleServicesFile =
+	process.env.GOOGLE_SERVICES_JSON?.trim() || undefined;
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN || "";
+process.env.EXPO_PUBLIC_SENTRY_DSN = sentryDsn;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
 	...config,
+	owner: "otnel",
 	name: "PymesHub",
 	slug: "pymeshub",
 	version: "0.1.0",
 	orientation: "portrait",
 	userInterfaceStyle: "automatic",
 	scheme: "pymeshub",
+	updates: {
+		url: "https://u.expo.dev/931267af-98b1-44c6-8871-734e79ae9046",
+	},
+	runtimeVersion: {
+		policy: "appVersion",
+	},
 	// The launcher icon, for the app as installed. Three files, because the platforms
 	// genuinely disagree about what an icon is:
 	//
@@ -85,7 +101,73 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	// same PymesHub mobile application.
 	// No `usesAppleSignIn` with them: `apps/api/src/auth.ts` registers no social provider,
 	// so the entitlement would declare a sign-in the app cannot start.
-	ios: { bundleIdentifier: "app.pymeshub.lat", supportsTablet: true },
+	ios: {
+		bundleIdentifier: "app.pymeshub.lat",
+		supportsTablet: true,
+		privacyManifests: {
+			NSPrivacyTracking: false,
+			NSPrivacyTrackingDomains: [],
+			NSPrivacyAccessedAPITypes: [
+				{
+					NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
+					NSPrivacyAccessedAPITypeReasons: ["CA92.1"],
+				},
+			],
+			NSPrivacyCollectedDataTypes: [
+				{
+					NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeUserID",
+					NSPrivacyCollectedDataTypeLinked: true,
+					NSPrivacyCollectedDataTypeTracking: false,
+					NSPrivacyCollectedDataTypePurposes: [
+						"NSPrivacyCollectedDataTypePurposeAppFunctionality",
+					],
+				},
+				{
+					NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeEmailAddress",
+					NSPrivacyCollectedDataTypeLinked: true,
+					NSPrivacyCollectedDataTypeTracking: false,
+					NSPrivacyCollectedDataTypePurposes: [
+						"NSPrivacyCollectedDataTypePurposeAppFunctionality",
+					],
+				},
+				{
+					NSPrivacyCollectedDataType:
+						"NSPrivacyCollectedDataTypePhysicalAddress",
+					NSPrivacyCollectedDataTypeLinked: true,
+					NSPrivacyCollectedDataTypeTracking: false,
+					NSPrivacyCollectedDataTypePurposes: [
+						"NSPrivacyCollectedDataTypePurposeAppFunctionality",
+					],
+				},
+				{
+					NSPrivacyCollectedDataType:
+						"NSPrivacyCollectedDataTypePreciseLocation",
+					NSPrivacyCollectedDataTypeLinked: true,
+					NSPrivacyCollectedDataTypeTracking: false,
+					NSPrivacyCollectedDataTypePurposes: [
+						"NSPrivacyCollectedDataTypePurposeAppFunctionality",
+					],
+				},
+				{
+					NSPrivacyCollectedDataType:
+						"NSPrivacyCollectedDataTypePhotosorVideos",
+					NSPrivacyCollectedDataTypeLinked: true,
+					NSPrivacyCollectedDataTypeTracking: false,
+					NSPrivacyCollectedDataTypePurposes: [
+						"NSPrivacyCollectedDataTypePurposeAppFunctionality",
+					],
+				},
+				{
+					NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeCrashData",
+					NSPrivacyCollectedDataTypeLinked: false,
+					NSPrivacyCollectedDataTypeTracking: false,
+					NSPrivacyCollectedDataTypePurposes: [
+						"NSPrivacyCollectedDataTypePurposeAppFunctionality",
+					],
+				},
+			],
+		},
+	},
 	// `android.edgeToEdgeEnabled` used to sit here and it cannot come back, for two reasons
 	// and the second is the one that would survive a type cast:
 	//
@@ -105,6 +187,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	// bars with the safe-area insets (`theme/index.ts`) rather than by opting out of the mode.
 	android: {
 		package: "app.pymeshub.lat",
+		...(googleServicesFile ? { googleServicesFile } : {}),
 		// The two-layer launcher icon. `backgroundColor` is the plate rather than a
 		// ninth image: a flat colour is what lets the launcher's own mask, parallax and
 		// themed-icon tint all work, and it is the one value here that has to agree with
@@ -117,8 +200,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	},
 	plugins: [
 		"expo-router",
+		[
+			"@sentry/react-native/expo",
+			{
+				organization: process.env.SENTRY_ORG,
+				project: process.env.SENTRY_PROJECT_MOBILE,
+				disableAutoUpload:
+					!process.env.SENTRY_ORG || !process.env.SENTRY_PROJECT_MOBILE,
+			},
+		],
 		"expo-localization",
-		"expo-secure-store",
+		["expo-secure-store", { faceIDPermission: false }],
 		// `expo-splash-screen`, for the launch screen. Autolinking brings in the native
 		// module, but not the *configuration*: without this entry the plugin never runs,
 		// and what ships instead is the prebuild template's own splash — a `#FFFFFF`
@@ -174,30 +266,40 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 		//    (5.1.1), and a template answers nothing. Spanish because that is the language
 		//    the app's own screens are in; localizing it per store region is the follow-up,
 		//    not something a single string can do.
-		// 2. `NSLocationAlwaysAndWhenInUseUsageDescription` and
-		//    `NSLocationAlwaysUsageDescription` were both declared while
-		//    `lib/location.ts` only ever calls `requestForegroundPermissionsAsync`. Asking
-		//    Apple for background location the app cannot use is a capability declared and
-		//    not needed, and the reviewer's next question is what it is for. They are two
-		//    options, not one — `withLocation.js:116-117` reads the first from
-		//    `locationAlwaysAndWhenInUsePermission` and the second from the legacy
-		//    `locationAlwaysPermission` — so removing one from the plist takes both.
+		// 2. Background location is enabled for the courier task only. The foreground
+		//    purpose string covers discovery; the Always string names the active-delivery
+		//    audience and stop conditions App Review expects. The legacy Always-only key
+		//    remains absent because modern iOS uses AlwaysAndWhenInUse.
 		// 3. `NSMotionUsageDescription` came along the same way. Nothing here reads motion
 		//    activity — the "near me" sort is one `getCurrentPositionAsync` with
 		//    `Accuracy.Balanced` — so the declaration goes.
 		//
 		// `false` removes a key rather than emptying it; the introspected plist is what says
-		// so, and it is why this is set here instead of being asserted.
+		// so, and it is why the unused legacy and motion keys are set here explicitly.
 		[
 			"expo-location",
 			{
 				locationWhenInUsePermission:
 					"PymesHub usa tu ubicación para mostrar negocios cercanos y compartir tu posición durante una entrega activa.",
-				locationAlwaysAndWhenInUsePermission: false,
+				locationAlwaysAndWhenInUsePermission:
+					"Durante una entrega activa, PymesHub comparte tu ubicación con la tienda y el cliente aunque la pantalla esté bloqueada. El seguimiento se detiene al terminar o cancelar la entrega.",
 				locationAlwaysPermission: false,
-				isIosBackgroundLocationEnabled: false,
-				isAndroidBackgroundLocationEnabled: false,
+				isIosBackgroundLocationEnabled: true,
+				isAndroidBackgroundLocationEnabled: true,
+				isAndroidForegroundServiceEnabled: true,
 				motionUsagePermission: false,
+			},
+		],
+		[
+			"expo-notifications",
+			{
+				icon: "./assets/monochrome-icon.png",
+				color: "#F59E0B",
+				defaultChannel: "orders",
+				mode:
+					process.env.EAS_BUILD_PROFILE === "production"
+						? "production"
+						: "development",
 			},
 		],
 		// `expo-image-picker`, for `components/photo-picker`. Same reason as
@@ -258,5 +360,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	// so the fallback is a map drawn from the current value rather than a map that is
 	// silently the previous one. The Cloudflare-hosted style is the shared default; a
 	// specific build can replace it with `EXPO_PUBLIC_MAP_STYLE_URL`.
-	extra: { apiUrl, mapStyleUrl, supabaseUrl, supabasePublishableKey },
+	extra: {
+		apiUrl,
+		mapStyleUrl,
+		supabaseUrl,
+		supabasePublishableKey,
+		sentryDsn,
+		...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
+	},
 });

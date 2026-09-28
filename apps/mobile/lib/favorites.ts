@@ -1,12 +1,9 @@
 import type { BusinessCard, ProductCard } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { Alert } from "react-native";
 
-import { messageKeyFor, toApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
 import { warning } from "@/lib/haptics";
-import { useT } from "@/lib/i18n";
 import { useTRPC, useTRPCClient } from "@/lib/trpc/context";
 
 /**
@@ -18,7 +15,11 @@ import { useTRPC, useTRPCClient } from "@/lib/trpc/context";
  * commits immediately and the request catches up. The reciprocity is the speed — and the
  * rule attached to it is that speed must never be used to hide a refusal, which is why a
  * failure rolls the heart back and *says so* in the API's own sentence rather than quietly
- * emptying itself.
+ * emptying itself. The saying is `components/rollback-surface`'s: a heart is a 44-point
+ * square on a card with no room for a sentence, so the refusal is floated over the screen in
+ * the app's own notice — the sentence and its announcement in the palette and the motion of
+ * everything else — rather than handed to an `Alert`, which is the OS's surface and not
+ * this app's.
  *
  * ## Which card is the truth
  *
@@ -83,7 +84,6 @@ export function useFavorites() {
 	const client = useTRPCClient();
 	const cache = useQueryClient();
 	const { status } = useSession();
-	const { t } = useT();
 
 	const signedIn = status === "signed-in";
 	const key = trpc.favorites.list.queryKey();
@@ -119,15 +119,14 @@ export function useFavorites() {
 			cache.setQueryData<Favorites>(key, (current) => toggled(current, target));
 			return { previous };
 		},
-		onError: (error, _target, context) => {
+		onError: (_error, _target, context) => {
 			cache.setQueryData(key, context?.previous);
 			// The haptic and the sentence are the two halves of "we took it back": one for a
-			// phone in a pocket, one for a phone in a hand. Neither is optional.
+			// phone in a pocket, one for a phone in a hand. Neither is optional. The buzz is
+			// fired here, at the moment of the failure, rather than by the surface that draws
+			// the sentence — `./rollback-surface`'s rule, and the reason nothing on a render
+			// path buzzes.
 			warning();
-			Alert.alert(
-				t("state.error.title"),
-				t(messageKeyFor(toApiFailure(error))),
-			);
 		},
 		onSettled: () => {
 			// The server's answer replaces the guess in both directions, including the case
@@ -153,6 +152,15 @@ export function useFavorites() {
 		toggle: toggle.mutate,
 		signedIn,
 		isPending: toggle.isPending,
+		/**
+		 * The refused write, for `./favorite-button` to float on `./rollback-surface`.
+		 *
+		 * Handed back rather than reported here because this is a hook in `lib/`, and `lib/`
+		 * imports no primitive — the component that draws the heart is the one that knows a
+		 * surface exists. It is the mutation's own error, so a second tap clears it as the
+		 * next write starts, which is what keeps one refusal from being announced twice.
+		 */
+		error: toggle.error,
 		list,
 	};
 }

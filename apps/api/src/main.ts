@@ -1,4 +1,5 @@
-import "./common/telemetry/tracing"; // ← PRIMERO
+import "./instrument";
+import "./common/telemetry/tracing";
 import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";

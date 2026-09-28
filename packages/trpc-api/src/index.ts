@@ -1,13 +1,17 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { createDb } from "@pymeshub/db";
+import { scrubTelemetryPayload } from "@pymeshub/shared";
+import { withSentry } from "@sentry/cloudflare";
 import { createApp } from "./app";
 import type { Env } from "./env";
 import type { OrderEventEnvelope } from "./events";
 import { createLogger } from "./logging";
 import { publishPending } from "./outbox";
+import { deliverPendingPushes, processPushReceipts } from "./push";
 import { handleQueue } from "./queue";
 import { sweepExpiredOffers } from "./services/delivery-dispatch";
+import { sweepAccountDeletions } from "./services/account-deletion";
 import { sweepLapsed } from "./services/subscription";
 
 /**
@@ -28,7 +32,7 @@ export { OrderRoom } from "./durable/order-room";
 
 const app = createApp();
 
-export default {
+const handler = {
 	fetch: app.fetch,
 	queue: (
 		batch: MessageBatch<OrderEventEnvelope>,
@@ -85,6 +89,29 @@ export default {
 		}
 
 		try {
+			await deliverPendingPushes(env, logger);
+			await processPushReceipts(env, logger);
+		} catch (error) {
+			logger.error("push sweep failed", {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		try {
+			const deletion = await sweepAccountDeletions(
+				createDb(env.DB),
+				new Date(),
+			);
+			if (deletion.completed || deletion.blocked || deletion.failed) {
+				logger.warn("account deletion sweep completed", deletion);
+			}
+		} catch (error) {
+			logger.error("account deletion sweep failed", {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		try {
 			await sweepExpiredOffers(createDb(env.DB));
 		} catch (error) {
 			logger.error("delivery offer sweep failed", {
@@ -93,3 +120,25 @@ export default {
 		}
 	},
 } satisfies ExportedHandler<Env, OrderEventEnvelope>;
+
+const monitoredHandler: ExportedHandler<Env, OrderEventEnvelope> = withSentry<
+	Env,
+	OrderEventEnvelope,
+	unknown,
+	typeof handler
+>(
+	(env) =>
+		env.SENTRY_DSN
+			? {
+					dsn: env.SENTRY_DSN,
+					environment: env.ENVIRONMENT,
+					release: `pymeshub-worker@${env.API_VERSION}`,
+					tracesSampleRate: env.ENVIRONMENT === "production" ? 0.05 : 0,
+					beforeSend: (event) => scrubTelemetryPayload(event),
+					beforeBreadcrumb: (breadcrumb) => scrubTelemetryPayload(breadcrumb),
+				}
+			: undefined,
+	handler,
+);
+
+export default monitoredHandler;

@@ -1,0 +1,39 @@
+{
+	"formatVersion": 1,
+	"pilotId": "",
+	"environment": "staging",
+	"startedAt": "",
+	"finishedAt": "",
+	"builds": [],
+	"devices": [],
+	"runs": [],
+	"defects": [],
+	"metrics": {
+		"sessions": {
+			"total": 0,
+			"crashed": 0
+		},
+		"api": {
+			"requests": 0,
+			"serverErrors": 0
+		},
+		"pushes": [],
+		"locationSamples": [],
+		"backgroundRuns": [],
+		"trackingStops": []
+	},
+	"accountDeletion": {
+		"initiated": false,
+		"statusVisible": false,
+		"cancelled": false,
+		"reRequested": false,
+		"executed": false,
+		"authenticationDeleted": false,
+		"profileDeleted": false,
+		"addressesDeleted": false,
+		"deviceTokensDeleted": false,
+		"locationDeleted": false,
+		"retainedRecordsAnonymized": false
+	},
+	"artifacts": []
+}

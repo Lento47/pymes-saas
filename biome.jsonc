@@ -33,7 +33,8 @@
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
+		"indentStyle": "tab",
+		"lineEnding": "lf"
 	},
 	"linter": {
 		"enabled": true,
@@ -68,6 +69,12 @@
 		{
 			// Replaces eslint-config-next / eslint-plugin-react.
 			"includes": ["apps/web/**"],
+			// The legacy web app is still maintained by its own Prettier command and
+			// two-space style. Biome owns its lint rules, but must not rewrite that
+			// package to the monorepo's tab-based format.
+			"formatter": {
+				"enabled": false
+			},
 			"linter": {
 				"domains": {
 					"next": "recommended",

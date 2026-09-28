@@ -56,6 +56,18 @@ export const account = {
 	"account.help.help": "Abre las preguntas frecuentes",
 	"account.safety": "Seguridad",
 	"account.safety.help": "Abre los consejos y cómo reportar un problema",
+	"account.deletion.title": "Eliminar cuenta",
+	"account.deletion.heading": "Tú decides cuándo borrar tus datos",
+	"account.deletion.body":
+		"La solicitud espera siete días. Después eliminamos tus accesos, perfil, direcciones, avisos y ubicación; los pedidos que debemos conservar quedan anónimos.",
+	"account.deletion.request": "Solicitar eliminación",
+	"account.deletion.confirm": "¿Solicitar la eliminación de tu cuenta?",
+	"account.deletion.confirmBody":
+		"Puedes cancelar durante los próximos siete días. Si eres la única persona propietaria de un negocio, primero debes transferirlo.",
+	"account.deletion.scheduled": "Eliminación programada",
+	"account.deletion.scheduledBody":
+		"Tu cuenta se eliminará a partir del {date}. Puedes cancelar la solicitud hasta entonces.",
+	"account.deletion.cancel": "Cancelar solicitud",
 
 	/*
 	 * The profile's completeness, as a signal rather than a scold.

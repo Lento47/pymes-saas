@@ -741,6 +741,9 @@ export function orderTrackingOf(
 						// and goes quiet in the background.
 						lat: order.courierLat,
 						lng: order.courierLng,
+						accuracy: order.courierAccuracy,
+						heading: order.courierHeading,
+						speed: order.courierSpeed,
 						updatedAt: order.courierAt,
 					}
 				: null,

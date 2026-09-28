@@ -7,7 +7,7 @@ import {
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "api/app-router";
 import { type ReactNode, useEffect, useState } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import superjson from "superjson";
 import { accessToken, hasKeychain } from "@/lib/auth/client";
 import { useSession } from "@/lib/auth/session";
@@ -134,6 +134,12 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 							// it, so a failure reported from this phone can be found in
 							// `wrangler tail` without pasting a session token anywhere.
 							"x-request-id": newRequestId(),
+							"x-client":
+								Platform.OS === "ios"
+									? "ios"
+									: Platform.OS === "android"
+										? "android"
+										: "web",
 							...(token ? { authorization: `Bearer ${token}` } : {}),
 						};
 					},

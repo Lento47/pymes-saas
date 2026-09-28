@@ -427,7 +427,6 @@ export default function AccountScreen() {
 		<>
 			<Screen scroll contentStyle={styles.gap}>
 				<BackButton to="/" />
-
 				{/* Three profiles, one screen. The switch is at the top because it decides what
 				    everything under it is about, and it is a `./segmented` rather than a row
 				    because the set is closed and choosing one changes the screen you are already
@@ -484,10 +483,16 @@ export default function AccountScreen() {
 						/>
 					</AnimateIn>
 				) : null}
-
 				{/* The screen's one loud thing. The card itself opens `/profile` —
-				    a separate Editar slab under it was the same destination twice. */}
-				{me.isError ? null : (
+				    a separate Editar slab under it was the same destination twice.
+				    When `users.me` failed there is no card to draw — not one built from
+				    `undefined` — so the failure takes the card's own slot, where the
+				    reader is already looking, rather than the foot of the screen. */}
+				{me.isError ? (
+					<AnimateIn index={1}>
+						<ErrorState error={me.error} onRetry={() => me.refetch()} />
+					</AnimateIn>
+				) : (
 					<AnimateIn index={1}>
 						<Card
 							onPress={() => router.push("/profile")}
@@ -536,12 +541,14 @@ export default function AccountScreen() {
 							</View>
 						</Card>
 					</AnimateIn>
-				)}
-
+				)}{" "}
 				{/* Only while something is missing, and gone the moment nothing is.
-			    Lists the missing rows rather than every step, so the card shrinks
-			    as it is used. Each row routes to its fix. */}
-				{missing.length > 0 ? (
+				    Lists the missing rows rather than every step, so the card shrinks
+				    as it is used. Each row routes to its fix. Never while `users.me` is
+				    in error: `missing` is computed from a profile nobody read, so every
+				    step would be drawn untaken — a complaint about work the reader may
+				    have done already. */}
+				{!me.isError && missing.length > 0 ? (
 					<AnimateIn index={2}>
 						<Card style={styles.setupCard}>
 							<Text variant="heading" bold>
@@ -576,34 +583,38 @@ export default function AccountScreen() {
 						</Card>
 					</AnimateIn>
 				) : null}
-
-				<AnimateIn index={3}>
-					<ScreenSection title={t("account.section.account")}>
-						<Card>
-							{accountRows.map((row, index) => (
-								<ListRow
-									key={row.key}
-									title={row.title}
-									state={row.state}
-									chevron
-									leading={
-										<Ionicons
-											name={row.icon}
-											size={icon.control}
-											color={colors.mutedForeground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
-									}
-									divider={index < accountRows.length - 1}
-									accessibilityHint={row.hint}
-									onPress={() => router.push(row.href)}
-								/>
-							))}
-						</Card>
-					</ScreenSection>
-				</AnimateIn>
-
+				{/* The doors themselves are `users.me`'s: which set they are is read from the
+				    memberships, and an errored read has none — so the group waits with the
+				    card above it rather than falling back to the customer doors, which is
+				    the wrong set for the owner a failed read cannot identify. */}
+				{me.isError ? null : (
+					<AnimateIn index={3}>
+						<ScreenSection title={t("account.section.account")}>
+							<Card>
+								{accountRows.map((row, index) => (
+									<ListRow
+										key={row.key}
+										title={row.title}
+										state={row.state}
+										chevron
+										leading={
+											<Ionicons
+												name={row.icon}
+												size={icon.control}
+												color={colors.mutedForeground}
+												accessibilityElementsHidden
+												importantForAccessibility="no"
+											/>
+										}
+										divider={index < accountRows.length - 1}
+										accessibilityHint={row.hint}
+										onPress={() => router.push(row.href)}
+									/>
+								))}
+							</Card>
+						</ScreenSection>
+					</AnimateIn>
+				)}
 				{/* Two doors that existed as routes with no way in. `./list-row` draws
 			    both, and each carries its `.help` key as the hint rather than a
 			    restatement of its title — "Abre las preguntas frecuentes" is the
@@ -646,14 +657,7 @@ export default function AccountScreen() {
 						</Card>
 					</ScreenSection>
 				</AnimateIn>
-
-				{me.isError ? (
-					<AnimateIn index={5}>
-						<ErrorState error={me.error} onRetry={() => me.refetch()} />
-					</AnimateIn>
-				) : null}
-
-				<AnimateIn index={6}>
+				<AnimateIn index={5}>
 					<Button
 						label={t("action.signOut")}
 						variant="secondary"
