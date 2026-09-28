@@ -164,12 +164,12 @@ export default function BusinessLayout() {
 						tabBarStyle: [
 							{
 								position: "absolute",
-								// Centred by construction, not by `alignSelf`: the
-								// navigator's bar container does not honour it, so the
-								// capsule sits at half width minus half itself — exact
-								// on every viewport, since the width is fixed.
-								left: "50%",
-								marginLeft: -CAPSULE_WIDTH / 2,
+								// Centred by auto margins, not by offsets: with a fixed
+								// width and both edges pinned, Yoga splits the free
+								// space equally on native and web alike.
+								left: 0,
+								right: 0,
+								marginHorizontal: "auto",
 								width: CAPSULE_WIDTH,
 								height: BUSINESS_TAB_BAR_HEIGHT,
 								bottom: insets.bottom + BUSINESS_TAB_BAR_LIFT,
