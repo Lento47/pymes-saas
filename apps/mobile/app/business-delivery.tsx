@@ -51,7 +51,7 @@ import { MIN_TOUCH_TARGET, radius, space } from "@/theme";
  * the two switches, the minimum order, and the fee, radius and prep time -- and
  * it stays that way: `app/(business)/shop-settings.tsx` owns the identity and
  * deliberately leaves the numbers here rather than splitting one write across
- * two screens, and `app/(business)/more.tsx` reaches this screen again from
+ * two screens, and `app/(business)/menu.tsx` reaches this screen again from
  * the board.
  */
 export default function BusinessDelivery() {
@@ -62,7 +62,7 @@ export default function BusinessDelivery() {
 
 	// The parameter wins: onboarding step three knows which shop it is opening,
 	// and `app/new-business.tsx` hands it the one it just created. Without one —
-	// `app/(business)/more.tsx` used to push this screen bare, and a deep link
+	// `app/(business)/menu.tsx` used to push this screen bare, and a deep link
 	// still can — the shop is the reader's own non-COURIER membership, the same
 	// rule that screen uses to pick it. The bounce this replaces kicked a
 	// merchant straight back to the Orders board from the row they had just

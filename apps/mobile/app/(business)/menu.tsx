@@ -3,9 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
-import { Button } from "@/components/button";
 import { Card } from "@/components/card";
-import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { ListRow } from "@/components/list-row";
@@ -14,24 +12,22 @@ import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
 import { Switch } from "@/components/switch";
 import { Text } from "@/components/text";
-import { useSession } from "@/lib/auth/session";
 import {
 	initDevicePrefs,
 	isBoardSoundEnabled,
 	setBoardSoundEnabled,
 } from "@/lib/device-prefs";
-import { warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import { MIN_TOUCH_TARGET, space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
 /**
- * The More tab: the reads that are neither a work tab nor a screen of their own.
+ * The menu: everything that is neither a work tab nor the account tab.
  *
- * Four sections of rows over four reads — the shop's settings, its payouts, its team and
- * its newest reviews — plus §57's board-sound switch, which is a device answer and not a
- * read at all. Every word on the screen is the dictionary's. The first shop is
+ * Analytics first, then four sections of rows over six reads — the shop's
+ * settings, its payouts, its team and its newest reviews — plus §57's
+ * board-sound switch, which is a device answer and not a read at all. Every word on the screen is the dictionary's. The first shop is
  * the non-courier membership, the rule every owner screen reads; a courier entry has no
  * settings to configure, and `myBusinesses` carries it beside the owner's own shops.
  *
@@ -47,14 +43,11 @@ import { MIN_TOUCH_TARGET, space, TEXT_STACK_GAP, useTheme } from "@/theme";
  * written words is drawn as the dictionary's absence (`biz.more.noWrittenReview`) rather
  * than as an empty row — a rating the customer left is still a fact the owner can read.
  */
-export default function MoreScreen() {
+export default function MenuScreen() {
 	const trpc = useTRPC();
 	const { colors } = useTheme();
 	const { t, tp } = useT();
-	const { signOut } = useSession();
 	const scope = useMerchantScope();
-	const [signingOut, setSigningOut] = useState(false);
-	const [signOutOpen, setSignOutOpen] = useState(false);
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
 	const shopList = (shops.data ?? []).filter((one) => one.role !== "COURIER");
 	const shop =
@@ -124,23 +117,9 @@ export default function MoreScreen() {
 		void initDevicePrefs().then(() => setSoundOn(isBoardSoundEnabled()));
 	}, []);
 
-	/**
-	 * Signing out asks once, in `./confirm-sheet`, and the confirm carries the warning haptic.
-	 * The session lives in the device keychain, so this changes the *device* rather than a
-	 * screen — both buttons say what they do, and the button that opens the question is a quiet
-	 * one: the destructive weight belongs on the answer, not on the row that asks.
-	 * Same recipe as `app/account.tsx`, because the More tab is the business tree's own way out
-	 * and a shop on Home/Orders/Menu/Analytics must not have to leave the tab to close the session.
-	 */
-	const confirmSignOut = () => {
-		warning();
-		setSigningOut(true);
-		void signOut().finally(() => setSigningOut(false));
-	};
-
 	if (failed) {
 		return (
-			<Screen title={t("biz.more.title")}>
+			<Screen title={t("biz.nav.menu")}>
 				<ErrorState
 					error={failed}
 					onRetry={() => {
@@ -157,7 +136,7 @@ export default function MoreScreen() {
 
 	if (waiting) {
 		return (
-			<Screen title={t("biz.more.title")} scroll bottomInset>
+			<Screen title={t("biz.nav.menu")} scroll bottomInset>
 				<MoreSkeleton loadingLabel={t("biz.more.loading")} />
 			</Screen>
 		);
@@ -165,7 +144,7 @@ export default function MoreScreen() {
 
 	if (!shop) {
 		return (
-			<Screen title={t("biz.more.title")}>
+			<Screen title={t("biz.nav.menu")}>
 				<EmptyState
 					icon="storefront-outline"
 					title={t("biz.more.empty.title")}
@@ -178,271 +157,233 @@ export default function MoreScreen() {
 	}
 
 	return (
-		<>
-			<Screen
-				title={t("biz.more.title")}
-				subtitle={shop?.businessName}
-				scroll
-				bottomInset
-			>
-				{/* Each section is the `ScreenSection` shape the console's other screens use:
-			    `space.xxl` above the section and `space.md` under its heading, so a card
-			    ends with air before the next heading instead of butting against it. */}
-				<ScreenSection title={t("biz.more.business")}>
-					<Card>
-						{/* The shop's identity first, and the delivery numbers second: the
-						    name and the two pictures are what a customer sees before they
-						    see a fee. The identity row opens `./merchant-settings`, the one
-						    place either is set; the delivery row carries the shop it is
-						    editing, because `app/business-delivery.tsx` reads that
-						    parameter and a push without one used to bounce straight back
-						    here. */}
-						<ListRow
-							title={t("biz.settings.profile")}
-							subtitle={t("biz.more.shopSubtitle")}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/merchant-settings",
-									params: { businessId },
-								})
-							}
-						/>
-						{/* Hours beside the identity, and not beside delivery: the week is
-					    something a merchant sets once and corrects, the way the shop's name
-					    is — the three delivery numbers on the row below are the ones that
-					    move with a busy night. `architecture.md` lists Business hours under
-					    More for the same reason. */}
-						<ListRow
-							title={t("biz.settings.hours")}
-							subtitle={t("biz.more.hoursSubtitle")}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/shop-hours",
-									params: { businessId },
-								})
-							}
-						/>
-						<ListRow
-							title={t("biz.more.settingsDelivery")}
-							subtitle={
-								settings.data
-									? t(`biz.status.${settings.data.status}`)
-									: t("biz.more.settingsFallback")
-							}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/business-delivery",
-									params: { businessId },
-								})
-							}
-						/>
-						<ListRow
-							title={t("biz.locations.title")}
-							subtitle={
-								selectedLocation
-									? `${t("biz.locations.current")} · ${selectedLocation.name}`
-									: t("biz.locations.subtitle")
-							}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/locations",
-									params: { businessId },
-								})
-							}
-						/>
-						{/* The codes this shop opened, beside the places it sells from:
-						    both are "where and how this business takes an order", and
-						    `architecture.md` files promotions under More rather than under
-						    the catalogue because a discount is a pricing decision, not an
-						    item on the menu. */}
-						<ListRow
-							title={t("biz.promotions.title")}
-							subtitle={t("biz.promotions.subtitle")}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/promotions",
-									params: { businessId },
-								})
-							}
-						/>
-						<ListRow
-							title={t("biz.more.auditHistory")}
-							subtitle={t("biz.more.subtitle")}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/audit-history",
-									params: { businessId },
-								})
-							}
-						/>
-						{/* Last in the card, so it drops the trailing hairline the row's own
-					    default draws — the rhythm every card of `./list-row`s here keeps. */}
-						<ListRow
-							title={t("biz.more.catalog")}
-							subtitle={t("biz.more.catalogSubtitle")}
-							chevron
-							divider={false}
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/products",
-									params: { businessId },
-								})
-							}
-						/>
-					</Card>
-				</ScreenSection>
+		<Screen
+			title={t("biz.nav.menu")}
+			subtitle={shop?.businessName}
+			scroll
+			bottomInset
+		>
+			{/* Each section is the `ScreenSection` shape the console's other screens use:
+		    `space.xxl` above the section and `space.md` under its heading, so a card
+		    ends with air before the next heading instead of butting against it. */}
+			<ScreenSection title={t("biz.more.business")}>
+				<Card>
+					{/* The numbers first: analytics lives next to the shop they
+					    describe, one tap from the board, rather than as a tab of
+					    its own — a fourth daily surface does not earn bar space
+					    the three work tabs already spend. */}
+					<ListRow
+						title={t("biz.analytics.title")}
+						chevron
+						onPress={() => router.push("/(business)/analytics")}
+					/>
+					{/* The shop's identity first, and the delivery numbers second: the
+					    name and the two pictures are what a customer sees before they
+					    see a fee. The identity row opens `./merchant-settings`, the one
+					    place either is set; the delivery row carries the shop it is
+					    editing, because `app/business-delivery.tsx` reads that
+					    parameter and a push without one used to bounce straight back
+					    here. */}
+					<ListRow
+						title={t("biz.settings.profile")}
+						subtitle={t("biz.more.shopSubtitle")}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/merchant-settings",
+								params: { businessId },
+							})
+						}
+					/>
+					{/* Hours beside the identity, and not beside delivery: the week is
+				    something a merchant sets once and corrects, the way the shop's name
+				    is — the three delivery numbers on the row below are the ones that
+				    move with a busy night. `architecture.md` lists Business hours under
+				    More for the same reason. */}
+					<ListRow
+						title={t("biz.settings.hours")}
+						subtitle={t("biz.more.hoursSubtitle")}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/shop-hours",
+								params: { businessId },
+							})
+						}
+					/>
+					<ListRow
+						title={t("biz.more.settingsDelivery")}
+						subtitle={
+							settings.data
+								? t(`biz.status.${settings.data.status}`)
+								: t("biz.more.settingsFallback")
+						}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/business-delivery",
+								params: { businessId },
+							})
+						}
+					/>
+					<ListRow
+						title={t("biz.locations.title")}
+						subtitle={
+							selectedLocation
+								? `${t("biz.locations.current")} · ${selectedLocation.name}`
+								: t("biz.locations.subtitle")
+						}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/locations",
+								params: { businessId },
+							})
+						}
+					/>
+					{/* The codes this shop opened, beside the places it sells from:
+					    both are "where and how this business takes an order", and
+					    `architecture.md` files promotions under More rather than under
+					    the catalogue because a discount is a pricing decision, not an
+					    item on the menu. */}
+					<ListRow
+						title={t("biz.promotions.title")}
+						subtitle={t("biz.promotions.subtitle")}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/promotions",
+								params: { businessId },
+							})
+						}
+					/>
+					<ListRow
+						title={t("biz.more.auditHistory")}
+						subtitle={t("biz.more.subtitle")}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/audit-history",
+								params: { businessId },
+							})
+						}
+					/>
+					{/* Last in the card, so it drops the trailing hairline the row's own
+				    default draws — the rhythm every card of `./list-row`s here keeps. */}
+					<ListRow
+						title={t("biz.more.catalog")}
+						subtitle={t("biz.more.catalogSubtitle")}
+						chevron
+						divider={false}
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/products",
+								params: { businessId },
+							})
+						}
+					/>
+				</Card>
+			</ScreenSection>
 
-				<ScreenSection title={t("biz.more.moneyPeople")}>
-					<Card>
-						<ListRow
-							title={t("biz.more.subscription")}
-							subtitle={
-								subscription.data
-									? `${t(`biz.subscription.plan.${subscription.data.plan}`)} · ${t(`biz.subscription.status.${subscription.data.status}`)}`
-									: t("biz.more.subscriptionEmpty")
-							}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/payouts",
-									params: { businessId },
-								})
-							}
-						/>
-						<ListRow
-							title={t("biz.more.team")}
-							subtitle={tp("biz.more.teamSubtitle", staff.data?.length ?? 0)}
-							divider={false}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/team",
-									params: { businessId },
-								})
-							}
-						/>
-					</Card>
-				</ScreenSection>
+			<ScreenSection title={t("biz.more.moneyPeople")}>
+				<Card>
+					<ListRow
+						title={t("biz.more.subscription")}
+						subtitle={
+							subscription.data
+								? `${t(`biz.subscription.plan.${subscription.data.plan}`)} · ${t(`biz.subscription.status.${subscription.data.status}`)}`
+								: t("biz.more.subscriptionEmpty")
+						}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/payouts",
+								params: { businessId },
+							})
+						}
+					/>
+					<ListRow
+						title={t("biz.more.team")}
+						subtitle={tp("biz.more.teamSubtitle", staff.data?.length ?? 0)}
+						divider={false}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/team",
+								params: { businessId },
+							})
+						}
+					/>
+				</Card>
+			</ScreenSection>
 
-				<ScreenSection title={t("biz.more.feedback")}>
-					<Card>
-						<ListRow
-							title={t("biz.more.viewReviews")}
-							subtitle={t("biz.reviews.title")}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/reviews",
-									params: { businessId },
-								})
-							}
-						/>
-						{reviews.data?.items.length ? (
-							reviews.data.items.slice(0, 3).map((review, index) => (
-								<View
-									key={review.id}
-									style={[
-										styles.review,
-										index > 0 && {
-											borderTopWidth: StyleSheet.hairlineWidth,
-											borderTopColor: colors.border,
-										},
-									]}
-								>
-									<Text bold>
-										{t("biz.reviews.breakdown", {
-											count: review.rating,
-											stars: 5,
-										})}
-										{review.comment ? null : (
-											<Text tone="muted">{` · ${t("biz.more.noWrittenReview")}`}</Text>
-										)}
+			<ScreenSection title={t("biz.more.feedback")}>
+				<Card>
+					<ListRow
+						title={t("biz.more.viewReviews")}
+						subtitle={t("biz.reviews.title")}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/reviews",
+								params: { businessId },
+							})
+						}
+					/>
+					{reviews.data?.items.length ? (
+						reviews.data.items.slice(0, 3).map((review, index) => (
+							<View
+								key={review.id}
+								style={[
+									styles.review,
+									index > 0 && {
+										borderTopWidth: StyleSheet.hairlineWidth,
+										borderTopColor: colors.border,
+									},
+								]}
+							>
+								<Text bold>
+									{t("biz.reviews.breakdown", {
+										count: review.rating,
+										stars: 5,
+									})}
+									{review.comment ? null : (
+										<Text tone="muted">{` · ${t("biz.more.noWrittenReview")}`}</Text>
+									)}
+								</Text>
+								{review.comment ? (
+									<Text tone="muted" numberOfLines={2}>
+										{review.comment}
 									</Text>
-									{review.comment ? (
-										<Text tone="muted" numberOfLines={2}>
-											{review.comment}
-										</Text>
-									) : null}
-								</View>
-							))
-						) : (
-							<Text tone="muted">{t("biz.more.noReviews")}</Text>
-						)}
-					</Card>
-				</ScreenSection>
+								) : null}
+							</View>
+						))
+					) : (
+						<Text tone="muted">{t("biz.more.noReviews")}</Text>
+					)}
+				</Card>
+			</ScreenSection>
 
-				{/* §57's one configurable sound. Drawn as `./switch` beside the sentence
-				    that names it — the pair `app/business-delivery.tsx` draws for its two
-				    capability switches — and not as a `./list-row` with a trailing control:
-				    a list row is a door, and this one goes nowhere. `./switch` carries the
-				    same string as its accessibility name, so the words drawn here and the
-				    sentence a reader hears are one fact. */}
-				<ScreenSection title={t("biz.settings.notifications")}>
-					<View style={styles.switchRow}>
-						<Switch
-							checked={soundOn}
-							onChange={(next) => {
-								setSoundOn(next);
-								void setBoardSoundEnabled(next);
-							}}
-							label={t("biz.settings.notifications.sound")}
-						/>
-						<Text variant="label">{t("biz.settings.notifications.sound")}</Text>
-					</View>
-				</ScreenSection>
-
-				<ScreenSection title={t("biz.more.account")}>
-					<Card>
-						<ListRow
-							title={t("biz.more.profile")}
-							subtitle={t("biz.more.profileSubtitle")}
-							chevron
-							onPress={() => router.push("/profile")}
-						/>
-						<ListRow
-							title={t("biz.more.settings")}
-							subtitle={t("biz.more.settingsSubtitle")}
-							chevron
-							onPress={() => router.push("/settings")}
-						/>
-						<ListRow
-							title={t("biz.more.support")}
-							subtitle={t("biz.more.supportSubtitle")}
-							divider={false}
-							chevron
-							onPress={() => router.push("/help")}
-						/>
-					</Card>
-				</ScreenSection>
-
-				{/* Quiet control, destructive weight on the confirm answer — `./confirm-sheet`'s
-				    rule. Sibling of the scroller, not inside it: `./sheet` has no portal, so
-				    inside the `Screen` it would scroll away with the content. */}
-				<Button
-					label={t("biz.more.signOut")}
-					variant="secondary"
-					fullWidth
-					style={styles.signOut}
-					loading={signingOut}
-					disabled={signingOut}
-					onPress={() => setSignOutOpen(true)}
-				/>
-			</Screen>
-			<ConfirmSheet
-				open={signOutOpen}
-				onClose={() => setSignOutOpen(false)}
-				title={t("biz.more.signOutConfirm")}
-				body={t("biz.more.signOutBody")}
-				confirmLabel={t("biz.more.signOut")}
-				onConfirm={confirmSignOut}
-			/>
-		</>
+			{/* §57's one configurable sound. Drawn as `./switch` beside the sentence
+			    that names it — the pair `app/business-delivery.tsx` draws for its two
+			    capability switches — and not as a `./list-row` with a trailing control:
+			    a list row is a door, and this one goes nowhere. `./switch` carries the
+			    same string as its accessibility name, so the words drawn here and the
+			    sentence a reader hears are one fact. */}
+			<ScreenSection title={t("biz.settings.notifications")}>
+				<View style={styles.switchRow}>
+					<Switch
+						checked={soundOn}
+						onChange={(next) => {
+							setSoundOn(next);
+							void setBoardSoundEnabled(next);
+						}}
+						label={t("biz.settings.notifications.sound")}
+					/>
+					<Text variant="label">{t("biz.settings.notifications.sound")}</Text>
+				</View>
+			</ScreenSection>
+		</Screen>
 	);
 }
 
@@ -457,8 +398,7 @@ type MoreSkeletonRowKey =
 	| "catalog"
 	| "subscription"
 	| "team"
-	| "reviews"
-	| "profile";
+	| "reviews";
 type MoreSkeletonReviewKey = "first" | "second" | "third";
 type MoreSkeletonSwitchKey = "sound";
 
@@ -470,7 +410,6 @@ type MoreSkeletonShape = {
 		reviews: readonly MoreSkeletonReviewKey[];
 	};
 	notifications: { switchTarget: MoreSkeletonSwitchKey };
-	account: { rows: readonly MoreSkeletonRowKey[] };
 };
 
 /** The wait's parts, named so every key identifies content rather than array position. */
@@ -492,16 +431,15 @@ const MORE_SKELETON_SHAPE = {
 		reviews: ["first", "second", "third"],
 	},
 	notifications: { switchTarget: "sound" },
-	account: { rows: ["profile"] },
 } as const satisfies MoreSkeletonShape;
 
 /**
- * The wait, at the loaded screen's own rhythm: five sections, at the two spacings
+ * The wait, at the loaded screen's own rhythm: four sections, at the two spacings
  * `ScreenSection` pays the loaded screen — `space.xxl` above each section and
  * `space.md` under its heading line — so grey sits exactly where the content it stands
  * for sits and the swap moves nothing. Business holds seven two-line rows, money and
  * team two, customer feedback one row plus three review stacks, notifications one
- * switch target, and account one row.
+ * switch target, and nothing else.
  *
  * The section line is the heading line it stands in for, at the reader's `fontScale`,
  * and a row is the sum a two-line `./list-row` pays — `space.md` of vertical padding
@@ -582,13 +520,6 @@ function MoreSkeleton({ loadingLabel }: { loadingLabel: string }) {
 					/>
 				</View>
 			</View>
-
-			<View style={styles.section}>
-				<Skeleton
-					style={[styles.skeletonSection, line("heading", fontScale)]}
-				/>
-				<Card>{renderRows(MORE_SKELETON_SHAPE.account.rows)}</Card>
-			</View>
 		</>
 	);
 }
@@ -621,6 +552,4 @@ const styles = StyleSheet.create({
 		gap: space.xs,
 	},
 	switchTarget: { width: 48, height: 48 },
-	// Same air as `app/account.tsx`'s sign-out: a long way from the last door above it.
-	signOut: { marginTop: space.huge },
 });

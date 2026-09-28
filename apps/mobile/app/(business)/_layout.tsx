@@ -48,10 +48,13 @@ function withAlpha(hex: string, alpha: number): string {
  * index has run it once, so the blank frame is one frame — and a second spinner on top of the
  * one the resolver already showed would be a flicker.
  *
- * ## Five tabs
+ * ## Four tabs — the burger is the fourth
  *
- * The contract draws Home, Orders, Menu, Analytics and More. All five are wired here;
- * the hidden screens below are routes in this tree, not extra tabs.
+ * The contract draws Home, Orders, Account and a burger menu. The burger is a
+ * tab *in* the bar (Amazon's shape), not a sidebar: one nav system, in the
+ * thumb zone, with the navigator keeping every tab's state for free. All
+ * four are wired here; the hidden screens below are routes in this tree,
+ * not extra tabs. Products and Analytics live behind the menu's own rows.
  *
  * The selected marker is the contract's lime dot rather than a tinted icon: the icon
  * and the label stay ink in both states (a colour-blind reader, a greyscale screenshot
@@ -147,44 +150,29 @@ export default function BusinessLayout() {
 						}}
 					/>
 					<Tabs.Screen
-						name="products"
+						name="account"
+						options={{
+							title: t("account.title"),
+							tabBarAccessibilityLabel: t("account.title"),
+							tabBarIcon: ({ focused, color, size }) => (
+								<TabMark
+									focused={focused}
+									name="person-circle-outline"
+									color={color}
+									size={size}
+								/>
+							),
+						}}
+					/>
+					<Tabs.Screen
+						name="menu"
 						options={{
 							title: t("biz.nav.menu"),
 							tabBarAccessibilityLabel: t("biz.nav.menu"),
 							tabBarIcon: ({ focused, color, size }) => (
 								<TabMark
 									focused={focused}
-									name="fast-food-outline"
-									color={color}
-									size={size}
-								/>
-							),
-						}}
-					/>
-					<Tabs.Screen
-						name="analytics"
-						options={{
-							title: t("biz.nav.analytics"),
-							tabBarAccessibilityLabel: t("biz.nav.analytics"),
-							tabBarIcon: ({ focused, color, size }) => (
-								<TabMark
-									focused={focused}
-									name="bar-chart-outline"
-									color={color}
-									size={size}
-								/>
-							),
-						}}
-					/>
-					<Tabs.Screen
-						name="more"
-						options={{
-							title: t("biz.nav.more"),
-							tabBarAccessibilityLabel: t("biz.nav.more"),
-							tabBarIcon: ({ focused, color, size }) => (
-								<TabMark
-									focused={focused}
-									name="ellipsis-horizontal"
+									name="menu-outline"
 									color={color}
 									size={size}
 								/>
@@ -195,6 +183,8 @@ export default function BusinessLayout() {
 			    the menu and the rail, and a tab for it would be a door to a screen
 			    with no tab state. `href: null` keeps it mounted and out of the bar. */}
 					<Tabs.Screen name="product-form" options={{ href: null }} />
+					<Tabs.Screen name="products" options={{ href: null }} />
+					<Tabs.Screen name="analytics" options={{ href: null }} />
 					<Tabs.Screen name="shop-settings" options={{ href: null }} />
 					<Tabs.Screen name="merchant-settings" options={{ href: null }} />
 					<Tabs.Screen name="shop-hours" options={{ href: null }} />
