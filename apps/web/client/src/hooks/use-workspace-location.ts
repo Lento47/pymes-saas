@@ -2,6 +2,12 @@ import { useSyncExternalStore, useCallback } from "react";
 import { getWorkspaceSlug } from "@/lib/api";
 
 const PUBLIC_PATHS = [
+  // `/` is the storefront a signed-out stranger lands on. It has to be here for the
+  // same reason the storefront routes below are: a visitor who has a `pymes_slug` in
+  // localStorage from an earlier signed-in session would otherwise be rewritten to
+  // `/{slug}/` on the very first page they open, which contradicts the canonical URL
+  // this route publishes.
+  "/",
   "/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation", "/product",
   "/platform", "/ai-agents", "/billing-workflows", "/security",
   // The customer marketplace. These are the storefront's own routes, so they must never

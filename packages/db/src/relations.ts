@@ -70,8 +70,12 @@ export const userRelations = relations(user, ({ one, many }) => ({
 	customerDeliveries: many(delivery, { relationName: "delivery_customer" }),
 	courierDeliveries: many(delivery, { relationName: "delivery_courier" }),
 	deliveryOffers: many(deliveryOffer),
-	deliveryRatingsGiven: many(deliveryRating, { relationName: "delivery_rating_from" }),
-	deliveryRatingsReceived: many(deliveryRating, { relationName: "delivery_rating_to" }),
+	deliveryRatingsGiven: many(deliveryRating, {
+		relationName: "delivery_rating_from",
+	}),
+	deliveryRatingsReceived: many(deliveryRating, {
+		relationName: "delivery_rating_to",
+	}),
 	uploads: many(upload),
 }));
 
@@ -88,6 +92,12 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 	reviews: many(review),
 	favorites: many(favorite),
 	promotions: many(promotion),
+	/**
+	 * One subscription per business, enforced by a unique index on
+	 * `subscription.business_id` rather than by this relation. A `one` here would say
+	 * the same thing to the type system, and the constraint is the part that matters:
+	 * two subscriptions for one shop is a double invoice.
+	 */
 	subscription: one(subscription, {
 		fields: [business.id],
 		references: [subscription.businessId],
@@ -96,6 +106,7 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 	deliveries: many(delivery),
 }));
 
+/** A subscription's price history, kept so a raise can be explained after the fact. */
 export const priceBookRelations = relations(priceBook, ({ many }) => ({
 	subscriptions: many(subscription),
 }));
@@ -141,12 +152,15 @@ export const courierInviteRelations = relations(courierInvite, ({ one }) => ({
 	}),
 }));
 
-export const courierPresenceRelations = relations(courierPresence, ({ one }) => ({
-	user: one(user, {
-		fields: [courierPresence.userId],
-		references: [user.id],
+export const courierPresenceRelations = relations(
+	courierPresence,
+	({ one }) => ({
+		user: one(user, {
+			fields: [courierPresence.userId],
+			references: [user.id],
+		}),
 	}),
-}));
+);
 
 export const merchantLocationRelations = relations(
 	merchantLocation,

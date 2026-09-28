@@ -1,10 +1,4 @@
-export type DocumentationCategory =
-  | "legal"
-  | "business"
-  | "security"
-  | "operations"
-  | "product-compliance"
-  | "architecture";
+export type DocumentationCategory = "legal" | "business" | "security" | "operations" | "product-compliance" | "architecture";
 
 export type DocumentationVisibility = "public" | "internal";
 
@@ -26,10 +20,7 @@ export interface DocumentationEntry {
   sections?: DocumentationSection[];
 }
 
-export const DOCUMENTATION_CATEGORIES: Record<
-  DocumentationCategory,
-  { title: string; description: string }
-> = {
+export const DOCUMENTATION_CATEGORIES: Record<DocumentationCategory, { title: string; description: string }> = {
   legal: {
     title: "Legal y contratos",
     description: "Documentos que el cliente puede leer, aceptar o firmar.",
@@ -75,7 +66,8 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "marketplace-terms",
     title: "Términos del Marketplace",
-    summary: "Reglas del catálogo público de PymesHub: qué es la plataforma en un pedido, qué obligaciones tienen clientes y negocios, y quién responde por el producto.",
+    summary:
+      "Reglas del catálogo público de PymesHub: qué es la plataforma en un pedido, qué obligaciones tienen clientes y negocios, y quién responde por el producto.",
     purpose: "Gobernar la relación entre el cliente, el negocio y PymesHub en cada pedido del marketplace.",
     category: "legal",
     visibility: "public",
@@ -140,7 +132,8 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "terms-of-service",
     title: "Términos y Condiciones de PymesHub",
-    summary: "Condiciones profesionales para el acceso anticipado, uso beta, cuentas, datos, integraciones, pagos futuros, propiedad intelectual y responsabilidad.",
+    summary:
+      "Condiciones profesionales para el acceso anticipado, uso beta, cuentas, datos, integraciones, pagos futuros, propiedad intelectual y responsabilidad.",
     purpose: "Gobernar la relación contractual entre PymesHub y cada cliente o usuario autorizado durante la etapa beta y el uso posterior de la Plataforma.",
     category: "legal",
     visibility: "public",
@@ -234,7 +227,8 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     slug: "privacy-policy",
     title: "Política de Privacidad de PymesHub",
     summary: "Cómo PymesHub recopila, usa, conserva, comparte y protege datos personales durante la beta cerrada y el uso de la Plataforma.",
-    purpose: "Explicar de forma clara y profesional el tratamiento de datos personales, datos de negocio y datos de clientes finales procesados a través de PymesHub.",
+    purpose:
+      "Explicar de forma clara y profesional el tratamiento de datos personales, datos de negocio y datos de clientes finales procesados a través de PymesHub.",
     category: "legal",
     visibility: "public",
     audience: "Cliente",
@@ -319,6 +313,38 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
           "Para consultas, solicitudes de privacidad o reportes de seguridad, contáctanos en privacidad@pymeshub.lat. Campos pendientes para completar antes del lanzamiento público: Otnel S.A., Costa Rica, pymeshub.lat.",
         ],
       },
+    ],
+  },
+  {
+    slug: "location-use",
+    title: "Uso de Ubicación en Entregas",
+    summary: "Cuándo PymesHub solicita ubicación precisa y en segundo plano, quién puede verla y cuándo deja de recopilarla.",
+    purpose: "Explicar de forma clara y previa al permiso cómo funciona el seguimiento de repartidores durante una entrega activa.",
+    category: "legal",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "docs/legal/contracts/location-use.md",
+    highlights: [
+      "El seguimiento solo inicia cuando el repartidor comienza una entrega asignada",
+      "La ubicación se comparte únicamente con participantes de la entrega",
+      "El seguimiento termina al entregar, cancelar, reasignar, cerrar sesión o retirar el permiso",
+      "La aplicación explica el uso antes de solicitar el permiso del sistema",
+    ],
+  },
+  {
+    slug: "account-deletion",
+    title: "Eliminación de Cuenta y Datos",
+    summary: "Cómo solicitar, consultar o cancelar la eliminación de una cuenta PymesHub y qué datos se suprimen o anonimizan.",
+    purpose: "Dar a cada persona un mecanismo accesible para iniciar y seguir una solicitud de eliminación desde la aplicación.",
+    category: "legal",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "docs/legal/contracts/account-deletion.md",
+    highlights: [
+      "Solicitud y estado disponibles dentro de la aplicación",
+      "Periodo de siete días para cancelar la solicitud",
+      "Eliminación de autenticación, perfil, direcciones y tokens del dispositivo",
+      "Anonimización de pedidos y auditorías que deban conservarse",
     ],
   },
   {
@@ -422,6 +448,24 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     ],
   },
   {
+    slug: "copyright-and-infringement",
+    title: "Derechos de Autor y Avisos de Infracción",
+    summary:
+      "A quién escribir para pedir la retirada de material, qué debe incluir el aviso, y qué NO hace esta página.",
+    purpose:
+      "Dar un camino público y con nombre para que un titular de derechos haga llegar un aviso, dejando claro que Costa Rica no tiene un mecanismo de agente registrado equivalente al de otras jurisdicciones.",
+    category: "legal",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "docs/legal/copyright-and-infringement.md",
+    highlights: [
+      "Contacto con nombre y correo para recibir avisos de titularidad",
+      "Los cinco elementos que un aviso debe traer para no pedir información adicional",
+      "La advertencia de que no es un registro ni una exención de responsabilidad",
+      "Qué pasa con el material publicado por usuarios frente al de la plataforma",
+    ],
+  },
+  {
     slug: "costa-rica-tax-invoicing-guide",
     title: "Guía Fiscal y de Facturación CR",
     summary: "Marco operativo para facturar PymesHub en Costa Rica con trazabilidad comercial y fiscal.",
@@ -445,11 +489,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     visibility: "internal",
     audience: "Interno",
     repoPath: "docs/business/pricing-billing-policy.md",
-    highlights: [
-      "Ciclos de cobro y límites por plan",
-      "Upgrades, downgrades, prorrateos y descuentos",
-      "Mora, suspensión y reactivación del servicio",
-    ],
+    highlights: ["Ciclos de cobro y límites por plan", "Upgrades, downgrades, prorrateos y descuentos", "Mora, suspensión y reactivación del servicio"],
   },
   {
     slug: "trust-center-overview",
@@ -565,11 +605,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     visibility: "public",
     audience: "Cliente e interno",
     repoPath: "docs/operations/sla.md",
-    highlights: [
-      "Disponibilidad objetivo mensual",
-      "Exclusiones por terceros, fuerza mayor o uso indebido",
-      "Tratamiento prioritario de incidentes críticos",
-    ],
+    highlights: ["Disponibilidad objetivo mensual", "Exclusiones por terceros, fuerza mayor o uso indebido", "Tratamiento prioritario de incidentes críticos"],
   },
   {
     slug: "onboarding-process",
@@ -610,11 +646,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     visibility: "internal",
     audience: "Interno",
     repoPath: "docs/product-compliance/legal-acceptance-requirements.md",
-    highlights: [
-      "Registro documental versionado",
-      "Evento de aceptación con usuario, workspace y versión",
-      "Re-aceptación al cambiar documentos materiales",
-    ],
+    highlights: ["Registro documental versionado", "Evento de aceptación con usuario, workspace y versión", "Re-aceptación al cambiar documentos materiales"],
   },
   {
     slug: "audit-logging-requirements",
@@ -694,7 +726,8 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "modelo-emprende",
     title: "Modelo Emprende — Para emprendedores que arrancan solos",
-    summary: "Cómo PymesHub apoya a solopreneurs y micronegocios: qué incluye el plan Emprende, cómo conectar WhatsApp propio y qué cargos corresponden a Meta.",
+    summary:
+      "Cómo PymesHub apoya a solopreneurs y micronegocios: qué incluye el plan Emprende, cómo conectar WhatsApp propio y qué cargos corresponden a Meta.",
     purpose: "Explicar a pequeños emprendedores exactamente qué obtienen con el plan Emprende y cómo empezar sin complicaciones.",
     category: "business",
     visibility: "public",

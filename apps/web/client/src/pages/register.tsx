@@ -53,9 +53,27 @@ export default function RegisterPage() {
       toast({ title: "Las contraseñas no coinciden", variant: "destructive" });
       return;
     }
+    // Both assertions are checked here so the reader is told which one is missing
+    // before a round trip. The server still refuses an omitted field — this is the
+    // form being honest, not the guard, and `auth.service.ts:register()` is what
+    // actually enforces it.
+    if (!ageConfirmed) {
+      toast({ title: "Confirmá que tenés 18 años o más", variant: "destructive" });
+      return;
+    }
+    if (!termsAccepted) {
+      toast({ title: "Aceptá los Términos de Servicio", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      const res = await api.register({ email, name, password: pass, terms_accepted: termsAccepted });
+      const res = await api.register({
+        email,
+        name,
+        password: pass,
+        terms_accepted: termsAccepted,
+        age_confirmed: ageConfirmed,
+      });
       localStorage.setItem("pymes_token", res.access_token);
       localStorage.setItem("pymes_refresh_token", res.refresh_token);
       localStorage.setItem("pymes_slug", res.workspace.slug);

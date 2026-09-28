@@ -3,7 +3,6 @@ import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
 	type FulfilmentKind,
 	formatMoney,
-	isTerminalStatus,
 	MARKET_TIME_ZONE,
 	MAX_LINE_QUANTITY,
 	type MerchantHome as MerchantHomeData,
@@ -327,7 +326,12 @@ export default function MerchantHome() {
 		for (const alert of home.data?.attention ?? []) {
 			const key = `${alert.type}:${alert.action ?? ""}`;
 			const current = grouped.get(key);
-			grouped.set(key, current ? { ...current, count: current.count + 1 } : { ...alert, count: 1 });
+			grouped.set(
+				key,
+				current
+					? { ...current, count: current.count + 1 }
+					: { ...alert, count: 1 },
+			);
 		}
 		return [...grouped.values()];
 	}, [home.data?.attention]);
@@ -894,7 +898,7 @@ export default function MerchantHome() {
 												alert.action === "open_orders"
 													? "/business"
 													: alert.action === "open_inventory" ||
-														alert.action === "open_catalog"
+															alert.action === "open_catalog"
 														? "/products"
 														: "/more",
 											)
@@ -1255,7 +1259,8 @@ function AttentionRow({
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
-	const semantic = severity === "critical" ? colors.destructive : colors.warning;
+	const semantic =
+		severity === "critical" ? colors.destructive : colors.warning;
 
 	return (
 		<Pressable

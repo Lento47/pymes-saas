@@ -753,6 +753,233 @@ html.marketing-page body {
   color: hsl(var(--fg));
 }
 
+/* ── Marketplace marketing theme — dark navy canvas with amber accent ──
+   Token remap so components built on bg-card / text-foreground / bg-primary
+   render dark with the amber accent (#F59E0B ≈ hsl(38 92% 50%)). */
+.marketplace-theme {
+  --bg:           222 63% 7%;
+  --bg-sidebar:   222 60% 9%;
+  --bg-card:      222 55% 9%;
+  --bg-elevated:  222 50% 12%;
+  --bg-hover:     222 45% 14%;
+  --bg-active:    222 45% 17%;
+  --border:       222 40% 18%;
+  --border-subtle: 222 40% 14%;
+  --fg:           210 30% 98%;
+  --fg-2:         215 20% 70%;
+  --fg-3:         215 15% 55%;
+  --accent:       38 92% 50%;
+  --accent-fg:    222 63% 7%;
+  --primary:      var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --ring:         var(--accent);
+  --link:         38 92% 60%;
+  background: #05091d;
+  color: hsl(var(--fg));
+}
+
+/* ── Storefront theme — the customer-facing marketplace ──
+   The storefront's own token set, applied to `MarketplaceShell`'s root element so
+   every page inside it renders from tokens rather than hardcoded navy. That is what
+   makes a light theme possible at all: a component written as `bg-card` on
+   `text-foreground` follows this block, where one written as `bg-white/5` on
+   `text-white` could only ever be dark.
+
+   The direction is restrained rather than chunky: hairline 1px borders, flat
+   surfaces with no gradients, a tighter radius, and hierarchy carried by the type
+   scale and by spacing instead of by shadow and glow. Both palettes are written
+   out in full rather than derived — a light theme computed by inverting lightness
+   produces an amber that is unreadable on white.
+
+   `--link` is separate from `--accent` on purpose, and it is the one token that
+   differs in *role* rather than in lightness: amber is legible as a button fill on
+   both palettes, but amber-as-text on white fails contrast, so light mode deepens it
+   to a burnt amber while the fill stays the brand amber. `--accent-fg` stays near-
+   black in both themes, because dark text on amber is the only pairing that reads. */
+.storefront {
+  color-scheme: dark;
+  /* 8px rather than the app's 10px, so `rounded-lg` is the crisp default here. */
+  --radius: 0.5rem;
+
+  --bg:            230 71% 7%;   /* #05091d — the marketing canvas */
+  --bg-card:       230 50% 10%;
+  --bg-elevated:   230 45% 12%;
+  --bg-hover:      230 40% 14%;
+  --bg-active:     230 38% 17%;
+  --border:        230 30% 19%;
+  --border-subtle: 230 30% 15%;
+
+  --fg:            220 20% 97%;
+  --fg-2:          220 12% 66%;
+  --fg-3:          220 10% 46%;
+
+  --accent:        38 92% 50%;   /* #F59E0B */
+  --accent-fg:     230 71% 7%;
+  --link:          38 92% 64%;
+
+  --danger:        0 72% 55%;
+  --danger-fg:     0 0% 100%;
+  --success:       152 60% 46%;
+
+  --background:        var(--bg);
+  --foreground:        var(--fg);
+  --card:              var(--bg-card);
+  --card-foreground:   var(--fg);
+  --popover:           var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --primary:           var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --secondary:         var(--bg-card);
+  --secondary-foreground: var(--fg);
+  --muted:             var(--bg-card);
+  --muted-foreground:  var(--fg-2);
+  --input:             var(--border);
+  --ring:              var(--accent);
+  --destructive:       var(--danger);
+  --destructive-foreground: var(--danger-fg);
+  --button-outline:    hsl(var(--border));
+  --badge-outline:     hsl(var(--border));
+
+  background: hsl(var(--bg));
+  color: hsl(var(--fg));
+}
+
+/* Same tokens, light values. Every storefront component flips with this block and
+   nothing else has to change — no component branches on the theme. */
+html.light .storefront {
+  color-scheme: light;
+
+  --bg:            220 25% 98%;
+  --bg-card:       0 0% 100%;
+  --bg-elevated:   0 0% 100%;
+  --bg-hover:      220 20% 95%;
+  --bg-active:     220 20% 92%;
+  --border:        220 16% 87%;
+  --border-subtle: 220 16% 92%;
+
+  --fg:            228 30% 10%;
+  --fg-2:          228 10% 40%;
+  --fg-3:          228 8% 56%;
+
+  --accent:        38 92% 50%;
+  --accent-fg:     228 30% 10%;
+  /* Burnt amber: the brand amber as text on white is ~1.9:1 and unreadable. */
+  --link:          30 92% 36%;
+
+  --danger:        0 68% 44%;
+  --success:       152 60% 30%;
+}
+
+/* The storefront owns the whole viewport, so `body` has to follow it or the overscroll
+   area above the header shows the app's violet canvas behind a navy page. The class is
+   put on `<html>` by `MarketplaceShell` because `.storefront` cannot reach `body` — it is
+   a descendant of it. */
+html.storefront-page body { background-color: hsl(230 71% 7%); }
+html.storefront-page.light body { background-color: hsl(220 25% 98%); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Showcase tokens — the art-directed public surface.
+
+   Ported from the reference design's token system, in its two tiers: tier 1 holds
+   the only literals on the page, tier 2 names them by role. Nothing outside this
+   block refers to a tier-1 name, so the palette is changed in one place.
+
+   The accent is amber rather than the reference's cyan, because amber is this
+   repository's mandated marketing accent. Everything structural about the reference
+   survives the substitution: one accent, used only for calls to action and figures;
+   depth from borders rather than shadows; hairline rules rather than boxes.
+
+   These land additively. `.storefront` above still owns the storefront's own chrome,
+   and nothing here changes what the storefront looks like until the blocks that
+   consume these tokens ship.
+
+   Note there is no dark override. The reference's rule is that the theme is fixed
+   and each block chooses its own surface, and that is the rule here too — a dark
+   counterpart to this block would only invite the two to drift apart.
+   ───────────────────────────────────────────────────────────────────────────── */
+.showcase {
+  /* Tier 1 — raw. The only place a literal appears. */
+  --sc-ice-50:        #f7fafb;   /* the ground */
+  --sc-ice-100:       #ebeef1;   /* contour lines */
+  --sc-ice-200:       #dfe5e9;   /* hairlines and dividers */
+  --sc-steel-400:     #b6c1c8;   /* muted copy on a dark surface */
+  --sc-ink-950:       #090a0b;   /* body copy, and the deepest panel */
+  --sc-ink-900:       #0e0f14;   /* a near-black panel */
+  --sc-ink-800:       #1b1d24;   /* a raised panel on a dark surface */
+  --sc-ink-700:       #2a2d36;   /* a border on a dark surface */
+  --sc-ink-alpha-35:  rgb(9 10 11 / 0.35);
+  --sc-ink-alpha-08:  rgb(9 10 11 / 0.08);
+  --sc-white:         #ffffff;
+  --sc-white-alpha-10: rgb(255 255 255 / 0.10);
+  --sc-white-alpha-20: rgb(255 255 255 / 0.20);
+  --sc-white-alpha-40: rgb(255 255 255 / 0.40);
+  --sc-amber:         #f59e0b;   /* the accent, as a fill */
+  --sc-amber-600:     #d97706;   /* the accent, as text on the light ground */
+  --sc-amber-alpha-25: rgb(245 158 11 / 0.25);
+  --sc-red-500:       #dc2626;   /* error and warning only, never decoration */
+
+  /* Tier 2 — roles. */
+  --sc-ground:        var(--sc-ice-50);
+  --sc-ink:           var(--sc-ink-950);
+  --sc-ink-muted:     var(--sc-ink-alpha-35);
+  --sc-hairline:      var(--sc-ice-200);
+  --sc-contour:       var(--sc-ice-100);
+  --sc-panel:         var(--sc-ink-900);
+  --sc-panel-raised:  var(--sc-ink-800);
+  --sc-panel-line:    var(--sc-ink-700);
+  --sc-surface-black: var(--sc-ink-950);
+  --sc-on-dark:       var(--sc-white);
+  --sc-on-dark-muted: var(--sc-steel-400);
+  --sc-accent:        var(--sc-amber);
+  --sc-accent-text:   var(--sc-amber-600);
+  --sc-accent-muted:  var(--sc-amber-alpha-25);
+  --sc-danger:        var(--sc-red-500);
+
+  /* Type. The reference scales these off a viewport-relative root; we hold the root at
+     16px and let the layout adapt by breakpoint instead, because a viewport-derived
+     root fights Tailwind's own rem scale. `clamp()` at the call site covers the one
+     case that genuinely needs to be fluid. */
+  --sc-font-display: 'Instrument Serif', Georgia, serif;
+  --sc-font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+
+  --sc-type-impact:  6rem;      /* the name on the hero */
+  --sc-type-display: 3.25rem;
+  --sc-type-heading: 2.375rem;
+  --sc-type-title:   1.25rem;
+  --sc-type-lead:    1.125rem;
+  --sc-type-label:   1rem;
+  --sc-type-body:    0.875rem;
+  --sc-type-eyebrow: 0.75rem;
+  --sc-type-figure:  2.25rem;   /* a stat figure */
+
+  --sc-leading-headline: 0.95;
+  --sc-leading-flat:     0.9;    /* every uppercase run */
+  --sc-leading-display:  1.1;    /* the floor for a clipped text reveal */
+
+  --sc-tracking-figure:  -0.08em;
+  --sc-tracking-label:   -0.04em;
+  --sc-tracking-eyebrow: -0.02em;
+
+  /* Motion. Every duration on this surface is one of these three. */
+  --sc-duration-fast:   150ms;
+  --sc-duration-normal: 250ms;
+  --sc-duration-plate:  700ms;
+  --sc-ease-entrance: cubic-bezier(0.2, 0, 0, 1);
+  --sc-ease-plate:    cubic-bezier(0.33, 0, 0, 1);
+
+  --sc-radius: 1rem;
+  --sc-radius-lg: 3rem;
+}
+
+.showcase-sans { font-family: var(--sc-font-sans); }
+.showcase-display { font-family: var(--sc-font-display); }
+
+/* A hairline edge on a dark surface, in place of a shadow. The reference is explicit
+   that depth here comes from edges: a shadow on a near-black panel is invisible, and on
+   a near-white ground it muddies the type sitting on it. */
+.showcase-hairline { border: 1px solid var(--sc-hairline); }
+.showcase-hairline-dark { border: 1px solid var(--sc-panel-line); }
+
 /* Faint indigo radial for auth pages — applied to the login root div */
 .auth-bg {
   background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79, 70, 229, 0.05) 0%, transparent 70%);

@@ -22,8 +22,7 @@ export const MERCHANT_ALERT_SEVERITIES = [
 	"warning",
 	"info",
 ] as const;
-export type MerchantAlertSeverity =
-	(typeof MERCHANT_ALERT_SEVERITIES)[number];
+export type MerchantAlertSeverity = (typeof MERCHANT_ALERT_SEVERITIES)[number];
 
 export const MERCHANT_ALERT_ACTIONS = [
 	"open_orders",

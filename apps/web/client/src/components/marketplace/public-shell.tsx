@@ -1,7 +1,19 @@
-import { ChevronLeft, Compass, Heart, Home, ListOrdered, LogOut, Search, ShoppingBag } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  ChevronLeft,
+  Compass,
+  Heart,
+  Home,
+  ListOrdered,
+  LogOut,
+  Moon,
+  Search,
+  ShoppingBag,
+  Sun,
+} from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
+import { useTheme } from "@/components/providers/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -10,15 +22,21 @@ import { marketplaceAuth, useCart, useMarketplaceSession } from "@/lib/marketpla
 /**
  * The public marketplace frame.
  *
- * This is the customer side of PymesHub, and it keeps the public web's own visual
- * language — navy `#05091d` with a single amber accent — scoped away from the
- * authenticated merchant app, which has its own theme. The storefront is the landing
- * page: a stranger browses shops and products before signing in, the same order of
- * questions Uber Eats and PedidosYa ask.
+ * This is the customer side of PymesHub, and it draws from its own token set — the
+ * `.storefront` scope in `index.css` — rather than from hardcoded colours. That is the
+ * whole reason the frame is written as `bg-background` / `text-foreground` /
+ * `border-border` and never as `bg-white/5`: the scope defines those tokens for both
+ * palettes, so one component serves the dark storefront and a light one, and no
+ * component here has to ask which theme it is in.
  *
- * The header carries search and the cart; the bottom bar carries the five destinations a
- * customer moves between on a phone, and it disappears without leaving a gap when the
- * viewport is wide enough to show the same links in the header.
+ * The direction is restrained: hairline borders, flat surfaces, one radius, and no
+ * gradients or glow. A storefront that reads as expensive here is one where the type
+ * scale and the spacing carry the hierarchy.
+ *
+ * The header carries search; below it, a row of the five destinations a customer moves
+ * between. On a phone that row moves to the bottom of the screen, where a thumb
+ * reaches it, and the two never both show — `sm` is the single breakpoint that decides
+ * which one is visible.
  */
 
 const NAV = [
@@ -35,6 +53,16 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
   const { data: session } = useMarketplaceSession();
   const itemCount = cart?.items.reduce((total, item) => total + item.quantity, 0) ?? 0;
 
+  // `body` is outside `.storefront` and therefore keeps the app's own canvas, which the
+  // overscroll area above the header reveals. The class belongs on `<html>` so the CSS
+  // can select `html.storefront-page body` and also see `html.light`, which is what
+  // makes the matching light value possible.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("storefront-page");
+    return () => root.classList.remove("storefront-page");
+  }, []);
+
   const onSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = String(new FormData(event.currentTarget).get("q") ?? "").trim();
@@ -42,11 +70,11 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#05091d] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#05091d]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+    <div className="storefront flex min-h-screen flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-sm font-bold text-[#05091d]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
               P
             </span>
             <span className="hidden text-sm font-semibold tracking-tight sm:inline">PymesHub</span>
@@ -57,27 +85,29 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
               <span className="sr-only">Buscar tiendas y productos</span>
               <Search
                 aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               />
               <Input
                 type="search"
                 name="q"
                 defaultValue=""
                 placeholder="¿Qué querés pedir hoy?"
-                className="h-10 border-white/10 bg-white/5 pl-9 text-sm text-white placeholder:text-slate-400 focus-visible:ring-amber-500"
+                className="h-10 border-border bg-card pl-9 text-sm placeholder:text-muted-foreground focus-visible:ring-primary"
               />
             </label>
           </form>
 
           <nav aria-label="Cuenta" className="flex shrink-0 items-center gap-1">
+            <ThemeToggle />
+
             <Link
               href="/cart"
               aria-label={itemCount > 0 ? `Carrito, ${itemCount} productos` : "Carrito"}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-200 transition hover:bg-white/10 hover:text-white"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition hover:bg-bg-hover hover:text-foreground"
             >
               <ShoppingBag aria-hidden="true" className="h-5 w-5" />
               {itemCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-bold text-[#05091d]">
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold tabular-nums text-primary-foreground">
                   {itemCount}
                 </span>
               ) : null}
@@ -89,7 +119,7 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
                 onClick={() => {
                   void marketplaceAuth.signOut().then(() => window.location.reload());
                 }}
-                className="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
+                className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-muted-foreground transition hover:bg-bg-hover hover:text-foreground"
               >
                 <LogOut aria-hidden="true" className="h-4 w-4" />
                 <span className="hidden sm:inline">Salir</span>
@@ -97,34 +127,61 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
             ) : (
               <Link
                 href="/sign-in"
-                className="inline-flex h-10 items-center rounded-lg bg-amber-500 px-3 text-xs font-semibold text-[#05091d] transition hover:bg-amber-400"
+                className="inline-flex h-10 items-center rounded-md bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
                 Ingresar
               </Link>
             )}
           </nav>
         </div>
+
+        {/* The desktop destination row. On a phone these same five links live in the
+            bottom bar; showing both would be two copies of one navigation. */}
+        <nav aria-label="Navegación principal" className="hidden border-t border-border sm:block">
+          <ul className="mx-auto flex w-full max-w-6xl items-center gap-1 px-4 sm:px-6">
+            {NAV.map(({ href, label, Icon }) => {
+              const active = href === "/" ? location === "/" : location.startsWith(href);
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium transition",
+                      active
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pb-12">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 sm:pb-14">{children}</main>
 
-      <footer className="hidden border-t border-white/10 px-6 py-8 text-xs text-slate-400 sm:block">
+      <footer className="hidden border-t border-border px-6 py-8 text-xs text-muted-foreground sm:block">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
           <p>© {new Date().getFullYear()} PymesHub · Pedidos a domicilio en Costa Rica</p>
           <nav aria-label="Enlaces" className="flex flex-wrap gap-x-5 gap-y-2">
-            <Link href="/categories" className="transition hover:text-white">
+            <Link href="/categories" className="transition hover:text-foreground">
               Categorías
             </Link>
-            <Link href="/orders" className="transition hover:text-white">
+            <Link href="/orders" className="transition hover:text-foreground">
               Mis pedidos
             </Link>
-            <Link href="/legal" className="transition hover:text-white">
+            <Link href="/legal" className="transition hover:text-foreground">
               Legal
             </Link>
-            <Link href="/accessibility" className="transition hover:text-white">
+            <Link href="/accessibility" className="transition hover:text-foreground">
               Accesibilidad
             </Link>
-            <Link href="/login" className="transition hover:text-white">
+            <Link href="/login" className="transition hover:text-foreground">
               Panel de negocios
             </Link>
           </nav>
@@ -133,7 +190,7 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#05091d]/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden"
       >
         <ul className="grid grid-cols-5">
           {NAV.map(({ href, label, Icon }) => {
@@ -144,10 +201,16 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition",
-                    active ? "text-amber-400" : "text-slate-400 hover:text-slate-200",
+                    "relative flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition",
+                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
+                  {/* A 2px rule instead of a colour swap: the label keeps the same
+                      contrast in either state, so the active tab is not the only
+                      legible one. */}
+                  {active ? (
+                    <span aria-hidden="true" className="absolute inset-x-5 top-0 h-0.5 rounded-full bg-primary" />
+                  ) : null}
                   <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={active ? 2 : 1.75} />
                   {label}
                 </Link>
@@ -160,12 +223,41 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Dark and light, in the storefront's own header.
+ *
+ * The marketplace is the one surface a signed-out stranger sees, and asking them to
+ * sign in before they can read the page comfortably is the wrong order — so the switch
+ * lives here rather than only in the merchant account screen. It writes the same
+ * `PymesHub-theme` preference the app's own toggle does, so the choice carries.
+ */
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  const next = theme === "dark" ? "clara" : "oscura";
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={`Cambiar a apariencia ${next}`}
+      title={`Cambiar a apariencia ${next}`}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition hover:bg-bg-hover hover:text-foreground"
+    >
+      {theme === "dark" ? (
+        <Sun aria-hidden="true" className="h-5 w-5" />
+      ) : (
+        <Moon aria-hidden="true" className="h-5 w-5" />
+      )}
+    </button>
+  );
+}
+
 /** A storefront's own small header, used on the shop page. */
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
-      className="inline-flex min-h-9 items-center gap-1.5 text-sm text-slate-300 transition hover:text-white"
+      className="inline-flex min-h-9 items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
     >
       <ChevronLeft aria-hidden="true" className="h-4 w-4" />
       {children}
@@ -173,7 +265,7 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
   );
 }
 
-/** The primary amber action, on the navy ground. */
+/** The primary action: brand amber fill, near-black label, one radius, no glow. */
 export function AmberButton({
   children,
   onClick,
@@ -193,7 +285,37 @@ export function AmberButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "min-h-11 rounded-lg bg-amber-500 px-5 font-semibold text-[#05091d] hover:bg-amber-400 disabled:opacity-60",
+        "min-h-11 rounded-md bg-primary px-5 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60",
+        className,
+      )}
+    >
+      {children}
+    </Button>
+  );
+}
+
+/** The secondary action: a hairline border on the page's own surface. */
+export function OutlineButton({
+  children,
+  onClick,
+  disabled,
+  type = "button",
+  className,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
+  className?: string;
+}) {
+  return (
+    <Button
+      type={type}
+      variant="outline"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "min-h-11 rounded-md border-border bg-card px-5 font-semibold text-foreground hover:bg-bg-hover disabled:opacity-60",
         className,
       )}
     >

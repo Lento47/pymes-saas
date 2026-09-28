@@ -143,6 +143,19 @@ export class AuthService {
       throw new BadRequestException("Debés aceptar los Términos de Servicio para registrarte.");
     }
 
+    // Checked beside the terms rather than inside the same guard because they are
+    // two assertions and the reader has to be able to be told which one is missing.
+    // A `curl` that omits the field is exactly the case this closes: the form has
+    // carried an 18+ checkbox for a while without ever sending it, so the client was
+    // never the place the assertion lived.
+    if (!dto.age_confirmed) {
+      throw new BadRequestException(
+        "Debés confirmar que tenés 18 años o más para registrarte.",
+      );
+    }
+
+    const assertedAt = new Date();
+
     if (dto.invite_token) {
       const result = await this.acceptInvite({
         token: dto.invite_token,
@@ -151,7 +164,7 @@ export class AuthService {
       });
       await this.prisma.user.update({
         where: { id: result.user.id },
-        data: { terms_accepted_at: new Date() },
+        data: { terms_accepted_at: assertedAt, age_confirmed_at: assertedAt },
       });
       return result;
     }
@@ -169,7 +182,8 @@ export class AuthService {
         name: dto.name,
         status: "ACTIVE",
         ...(password_hash && { password_hash }),
-        terms_accepted_at: new Date(),
+        terms_accepted_at: assertedAt,
+        age_confirmed_at: assertedAt,
         email_verified: false,
         email_verification_token: verificationToken,
       },

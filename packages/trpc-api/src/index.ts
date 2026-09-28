@@ -7,8 +7,8 @@ import type { OrderEventEnvelope } from "./events";
 import { createLogger } from "./logging";
 import { publishPending } from "./outbox";
 import { handleQueue } from "./queue";
-import { sweepLapsed } from "./services/subscription";
 import { sweepExpiredOffers } from "./services/delivery-dispatch";
+import { sweepLapsed } from "./services/subscription";
 
 /**
  * The Worker.

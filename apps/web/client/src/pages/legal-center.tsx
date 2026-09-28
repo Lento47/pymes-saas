@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { ArrowLeft, Clock, ExternalLink, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
+import { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { Footer } from "@/components/marketing/footer";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { getDocumentationByCategory, getDocumentationBySlug } from "@/lib/documentation";
+import { Badge } from "@/components/ui/badge";
 import { LEGAL_CONTENT } from "@/data/legal/legal-content";
+import { getDocumentationByCategory, getDocumentationBySlug } from "@/lib/documentation";
 import { cn } from "@/lib/utils";
 
 interface LegalDocumentPageProps {
@@ -23,22 +23,25 @@ const LEGAL_SLUGS = [
   "merchant-policy",
   "terms-of-service",
   "privacy-policy",
+  "location-use",
+  "account-deletion",
   "data-processing-addendum",
   "acceptable-use-policy",
   "billing-refunds-policy",
   "subprocessors-notice",
   "whatsapp-ai-policy",
   "cookies-policy",
+  "copyright-and-infringement",
 ];
 
 export function LegalCenterPage() {
-  const { messages, locale } = useI18n();
+  const { messages } = useI18n();
   const copy = messages.legalCenter;
   const docs = getDocumentationByCategory("legal").filter((e) => e.visibility === "public");
 
   useEffect(() => {
-    document.title = "PymesHub | " + copy.title;
-  }, [locale, copy.title]);
+    document.title = `PymesHub | ${copy.title}`;
+  }, [copy.title]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
@@ -65,15 +68,11 @@ export function LegalCenterPage() {
           </nav>
 
           <section className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-            <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
-              {copy.eyebrow}
-            </p>
+            <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">{copy.eyebrow}</p>
             <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.98] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">
               {copy.title}
             </h1>
-            <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-white/76 md:text-xl">
-              {copy.description}
-            </p>
+            <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-white/76 md:text-xl">{copy.description}</p>
           </section>
 
           {/* Two-column layout: sidebar TOC + content grid */}
@@ -81,12 +80,14 @@ export function LegalCenterPage() {
             {/* Sticky sidebar */}
             <aside className="hidden lg:block">
               <div className="sticky top-12">
-                <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-4">
-                  {copy.sidebarTitle}
-                </h3>
+                <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-4">{copy.sidebarTitle}</h3>
                 <nav className="space-y-1">
                   {docs.map((doc) => (
-                    <Link key={doc.slug} href={`/legal/${doc.slug}`} className="block rounded-lg px-3 py-2 text-sm text-white/52 transition hover:bg-white/[0.04] hover:text-white/85">
+                    <Link
+                      key={doc.slug}
+                      href={`/legal/${doc.slug}`}
+                      className="block rounded-lg px-3 py-2 text-sm text-white/52 transition hover:bg-white/[0.04] hover:text-white/85"
+                    >
                       {doc.title}
                     </Link>
                   ))}
@@ -98,18 +99,18 @@ export function LegalCenterPage() {
             <div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {docs.map((doc) => (
-                  <Link key={doc.slug} href={`/legal/${doc.slug}`} className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                  <Link
+                    key={doc.slug}
+                    href={`/legal/${doc.slug}`}
+                    className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
                         <ShieldCheck className="h-4 w-4" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
-                          {doc.title}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-white/40">
-                          {doc.summary}
-                        </p>
+                        <h3 className="text-sm font-semibold text-white group-hover:text-white/90">{doc.title}</h3>
+                        <p className="mt-1 text-xs leading-5 text-white/40">{doc.summary}</p>
                       </div>
                     </div>
                   </Link>
@@ -136,21 +137,19 @@ export function LegalCenterPage() {
 }
 
 export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
-  const { messages, locale } = useI18n();
+  const { messages } = useI18n();
   const copy = messages.legalCenter;
   const doc = slug ? getDocumentationBySlug(slug) : undefined;
   const legalDocs = getDocumentationByCategory("legal").filter((e) => e.visibility === "public");
-  const [location] = useLocation();
-
   useEffect(() => {
     if (doc) {
-      document.title = "PymesHub | " + doc.title;
+      document.title = `PymesHub | ${doc.title}`;
     } else {
-      document.title = "PymesHub | " + copy.notFoundTitle;
+      document.title = `PymesHub | ${copy.notFoundTitle}`;
     }
-  }, [locale, doc, copy.notFoundTitle]);
+  }, [doc, copy.notFoundTitle]);
 
-  if (!doc || doc.visibility !== "public") {
+  if (doc?.visibility !== "public") {
     return (
       <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
         <div className="pointer-events-none absolute inset-0">
@@ -169,12 +168,8 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
               </div>
             </nav>
             <div className="mx-auto max-w-3xl pt-20 text-center">
-              <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
-                {copy.notFoundTitle}
-              </h1>
-              <p className="mt-4 text-lg leading-7 text-white/60">
-                {copy.notFoundDescription}
-              </p>
+              <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">{copy.notFoundTitle}</h1>
+              <p className="mt-4 text-lg leading-7 text-white/60">{copy.notFoundDescription}</p>
             </div>
           </div>
         </div>
@@ -215,9 +210,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
             {/* Sticky sidebar TOC */}
             <aside className="hidden lg:block">
               <div className="sticky top-12">
-                <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-4">
-                  {copy.sidebarTitle}
-                </h3>
+                <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-4">{copy.sidebarTitle}</h3>
                 <nav className="space-y-1">
                   {legalDocs.map((legalDoc) => {
                     const isActive = legalDoc.slug === slug;
@@ -227,9 +220,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                         href={`/legal/${legalDoc.slug}`}
                         className={cn(
                           "block rounded-lg px-3 py-2 text-sm transition",
-                          isActive
-                            ? "bg-white/[0.06] text-[#F59E0B] font-medium"
-                            : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
+                          isActive ? "bg-white/[0.06] text-[#F59E0B] font-medium" : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
                         )}
                       >
                         {legalDoc.title}
@@ -264,7 +255,8 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                 {/* Markdown content */}
                 {markdown ? (
                   <div className="mt-8 rounded-[28px] border border-white/[0.06] bg-white/[0.01] px-6 py-8 md:px-10 md:py-12">
-                    <div className="
+                    <div
+                      className="
                       prose prose-sm md:prose-base
                       prose-headings:font-marketing prose-headings:tracking-[-0.02em] prose-headings:text-white
                       prose-h1:text-3xl prose-h1:font-bold prose-h1:mt-0 prose-h1:mb-6
@@ -281,30 +273,22 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                       prose-blockquote:border-l-[#F59E0B]/30 prose-blockquote:text-white/60
                       prose-hr:border-white/[0.06]
                       max-w-none
-                    ">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {markdown}
-                      </ReactMarkdown>
+                    "
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
                     </div>
                   </div>
                 ) : (
                   <div className="mt-8 space-y-8">
                     <section>
-                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#F59E0B]/72">
-                        {copy.purpose}
-                      </h2>
+                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#F59E0B]/72">{copy.purpose}</h2>
                       <p className="mt-3 text-sm leading-7 text-white/68">{doc.purpose}</p>
                     </section>
                     <section>
-                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#F59E0B]/72">
-                        {copy.coverage}
-                      </h2>
+                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#F59E0B]/72">{copy.coverage}</h2>
                       <ul className="mt-3 space-y-3">
                         {doc.highlights.map((item, idx) => (
-                          <li
-                            key={item}
-                            className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-4 py-3"
-                          >
+                          <li key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-4 py-3">
                             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F59E0B]/10 text-[10px] font-semibold text-[#F59E0B]/70">
                               {idx + 1}
                             </span>

@@ -148,21 +148,29 @@ describe("the wire", () => {
 		expect(calls[0]?.headers["content-type"]).toBe("application/json");
 	});
 
-	test("signUp POSTs email, password and name to /auth/sign-up/email", async () => {
+	test("signUp POSTs email, password, name and the two assertions", async () => {
 		const calls = installFetch(() => ok());
 		await createMarketplaceAuthClient(BASE).signUp(
 			"nuevo@example.test",
 			"a-long-enough-password",
 			"Nuevo Cliente",
+			{ termsAccepted: true, ageConfirmed: true },
 		);
 
 		expect(calls[0]?.url).toBe(`${BASE}/auth/sign-up/email`);
 		expect(calls[0]?.method).toBe("POST");
+		// The assertions are asserted, not incidental. `packages/trpc-api/src/auth.ts` gates
+		// `create.before` on both and throws a 400 naming whichever is missing, so a body
+		// without them is a sign-up that fails later and further from the cause. They are
+		// also the one part of this payload a `JSON.stringify` comparison cannot witness by
+		// accident: an omitted key and an `undefined` key serialise identically.
 		expect(calls[0]?.body).toBe(
 			JSON.stringify({
 				email: "nuevo@example.test",
 				password: "a-long-enough-password",
 				name: "Nuevo Cliente",
+				termsAccepted: true,
+				ageConfirmed: true,
 			}),
 		);
 	});
@@ -214,6 +222,7 @@ describe("error mapping", () => {
 					"a@b.test",
 					"password-123456",
 					"Ana",
+					{ termsAccepted: true, ageConfirmed: true },
 				),
 			);
 			expect(message).toBe("auth.error.generic");

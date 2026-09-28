@@ -2,13 +2,20 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
+import {
+	AccessibilityInfo,
+	Linking,
+	Platform,
+	StyleSheet,
+	View,
+} from "react-native";
 import { ActionBar } from "@/components/action-bar";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Field } from "@/components/field";
 import { Screen } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
+import { Switch } from "@/components/switch";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
 import { getAccountProfile, setAccountProfile } from "@/lib/device-prefs";
@@ -212,6 +219,8 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [termsAccepted, setTermsAccepted] = useState(false);
+	const [ageConfirmed, setAgeConfirmed] = useState(false);
 	const [pending, setPending] = useState(false);
 	/** The API's own sentence, or `null`. The refusal — never the wait, and never "error". */
 	const [failure, setFailure] = useState<string | null>(null);
@@ -286,7 +295,11 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		// Shown before the early return, so pressing the button is what reveals the problems
 		// in fields the reader never touched. Nothing is sent.
 		setSubmitted(true);
-		if (Object.keys(problems).length > 0) return;
+		if (
+			Object.keys(problems).length > 0 ||
+			(signingUp && (!termsAccepted || !ageConfirmed))
+		)
+			return;
 
 		inFlight.current = true;
 		setPending(true);
@@ -305,7 +318,10 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			// credential is plumbing, and a picker for it on this form was asking a
 			// person picking a role to also adjudicate an infrastructure decision.
 			const result = signingUp
-				? await auth.signUp(email.trim(), password, name.trim())
+				? await auth.signUp(email.trim(), password, name.trim(), {
+						termsAccepted,
+						ageConfirmed,
+					})
 				: await auth.signIn(email.trim(), password);
 
 			if (result.ok) {
@@ -341,6 +357,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		}
 	}, [
 		auth,
+		ageConfirmed,
 		email,
 		name,
 		password,
@@ -349,6 +366,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		role,
 		signingUp,
 		t,
+		termsAccepted,
 	]);
 
 	/**
@@ -369,7 +387,14 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 * o contraseña incorrectos" would name a cause nobody reported.
 	 */
 	const stranded = sent && !pending && auth.status === "signed-out";
-	const message = failure ?? (stranded ? t("auth.error.generic") : null);
+	const consentMissing = signingUp && (!termsAccepted || !ageConfirmed);
+	const message =
+		failure ??
+		(submitted && consentMissing
+			? t("auth.signUp.consentRequired")
+			: stranded
+				? t("auth.error.generic")
+				: null);
 
 	/**
 	 * Whether the wait is still open, and it outlives this form's own round trip.
@@ -552,6 +577,52 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 					onSubmitEditing={() => void submit()}
 				/>
 
+				{signingUp ? (
+					<View style={styles.consent}>
+						<View style={styles.consentRow}>
+							<Switch
+								checked={ageConfirmed}
+								disabled={waiting}
+								label={t("auth.signUp.ageLabel")}
+								onChange={(next) => {
+									setFailure(null);
+									setAgeConfirmed(next);
+								}}
+							/>
+							<Text variant="label" tone="muted" style={styles.consentLabel}>
+								{t("auth.signUp.ageLabel")}
+							</Text>
+						</View>
+						<View style={styles.consentRow}>
+							<Switch
+								checked={termsAccepted}
+								disabled={waiting}
+								label={t("auth.signUp.termsLabel")}
+								onChange={(next) => {
+									setFailure(null);
+									setTermsAccepted(next);
+								}}
+							/>
+							<Text variant="label" tone="muted" style={styles.consentLabel}>
+								{t("auth.signUp.termsLabel")}
+							</Text>
+						</View>
+						<Text
+							accessibilityRole="link"
+							onPress={() =>
+								void Linking.openURL(
+									"https://pymeshub.lat/legal/terms-of-service",
+								)
+							}
+							variant="label"
+							tone="action"
+							style={styles.termsLink}
+						>
+							{t("auth.signUp.termsLink")}
+						</Text>
+					</View>
+				) : null}
+
 				{/* One slot for both the failure and the wait, and it is reserved: the two controls
 			    under it must not move when either appears. The word is the whole waiting state for
 			    a reader who is not looking at the spinner. The failure comes first, because a
@@ -623,6 +694,14 @@ const styles = StyleSheet.create({
 	// The identification group and its one help line, kept together: the line is the
 	// delivery choice's own sentence and must not float free of the control that chose it.
 	role: { gap: space.xs },
+	consent: { gap: space.xs },
+	consentRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+	},
+	consentLabel: { flex: 1 },
+	termsLink: { alignSelf: "flex-start", marginLeft: 48 + space.xs },
 	// `minHeight` is a floor: at 200% Dynamic Type the sentence and the word both grow past
 	// it, and the slot grows with them instead of clipping them.
 	status: { minHeight: typeScale.body.lineHeight, justifyContent: "center" },

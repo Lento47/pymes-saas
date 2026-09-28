@@ -1,6 +1,7 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import {
 	account,
+	accountConsent,
 	createDb,
 	rateLimit,
 	session,
@@ -11,8 +12,99 @@ import { betterAuth } from "better-auth";
 import { bearer } from "better-auth/plugins/bearer";
 import { corsOrigins, type Env } from "./env";
 
+/**
+ * What the reader asserted when they made the account, and when.
+ *
+ * Both timestamps are the same instant because the two assertions were made together,
+ * by one reader, on one form. Two timestamps a few hundred microseconds apart would
+ * present as two separate acts to anyone auditing them later, which is the wrong
+ * shape for evidence about a single agreement.
+ */
+export type SignUpConsent = { termsAcceptedAt: Date; ageConfirmedAt: Date };
+
+/** A refusal: the code the client switches on and the sentence a person reads. */
+export type ConsentRefusal = { code: string; message: string };
+
+/**
+ * Read the two assertions out of a sign-up body, or say which one is missing.
+ *
+ * This is a function rather than inline route code because the body has to be read
+ * **before** Better Auth sees it, and the reason is a correction worth recording:
+ * `databaseHooks.user.create.before` does not receive fields the auth layer does not
+ * model. Its first argument is typed `User & Record<string, unknown>`, which reads
+ * like "and anything else the body carried" and is not — the body is parsed into
+ * Better Auth's own shape first, and the extra keys are gone before the hook runs.
+ * Enforcing in the hook would have produced a gate that silently passed everything,
+ * which is worse than no gate because it looks like one.
+ *
+ * So the order is: read the real body, refuse here, and hand the resolved consent to
+ * `createAuth` — which is built per request, so carrying it in a closure is safe where
+ * a module-level variable would not be.
+ *
+ * `ageConfirmed` is checked first for the same reason the web form checks it first: it
+ * is the assertion a refusal is most often about, and naming the wrong one sends the
+ * reader to fix something that was already fine.
+ */
+export function parseSignUpConsent(
+	body: unknown,
+):
+	| { ok: true; consent: SignUpConsent }
+	| { ok: false; refusal: ConsentRefusal } {
+	const flags =
+		typeof body === "object" && body !== null
+			? (body as { termsAccepted?: unknown; ageConfirmed?: unknown })
+			: {};
+
+	// `!== true` rather than a truthiness test. A client that sends the string "true",
+	// or the number 1, has asserted nothing, and coercing it would accept a body the
+	// form never produced.
+	if (flags.ageConfirmed !== true) {
+		return {
+			ok: false,
+			refusal: {
+				code: "AGE_CONFIRMATION_REQUIRED",
+				message:
+					"Debés confirmar que tenés 18 años o más para crear una cuenta.",
+			},
+		};
+	}
+	if (flags.termsAccepted !== true) {
+		return {
+			ok: false,
+			refusal: {
+				code: "TERMS_ACCEPTANCE_REQUIRED",
+				message:
+					"Debés aceptar los Términos de Servicio para crear una cuenta.",
+			},
+		};
+	}
+
+	const at = new Date();
+	return { ok: true, consent: { termsAcceptedAt: at, ageConfirmedAt: at } };
+}
+
+/**
+ * The body handed on to Better Auth: the caller's own fields, minus the two flags.
+ *
+ * They are dropped rather than forwarded because they are not columns on `user` and
+ * Better Auth builds its insert from its own field list. Nothing is lost by removing
+ * them here — `parseSignUpConsent` has already resolved them into a `SignUpConsent` —
+ * and leaving them in would trade a clean insert for an unknown-column write on some
+ * future version.
+ */
+export function withoutConsentFlags(body: unknown): unknown {
+	if (typeof body !== "object" || body === null) return body;
+	const { termsAccepted, ageConfirmed, ...rest } = body as Record<
+		string,
+		unknown
+	>;
+	void termsAccepted;
+	void ageConfirmed;
+	return rest;
+}
+
 /** Created per request: bindings must never be captured across Worker requests. */
-export function createAuth(env: Env) {
+export function createAuth(env: Env, consent?: SignUpConsent) {
 	if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || !env.AUTH_URL)
 		return null;
 	return betterAuth({
@@ -98,6 +190,50 @@ export function createAuth(env: Env) {
 				"/sign-in/email": { window: 60, max: 5 },
 				"/sign-up/email": { window: 60, max: 5 },
 				"/get-session": { window: 60, max: 300 },
+			},
+		},
+		/**
+		 * Where the consent record is written, and the last thing that can refuse a
+		 * user.
+		 *
+		 * The web sign-up at `/register` goes through the NestJS app, which enforces
+		 * `terms_accepted` and `age_confirmed`. This sign-up is a **different door into
+		 * the same product** — the mobile app posts to `/auth/sign-up/email` and lands
+		 * here — and before this it recorded nothing at all: no terms, no age
+		 * assertion, no consent record, on the one surface that then asks the device
+		 * for location and a push token. `app.ts` now refuses the request before it
+		 * reaches Better Auth, and this is the second half.
+		 *
+		 * The two halves are separate on purpose. The refusal lives in the route
+		 * because that is the only place the raw body exists; the record lives in the
+		 * hook because that is the only place that knows the insert happened and has
+		 * the new user's id. A `before` that refused would be redundant with the route
+		 * for every real caller while pretending to be a guarantee it cannot make.
+		 *
+		 * `consent` being absent is therefore not a case to handle: a create that
+		 * reaches here without one is a caller that skipped the route, and skipping
+		 * without leaving a record is the correct outcome for that — a row whose
+		 * timestamps are invented would be worse than no row, because it would assert
+		 * an agreement nobody made.
+		 */
+		databaseHooks: {
+			user: {
+				create: {
+					after: async (created) => {
+						if (!consent) return;
+						await createDb(env.DB)
+							.insert(accountConsent)
+							.values({
+								userId: created.id,
+								termsAcceptedAt: consent.termsAcceptedAt,
+								ageConfirmedAt: consent.ageConfirmedAt,
+							})
+							// `onConflictDoNothing` rather than an update: the row is a
+							// record of the first agreement, and a retry of the same sign-up
+							// must not rewrite when it was originally given.
+							.onConflictDoNothing();
+					},
+				},
 			},
 		},
 		advanced: {

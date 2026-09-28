@@ -29,6 +29,7 @@
 
 import type {
 	BusinessHoursEntry,
+	CourierVerificationStatus,
 	LocationPauseReason,
 	Plan,
 	SubscriptionStatus,
@@ -89,9 +90,6 @@ export const COURIER_VERIFICATION_STATUSES = [
 	"VERIFIED",
 	"REJECTED",
 ] as const;
-export type CourierVerificationStatus =
-	(typeof COURIER_VERIFICATION_STATUSES)[number];
-
 export const COURIER_INVITE_STATUSES = [
 	"PENDING",
 	"ACCEPTED",
@@ -234,6 +232,56 @@ export const user = sqliteTable(
 	},
 	(table) => [uniqueIndex("user_email_unique").on(table.email)],
 );
+
+/**
+ * What a person agreed to when they made the account, and when.
+ *
+ * A separate table rather than two nullable timestamps on `user` for three reasons,
+ * and the third is the one that matters legally.
+ *
+ * 1. **The two assertions are separate acts.** "I accept the terms" and "I am 18 or
+ *    over" answer different questions, are refused independently, and under Costa
+ *    Rica's Ley 8968 Art. 5 the second is provenance for the first: a minor's consent
+ *    needs a representative, so a row that recorded acceptance without recording who
+ *    gave it would not say whether the consent was validly obtained.
+ * 2. **A timestamp per act, not per row.** Both columns here are stamped by the same
+ *    `databaseHooks.user.create` pair in `packages/trpc-api/src/auth.ts`, from one
+ *    instant, because one reader on one form asserted them in one breath.
+ * 3. **Art. 6 of the Reglamento puts the burden of proof on the collector.** That is
+ *    an evidentiary question, and the answer to it is a row a person can be shown.
+ *    Two columns on a row a reader never sees is a weaker answer than a row whose
+ *    only subject is the agreement.
+ *
+ * `revokedAt` is nullable and expected to stay null in the common case. It exists
+ * because Art. 5 makes consent revocable "de la misma forma" it was given, and a
+ * revocation that overwrites the original timestamp destroys the record of the grant
+ * — so a revocation is a second event on the same row, not a replacement of the
+ * first.
+ *
+ * One row per user (`user_id` is the primary key), not one per event: a person's
+ * agreement is a standing fact they revise, not a stream. The revision history that
+ * a compliance audit would want is a `consent_event` append-only table, which is not
+ * built because nothing revokes consent yet and building it for a case that cannot
+ * occur is schema for a fantasy — the same test `user`'s notification columns were
+ * held to.
+ */
+export const accountConsent = sqliteTable("account_consent", {
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	/** When the terms were accepted. Never null: a row exists because they were. */
+	termsAcceptedAt: integer("terms_accepted_at", {
+		mode: "timestamp_ms",
+	}).notNull(),
+	/** When the reader asserted they were an adult. Never null, for the same reason. */
+	ageConfirmedAt: integer("age_confirmed_at", {
+		mode: "timestamp_ms",
+	}).notNull(),
+	/** When consent was last revoked, if it was. Null means it still stands. */
+	revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+	/** Why it was revoked, when it was. A revocation with no recorded reason is hard to act on. */
+	revokedReason: text("revoked_reason"),
+});
 
 // ---------------------------------------------------------------------------
 // Marketplace
@@ -846,7 +894,10 @@ export const delivery = sqliteTable(
 		courierUserId: text("courier_user_id").references(() => user.id, {
 			onDelete: "set null",
 		}),
-		status: text("status").$type<DeliveryStatus>().notNull().default("SEARCHING"),
+		status: text("status")
+			.$type<DeliveryStatus>()
+			.notNull()
+			.default("SEARCHING"),
 		pickupName: text("pickup_name").notNull(),
 		pickupLine1: text("pickup_line1").notNull(),
 		pickupLine2: text("pickup_line2"),
@@ -868,7 +919,9 @@ export const delivery = sqliteTable(
 		dropoffPhone: text("dropoff_phone"),
 		dropoffInstructions: text("dropoff_instructions"),
 		acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
-		startedToPickupAt: integer("started_to_pickup_at", { mode: "timestamp_ms" }),
+		startedToPickupAt: integer("started_to_pickup_at", {
+			mode: "timestamp_ms",
+		}),
 		arrivedPickupAt: integer("arrived_pickup_at", { mode: "timestamp_ms" }),
 		pickedUpAt: integer("picked_up_at", { mode: "timestamp_ms" }),
 		deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
@@ -1388,6 +1441,23 @@ export const upload = sqliteTable(
 	(table) => [uniqueIndex("upload_key_unique").on(table.key)],
 );
 
+/**
+ * A courier's public profile, with the vehicle a run happens in.
+ *
+ * One row per person (`user_id` unique): the profile is the identity a business
+ * reads before it invites somebody to deliver - what they call themselves, where
+ * they ride, and the plate and picture that let a shop recognize the vehicle at
+ * the counter. Nullable vehicle columns are the normal state before the first
+ * delivery, not an error.
+ *
+ * `verificationStatus` is the platform's review mark: a profile starts `PENDING`
+ * and a meaningful edit sends it back there, because a name and an area are the
+ * two facts a review actually checks. Availability is the exception - a courier
+ * turning off for the day must not wait for a reviewer to turn back on - and
+ * nothing here denies a profile that has not been reviewed yet; it simply has
+ * not been shown to anyone.
+ */
+
 // ---------------------------------------------------------------------------
 // Inferred row types
 // ---------------------------------------------------------------------------
@@ -1403,7 +1473,6 @@ export type NewMerchantLocation = typeof merchantLocation.$inferInsert;
 
 export type Membership = typeof membership.$inferSelect;
 export type NewMembership = typeof membership.$inferInsert;
-
 
 export type CourierInvite = typeof courierInvite.$inferSelect;
 export type NewCourierInvite = typeof courierInvite.$inferInsert;

@@ -1489,9 +1489,8 @@ async function assertLocationInBusiness(
  * but the query reads the stored `currency` column, and a single total would become a sum
  * across currencies the day that stops being true.
  *
- * "Today" is the UTC day, matching `dayKey`, which is what every other series in this API
- * groups by. A market-local midnight would be a second definition of a day in a codebase
- * that only needs one.
+ * "Today" is the marketplace day in `MARKET_TIME_ZONE`, matching the merchant dashboard
+ * and analytics buckets. A UTC cutoff would split the merchant's trading day.
  */
 export async function stats(
 	ctx: BusinessContext,
@@ -1575,7 +1574,7 @@ export async function stats(
 			.where(and(...scope, eq(orderTable.status, "COMPLETED")))
 			.groupBy(orderTable.currency),
 		// Today's completed revenue, for the merchant home's pulse band: the same
-		// COMPLETED-only meaning as the all-time query below, scoped to the UTC day
+		// COMPLETED-only meaning as the all-time query below, scoped to the market day
 		// `today` above is counted against. A client-side sum over a listed page is
 		// not this — a page is not the day, and the day is not a page.
 		ctx.db

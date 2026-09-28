@@ -319,6 +319,13 @@ describe("a session that verified", () => {
 	 * procedure. Every refusal later in this file is read against what this test proves is
 	 * a working install — which is the only way to tell "it refused because it is safe"
 	 * from "it refused because it is broken".
+	 *
+	 * The body carries both assertions because the install refuses to create a user
+	 * without them (`packages/trpc-api/src/auth.ts`, `databaseHooks.user.create.before`).
+	 * A sign-up that omits them now gets a 400, so the "it works" claim this block
+	 * establishes has to be made with a request the server will accept — and the
+	 * refusals for the missing ones are asserted separately below, where a 400 is the
+	 * thing under test rather than an accident.
 	 */
 	test("a sign-up issues a session the API accepts, and stores no plaintext password", async () => {
 		const test = world();
@@ -333,6 +340,8 @@ describe("a session that verified", () => {
 					email: "nueva@example.test",
 					password,
 					name: "Cliente Nueva",
+					termsAccepted: true,
+					ageConfirmed: true,
 				}),
 			}),
 			env as never,
@@ -367,8 +376,162 @@ describe("a session that verified", () => {
 		expect(account?.password).not.toBe(password);
 		expect(account?.password).not.toContain(password);
 
+		/*
+		 * The consent row the `after` hook wrote, read straight out of the database
+		 * rather than off a response — the hook is a side effect of a request that
+		 * returned 200, so nothing in the response could show that it happened.
+		 *
+		 * Both timestamps are asserted to be the *same value*. They are one act of
+		 * agreement read as two questions, and a pair that differed by a few hundred
+		 * microseconds would present as two separate events to anyone auditing it
+		 * later. The columns are integer milliseconds, so an exact comparison is the
+		 * strongest one the storage allows rather than a near-miss.
+		 */
+		const consent = test.sqlite
+			.prepare(
+				"select terms_accepted_at, age_confirmed_at, revoked_at from account_consent where user_id = ?",
+			)
+			.get(userId) as
+			| {
+					terms_accepted_at: number;
+					age_confirmed_at: number;
+					revoked_at: number | null;
+			  }
+			| undefined;
+
+		expect(consent).toBeDefined();
+		expect(consent?.terms_accepted_at).toBeGreaterThan(0);
+		expect(consent?.age_confirmed_at).toBe(consent?.terms_accepted_at);
+		// A row written by a sign-up has never been revoked; the column exists and is
+		// null, which is the state Art. 5 means by "still stands".
+		expect(consent?.revoked_at).toBeNull();
+
+		/*
+		 * The two flags must not leak onto the `user` row. They are not columns there,
+		 * and Better Auth builds its insert from its own field list — a flag left in the
+		 * payload would be an unknown-column write rather than a consent record. The
+		 * `before` hook returns replacement data with both stripped, and this is what
+		 * proves the strip happened rather than merely being intended.
+		 */
+		const userColumns = test.sqlite
+			.prepare("select * from user where id = ?")
+			.get(userId) as Record<string, unknown>;
+		expect(userColumns).not.toHaveProperty("termsAccepted");
+		expect(userColumns).not.toHaveProperty("ageConfirmed");
+		expect(userColumns).not.toHaveProperty("terms_accepted");
+		expect(userColumns).not.toHaveProperty("age_confirmed");
+
 		test.close();
 	});
+
+	/*
+	 * The two refusals, against the mounted route rather than the hook.
+	 *
+	 * Each asserts three things, because a 400 alone would not say which of them
+	 * broke: that the request is refused, that the refusal names the assertion that is
+	 * missing rather than a generic failure, and — the one that actually matters —
+	 * that **no user row was written**. A gate that inserts and then complains has
+	 * created the account it meant to refuse.
+	 */
+	const refusals: {
+		label: string;
+		body: Record<string, unknown>;
+		expected: string;
+	}[] = [
+		{
+			label: "omits the adult assertion",
+			body: {
+				email: "sin-edad@example.test",
+				name: "Sin Edad",
+				termsAccepted: true,
+			},
+			expected: "AGE_CONFIRMATION_REQUIRED",
+		},
+		{
+			label: "declines the adult assertion",
+			body: {
+				email: "menor@example.test",
+				name: "Menor",
+				termsAccepted: true,
+				ageConfirmed: false,
+			},
+			expected: "AGE_CONFIRMATION_REQUIRED",
+		},
+		{
+			label: "omits the terms acceptance",
+			body: {
+				email: "sin-terminos@example.test",
+				name: "Sin Terminos",
+				ageConfirmed: true,
+			},
+			expected: "TERMS_ACCEPTANCE_REQUIRED",
+		},
+		{
+			label: "declines the terms acceptance",
+			body: {
+				email: "rechaza@example.test",
+				name: "Rechaza",
+				termsAccepted: false,
+				ageConfirmed: true,
+			},
+			expected: "TERMS_ACCEPTANCE_REQUIRED",
+		},
+	];
+
+	for (const refusal of refusals) {
+		test(`a sign-up that ${refusal.label} is refused and writes nothing`, async () => {
+			const test = world();
+			const env = configured(test);
+
+			const response = await createApp().fetch(
+				new Request("http://api.test/auth/sign-up/email", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						password: "una-contrasena-larga",
+						...refusal.body,
+					}),
+				}),
+				env as never,
+			);
+
+			expect(response.status).toBe(400);
+
+			/*
+			 * Two fields, and both are asserted because they answer two different
+			 * questions. `error` is the stable code a client switches on — it does not
+			 * change when the sentence is reworded or translated. `message` is the
+			 * sentence a person reads, and it is the one that has to be present: a 400
+			 * carrying only a code leaves the form with nothing to show.
+			 */
+			const body = (await response.json()) as {
+				error?: string;
+				message?: string;
+			};
+			expect(body.error).toBe(refusal.expected);
+			expect(body.message ?? "").not.toBe("");
+
+			// The part that makes it a gate.
+			//
+			// `toBeFalsy` rather than `toBeUndefined`: the harness's `.get()` answers
+			// `null` for a row that is not there, and an assertion written against
+			// `undefined` would fail here while telling you nothing about the gate.
+			const email = refusal.body.email as string;
+			const written = test.sqlite
+				.prepare("select id from user where email = ?")
+				.get(email);
+			expect(written).toBeFalsy();
+
+			const consent = test.sqlite
+				.prepare(
+					"select user_id from account_consent where user_id in (select id from user where email = ?)",
+				)
+				.get(email);
+			expect(consent).toBeFalsy();
+
+			test.close();
+		});
+	}
 
 	test("resolves the caller, and is the control the refusals below are read against", async () => {
 		const test = world();

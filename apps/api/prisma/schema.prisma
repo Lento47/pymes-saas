@@ -404,6 +404,11 @@ model User {
   status            UserStatus @default(ACTIVE)
   is_platform_admin  Boolean   @default(false)
   terms_accepted_at  DateTime?
+  /// When the account holder asserted they are 18 or over. Nullable like
+  /// `terms_accepted_at` and for the same reason: a row written before this
+  /// column existed has no assertion to record, and a null says that rather
+  /// than claiming the person consented to something they never were asked.
+  age_confirmed_at   DateTime?
   email_verified         Boolean   @default(false)
   email_verification_token String? @unique
 
