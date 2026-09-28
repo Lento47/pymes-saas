@@ -5,6 +5,7 @@ import {
 	Platform,
 	type StyleProp,
 	StyleSheet,
+	useWindowDimensions,
 	View,
 	type ViewStyle,
 } from "react-native";
@@ -112,6 +113,7 @@ export default function BusinessLayout() {
 	const { colors } = useTheme();
 	const { t } = useT();
 	const insets = useSafeAreaInsets();
+	const { width: windowWidth } = useWindowDimensions();
 	const resolved = useResolvedRole();
 
 	if (resolved.state === "boot") return null;
@@ -164,13 +166,16 @@ export default function BusinessLayout() {
 						tabBarStyle: [
 							{
 								position: "absolute",
-								// Centred by auto margins, not by offsets: with a fixed
-								// width and both edges pinned, Yoga splits the free
-								// space equally on native and web alike.
+								// Centred by measured side margins: the free width split
+								// equally, recomputed on rotation. No auto margins, no
+								// percentage offsets — both proved unreliable against
+								// this navigator's bar container.
 								left: 0,
 								right: 0,
-								marginHorizontal: "auto",
-								width: CAPSULE_WIDTH,
+								marginHorizontal: Math.max(
+									0,
+									(windowWidth - CAPSULE_WIDTH) / 2,
+								),
 								height: BUSINESS_TAB_BAR_HEIGHT,
 								bottom: insets.bottom + BUSINESS_TAB_BAR_LIFT,
 								borderRadius: radius.full,
