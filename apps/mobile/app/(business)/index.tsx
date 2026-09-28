@@ -22,6 +22,7 @@ import { useMemo, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
+	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
@@ -49,7 +50,7 @@ import {
 	pulseBandHeight,
 } from "@/components/merchant-pulse";
 import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
-import { Pressable } from "@/components/pressable";
+import { hitSlopFor, Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
 import { Sheet } from "@/components/sheet";
@@ -60,12 +61,7 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { messageFor, toApiFailure, useApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
-import {
-	formatClock,
-	formatDayMonth,
-	formatMinuteOfDay,
-	formatRelative,
-} from "@/lib/format";
+import { formatClock, formatDayMonth, formatRelative } from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
@@ -75,7 +71,6 @@ import {
 	MIN_TOUCH_TARGET,
 	radius,
 	space,
-	TEXT_STACK_GAP,
 	type as typeScale,
 	useTheme,
 } from "@/theme";
@@ -596,129 +591,32 @@ export default function MerchantHome() {
 				) : (
 					<>
 						<View style={styles.merchantHeader}>
-							{/* §12's leading pair. The layout it draws is `controls | identity | logo` —
-						    the pair leads and the last two were already here:
-						    this is the pair on the left, top-aligned with the logo so it
-						    answers the business block rather than floating in the middle of a header
-						    that grows at 200% text.
-
-						    Both doors leave the business tree, and both already exist as root
-						    screens of their own ΓÇö `app/inbox` is the bell's whole job ("What the
-						    shop has told you: the bell, as a list") and `app/profile` is the
-						    fields `./more` already links to. One bell rather than a second
-						    notifications screen, for the reason `components/home-header` has one
-						    avatar. The profile is an icon and not `home-header`'s initials because
-						    this screen reads the shop and not `users.me`, and a header that drew a
-						    name it never fetched would be the file's own "a control for something
-						    the API has not confirmed" one step earlier. */}
-							<View style={styles.merchantControls}>
-								<Pressable
-									onPress={() => router.push("/inbox")}
-									accessibilityRole="button"
-									accessibilityLabel={
-										attentionTotal > 0
-											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
-											: t("account.inbox")
-									}
-									accessibilityHint={t("account.inbox.help")}
-									style={styles.headerControl}
+							{/* Shop rail: identity, Open, location, bell — one 52pt row
+							    that scrolls instead of shrinking. The user is not here (the
+							    Account tab owns the person); the shop is, four controls wide. */}
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerStyle={styles.rail}
+							>
+								{/* 52 identity: the initial, or the photograph clipped to r16. */}
+								<Image
+									uri={home.data?.location.logoUrl}
+									radiusToken="full"
+									style={[
+										styles.identity,
+										{ borderColor: colors.border },
+										home.data?.location.logoUrl ? styles.identityPhoto : null,
+									]}
+									accessibilityElementsHidden
 								>
-									<Ionicons
-										name="notifications-outline"
-										size={icon.action}
-										color={colors.foreground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-									{attentionTotal > 0 ? (
-										<View
-											style={[
-												styles.bellBadge,
-												{ backgroundColor: colors.destructive },
-											]}
-										>
-											{/* The destructive pair, not `inverse`: the merchant
-											    palette spends `primaryForeground` on ink, which
-											    on this fill would be a dark-on-dark count. */}
-											<Text
-												variant="caption"
-												bold
-												tabular
-												style={{ color: colors.destructiveForeground }}
-											>
-												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
-											</Text>
-										</View>
-									) : null}
-								</Pressable>
-								<Pressable
-									onPress={() => router.push("/profile")}
-									accessibilityRole="button"
-									accessibilityLabel={t("account.profile.title")}
-									style={styles.headerControl}
-								>
-									<Ionicons
-										name="person-circle-outline"
-										size={icon.action}
-										color={colors.foreground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-								</Pressable>
-							</View>
-							<View style={styles.merchantIdentity}>
-								{selectedLocation ? (
-									<View style={styles.operatingState}>
-										<Pressable
-											onPress={() => setLocationPickerOpen(true)}
-											disabled={(locations.data?.length ?? 0) < 2}
-											disabledOpacity={1}
-											accessibilityRole="button"
-											accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
-											accessibilityHint={
-												(locations.data?.length ?? 0) > 1
-													? t("biz.locations.select")
-													: undefined
-											}
-											style={styles.locationLine}
-										>
-											<Ionicons
-												name="location-outline"
-												size={14}
-												color={colors.mutedForeground}
-											/>
-											<Text variant="label" tone="muted" numberOfLines={1}>
-												{(locations.data?.length ?? 0) === 1 &&
-												selectedLocation.name === shop.businessName
-													? (selectedLocation.city ?? selectedLocation.name)
-													: [selectedLocation.name, selectedLocation.city]
-															.filter(Boolean)
-															.join(" ┬╖ ")}
-											</Text>
-											{(locations.data?.length ?? 0) > 1 ? (
-												<Ionicons
-													name="chevron-down"
-													size={14}
-													color={colors.mutedForeground}
-												/>
-											) : null}
-										</Pressable>
-										{selectedLocation.todayHours ? (
-											<Text variant="caption" tone="muted">
-												{t("biz.dashboard.today")} ┬╖{" "}
-												{formatMinuteOfDay(
-													selectedLocation.todayHours.opensMinute,
-													intlLocale,
-												)}
-												ΓÇô
-												{formatMinuteOfDay(
-													selectedLocation.todayHours.closesMinute,
-													intlLocale,
-												)}
-											</Text>
-										) : null}
-									</View>
-								) : null}
+									{home.data?.location.logoUrl ? null : (
+										<Text variant="title" bold>
+											{shop.businessName.trim().charAt(0).toUpperCase()}
+										</Text>
+									)}
+								</Image>
+								{/* Open pill: the location's availability as a control. */}
 								{selectedLocation ? (
 									<Pressable
 										onPress={() => {
@@ -751,14 +649,11 @@ export default function MerchantHome() {
 													)
 												: undefined
 										}
-										style={[
-											styles.statusControl,
-											{ backgroundColor: colors.muted },
-										]}
+										style={[styles.openPill, { backgroundColor: colors.muted }]}
 									>
 										<View
 											style={[
-												styles.statusDot,
+												styles.openDot,
 												{
 													backgroundColor:
 														selectedLocation.status === "open"
@@ -775,50 +670,124 @@ export default function MerchantHome() {
 										{canManageOperatingState ? (
 											<Ionicons
 												name={locationPaused ? "play-outline" : "chevron-down"}
-												size={16}
+												size={14}
 												color={colors.foreground}
+												accessibilityElementsHidden
+												importantForAccessibility="no"
 											/>
 										) : null}
 									</Pressable>
 								) : null}
-							</View>
-							<Image
-								uri={home.data?.location.logoUrl}
-								style={[styles.merchantLogo, { borderColor: colors.border }]}
-								radiusToken="md"
-								accessibilityElementsHidden
-							>
-								{home.data?.location.logoUrl ? null : (
-									<Text variant="title" bold>
-										{shop.businessName.trim().charAt(0).toUpperCase()}
-									</Text>
-								)}
-							</Image>
-						</View>
-						<View style={styles.syncRow}>
-							<View style={styles.syncStatus} accessibilityLiveRegion="polite">
+								{/* Location pill: the picker's only door — the whole pill asks. */}
+								{selectedLocation ? (
+									<Pressable
+										onPress={() => setLocationPickerOpen(true)}
+										disabled={(locations.data?.length ?? 0) < 2}
+										disabledOpacity={1}
+										accessibilityRole="button"
+										accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
+										accessibilityHint={
+											(locations.data?.length ?? 0) > 1
+												? t("biz.locations.select")
+												: undefined
+										}
+										style={[
+											styles.locationPill,
+											{ backgroundColor: colors.muted },
+										]}
+									>
+										<Ionicons
+											name="location-outline"
+											size={16}
+											color={colors.mutedForeground}
+											accessibilityElementsHidden
+											importantForAccessibility="no"
+										/>
+										<Text
+											variant="label"
+											tone="muted"
+											numberOfLines={1}
+											style={styles.locationName}
+										>
+											{selectedLocation.name}
+										</Text>
+									</Pressable>
+								) : null}
+								{/* Bell, with its count where the count belongs. */}
+								<Pressable
+									onPress={() => router.push("/inbox")}
+									accessibilityRole="button"
+									accessibilityLabel={
+										attentionTotal > 0
+											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
+											: t("account.inbox")
+									}
+									accessibilityHint={t("account.inbox.help")}
+									style={[styles.bell, { backgroundColor: colors.muted }]}
+								>
+									<Ionicons
+										name="notifications-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									{attentionTotal > 0 ? (
+										<View
+											style={[
+												styles.bellBadge,
+												{ backgroundColor: colors.destructive },
+											]}
+										>
+											{/* The destructive pair, not `inverse`: the merchant
+									    palette spends `primaryForeground` on ink, which
+									    on this fill would be a dark-on-dark count. */}
+											<Text
+												variant="caption"
+												bold
+												tabular
+												style={{ color: colors.destructiveForeground }}
+											>
+												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
+											</Text>
+										</View>
+									) : null}
+								</Pressable>
+							</ScrollView>
+							{/* Quiet metadata under the rail: cloud, sentence, refresh. No
+							    card, no rules — a 20pt line the eye crosses without stopping. */}
+							<View style={styles.syncMeta} accessibilityLiveRegion="polite">
 								<Ionicons
 									name={syncing ? "sync-outline" : "cloud-done-outline"}
-									size={20}
-									color={syncing ? colors.primary : colors.mutedForeground}
-									importantForAccessibility="no-hide-descendants"
+									size={14}
+									color={colors.mutedForeground}
 									accessibilityElementsHidden
+									importantForAccessibility="no"
 								/>
-								<Text style={styles.syncLabel}>{freshnessLabel}</Text>
+								<Text
+									variant="caption"
+									tone="muted"
+									style={styles.syncMetaLabel}
+								>
+									{freshnessLabel}
+								</Text>
+								<Pressable
+									onPress={refreshDashboard}
+									accessibilityRole="button"
+									accessibilityLabel={t("biz.dashboard.refresh")}
+									accessibilityHint={t("biz.dashboard.refreshHelp")}
+									hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
+									style={styles.refreshTarget}
+								>
+									<Ionicons
+										name="refresh"
+										size={18}
+										color={syncing ? colors.primary : colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
 							</View>
-							<Pressable
-								onPress={refreshDashboard}
-								accessibilityRole="button"
-								accessibilityLabel={t("biz.dashboard.refresh")}
-								accessibilityHint={t("biz.dashboard.refreshHelp")}
-								style={({ pressed }) => [
-									styles.syncControl,
-									pressed ? { backgroundColor: colors.muted } : null,
-									syncing ? { opacity: 0.6 } : null,
-								]}
-							>
-								<Ionicons name="refresh" size={24} color={colors.primary} />
-							</Pressable>
 						</View>
 						{/* The destinations, as icon tiles that scroll sideways: orders,
 						    catalogue, promotions, analytics, team, payouts. The command
@@ -1379,14 +1348,13 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 			accessibilityRole="progressbar"
 			accessibilityLabel={loadingLabel}
 		>
-			<View style={styles.merchantHeader}>
-				<Skeleton style={styles.skeletonLogo} />
-				<View style={styles.skeletonIdentity}>
-					<Skeleton style={[styles.skeletonName, line("title", fontScale)]} />
-					<Skeleton style={[styles.skeletonMeta, line("label", fontScale)]} />
-					<Skeleton style={styles.skeletonStatus} />
-				</View>
+			<View style={styles.railSkeleton}>
+				<Skeleton style={styles.skeletonIdentityBox} radiusToken="full" />
+				<Skeleton style={[styles.skeletonPill, { width: "28%" }]} />
+				<Skeleton style={[styles.skeletonPill, { width: "24%" }]} />
+				<Skeleton style={[styles.skeletonPill, { width: "14%" }]} />
 			</View>
+			<Skeleton style={[styles.skeletonMeta, line("caption", fontScale)]} />
 			{/* The pulse module's stand-in: inset and cornered like the module,
 			    at the module's own height, scaled where the module scales. The
 			    measure is `./merchant-pulse`'s own — the wait and the arrival
@@ -1429,66 +1397,42 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const SKELETON_ROWS = [0, 1, 2] as const;
 
 const styles = StyleSheet.create({
-	syncRow: {
-		minHeight: 64,
+	// Quiet metadata under the rail: cloud, sentence, refresh — a 20pt
+	// line with no card and no rules. Lime lives only on the refresh
+	// glyph while it is actually refreshing.
+	syncMeta: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: space.md,
-		paddingHorizontal: space.xl,
-		paddingVertical: space.sm,
-		borderTopWidth: StyleSheet.hairlineWidth,
-		borderBottomWidth: StyleSheet.hairlineWidth,
+		gap: space.xs,
+		paddingHorizontal: space.lg,
+		minHeight: 20,
+		marginTop: space.sm,
 	},
-	syncStatus: {
-		flex: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.sm,
-	},
-	syncLabel: { flexShrink: 1 },
-	syncControl: {
-		width: 48,
-		height: 48,
-		alignItems: "center",
-		justifyContent: "center",
-		borderRadius: radius.sm,
-	},
+	syncMetaLabel: { flex: 1 },
+	// Visible 18-point glyph; the 44-point target arrives as hitSlop so
+	// the row stays quiet.
+	refreshTarget: { alignItems: "center", justifyContent: "center" },
 	body: { gap: space.lg },
 	pad: { paddingHorizontal: space.lg },
-	merchantHeader: {
-		minHeight: 124,
-		flexDirection: "row",
-		alignItems: "flex-start",
-		gap: 14,
-		paddingHorizontal: space.xl,
-		paddingTop: space.md,
-		paddingBottom: space.lg,
+	// Ten points of air under the safe area, then the rail: no header
+	// card, no background container — the controls are the hierarchy.
+	merchantHeader: { paddingTop: 10 },
+	// The rail's own inset and rhythm: 16pt gutters, 8pt between controls,
+	// everything centred on the 52 row.
+	rail: {
+		paddingHorizontal: space.lg,
+		gap: space.sm,
+		alignItems: "center",
 	},
-	merchantLogo: { width: 56, height: 56, borderWidth: 1 },
-	merchantIdentity: { flex: 1, alignItems: "flex-end", gap: TEXT_STACK_GAP },
-	// ┬º12's controls, in a row of their own and top-aligned: they belong to the title,
-	// the same rule `./home-header` writes for the avatar beside its own.
-	merchantControls: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-		gap: space.xs,
-	},
-	/**
-	 * ┬º28's icon button. The box is 48 rather than `MIN_TOUCH_TARGET`'s 44 because ┬º28
-	 * asks for 48 on both platforms ΓÇö "Android's current accessibility guidance explicitly
-	 * calls for at least 48dp interactive targets", and its own note is to make both 48 for
-	 * parity. The glyph inside is `icon.action` (20), the middle of ┬º28's 20ΓÇô22; the drawn
-	 * container *is* the target here, so there is no `hitSlop` to inflate it with.
-	 */
-	headerControl: {
-		// Relative: the bell's count pins to this box's corner, the same
-		// geometry the cart count and the card heart use.
-		position: "relative",
-		width: 48,
-		height: 48,
+	identity: {
+		width: 52,
+		height: 52,
 		alignItems: "center",
 		justifyContent: "center",
+		borderWidth: 1,
 	},
+	// r16 when the shop has a photograph; the full circle keeps the initial.
+	identityPhoto: { borderRadius: 16 },
 	// The bell's count, pinned over the glyph's corner. No fixed height: the
 	// padding wraps the `caption` line the way `./status-badge`'s compact dot
 	// does, so the disc grows with the reader instead of clipping at 200%.
@@ -1503,22 +1447,48 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	locationLine: { flexDirection: "row", alignItems: "center", gap: space.xs },
-	operatingState: { alignItems: "flex-start", gap: space.xs },
-	statusControl: {
-		minHeight: MIN_TOUCH_TARGET,
+	// Open pill: 44 tall, fully round, muted fill. The 7pt dot is the
+	// spec's number, not STATUS_DOT_SIZE's 8 — a status mark beside 13pt
+	// words, not the card dot beside a caption.
+	openPill: {
 		flexDirection: "row",
 		alignItems: "center",
-		alignSelf: "flex-end",
 		gap: space.sm,
-		paddingHorizontal: space.md,
-		borderRadius: radius.sm,
+		height: 44,
+		paddingHorizontal: 14,
+		borderRadius: radius.full,
 	},
-	statusDot: { width: 8, height: 8, borderRadius: radius.full },
-	skeletonLogo: { width: 56, height: 56 },
-	skeletonIdentity: { flex: 1, gap: TEXT_STACK_GAP },
-	skeletonStatus: { width: 100, minHeight: MIN_TOUCH_TARGET },
-	skeletonName: { width: "55%" },
+	openDot: { width: 7, height: 7, borderRadius: radius.full },
+	// Location pill: 44 tall, fully round, muted fill, 130 wide at most
+	// with the name truncated to one line. Gap 7 is the spec's number,
+	// between the scale's xs and sm the way the 7pt dot sits between steps.
+	locationPill: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 7,
+		height: 44,
+		paddingHorizontal: 14,
+		maxWidth: 130,
+		borderRadius: radius.full,
+	},
+	locationName: { flexShrink: 1 },
+	// Bell: 44 circle, muted fill. The count keeps its corner pin.
+	bell: {
+		position: "relative",
+		width: 44,
+		height: 44,
+		borderRadius: radius.full,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	railSkeleton: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		paddingHorizontal: space.lg,
+	},
+	skeletonIdentityBox: { width: 52, height: 52 },
+	skeletonPill: { height: 44, borderRadius: radius.full },
 	skeletonMeta: { width: "40%" },
 	insight: {
 		flexDirection: "row",
