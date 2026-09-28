@@ -43,7 +43,7 @@
 
 import { z } from "zod";
 import { PROMOTION_KINDS, type PromotionKind } from "./catalog";
-import { currencySchema, moneyMinorSchema } from "./common";
+import { currencySchema, imageUrlSchema, moneyMinorSchema } from "./common";
 
 /**
  * The code a customer types at checkout.
@@ -103,6 +103,17 @@ const promotionFields = z.object({
 	 */
 	startsAt: z.date().nullable().optional(),
 	endsAt: z.date().nullable().optional(),
+	/**
+	 * The banner picture, as the `/files/:id` `uploads.create` answered. Absent means
+	 * "leave it alone" on an update and "the brand fill" on a create; an explicit `null`
+	 * on an update is how a shop takes the picture back off.
+	 *
+	 * The column is the same one `catalog.ts`'s `promotionArtSchema` narrows for the
+	 * card, and the two are not merged because this file is what a shop *writes* and that
+	 * one is what a customer *sees* — the split every other schema pair in this package
+	 * makes.
+	 */
+	imageUrl: imageUrlSchema.nullable().optional(),
 });
 
 /**
@@ -190,6 +201,8 @@ export const promotionDetailSchema = z.object({
 	kind: z.enum(PROMOTION_KINDS),
 	value: z.number().int(),
 	currency: currencySchema,
+	/** The banner picture the shop chose, or null for the composed brand fill. */
+	imageUrl: imageUrlSchema.nullable(),
 	minOrderMinor: z.number().int().nullable(),
 	maxRedemptions: z.number().int().nullable(),
 	redemptions: z.number().int(),

@@ -320,6 +320,30 @@ export const PROMOTION_KINDS = ["PERCENT", "FIXED", "FREE_DELIVERY"] as const;
 export type PromotionKind = (typeof PROMOTION_KINDS)[number];
 
 /**
+ * What a promotion's banner is drawn from.
+ *
+ * Declared above `promotionCardSchema` because the card names it — a `const` is not
+ * hoisted, and the alternative is a schema that fails to evaluate rather than one that
+ * fails to compile, which is the worse of the two.
+ *
+ * The union lives here, beside the card that carries it, rather than in `promotions.ts`
+ * with the merchant's other inputs — because this is the **advertising** half's fact, the
+ * same split `promotionCardSchema` and `promotionDetailSchema` already make.
+ * `promotions.ts` validates writes against the plain `imageUrl` column and does not own
+ * this.
+ *
+ * The two states below are the two a shop can reach today. `uploads.create` is the only
+ * producer of a `photo` URL and it carries no `kind` of its own, so nothing here has to
+ * agree with it about what a picture is called — it answers a `/files/:id` and
+ * `imageUrlSchema` already accepts that, which is the whole of the contract.
+ */
+export const promotionArtSchema = z.discriminatedUnion("kind", [
+	z.object({ kind: z.literal("none") }),
+	z.object({ kind: z.literal("photo"), imageUrl: imageUrlSchema }),
+]);
+export type PromotionArt = z.infer<typeof promotionArtSchema>;
+
+/**
  * A shop's offer, as a rail on a browse screen draws it.
  *
  * This is the **advertising** half of a promotion, and it is a different thing from the
@@ -349,6 +373,25 @@ export type PromotionKind = (typeof PROMOTION_KINDS)[number];
  * The business is a `SellerSummary` and not a `BusinessCard`, which is the same decision
  * `productCardSchema.seller` makes and for the same reason: a card that carries a second
  * card's worth of chips is a card nobody can read four of in a row.
+ *
+ * ## `art`, and why it is a union and not a nullable `imageUrl`
+ *
+ * A promotion's banner is a *choice* with named states, and a nullable column can only
+ * say "there is one or there is not". The moment there is a second kind of art the client
+ * is back to writing the precedence rule — photo wins over design, design wins over
+ * nothing — once in the merchant's form, once in the feed's banner and once in the
+ * storefront's block, which is three answers to one question and the arrangement this
+ * repository has been bitten by before (`apps/mobile/components/home-header.tsx` exists
+ * because two files once held one coordinate and disagreed about it).
+ *
+ * So the row's nullable column is narrowed **once**, in the mapper that builds the card,
+ * and what travels is a closed union. A third state added later is a compile error in
+ * every switch that reads it rather than a card that quietly draws the wrong thing.
+ *
+ * `kind: "none"` is a state rather than an absent field on purpose: "this promotion has
+ * no picture and draws its brand fill" is a decision somebody made, and a client that
+ * cannot tell it from "nobody has decided yet" will invent a placeholder for the second
+ * one.
  */
 export const promotionCardSchema = z.object({
 	id: z.string(),
@@ -364,6 +407,7 @@ export const promotionCardSchema = z.object({
 	 * is the one guess `formatMoney` exists to make unnecessary.
 	 */
 	currency: currencySchema,
+	art: promotionArtSchema,
 	business: sellerSummarySchema,
 });
 export type PromotionCard = z.infer<typeof promotionCardSchema>;

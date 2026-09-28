@@ -112,6 +112,9 @@ export async function create(
 		maxRedemptions: input.maxRedemptions ?? null,
 		startsAt: input.startsAt ?? null,
 		endsAt: input.endsAt ?? null,
+		// Absent is the brand fill, which is the same as an explicit null here: a create
+		// has no previous picture to keep, so there is nothing for the field to preserve.
+		imageUrl: input.imageUrl ?? null,
 		// Born open. Closing it is the `setActive` procedure, never a create-time
 		// option: a code the shop has to switch on after saving it is a code nobody
 		// remembers to.
@@ -161,6 +164,10 @@ export async function update(
 	assign(patch, "maxRedemptions", input.maxRedemptions);
 	assign(patch, "startsAt", input.startsAt);
 	assign(patch, "endsAt", input.endsAt);
+	// `assign`'s own rule is the whole of this: absent leaves the stored picture alone,
+	// and an explicit `null` takes it off. A form that saves without touching the field
+	// therefore cannot quietly strip a banner the shop uploaded last month.
+	assign(patch, "imageUrl", input.imageUrl);
 
 	const [written] = await ctx.db
 		.update(promotionTable)

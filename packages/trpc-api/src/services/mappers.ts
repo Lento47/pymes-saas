@@ -69,6 +69,7 @@ import {
 	type ProductCard,
 	type ProductDetail,
 	type ProductOptionGroup,
+	type PromotionArt,
 	type PromotionCard,
 	type PromotionDetail,
 	type Review,
@@ -338,8 +339,28 @@ export function promotionCardOf(
 		// giving away, in the shop's own unit, and the row has no currency of its own to
 		// disagree with.
 		currency: currencyOf(business.currency),
+		art: promotionArtOf(row.imageUrl),
 		business: sellerSummaryOf(business),
 	};
+}
+
+/**
+ * The one place a promotion's nullable picture column becomes a named state.
+ *
+ * `promotionArtSchema` is a discriminated union on the wire and `promotion.imageUrl` is a
+ * nullable column in the table, and the narrowing between them happens here and nowhere
+ * else. That is the whole reason the union exists rather than a nullable field on the
+ * card: when a second kind of art arrives, its precedence over this one is a line in this
+ * function instead of a comparison in every banner that draws the card — the merchant's
+ * form, the feed's hero and the storefront's block.
+ *
+ * **Photo, or nothing.** There is no second state to prefer yet, and the branch is written
+ * as the pair it will grow into rather than as a bare ternary so the place the next state
+ * goes is visible.
+ */
+function promotionArtOf(imageUrl: string | null): PromotionArt {
+	if (imageUrl === null) return { kind: "none" };
+	return { kind: "photo", imageUrl };
 }
 
 /**
@@ -362,6 +383,7 @@ export function promotionDetailOf(
 		kind: row.kind,
 		value: row.value,
 		currency,
+		imageUrl: row.imageUrl,
 		minOrderMinor: row.minOrderMinor,
 		maxRedemptions: row.maxRedemptions,
 		redemptions: row.redemptions,

@@ -1222,6 +1222,18 @@ export const promotion = sqliteTable(
 		startsAt: integer("starts_at", { mode: "timestamp_ms" }),
 		endsAt: integer("ends_at", { mode: "timestamp_ms" }),
 		isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+		/**
+		 * The picture the shop put on this promotion, as the `/files/:id` that
+		 * `uploads.create` answers. Null is the composed brand-fill banner, which is a
+		 * design and not a gap — see `promotionArtSchema` in `@pymeshub/shared`, which is
+		 * where the column and what a client draws from it are kept apart.
+		 *
+		 * The same shape `product.image_url` and `business.logo_url` already have, and
+		 * deliberately not an `images` array: a promotion has one banner surface, and a
+		 * second URL with no second place to draw it is a column for a feature nobody
+		 * asked for.
+		 */
+		imageUrl: text("image_url"),
 	},
 	(table) => [
 		uniqueIndex("promotion_business_code_unique").on(
