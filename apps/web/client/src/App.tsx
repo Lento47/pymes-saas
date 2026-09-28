@@ -21,7 +21,6 @@ import { ActiveCallBar } from "@/features/calls/ActiveCallBar";
 import { CallErrorFallback } from "@/features/calls/CallErrorFallback";
 import { CallPage } from "@/features/calls/CallPage";
 
-import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";

@@ -60,10 +60,27 @@
     </script>
 
     <script>
-      (function() {
-        var t = (function() { try { var v = localStorage.getItem('PymesHub-theme'); return v === 'light' ? v : 'dark'; } catch(e) { return 'dark'; } })();
+      /* Sets the ground before first paint, so a page never flashes the wrong canvas.
+         `STOREFRONT_ROUTES` is duplicated from client/src/lib/storefront-routes.ts —
+         an inline script cannot import a module, so the two must be kept in step. */
+      (function () {
+        var STOREFRONT_ROUTES = [
+          "/", "/categories", "/category", "/search", "/store", "/cart",
+          "/checkout", "/orders", "/order", "/favorites", "/sign-in"
+        ];
+        var path = window.location.pathname || "/";
+        var isStorefront = STOREFRONT_ROUTES.some(function (route) {
+          return path === route || path.indexOf(route + "/") === 0;
+        });
+        var stored = null;
+        try { var v = localStorage.getItem('PymesHub-theme'); stored = (v === 'light' || v === 'dark') ? v : null; } catch (e) {}
+        /* A stated preference wins. With none, the storefront is light and the app dark.
+           Nothing is written back here: a visitor who has not chosen has not chosen. */
+        var t = stored || (isStorefront ? 'light' : 'dark');
         document.documentElement.classList.toggle('light', t === 'light');
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#070B14' : '#f2f3f5');
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', t === 'dark' ? '#070B14' : '#f2f3f5');
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

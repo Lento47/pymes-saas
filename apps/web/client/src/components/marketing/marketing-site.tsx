@@ -9,15 +9,12 @@ import {
   ChevronDown,
   FileText,
   Inbox,
-  Layers3,
   LifeBuoy,
   LockKeyhole,
   Menu,
   MessageCircle,
   Receipt,
-  Search,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   UserRound,
   Users,
@@ -216,150 +213,6 @@ export function MarketingHeader() {
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Product mockup (landing hero visual)
-   ────────────────────────────────────────────────────────────────────────── */
-export function ProductMockup() {
-  const rows = [
-    ["Soda Doña Elba", "Casado · 2 refrescos", "En camino", "12m", true],
-    ["Farma Central", "Farmacia · Receta", "Preparando", "25m", false],
-    ["Ferretería El Martillo", "Ferretería · Herramientas", "Entregado", "1h", false],
-  ] as const;
-  return (
-    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/10 bg-[#070c24] shadow-[0_32px_120px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white">
-            <ShoppingBag className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-white">PymesHub · Tus pedidos</p>
-            <p className="text-[10px] text-slate-500">Descubrí · Pedí · Seguí tu entrega</p>
-          </div>
-        </div>
-        <div className="hidden gap-2 sm:flex">
-          <Badge>3 negocios abiertos</Badge>
-          <Badge tone="warning">1 en preparación</Badge>
-          <Badge tone="success">Entrega hoy</Badge>
-        </div>
-      </div>
-      <div className="grid min-h-[430px] grid-cols-1 md:grid-cols-[270px_minmax(0,1fr)_300px]">
-        <aside className="border-b border-white/10 bg-white/[0.02] md:border-b-0 md:border-r">
-          <div className="border-b border-white/10 p-3">
-            <div className="flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs text-slate-500">
-              <Search className="h-3.5 w-3.5" />
-              Buscar negocios y productos
-            </div>
-            <div className="mt-2 flex gap-1">
-              <Badge tone="primary">Cerca de mí</Badge>
-              <Badge>Abiertos</Badge>
-              <Badge>Ofertas</Badge>
-            </div>
-          </div>
-          {rows.map(([name, meta, status, time, activeRow]) => (
-            <div
-              key={name}
-              className={cn("border-b border-white/10 p-3", activeRow ? "bg-amber-500/10" : "bg-transparent")}
-            >
-              <div className="flex gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold text-slate-300 ring-1 ring-white/10">
-                  {name.split(" ").map((p) => p[0]).join("").slice(0, 2)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex justify-between gap-2">
-                    <p className="truncate text-xs font-semibold text-white">{name}</p>
-                    <span className="text-[10px] text-slate-500">{time}</span>
-                  </div>
-                  <p className="mt-1 truncate text-[11px] text-slate-500">{meta}</p>
-                  <p className="mt-1 text-[10px] font-medium text-amber-400">{status}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </aside>
-        <section className="flex min-h-[430px] flex-col bg-[#070c24]">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold text-slate-300">
-                SE
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Soda Doña Elba</p>
-                <p className="text-xs text-slate-500">Casado con pollo · Entrega a domicilio · ₡4 500</p>
-              </div>
-            </div>
-            <Badge tone="success">En camino · 15 min</Badge>
-          </div>
-          <div className="flex-1 space-y-4 bg-[linear-gradient(to_bottom,#070c24,#05091d)] p-4">
-            <div className="text-center text-[11px] text-slate-600">Hoy</div>
-            <div className="flex gap-2">
-              <div className="mt-auto h-6 w-6 rounded-full bg-white/[0.06]" />
-              <div className="max-w-[76%] rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-sm text-slate-300 shadow-sm">
-                ¡Buen día! Tu pedido está confirmado: 1 casado con pollo y 2 refrescos.
-              </div>
-            </div>
-            <div className="mx-auto max-w-sm rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-center text-[11px] font-medium text-amber-400">
-              Pedido confirmado · Salimos en 10 minutos
-            </div>
-            <div className="flex justify-end">
-              <div className="max-w-[76%] rounded-2xl rounded-br-md border border-amber-500/30 bg-amber-500/15 px-3.5 py-2.5 text-sm text-amber-100">
-                Perfecto, pago en efectivo. Lo espero afuera.
-              </div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-white">Pedido #1042 en camino</p>
-                <Badge tone="warning">Entrega estimada 15 min</Badge>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">Confirmado → Preparando → En camino → Entregado</p>
-            </div>
-          </div>
-          <div className="border-t border-white/10 bg-white/[0.02] p-3">
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2">
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] text-slate-400">
-                +
-              </button>
-              <div className="flex-1 text-sm text-slate-400">Escribile al comercio…</div>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-white">
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </section>
-        <aside className="border-t border-white/10 bg-white/[0.02] p-4 md:border-l md:border-t-0">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Tu pedido</p>
-            <p className="mt-4 text-sm font-semibold text-white">Soda Doña Elba</p>
-            <p className="mt-1 text-xs text-slate-500">Entrega a domicilio · Barrio Amón</p>
-            <div className="mt-4 space-y-3">
-              {[
-                ["Artículos", "3"],
-                ["Total", "₡4 500"],
-                ["Pago", "Efectivo"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-3 border-b border-white/5 pb-2 last:border-0">
-                  <span className="text-xs text-slate-500">{k}</span>
-                  <span className="text-right text-xs font-medium text-slate-200">{v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Acciones</p>
-            <div className="mt-3 grid gap-2">
-              <button className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-[#05091d]">
-                Ver mi pedido
-              </button>
-              <button className="rounded-xl border border-white/15 bg-transparent px-3 py-2 text-xs font-semibold text-slate-200">
-                Pedir de nuevo
-              </button>
-            </div>
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
 
 /* ──────────────────────────────────────────────────────────────────────────
    Reusable content sections (shared by landing + product pages)
