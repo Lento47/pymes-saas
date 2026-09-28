@@ -18,7 +18,6 @@ import { useResolvedRole } from "@/lib/role";
 import {
 	BUSINESS_TAB_BAR_HEIGHT,
 	BUSINESS_TAB_BAR_LIFT,
-	icon,
 	radius,
 	useTheme,
 } from "@/theme";
@@ -41,38 +40,27 @@ const BAR_OPACITY = 0.94;
 const CAPSULE_WIDTH = 320;
 
 /**
- * The capsule's lift shadow, `0 10 30 rgba(0,0,0,.10)`, expressed the way each
+ * The capsule's lift shadow, `0 4 12 rgba(0,0,0,.07)`, expressed the way each
  * platform wants it — the same split `theme/tokens.ts` draws for `shadow`,
  * stated here because no shared step carries this exact diffusion.
+ *
+ * Small and light on purpose: the edge itself is the hairline in
+ * `tabBarStyle`, so the shadow only lifts. A 30-blur mass read as grey dirt
+ * on the white page, and Android's elevation renders with no blur at all.
  */
 const CAPSULE_SHADOW =
 	Platform.OS === "web"
-		? { boxShadow: "0px 10px 30px rgba(0,0,0,0.10)" }
+		? { boxShadow: "0px 4px 12px rgba(0,0,0,0.07)" }
 		: {
 				shadowColor: "#000000",
-				shadowOpacity: 0.1,
-				shadowRadius: 30,
-				shadowOffset: { width: 0, height: 10 },
-				elevation: 8,
+				shadowOpacity: 0.07,
+				shadowRadius: 12,
+				shadowOffset: { width: 0, height: 4 },
+				elevation: 2,
 			};
 
 /** The selected disc, 52 square: 9 points of breathing room inside the 70 bar. */
 const TAB_DISC = 52;
-
-/**
- * The selected disc's own lift, `0 3 14 rgba(0,0,0,.08)` — the floating-action
- * step, so the disc reads as raised off the capsule rather than painted on it.
- */
-const DISC_SHADOW =
-	Platform.OS === "web"
-		? { boxShadow: "0px 3px 14px rgba(0,0,0,0.08)" }
-		: {
-				shadowColor: "#000000",
-				shadowOpacity: 0.08,
-				shadowRadius: 14,
-				shadowOffset: { width: 0, height: 3 },
-				elevation: 3,
-			};
 
 /** `#FFFFFF` + 0.94 → `rgba(255,255,255,0.94)`. Hex in — every `ThemeColors` value is. */
 function withAlpha(hex: string, alpha: number): string {
@@ -164,10 +152,6 @@ export default function BusinessLayout() {
 						tabBarStyle: [
 							{
 								position: "absolute",
-								// Centred by measured side margins: the free width split
-								// equally, recomputed on rotation. No auto margins, no
-								// percentage offsets — both proved unreliable against
-								// this navigator's bar container.
 								left: 0,
 								right: 0,
 								marginHorizontal: Math.max(
@@ -178,7 +162,10 @@ export default function BusinessLayout() {
 								bottom: insets.bottom + BUSINESS_TAB_BAR_LIFT,
 								borderRadius: radius.full,
 								backgroundColor: withAlpha(colors.card, BAR_OPACITY),
-								borderTopWidth: 0,
+								// Hairline, not shadow mass: the crisp edge, drawn in the
+								// palette's own hairline so it survives theme and platform.
+								borderWidth: StyleSheet.hairlineWidth,
+								borderColor: colors.border,
 							},
 							CAPSULE_SHADOW,
 						],
@@ -199,13 +186,8 @@ export default function BusinessLayout() {
 						options={{
 							title: t("nav.home"),
 							tabBarAccessibilityLabel: t("nav.home"),
-							tabBarIcon: ({ focused, color, size }) => (
-								<TabMark
-									focused={focused}
-									name="home-outline"
-									color={color}
-									size={size}
-								/>
+							tabBarIcon: ({ focused, color }) => (
+								<TabMark focused={focused} name="home-outline" color={color} />
 							),
 						}}
 					/>
@@ -214,12 +196,11 @@ export default function BusinessLayout() {
 						options={{
 							title: t("biz.nav.orders"),
 							tabBarAccessibilityLabel: t("biz.nav.orders"),
-							tabBarIcon: ({ focused, color, size }) => (
+							tabBarIcon: ({ focused, color }) => (
 								<TabMark
 									focused={focused}
 									name="receipt-outline"
 									color={color}
-									size={size}
 								/>
 							),
 						}}
@@ -229,12 +210,11 @@ export default function BusinessLayout() {
 						options={{
 							title: t("account.title"),
 							tabBarAccessibilityLabel: t("account.title"),
-							tabBarIcon: ({ focused, color, size }) => (
+							tabBarIcon: ({ focused, color }) => (
 								<TabMark
 									focused={focused}
 									name="person-circle-outline"
 									color={color}
-									size={size}
 								/>
 							),
 						}}
@@ -244,13 +224,8 @@ export default function BusinessLayout() {
 						options={{
 							title: t("biz.nav.menu"),
 							tabBarAccessibilityLabel: t("biz.nav.menu"),
-							tabBarIcon: ({ focused, color, size }) => (
-								<TabMark
-									focused={focused}
-									name="menu-outline"
-									color={color}
-									size={size}
-								/>
+							tabBarIcon: ({ focused, color }) => (
+								<TabMark focused={focused} name="menu-outline" color={color} />
 							),
 						}}
 					/>
@@ -291,8 +266,9 @@ export default function BusinessLayout() {
  * An icon with the selected marker under it, and nothing else that moves.
  *
  * The mark is a 4pt lime dot: the contract's selected signal, drawn outside the
- * glyph so the icon itself never changes colour to say "here". `size` arrives
- * from the navigator (22–24 per the contract); the dot is fixed because it is
+ * glyph so the icon itself never changes colour to say "here". The glyph is an
+ * explicit 24 — the navigator hands 22–24 and the contract never pinned one, so
+ * four tabs drew four near-sizes; the dot is fixed because it is
  * a marker, not type, and markers do not scale with Dynamic Type — the label
  * beside it already does.
  */
@@ -300,12 +276,10 @@ function TabMark({
 	focused,
 	name,
 	color,
-	size,
 }: {
 	focused: boolean;
 	name: React.ComponentProps<typeof Ionicons>["name"];
 	color: React.ComponentProps<typeof Ionicons>["color"];
-	size: number;
 }) {
 	const { colors } = useTheme();
 
@@ -313,13 +287,20 @@ function TabMark({
 		<View
 			style={[
 				styles.mark,
-				focused && { backgroundColor: colors.card },
-				focused && DISC_SHADOW,
+				// Hairline edge, no shadow: white on near-white separates with a
+				// crisp line, and a second shadow inside the bar's own read as dirt.
+				focused && {
+					backgroundColor: colors.card,
+					borderWidth: StyleSheet.hairlineWidth,
+					borderColor: colors.border,
+				},
 			]}
 		>
 			<Ionicons
 				name={name}
-				size={size ?? icon.action}
+				// Explicit 24: the navigator hands 22–24 and the contract never
+				// pinned one, so four tabs drew four near-sizes.
+				size={24}
 				color={color}
 				accessibilityElementsHidden
 				importantForAccessibility="no"
