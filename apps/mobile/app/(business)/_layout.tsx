@@ -332,13 +332,22 @@ function TabMark({
 const styles = StyleSheet.create({
 	// Fixed 52 square in both states, so selection never reflows the bar: the
 	// disc is always there, and only its fill, lift and dot arrive on focus.
+	// The glyph is centred alone — the dot is pinned, not stacked, so landing
+	// on a tab never shifts the icon.
 	mark: {
+		position: "relative",
 		width: TAB_DISC,
 		height: TAB_DISC,
 		borderRadius: radius.full,
 		alignItems: "center",
 		justifyContent: "center",
-		gap: space.xs,
 	},
-	dot: { width: 4, height: 4, borderRadius: radius.full },
+	dot: {
+		position: "absolute",
+		bottom: 10,
+		alignSelf: "center",
+		width: 4,
+		height: 4,
+		borderRadius: radius.full,
+	},
 });
