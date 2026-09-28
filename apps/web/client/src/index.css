@@ -753,6 +753,31 @@ html.marketing-page body {
   color: hsl(var(--fg));
 }
 
+/* ── Marketplace marketing theme — dark navy canvas with amber accent ──
+   Token remap so components built on bg-card / text-foreground / bg-primary
+   render dark with the amber accent (#F59E0B ≈ hsl(38 92% 50%)). */
+.marketplace-theme {
+  --bg:           222 63% 7%;
+  --bg-sidebar:   222 60% 9%;
+  --bg-card:      222 55% 9%;
+  --bg-elevated:  222 50% 12%;
+  --bg-hover:     222 45% 14%;
+  --bg-active:    222 45% 17%;
+  --border:       222 40% 18%;
+  --border-subtle: 222 40% 14%;
+  --fg:           210 30% 98%;
+  --fg-2:         215 20% 70%;
+  --fg-3:         215 15% 55%;
+  --accent:       38 92% 50%;
+  --accent-fg:    222 63% 7%;
+  --primary:      var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --ring:         var(--accent);
+  --link:         38 92% 60%;
+  background: #05091d;
+  color: hsl(var(--fg));
+}
+
 /* ── Storefront theme — the customer-facing marketplace ──
    The storefront's own token set, applied to `MarketplaceShell`'s root element so
    every page inside it renders from tokens rather than hardcoded navy. That is what

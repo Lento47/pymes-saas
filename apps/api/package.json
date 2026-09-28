@@ -17,11 +17,11 @@
     "db:generate": "prisma generate",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test": "node --no-deprecation node_modules/jest/bin/jest.js",
+		"test": "node --no-deprecation ../../node_modules/jest/bin/jest.js",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "node --no-deprecation node_modules/jest/bin/jest.js --config test/jest-e2e.json --runInBand",
-    "test:hacienda": "node --no-deprecation node_modules/jest/bin/jest.js --testPathPattern hacienda.processor.spec.ts --runInBand",
+		"test:e2e": "node --no-deprecation ../../node_modules/jest/bin/jest.js --config test/jest-e2e.json --runInBand",
+		"test:hacienda": "node --no-deprecation ../../node_modules/jest/bin/jest.js --testPathPattern hacienda.processor.spec.ts --runInBand",
     "postinstall": "prisma generate --schema ./prisma/schema.prisma"
   },
   "dependencies": {

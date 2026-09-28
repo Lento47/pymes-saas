@@ -28,6 +28,7 @@ import {
 	decodeCursor,
 	encodeCursor,
 	isTerminalStatus,
+	MARKET_UTC_OFFSET_MINUTES,
 	type MembershipRole,
 	type MembershipSummary,
 	newId,
@@ -901,6 +902,12 @@ export async function inviteStaff(
 	input: { businessId: string; email: string; role: MembershipRole },
 ): Promise<StaffMember> {
 	const businessId = ctx.membership.businessId;
+	if (input.role === "COURIER") {
+		throw new ValidationError(
+			"Invita repartidores desde el directorio de repartidores",
+			{ field: "role" },
+		);
+	}
 
 	// Creating another OWNER is handing over the business, so `staff:manage` — which a
 	// MANAGER also holds — is not enough for that one case.
@@ -996,6 +1003,12 @@ export async function updateStaffRole(
 ): Promise<StaffMember> {
 	assertRole(ctx, "OWNER");
 	const businessId = ctx.membership.businessId;
+	if (input.role === "COURIER") {
+		throw new ValidationError(
+			"Invita repartidores desde el directorio de repartidores",
+			{ field: "role" },
+		);
+	}
 
 	const target = await ctx.db
 		.select({ membership: membershipTable, user: userTable })
@@ -1092,11 +1105,6 @@ async function assertNotLastOwner(
 // Analytics
 // ---------------------------------------------------------------------------
 
-/** Statuses whose orders were actually charged. Derived from the machine, not typed. */
-const CHARGED_STATUSES = ORDER_STATUSES.filter(
-	(status) => status !== "CANCELLED" && status !== "REJECTED",
-);
-
 /** Statuses still in flight: every non-terminal one, by the machine's own rule. */
 const ACTIVE_STATUSES = ORDER_STATUSES.filter(
 	(status) => !isTerminalStatus(status),
@@ -1106,13 +1114,19 @@ const ACTIVE_STATUSES = ORDER_STATUSES.filter(
  * What one location did over a window the business chooses.
  *
  * Every figure is a count or a stored amount — nothing is projected, and nothing is
- * summed across currencies because a business has exactly one. Cancelled and rejected
- * orders are counted separately rather than netted out of revenue, so a bad week reads
- * as a bad week instead of as a smaller good one.
+ * summed across currencies because a business has exactly one. Only completed orders
+ * are sales; orders still in flight and cancelled orders remain visible in order counts.
  */
 export async function analytics(
 	ctx: BusinessContext,
-	input: { businessId: string; locationId: string; from: Date; to: Date },
+	input: {
+		businessId: string;
+		locationId: string;
+		from: Date;
+		to: Date;
+		/** The series' bucket width; the router defaults it to `"day"`. */
+		granularity?: "hour" | "day" | "month";
+	},
 ): Promise<BusinessAnalytics> {
 	const businessId = ctx.membership.businessId;
 	const location = await ctx.db
@@ -1143,7 +1157,7 @@ export async function analytics(
 
 	const [
 		totals,
-		charged,
+		completedSales,
 		activeCount,
 		salesAndOperations,
 		ordersByDay,
@@ -1163,9 +1177,9 @@ export async function analytics(
 				orderCount: sql<number>`count(*)`,
 			})
 			.from(orderTable)
-			.where(and(inWindow, inArray(orderTable.status, [...CHARGED_STATUSES])))
+			.where(and(inWindow, eq(orderTable.status, "COMPLETED")))
 			// Grouped by customer rather than returned per order, so the repeat-customer
-			// count comes from the same rows the revenue did instead of from a second
+			// count comes from the same completed rows as revenue instead of a second
 			// pass that could disagree with it.
 			.groupBy(orderTable.customerId),
 		ctx.db
@@ -1175,8 +1189,8 @@ export async function analytics(
 		ctx.db
 			.select({
 				accepted: sql<number>`coalesce(sum(case when ${orderTable.acceptedAt} is not null then 1 else 0 end), 0)`,
-				refundsMinor: sql<number>`coalesce(sum(case when ${orderTable.paymentStatus} = 'REFUNDED' then ${orderTable.totalMinor} else 0 end), 0)`,
-				discountsMinor: sql<number>`coalesce(sum(case when ${orderTable.status} not in ('CANCELLED','REJECTED') then ${orderTable.discountMinor} else 0 end), 0)`,
+				refundsMinor: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' and ${orderTable.paymentStatus} = 'REFUNDED' then ${orderTable.totalMinor} else 0 end), 0)`,
+				discountsMinor: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' then ${orderTable.discountMinor} else 0 end), 0)`,
 				avgAcceptSeconds: sql<
 					number | null
 				>`avg(case when ${orderTable.acceptedAt} is not null then (${orderTable.acceptedAt} - ${orderTable.placedAt}) / 1000.0 end)`,
@@ -1186,16 +1200,23 @@ export async function analytics(
 			})
 			.from(orderTable)
 			.where(inWindow),
-		ordersByDayOf(ctx.db, businessId, input.locationId, input.from, input.to),
+		ordersByDayOf(
+			ctx.db,
+			businessId,
+			input.locationId,
+			input.from,
+			input.to,
+			input.granularity,
+		),
 		topProductsOf(ctx.db, businessId, input.locationId, input.from, input.to),
 	]);
 
 	const row = totals[0] ?? { total: 0, completed: 0, cancelled: 0 };
-	const grossMinor = charged.reduce(
+	const grossMinor = completedSales.reduce(
 		(sum, entry) => sum + Number(entry.grossMinor),
 		0,
 	);
-	const ordersCharged = charged.reduce(
+	const completedOrders = completedSales.reduce(
 		(sum, entry) => sum + Number(entry.orderCount),
 		0,
 	);
@@ -1233,15 +1254,30 @@ export async function analytics(
 		// Null rather than zero over an empty window: "₡0 average" reads as a collapse,
 		// and the truth is that nothing happened.
 		averageOrderMinor:
-			ordersCharged > 0 ? Math.round(grossMinor / ordersCharged) : null,
+			completedOrders > 0 ? Math.round(grossMinor / completedOrders) : null,
 		customers: {
-			total: charged.length,
-			repeat: charged.filter((entry) => Number(entry.orderCount) > 1).length,
+			total: completedSales.length,
+			repeat: completedSales.filter((entry) => Number(entry.orderCount) > 1)
+				.length,
 		},
 		ordersByDay,
 		topProducts,
 	};
 }
+
+/**
+ * The `strftime` picture per granularity — and therefore the shape of the bucket key the
+ * client labels its axis with: an hourly read returns `YYYY-MM-DD HH:00`, a monthly read
+ * `YYYY-MM`, and the day every existing caller asks for stays exactly `YYYY-MM-DD`. The
+ * name stays `ordersByDay` in the response because the schema's contract is "a series of
+ * ordered buckets", not a date width; the width is the caller's own question, echoed by
+ * the buckets themselves.
+ */
+const BUCKET_PICTURE: Record<"hour" | "day" | "month", string> = {
+	hour: "%Y-%m-%d %H:00",
+	day: "%Y-%m-%d",
+	month: "%Y-%m",
+};
 
 async function ordersByDayOf(
 	db: Db,
@@ -1249,15 +1285,15 @@ async function ordersByDayOf(
 	locationId: string,
 	from: Date,
 	to: Date,
+	granularity: "hour" | "day" | "month" = "day",
 ): Promise<BusinessAnalytics["ordersByDay"]> {
 	const rows = await db
 		.select({
-			// Cut in UTC, the same day key `admin.metrics` uses. Cutting it in the business's
-			// local time would make two dashboards disagree about which day a 19:00 order
-			// belonged to.
-			day: sql<string>`strftime('%Y-%m-%d', ${orderTable.placedAt} / 1000, 'unixepoch')`,
+			// The selected location's orders are bucketed by Costa Rica wall time at the
+			// caller's granularity.
+			day: sql<string>`strftime(${BUCKET_PICTURE[granularity]}, ${orderTable.placedAt} / 1000, 'unixepoch', ${`${MARKET_UTC_OFFSET_MINUTES} minutes`})`,
 			orderCount: sql<number>`count(*)`,
-			revenueMinor: sql<number>`coalesce(sum(case when ${orderTable.status} in ('CANCELLED','REJECTED') then 0 else ${orderTable.totalMinor} end), 0)`,
+			revenueMinor: sql<number>`coalesce(sum(case when ${orderTable.status} = 'COMPLETED' then ${orderTable.totalMinor} else 0 end), 0)`,
 		})
 		.from(orderTable)
 		.where(
@@ -1302,7 +1338,7 @@ async function topProductsOf(
 				eq(orderTable.locationId, locationId),
 				gte(orderTable.placedAt, from),
 				lte(orderTable.placedAt, to),
-				notInArray(orderTable.status, ["CANCELLED", "REJECTED"]),
+				eq(orderTable.status, "COMPLETED"),
 			),
 		)
 		// Grouped by the snapshot name as well as the id: an archived product keeps its

@@ -103,6 +103,10 @@ const POPULAR_SOLD_COUNT = 20;
 
 const DAY_MS = 86_400_000;
 
+type ProductMapperRow = ProductRow & {
+	locationScope?: ProductCard["locationScope"];
+};
+
 export function currencyOf(value: string): Currency {
 	return value as Currency;
 }
@@ -278,7 +282,7 @@ function badgesOf(
 }
 
 export function productCardOf(
-	row: ProductRow,
+	row: ProductMapperRow,
 	business: BusinessRow,
 	options: { now?: Date } = {},
 ): ProductCard {
@@ -301,6 +305,7 @@ export function productCardOf(
 			stockQuantity: row.stockQuantity,
 			status: row.status,
 		}),
+		locationScope: row.locationScope ?? "all_locations",
 		prepTimeMinutes: row.prepTimeMinutes,
 		seller: sellerSummaryOf(business),
 	};

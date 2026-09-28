@@ -9,9 +9,8 @@
  *   currency before it sums anything.
  * - **Every figure is a count, a stored amount or a direct duration.** Nothing here
  *   is a projection or a conversion, because a dashboard that invents a number is a
- *   dashboard an owner makes a decision on. `revenueMinor` counts the orders that
- *   were actually charged, and the cancelled ones are reported separately rather
- *   than netted out where nobody can see them.
+ *   dashboard an owner makes a decision on. Sales count completed orders, when cash
+ *   and SINPE orders become paid; orders still in flight remain in order counts.
  */
 
 import { z } from "zod";
@@ -27,7 +26,7 @@ export const businessAnalyticsSchema = z.object({
 		 * the order model, so partial refunds cannot be represented here yet.
 		 */
 		refunds_minor: z.number().int().min(0),
-		/** Stored checkout discounts over the same orders counted as charged. */
+		/** Stored checkout discounts on completed orders. */
 		discounts_minor: z.number().int().min(0),
 	}),
 	orders: z.object({
@@ -38,7 +37,7 @@ export const businessAnalyticsSchema = z.object({
 		active: z.number().int().min(0),
 	}),
 	revenue: z.object({
-		/** What was charged, before any refund an admin recorded. */
+		/** Completed order totals, before any recorded refund. */
 		grossMinor: z.number().int(),
 		/** Operational net sales: gross less recorded full-order refunds, never negative. */
 		netMinor: z.number().int(),
@@ -50,12 +49,12 @@ export const businessAnalyticsSchema = z.object({
 		avg_preparation_seconds: z.number().int().min(0).nullable(),
 	}),
 	/**
-	 * Integer minor units, or null over a window with no orders. Null rather than
+	 * Integer minor units, or null over a window with no completed orders. Null rather than
 	 * zero: "₡0 average" reads as a collapse, and the truth is that nothing happened.
 	 */
 	averageOrderMinor: z.number().int().nullable(),
 	customers: z.object({
-		/** Distinct customers with an order in the window. */
+		/** Distinct customers with a completed order in the window. */
 		total: z.number().int().min(0),
 		/** Those with more than one — the number an owner actually acts on. */
 		repeat: z.number().int().min(0),
@@ -63,7 +62,11 @@ export const businessAnalyticsSchema = z.object({
 	/** Newest first is the wrong shape for a chart; the API returns them oldest first. */
 	ordersByDay: z.array(
 		z.object({
-			/** A UTC day, `YYYY-MM-DD`. */
+			/**
+			 * The bucket key in Costa Rica wall time, at the granularity the read asked
+			 * for: `YYYY-MM-DD HH:00` hourly, `YYYY-MM-DD` daily (the default every
+			 * caller that does not ask receives), `YYYY-MM` monthly.
+			 */
 			day: z.string(),
 			orderCount: z.number().int().min(0),
 			revenueMinor: z.number().int(),

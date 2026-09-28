@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0778985e-f5ae-4942-add4-95ecca450a41",
+  "id": "633a8787-1040-43ca-b381-1ba21e41300a",
   "prevId": "efee1ad5-0faf-4f44-a263-e30e53f0e5f6",
   "tables": {
     "address": {
@@ -801,6 +801,161 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "courier_invite": {
+      "name": "courier_invite",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "courier_user_id": {
+          "name": "courier_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invited_by_user_id": {
+          "name": "invited_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'PENDING'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "responded_at": {
+          "name": "responded_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "courier_invite_pending_unique": {
+          "name": "courier_invite_pending_unique",
+          "columns": [
+            "business_id",
+            "courier_user_id"
+          ],
+          "isUnique": true,
+          "where": "\"courier_invite\".\"status\" = 'PENDING'"
+        },
+        "courier_invite_business_status_idx": {
+          "name": "courier_invite_business_status_idx",
+          "columns": [
+            "business_id",
+            "status",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "courier_invite_courier_status_idx": {
+          "name": "courier_invite_courier_status_idx",
+          "columns": [
+            "courier_user_id",
+            "status",
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "courier_invite_business_id_business_id_fk": {
+          "name": "courier_invite_business_id_business_id_fk",
+          "tableFrom": "courier_invite",
+          "tableTo": "business",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "courier_invite_courier_user_id_user_id_fk": {
+          "name": "courier_invite_courier_user_id_user_id_fk",
+          "tableFrom": "courier_invite",
+          "tableTo": "user",
+          "columnsFrom": [
+            "courier_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "courier_invite_profile_id_courier_profile_id_fk": {
+          "name": "courier_invite_profile_id_courier_profile_id_fk",
+          "tableFrom": "courier_invite",
+          "tableTo": "courier_profile",
+          "columnsFrom": [
+            "profile_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "courier_invite_invited_by_user_id_user_id_fk": {
+          "name": "courier_invite_invited_by_user_id_user_id_fk",
+          "tableFrom": "courier_invite",
+          "tableTo": "user",
+          "columnsFrom": [
+            "invited_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "courier_profile": {
       "name": "courier_profile",
       "columns": {
@@ -834,27 +989,6 @@
         },
         "bio": {
           "name": "bio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehicle_name": {
-          "name": "vehicle_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehicle_plate": {
-          "name": "vehicle_plate",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehicle_photo_url": {
-          "name": "vehicle_photo_url",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

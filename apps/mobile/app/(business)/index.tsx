@@ -3,7 +3,7 @@ import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
 	type FulfilmentKind,
 	formatMoney,
-	isTerminalStatus,
+	MARKET_TIME_ZONE,
 	MAX_LINE_QUANTITY,
 	type MerchantHome as MerchantHomeData,
 	nextStatuses,
@@ -81,14 +81,14 @@ import {
 /**
  * The merchant home: what needs attention, and the doors to the work.
  *
- * Bands, not cards (§4, §62): the identity header, the pulse band (§14), the
- * orders-now section (§17) and the command rail (§25). The doors card this screen
- * used to draw is gone — the rail is the doors, and a card repeating them would be
+ * Bands, not cards (┬º4, ┬º62): the identity header, the pulse band (┬º14), the
+ * orders-now section (┬º17) and the command rail (┬º25). The doors card this screen
+ * used to draw is gone ΓÇö the rail is the doors, and a card repeating them would be
  * the second surface for one job.
  *
  * The screen gives up the gutter (`padded={false}`) because two of those bands are
- * full-bleed by construction — the pulse (`./merchant-pulse`) and the command rail
- * (`./merchant-command-rail`) draw edge to edge — and a screen gutter around them
+ * full-bleed by construction ΓÇö the pulse (`./merchant-pulse`) and the command rail
+ * (`./merchant-command-rail`) draw edge to edge ΓÇö and a screen gutter around them
  * would contradict both files' own docblocks. Every padded block carries its own
  * `styles.pad` instead, so `space.lg` is the single gutter, the same shape
  * `app/(business)/products.tsx` asks for.
@@ -110,6 +110,7 @@ type ProductListPage = {
 };
 type ProductListData = InfiniteData<ProductListPage>;
 type Attention = MerchantHomeData["attention"][number];
+type AttentionGroup = Attention & { count: number };
 type PauseDuration = 15 | 30 | 60 | undefined;
 type PauseStage = "duration" | "confirm" | null;
 type CachedOrder = MerchantHomeData["orders"][number];
@@ -250,6 +251,7 @@ export default function MerchantHome() {
 			{
 				businessId: businessId ?? "",
 				locationId: locationId ?? "",
+				timezone: MARKET_TIME_ZONE,
 				from: analyticsRange.from,
 				to: analyticsRange.to,
 			},
@@ -316,30 +318,23 @@ export default function MerchantHome() {
 	 * revenue arrived in another code draws dashes, not another currency's figure
 	 * under this one's label. The orders column counts every order placed today;
 	 * the average divides the completed revenue by the completed count, the set it
-	 * came from — both honest numbers, neither invented.
+	 * came from ΓÇö both honest numbers, neither invented.
 	 */
-	const pulse: MerchantPulseData | null = home.data
-		? (() => {
-				const entry = home.data.pulse.todayRevenueByCurrency.find(
-					(one) => one.currency === home.data.location.currency,
-				);
-				const comparison = home.data.pulse.todayComparisonByCurrency.find(
-					(one) => one.currency === home.data.location.currency,
-				);
-				return {
-					currency: home.data.location.currency,
-					netMinor: entry?.revenueMinor ?? null,
-					orderCount: home.data.pulse.today,
-					avgTicketMinor:
-						entry && entry.orderCount > 0
-							? Math.round(entry.revenueMinor / entry.orderCount)
-							: null,
-					salesDeltaPct: comparison?.salesDeltaPct ?? null,
-					ordersDelta: comparison?.ordersDelta ?? 0,
-					ticketDeltaPct: comparison?.ticketDeltaPct ?? null,
-				};
-			})()
-		: null;
+	const pulse: MerchantPulseData | null = home.data?.pulse ?? null;
+	const attention = useMemo<AttentionGroup[]>(() => {
+		const grouped = new Map<string, AttentionGroup>();
+		for (const alert of home.data?.attention ?? []) {
+			const key = `${alert.type}:${alert.action ?? ""}`;
+			const current = grouped.get(key);
+			grouped.set(
+				key,
+				current
+					? { ...current, count: current.count + 1 }
+					: { ...alert, count: 1 },
+			);
+		}
+		return [...grouped.values()];
+	}, [home.data?.attention]);
 
 	const orders = home.data?.orders ?? [];
 
@@ -481,8 +476,8 @@ export default function MerchantHome() {
 	 * asserts the role server-side, so a manager's button would be a control
 	 * whose only answer is a refusal. No confirm sheet: going live is reversible
 	 * (`setStatus` CLOSED is the way back) and the interface contract's
-	 * confirm list (§47) names pausing, closing, deleting and rejecting — not
-	 * publishing — and the sheet's red confirm would dress a constructive act
+	 * confirm list (┬º47) names pausing, closing, deleting and rejecting ΓÇö not
+	 * publishing ΓÇö and the sheet's red confirm would dress a constructive act
 	 * as a destructive one. Landing invalidates the business reads rather than
 	 * refetching one: the status word, the pulse and the board's own header all
 	 * draw it.
@@ -529,7 +524,7 @@ export default function MerchantHome() {
 			},
 			onSuccess: async (_data, variables) => {
 				light();
-				// §46's trailing Undo — see `./locations`, which draws the same pair for the same
+				// ┬º46's trailing Undo ΓÇö see `./locations`, which draws the same pair for the same
 				// write, and `components/toast` for why the sentence and the button are siblings.
 				toast.show(t("biz.locations.paused"), () => {
 					resume.mutate({
@@ -636,7 +631,7 @@ export default function MerchantHome() {
 													? (selectedLocation.city ?? selectedLocation.name)
 													: [selectedLocation.name, selectedLocation.city]
 															.filter(Boolean)
-															.join(" · ")}
+															.join(" ┬╖ ")}
 											</Text>
 											{(locations.data?.length ?? 0) > 1 ? (
 												<Ionicons
@@ -648,12 +643,12 @@ export default function MerchantHome() {
 										</Pressable>
 										{selectedLocation.todayHours ? (
 											<Text variant="caption" tone="muted">
-												{t("biz.dashboard.today")} ·{" "}
+												{t("biz.dashboard.today")} ┬╖{" "}
 												{formatMinuteOfDay(
 													selectedLocation.todayHours.opensMinute,
 													intlLocale,
 												)}
-												–
+												ΓÇô
 												{formatMinuteOfDay(
 													selectedLocation.todayHours.closesMinute,
 													intlLocale,
@@ -725,14 +720,14 @@ export default function MerchantHome() {
 									</Pressable>
 								) : null}
 							</View>
-							{/* §12's third column. The layout it draws is `logo | identity |
+							{/* ┬º12's third column. The layout it draws is `logo | identity |
 						    controls (notification, profile)`, and the first two were already
 						    here: this is the pair on the right, top-aligned with the logo so it
 						    answers the *title* rather than floating in the middle of a header
 						    that grows at 200% text.
 
 						    Both doors leave the business tree, and both already exist as root
-						    screens of their own — `app/inbox` is the bell's whole job ("What the
+						    screens of their own ΓÇö `app/inbox` is the bell's whole job ("What the
 						    shop has told you: the bell, as a list") and `app/profile` is the
 						    fields `./more` already links to. One bell rather than a second
 						    notifications screen, for the reason `components/home-header` has one
@@ -815,7 +810,7 @@ export default function MerchantHome() {
 									<Button
 										// Secondary, not the filled variant: the moment's one lime is
 										// the rail's item below, and a DRAFT shop would otherwise
-										// spend the accent twice on one view (§6).
+										// spend the accent twice on one view (┬º6).
 										variant="secondary"
 										label={t("biz.dashboard.openToggle")}
 										onPress={() => {
@@ -876,15 +871,15 @@ export default function MerchantHome() {
 							]}
 						/>
 
-						{home.data && home.data.attention.length > 0 ? (
+						{attention.length > 0 ? (
 							<View style={styles.pad}>
 								<SectionHeader title={t("biz.home.attention")} />
 								{/* All but the last row drop the trailing hairline the row's own
-						    default draws — the rhythm the board's rows keep with `last`, so
+						    default draws ΓÇö the rhythm the board's rows keep with `last`, so
 						    a card of rows never ends in a line for nobody. */}
-								{home.data.attention.map((alert, index) => (
+								{attention.map((alert, index) => (
 									<AttentionRow
-										key={alert.type}
+										key={`${alert.type}:${alert.action ?? ""}`}
 										label={t(
 											alert.type === "new_order"
 												? "biz.home.newOrders"
@@ -897,12 +892,15 @@ export default function MerchantHome() {
 												? "receipt-outline"
 												: "alert-circle-outline"
 										}
-										last={index === home.data.attention.length - 1}
+										last={index === attention.length - 1}
 										onPress={() =>
 											router.push(
-												alert.action.type === "OPEN_ORDERS"
+												alert.action === "open_orders"
 													? "/business"
-													: "/products",
+													: alert.action === "open_inventory" ||
+															alert.action === "open_catalog"
+														? "/products"
+														: "/more",
 											)
 										}
 									/>
@@ -987,16 +985,16 @@ export default function MerchantHome() {
 							</View>
 						)}
 
-						{/* The doors, as the rail (§25) rather than the card it replaces:
+						{/* The doors, as the rail (┬º25) rather than the card it replaces:
 						    every destination is a route in this tree, so no action leads
 						    nowhere. Adding a product is the moment's one filled control.
 
-						    The five are §25's own list. `orders` and `menu` used to sit here
+						    The five are ┬º25's own list. `orders` and `menu` used to sit here
 						    and were the tab bar's destinations said again in different words;
-						    §25 names the *jobs* instead, which is why `Stock` opens the
+						    ┬º25 names the *jobs* instead, which is why `Stock` opens the
 						    catalogue the steppers live on and `Pause` gives the order the
 						    header's status chip also gives. The label names the state the
-						    command moves to — `./switch`'s contract — so the same slot reads
+						    command moves to ΓÇö `./switch`'s contract ΓÇö so the same slot reads
 						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
 						<MerchantCommandRail
 							actions={[
@@ -1048,9 +1046,9 @@ export default function MerchantHome() {
 											});
 											return;
 										}
-										// §47 names "pause all orders" as one of the writes that
+										// ┬º47 names "pause all orders" as one of the writes that
 										// gets a confirmation, and `pauseStage`'s own flow is that
-										// confirmation — a duration, then a `ConfirmSheet`.
+										// confirmation ΓÇö a duration, then a `ConfirmSheet`.
 										setPauseDuration(undefined);
 										setPauseStage("duration");
 									},
@@ -1128,7 +1126,7 @@ export default function MerchantHome() {
 								t(`biz.locations.status.${location.status}`),
 							]
 								.filter(Boolean)
-								.join(" · ")}
+								.join(" ┬╖ ")}
 							state={
 								location.id === locationId
 									? t("biz.locations.current")
@@ -1184,7 +1182,7 @@ export default function MerchantHome() {
 				title={t("biz.locations.pauseConfirm")}
 				body={
 					selectedLocation
-						? `${selectedLocation.name} · ${
+						? `${selectedLocation.name} ┬╖ ${
 								selectedPauseDuration
 									? t("biz.locations.minutes", {
 											count: selectedPauseDuration,
@@ -1231,13 +1229,13 @@ function MerchantInsight({
 					style={styles.insightItem}
 					accessible
 					accessibilityRole="text"
-					accessibilityLabel={`${item.label}: ${item.value ?? "—"}`}
+					accessibilityLabel={`${item.label}: ${item.value ?? "ΓÇö"}`}
 				>
 					<Text variant="caption" tone="muted">
 						{item.label}
 					</Text>
 					<Text variant="body" bold>
-						{item.value ?? "—"}
+						{item.value ?? "ΓÇö"}
 					</Text>
 				</View>
 			))}
@@ -1261,7 +1259,8 @@ function AttentionRow({
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
-	const semantic = severity === "high" ? colors.destructive : colors.warning;
+	const semantic =
+		severity === "critical" ? colors.destructive : colors.warning;
 
 	return (
 		<Pressable
@@ -1308,7 +1307,7 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 				</View>
 			</View>
 			{/* The pulse band's stand-in: full-bleed, at the band's own height, scaled where
-			    the band scales. The measure is `./merchant-pulse`'s own — the wait and the
+			    the band scales. The measure is `./merchant-pulse`'s own ΓÇö the wait and the
 			    arrival cannot disagree about it without that file saying so. */}
 			<Skeleton style={{ minHeight: pulseBandHeight(fontScale) }} />
 			<View style={styles.pad}>
@@ -1379,7 +1378,7 @@ const styles = StyleSheet.create({
 	},
 	merchantLogo: { width: 56, height: 56, borderWidth: 1 },
 	merchantIdentity: { flex: 1, alignItems: "flex-start", gap: TEXT_STACK_GAP },
-	// §12's controls, in a row of their own and top-aligned: they belong to the title,
+	// ┬º12's controls, in a row of their own and top-aligned: they belong to the title,
 	// the same rule `./home-header` writes for the avatar beside its own.
 	merchantControls: {
 		flexDirection: "row",
@@ -1387,10 +1386,10 @@ const styles = StyleSheet.create({
 		gap: space.xs,
 	},
 	/**
-	 * §28's icon button. The box is 48 rather than `MIN_TOUCH_TARGET`'s 44 because §28
-	 * asks for 48 on both platforms — "Android's current accessibility guidance explicitly
+	 * ┬º28's icon button. The box is 48 rather than `MIN_TOUCH_TARGET`'s 44 because ┬º28
+	 * asks for 48 on both platforms ΓÇö "Android's current accessibility guidance explicitly
 	 * calls for at least 48dp interactive targets", and its own note is to make both 48 for
-	 * parity. The glyph inside is `icon.action` (20), the middle of §28's 20–22; the drawn
+	 * parity. The glyph inside is `icon.action` (20), the middle of ┬º28's 20ΓÇô22; the drawn
 	 * container *is* the target here, so there is no `hitSlop` to inflate it with.
 	 */
 	headerControl: {

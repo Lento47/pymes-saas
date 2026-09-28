@@ -6,14 +6,15 @@
 --
 -- What this adds
 --   1. `pg_trgm` and `unaccent` (contrib).
---   2. `f_unaccent(text)` — an IMMUTABLE wrapper around the
+--   2. `f_unaccent(text)` ΓÇö an IMMUTABLE wrapper around the
 --      two-argument `unaccent(regdictionary, text)`.
 --   3. One immutable `*_search_tsv(...)` function per table,
 --      used as BOTH the expression-index definition and the
 --      query-side tsvector, so index and query cannot drift.
 --   4. A GIN index on that tsvector per table.
 --   5. A `gin_trgm_ops` GIN index on each table's primary name
---      column, for typo tolerance.
+--      column, so the partial-query path is an index lookup and
+--      not a per-keystroke sequential scan.
 --
 -- Why an expression index and not a `search_tsv` column
 --   Prisma's `schema.prisma` is the source of truth for the
@@ -23,7 +24,7 @@
 --   Prisma and needs no schema change.
 --
 -- Why `f_unaccent` and not bare `unaccent`
---   `unaccent(text)` is STABLE, not IMMUTABLE — it resolves the
+--   `unaccent(text)` is STABLE, not IMMUTABLE ΓÇö it resolves the
 --   default dictionary at call time. Postgres refuses to use a
 --   STABLE function in an expression index. The two-argument
 --   form `unaccent('unaccent', text)` is IMMUTABLE because the
@@ -31,9 +32,9 @@
 --   wrapper around it is what the index needs and what the
 --   query reuses.
 --
--- Why `to_tsvector('spanish', …)` and not `'simple'`
+-- Why `to_tsvector('spanish', ΓÇª)` and not `'simple'`
 --   The product's operators write Spanish. `'spanish'` stems
---   ("facturas" → "factura") and drops Spanish stopwords.
+--   ("facturas" ΓåÆ "factura") and drops Spanish stopwords.
 --   `'simple'` would treat every inflection as a distinct
 --   token and make "factura" miss "facturas".
 --
@@ -43,14 +44,14 @@
 -- `workspace_id = $1` in the WHERE clause regardless.
 -- ============================================================
 
--- ─── extensions ──────────────────────────────────────────────
+-- ΓöÇΓöÇΓöÇ extensions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 -- Contrib modules. Both ship with every supported Postgres.
 -- `CREATE EXTENSION` needs a role that may create extensions;
 -- migrations run as the platform owner, which can.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
--- ─── f_unaccent ──────────────────────────────────────────────
+-- ΓöÇΓöÇΓöÇ f_unaccent ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 -- IMMUTABLE so an expression built from it can be indexed.
 -- PARALLEL SAFE so the planner may build the index and run
 -- queries with parallel workers.
@@ -66,7 +67,7 @@ $$;
 COMMENT ON FUNCTION f_unaccent(text) IS
   'IMMUTABLE accent-fold wrapper around unaccent(regdictionary, text). Used in indexed expressions; see migration 20260926000000.';
 
--- ─── per-table tsvector builders ─────────────────────────────
+-- ΓöÇΓöÇΓöÇ per-table tsvector builders ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 -- Weight A = the name a human looks for. B = a secondary
 -- label. C = identifiers and long text, which should not
 -- outrank a name hit.
@@ -174,7 +175,7 @@ AS $$
       || setweight(to_tsvector('spanish', f_unaccent(coalesce(p_description, ''))), 'B')
 $$;
 
--- ─── tsvector GIN indexes ────────────────────────────────────
+-- ΓöÇΓöÇΓöÇ tsvector GIN indexes ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 -- One per table, over the same expression the service calls.
 -- These are plain CREATE INDEX and not CONCURRENTLY: Prisma
 -- runs each migration inside a transaction, and CONCURRENTLY
@@ -204,13 +205,23 @@ CREATE INDEX orders_search_tsv_idx ON "orders"
 CREATE INDEX products_search_tsv_idx ON "products"
   USING GIN (products_search_tsv(name, sku, description));
 
--- ─── trigram indexes, for the typo a tsvector cannot see ─────
--- `websearch_to_tsquery` turns "contable" into the token
--- "contabl" and misses "contabilidad" only if stemming fails;
--- it turns "contavle" into "contavl" and misses outright. A
--- trigram index answers that one. `%` uses `pg_trgm`'s
--- `similarity_threshold` (0.3 by default), so it is a fuzzy
--- second chance and never the primary path.
+-- ΓöÇΓöÇΓöÇ trigram indexes, for the partial query a tsvector cannot see ΓöÇΓöÇ
+-- A tsvector only ever matches whole lexemes. Typing "ma" while
+-- looking for "Mar├¡a" finds nothing, because "ma" is not a stem
+-- of anything. The service therefore ORs a substring predicate
+-- into every query:
+--
+--     f_unaccent(coalesce(<name>, '')) ILIKE '%' || f_unaccent($2) || '%'
+--
+-- Plain `ILIKE '%ΓÇª%'` is a sequential scan. `gin_trgm_ops` is what
+-- turns it into an index lookup: Postgres extracts trigrams from the
+-- pattern and probes the GIN index for the rows that could contain
+-- them. It is a filter, not a ranker ΓÇö it answers "could this row
+-- contain the substring", and the ILIKE still has to confirm it.
+--
+-- Indexed on the primary name column only. Substring search over
+-- every description would be a large index for a match nobody asked
+-- for; the tsvector already covers full words there.
 --
 -- The expression is `f_unaccent(col)` so the fold is inside the
 -- indexed expression and the query side reuses the same call.

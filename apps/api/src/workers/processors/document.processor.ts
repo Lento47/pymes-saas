@@ -320,8 +320,11 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
   private async extractXlsx(buffer: Buffer): Promise<string> {
     try {
       const workbook = new ExcelJS.Workbook();
-      // exceljs reads the buffer as an ArrayBuffer-compatible source.
-      await workbook.xlsx.load(buffer);
+      // ExcelJS declares this input as an ArrayBuffer. Copy the Node buffer so a
+      // pooled backing store cannot expose unrelated bytes outside this document.
+      const source = new ArrayBuffer(buffer.byteLength);
+      new Uint8Array(source).set(buffer);
+      await workbook.xlsx.load(source);
       const sheets: string[] = [];
       for (const ws of workbook.worksheets.slice(0, 3)) {
         const rows: string[] = [];

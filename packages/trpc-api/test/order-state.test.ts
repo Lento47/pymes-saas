@@ -139,28 +139,37 @@ describe("the order state machine", () => {
 
 	test("a delivery order may be dispatched, and every move is announced twice", async () => {
 		const test = world();
-		const { staffCaller, order } = await shop(test, "DELIVERY");
-
-		for (const to of [
-			"ACCEPTED",
-			"PREPARING",
-			"READY",
-			"OUT_FOR_DELIVERY",
-		] as const) {
-			await staffCaller.orders.advance({
-				orderId: order.id,
-				to,
-				...(to === "OUT_FOR_DELIVERY"
-					? { courierName: "Repartidor de Prueba", courierPhone: "88888888" }
-					: {}),
-			});
-		}
-
-		const delivered = await staffCaller.orders.advance({
-			orderId: order.id,
-			to: "COMPLETED",
+		const { staffCaller, managerCaller, order } = await shop(test, "DELIVERY");
+		const courier = await seedUser(test.db, {
+			id: "usr_test_delivery_courier",
+			name: "Repartidor de Prueba",
 		});
-		expect(delivered.status).toBe("COMPLETED");
+		await seedMembership(test.db, courier.id, order.business.id, "COURIER");
+		const courierCaller = appRouter.createCaller(
+			await authed(test, courier),
+		) as Caller;
+
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await staffCaller.orders.advance({ orderId: order.id, to });
+		}
+		await managerCaller.orders.assign({
+			orderId: order.id,
+			courierUserId: courier.id,
+		});
+		const delivery = await courierCaller.deliveries.byOrder({
+			orderId: order.id,
+		});
+		if (!delivery) throw new Error("Delivery was not created");
+		await courierCaller.deliveries.advance({
+			deliveryId: delivery.id,
+			action: "CONFIRM_PICKUP",
+		});
+
+		const delivered = await courierCaller.deliveries.advance({
+			deliveryId: delivery.id,
+			action: "COMPLETE",
+		});
+		expect(delivered.orderStatus).toBe("COMPLETED");
 
 		// The queue and the order's room saw the same six events. Both are announced from
 		// the same durable outbox row, and an event that reached one and not the other is

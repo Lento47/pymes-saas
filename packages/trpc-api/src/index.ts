@@ -8,6 +8,7 @@ import { createLogger } from "./logging";
 import { publishPending } from "./outbox";
 import { handleQueue } from "./queue";
 import { sweepLapsed } from "./services/subscription";
+import { sweepExpiredOffers } from "./services/delivery-dispatch";
 
 /**
  * The Worker.
@@ -79,6 +80,14 @@ export default {
 			}
 		} catch (error) {
 			logger.error("billing sweep failed", {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		try {
+			await sweepExpiredOffers(createDb(env.DB));
+		} catch (error) {
+			logger.error("delivery offer sweep failed", {
 				cause: error instanceof Error ? error.message : String(error),
 			});
 		}
