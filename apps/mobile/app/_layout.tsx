@@ -1,6 +1,6 @@
 import { scrubTelemetryPayload } from "@pymeshub/shared";
 import * as Sentry from "@sentry/react-native";
-import { Stack } from "expo-router";
+import { Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -15,7 +15,13 @@ import { I18nProvider } from "@/lib/i18n";
 import { PushNotificationsProvider } from "@/lib/push-notifications";
 import { useResolvedRole } from "@/lib/role";
 import { ApiProvider } from "@/lib/trpc/provider";
-import { ThemeModeProvider, ThemeScopeProvider, useTheme } from "@/theme";
+import {
+	selectTree,
+	ThemeModeProvider,
+	ThemeScopeProvider,
+	useTheme,
+	useThemeScope,
+} from "@/theme";
 
 Sentry.init({
 	dsn: env.sentryDsn,
@@ -116,6 +122,17 @@ function ThemedStack() {
 	const { colors, scheme } = useTheme();
 	const resolved = useResolvedRole();
 	const role = resolved.state === "ready" ? resolved.role : null;
+	// The same two inputs `useTheme()` reads, asked a second question. The status bar is chrome
+	// and has to know what canvas it is sitting on, and `scheme` cannot tell it: the merchant
+	// palette is deliberately light-only (`theme/merchant.ts`), so a merchant on a dark-mode
+	// phone has a `#FFFFFF` canvas under a status bar that `scheme === "dark"` would render in
+	// light ink — a white clock on a white background. The guards above keep using `resolved`
+	// rather than this scope on purpose: they decide which tree may mount, and a preference is
+	// not an entitlement.
+	const segments = useSegments();
+	const onLightCanvas =
+		selectTree({ segments, role: useThemeScope() }) === "business" ||
+		scheme === "light";
 
 	/**
 	 * The device's own answers before anything can ask them. `lib/haptics.ts`
@@ -131,9 +148,10 @@ function ThemedStack() {
 	return (
 		<>
 			{/* Driven by our own palette rather than `style="auto"`, which follows the OS
-			    setting — the two are the same today, and the day a screen is deliberately
-			    dark, `auto` is the version that renders dark text on it. */}
-			<StatusBar style={scheme === "dark" ? "light" : "dark"} />
+			    setting — the two agree for the consumer and delivery trees, and for the
+			    merchant tree only the palette is right, because the phone's answer says
+			    nothing about a canvas that is white in both schemes. */}
+			<StatusBar style={onLightCanvas ? "dark" : "light"} />
 			<Stack
 				screenOptions={{
 					headerShown: false,
