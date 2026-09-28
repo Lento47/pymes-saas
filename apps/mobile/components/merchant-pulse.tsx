@@ -13,6 +13,7 @@ import { duration, staggerDelay } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import {
 	merchantType,
+	radius,
 	space,
 	TEXT_STACK_GAP,
 	type,
@@ -43,13 +44,13 @@ import { Text } from "./text";
  * at a glance while a queue is moving behind them.
  *
  * No metric is a card. Three cards here would be three surfaces with a fill nobody can
- * see (`theme/tokens.ts` argues that about the card shadow), around a band that is
- * already the loudest object on the screen; §14 asks for the opposite — one full-width
- * surface, no outer margin, no corner, and the figures sitting directly on it, told apart
- * by hairline rules and by nothing else. The band's height is not typed here either: the
- * header's line, the metric stack and the `space.xl` / `space.lg` padding sum to about
- * 138 at 1×, inside the contract's 136–152, and at 200% text the band grows with the
- * text, because no height was ever written down to stop it.
+ * see (`theme/tokens.ts` argues that about the card shadow), around a module that is
+ * already the loudest object on the screen; the figures sit directly on it, told apart
+ * by hairline rules and by nothing else. The module is inset by the page gutter and
+ * cornered at the module step — the screen's edge is not its edge. Its height is not
+ * typed here either: the header's line, the metric stack and the `space.xxl` padding
+ * sum the height, and at 200% text the module grows with the text, because no height
+ * was ever written down to stop it.
  *
  * Every line is only what the API sent. A metric with no value prints an em dash, and a
  * delta of `null` renders nothing at all: the server omits a comparison when there is no
@@ -238,17 +239,17 @@ export function pulseColumnHeight(fontScale: number): number {
 }
 
 /**
- * The band's height at rest — the sum the file docblock calls "about 138 at 1×", written as
+ * The module's height at rest — the sum the file docblock describes, written as
  * the sum rather than as the number: the vertical padding, the header's small line, the
  * step to the figures and one column's stack, each term scaled only where the text behind
- * it scales. Exported so the skeleton that stands in for the whole band before the band
- * itself is mounted (`app/(business)/index`'s `HomeSkeleton`) reads the measure from here
- * and the wait and the arrival cannot disagree about the band's height without this file
- * saying so.
+ * it scales. Exported so the skeleton that stands in for the whole module before the
+ * module itself is mounted (`app/(business)/index`'s `HomeSkeleton`) reads the measure
+ * from here and the wait and the arrival cannot disagree about the module's height
+ * without this file saying so.
  */
 export function pulseBandHeight(fontScale: number): number {
 	return (
-		space.lg * 2 +
+		space.xxl * 2 +
 		Math.round(PULSE_SMALL.lineHeight * fontScale) +
 		space.md +
 		pulseColumnHeight(fontScale)
@@ -453,11 +454,18 @@ export function MerchantPulse({
 
 const styles = StyleSheet.create({
 	/**
-	 * The band itself: full width, no outer margin, no corner, no card. Its width is the
-	 * parent's and its corner is nothing, which is what §14 asks for — the screen's edge is
-	 * the band's edge.
+	 * The module itself: inset by the page gutter, cornered at the module
+	 * step, clipped to it. The ink surface (`colors.foreground`) on the white
+	 * canvas is what makes it the loudest object on the screen — no shadow,
+	 * no border, and nothing else spent.
 	 */
-	band: { paddingHorizontal: space.xl, paddingVertical: space.lg },
+	band: {
+		marginHorizontal: space.lg,
+		borderRadius: radius.xl,
+		overflow: "hidden",
+		paddingHorizontal: space.xxl,
+		paddingVertical: space.xxl,
+	},
 	/** The header line: the day's word left, the date right, on one baseline. */
 	header: {
 		flexDirection: "row",

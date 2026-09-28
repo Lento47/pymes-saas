@@ -53,6 +53,9 @@ export function MerchantShortcutRail({
 			showsHorizontalScrollIndicator={false}
 			contentContainerStyle={styles.track}
 			accessibilityRole="menubar"
+			// Snap per tile-plus-gap: the strip settles on doors, not between them.
+			snapToInterval={TILE + space.md}
+			decelerationRate="fast"
 		>
 			{shortcuts.map((item) => (
 				<Pressable

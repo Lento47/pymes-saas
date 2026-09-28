@@ -1387,10 +1387,17 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 					<Skeleton style={styles.skeletonStatus} />
 				</View>
 			</View>
-			{/* The pulse band's stand-in: full-bleed, at the band's own height, scaled where
-			    the band scales. The measure is `./merchant-pulse`'s own ΓÇö the wait and the
-			    arrival cannot disagree about it without that file saying so. */}
-			<Skeleton style={{ minHeight: pulseBandHeight(fontScale) }} />
+			{/* The pulse module's stand-in: inset and cornered like the module,
+			    at the module's own height, scaled where the module scales. The
+			    measure is `./merchant-pulse`'s own — the wait and the arrival
+			    cannot disagree about it without that file saying so. */}
+			<Skeleton
+				style={{
+					minHeight: pulseBandHeight(fontScale),
+					marginHorizontal: space.lg,
+					borderRadius: radius.xl,
+				}}
+			/>
 			<View style={styles.pad}>
 				<Skeleton style={[styles.skeletonMeta, line("heading", fontScale)]} />
 				<Skeleton style={{ minHeight: ROW_MIN_HEIGHT * fontScale }} />

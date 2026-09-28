@@ -1,7 +1,13 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Redirect, Tabs } from "expo-router";
 import type { ReactNode } from "react";
-import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+	Platform,
+	type StyleProp,
+	StyleSheet,
+	View,
+	type ViewStyle,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NewOrderBannerProvider } from "@/components/new-order-banner";
 import { Pressable } from "@/components/pressable";
@@ -10,6 +16,7 @@ import { MerchantScopeProvider } from "@/lib/merchant-scope";
 import { useResolvedRole } from "@/lib/role";
 import {
 	BUSINESS_TAB_BAR_HEIGHT,
+	BUSINESS_TAB_BAR_LIFT,
 	icon,
 	radius,
 	space,
@@ -20,14 +27,55 @@ import {
 /**
  * The bar's translucency, applied here because the palette holds no alpha colours
  * (`./merchant-pulse` records the same constraint). The surface itself is read from
- * `colors.card` — the merchant palette's own ivory — so the bar follows the palette;
+ * `colors.card` — the merchant palette's own white — so the bar follows the palette;
  * the one number that is not a token is the 94%, and it is named beside the line
  * that owns the decision rather than spelled into a literal, where a re-typed hex
  * of the card token would stop following the palette the day the card moved.
+ *
+ * No native blur: `expo-blur` is not in this stack, so the capsule is an opaque
+ * white at 94% with the specified shadow rather than glass. Deliberate fallback,
+ * not a gap — blur would be decoration on a bar whose edge the shadow already draws.
  */
 const BAR_OPACITY = 0.94;
 
-/** `#FCFAF5` + 0.94 → `rgba(252,250,245,0.94)`. Hex in — every `ThemeColors` value is. */
+/** 320 on a 390 viewport: the capsule's specified width. */
+const CAPSULE_WIDTH = 320;
+
+/**
+ * The capsule's lift shadow, `0 10 30 rgba(0,0,0,.10)`, expressed the way each
+ * platform wants it — the same split `theme/tokens.ts` draws for `shadow`,
+ * stated here because no shared step carries this exact diffusion.
+ */
+const CAPSULE_SHADOW =
+	Platform.OS === "web"
+		? { boxShadow: "0px 10px 30px rgba(0,0,0,0.10)" }
+		: {
+				shadowColor: "#000000",
+				shadowOpacity: 0.1,
+				shadowRadius: 30,
+				shadowOffset: { width: 0, height: 10 },
+				elevation: 8,
+			};
+
+/** The selected disc, 52 square: 9 points of breathing room inside the 70 bar. */
+const TAB_DISC = 52;
+
+/**
+ * The selected disc's own lift, `0 3 14 rgba(0,0,0,.08)` — the floating-action
+ * step, so the disc reads as raised off the capsule rather than painted on it.
+ */
+const DISC_SHADOW =
+	Platform.OS === "web"
+		? { boxShadow: "0px 3px 14px rgba(0,0,0,0.08)" }
+		: {
+				shadowColor: "#000000",
+				shadowOpacity: 0.08,
+				shadowRadius: 14,
+				shadowOffset: { width: 0, height: 3 },
+				elevation: 3,
+			};
+
+/** `#FFFFFF` + 0.94 → `rgba(255,255,255,0.94)`. Hex in — every `ThemeColors` value is. */
 function withAlpha(hex: string, alpha: number): string {
 	const value = hex.replace("#", "");
 	const red = Number.parseInt(value.slice(0, 2), 16);
@@ -109,13 +157,24 @@ export default function BusinessLayout() {
 						),
 						tabBarActiveTintColor: colors.foreground,
 						tabBarInactiveTintColor: colors.mutedForeground,
-						tabBarStyle: {
-							backgroundColor: withAlpha(colors.card, BAR_OPACITY),
-							borderTopColor: colors.border,
-							borderTopWidth: StyleSheet.hairlineWidth,
-							height: BUSINESS_TAB_BAR_HEIGHT + insets.bottom,
-							paddingBottom: insets.bottom,
-						},
+						// The floating capsule: 320 wide and centred, 70 tall, 12 above
+						// the home-indicator inset. 70 + 12 is the 82 the docked bar
+						// occupied, so screens that reserved room for it keep the same
+						// clearance — the bar floats, the layout does not move.
+						tabBarStyle: [
+							{
+								position: "absolute",
+								alignSelf: "center",
+								width: CAPSULE_WIDTH,
+								height: BUSINESS_TAB_BAR_HEIGHT,
+								bottom: insets.bottom + BUSINESS_TAB_BAR_LIFT,
+								borderRadius: radius.full,
+								backgroundColor: withAlpha(colors.card, BAR_OPACITY),
+								borderTopWidth: 0,
+							},
+							CAPSULE_SHADOW,
+						],
+						tabBarItemStyle: { paddingVertical: 0 },
 						tabBarLabelStyle: { fontSize: TAB_BAR_LABEL_SIZE },
 					}}
 				>
@@ -235,7 +294,13 @@ function TabMark({
 	const { colors } = useTheme();
 
 	return (
-		<View style={styles.mark}>
+		<View
+			style={[
+				styles.mark,
+				focused && { backgroundColor: colors.card },
+				focused && DISC_SHADOW,
+			]}
+		>
 			<Ionicons
 				name={name}
 				size={size ?? icon.action}
@@ -255,6 +320,15 @@ function TabMark({
 }
 
 const styles = StyleSheet.create({
-	mark: { alignItems: "center", gap: space.xs },
+	// Fixed 52 square in both states, so selection never reflows the bar: the
+	// disc is always there, and only its fill, lift and dot arrive on focus.
+	mark: {
+		width: TAB_DISC,
+		height: TAB_DISC,
+		borderRadius: radius.full,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.xs,
+	},
 	dot: { width: 4, height: 4, borderRadius: radius.full },
 });

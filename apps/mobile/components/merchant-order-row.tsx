@@ -14,7 +14,6 @@ import Animated, {
 import { HIGHLIGHT_FADE, HIGHLIGHT_OPACITY, spring } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import {
-	MIN_TOUCH_TARGET,
 	orderChip,
 	radius,
 	space,
@@ -451,14 +450,15 @@ function MerchantAction({
 }
 
 /**
- * The dense-row band: 73 points at rest, a floor rather than a height — exported so a
+ * The dense-row band: 96 points at rest, a floor rather than a height — exported so a
  * skeleton standing in for one of these rows stands at the row's own measure (and grows
  * where the row grows), instead of a second copy of the number that drifts.
  *
- * 73 is the rest arithmetic rather than a round number picked for looks: `type.body`'s
+ * 96 is the commerce row rhythm (the 88–104 range), not the content's own sum: `type.body`'s
  * 21-point headline line + `TEXT_STACK_GAP`'s 2 between the two fact lines + the chip's 26
- * on the meta line + `space.md` of padding above and below (21 + 2 + 26 + 24 = 73). The
- * chip is what binds the second line, not the caption beside it.
+ * on the meta line + `space.md` of padding above and below is 73, and the floor stands 23
+ * above it so a row with one short line still reads as a row and not as a strip. The chip
+ * is what binds the second line, not the caption beside it.
  *
  * A queue row is not `MIN_TOUCH_TARGET`'s 44 — that is a *control's* floor, and this is a
  * surface that holds two lines of text and a chip — but it is held the same way: `minHeight`
@@ -468,7 +468,7 @@ function MerchantAction({
  * floor: a caller adding up `space` insets would get the wrong answer and have no way to
  * see which piece moved.
  */
-export const ROW_MIN_HEIGHT = 73;
+export const ROW_MIN_HEIGHT = 96;
 
 /**
  * The rail's two measures, and why neither is a `space` step.
@@ -598,9 +598,11 @@ const styles = StyleSheet.create({
 	/** The box every kind shares; the kinds disagree only in fill, border and ink. */
 	action: {
 		justifyContent: "center",
-		height: MIN_TOUCH_TARGET,
+		// 48: the CTA floor — the header control's own 48, not a control squeezed
+		// to the 44 minimum on the screen whose whole job is moving orders.
+		height: 48,
 		paddingHorizontal: space.lg,
-		borderRadius: radius.sm,
+		borderRadius: radius.md,
 	},
 	/** The quiet action's air: narrower than a boxed one, since it draws no box to fill. */
 	actionQuiet: {

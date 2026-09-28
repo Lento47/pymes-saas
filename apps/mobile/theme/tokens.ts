@@ -226,47 +226,49 @@ export type ThemeColors = { [K in keyof typeof light]: string };
 export const palette: Record<ColorScheme, ThemeColors> = { light, dark };
 
 /**
- * The merchant console's palette: warm ivory canvas, ink, lime action.
+ * The merchant console's palette: white canvas, ink, lime action accent.
  *
  * Same keys as `ThemeColors` and no more — that is the whole contract. Every component
  * reads `colors.background` and friends without knowing which tree it is in, so the
- * business screens get the editorial system by mounting under `(business)` and nothing
+ * business screens get the commerce system by mounting under `(business)` and nothing
  * else changes. Functional colours (success, warning, destructive, info, price, discount,
  * rating, the eight status pairs) are interface §7's own values or the existing ones
  * where the doc names none: hue carries meaning in an operational console, so only the
  * neutrals and the action colour move.
  *
- * Scheme-independent by decision rather than by omission: the interface spec draws one
- * warm system and no dark one, and an invented dark merchant theme would be improvisation
- * dressed as coverage. A dark merchant palette is an open item, not a gap — see P0.
+ * Lime is an accent, not a brand fill: `#C8FF18` draws primary actions, live states
+ * and selection markers — roughly 5% of visible pixels — on a white canvas with warm
+ * neutral secondary surfaces. Scheme-independent by decision rather than by omission:
+ * the interface spec draws one light system and no dark one, and an invented dark
+ * merchant theme would be improvisation dressed as coverage.
  */
 export const merchant: ThemeColors = {
-	background: "#F6F2E9",
-	foreground: "#141217",
-	card: "#FCFAF5",
-	cardForeground: "#141217",
-	popover: "#FCFAF5",
-	popoverForeground: "#141217",
-	primary: "#D9FF36",
-	primaryForeground: "#141217",
-	secondary: "#ECE6DC",
+	background: "#FFFFFF",
+	foreground: "#111111",
+	card: "#FFFFFF",
+	cardForeground: "#111111",
+	popover: "#FFFFFF",
+	popoverForeground: "#111111",
+	primary: "#C8FF18",
+	primaryForeground: "#111111",
+	secondary: "#F6F5F1",
 	secondaryForeground: "#2e2722",
-	muted: "#ECE6DC",
-	mutedForeground: "#68636A",
-	accent: "#E7E2D5",
-	accentForeground: "#141217",
-	action: "#141217",
-	destructive: "#C84535",
+	muted: "#F6F5F1",
+	mutedForeground: "#707070",
+	accent: "#EFEEE9",
+	accentForeground: "#111111",
+	action: "#111111",
+	destructive: "#D5493E",
 	destructiveForeground: "#ffffff",
-	success: "#1A7F5A",
+	success: "#138A5B",
 	successForeground: "#ffffff",
-	warning: "#D99A22",
+	warning: "#E39A20",
 	warningForeground: "#2b1c08",
 	info: "#4768A9",
 	infoForeground: "#ffffff",
-	border: "#DDD7CE",
+	border: "#11111114",
 	input: "#79716A",
-	ring: "#141217",
+	ring: "#111111",
 	scrim: "#1f1915",
 	shimmer: "#A39C90",
 	statusPending: "#fbf1c7",
@@ -286,14 +288,15 @@ export const merchant: ThemeColors = {
 	statusRejected: "#ffe1dc",
 	statusRejectedForeground: "#a51f1e",
 	price: "#006533",
-	priceCompare: "#6e6862",
+	priceCompare: "#707070",
 	discount: "#c50516",
 	discountForeground: "#fff9f8",
 	rating: "#b37400",
 };
 
 /**
- * The three radius steps, and no more — `--radius-sm`, `--radius-md`, `--radius-lg`.
+ * The four radius steps — `--radius-sm`, `--radius-md`, `--radius-lg` — plus the
+ * module step the commerce direction adds for large feed surfaces.
  *
  * Controls name a step and never a pixel count, so the scale can move without a sweep
  * like the one that produced it. `rounded-xl` and up resolve to `lg` on the web, so
@@ -303,6 +306,8 @@ export const radius = {
 	sm: 6,
 	md: 12,
 	lg: 18,
+	/** Large feed modules (dark pulse, product story): 28–32, drawn at 30. */
+	xl: 30,
 	full: 9999,
 } as const;
 
@@ -538,13 +543,13 @@ export const TAB_BAR_PADDING_TOP = 6;
 export const TAB_BAR_LABEL_SIZE = 11;
 
 /**
- * The merchant tab bar's own height, before the safe-area inset is added to it.
+ * The merchant capsule's own height, before the safe-area inset is added to it.
  *
- * The `(business)` tree's bar is the one tab bar the app now draws, and its height is a
- * bar-measure for the same reason `TAB_BAR_HEIGHT` was: the navigator places it, the icon
- * and its label share the fixed part of it, and no screen beside this layout ever measures
- * it. 82 rather than `TAB_BAR_HEIGHT`'s 60 — this bar carries a label under its icon and
- * the dot marker's breathing room, and it is its own surface with its own measure, read
- * here rather than re-typed in the layout that drew it.
+ * The `(business)` tree's bar is a floating capsule: 320 wide, 70 tall, 12 points
+ * above the home-indicator inset. 70 + 12 is the 82 the docked bar occupied, so
+ * every screen that reserved room for the old bar keeps the same clearance.
  */
-export const BUSINESS_TAB_BAR_HEIGHT = 82;
+export const BUSINESS_TAB_BAR_HEIGHT = 70;
+
+/** The capsule's lift above the bottom inset. */
+export const BUSINESS_TAB_BAR_LIFT = 12;
