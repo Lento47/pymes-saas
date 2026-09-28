@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { type Ref, useEffect, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
@@ -8,8 +9,10 @@ import {
 	View,
 } from "react-native";
 
-import { MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
+import { useT } from "@/lib/i18n";
+import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
+import { Pressable } from "./pressable";
 import { Text } from "./text";
 
 /**
@@ -68,12 +71,37 @@ export function Field({
 	onChangeText,
 	error,
 	help,
+	/**
+	 * Offer the show/hide control inside the box. The caller still owns
+	 * `secureTextEntry` — this only decides whether the reader may lift it.
+	 * No confirm-password field exists anywhere in this app by decision
+	 * (unmask instead of retype), and this is the control that makes that true.
+	 */
+	secureToggle = false,
+	secureTextEntry,
+	/**
+	 * The keyboard flow's handle on this box. Declared and forwarded
+	 * explicitly: React 19 passes `ref` as an ordinary prop, but the type
+	 * only accepts what is named — `TextInputProps` does not name it, so an
+	 * undeclared `ref` is a type error that reads as if refs were unsupported.
+	 */
+	ref,
 	onFocus,
 	onBlur,
 	...rest
-}: { label: string; error?: string | null; help?: string } & TextInputProps) {
+}: {
+	label: string;
+	error?: string | null;
+	help?: string;
+	secureToggle?: boolean;
+	ref?: Ref<TextInput>;
+} & TextInputProps) {
+	const { t } = useT();
 	const { colors } = useTheme();
 	const [focused, setFocused] = useState(false);
+	// Masked until asked: the reveal is opt-in per attempt, never remembered.
+	const [revealed, setRevealed] = useState(false);
+	const showToggle = secureToggle && secureTextEntry;
 
 	// Android reads the sentence through the live region below. iOS announces nothing for a
 	// role alone, so this explicit call is the only thing that reaches VoiceOver there — the
@@ -93,40 +121,80 @@ export function Field({
 			<Text variant="label" bold>
 				{label}
 			</Text>
-			<TextInput
-				value={value}
-				onChangeText={onChangeText}
-				// The caller's handler first, this component's second — see the precedence
-				// note above. Neither can displace the other: `onFocus`/`onBlur` are out of
-				// `rest` precisely so the last-spread `{...rest}` cannot shadow them.
-				onFocus={(event) => {
-					onFocus?.(event);
-					setFocused(true);
-				}}
-				onBlur={(event) => {
-					onBlur?.(event);
-					setFocused(false);
-				}}
-				placeholderTextColor={colors.mutedForeground}
-				style={[
-					styles.input,
-					{
-						backgroundColor: colors.card,
-						color: colors.foreground,
-						borderColor: error
-							? colors.destructive
-							: focused
-								? colors.ring
-								: colors.input,
-					},
-				]}
-				// The field's name in the accessibility tree, and the reason it is not just
-				// the visible `<Text>` above: on iOS the two are separate elements, and a
-				// focused text box with no label announces only its current contents.
-				accessibilityLabel={label}
-				accessibilityHint={error ?? help}
-				{...rest}
-			/>
+			<View style={styles.inputWrap}>
+				<TextInput
+					ref={ref}
+					value={value}
+					onChangeText={onChangeText}
+					// The caller's handler first, this component's second — see the precedence
+					// note above. Neither can displace the other: `onFocus`/`onBlur` are out of
+					// `rest` precisely so the last-spread `{...rest}` cannot shadow them.
+					onFocus={(event) => {
+						onFocus?.(event);
+						setFocused(true);
+					}}
+					onBlur={(event) => {
+						onBlur?.(event);
+						setFocused(false);
+					}}
+					// `secureTextEntry` is destructured above so this resolution wins:
+					// left inside `rest`, the caller's `true` would shadow it on every render.
+					secureTextEntry={secureToggle ? !revealed : secureTextEntry}
+					placeholderTextColor={colors.mutedForeground}
+					style={[
+						styles.input,
+						showToggle && styles.inputWithToggle,
+						{
+							backgroundColor: colors.card,
+							color: colors.foreground,
+							borderColor: error
+								? colors.destructive
+								: focused
+									? colors.ring
+									: colors.input,
+						},
+						// The focus ring, and it is more than the border's hue: a 1px
+						// colour swap is the whole of what a reader gets on a box whose
+						// edge they are already looking at (WCAG 2.4.7). Web draws the
+						// 2px outer band the design system means by a ring; native
+						// thickens the edge itself, with the margin holding the box's
+						// outer size so focusing never reflows the form.
+						focused && !error
+							? Platform.OS === "web"
+								? { boxShadow: `0 0 0 2px ${colors.ring}` }
+								: { borderWidth: 2, marginVertical: -1 }
+							: null,
+					]}
+					// The field's name in the accessibility tree, and the reason it is not just
+					// the visible `<Text>` above: on iOS the two are separate elements, and a
+					// focused text box with no label announces only its current contents.
+					accessibilityLabel={label}
+					accessibilityHint={error ?? help}
+					{...rest}
+				/>
+				{showToggle ? (
+					<Pressable
+						onPress={() => setRevealed((was) => !was)}
+						accessibilityRole="button"
+						accessibilityLabel={t(
+							revealed ? "auth.password.hide" : "auth.password.show",
+						)}
+						// The box is already the 44pt floor, so no `hitSlop`: anything
+						// more would reach into the field's own text.
+						hitSlop={0}
+						ripple={false}
+						style={styles.reveal}
+					>
+						<Ionicons
+							name={revealed ? "eye-off-outline" : "eye-outline"}
+							size={icon.action}
+							color={colors.mutedForeground}
+							accessibilityElementsHidden
+							importantForAccessibility="no"
+						/>
+					</Pressable>
+				) : null}
+			</View>
 			<View style={styles.message}>
 				{/* The sentence wins over the help text — two lines of small print under one box
 				    is a stack nobody reads, and the error is the one that matters right now.
@@ -155,6 +223,9 @@ export function Field({
 
 const styles = StyleSheet.create({
 	wrap: { gap: space.sm },
+	// Positioning context for the reveal control, and nothing else: it adds no
+	// size of its own, so a field without the toggle draws exactly as before.
+	inputWrap: { position: "relative" },
 	input: {
 		minHeight: MIN_TOUCH_TARGET,
 		borderWidth: 1,
@@ -177,6 +248,20 @@ const styles = StyleSheet.create({
 		// declaration `text.tsx` cites — so iOS ignores the value rather than disagreeing
 		// with it.
 		includeFontPadding: false,
+	},
+	// Room for the reveal control, so typed text never slides under it.
+	inputWithToggle: { paddingRight: MIN_TOUCH_TARGET + space.sm },
+	// The reveal, pinned over the box's trailing edge: a 44pt target whose ink
+	// is the 20pt glyph centred in it, the same centring `./product-tile`'s
+	// quick-add pin gives its disc in an identical square.
+	reveal: {
+		position: "absolute",
+		right: 0,
+		top: 0,
+		bottom: 0,
+		width: MIN_TOUCH_TARGET,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	// Empty most of the time and reserved always — see the note above on why this is not
 	// created on demand.

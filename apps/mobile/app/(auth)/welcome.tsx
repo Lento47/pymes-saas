@@ -1,13 +1,13 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
+import { AuthIdentity } from "@/components/auth-identity";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
-import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
+import { MIN_TOUCH_TARGET, space } from "@/theme";
 
 /**
  * What this app is, and the two ways into it.
@@ -81,7 +81,6 @@ import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
  */
 export default function Welcome() {
 	const { t } = useT();
-	const { colors } = useTheme();
 
 	return (
 		<View style={styles.root}>
@@ -96,34 +95,11 @@ export default function Welcome() {
 					<BackButton to="/" />
 				</View>
 
-				<View style={styles.identity}>
-					<View style={styles.mark}>
-						<Ionicons
-							name="storefront-outline"
-							size={icon.action}
-							color={colors.primary}
-							// Decoration: the wordmark beside it is the name, and a glyph carrying
-							// no label of its own is announced as nothing at all.
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
-						<Text variant="heading" bold>
-							{t("app.name")}
-						</Text>
-					</View>
-					<View>
-						{/* `header`: the claim is this screen's one heading, and a screen reader's
-						    rotor navigates by heading. Without the role it is announced as one
-						    more string, and the screen becomes a name, a sentence and two
-						    controls with no shape. */}
-						<Text variant="display" bold accessibilityRole="header">
-							{t("auth.welcome.title")}
-						</Text>
-						<Text variant="label" tone="muted" style={styles.subtitle}>
-							{t("auth.welcome.subtitle")}
-						</Text>
-					</View>
-				</View>
+				<AuthIdentity
+					centered
+					title={t("auth.welcome.title")}
+					subtitle={t("auth.welcome.subtitle")}
+				/>
 
 				<View style={styles.doors}>
 					<Button
@@ -180,17 +156,6 @@ const styles = StyleSheet.create({
 	// The back control, on its own row so the identity block below it can take the slack
 	// without moving the chrome: `gap: space.xl` would otherwise sit between them too.
 	chrome: { flexDirection: "row" },
-	// The block that takes the slack: the mark and the claim sit in the middle of the screen
-	// rather than at the top of it, which is what leaves the action at the bottom where the
-	// thumb already is.
-	identity: { gap: space.lg, flex: 1, justifyContent: "center" },
-	// The glyph and the wordmark on one line, as `app/(auth)/sign-in.tsx` composes it.
-	mark: { flexDirection: "row", alignItems: "center", gap: space.sm },
-	// `Screen`'s strip pays this between the title and its subtitle
-	// (`components/screen.tsx:220-225`); the strip is composed here now, so the number is
-	// paid here too — the same line as `app/(auth)/sign-in.tsx`, because these two screens
-	// are one design.
-	subtitle: { marginTop: space.xs },
 	// `flexShrink: 0` and the reason is in the docblock: the action is the one control on
 	// this screen, and it is the last thing allowed to give up room.
 	doors: { gap: space.sm, flexShrink: 0 },

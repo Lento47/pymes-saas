@@ -2,18 +2,17 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
-import Animated, {
-	cancelAnimation,
-	useAnimatedStyle,
-	useSharedValue,
-	withSequence,
-	withSpring,
-	withTiming,
-} from "react-native-reanimated";
+import {
+	AccessibilityInfo,
+	Platform,
+	StyleSheet,
+	type TextInput,
+	View,
+} from "react-native";
 import { ActionBar } from "@/components/action-bar";
+import { AuthIdentity } from "@/components/auth-identity";
 import { BackButton } from "@/components/back-button";
-import { Button } from "@/components/button";
+import { Card } from "@/components/card";
 import { Field } from "@/components/field";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
@@ -27,8 +26,7 @@ import {
 } from "@/lib/device-prefs";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
-import { duration, PRESS_SCALE_ROW, STATE_POP, spring } from "@/lib/motion";
-import { useReducedMotion } from "@/lib/reduced-motion";
+import { PRESS_SCALE_ROW } from "@/lib/motion";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -108,7 +106,7 @@ import {
  *   from the device's own last choice (`getAccountProfile`), so a courier signing back in
  *   finds "Repartidor" already selected.
  * - **Sign-up** offers the three things an account can be *for*: a business, a customer, a
- *   courier ΓÇö as three **cards** rather than a segment, because each one is a *promise*
+ *   courier ΓÇö as three **rows** rather than a segment, because each one is a *promise*
  *   ("sell and manage", "buy", "deliver") and a segment has nowhere to put a sentence.
  *   This is `components/option-card`'s argument about prices, in a place where the words
  *   matter more than the count: a control that can only hold a word has to be a different
@@ -120,7 +118,7 @@ import {
  *   "delivery" was a sign-up that silently made every account a customer ΓÇö which is the
  *   failure this group exists to prevent.
  *
- * Two things about that group are decisions rather than layout. **The business card is
+ * Two things about that group are decisions rather than layout. **The business row is
  * first and preselected**: the shop is the account this product exists for, and a form that
  * opens on the customer answer has already decided for the reader ΓÇö the customer, who is
  * the exception here, is one tap away. And it sits **below the fields**, while the sign-in
@@ -129,7 +127,7 @@ import {
  * same question is about the device this app is re-entering with ΓÇö which is why this half
  * keeps the compact segment and seeds itself from the device's own last answer.
  *
- * Each card carries the one sentence that says what that account is *for*, inside the card
+ * Each row carries the one sentence that says what that account is *for*, inside the card
  * rather than under the group, because under a group there is one slot and three answers ΓÇö
  * the line under the customer card would be about somebody else. The selection is said
  * three ways, as in `option-card`: the accent fill, the weight of the title and the tick,
@@ -291,6 +289,12 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	const [registrationMode, setRegistrationMode] =
 		useState<RegistrationMode>("business");
 	const inFlight = useRef(false);
+	// The keyboard's own flow: name → email → password → submit. `Field`
+	// forwards `ref` to its `TextInput` (React 19 ref-as-prop), so the form
+	// moves focus itself rather than making the reader tap each box.
+	const nameRef = useRef<TextInput>(null);
+	const emailRef = useRef<TextInput>(null);
+	const passwordRef = useRef<TextInput>(null);
 
 	/**
 	 * The two sign-up assertions, held as their own state rather than folded into
@@ -551,167 +555,174 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				keyboardInsets
 				contentStyle={styles.content}
 			>
-				<View style={styles.identity}>
-					<View style={styles.mark}>
-						<Ionicons
-							name="storefront-outline"
-							size={icon.action}
-							color={colors.primary}
-							// Decoration: the wordmark beside it is the name, and a glyph carrying no
-							// label of its own is announced as nothing at all.
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
-						<Text variant="heading" bold>
-							{t("app.name")}
-						</Text>
-					</View>
-					<View>
-						<Text variant="display" bold>
-							{title}
-						</Text>
-						<Text variant="label" tone="muted" style={styles.subtitle}>
-							{subtitle}
-						</Text>
-					</View>
+				{/* Chrome first: the way out of a wait this app cannot bound lives where
+				    every platform puts a back control — always enabled, see the docblock —
+				    and not under the form's own action. */}
+				<View style={styles.chrome}>
+					<BackButton to="/" />
 				</View>
+
+				<AuthIdentity title={title} subtitle={subtitle} />
 
 				{/* The door on the way back in ΓÇö see "The door is asked differently by each
 				    side" above. Only sign-in asks it here: a sign-up asks the same question
 				    as cards, below the fields. */}
 				{!signingUp ? (
-					<View style={styles.role}>
-						<Segmented
-							label={t("auth.role.label")}
-							value={role}
-							disabled={waiting}
-							onChange={(next) =>
-								setRole(
-									next === "delivery"
-										? "delivery"
-										: next === "business"
-											? "business"
-											: "customer",
-								)
-							}
-							options={[
-								{ value: "customer", label: t("auth.role.customer") },
-								{ value: "business", label: t("auth.role.business") },
-								{ value: "delivery", label: t("auth.role.delivery") },
-							]}
-						/>
-						{role === "delivery" ? (
-							<Text variant="caption" tone="muted">
-								{t("auth.role.deliveryHelp")}
+					<Card>
+						<View style={styles.role}>
+							<Segmented
+								label={t("auth.role.label")}
+								value={role}
+								disabled={waiting}
+								onChange={(next) =>
+									setRole(
+										next === "delivery"
+											? "delivery"
+											: next === "business"
+												? "business"
+												: "customer",
+									)
+								}
+								options={[
+									{ value: "customer", label: t("auth.role.customer") },
+									{ value: "business", label: t("auth.role.business") },
+									{ value: "delivery", label: t("auth.role.delivery") },
+								]}
+							/>
+							{/* Reserved: one caption line always, so switching roles never
+							    reflows the card — the same reserved-slot rule `./field`
+							    keeps for its own message. Empty for the customer answer. */}
+							<Text variant="caption" tone="muted" style={styles.roleHelp}>
+								{role === "delivery"
+									? t("auth.role.deliveryHelp")
+									: role === "business"
+										? t("auth.role.businessHelp")
+										: ""}
 							</Text>
-						) : role === "business" ? (
-							<Text variant="caption" tone="muted">
-								{t("auth.role.businessHelp")}
-							</Text>
+						</View>
+					</Card>
+				) : null}
+
+				{/* The credential: one card, one question. */}
+				<Card>
+					<View style={styles.fields}>
+						{signingUp ? (
+							<Field
+								label={t("auth.field.name")}
+								value={name}
+								onChangeText={typed(setName)}
+								onBlur={() => leave("name")}
+								error={messageFor("name")}
+								autoComplete="name"
+								maxLength={120}
+								ref={nameRef}
+								autoFocus
+								returnKeyType="next"
+								blurOnSubmit={false}
+								onSubmitEditing={() => emailRef.current?.focus()}
+							/>
 						) : null}
-					</View>
-				) : null}
-
-				{signingUp ? (
-					<Field
-						label={t("auth.field.name")}
-						value={name}
-						onChangeText={typed(setName)}
-						onBlur={() => leave("name")}
-						error={messageFor("name")}
-						autoComplete="name"
-						maxLength={120}
-					/>
-				) : null}
-				<Field
-					label={t("auth.field.email")}
-					value={email}
-					onChangeText={typed(setEmail)}
-					onBlur={() => leave("email")}
-					error={messageFor("email")}
-					autoCapitalize="none"
-					autoComplete="email"
-					keyboardType="email-address"
-					autoCorrect={false}
-				/>
-				<Field
-					label={t("auth.field.password")}
-					value={password}
-					onChangeText={typed(setPassword)}
-					onBlur={() => leave("password")}
-					error={messageFor("password")}
-					secureTextEntry
-					autoComplete={signingUp ? "new-password" : "current-password"}
-					// The rule is stated before the reader types, not after they break it.
-					help={signingUp ? t("auth.password.minimum") : undefined}
-					onSubmitEditing={() => void submit()}
-				/>
-
-				{/*
-					The two assertions, above the status slot and below the fields: the last
-					thing a reader passes before the button they came to press.
-
-					They are inside the form rather than inside `ActionBar` because they are
-					not the screen's action ΓÇö the action is on the floor, and a bar that
-					held a contract acceptance would be a bar holding two different kinds
-					of control. The bar's docblock says it holds one action, and that still
-					holds.
-
-					`accessibilityRole="checkbox"` with `accessibilityState` is what makes
-					VoiceOver and TalkBack announce the control as a checkbox rather than
-					as a button that is pressed ΓÇö a reader who cannot see the tick still
-					has to be able to ask what state it is in. The whole row is the target,
-					not just the box, because the label is the larger part of it.
-				*/}
-				{signingUp ? (
-					<View style={styles.consent}>
-						<ConsentCheck
-							label={t("auth.signUp.termsLabel")}
-							link={t("auth.signUp.termsLink")}
-							checked={termsAccepted}
-							disabled={waiting}
-							error={messageFor("terms")}
-							onChange={setTermsAccepted}
+						<Field
+							label={t("auth.field.email")}
+							value={email}
+							onChangeText={typed(setEmail)}
+							onBlur={() => leave("email")}
+							error={messageFor("email")}
+							autoCapitalize="none"
+							autoComplete="email"
+							keyboardType="email-address"
+							autoCorrect={false}
+							ref={emailRef}
+							autoFocus={!signingUp}
+							returnKeyType="next"
+							blurOnSubmit={false}
+							onSubmitEditing={() => passwordRef.current?.focus()}
 						/>
-						<ConsentCheck
-							label={t("auth.signUp.ageLabel")}
-							checked={ageConfirmed}
-							disabled={waiting}
-							error={messageFor("age")}
-							onChange={setAgeConfirmed}
+						<Field
+							label={t("auth.field.password")}
+							value={password}
+							onChangeText={typed(setPassword)}
+							onBlur={() => leave("password")}
+							error={messageFor("password")}
+							secureTextEntry
+							secureToggle
+							autoComplete={signingUp ? "new-password" : "current-password"}
+							// The rule is stated before the reader types, not after they break it.
+							help={signingUp ? t("auth.password.minimum") : undefined}
+							ref={passwordRef}
+							returnKeyType="go"
+							onSubmitEditing={() => void submit()}
 						/>
 					</View>
-				) : null}
+				</Card>
 
-				{/* The question the door above asks as a segment, asked here as cards and
-				    asked last ΓÇö the reasons are in the docblock: the type is what the
-				    account is *for*, and it reads as a promise only once the reader knows
-				    who is filling this in. */}
+				{/* The use, as a second card: the assertions and the type the account
+				    is *for*, read as one question with two halves. Inside the form
+				    rather than inside `ActionBar` because they are not the screen's
+				    action — the action is on the floor, and a bar holding a contract
+				    acceptance would hold two different kinds of control. */}
 				{signingUp ? (
-					<AccountTypes
-						value={registrationMode}
-						disabled={waiting}
-						onChange={setRegistrationMode}
-					/>
+					<Card>
+						<View style={styles.door}>
+							<View style={styles.consent}>
+								<ConsentCheck
+									label={t("auth.signUp.termsLabel")}
+									link={t("auth.signUp.termsLink")}
+									checked={termsAccepted}
+									disabled={waiting}
+									error={messageFor("terms")}
+									onChange={setTermsAccepted}
+								/>
+								<ConsentCheck
+									label={t("auth.signUp.ageLabel")}
+									checked={ageConfirmed}
+									disabled={waiting}
+									error={messageFor("age")}
+									onChange={setAgeConfirmed}
+								/>
+							</View>
+
+							{/* The question the door above asks as a segment, asked here as
+							    rows and asked last — the reasons are in the docblock: the
+							    type is what the account is *for*, and it reads as a promise
+							    only once the reader knows who is filling this in. */}
+							<AccountTypes
+								value={registrationMode}
+								disabled={waiting}
+								onChange={setRegistrationMode}
+							/>
+						</View>
+					</Card>
 				) : null}
 
-				{/* One slot for both the failure and the wait, and it is reserved: the two controls
-			    under it must not move when either appears. The word is the whole waiting state for
-			    a reader who is not looking at the spinner. The failure comes first, because a
-			    refusal is what the reader acts on and a wait is what they sit through.
-			    The submit is not one of the two any more ΓÇö it is on the bar, which is outside this
-			    scroll and moves for nothing the form does ΓÇö so what the reservation holds still is
-			    the toggle and the way out. */}
+				{/* One slot for both the failure and the wait, and it is reserved: the
+				    control under it must not move when either appears. The word is the
+				    whole waiting state for a reader who is not looking at the spinner.
+				    The failure comes first, because a refusal is what the reader acts
+				    on and a wait is what they sit through. */}
 				<View style={styles.status}>
 					{message ? (
-						<Text
-							variant="body"
-							tone="destructive"
-							accessibilityRole="alert"
-							accessibilityLiveRegion="assertive"
-						>
-							{message}
-						</Text>
+						<View style={styles.messageRow}>
+							{/* The second signal: the sentence alone is colour plus words,
+							    and a refusal carried by hue is a refusal half the readers
+							    cannot tell from the wait below it (WCAG 1.4.1). */}
+							<Ionicons
+								name="alert-circle-outline"
+								size={icon.control}
+								color={colors.destructive}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+							<Text
+								variant="body"
+								tone="destructive"
+								style={styles.messageText}
+								accessibilityRole="alert"
+								accessibilityLiveRegion="assertive"
+							>
+								{message}
+							</Text>
+						</View>
 					) : waiting ? (
 						<Text variant="body" tone="muted" accessibilityLiveRegion="polite">
 							{t("state.loading")}
@@ -719,19 +730,25 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 					) : null}
 				</View>
 
-				<Button
-					variant="ghost"
-					label={t(signingUp ? "action.signIn" : "action.signUp")}
-					// `waiting`, so the form cannot be swapped out while the session read is still
-					// deciding ΓÇö a fresh form has no `sent` of its own, and the reader would end up on
-					// the sign-up screen signed in.
-					disabled={waiting}
+				{/* The way out of this form is a sentence, not a second button: the
+				    reader is not deciding anything here, only switching doors, so the
+				    weight of a button would argue the screen has two actions. The shape
+				    is `welcome`'s own switch row. Disabled while the session read is
+				    still deciding — a fresh form has no `sent` of its own, and the
+				    reader would end up on the sign-up screen signed in. */}
+				<Pressable
 					onPress={() => router.replace(signingUp ? "/sign-in" : "/sign-up")}
-				/>
-				{/* Not disabled while the request is out. It is the way out of a wait this app cannot
-			    bound ΓÇö nothing in the transport aborts a request ΓÇö and an exit closed from the
-			    moment a tap is made until the network answers is a screen with no way off it. */}
-				<BackButton to="/" />
+					accessibilityRole="button"
+					disabled={waiting}
+					style={styles.switch}
+				>
+					<Text variant="label" tone="muted">
+						{`${t(signingUp ? "auth.signUp.hasAccount" : "auth.signIn.noAccount")} `}
+					</Text>
+					<Text variant="label" tone="action" bold style={styles.switchAction}>
+						{t(signingUp ? "action.signIn" : "action.signUp")}
+					</Text>
+				</Pressable>
 			</Screen>
 
 			{/* The screen's one action, on the floor rather than at the end of the form ΓÇö the reasons
@@ -753,7 +770,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 }
 
 /**
- * What the account is *for*: three cards, each carrying the promise that type makes.
+ * What the account is *for*: three rows, each carrying the promise that type makes.
  *
  * A group of choices, exactly as `components/option-card` is one, with one difference ΓÇö
  * these are the reader's three doors and each of them has a sentence to say, so the group
@@ -765,7 +782,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
  * because the shop is the account this product exists for and the customer is the
  * exception. The merchant is also the one every other language in the app writes first
  * (`auth.signUp.business.title` is the merchant's sign-up title, and `/new-business` is its
- * first screen), so the card that is selected on arrival is the one the rest of the form
+ * first screen), so the row that is selected on arrival is the one the rest of the form
  * is already shaped for.
  *
  * The titles are the sign-in door's own words (`auth.role.*`) and not a second set: the
@@ -869,23 +886,18 @@ function AccountTypes({
 }
 
 /**
- * `space.huge + space.md` ΓÇö 44, the touch floor, built from spacing steps rather than typed.
+ * One type, as a row: the promise it makes, and what choosing it does.
  *
- * `./empty-state`'s badge is the same construction for the same reason: `theme/tokens.ts` has
- * no icon-badge size, and a bare number at a call site is how a design system grows a second
- * scale. Forty-four is also the right number here for a second reason ΓÇö the plate is inside
- * a row the reader aims at, so making it the minimum touch target costs the row nothing and
- * gives the glyph a square that is not smaller than the control it sits in.
- */
-const PLATE = space.huge + space.md;
-
-/**
- * One type, as a card: the promise it makes, and what choosing it does.
+ * Its own component rather than three copies inline in `AccountTypes` because a hook
+ * is not allowed inside a `.map` callback — and because the row reads as one of a
+ * set, which is the argument for not inventing a second version of the same control.
  *
- * Its own component rather than three copies inline in `AccountTypes` because the animation
- * is three shared values and a hook is not allowed inside a `.map` callback ΓÇö and because
- * this is `option-card`'s shape exactly (a row per choice, one at a time, each with its own
- * state), which is the argument for not inventing a second version of the same control.
+ * A row and deliberately not a card: three promise cards carried the weight of three
+ * submit buttons on a screen whose action is on the floor. The selection is a wash,
+ * a weight and an announced state — `accent` behind the chosen row, `body` bold on
+ * its title, `accessibilityState.checked` for the reader who has none of the visual
+ * half. No animation: a state that snaps is a state that needs no reduced-motion
+ * branch and no second code path.
  */
 function TypeCard({
 	account,
@@ -900,39 +912,6 @@ function TypeCard({
 }) {
 	const { t } = useT();
 	const { colors } = useTheme();
-	const reduceMotion = useReducedMotion();
-
-	// The fill, as a crossfade between two painted layers rather than an animated colour:
-	// `step-progress` says why, and the two overlays below are its construction.
-	const fill = useSharedValue(chosen ? 1 : 0);
-	// The tick's pop, seeded with the state the card mounted at ΓÇö so the card that arrives
-	// chosen does not pop on the way in, which is `option-card`'s second of its three rules.
-	const scale = useSharedValue(1);
-	const shown = useRef(chosen);
-
-	useEffect(() => {
-		fill.value = withTiming(chosen ? 1 : 0, { duration: duration.standard });
-	}, [chosen, fill]);
-
-	useEffect(() => {
-		if (reduceMotion) {
-			shown.current = chosen;
-			cancelAnimation(scale);
-			scale.value = 1;
-			return;
-		}
-		if (shown.current === chosen) return;
-		shown.current = chosen;
-		scale.value = withSequence(
-			withTiming(STATE_POP, { duration: duration.instant }),
-			withSpring(1, spring.press),
-		);
-	}, [chosen, reduceMotion, scale]);
-
-	const settle = useAnimatedStyle(() => ({ opacity: fill.value }));
-	const pop = useAnimatedStyle(() => ({
-		transform: [{ scale: reduceMotion ? 1 : scale.value }],
-	}));
 
 	return (
 		<Pressable
@@ -944,8 +923,8 @@ function TypeCard({
 			}}
 			disabled={disabled}
 			accessibilityRole="radio"
-			// No `accessibilityLabel`: the card's own title and promise are the label, and a
-			// card that overrides it stops reading the promise ΓÇö which is the half that says
+			// No `accessibilityLabel`: the row's own title and promise are the label, and a
+			// row that overrides it stops reading the promise — which is the half that says
 			// what picking this one means.
 			accessibilityState={{ checked: chosen, disabled }}
 			style={[
@@ -956,55 +935,22 @@ function TypeCard({
 					// `input` is "the boundary that tells a reader where a control begins"
 					// (3.24:1). This row is a control and its edge is the only thing saying so
 					// before it is touched, so it is owed the 3:1 and not the rumour.
-					backgroundColor: colors.card,
-					borderColor: colors.input,
+					// The chosen row takes the `accent` wash and the `primary` edge; the
+					// wash is `option-card`'s answer to the same problem, for the same
+					// reason — three rows in the submit button's fill would read as
+					// three submit buttons.
+					backgroundColor: chosen ? colors.accent : colors.card,
+					borderColor: chosen ? colors.primary : colors.input,
 				},
 			]}
 		>
-			{/* The two overlays, absolute and inert: the fill and the chosen edge. Neither can
-			    move the text or shrink the hit box, so the card's layout is the same whichever
-			    type is selected ΓÇö which is the point of a crossfade here rather than a colour
-			    swap. */}
-			<Animated.View
-				pointerEvents="none"
-				style={[
-					StyleSheet.absoluteFill,
-					styles.typeFill,
-					// `accent` and not `primary`, as in `option-card`: three filled cards in the
-					// colour of the submit button would read as three submit buttons, and this
-					// screen has one action on the floor.
-					{ backgroundColor: colors.accent },
-					settle,
-				]}
+			<Ionicons
+				name={account.glyph}
+				size={icon.action}
+				color={chosen ? colors.primary : colors.mutedForeground}
+				accessibilityElementsHidden
+				importantForAccessibility="no"
 			/>
-			<Animated.View
-				pointerEvents="none"
-				style={[
-					StyleSheet.absoluteFill,
-					styles.typeFill,
-					{ borderWidth: 1, borderColor: colors.primary },
-					settle,
-				]}
-			/>
-
-			<View
-				style={[
-					styles.typeGlyph,
-					{
-						// The plate inverts with the card rather than staying `muted`: on an
-						// accent fill a muted plate is a hole.
-						backgroundColor: chosen ? colors.card : colors.muted,
-					},
-				]}
-			>
-				<Ionicons
-					name={account.glyph}
-					size={icon.action}
-					color={chosen ? colors.primary : colors.mutedForeground}
-					accessibilityElementsHidden
-					importantForAccessibility="no"
-				/>
-			</View>
 
 			<View style={styles.typeBody}>
 				<Text variant="body" bold={chosen}>
@@ -1020,16 +966,14 @@ function TypeCard({
 			</View>
 
 			{chosen ? (
-				<Animated.View style={pop}>
-					<Ionicons
-						name="checkmark"
-						size={icon.control}
-						color={colors.primary}
-						// The radio's own state is announced; an image read after it repeats it.
-						accessibilityElementsHidden
-						importantForAccessibility="no"
-					/>
-				</Animated.View>
+				<Ionicons
+					name="checkmark"
+					size={icon.control}
+					color={colors.primary}
+					// The radio's own state is announced; an image read after it repeats it.
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
 			) : null}
 		</Pressable>
 	);
@@ -1091,10 +1035,10 @@ function ConsentCheck({
 					size={icon.action}
 					color={checked ? colors.primary : colors.mutedForeground}
 				/>
-				<Text variant="caption" tone="muted" style={styles.consentLabel}>
+				<Text variant="label" tone="muted" style={styles.consentLabel}>
 					{label}
 					{link ? (
-						<Text variant="caption" tone="action" style={styles.consentLink}>
+						<Text variant="label" tone="action" style={styles.consentLink}>
 							{" "}
 							{link}
 						</Text>
@@ -1118,26 +1062,36 @@ const styles = StyleSheet.create({
 	// and the bar is its footer, which is the arrangement `app/profile.tsx` uses for the same
 	// pair. A bar outside a `flex: 1` column is a bar with no height to sit under.
 	root: { flex: 1 },
-	content: { gap: space.lg, paddingTop: space.md },
-	identity: { gap: space.md },
-	mark: { flexDirection: "row", alignItems: "center", gap: space.sm },
-	// `Screen`'s strip put this between the title and its subtitle
-	// (`components/screen.tsx:220-225`); the strip is composed here now, so the number is
-	// paid here.
-	subtitle: { marginTop: space.xs },
+	// Two cards, not seven blocks: the credential, then the use. `xxl` between
+	// the groups, `md` within — proximity drawing the boundary the gaps draw.
+	content: { gap: space.xxl, paddingTop: space.md },
+	// The back control, on its own row so the identity block below it can sit
+	// where it sits without moving the chrome: `welcome`'s own arrangement.
+	chrome: { flexDirection: "row" },
+	// The fields as one question: `md` between boxes, with each `Field`
+	// keeping its own reserved message line.
+	fields: { gap: space.md },
 	// The identification group and its one help line, kept together: the line is the
 	// delivery choice's own sentence and must not float free of the control that chose it.
 	role: { gap: space.xs },
+	// Reserved: the help line exists in both states, so switching roles never
+	// reflows the card. The floor is the line's own height — an empty string
+	// still holds it.
+	roleHelp: { minHeight: typeScale.caption.lineHeight },
+	// The assertions and the type list as one question with two halves.
+	door: { gap: space.lg },
 	// The two assertions as one block, so they read as the pair they are rather
 	// than as two unrelated controls that happen to sit near each other.
 	consent: { gap: space.sm },
 	consentRow: { gap: space.xs },
-	// The whole row is the target ΓÇö see `ConsentCheck`.
+	// The whole row is the target — see `ConsentCheck`. `sm` of vertical air
+	// around a `label` line: the legal sentence is being asked to be read,
+	// and a 12pt caption with 4pt of air is not asking, it is fine print.
 	consentTarget: {
 		flexDirection: "row",
 		alignItems: "flex-start",
 		gap: space.sm,
-		paddingVertical: space.xs,
+		paddingVertical: space.sm,
 	},
 	consentLabel: { flex: 1 },
 	consentLink: { textDecorationLine: "underline" },
@@ -1149,7 +1103,7 @@ const styles = StyleSheet.create({
 	// own title strip uses between a title and its subtitle ΓÇö the two are the same pair of
 	// lines, and the group is not a second strip with a different rhythm.
 	typesHead: { gap: space.xs },
-	// Cards 8 apart rather than 12: this is a set of one choice, and the tighter rhythm is
+	// Rows 8 apart rather than 12: this is a set of one choice, and the tighter rhythm is
 	// what reads as "these three are alternatives" rather than "these are three sections".
 	typeList: { gap: space.sm },
 	// A full-width row, not a card in a column of its own: the line beside the title is the
@@ -1164,21 +1118,23 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		minHeight: MIN_TOUCH_TARGET,
 	},
-	// The two overlays and the card's own corner, in one rule: an overlay without the corner
-	// would square off the row's `radius.md` at whichever end the fill is settling toward.
-	typeFill: { borderRadius: radius.md },
-	typeGlyph: {
-		alignItems: "center",
-		justifyContent: "center",
-		width: PLATE,
-		height: PLATE,
-		// `radius.full` and not the row's own corner: a rounded plate inside a row carrying
-		// the same radius reads as one shape that was drawn twice, and a circle is what
-		// `./empty-state`'s badge is for a glyph of this size.
-		borderRadius: radius.full,
-	},
 	typeBody: { flex: 1, gap: TEXT_STACK_GAP },
 	// `minHeight` is a floor: at 200% Dynamic Type the sentence and the word both grow past
 	// it, and the slot grows with them instead of clipping them.
 	status: { minHeight: typeScale.body.lineHeight, justifyContent: "center" },
+	// The refusal as a row: the glyph and the sentence share the slot's floor,
+	// and the sentence takes the width so it wraps instead of squeezing the mark.
+	messageRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+	messageText: { flex: 1 },
+	// One row, centred under the status slot, and `MIN_TOUCH_TARGET` tall so the
+	// target is the sentence and not the two words inside it — `welcome`'s own
+	// switch row, which is what makes the two screens read as one flow.
+	switch: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.xs,
+		minHeight: MIN_TOUCH_TARGET,
+	},
+	switchAction: { textDecorationLine: "underline" },
 });

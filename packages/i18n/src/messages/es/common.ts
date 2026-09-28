@@ -187,6 +187,8 @@ export const common = {
 	"biz.staff.existingAccount":
 		"Agrega a una persona que ya tenga cuenta en PymesHub. El acceso se asigna directamente; no se envía un correo.",
 	"auth.password.minimum": "Usa al menos 12 caracteres.",
+	"auth.password.show": "Mostrar contraseña",
+	"auth.password.hide": "Ocultar contraseña",
 	"address.label": "Nombre de la dirección",
 	"address.line1": "Calle y número",
 	"address.city": "Ciudad",
