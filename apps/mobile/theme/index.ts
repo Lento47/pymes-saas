@@ -1,6 +1,8 @@
 import { useSegments } from "expo-router";
 
 import { useThemeMode } from "./mode";
+import { useThemeScope } from "./scope";
+import { selectTree } from "./select";
 import {
 	type ColorScheme,
 	merchant,
@@ -10,6 +12,8 @@ import {
 
 export * from "./merchant";
 export * from "./mode";
+export * from "./scope";
+export * from "./select";
 export * from "./tokens";
 
 /**
@@ -32,15 +36,44 @@ export * from "./tokens";
  * The one thing it does know is which tree it is in. Screens mounted under `(business)` —
  * the owner console — draw the warm `merchant` system instead of the consumer palette;
  * every other route draws `palette[scheme]` as before. Same `ThemeColors` keys either way,
- * so no component branches and no screen passes a palette down. The subscription is the
- * navigator's own (`useSegments`), which is also what keeps this honest on a role change:
- * leaving the business tree drops its colours with it, with no cleanup to forget.
+ * so no component branches and no screen passes a palette down.
+ *
+ * ## Why that sentence is now half a sentence
+ *
+ * The selection used to be `segments[0] === "(business)"` and nothing else, and the route was
+ * a bad stand-in for who is reading, in two ways with one cause:
+ *
+ * - **The boot frame was the consumer's.** `useSegments()` is `useRouteInfo().segments`, and
+ *   expo-router's `getRouteInfoFromState` answers `[]` for the whole window before a navigation
+ *   state exists. A merchant's cold start spends that window on `app/index.tsx`, which is a root
+ *   route, so the app drew its `#3538f2` spinner on a cream canvas for as long as `users.me`
+ *   took to answer. The subscription being the navigator's own was true and was not the problem;
+ *   the problem was that the navigator has no opinion yet, and a route is not a person.
+ * - **So were the five root routes a merchant pushes** — `/profile`, `/settings`, `/help`,
+ *   `/inbox`, `/new-business` — because all three trees reach them and their first segment is
+ *   therefore never `(business)`. A merchant who opened Perfil got consumer-blue buttons inside
+ *   their own console, for as long as they stayed there.
+ *
+ * `./select.ts` holds the rule that replaces it and argues every clause, including the two
+ * orderings that are load-bearing and the one group that must never be coloured by a role at
+ * all. This file is only the lookup that acts on the answer, and it is three lines long on
+ * purpose: a decision that needs a paragraph of comment has usually landed in the wrong file.
+ *
+ * ## The return is a fresh object, and has to stay one
+ *
+ * `components/hours-table.tsx`'s memo documents that it must not begin comparing this return,
+ * because a new `{ colors, scheme }` wrapper on every call would make that comparison miss every
+ * time. A third field would not fix that, so there isn't one: the callers that need to know which
+ * tree they are in read `useThemeScope()` and `selectTree()` themselves, which is the same work
+ * this function just did.
  */
 export function useTheme(): { colors: ThemeColors; scheme: ColorScheme } {
 	const { scheme } = useThemeMode();
 	const segments = useSegments();
-	const inBusiness = segments.length > 0 && segments[0] === "(business)";
-	return { colors: inBusiness ? merchant : palette[scheme], scheme };
+	const role = useThemeScope();
+	const colors =
+		selectTree({ segments, role }) === "business" ? merchant : palette[scheme];
+	return { colors, scheme };
 }
 
 /*

@@ -12,7 +12,8 @@
  *
  * `(business)` — the owner console — draws the warm editorial system instead: ivory canvas,
  * ink, lime reserved for the primary action. Same `ThemeColors` keys, so every component
- * works unchanged; `theme/index.ts` selects the palette by route group. The consumer and
+ * works unchanged; `theme/index.ts` picks the palette and `theme/select.ts` says which tree the
+ * reader is in. The consumer and
  * delivery trees keep the palette above. Three jobs, two palettes, one key set — a fourth
  * palette anywhere would be a second exception, and those do not stack.
  *

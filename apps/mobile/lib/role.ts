@@ -52,8 +52,25 @@ import { useTRPC } from "@/lib/trpc/context";
 /** Why a device that asked for a role is drawing the customer stack anyway. */
 export type RoleDegradation = "unreachable" | "ended" | "pending";
 
+/**
+ * The boot state carries the **preference**, not a role, and the difference is the whole
+ * point of the two members: a preference is what the device was told to draw, a role is what
+ * the server confirmed it may draw. Only the second may decide anything about entitlement, and
+ * nothing does — `theme/select.ts` is the one consumer of the first, and all it does with it is
+ * pick a palette for the frame before the answer arrives, which is a question about how this
+ * device has always drawn itself rather than about what anybody is allowed to see.
+ *
+ * The window is real and it is the whole cold start: `AsyncStorage` for the preference, the
+ * keychain for the session, then `users.me` over the network. Publishing the preference is what
+ * lets a merchant's first frame be white instead of the consumer palette's blue.
+ *
+ * Its cost, stated rather than hidden: the signed-out branch below keeps the preference on
+ * purpose, so a device that signed out of a shop still holds `preference === "business"` and
+ * that frame is drawn in the merchant palette before being corrected. The keychain read is tens
+ * of milliseconds and it sits behind the native splash, which is the only reason this is worth it.
+ */
 export type ResolvedRole =
-	| { state: "boot" }
+	| { state: "boot"; preference: AccountProfile }
 	| { state: "ready"; role: AccountProfile; degraded: RoleDegradation | null };
 
 /** Read-and-clear the last degradation, for the screen the resolver lands on. */
@@ -101,7 +118,7 @@ export function useResolvedRole(): ResolvedRole {
 
 	let resolved: ResolvedRole;
 	if (!loaded) {
-		resolved = { state: "boot" };
+		resolved = { state: "boot", preference };
 	} else if (!wantsRole) {
 		// The fast path: the common case, with no request behind it at all.
 		resolved = { state: "ready", role: "customer", degraded: null };
@@ -110,7 +127,7 @@ export function useResolvedRole(): ResolvedRole {
 		// now would redirect before there is anything to check against, and the
 		// root redirect fires once — a reader who resolves signed-in a frame
 		// later would already be standing in the wrong tree. Boot waits.
-		resolved = { state: "boot" };
+		resolved = { state: "boot", preference };
 	} else if (status !== "signed-in") {
 		// Signed out: nothing to verify against, and nothing to correct. The preference
 		// survives, so signing back in finds the board again.
@@ -118,7 +135,7 @@ export function useResolvedRole(): ResolvedRole {
 	} else if (me.isError) {
 		resolved = { state: "ready", role: "customer", degraded: "unreachable" };
 	} else if (me.data === undefined) {
-		resolved = { state: "boot" };
+		resolved = { state: "boot", preference };
 	} else if (
 		me.data.memberships.some((membership) =>
 			membership.role !== "COURIER"

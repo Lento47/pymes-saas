@@ -2,9 +2,11 @@
  * What the merchant surface keeps beyond the palette.
  *
  * The palette itself has moved to `./tokens.ts`: `merchant` is a `ThemeColors` there, and
- * `./index.ts`'s `useTheme()` hands it to any route whose first segment is `(business)`,
- * so the owner console switches palettes with the stroke it switches routes and no screen
- * passes colours down. That file's docblock is where the warm system is argued — ivory
+ * `./index.ts`'s `useTheme()` hands it to the owner console, so the warm system arrives with
+ * the tree rather than being passed down and no screen names a colour. Which tree the reader is
+ * in gets decided in `./select.ts`, by route *and* by role — the role half is what gives a
+ * merchant the right palette on the boot frame and on the root routes all three trees share.
+ * `./index.ts`'s docblock is where the warm system is argued — ivory
  * canvas, ink, lime reserved for the moment's one action — and it is light-only by design,
  * because the interface spec draws one warm system and an invented dark merchant theme
  * would be improvisation dressed as coverage.

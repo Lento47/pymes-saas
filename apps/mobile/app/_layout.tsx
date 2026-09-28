@@ -15,7 +15,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { PushNotificationsProvider } from "@/lib/push-notifications";
 import { useResolvedRole } from "@/lib/role";
 import { ApiProvider } from "@/lib/trpc/provider";
-import { ThemeModeProvider, useTheme } from "@/theme";
+import { ThemeModeProvider, ThemeScopeProvider, useTheme } from "@/theme";
 
 Sentry.init({
 	dsn: env.sentryDsn,
@@ -75,22 +75,33 @@ function RootLayout() {
 				<I18nProvider>
 					<SessionProvider>
 						<ApiProvider>
-							<PushNotificationsProvider>
-								<SafeAreaProvider>
-									{/* A sibling of `ToastProvider`, and inside `SafeAreaProvider` for the top
-									    inset it offsets by. It draws a *refused* write (`components/rollback-surface`),
-									    which is the half `ToastProvider` deliberately cannot carry — a
-									    confirmation floats where the tap happened, a refusal is a correction
-									    that has to be noticed — so the two are separate surfaces rather than
-									    one with a severity, and they hold different corners of the screen. */}
-									<RollbackProvider>
-										<ToastProvider>
-											<ThemedStack />
-											<WelcomeAnimation />
-										</ToastProvider>
-									</RollbackProvider>
-								</SafeAreaProvider>
-							</PushNotificationsProvider>
+							{/* The role, published once, and the reason it sits here and not
+							    beside `ThemeModeProvider` above: it needs `useSession()` and
+							    `useTRPC()`, so it has to be inside both — and `ApiProvider` is
+							    what supplies the query client. It has to be *above*
+							    `SafeAreaProvider`, `RollbackProvider`, `ToastProvider`,
+							    `ThemedStack` and `WelcomeAnimation`, because those and every
+							    screen under them are the only things that read `useTheme()`,
+							    and `theme/scope.tsx` throws rather than guess when no
+							    provider is above it. */}
+							<ThemeScopeProvider>
+								<PushNotificationsProvider>
+									<SafeAreaProvider>
+										{/* A sibling of `ToastProvider`, and inside `SafeAreaProvider` for the top
+										    inset it offsets by. It draws a *refused* write (`components/rollback-surface`),
+										    which is the half `ToastProvider` deliberately cannot carry — a
+										    confirmation floats where the tap happened, a refusal is a correction
+										    that has to be noticed — so the two are separate surfaces rather than
+										    one with a severity, and they hold different corners of the screen. */}
+										<RollbackProvider>
+											<ToastProvider>
+												<ThemedStack />
+												<WelcomeAnimation />
+											</ToastProvider>
+										</RollbackProvider>
+									</SafeAreaProvider>
+								</PushNotificationsProvider>
+							</ThemeScopeProvider>
 						</ApiProvider>
 					</SessionProvider>
 				</I18nProvider>
