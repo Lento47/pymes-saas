@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { type Edge, SafeAreaView } from "react-native-safe-area-context";
 
-import { space, type, useTheme } from "@/theme";
+import { space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
 import { useRefreshControl } from "./pull-refresh";
 import { useTabBarClearance } from "./tab-bar";
@@ -267,19 +267,37 @@ const styles = StyleSheet.create({
  */
 export function ScreenSection({
 	title,
+	subtitle,
 	action,
 	children,
 }: {
 	title: string;
+	/**
+	 * The line under the heading that says what the section is for.
+	 *
+	 * A caption, muted, and one line deep by preference rather than by constraint — it wraps
+	 * at the reader's text size like everything else. It exists because a heading that names a
+	 * group of fields ("Basic information", "Pricing") asks a question the group itself
+	 * answers only by being filled in, and one sentence beside it is cheaper than leaving the
+	 * reader to infer it.
+	 */
+	subtitle?: string;
 	action?: React.ReactNode;
 	children: React.ReactNode;
 }) {
 	return (
 		<View style={sectionStyles.wrap}>
 			<View style={sectionStyles.head}>
-				<Text variant="heading" bold>
-					{title}
-				</Text>
+				<View style={sectionStyles.headings}>
+					<Text variant="heading" bold>
+						{title}
+					</Text>
+					{subtitle ? (
+						<Text variant="caption" tone="muted">
+							{subtitle}
+						</Text>
+					) : null}
+				</View>
 				{action}
 			</View>
 			{children}
@@ -291,9 +309,11 @@ const sectionStyles = StyleSheet.create({
 	wrap: { marginTop: space.xxl },
 	head: {
 		flexDirection: "row",
-		alignItems: "center",
+		alignItems: "flex-start",
 		justifyContent: "space-between",
-		marginBottom: space.md,
-		minHeight: type.heading.lineHeight,
+		gap: space.md,
 	},
+	// The heading and its line as one column, so `action` beside them stays aligned to the
+	// heading's own first line rather than to the middle of both.
+	headings: { flex: 1, gap: TEXT_STACK_GAP },
 });

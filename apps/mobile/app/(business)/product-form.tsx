@@ -20,12 +20,12 @@ import {
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
-import { Card } from "@/components/card";
+import { BackButton } from "@/components/back-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { Field } from "@/components/field";
+import { Field, SOFT_FIELD_HEIGHT } from "@/components/field";
 import { ListRow } from "@/components/list-row";
-import { PhotoPicker } from "@/components/photo-picker";
+import { PHOTO_MODULE_HEIGHT, PhotoPicker } from "@/components/photo-picker";
 import { Screen, ScreenSection } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -41,7 +41,7 @@ import {
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, MIN_TOUCH_TARGET, media, space, useTheme } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
 /**
  * One product: "add" and "edit" are the same screen, told apart by `id` in the route.
@@ -201,6 +201,17 @@ export default function ProductFormScreen() {
 			title={
 				productId === undefined ? t("biz.products.add") : t("biz.products.edit")
 			}
+			subtitle={
+				productId === undefined
+					? t("biz.products.screen.add")
+					: t("biz.products.screen.edit")
+			}
+			// A pushed screen with no visible way back. `product-form` is one of the
+			// `MERCHANT_BARLESS_ROUTES`, so it is a tab to the navigator and the gesture
+			// works — but a form the owner cannot leave without a swipe is a form with a
+			// gesture where a control should be, and the disc is the one filled control this
+			// screen's own heading is loud enough to need a peer for.
+			leading={<BackButton to="/(business)/products" surface />}
 			scroll
 			// The four text inputs and the bar under them: the frame is what knows which platform
 			// needs the keyboard's height paid as an inset, so the screen asks for it rather than
@@ -403,6 +414,22 @@ function Fields({
 		if (update.isError || update.isSuccess) update.reset();
 	};
 
+	/**
+	 * The two marks the price boxes carry, and both are derived rather than chosen.
+	 *
+	 * `symbol` is the currency's own for the reader's locale — see `currencySymbol`. It is
+	 * computed once per render and handed to both boxes, because two calls to the same
+	 * formatter in two branches of one layout is two chances for the two chips to disagree.
+	 *
+	 * `priceHint` is the empty-state shape of an amount, and it is the currency's precision
+	 * rather than a literal: a colon has no minor unit, so its hint is `0` and a dollar's is
+	 * `0.00`. Typing "0,00" into a box whose separator the keyboard may not produce is the
+	 * kind of placeholder that teaches a reader the wrong thing before they have typed a
+	 * digit.
+	 */
+	const symbol = currencySymbol(currency, locale);
+	const priceHint = currencyExponent(currency) === 0 ? "0" : "0.00";
+
 	const submit = () => {
 		if (inFlight.current) return;
 		setSubmitted(true);
@@ -458,60 +485,92 @@ function Fields({
 	return (
 		<View style={styles.root}>
 			<View style={styles.content}>
-				{/* The picture, and the box that names it. A URL rather than a picker —
-				    see the file docblock — previewed live beside the box: the letter
-				    is the product's initial the way `./product-row` draws it, the
-				    glyph is the stand-in while the product still has no name, and a
-				    broken address falls back to the letter through `./image` itself.
-				    Decorative either way: the name below already says what this is. */}
+				{/* §1. Name, alone in its group. The group heading is what the group is
+				    for, not a second copy of the screen's own title: `biz.products.title`
+				    is "Productos", and the strip above already says "Agregar producto", so
+				    the old heading repeated the page and told the owner nothing. */}
 				<AnimateIn index={0}>
-					<ScreenSection title={t("biz.products.title")}>
+					<ScreenSection
+						title={t("biz.products.section.basic")}
+						subtitle={t("biz.products.section.basic.help")}
+					>
 						<Field
+							variant="soft"
 							label={t("biz.products.name")}
 							value={draft.name}
 							onChangeText={(value) =>
 								edited(() => setDraft((was) => ({ ...was, name: value })))
 							}
 							error={submitted ? (problems.name ?? null) : null}
+							placeholder={t("biz.products.placeholder.name")}
+							affix={<FieldGlyph name="pricetag-outline" />}
 							maxLength={150}
 						/>
-						{/* The money, beside each other: `price` is the one of the two that is required, so
-							it leads, and `compareAt` hangs with it because they share a keyboard and one
-							rule (a previous price at or below the live one is refused). */}
+					</ScreenSection>
+				</AnimateIn>
+
+				{/* §2. The money, side by side. Two boxes on one line is not a layout
+				    preference here: the pair is one idea — what this costs, and what it
+				    used to cost — and the rule that ties them, a previous price at or
+				    below the live one being refused, is why they belong in one glance.
+				    Stacked, the sentence about that rule sits 44pt below the box that has
+				    to obey it.
+
+				    Each keeps its own reserved message row, so the pair is the same height
+				    whether or not either is saying something: the compare-at rule is
+				    always printed, and an error appearing under the price must not move
+				    the box beside it. */}
+				<AnimateIn index={1}>
+					<ScreenSection
+						title={t("biz.products.section.pricing")}
+						subtitle={t("biz.products.section.pricing.help")}
+					>
+						<View style={styles.pair}>
+							<Field
+								variant="soft"
+								label={t("biz.products.price")}
+								value={draft.price}
+								onChangeText={(value) =>
+									edited(() => setDraft((was) => ({ ...was, price: value })))
+								}
+								error={submitted ? (problems.price ?? null) : null}
+								// What the API will store, printed under the box — see the docblock.
+								help={
+									priceMinor === null
+										? undefined
+										: formatMoney(priceMinor, currency)
+								}
+								placeholder={priceHint}
+								affix={<FieldGlyph label={symbol} />}
+								keyboardType="decimal-pad"
+								inputMode="decimal"
+							/>
+							<Field
+								variant="soft"
+								label={t("biz.products.compareAt")}
+								value={draft.compareAt}
+								onChangeText={(value) =>
+									edited(() => setDraft((was) => ({ ...was, compareAt: value })))
+								}
+								error={submitted ? (problems.compareAt ?? null) : null}
+								help={
+									compareAtMinor === null
+										? t("biz.products.compareAt.rule")
+										: formatMoney(compareAtMinor, currency)
+								}
+								placeholder={priceHint}
+								affix={<FieldGlyph label={symbol} />}
+								keyboardType="decimal-pad"
+								inputMode="decimal"
+							/>
+						</View>
+						{/* The long optional text, drawn as a paragraph rather than as a
+						    fifth name field. Its message row is off because it has neither
+						    an `error` nor a `help` to put in it, and on a box this tall a
+						    reserved line nobody ever fills is sixteen points of nothing
+						    between the description and the next heading. */}
 						<Field
-							label={t("biz.products.price")}
-							value={draft.price}
-							onChangeText={(value) =>
-								edited(() => setDraft((was) => ({ ...was, price: value })))
-							}
-							error={submitted ? (problems.price ?? null) : null}
-							// What the API will store, printed under the box — see the docblock.
-							help={
-								priceMinor === null
-									? undefined
-									: formatMoney(priceMinor, currency)
-							}
-							keyboardType="decimal-pad"
-							inputMode="decimal"
-						/>
-						<Field
-							label={t("biz.products.compareAt")}
-							value={draft.compareAt}
-							onChangeText={(value) =>
-								edited(() => setDraft((was) => ({ ...was, compareAt: value })))
-							}
-							error={submitted ? (problems.compareAt ?? null) : null}
-							help={
-								compareAtMinor === null
-									? t("biz.products.compareAt.rule")
-									: formatMoney(compareAtMinor, currency)
-							}
-							keyboardType="decimal-pad"
-							inputMode="decimal"
-						/>
-						{/* The long optional text closes the group: an owner who has a name and a price
-							can save now, and the description is there for the one who has more to say. */}
-						<Field
+							variant="soft"
 							label={t("biz.products.description")}
 							value={draft.description}
 							onChangeText={(value) =>
@@ -520,33 +579,62 @@ function Fields({
 								)
 							}
 							multiline
-							maxLength={600}
+							placeholder={t("biz.products.placeholder.description")}
+							affix={<FieldGlyph name="document-text-outline" />}
+							style={styles.description}
+							maxLength={DESCRIPTION_MAX}
+							counter
+							reserveMessage={false}
 						/>
 					</ScreenSection>
 				</AnimateIn>
 
-				<AnimateIn index={1}>
-					<ScreenSection title={t("biz.products.category")}>
+				<AnimateIn index={2}>
+					<ScreenSection
+						title={t("biz.products.category")}
+						subtitle={t("biz.products.section.category.help")}
+					>
 						{/* The list opens in place rather than in a `./sheet`, which is the panel
-							`app/new-business` uses for the same choice: this screen's body is one
-							scroll view (`./screen`'s `scroll`), and a sheet mounted inside a scroll
-							view is laid out in its content and scrolls away with it. The row above
-							the list names the choice and toggles it. */}
-						{sector !== null ? (
-							<Text variant="caption" tone="muted">
-								{t("biz.products.category.help", {
-									sector: localizedName(sector, locale),
-								})}
-							</Text>
-						) : null}
-						<Card>
+						    `app/new-business` uses for the same choice: this screen's body is one
+						    scroll view (`./screen`'s `scroll`), and a sheet mounted inside a scroll
+						    view is laid out in its content and scrolls away with it. The row above
+						    the list names the choice and toggles it.
+
+						    A filled surface rather than a `Card`: a card carries a hairline and
+						    `shadow.card`, and on a white canvas neither of those is what
+						    separates it from the page — the fill is. The closed row carries no
+						    "Selected" word, because there is one choice on screen and the
+						    checkmark is not available for a row this size. */}
+						<View
+							style={[
+								styles.selector,
+								{ backgroundColor: colors.muted, borderColor: colors.border },
+							]}
+						>
 							<ListRow
+								leading={
+									<View style={styles.selectorMark}>
+										<Ionicons
+											name="grid-outline"
+											size={icon.action}
+											color={colors.foreground}
+											accessibilityElementsHidden
+											importantForAccessibility="no"
+										/>
+									</View>
+								}
 								title={
 									chosen
 										? localizedName(chosen, locale)
 										: t("biz.products.category")
 								}
-								state={chosen ? t("biz.new.selected") : undefined}
+								subtitle={
+									sector === null
+										? undefined
+										: t("biz.products.category.help", {
+												sector: localizedName(sector, locale),
+											})
+								}
 								chevron
 								divider={picking}
 								onPress={() => setPicking((was) => !was)}
@@ -590,37 +678,31 @@ function Fields({
 										);
 									})
 								: null}
-						</Card>
+						</View>
 					</ScreenSection>
 				</AnimateIn>
 
 				{/* A photo, last. See the file docblock: it is optional, it is the one
-					control here that opens a system picker, and it used to *lead* this form
-					as a URL box, which is the same thing as putting the hardest optional
-					field between an owner and their first save. The preview still falls back
-					to the letter, which is `./image`'s honesty rather than a second error
-					state. */}
-				<AnimateIn index={2}>
-					<PhotoPicker
-						label={t("biz.products.photo")}
-						value={draft.photo.trim() || null}
-						onChange={(next) =>
-							edited(() => setDraft((was) => ({ ...was, photo: next ?? "" })))
-						}
-						help={t("biz.products.photo.help")}
+				    control here that opens a system picker, and it used to *lead* this
+				    form as a URL box, which is the same thing as putting the hardest
+				    optional field between an owner and their first save. */}
+				<AnimateIn index={3}>
+					<ScreenSection
+						title={t("biz.products.photo")}
+						subtitle={t("biz.products.section.photo.help")}
 					>
-						{draft.name.trim() ? (
-							<Text variant="title" tone="action" bold>
-								{draft.name.trim().charAt(0).toUpperCase()}
-							</Text>
-						) : (
-							<Ionicons
-								name="image-outline"
-								size={icon.action}
-								color={colors.mutedForeground}
-							/>
-						)}
-					</PhotoPicker>
+						<PhotoPicker
+							layout="module"
+							label={t("biz.products.photo.module")}
+							value={draft.photo.trim() || null}
+							onChange={(next) =>
+								edited(() => setDraft((was) => ({ ...was, photo: next ?? "" })))
+							}
+							uploadLabel={t("biz.products.photo.upload")}
+							cameraLabel={t("biz.products.photo.camera")}
+							help={t("biz.products.photo.module.help")}
+						/>
+					</ScreenSection>
 				</AnimateIn>
 
 				{failure.message ? (
@@ -638,7 +720,7 @@ function Fields({
 			<ActionBar
 				docked
 				primary={{
-					label: t("biz.settings.save"),
+					label: t("biz.products.save"),
 					onPress: submit,
 					loading: pending,
 					disabled: pending,
@@ -649,24 +731,108 @@ function Fields({
 }
 
 /**
- * The form's column, before the reads answer: the four fields (name, price, previous price,
- * description) each its label, box and reserved message row, then the category `Card` with
- * the help line and the one row the list toggles open, and `components/photo-picker`'s
- * block last: thumb, label, two button bars, message. The order is the real form's — required path first, photo
- * tail — so the skeleton and the form it stands in for are the same page. The heights are the
- * real form's at the reader's text scale, which is why every line goes through `line()` rather
- * than through a fixed number, and the page does not jump when the values land.
+ * The description's ceiling, and the number its counter prints.
  *
- * The section headings are the screen's own copy — `biz.products.title` and
- * `biz.products.category`, facts the read does not carry — so the sections are drawn real
- * and only the values are grey. The category's help line is grey for the same reason the
- * field labels are not: its words carry the shop's vertical, which is exactly the fact the
- * read that is still in flight has not answered yet. `./skeleton`'s `Skeleton` carries the
- * label on the first line — a shape with no text in the accessibility tree is a shape a
- * reader is told nothing about.
+ * Named because the copy of it exists in two places that must not drift: the input's own
+ * `maxLength` and the counter `./field` reads off it. The counter does not take a number —
+ * it takes the ceiling from the input — so there is one number on this screen and this is
+ * where it is written down.
+ */
+const DESCRIPTION_MAX = 500;
+
+/**
+ * The description box's height.
+ *
+ * Its own number rather than one of the shared steps, and that is the point of writing it
+ * down here: `Field`'s soft box is 52 and this is a paragraph, so it cannot borrow that,
+ * and the two heights together with the module's are the three boxes a skeleton has to
+ * draw. `FormSkeleton` reads this same constant rather than typing `104` again.
+ */
+const DESCRIPTION_HEIGHT = 104;
+
+/**
+ * The currency's own mark, from CLDR rather than from a table written here.
+ *
+ * `currencyDisplay: "symbol"` answers for the reader in their own locale — `₡` for a
+ * Costa Rican shop, `$` for a US one — which is why there is no map from currency to glyph
+ * in this file. A hand-written table would be a second source for a fact `Intl` already
+ * carries, and the day a shop is billed in a currency nobody wrote down it would draw a
+ * code in the chip and look broken.
+ *
+ * `formatToParts` rather than `format`, because `format` returns the *amount* with the mark
+ * somewhere inside it and the chip wants the mark alone. The `catch` is not decoration: this
+ * runs during a render, and a runtime whose `Intl` cannot build the pair throws rather than
+ * degrades — the bare ISO code is an ugly chip, and an ugly chip beats a blank screen.
+ */
+function currencySymbol(currency: Currency, locale: string): string {
+	try {
+		const parts = new Intl.NumberFormat(locale, {
+			style: "currency",
+			currency,
+			currencyDisplay: "symbol",
+		}).formatToParts(0);
+		return parts.find((part) => part.type === "currency")?.value ?? currency;
+	} catch {
+		return currency;
+	}
+}
+
+/**
+ * What a field's leading chip holds: a mark, or the currency.
+ *
+ * Two shapes because the two affixes are two different things, and the difference is not
+ * decoration. A glyph is decoration — `./field` already hides the whole chip from the
+ * accessibility tree — and is drawn at `icon.action` in `mutedForeground`. The currency is
+ * a short piece of label weight at `type.label` bold, because a price box whose chip says
+ * "₡" in the same grey as a pictogram has told the owner nothing about which field they
+ * are in.
+ */
+function FieldGlyph({
+	name,
+	label: text,
+}: {
+	name?: React.ComponentProps<typeof Ionicons>["name"];
+	label?: string;
+}) {
+	const { colors } = useTheme();
+	if (text !== undefined) {
+		return (
+			<Text variant="label" bold>
+				{text}
+			</Text>
+		);
+	}
+	return (
+		<Ionicons
+			name={name ?? "image-outline"}
+			size={icon.action}
+			color={colors.mutedForeground}
+			accessibilityElementsHidden
+			importantForAccessibility="no"
+		/>
+	);
+}
+
+/**
+ * The form's column, before the reads answer.
+ *
+ * The order is the real form's — name, the two prices, the description, category, photo — so
+ * the skeleton and the form it stands in for are the same page, and the page does not jump
+ * when the values land. Every line goes through `line()` rather than through a fixed number
+ * for the reason `./skeletons` gives: the reader's text scale multiplies a line box and
+ * nothing else, and a skeleton drawn at 100% on a phone set to 200% is a page that moves
+ * once the content arrives.
+ *
+ * The section headings and their lines are the screen's own copy, which is right: they are
+ * facts the read does not carry and no value is involved, so drawing them real costs
+ * nothing and keeps the page from reflowing. The two prices stand in as one row for the same
+ * reason they are one row above. `./skeleton`'s `Skeleton` carries the label on the first
+ * line — a shape with no text in the accessibility tree is a shape a reader is told nothing
+ * about.
  */
 function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 	const { t } = useT();
+	const { colors } = useTheme();
 	const { fontScale } = useWindowDimensions();
 
 	// One `./list-row`: the category row's `space.md` of vertical padding twice around its
@@ -678,46 +844,68 @@ function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 
 	return (
 		<View style={styles.content}>
-			<ScreenSection title={t("biz.products.title")}>
-				{/* The four fields, each its three rows. The description's box is `multiline`
-				    and blank it sits at the same floor — the box grows with what is typed into
-				    it, not with being empty, which is the sum the note field's block draws in
-				    `./skeletons` for the same multiline `./field`. */}
-				{[0, 1, 2, 3].map((index) => (
-					<View key={index} style={formStyles.field}>
-						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-						<Skeleton style={formStyles.input} />
+			<ScreenSection
+				title={t("biz.products.section.basic")}
+				subtitle={t("biz.products.section.basic.help")}
+			>
+				<Skeleton
+					label={loadingLabel}
+					style={[formStyles.label, line("label", fontScale)]}
+				/>
+				<Skeleton style={formStyles.inputSoft} />
+				<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
+			</ScreenSection>
+
+			<ScreenSection
+				title={t("biz.products.section.pricing")}
+				subtitle={t("biz.products.section.pricing.help")}
+			>
+				{/* The two money boxes, side by side and one row deep, because that is the
+				    shape they take once the read lands. */}
+				<View style={styles.pair}>
+					<View style={styles.pairItem}>
+						<Skeleton
+							style={[formStyles.label, line("label", fontScale)]}
+						/>
+						<Skeleton style={formStyles.inputSoft} />
 						<Skeleton
 							style={[formStyles.message, line("caption", fontScale)]}
 						/>
 					</View>
-				))}
-			</ScreenSection>
-
-			<ScreenSection title={t("biz.products.category")}>
-				{/* The help line stands in for `biz.products.category.help`, whose value is the
-				    shop's vertical — the one name the in-flight settings read has not answered.
-				    One caption line, then the closed row. */}
-				<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				<Card>
-					<Skeleton style={{ height: categoryRow }} />
-				</Card>
-			</ScreenSection>
-
-			{/* The photo's block mirrors `components/photo-picker`: thumb, label, two
-			    button bars, and the reserved message row. */}
-			<View style={styles.photoWrap}>
-				<Skeleton style={styles.photo} />
-				<View style={styles.photoField}>
-					<Skeleton
-						label={loadingLabel}
-						style={[formStyles.label, line("label", fontScale)]}
-					/>
-					<Skeleton style={formStyles.input} />
-					<Skeleton style={formStyles.input} />
-					<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
+					<View style={styles.pairItem}>
+						<Skeleton
+							style={[formStyles.label, line("label", fontScale)]}
+						/>
+						<Skeleton style={formStyles.inputSoft} />
+						<Skeleton
+							style={[formStyles.message, line("caption", fontScale)]}
+						/>
+					</View>
 				</View>
-			</View>
+				<Skeleton style={[formStyles.label, line("label", fontScale)]} />
+				<Skeleton style={formStyles.description} />
+			</ScreenSection>
+
+			<ScreenSection
+				title={t("biz.products.category")}
+				subtitle={t("biz.products.section.category.help")}
+			>
+				<View
+					style={[
+						styles.selector,
+						{ backgroundColor: colors.muted, borderColor: colors.border },
+					]}
+				>
+					<Skeleton style={{ height: categoryRow }} />
+				</View>
+			</ScreenSection>
+
+			<ScreenSection
+				title={t("biz.products.photo")}
+				subtitle={t("biz.products.section.photo.help")}
+			>
+				<Skeleton style={formStyles.photoModule} />
+			</ScreenSection>
 		</View>
 	);
 }
@@ -725,11 +913,39 @@ function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
-	// The picture above its controls: the thumb is `./product-row`'s own 60pt box
-	// (`media.row`), because it previews the picture the menu row will draw.
-	photoWrap: { gap: space.sm },
-	photo: { width: media.row, height: media.row },
-	photoField: { gap: space.sm },
+	/**
+	 * The two money boxes, side by side, at the width the interface spec measures at a 390pt
+	 * viewport: a 10pt gap and 174pt each, which is `flex: 1` on both sides rather than two
+	 * typed numbers — 174 is what 390 minus two 16pt gutters minus the gap works out to, and
+	 * a typed width would be wrong on every viewport that is not that one.
+	 *
+	 * `minWidth: 0` is what lets the row shrink: without it a `Field`'s own `minHeight` and
+	 * the message row's natural width floor the pair at their content's width, and on a
+	 * narrow phone the second box is pushed off the edge rather than wrapping.
+	 */
+	pair: { flexDirection: "row", gap: 10 },
+	pairItem: { flex: 1, minWidth: 0 },
+	// A paragraph, not a fifth name field: 104 points of box under one line of label, which
+	// is the height the spec asks for and the point at which an owner can see three or four
+	// lines of what they have written.
+	description: { minHeight: DESCRIPTION_HEIGHT },
+	// The category's surface, matching the fields' language rather than a card's: the same
+	// fill, one step softer on the corner, and a hairline that is the only edge on a white
+	// canvas. `overflow: "hidden"` is what lets the expanded list be clipped by it.
+	selector: {
+		borderRadius: radius.lg,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: "hidden",
+	},
+	// The mark at the selector's leading edge, on the page's own white so it reads as a chip
+	// cut out of the fill rather than a second fill inside it.
+	selectorMark: {
+		width: 40,
+		height: 40,
+		borderRadius: radius.md,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	// One step of the scale, applied only to a row whose parent is also on the list (`indentFor`).
 	// Scoped, the sector is absent and its children sit flush as peers; unscoped, the sector is
 	// present and its children step in under it. Either way this is air, never a second row shape.
@@ -738,14 +954,17 @@ const styles = StyleSheet.create({
 
 /**
  * The grey field's own rows: `./field`'s `wrap` gap between the label, the box and the
- * message row (`components/field.tsx`'s `wrap`), the box at the floor the real input pays
- * (`components/field.tsx`'s `input`), and a line each for the label and the message — the
- * label's width is a stand-in for a word the read does not carry, and the message row is
+ * message row (`components/field.tsx`'s `wrap`), a box at each height the real input pays
+ * (`inputSoft`'s 52 and `description`'s 104), and a line each for the label and the message —
+ * the label's width is a stand-in for a word the read does not carry, and the message row is
  * reserved, so it is a line rather than an empty box.
  */
 const formStyles = StyleSheet.create({
-	field: { gap: space.sm },
 	label: { width: "35%" },
-	input: { minHeight: MIN_TOUCH_TARGET },
+	inputSoft: { height: SOFT_FIELD_HEIGHT },
+	description: { height: DESCRIPTION_HEIGHT },
+	// The media surface, at the module's own height rather than `photo-picker`'s ratio, so
+	// the two stand in for the same box.
+	photoModule: { height: PHOTO_MODULE_HEIGHT },
 	message: { width: "60%" },
 });

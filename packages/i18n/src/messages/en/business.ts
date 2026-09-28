@@ -143,6 +143,33 @@ export const business = {
 	"biz.catalog.count_plural": "{count} products",
 	"biz.catalog.search": "Search catalog",
 	"biz.products.add": "Add product",
+
+	/*
+	 * The product form, in the commerce system: four named groups instead of one
+	 * "Products" section above fields whose own labels already say what they are.
+	 * The heading line under each group is that group's one job, and the empty state
+	 * on the photo surface is the sentence a photograph is being asked for.
+	 */
+	"biz.products.screen.add": "List a new product in your shop.",
+	"biz.products.screen.edit": "Update this product's details.",
+	"biz.products.section.basic": "Basic information",
+	"biz.products.section.basic.help":
+		"Give your product a clear name and description.",
+	"biz.products.section.pricing": "Pricing",
+	"biz.products.section.pricing.help":
+		"Set the price and an optional previous price.",
+	"biz.products.section.category.help":
+		"Choose the category that best fits your product.",
+	"biz.products.section.photo.help":
+		"Add photos to showcase your product.",
+	"biz.products.placeholder.name": "Product name",
+	"biz.products.placeholder.description": "Describe your product...",
+	"biz.products.save": "Save product",
+	"biz.products.photo.module": "Add a product photo",
+	"biz.products.photo.module.help":
+		"Upload a photo from your gallery or take one with your camera.",
+	"biz.products.photo.upload": "Upload from library",
+	"biz.products.photo.camera": "Take photo",
 	"biz.products.edit": "Edit product",
 	"biz.products.available": "Available",
 	"biz.products.outOfStock": "Sold out",
@@ -626,7 +653,6 @@ export const business = {
 	"biz.more.supportSubtitle": "Help, safety and common questions",
 
 	/* The product form, which is not the business settings form. */
-	"biz.products.save": "Save product",
 	"biz.products.created": "Product added",
 	"biz.products.saved": "Product saved",
 	"biz.products.archived": "Product archived",

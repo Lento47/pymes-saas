@@ -3,7 +3,7 @@ import type { Href } from "expo-router";
 import { StyleSheet } from "react-native";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
-import { icon, MIN_TOUCH_TARGET, useTheme } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, useTheme } from "@/theme";
 
 import { Pressable } from "./pressable";
 
@@ -43,7 +43,28 @@ import { Pressable } from "./pressable";
  * box is `MIN_TOUCH_TARGET` square — the floor drawn rather than floored, `./favorite-button`'s
  * rule, so a header row that stretches its children cannot stretch this.
  */
-export function BackButton({ to, style }: { to: Href; style?: object }) {
+export function BackButton({
+	to,
+	style,
+	surface = false,
+}: {
+	to: Href;
+	style?: object;
+	/**
+	 * Draw the control on a filled disc rather than as a bare chevron.
+	 *
+	 * Off by default, and the bare chevron is the better object on the ten pushed screens
+	 * already using this: a back control is chrome, and chrome is quiet. It exists for a
+	 * screen whose own heading is loud enough to need a visible peer beside it — a form in
+	 * the commerce system, where the title is the second-largest thing on the page and an
+	 * unboxed chevron reads as a glyph that got separated from its header.
+	 *
+	 * The fill is `muted` and the glyph `foreground`, the same pair the commerce system's
+	 * fields and the merchant header's identity block use, so the disc is one more control in
+	 * that language rather than a shape borrowed from somewhere else.
+	 */
+	surface?: boolean;
+}) {
 	const { colors } = useTheme();
 	const { t } = useT();
 
@@ -52,7 +73,11 @@ export function BackButton({ to, style }: { to: Href; style?: object }) {
 			onPress={() => leaveScreen(to)}
 			accessibilityRole="button"
 			accessibilityLabel={t("action.back")}
-			style={[styles.button, style]}
+			style={[
+				styles.button,
+				surface ? [styles.disc, { backgroundColor: colors.muted }] : null,
+				style,
+			]}
 		>
 			<Ionicons
 				name="chevron-back"
@@ -82,4 +107,12 @@ const styles = StyleSheet.create({
 		// without this the whole screen's left edge reads as inset by that much more.
 		marginLeft: -(MIN_TOUCH_TARGET - icon.back) / 2,
 	},
+	/**
+	 * The disc, and the one thing it changes about the box above: the optical pull is undone.
+	 * That pull exists so a *bare glyph* lands on the text gutter rather than half a glyph to
+	 * the right of it, and a 44-point filled circle is not half a glyph — it is a control, and
+	 * a control is placed on the gutter like everything else. Leaving the pull on would hang
+	 * the disc ten points into the margin.
+	 */
+	disc: { marginLeft: 0, borderRadius: radius.full },
 });

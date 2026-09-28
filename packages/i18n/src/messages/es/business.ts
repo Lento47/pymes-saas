@@ -161,6 +161,33 @@ export const business = {
 	"biz.catalog.count_plural": "{count} productos",
 	"biz.catalog.search": "Buscar en el catálogo",
 	"biz.products.add": "Agregar producto",
+
+	/*
+	 * The product form, in the commerce system: four named groups instead of one
+	 * "Productos" section above fields whose own labels already say what they are.
+	 * The heading line under each group is that group's one job, and the empty state
+	 * on the photo surface is the sentence a photograph is being asked for.
+	 */
+	"biz.products.screen.add": "Publica un producto nuevo en tu tienda.",
+	"biz.products.screen.edit": "Actualiza los datos de este producto.",
+	"biz.products.section.basic": "Información básica",
+	"biz.products.section.basic.help":
+		"Dale a tu producto un nombre claro y una descripción.",
+	"biz.products.section.pricing": "Precios",
+	"biz.products.section.pricing.help":
+		"Define el precio y, si quieres, un precio anterior.",
+	"biz.products.section.category.help":
+		"Elige la categoría que mejor encaje con tu producto.",
+	"biz.products.section.photo.help":
+		"Agrega fotos para mostrar mejor tu producto.",
+	"biz.products.placeholder.name": "Nombre del producto",
+	"biz.products.placeholder.description": "Describe tu producto...",
+	"biz.products.save": "Guardar producto",
+	"biz.products.photo.module": "Agrega una foto al producto",
+	"biz.products.photo.module.help":
+		"Sube una foto de tu galería o toma una con la cámara.",
+	"biz.products.photo.upload": "Subir de la galería",
+	"biz.products.photo.camera": "Tomar foto",
 	"biz.products.edit": "Editar producto",
 	"biz.products.available": "Disponible",
 	"biz.products.outOfStock": "Agotado",
@@ -686,7 +713,6 @@ export const business = {
 	"biz.more.supportSubtitle": "Preguntas, seguridad y asistencia",
 
 	/* The product form, which is not the business settings form. */
-	"biz.products.save": "Guardar producto",
 	"biz.products.created": "Producto agregado",
 	"biz.products.saved": "Producto guardado",
 	"biz.products.archived": "Producto archivado",

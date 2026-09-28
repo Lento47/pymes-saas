@@ -13,7 +13,7 @@ import { useApiFailure } from "@/lib/api-error";
 import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, media, type radius, space, type, useTheme } from "@/theme";
+import { icon, media, radius, space, type, useTheme } from "@/theme";
 
 import { Button } from "./button";
 import { Image } from "./image";
@@ -83,7 +83,37 @@ type PhotoPickerProps = {
 	previewStyle?: StyleProp<ViewStyle>;
 	/** Drawn inside the preview when there is no picture — a letter, an icon. */
 	children?: React.ReactNode;
+	/**
+	 * How the control is arranged: the column it has always been, or one wide media surface.
+	 *
+	 * `"compact"` is the default and is the column — a preview box, a label and the two
+	 * controls stacked under it, which is right where the picture is a small part of a longer
+	 * form (`app/profile`'s avatar, `app/(business)/shop-settings`'s logo). `"module"` is the
+	 * commerce system's version: the media surface itself is the control, sized for the
+	 * photograph rather than for a thumbnail, with its own empty state, its own sentence and
+	 * the two acts side by side inside it.
+	 *
+	 * The two acts stay two acts in both layouts, and that is the reason this is a layout
+	 * prop rather than a redesign — see the note at the top of this file. A single "Add photo"
+	 * that does not say which picker it opens is the failure the two controls exist to prevent.
+	 */
+	layout?: "compact" | "module";
+	/**
+	 * The two acts' own labels, for `"module"`, where the buttons sit inside the surface and
+	 * a generic "Upload photo" reads as the name of the whole block. Omitted they fall back to
+	 * the shared `action.*` pair, so a caller that wants only the arrangement does not have to
+	 * supply copy to get it.
+	 */
+	uploadLabel?: string;
+	cameraLabel?: string;
 };
+
+/**
+ * The media surface's height, exported for the same reason `./field`'s `SOFT_FIELD_HEIGHT`
+ * is: a skeleton has to draw the box it stands in for, and a hand-typed number in that
+ * skeleton is a number that drifts the first time the module is retuned.
+ */
+export const PHOTO_MODULE_HEIGHT = 190;
 
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 	mediaTypes: ["images"],
@@ -110,6 +140,9 @@ export function PhotoPicker({
 	radiusToken = "md",
 	previewStyle,
 	children,
+	layout = "compact",
+	uploadLabel,
+	cameraLabel,
 }: PhotoPickerProps) {
 	const { t } = useT();
 	const { colors } = useTheme();
@@ -198,12 +231,162 @@ export function PhotoPicker({
 		}
 	};
 
-	const remove = () => {
+	const removePhoto = () => {
 		selection();
 		setPendingUri(null);
 		setLocalError(null);
 		onChange(null);
 	};
+
+	const fromGallery = (
+		<Button
+			label={uploadLabel ?? t("action.uploadPhoto")}
+			onPress={() =>
+				void pick("gallery", () =>
+					ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS),
+				)
+			}
+			variant="secondary"
+			size="sm"
+			fullWidth
+			loading={busy && source === "gallery"}
+			disabled={busy}
+			icon={
+				<Ionicons
+					name="image-outline"
+					size={icon.control}
+					color={colors.secondaryForeground}
+				/>
+			}
+		/>
+	);
+	const fromCamera = (
+		<Button
+			label={cameraLabel ?? t("action.takePhoto")}
+			onPress={() =>
+				void pick("camera", () => ImagePicker.launchCameraAsync(PICKER_OPTIONS))
+			}
+			variant="secondary"
+			size="sm"
+			fullWidth
+			loading={busy && source === "camera"}
+			disabled={busy}
+			icon={
+				<Ionicons
+					name="camera-outline"
+					size={icon.control}
+					color={colors.secondaryForeground}
+				/>
+			}
+		/>
+	);
+	const remove = value ? (
+		<Button
+			label={t("action.removePhoto")}
+			onPress={removePhoto}
+			variant="ghost"
+			size="sm"
+			fullWidth
+			disabled={busy}
+			icon={
+				<Ionicons
+					name="close-outline"
+					size={icon.control}
+					color={colors.foreground}
+				/>
+			}
+		/>
+	) : null;
+
+	// Reserved exactly as `./field` reserves its message row: one `caption` line whether or
+	// not anything is in it, so a refusal never reflows the form. Error wins over help, for
+	// the same reason.
+	const message = (
+		<View style={styles.message}>
+			{shownError ? (
+				<Text
+					variant="caption"
+					tone="destructive"
+					accessibilityRole="alert"
+					accessibilityLiveRegion="polite"
+				>
+					{shownError}
+				</Text>
+			) : help ? (
+				<Text variant="caption" tone="muted">
+					{help}
+				</Text>
+			) : null}
+		</View>
+	);
+
+	if (layout === "module") {
+		const uri = pendingUri ?? value;
+		return (
+			<View style={styles.wrap}>
+				<View
+					style={[
+						styles.module,
+						{ backgroundColor: colors.muted, borderColor: colors.border },
+					]}
+				>
+					{uri ? (
+						<Image
+							uri={uri}
+							radiusToken="lg"
+							style={styles.moduleImage}
+							accessibilityElementsHidden
+							importantForAccessibility="no"
+						/>
+					) : (
+						<View style={styles.moduleEmpty}>
+							{/* The mark and the badge, and the badge is the only lime on this
+							    control: it is the one thing here that is an affordance rather
+							    than a label, and `./theme` reserves the brand fill for the
+							    moment's one action. */}
+							<View style={styles.moduleMark}>
+								<Ionicons
+									name="image-outline"
+									size={36}
+									color={colors.foreground}
+									accessibilityElementsHidden
+									importantForAccessibility="no"
+								/>
+								<View
+									style={[
+										styles.moduleBadge,
+										{ backgroundColor: colors.primary },
+									]}
+								>
+									<Ionicons
+										name="add"
+										size={14}
+										color={colors.primaryForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</View>
+							</View>
+							<Text bold style={styles.moduleTitle}>
+								{label}
+							</Text>
+							{help ? (
+								<Text variant="caption" tone="muted" style={styles.moduleHelp}>
+									{help}
+								</Text>
+							) : null}
+						</View>
+					)}
+					<View style={styles.moduleActions}>
+						{fromGallery}
+						{fromCamera}
+					</View>
+					{remove ? <View style={styles.moduleRemove}>{remove}</View> : null}
+				</View>
+				{message}
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.wrap}>
@@ -221,84 +404,12 @@ export function PhotoPicker({
 				<Text variant="label" bold>
 					{label}
 				</Text>
-				<Button
-					label={t("action.uploadPhoto")}
-					onPress={() =>
-						void pick("gallery", () =>
-							ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS),
-						)
-					}
-					variant="secondary"
-					size="sm"
-					fullWidth
-					loading={busy && source === "gallery"}
-					disabled={busy}
-					icon={
-						<Ionicons
-							name="image-outline"
-							size={icon.control}
-							color={colors.secondaryForeground}
-						/>
-					}
-				/>
-				<Button
-					label={t("action.takePhoto")}
-					onPress={() =>
-						void pick("camera", () =>
-							ImagePicker.launchCameraAsync(PICKER_OPTIONS),
-						)
-					}
-					variant="secondary"
-					size="sm"
-					fullWidth
-					loading={busy && source === "camera"}
-					disabled={busy}
-					icon={
-						<Ionicons
-							name="camera-outline"
-							size={icon.control}
-							color={colors.secondaryForeground}
-						/>
-					}
-				/>
-				{value ? (
-					<Button
-						label={t("action.removePhoto")}
-						onPress={remove}
-						variant="ghost"
-						size="sm"
-						fullWidth
-						disabled={busy}
-						icon={
-							<Ionicons
-								name="close-outline"
-								size={icon.control}
-								color={colors.foreground}
-							/>
-						}
-					/>
-				) : null}
+				{fromGallery}
+				{fromCamera}
+				{remove}
 			</View>
 
-			{/* Reserved exactly as `./field` reserves its message row: one `caption` line
-			    whether or not anything is in it, so a refusal never reflows the form. Error
-			    wins over help, for the same reason. */}
-			<View style={styles.message}>
-				{shownError ? (
-					<Text
-						variant="caption"
-						tone="destructive"
-						accessibilityRole="alert"
-						accessibilityLiveRegion="polite"
-					>
-						{shownError}
-					</Text>
-				) : help ? (
-					<Text variant="caption" tone="muted">
-						{help}
-					</Text>
-				) : null}
-			</View>
+			{message}
 		</View>
 	);
 }
@@ -350,4 +461,49 @@ const styles = StyleSheet.create({
 	},
 	controls: { gap: space.sm },
 	message: { minHeight: type.caption.lineHeight },
+	/**
+	 * The media surface, at the height the interface spec measures for it. `overflow: "hidden"`
+	 * is load-bearing rather than tidy: it is what lets a chosen photograph fill the whole
+	 * surface and still be clipped by the surface's own corner, instead of needing its radius
+	 * recomputed every time the module's is.
+	 */
+	module: {
+		borderRadius: radius.lg,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: "hidden",
+	},
+	moduleImage: { width: "100%", aspectRatio: 4 / 3 },
+	moduleEmpty: {
+		height: PHOTO_MODULE_HEIGHT,
+		alignItems: "center",
+		gap: space.xs,
+		paddingHorizontal: space.lg,
+		paddingTop: space.xxl,
+		paddingBottom: space.lg,
+	},
+	// The mark, with the badge hung off its own trailing foot rather than centred beside it,
+	// so the two read as one object instead of two.
+	moduleMark: { marginBottom: space.sm },
+	moduleBadge: {
+		position: "absolute",
+		right: -10,
+		bottom: -6,
+		width: 24,
+		height: 24,
+		borderRadius: radius.full,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	moduleTitle: { textAlign: "center" },
+	moduleHelp: { textAlign: "center" },
+	// The two acts share the module's width rather than stacking, which is the only reason
+	// `layout` is a prop and not a second component: same two controls, same two states, a
+	// different arrangement of them.
+	moduleActions: {
+		flexDirection: "row",
+		gap: space.sm,
+		paddingHorizontal: space.lg,
+		paddingBottom: space.lg,
+	},
+	moduleRemove: { paddingHorizontal: space.lg, paddingBottom: space.lg },
 });
