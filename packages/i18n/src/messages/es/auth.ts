@@ -43,6 +43,24 @@ export const auth = {
 	"auth.signUp.businessOption": "Regístrate como negocio",
 	"auth.signUp.courierOption": "Regístrate como repartidor",
 
+	/**
+	 * La portada del grupo de autenticación: qué es esta app y las dos formas de entrar.
+	 * Es la ruta base del grupo, no el arranque en frío de la app — el mercado le responde
+	 * completo a quien no ha iniciado sesión, y una pared delante de eso le costaría el
+	 * embudo que existen para alimentar las páginas públicas.
+	 */
+	"auth.welcome.title": "Tu negocio en movimiento.",
+	"auth.welcome.subtitle":
+		"Gestiona ventas, entregas y pagos desde un solo lugar.",
+	"auth.welcome.signUp": "Crear una cuenta",
+	/**
+	 * La segunda puerta, dicha como una frase con la acción dentro y no como un segundo
+	 * botón: un solo control relleno en esta pantalla, y quien ya tiene cuenta llega igual
+	 * en un toque. La palabra de la acción es `action.signIn`, compartida con el cambio de
+	 * formulario, para que el mismo acto no tenga dos nombres.
+	 */
+	"auth.welcome.hasAccount": "¿Ya tienes cuenta?",
+
 	"auth.field.email": "Correo",
 	"auth.field.email.placeholder": "tu@correo.com",
 	"auth.field.password": "Contraseña",

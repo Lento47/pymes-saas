@@ -35,6 +35,24 @@ export const auth = {
 	"auth.signUp.businessOption": "Register as a business",
 	"auth.signUp.courierOption": "Register as a courier",
 
+	/**
+	 * The auth tree's front door: what this app is, and the two ways in. It is the
+	 * group's base route, not the app's cold start - the marketplace answers a
+	 * signed-out reader in full, and putting a wall in front of that would cost the
+	 * funnel the public pages exist to feed.
+	 */
+	"auth.welcome.title": "Your business, in motion.",
+	"auth.welcome.subtitle":
+		"Manage sales, deliveries and payments from one place.",
+	"auth.welcome.signUp": "Create an account",
+	/**
+	 * The second door, said as a sentence with the action inside it rather than as a second
+	 * button: one filled control on this screen, and a reader who already has an account
+	 * still gets to it in one tap. The action word itself is `action.signIn`, shared with the
+	 * form's own switch, so the two cannot drift into calling the same act two things.
+	 */
+	"auth.welcome.hasAccount": "Already have an account?",
+
 	"auth.field.email": "Email",
 	"auth.field.email.placeholder": "you@example.com",
 	"auth.field.password": "Password",
