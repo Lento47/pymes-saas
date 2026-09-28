@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export default {
   darkMode: ["class"],
@@ -100,6 +101,11 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)"],
         mono: ["var(--font-mono)"],
+        // The marketing display face. Reachable as a utility rather than only through
+        // the hand-written `.font-display` class, so it can be composed with the rest
+        // of the scale at a call site.
+        display: ["Instrument Serif", "Georgia", "serif"],
+        marketing: ["var(--font-marketing-sans)"],
       },
       fontSize: {
         "2xs": ["11px", "1.4"],
@@ -128,5 +134,19 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    // A landscape phone. Not a width, so it cannot be one of the `screens` entries:
+    // the hero's stack has to tighten when the viewport is short and wide, which is a
+    // different condition from being narrow.
+    //
+    // Registered as a variant rather than as an object-form screen on purpose. An
+    // object in `theme.screens` makes Tailwind drop support for the `min-*` and `max-*`
+    // screen variants across the whole project, which silently broke
+    // `min-[380px]:block` in the inbox composer. A variant leaves `screens` alone.
+    plugin(({ addVariant }) => {
+      addVariant("short", "@media (max-height: 500px)");
+    }),
+  ],
 } satisfies Config;
