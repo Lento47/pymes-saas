@@ -164,7 +164,12 @@ export default function BusinessLayout() {
 						tabBarStyle: [
 							{
 								position: "absolute",
-								alignSelf: "center",
+								// Centred by construction, not by `alignSelf`: the
+								// navigator's bar container does not honour it, so the
+								// capsule sits at half width minus half itself — exact
+								// on every viewport, since the width is fixed.
+								left: "50%",
+								marginLeft: -CAPSULE_WIDTH / 2,
 								width: CAPSULE_WIDTH,
 								height: BUSINESS_TAB_BAR_HEIGHT,
 								bottom: insets.bottom + BUSINESS_TAB_BAR_LIFT,
