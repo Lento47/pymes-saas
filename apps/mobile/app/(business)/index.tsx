@@ -48,6 +48,7 @@ import {
 	type MerchantPulseData,
 	pulseBandHeight,
 } from "@/components/merchant-pulse";
+import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
@@ -595,18 +596,76 @@ export default function MerchantHome() {
 				) : (
 					<>
 						<View style={styles.merchantHeader}>
-							<Image
-								uri={home.data?.location.logoUrl}
-								style={[styles.merchantLogo, { borderColor: colors.border }]}
-								radiusToken="md"
-								accessibilityElementsHidden
-							>
-								{home.data?.location.logoUrl ? null : (
-									<Text variant="title" bold>
-										{shop.businessName.trim().charAt(0).toUpperCase()}
-									</Text>
-								)}
-							</Image>
+							{/* §12's leading pair. The layout it draws is `controls | identity | logo` —
+						    the pair leads and the last two were already here:
+						    this is the pair on the left, top-aligned with the logo so it
+						    answers the *title* rather than floating in the middle of a header
+						    that grows at 200% text.
+
+						    Both doors leave the business tree, and both already exist as root
+						    screens of their own ΓÇö `app/inbox` is the bell's whole job ("What the
+						    shop has told you: the bell, as a list") and `app/profile` is the
+						    fields `./more` already links to. One bell rather than a second
+						    notifications screen, for the reason `components/home-header` has one
+						    avatar. The profile is an icon and not `home-header`'s initials because
+						    this screen reads the shop and not `users.me`, and a header that drew a
+						    name it never fetched would be the file's own "a control for something
+						    the API has not confirmed" one step earlier. */}
+							<View style={styles.merchantControls}>
+								<Pressable
+									onPress={() => router.push("/inbox")}
+									accessibilityRole="button"
+									accessibilityLabel={
+										attentionTotal > 0
+											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
+											: t("account.inbox")
+									}
+									accessibilityHint={t("account.inbox.help")}
+									style={styles.headerControl}
+								>
+									<Ionicons
+										name="notifications-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									{attentionTotal > 0 ? (
+										<View
+											style={[
+												styles.bellBadge,
+												{ backgroundColor: colors.destructive },
+											]}
+										>
+											{/* The destructive pair, not `inverse`: the merchant
+											    palette spends `primaryForeground` on ink, which
+											    on this fill would be a dark-on-dark count. */}
+											<Text
+												variant="caption"
+												bold
+												tabular
+												style={{ color: colors.destructiveForeground }}
+											>
+												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
+											</Text>
+										</View>
+									) : null}
+								</Pressable>
+								<Pressable
+									onPress={() => router.push("/profile")}
+									accessibilityRole="button"
+									accessibilityLabel={t("account.profile.title")}
+									style={styles.headerControl}
+								>
+									<Ionicons
+										name="person-circle-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
+							</View>
 							<View style={styles.merchantIdentity}>
 								<Text variant="title" bold numberOfLines={1}>
 									{shop.businessName}
@@ -726,76 +785,18 @@ export default function MerchantHome() {
 									</Pressable>
 								) : null}
 							</View>
-							{/* ┬º12's third column. The layout it draws is `logo | identity |
-						    controls (notification, profile)`, and the first two were already
-						    here: this is the pair on the right, top-aligned with the logo so it
-						    answers the *title* rather than floating in the middle of a header
-						    that grows at 200% text.
-
-						    Both doors leave the business tree, and both already exist as root
-						    screens of their own ΓÇö `app/inbox` is the bell's whole job ("What the
-						    shop has told you: the bell, as a list") and `app/profile` is the
-						    fields `./more` already links to. One bell rather than a second
-						    notifications screen, for the reason `components/home-header` has one
-						    avatar. The profile is an icon and not `home-header`'s initials because
-						    this screen reads the shop and not `users.me`, and a header that drew a
-						    name it never fetched would be the file's own "a control for something
-						    the API has not confirmed" one step earlier. */}
-							<View style={styles.merchantControls}>
-								<Pressable
-									onPress={() => router.push("/inbox")}
-									accessibilityRole="button"
-									accessibilityLabel={
-										attentionTotal > 0
-											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
-											: t("account.inbox")
-									}
-									accessibilityHint={t("account.inbox.help")}
-									style={styles.headerControl}
-								>
-									<Ionicons
-										name="notifications-outline"
-										size={icon.action}
-										color={colors.foreground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-									{attentionTotal > 0 ? (
-										<View
-											style={[
-												styles.bellBadge,
-												{ backgroundColor: colors.destructive },
-											]}
-										>
-											{/* The destructive pair, not `inverse`: the merchant
-											    palette spends `primaryForeground` on ink, which
-											    on this fill would be a dark-on-dark count. */}
-											<Text
-												variant="caption"
-												bold
-												tabular
-												style={{ color: colors.destructiveForeground }}
-											>
-												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
-											</Text>
-										</View>
-									) : null}
-								</Pressable>
-								<Pressable
-									onPress={() => router.push("/profile")}
-									accessibilityRole="button"
-									accessibilityLabel={t("account.profile.title")}
-									style={styles.headerControl}
-								>
-									<Ionicons
-										name="person-circle-outline"
-										size={icon.action}
-										color={colors.foreground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-								</Pressable>
-							</View>
+							<Image
+								uri={home.data?.location.logoUrl}
+								style={[styles.merchantLogo, { borderColor: colors.border }]}
+								radiusToken="md"
+								accessibilityElementsHidden
+							>
+								{home.data?.location.logoUrl ? null : (
+									<Text variant="title" bold>
+										{shop.businessName.trim().charAt(0).toUpperCase()}
+									</Text>
+								)}
+							</Image>
 						</View>
 						<View style={styles.syncRow}>
 							<View style={styles.syncStatus} accessibilityLiveRegion="polite">
@@ -822,6 +823,59 @@ export default function MerchantHome() {
 								<Ionicons name="refresh" size={24} color={colors.primary} />
 							</Pressable>
 						</View>
+						{/* The destinations, as icon tiles that scroll sideways: orders,
+						    catalogue, promotions, analytics, team, payouts. The command
+						    rail below holds the *moment's* actions; this holds where the
+						    reader goes, so none of its tiles takes the lime fill — a
+						    destination is not asking to be pressed now. */}
+						<MerchantShortcutRail
+							shortcuts={[
+								{
+									key: "orders",
+									label: t("biz.nav.orders"),
+									icon: "receipt-outline",
+									onPress: () => router.push("/(business)/business"),
+								},
+								{
+									key: "catalog",
+									label: t("biz.nav.products"),
+									icon: "fast-food-outline",
+									onPress: () => router.push("/(business)/products"),
+								},
+								{
+									key: "promotions",
+									label: t("biz.promotions.title"),
+									icon: "ticket-outline",
+									onPress: () => router.push("/(business)/promotions"),
+								},
+								{
+									key: "analytics",
+									label: t("biz.analytics.title"),
+									icon: "bar-chart-outline",
+									onPress: () => router.push("/(business)/analytics"),
+								},
+								{
+									key: "team",
+									label: t("biz.more.team"),
+									icon: "people-outline",
+									onPress: () =>
+										router.push({
+											pathname: "/(business)/team",
+											params: { businessId },
+										}),
+								},
+								{
+									key: "payouts",
+									label: t("biz.more.payouts"),
+									icon: "cash-outline",
+									onPress: () =>
+										router.push({
+											pathname: "/(business)/payouts",
+											params: { businessId },
+										}),
+								},
+							]}
+						/>
 						{pause.error || resume.error ? (
 							<View style={styles.pad}>
 								<ErrorState error={pause.error ?? resume.error} />
