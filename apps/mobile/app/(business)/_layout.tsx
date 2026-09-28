@@ -182,7 +182,12 @@ export default function BusinessLayout() {
 							},
 							CAPSULE_SHADOW,
 						],
-						tabBarItemStyle: { paddingVertical: 0 },
+						tabBarItemStyle: {
+							flex: 1,
+							alignItems: "center",
+							justifyContent: "center",
+							paddingVertical: 0,
+						},
 						// Icon-only bar: the words live in each tab's
 						// `tabBarAccessibilityLabel`, so nothing spoken is lost
 						// when nothing printed remains.
