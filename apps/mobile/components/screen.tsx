@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
 	type AccessibilityProps,
 	Platform,
@@ -11,6 +12,7 @@ import { type Edge, SafeAreaView } from "react-native-safe-area-context";
 import { space, type, useTheme } from "@/theme";
 
 import { useRefreshControl } from "./pull-refresh";
+import { useTabBarClearance } from "./tab-bar";
 import { Text } from "./text";
 
 /**
@@ -19,9 +21,18 @@ import { Text } from "./text";
  * Safe-area insets are handled here and nowhere else, which is the point of having this
  * component at all: an inset applied per screen is an inset applied on nine screens and
  * forgotten on the tenth, and the tenth is the one with a button under the home indicator.
- * `top` is on for every screen; `bottom` is on only for a screen with something pinned to
- * the floor, because the tab bar already sits inside the bottom inset and paying it twice
- * leaves a gap.
+ * `top` is on for every screen; `bottom` is on only for a screen with nothing pinned to
+ * the floor of its own — a form's action bar pays the home indicator itself
+ * (`./action-bar`'s docblock), and paying it in both places leaves a 34-point gap above
+ * the bar on every phone that has one.
+ *
+ * **`bottomInset` is also what `./tab-bar` needs to be told.** The floating merchant
+ * capsule is `position: "absolute"`, so React Navigation takes it out of the flow that
+ * sizes this screen and reserves nothing for it, and the scroll has to reserve the
+ * capsule's own footprint or the last row sits under it with no way to scroll out. That
+ * number is added to the scroll's own `space.huge` below, and it is `0` on every screen
+ * outside `(business)` — where there is no bar at all — so this is one line that changes
+ * eighteen screens and leaves the other thirty-odd exactly as they were.
  *
  * `scroll` is a prop rather than two components because the difference between a static
  * screen and a scrolling one is one word at the call site, and two components means the
@@ -120,6 +131,27 @@ export function Screen({
 	// where those three decisions live so that a screen bringing its own scroller
 	// gets the same three. See that file for why it is a hook returning an element.
 	const refreshControl = useRefreshControl(onRefresh);
+	// The capsule floating over this scroll, if there is one. Measured from the bar's own
+	// tokens rather than the navigator's reported height, and aware that `bottomInset`
+	// above has already spent the home-indicator inset on this screen's behalf.
+	const tabClearance = useTabBarClearance({ bottomInsetPaid: bottomInset });
+	/**
+	 * The scroll's own foot: `space.huge` of page, plus whatever the floating bar over
+	 * this screen is covering.
+	 *
+	 * **Memoised, and it used to be a `StyleSheet` entry.** The number is a runtime value
+	 * — it carries the device's bottom inset — so it cannot live in a module-scope object
+	 * the way the old `styles.scrollContent` did, and leaving that entry in place as well
+	 * would have been two declarations of one gutter with the second always winning.
+	 * `useMemo` then buys back the one thing the constant object had: a stable identity
+	 * across renders, so React Native is not handed a new `contentContainerStyle` on
+	 * every frame of a screen that re-renders on a 5-second poll. `app/(customer)/index`
+	 * builds the same expression inline and is the precedent for the shape.
+	 */
+	const scrollPadding = useMemo(
+		() => ({ paddingBottom: space.huge + tabClearance }),
+		[tabClearance],
+	);
 
 	/**
 	 * `contentStyle` comes second, so it wins — and that is deliberate rather than an
@@ -173,7 +205,7 @@ export function Screen({
 			) : null}
 			{scroll ? (
 				<ScrollView
-					contentContainerStyle={styles.scrollContent}
+					contentContainerStyle={scrollPadding}
 					keyboardShouldPersistTaps="handled"
 					// Dragging the form away is how a thumb puts a keyboard down, and the value
 					// is a different one on each platform because the platforms are.
@@ -199,8 +231,10 @@ export function Screen({
 					automaticallyAdjustKeyboardInsets={
 						Platform.OS === "ios" ? keyboardInsets : undefined
 					}
-					// The bar is inside the inset the tab bar already paid; a scroll indicator
-					// that runs under it reads as a rendering bug.
+					// Zero, and deliberately: the merchant capsule is a *floating* bar, so an
+					// indicator that runs under it is the bar doing what a floating bar does
+					// rather than a rendering bug. The old docked bar sat inside the bottom
+					// inset, which is the only case where the indicator had to stop short.
 					scrollIndicatorInsets={{ bottom: 0 }}
 					refreshControl={refreshControl}
 				>
@@ -223,7 +257,6 @@ const styles = StyleSheet.create({
 		paddingHorizontal: space.lg,
 	},
 	subtitle: { marginTop: space.xs },
-	scrollContent: { paddingBottom: space.huge },
 });
 
 /**

@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NewOrderBannerProvider } from "@/components/new-order-banner";
 import { Pressable } from "@/components/pressable";
+import { merchantBarlessOptions } from "@/components/tab-bar";
 import { useT } from "@/lib/i18n";
 import { MerchantScopeProvider } from "@/lib/merchant-scope";
 import { useResolvedRole } from "@/lib/role";
@@ -94,6 +95,23 @@ function withAlpha(hex: string, alpha: number): string {
  * The selected marker is the contract's lime dot rather than a tinted icon: the icon
  * and the label stay ink in both states (a colour-blind reader, a greyscale screenshot
  * and VoiceOver's `selected` state all agree), and the dot is the one thing that moves.
+ *
+ * ## The five screens below that draw no bar at all
+ *
+ * A `position: "absolute"` bar is out of the navigator's flex flow, so it overlays
+ * whatever is under it and the screens have to reserve room for it themselves —
+ * `BUSINESS_TAB_BAR_CLEARANCE`, spent by `./screen` and `./paginated-list` through
+ * `./tab-bar`. That reservation is what the `bottom` and `height` above exist for, and
+ * it is why neither number is a guess.
+ *
+ * Five routes are the exception: the forms and settings screens that own the foot of
+ * their own screen with an `./action-bar`, which pays the home indicator and holds the
+ * screen's one commit. The capsule draws straight over that bar and covers the button,
+ * so those five hide it — `merchantBarlessOptions`, whose name is checked against
+ * `./tab-bar`'s list at compile time. The alternative was lifting the action bar above
+ * the capsule, which stacks roughly 200 points of chrome at the bottom of a form and
+ * leaves the capsule flush against the button with no air; a form that owns its floor
+ * reads better owning all of it.
  */
 export default function BusinessLayout() {
 	const { colors } = useTheme();
@@ -158,9 +176,11 @@ export default function BusinessLayout() {
 						tabBarActiveTintColor: colors.foreground,
 						tabBarInactiveTintColor: colors.mutedForeground,
 						// The floating capsule: 320 wide and centred, 70 tall, 12 above
-						// the home-indicator inset. 70 + 12 is the 82 the docked bar
-						// occupied, so screens that reserved room for it keep the same
-						// clearance — the bar floats, the layout does not move.
+						// the home-indicator inset. `position: absolute` takes the bar out
+						// of the navigator's flex flow, so it overlays the last stretch of
+						// every screen in this tree and each one reserves `height + bottom`
+						// for it — `BUSINESS_TAB_BAR_CLEARANCE` in `theme/tokens.ts`, spent
+						// through `./tab-bar`. The bar floats; the layout does not move.
 						tabBarStyle: [
 							{
 								position: "absolute",
@@ -274,7 +294,10 @@ export default function BusinessLayout() {
 					{/* A route in this tree, not a destination of it: the form opens from
 			    the menu and the rail, and a tab for it would be a door to a screen
 			    with no tab state. `href: null` keeps it mounted and out of the bar. */}
-					<Tabs.Screen name="product-form" options={{ href: null }} />
+					<Tabs.Screen
+						name="product-form"
+						options={merchantBarlessOptions("product-form")}
+					/>
 					<Tabs.Screen name="products" options={{ href: null }} />
 					<Tabs.Screen name="analytics" options={{ href: null }} />
 					{/* Every route file in this group must be declared here: Tabs
@@ -287,11 +310,23 @@ export default function BusinessLayout() {
 					<Tabs.Screen name="store-profile" options={{ href: null }} />
 					<Tabs.Screen name="business-hours" options={{ href: null }} />
 					<Tabs.Screen name="support" options={{ href: null }} />
-					<Tabs.Screen name="shop-settings" options={{ href: null }} />
-					<Tabs.Screen name="merchant-settings" options={{ href: null }} />
-					<Tabs.Screen name="shop-hours" options={{ href: null }} />
+					<Tabs.Screen
+						name="shop-settings"
+						options={merchantBarlessOptions("shop-settings")}
+					/>
+					<Tabs.Screen
+						name="merchant-settings"
+						options={merchantBarlessOptions("merchant-settings")}
+					/>
+					<Tabs.Screen
+						name="shop-hours"
+						options={merchantBarlessOptions("shop-hours")}
+					/>
 					<Tabs.Screen name="promotions" options={{ href: null }} />
-					<Tabs.Screen name="promotion-form" options={{ href: null }} />
+					<Tabs.Screen
+						name="promotion-form"
+						options={merchantBarlessOptions("promotion-form")}
+					/>
 					<Tabs.Screen name="merchant-order/[id]" options={{ href: null }} />
 					<Tabs.Screen name="locations" options={{ href: null }} />
 					<Tabs.Screen name="payouts" options={{ href: null }} />

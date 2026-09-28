@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 
 import { space } from "@/theme";
 
 import { ListEnd } from "./list-end";
 import { useRefreshControl } from "./pull-refresh";
+import { useTabBarClearance } from "./tab-bar";
 
 /**
  * A paginated list of cards — the scroller, the pull and the foot, written once.
@@ -135,6 +137,20 @@ type PaginatedListProps<Item> = {
 	onLoadMore: () => void;
 	/** Absent means no pull, and no control: a gesture the list answers by doing nothing. */
 	onRefresh?: () => unknown;
+	/**
+	 * Mirrors `./screen`'s `bottomInset`, and has to be passed the same answer — see
+	 * `./tab-bar`. This list brings its own scroller, so it pays the floating merchant
+	 * capsule out of its own `contentContainerStyle`, and the only thing it cannot see
+	 * for itself is whether the `Screen` around it already gave up the home-indicator
+	 * inset. Answering wrong is not a crash: it is 34 points of dead air, or 34 points
+	 * of bar over the last row, and only on a phone that has a home indicator, which is
+	 * the shape of bug that survives a review on a simulator with a home button.
+	 *
+	 * Four of the five callers are in the customer tree and pass it for free alongside
+	 * the same prop on `Screen`; the fifth is the merchant catalogue, the one screen
+	 * where the number is not zero.
+	 */
+	bottomInset?: boolean;
 };
 
 export function PaginatedList<Item>({
@@ -146,10 +162,21 @@ export function PaginatedList<Item>({
 	loadingMore,
 	onLoadMore,
 	onRefresh,
+	bottomInset = false,
 }: PaginatedListProps<Item>) {
 	// The pull, both tints and its own flag, from the one place that holds the three rules —
 	// the same call `./screen` makes for the scroller it owns. See `./pull-refresh`.
 	const refreshControl = useRefreshControl(onRefresh);
+	// And the floating bar over this list, if the tree has one. See `./tab-bar`.
+	const tabClearance = useTabBarClearance({ bottomInsetPaid: bottomInset });
+	// The list's own foot, and the same two terms `./screen`'s scroller pays: the page's
+	// gutter, plus the bar. Memoised for the reason that file gives — a fresh
+	// `contentContainerStyle` on every render is a layout pass, and this list re-renders
+	// on every page it loads.
+	const contentPadding = useMemo(
+		() => ({ paddingBottom: space.huge + tabClearance }),
+		[tabClearance],
+	);
 
 	return (
 		<FlatList
@@ -179,7 +206,7 @@ export function PaginatedList<Item>({
 				/>
 			}
 			ItemSeparatorComponent={Separator}
-			contentContainerStyle={styles.content}
+			contentContainerStyle={contentPadding}
 			style={styles.list}
 			refreshControl={refreshControl}
 			/**
@@ -228,11 +255,10 @@ const styles = StyleSheet.create({
 	// `contentStyle={{ flex: 1 }}` (their local `fill`/`page`/`frame`) alongside
 	// `padded={false}`. Four screens use this component and all four had forgotten it.
 	list: { flex: 1 },
-	// `./screen`'s own scroller pays `space.huge` at the bottom (`screen.tsx:198`,
-	// `scrollContent`) and a screen
-	// that brings its own scroller has to pay it itself. No horizontal padding: the header
-	// manages its own and the rows pay theirs — see the docblock.
-	content: { paddingBottom: space.huge },
+	// No horizontal padding: the header
+	// manages its own and the rows pay theirs — see the docblock. The foot is not here
+	// either: it is a runtime number, so it is built at the call site above rather than
+	// declared twice with the second one always winning.
 	// The gap between the blocks above and the first row.
 	header: { marginBottom: space.lg },
 	// The card column's gutter, which every one of the three screens had written out as

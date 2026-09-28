@@ -340,6 +340,10 @@ function Menu() {
 		<>
 			<PaginatedList
 				data={shown}
+				// The same answer `Screen` above was given. This is the one list in the app
+				// that floats under the merchant capsule — `./tab-bar` has the reasoning, and
+				// the number is 82 points of the last row being unreachable without it.
+				bottomInset
 				keyExtractor={(product) => product.id}
 				renderItem={(product, index) => (
 					<AnimateIn index={index}>

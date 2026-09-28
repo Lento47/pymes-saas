@@ -553,3 +553,28 @@ export const BUSINESS_TAB_BAR_HEIGHT = 70;
 
 /** The capsule's lift above the bottom inset. */
 export const BUSINESS_TAB_BAR_LIFT = 12;
+
+/**
+ * What a merchant screen has to leave free at the foot of its scroll, or the capsule
+ * covers the last row and there is no way to scroll it out.
+ *
+ * **Derived from the two numbers above rather than typed**, which is the whole reason it
+ * lives here. The capsule is `position: "absolute"`, so React Navigation takes it out of
+ * the flex flow that sizes the screen (`packages/bottom-tabs/src/views/BottomTabViewCustom.tsx`
+ * applies `tabBarStyle` last, so `absolute` wins over the column) and the navigator
+ * reserves nothing for it — every point of this sum has to come out of the screen's own
+ * `paddingBottom`. A constant written as `82` would survive a change to the 70 or to the
+ * 12 and then be quietly wrong by the difference, which is the failure
+ * `./action-bar`'s `ACTION_BAR_CLEARANCE` was extracted to prevent.
+ *
+ * **The home-indicator inset is not in this sum**, and that is not an oversight: a screen
+ * that asks `./screen` for `bottomInset` has already had the inset paid by its
+ * `SafeAreaView`, and one that does not has not. `./tab-bar`'s `useTabBarClearance` is
+ * where that difference is resolved, because only the screen knows which it is.
+ *
+ * `useBottomTabBarHeight()` is **not** this number and cannot be made into it:
+ * `getTabBarHeight()` reads the flattened `tabBarStyle.height` and answers `70` —
+ * short by the lift and by the inset, on every device.
+ */
+export const BUSINESS_TAB_BAR_CLEARANCE =
+	BUSINESS_TAB_BAR_HEIGHT + BUSINESS_TAB_BAR_LIFT;
