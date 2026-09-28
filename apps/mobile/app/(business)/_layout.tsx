@@ -159,6 +159,11 @@ export default function BusinessLayout() {
 									(windowWidth - CAPSULE_WIDTH) / 2,
 								),
 								height: BUSINESS_TAB_BAR_HEIGHT,
+								// Inset outside the bar, never inside it: paddingBottom
+								// here is the exact bug — dead air under the icons.
+								paddingVertical: 0,
+								alignItems: "center",
+								justifyContent: "center",
 								bottom: insets.bottom + BUSINESS_TAB_BAR_LIFT,
 								borderRadius: radius.full,
 								backgroundColor: withAlpha(colors.card, BAR_OPACITY),
@@ -169,8 +174,14 @@ export default function BusinessLayout() {
 							},
 							CAPSULE_SHADOW,
 						],
+						// Each tab takes the capsule's full height and centres its
+						// own content: no label slot, no inherited paddingBottom,
+						// no safe-area inset inside the bar — the inset lives
+						// outside, in `bottom` above. Selected and unselected share
+						// the one centerline; the dot is absolute and moves nothing.
 						tabBarItemStyle: {
 							flex: 1,
+							height: "100%",
 							alignItems: "center",
 							justifyContent: "center",
 							paddingVertical: 0,
