@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import {
+	AccessibilityInfo,
+	Image,
+	Platform,
+	StyleSheet,
+	View,
+} from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
@@ -114,17 +120,36 @@ function ProfileForm({
 	const [isAvailable, setIsAvailable] = useState(true);
 	const [submitted, setSubmitted] = useState(false);
 	const initialized = useRef(false);
+	const initial = useRef<{
+		displayName: string;
+		serviceArea: string;
+		bio: string;
+		vehicleName: string;
+		vehiclePlate: string;
+		vehiclePhotoUrl: string | null;
+		isAvailable: boolean;
+	} | null>(null);
 
 	useEffect(() => {
 		if (initialized.current || profile.data === undefined || !me.data) return;
 		initialized.current = true;
-		setDisplayName(profile.data?.displayName ?? me.data.name);
-		setServiceArea(profile.data?.serviceArea ?? "");
-		setBio(profile.data?.bio ?? "");
-		setVehicleName(profile.data?.vehicleName ?? "");
-		setVehiclePlate(profile.data?.vehiclePlate ?? "");
-		setVehiclePhotoUrl(profile.data?.vehiclePhotoUrl ?? null);
-		setIsAvailable(profile.data?.isAvailable ?? true);
+		const snapshot = {
+			displayName: profile.data?.displayName ?? me.data.name,
+			serviceArea: profile.data?.serviceArea ?? "",
+			bio: profile.data?.bio ?? "",
+			vehicleName: profile.data?.vehicleName ?? "",
+			vehiclePlate: profile.data?.vehiclePlate ?? "",
+			vehiclePhotoUrl: profile.data?.vehiclePhotoUrl ?? null,
+			isAvailable: profile.data?.isAvailable ?? true,
+		};
+		initial.current = snapshot;
+		setDisplayName(snapshot.displayName);
+		setServiceArea(snapshot.serviceArea);
+		setBio(snapshot.bio);
+		setVehicleName(snapshot.vehicleName);
+		setVehiclePlate(snapshot.vehiclePlate);
+		setVehiclePhotoUrl(snapshot.vehiclePhotoUrl);
+		setIsAvailable(snapshot.isAvailable);
 	}, [me.data, profile.data]);
 
 	const save = useMutation(
@@ -178,6 +203,26 @@ function ProfileForm({
 		}
 	};
 	const failure = useApiFailure(save.error);
+
+	/**
+	 * The refusal, read out on iOS, where nothing else will read it.
+	 *
+	 * `accessibilityLiveRegion` is Android's and Android's alone - RN declares it on
+	 * `AccessibilityPropsAndroid` with `@platform android` - so the two live regions below
+	 * are the whole of Android's announcement, and iOS, which ignores the prop, has to be
+	 * told. One effect for the screen and not one per region: the upload failure and the
+	 * save failure are two mutations, so this is the place that decides which sentence is
+	 * the one to say now, and a screen with something newer to say has stopped saying the
+	 * older thing. Guarded by the platform rather than announced on both - the pairing
+	 * `./error-state`, `./rollback-notice` and `app/settings.tsx` all use, because a
+	 * sentence a live region has already spoken is not read twice, it is read as two.
+	 */
+	const announcement = photoFailure.message || failure.message;
+	useEffect(() => {
+		if (Platform.OS !== "ios" || !announcement) return;
+		AccessibilityInfo.announceForAccessibility(announcement);
+	}, [announcement]);
+
 	const waiting = useSkeletonHold(
 		status === "loading" || profile.isPending || me.isPending,
 	);
@@ -206,6 +251,19 @@ function ProfileForm({
 		submitted && !serviceArea.trim() ? t("form.required") : null;
 	const ready = status === "signed-in" && !!me.data;
 	const statusValue = profile.data?.verificationStatus;
+	const baseline = initial.current;
+	// No dirty check on `submitted`: a pristine form has nothing to write, so the
+	// save stays dimmed until a field actually differs from the loaded profile.
+	const dirty =
+		baseline == null
+			? false
+			: displayName !== baseline.displayName ||
+				serviceArea !== baseline.serviceArea ||
+				bio !== baseline.bio ||
+				vehicleName !== baseline.vehicleName ||
+				vehiclePlate !== baseline.vehiclePlate ||
+				vehiclePhotoUrl !== baseline.vehiclePhotoUrl ||
+				isAvailable !== baseline.isAvailable;
 
 	return (
 		<View style={styles.content}>
@@ -310,7 +368,11 @@ function ProfileForm({
 					/>
 				)}
 				{photoFailure.message ? (
-					<Text tone="destructive" accessibilityRole="alert">
+					<Text
+						tone="destructive"
+						accessibilityRole="alert"
+						accessibilityLiveRegion="assertive"
+					>
 						{photoFailure.message}
 					</Text>
 				) : null}
@@ -336,7 +398,11 @@ function ProfileForm({
 			</ScreenSection>
 
 			{failure.message ? (
-				<Text tone="destructive" accessibilityRole="alert">
+				<Text
+					tone="destructive"
+					accessibilityRole="alert"
+					accessibilityLiveRegion="assertive"
+				>
 					{failure.message}
 				</Text>
 			) : null}
@@ -348,7 +414,7 @@ function ProfileForm({
 					// Gated on the upload as well: a save racing a picture that is still
 					// in flight would store the profile without the photo the reader just
 					// picked, and the toast would say "saved" while losing it.
-					disabled={save.isPending || photoUpload.isPending}
+					disabled={save.isPending || photoUpload.isPending || !dirty}
 					fullWidth
 					onPress={() => {
 						setSubmitted(true);

@@ -8,13 +8,14 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
 import { ErrorState } from "@/components/error-state";
+import { Field } from "@/components/field";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { RatingInput, type RatingValue } from "@/components/rating-input";
 import { Screen } from "@/components/screen";
@@ -24,7 +25,7 @@ import { Text } from "@/components/text";
 import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, space, useTheme } from "@/theme";
+import { icon, space, type, useTheme } from "@/theme";
 
 const STATUS_KEYS: Record<DeliveryStatus, MessageKey> = {
 	SEARCHING: "delivery.status.SEARCHING",
@@ -71,6 +72,7 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 	const cache = useQueryClient();
 	const [completeOpen, setCompleteOpen] = useState(false);
 	const [rating, setRating] = useState<RatingValue>(0);
+	const [comment, setComment] = useState("");
 	const query = useQuery(
 		trpc.deliveries.byId.queryOptions(
 			{ deliveryId },
@@ -146,7 +148,14 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 				<StopCard title={t("delivery.pickup")} stop={delivery.pickup} />
 				<StopCard title={t("delivery.dropoff")} stop={delivery.dropoff} />
 
-				{advance.error ? <ErrorState error={advance.error} /> : null}
+				{advance.error ? (
+					<ErrorState
+						error={advance.error}
+						onRetry={() => {
+							if (action) runAction(action);
+						}}
+					/>
+				) : null}
 
 				{action ? (
 					<Card style={styles.card}>
@@ -188,7 +197,27 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 									}
 									disabled={rate.isPending}
 								/>
-								{rate.error ? <ErrorState error={rate.error} /> : null}
+								<Field
+									label={t("review.comment")}
+									value={comment}
+									onChangeText={setComment}
+									multiline
+									maxLength={500}
+									editable={!rate.isPending}
+								/>
+								{rate.error ? (
+									<ErrorState
+										error={rate.error}
+										onRetry={() => {
+											if (rating === 0) return;
+											rate.mutate({
+												deliveryId,
+												rating,
+												comment: comment.trim() || undefined,
+											});
+										}}
+									/>
+								) : null}
 								<Button
 									label={t("delivery.rateCustomer.submit")}
 									fullWidth
@@ -196,7 +225,11 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 									disabled={rating === 0 || rate.isPending}
 									onPress={() => {
 										if (rating === 0) return;
-										rate.mutate({ deliveryId, rating });
+										rate.mutate({
+											deliveryId,
+											rating,
+											comment: comment.trim() || undefined,
+										});
 									}}
 								/>
 							</>
@@ -209,6 +242,7 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 				open={completeOpen}
 				onClose={() => setCompleteOpen(false)}
 				title={t("delivery.complete.confirm")}
+				body={t("delivery.complete.body")}
 				confirmLabel={t("delivery.action.complete")}
 				onConfirm={() => advance.mutate({ deliveryId, action: "COMPLETE" })}
 			/>
@@ -235,7 +269,9 @@ function StopCard({ title, stop }: { title: string; stop: DeliveryStop }) {
 				? `${stop.lat},${stop.lng}`
 				: address;
 		const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-		void Linking.openURL(url).catch(() => {});
+		void Linking.canOpenURL(url)
+			.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
+			.catch(() => null);
 	}
 
 	return (
@@ -280,12 +316,16 @@ function actionFor(status: DeliveryStatus): DeliveryAction | null {
 }
 
 function DeliverySkeleton({ label }: { label: string }) {
+	const { fontScale } = useWindowDimensions();
+	const line = (variant: keyof typeof type) => ({
+		height: Math.round(type[variant].lineHeight * fontScale),
+	});
 	return (
 		<View style={styles.scrollContent}>
-			<Skeleton label={label} style={styles.skeletonStatus} />
-			<Skeleton style={styles.skeletonCard} />
-			<Skeleton style={styles.skeletonCard} />
-			<Skeleton style={styles.skeletonAction} />
+			<Skeleton label={label} style={[styles.skeletonStatus, line("heading")]} />
+			<Skeleton style={[styles.skeletonCard, line("body")]} />
+			<Skeleton style={[styles.skeletonCard, line("body")]} />
+			<Skeleton style={[styles.skeletonAction, line("body")]} />
 		</View>
 	);
 }

@@ -807,6 +807,7 @@ export const business = {
 	"delivery.action.confirmPickup": "Confirm pickup",
 	"delivery.action.complete": "Mark as delivered",
 	"delivery.complete.confirm": "Confirm that you delivered the order?",
+	"delivery.complete.body": "The customer is notified as delivered.",
 	"delivery.waitingReady": "The business is still preparing the order.",
 	"delivery.rateCustomer.title": "Rate the customer",
 	"delivery.rateCustomer.subtitle":

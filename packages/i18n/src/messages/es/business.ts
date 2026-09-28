@@ -867,6 +867,7 @@ export const business = {
 	"delivery.action.confirmPickup": "Confirmar recogida",
 	"delivery.action.complete": "Marcar como entregada",
 	"delivery.complete.confirm": "¿Confirmar que entregaste el pedido?",
+	"delivery.complete.body": "El cliente recibe el aviso de entrega.",
 	"delivery.waitingReady": "El negocio todavía está preparando el pedido.",
 	"delivery.rateCustomer.title": "Califica al cliente",
 	"delivery.rateCustomer.subtitle":

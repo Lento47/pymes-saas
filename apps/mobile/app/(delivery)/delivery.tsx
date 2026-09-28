@@ -1,18 +1,19 @@
 import { MOVE_LABELS } from "@pymeshub/i18n";
+import type { OrderStatus } from "@pymeshub/shared";
 import {
 	useInfiniteQuery,
 	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import * as Location from "expo-location";
 import { type Href, router } from "expo-router";
-import { useEffect, useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Linking, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
+import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { ListEnd } from "@/components/list-end";
@@ -23,12 +24,19 @@ import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { StatusBadge, statusKey } from "@/components/status-badge";
 import { Text } from "@/components/text";
 import { toApiFailure } from "@/lib/api-error";
+import { useSession } from "@/lib/auth/session";
+import {
+	reconcileCourierTracking,
+	type StartTrackingResult,
+	startCourierTracking,
+	stopCourierTracking,
+} from "@/lib/courier-tracking";
 import { formatStamp } from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
-import { space } from "@/theme";
+import { space, type } from "@/theme";
 
 /**
  * The courier's board: the runs assigned to this person, and the move each one is waiting for.
@@ -99,8 +107,6 @@ const PAGE_SIZE = 20;
  * The interval is enforced here on the fix rather than by a timer, so a phone that has been
  * still for a minute posts once when it moves rather than four times while parked.
  */
-const REPORT_INTERVAL_MS = 15000;
-
 /**
  * How long the board waits before re-reading itself.
  *
@@ -111,14 +117,25 @@ const BOARD_POLL_MS = 5000;
 
 export default function DeliveryScreen() {
 	const { t } = useT();
+	const trpc = useTRPC();
+	const cache = useQueryClient();
 	return (
 		<Screen
 			title={t("biz.staff.role.COURIER")}
 			scroll
 			bottomInset
 			contentStyle={styles.gap}
+			onRefresh={() => {
+				void cache.invalidateQueries({
+					queryKey: trpc.orders.pathKey(),
+				});
+				void cache.invalidateQueries({
+					queryKey: trpc.deliveries.pathKey(),
+				});
+			}}
 		>
 			<SignedIn>
+				<Dispatch />
 				<Runs />
 				{/*
 				    The profile door, on the board itself: the courier tree has no tab bar
@@ -220,67 +237,29 @@ function Runs() {
  * the counter. A fix that arrives before the courier taps "Sale a entregar" is dropped, and the
  * first one after it is posted.
  */
-function CourierSharing({ orderId }: { orderId?: string }) {
+function CourierSharing({
+	result,
+	sharing,
+}: {
+	result: StartTrackingResult | null;
+	sharing: boolean;
+}) {
 	const { t } = useT();
-	const trpc = useTRPC();
-	const { status, request } = useDeviceLocation();
-	const { mutate } = useMutation(trpc.orders.reportLocation.mutationOptions());
-
-	useEffect(() => {
-		// Nothing to share, or nobody to share it with: no watch is started, which is what
-		// keeps a courier who is off duty from holding a location subscription open.
-		if (status !== "granted" || !orderId) return;
-
-		let alive = true;
-		let lastSent = 0;
-		let watch: Location.LocationSubscription | undefined;
-
-		void (async () => {
-			try {
-				watch = await Location.watchPositionAsync(
-					{
-						// `Balanced`, the same accuracy the browsing screens use and for a
-						// larger reason: a buyer reading a dot on a map needs to know the
-						// courier is four blocks away, and does not need to know which side of
-						// the street. `High` costs battery and a cold-GPS wait for a precision
-						// nothing on the screen can express.
-						accuracy: Location.Accuracy.Balanced,
-						// Reported to the OS, not to us: closer than `md` apart is noise on a
-						// map, and the OS skips the update entirely rather than waking JS for it.
-						distanceInterval: space.md,
-					},
-					(position) => {
-						if (!alive) return;
-						const now = Date.now();
-						if (now - lastSent < REPORT_INTERVAL_MS) return;
-						lastSent = now;
-						mutate({
-							orderId,
-							lat: position.coords.latitude,
-							lng: position.coords.longitude,
-						});
-					},
-				);
-			} catch {
-				// Location services switched off mid-run, or a watch the platform refused.
-				// The run is unaffected — the customer sees "last seen" instead of a live dot,
-				// which is the same state as a phone that has not moved yet.
-			}
-		})();
-
-		return () => {
-			alive = false;
-			watch?.remove();
-		};
-	}, [status, orderId, mutate]);
-
-	// Granted and riding: the board below says everything, and a band saying "sharing" would be
-	// a control for something already happening.
-	if (status === "granted") return null;
-
-	// The two cases worth a band: the courier has not granted access, or the
-	// phone's location service is off. In both cases the customer cannot see them.
-	if (status !== "denied" && status !== "unavailable") return null;
+	if (!result || result === "started") {
+		if (!sharing) return null;
+		return (
+			<Card>
+				<View style={styles.sharing}>
+					<Text variant="body" bold>
+						{t("biz.courier.location.title")}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{t("order.track.live")}
+					</Text>
+				</View>
+			</Card>
+		);
+	}
 
 	return (
 		<Card>
@@ -289,26 +268,266 @@ function CourierSharing({ orderId }: { orderId?: string }) {
 					{t("biz.courier.location.title")}
 				</Text>
 				<Text variant="caption" tone="muted">
-					{t(
-						status === "unavailable"
-							? "biz.courier.location.unavailable"
-							: "biz.courier.location.body",
-					)}
+					{t("biz.courier.location.unavailable")}
 				</Text>
 				<Button
 					label={t("biz.courier.location.action")}
 					variant="secondary"
-					onPress={request}
+					onPress={() => void Linking.openSettings()}
 				/>
 			</View>
 		</Card>
 	);
 }
 
-function Board({ businessId }: { businessId: string }) {
+/**
+ * Dispatch offers and active delivery runs (the `deliveries.*` model).
+ *
+ * The board below reads `orders.queue`; this section reads `deliveries.offers`
+ * (PENDING, unexpired) plus `deliveries.mine` (active runs) so an offered run
+ * has somewhere to be accepted — previously no screen called `acceptOffer`.
+ * Accepting navigates to `/delivery/:id`, which is what finally gives that
+ * detail screen an inbound link.
+ */
+const OFFERS_POLL_MS = 15_000;
+
+function Dispatch() {
 	const { t, intlLocale } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
+	const [busyId, setBusyId] = useState<string | null>(null);
+	const offers = useQuery(
+		trpc.deliveries.offers.queryOptions(undefined, {
+			refetchInterval: OFFERS_POLL_MS,
+		}),
+	);
+	const mine = useQuery(
+		trpc.deliveries.mine.queryOptions(undefined, {
+			refetchInterval: OFFERS_POLL_MS,
+		}),
+	);
+	const { coords, status: locationStatus } = useDeviceLocation();
+	const presence = useMutation(trpc.deliveries.reportPresence.mutationOptions({}));
+	const reportedKey = useRef<string | null>(null);
+
+	// Best-effort eligibility ping: dispatch only offers runs to couriers with a
+	// fresh presence. `useDeviceLocation` reads the cached fix without prompting,
+	// so this never raises a dialog on its own. Failures stay silent — an offer
+	// list that errors over a background ping would blame the wrong thing.
+	useEffect(() => {
+		if (!coords) return;
+		const key = `${coords.lat},${coords.lng}`;
+		if (reportedKey.current === key) return;
+		reportedKey.current = key;
+		presence.mutate({ lat: coords.lat, lng: coords.lng });
+	}, [coords, presence]);
+
+	const accept = useMutation(
+		trpc.deliveries.acceptOffer.mutationOptions({
+			onSuccess: async (detail) => {
+				setBusyId(null);
+				await cache.invalidateQueries({
+					queryKey: trpc.deliveries.pathKey(),
+				});
+				await cache.invalidateQueries({
+					queryKey: trpc.orders.pathKey(),
+				});
+				router.push(`/delivery/${detail.id}` as Href);
+			},
+			onError: () => setBusyId(null),
+		}),
+	);
+	const decline = useMutation(
+		trpc.deliveries.declineOffer.mutationOptions({
+			onSuccess: async () => {
+				setBusyId(null);
+				await cache.invalidateQueries({
+					queryKey: trpc.deliveries.pathKey(),
+				});
+			},
+			onError: () => setBusyId(null),
+		}),
+	);
+	const responding = accept.isPending || decline.isPending;
+	const failure = accept.error ?? decline.error;
+
+	const pending = offers.data ?? [];
+	const active = (mine.data ?? []).filter(
+		(delivery) =>
+			delivery.status !== "DELIVERED" && delivery.status !== "CANCELLED",
+	);
+	const history = (mine.data ?? []).filter(
+		(delivery) => delivery.status === "DELIVERED",
+	);
+
+	if (offers.isPending && mine.isPending) return null;
+	if (offers.isError && mine.isError) {
+		return (
+			<ErrorState
+				error={offers.error}
+				onRetry={() => {
+					void offers.refetch();
+					void mine.refetch();
+				}}
+			/>
+		);
+	}
+
+	return (
+		<View style={styles.body}>
+			<Text variant="heading" bold>
+				{t("delivery.board.title")}
+			</Text>
+			{locationStatus === "denied" ? (
+				<Text variant="caption" tone="muted">
+					{t("delivery.presence.denied")}
+				</Text>
+			) : null}
+
+			{pending.length > 0 ? (
+				<View style={styles.body}>
+					<Text variant="label" tone="muted">
+						{t("delivery.board.offers")}
+					</Text>
+					{pending.map((offer) => {
+						const busy = busyId === offer.id;
+						return (
+							<Card key={offer.id}>
+								<View style={styles.order}>
+									<View style={styles.orderHead}>
+										<Text variant="label" tone="muted" tabular>
+											{t("order.number", { code: offer.orderReference })}
+										</Text>
+										<Text variant="caption" tone="muted">
+											{formatStamp(offer.expiresAt, intlLocale)}
+										</Text>
+									</View>
+									<Text variant="body" bold>
+										{offer.businessName}
+									</Text>
+									<Text variant="caption" tone="muted">
+										{offer.dropoffArea}
+										{offer.distanceToPickupKm != null
+											? ` · ${t("delivery.offer.distance", {
+													value: offer.distanceToPickupKm.toFixed(1),
+												})}`
+											: null}
+									</Text>
+									<View style={styles.orderActions}>
+										<Button
+											label={t("delivery.offer.accept")}
+											loading={busy && accept.isPending}
+											disabled={responding}
+											onPress={() => {
+												setBusyId(offer.id);
+												accept.mutate({ offerId: offer.id });
+											}}
+										/>
+										<Button
+											label={t("delivery.offer.decline")}
+											variant="ghost"
+											loading={busy && decline.isPending}
+											disabled={responding}
+											onPress={() => {
+												setBusyId(offer.id);
+												decline.mutate({ offerId: offer.id });
+											}}
+										/>
+									</View>
+								</View>
+							</Card>
+						);
+					})}
+				</View>
+			) : null}
+
+			{failure ? (
+				<ErrorState
+					error={failure}
+					onRetry={() => {
+						if (busyId && accept.error) accept.mutate({ offerId: busyId });
+						else if (busyId && decline.error)
+							decline.mutate({ offerId: busyId });
+					}}
+				/>
+			) : null}
+
+			{active.length > 0 ? (
+				<View style={styles.body}>
+					<Text variant="label" tone="muted">
+						{t("delivery.board.active")}
+					</Text>
+					{active.map((delivery) => (
+						<Card key={delivery.id}>
+							<View style={styles.order}>
+								<Text variant="label" tone="muted" tabular>
+									{t("order.number", { code: delivery.orderReference })}
+								</Text>
+								<Text variant="body" bold>
+									{delivery.business.name}
+								</Text>
+								<View style={styles.orderActions}>
+									<Button
+										label={t("action.view")}
+										variant="secondary"
+										onPress={() =>
+											router.push(`/delivery/${delivery.id}` as Href)
+										}
+									/>
+								</View>
+							</View>
+						</Card>
+					))}
+				</View>
+			) : null}
+
+			{pending.length === 0 && active.length === 0 && mine.data ? (
+				<Text variant="caption" tone="muted">
+					{t("delivery.board.empty.body")}
+				</Text>
+			) : null}
+
+			{history.length > 0 ? (
+				<View style={styles.body}>
+					<Text variant="label" tone="muted">
+						{t("delivery.board.history")}
+					</Text>
+					{history.slice(0, 3).map((delivery) => (
+						<Card key={delivery.id}>
+							<View style={styles.order}>
+								<Text variant="label" tone="muted" tabular>
+									{t("order.number", { code: delivery.orderReference })}
+								</Text>
+								<View style={styles.orderActions}>
+									<Button
+										label={t("action.view")}
+										variant="secondary"
+										onPress={() =>
+											router.push(`/delivery/${delivery.id}` as Href)
+										}
+									/>
+								</View>
+							</View>
+						</Card>
+					))}
+				</View>
+			) : null}
+		</View>
+	);
+}
+
+function Board({ businessId }: { businessId: string }) {
+	const { t, intlLocale } = useT();
+	const { session } = useSession();
+	const trpc = useTRPC();
+	const cache = useQueryClient();
+	const [trackingResult, setTrackingResult] =
+		useState<StartTrackingResult | null>(null);
+	const [startIntent, setStartIntent] = useState<{
+		orderId: string;
+		to: OrderStatus;
+		expectedStatus: OrderStatus;
+	} | null>(null);
 	const query = useInfiniteQuery(
 		trpc.orders.queue.infiniteQueryOptions(
 			{
@@ -326,12 +545,22 @@ function Board({ businessId }: { businessId: string }) {
 	);
 	const move = useMutation(
 		trpc.orders.advance.mutationOptions({
-			onSuccess: async () => {
+			onSuccess: async (_result, variables) => {
 				// The commit landed. `light` rather than `success`, the same note as the shop's
 				// board: a move that worked does not need a celebration.
 				light();
 				// The procedure's own key root and nothing wider — an advance moves order rows
 				// and only order rows, so `orders.*` is every cache it could have made wrong.
+				if (variables.to === "OUT_FOR_DELIVERY" && session?.userId) {
+					setTrackingResult(
+						await startCourierTracking(variables.orderId, session.userId),
+					);
+				} else if (
+					variables.to === "COMPLETED" ||
+					variables.to === "CANCELLED"
+				) {
+					await stopCourierTracking();
+				}
 				await cache.invalidateQueries({ queryKey: trpc.orders.pathKey() });
 			},
 			onError: async (error) => {
@@ -368,10 +597,14 @@ function Board({ businessId }: { businessId: string }) {
 	const ridingId = orders.find(
 		(order) => order.status === "OUT_FOR_DELIVERY",
 	)?.id;
+	useEffect(() => {
+		if (!session?.userId) return;
+		void reconcileCourierTracking(ridingId, session.userId);
+	}, [ridingId, session?.userId]);
 
 	return (
 		<View style={styles.body}>
-			<CourierSharing orderId={ridingId} />
+			<CourierSharing result={trackingResult} sharing={ridingId != null} />
 
 			{/* Above the rows: the run that failed can be twenty rows down, and a refusal nobody
 			    scrolls to was not said. `ErrorState` carries the announcement on both platforms,
@@ -389,6 +622,9 @@ function Board({ businessId }: { businessId: string }) {
 								}
 							: "biz.board.conflict.title",
 						FORBIDDEN: "biz.permission.body",
+					}}
+					onRetry={() => {
+						if (move.variables) move.mutate(move.variables);
 					}}
 				/>
 			) : null}
@@ -416,12 +652,7 @@ function Board({ businessId }: { businessId: string }) {
 						// delivered takes it off and every card under it is the same card at a new
 						// index. They close the gap on the layout spring rather than re-entering.
 						<AnimateIn key={order.id} index={index} reorder>
-							<Card
-								onPress={() => router.push(`/order/${order.id}` as Href)}
-								accessibilityLabel={t("order.number", {
-									code: order.reference,
-								})}
-							>
+							<Card>
 								<View style={styles.order}>
 									<View style={styles.orderHead}>
 										<Text variant="label" tone="muted" tabular>
@@ -448,7 +679,9 @@ function Board({ businessId }: { businessId: string }) {
 									{/* One button, and never a choice: a courier's machine has exactly
 									    one move out of each state it can be in. Drawn from the row's
 									    own `nextStatuses` all the same, so the day the machine grows
-									    a second courier move this screen offers it without an edit. */}
+									    a second courier move this screen offers it without an edit.
+									    The order detail is an explicit button rather than the whole
+									    card, so the move controls never sit inside another pressable. */}
 									<View style={styles.orderActions}>
 										{order.nextStatuses.map((to) => (
 											<Button
@@ -458,15 +691,24 @@ function Board({ businessId }: { businessId: string }) {
 												// The row is mid-write: its own control waits for the
 												// answer. Other rows are untouched.
 												disabled={movingId === order.id}
-												onPress={() =>
-													move.mutate({
+												onPress={() => {
+													const intent = {
 														orderId: order.id,
 														to,
 														expectedStatus: order.status,
-													})
-												}
+													};
+													if (to === "OUT_FOR_DELIVERY") setStartIntent(intent);
+													else move.mutate(intent);
+												}}
 											/>
 										))}
+										<Button
+											label={t("action.view")}
+											variant="secondary"
+											onPress={() =>
+												router.push(`/order/${order.id}` as Href)
+											}
+										/>
 									</View>
 								</View>
 							</Card>
@@ -481,6 +723,17 @@ function Board({ businessId }: { businessId: string }) {
 					/>
 				</>
 			)}
+			<ConfirmSheet
+				open={startIntent !== null}
+				onClose={() => setStartIntent(null)}
+				title={t("biz.courier.location.title")}
+				body={t("biz.courier.location.body")}
+				confirmLabel={t(MOVE_LABELS.OUT_FOR_DELIVERY)}
+				confirmVariant="primary"
+				onConfirm={() => {
+					if (startIntent) move.mutate(startIntent);
+				}}
+			/>
 		</View>
 	);
 }
@@ -493,20 +746,22 @@ function Board({ businessId }: { businessId: string }) {
  * label makes.
  */
 function RunsSkeleton({ label }: { label: string }) {
+	const { fontScale } = useWindowDimensions();
+	const lineHeight = Math.round(type.body.lineHeight * fontScale);
 	return (
 		<View style={styles.body}>
 			<Skeleton label={label} style={styles.skeletonLine} />
 			<Card>
 				<View style={styles.order}>
-					<Skeleton style={styles.skeletonLine} />
-					<Skeleton style={styles.skeletonLine} />
-					<Skeleton style={styles.skeletonLine} />
+					<Skeleton style={[styles.skeletonLine, { height: lineHeight }]} />
+					<Skeleton style={[styles.skeletonLine, { height: lineHeight }]} />
+					<Skeleton style={[styles.skeletonLine, { height: lineHeight }]} />
 				</View>
 			</Card>
 			<Card>
 				<View style={styles.order}>
-					<Skeleton style={styles.skeletonLine} />
-					<Skeleton style={styles.skeletonLine} />
+					<Skeleton style={[styles.skeletonLine, { height: lineHeight }]} />
+					<Skeleton style={[styles.skeletonLine, { height: lineHeight }]} />
 				</View>
 			</Card>
 		</View>

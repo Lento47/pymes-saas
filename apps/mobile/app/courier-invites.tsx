@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+	AccessibilityInfo,
+	Platform,
+	StyleSheet,
+	View,
+} from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
@@ -67,6 +72,13 @@ function Invites() {
 	const failure = useApiFailure(respond.error);
 	const waiting = useSkeletonHold(status === "loading" || invites.isPending);
 
+	// iOS ignores `accessibilityLiveRegion`, so announce the refusal explicitly —
+	// the same pairing `courier-profile.tsx` uses.
+	useEffect(() => {
+		if (Platform.OS !== "ios" || !failure.message) return;
+		AccessibilityInfo.announceForAccessibility(failure.message);
+	}, [failure.message]);
+
 	if (waiting) {
 		return (
 			<View style={styles.list}>
@@ -123,7 +135,8 @@ function Invites() {
 									label={t("biz.courier.invite.decline")}
 									variant="ghost"
 									size="sm"
-									disabled={busy}
+									loading={busy && respond.isPending}
+									disabled={respond.isPending}
 									onPress={() => {
 										setBusyId(invite.id);
 										respond.mutate({
@@ -135,8 +148,8 @@ function Invites() {
 								<Button
 									label={t("biz.courier.invite.accept")}
 									size="sm"
-									loading={busy}
-									disabled={busy}
+									loading={busy && respond.isPending}
+									disabled={respond.isPending}
 									onPress={() => {
 										setBusyId(invite.id);
 										respond.mutate({
@@ -151,7 +164,11 @@ function Invites() {
 				);
 			})}
 			{failure.message ? (
-				<Text tone="destructive" accessibilityRole="alert">
+				<Text
+					tone="destructive"
+					accessibilityRole="alert"
+					accessibilityLiveRegion="assertive"
+				>
 					{failure.message}
 				</Text>
 			) : null}

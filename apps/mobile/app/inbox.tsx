@@ -196,6 +196,7 @@ function Notice({
 
 	const when = formatRelative(notification.createdAt, intlLocale);
 	const orderId = orderIdOf(notification.data);
+	const deliveryId = deliveryIdOf(notification.data);
 
 	const spoken = [notification.title, notification.body, when]
 		.filter(
@@ -214,18 +215,28 @@ function Notice({
 				state={when ?? undefined}
 				// The rows are separated by `./paginated-list`'s own gap and share no line.
 				divider={false}
-				chevron={orderId !== null}
+				chevron={orderId !== null || deliveryId !== null}
 				accessibilityLabel={spoken}
 				onPress={
-					orderId === null
-						? undefined
-						: () =>
+					deliveryId !== null
+						? () =>
 								router.push({
-									pathname: "/order/[id]",
-									params: { id: orderId },
+									pathname: "/delivery/[id]",
+									params: { id: deliveryId },
 								})
+						: orderId === null
+							? undefined
+							: () =>
+									router.push({
+										pathname: "/order/[id]",
+										params: { id: orderId },
+									})
 				}
-				accessibilityHint={orderId === null ? undefined : t("inbox.row.help")}
+				accessibilityHint={
+					orderId === null && deliveryId === null
+						? undefined
+						: t("inbox.row.help")
+				}
 			/>
 		</AnimateIn>
 	);
@@ -242,6 +253,17 @@ function Notice({
  */
 function orderIdOf(data: Record<string, unknown> | null): string | null {
 	const value = data?.orderId;
+	return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * The delivery an offer notification points at, or `null` when it points
+ * nowhere. Dispatch writes `{ type: "DELIVERY_OFFERED", deliveryId, orderId }`,
+ * and the delivery half is the one a courier acts on — it opens
+ * `/delivery/:id`, where the run can be accepted and worked.
+ */
+function deliveryIdOf(data: Record<string, unknown> | null): string | null {
+	const value = data?.deliveryId;
 	return typeof value === "string" && value.length > 0 ? value : null;
 }
 
