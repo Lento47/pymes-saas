@@ -47,10 +47,16 @@ export function SignoffBlock() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <section className="showcase relative isolate overflow-hidden px-px pt-px" style={{ background: "var(--sc-amber)" }}>
-      {/* Inset inside the accent edge, so the amber reads as a hairline of page edge
-          rather than as a block of colour. */}
-      <div className="relative isolate overflow-hidden bg-[var(--sc-surface-black)]">
+    <section className="showcase relative isolate overflow-hidden bg-[var(--sc-surface-black)]">
+      <div className="relative isolate">
+        {/* The accent as a hairline along the top edge, the way the marketing pages
+            separate a block. A full-bleed amber frame was the template tell, and amber
+            is meant for a call to action or a figure, not for a border. */}
+        <div
+          aria-hidden="true"
+          className="h-px w-full"
+          style={{ background: "var(--sc-amber)" }}
+        />
         <ContourField tone="light" opacity={0.06} className="pointer-events-none absolute inset-0 h-full w-full" />
 
         <div className="relative mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20">
@@ -81,7 +87,7 @@ export function SignoffBlock() {
                   transition={{ ...SPRINGS.row, delay: columnIndex * 0.08 }}
                   className="showcase-sans"
                 >
-                  <h3 className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[var(--sc-amber)]">
+                  <h3 className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[var(--sc-amber-300)]">
                     {copy.heading}
                   </h3>
                   <ul className="mt-4 space-y-2.5">
@@ -101,7 +107,7 @@ export function SignoffBlock() {
             })}
           </div>
 
-          <p className="showcase-sans mt-14 border-t border-[var(--sc-panel-line)] pt-6 text-xs text-[var(--sc-white-alpha-40)]">
+          <p className="showcase-sans mt-14 border-t border-[var(--sc-panel-line)] pt-6 text-xs text-[var(--sc-faint)]">
             {t.legal}
           </p>
         </div>

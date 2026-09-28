@@ -100,19 +100,23 @@ export function HeroBlock({
         {/* The panels. */}
         <div className="flex flex-col gap-3">
           <Reveal delay={880} from="0.75rem">
-            <div className="showcase-sans rounded-[var(--sc-radius)] border border-[var(--sc-hairline)] bg-white/60 p-5 backdrop-blur-sm">
+            <div className="showcase-sans rounded-[var(--sc-radius-lg)] border border-[var(--sc-hairline)] bg-[var(--sc-paper-card)] p-5">
               <p className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[var(--sc-ink-muted)]">
                 {t.meta.location}
               </p>
-              <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-[var(--sc-ink)]">
-                <MapPin aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--sc-accent-text)]" />
+              <p className="mt-3 flex items-center gap-3 text-sm font-semibold text-[var(--sc-ink)]">
+                {/* The brand's icon tile rather than a loose glyph, which is how the old
+                    platform cards set theirs. */}
+                <span className="showcase-icon-tile h-9 w-9 rounded-xl">
+                  <MapPin aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+                </span>
                 {locationLabel}
               </p>
             </div>
           </Reveal>
 
           <Reveal delay={1020} from="0.75rem">
-            <div className="showcase-sans rounded-[var(--sc-radius)] border border-[var(--sc-hairline)] bg-white/60 p-5 backdrop-blur-sm">
+            <div className="showcase-sans rounded-[var(--sc-radius-lg)] border border-[var(--sc-hairline)] bg-[var(--sc-paper-card)] p-5">
               <p className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[var(--sc-ink-muted)]">
                 {t.meta.payment}
               </p>
@@ -129,11 +133,11 @@ export function HeroBlock({
 
           {shopCount !== null && shopCount > 0 ? (
             <Reveal delay={1160} from="0.75rem">
-              <div className="showcase-sans rounded-[var(--sc-radius)] border border-[var(--sc-hairline)] bg-white/60 p-5 backdrop-blur-sm">
+              <div className="showcase-sans rounded-[var(--sc-radius-lg)] border border-[var(--sc-hairline)] bg-[var(--sc-paper-card)] p-5">
                 <p className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[var(--sc-ink-muted)]">
                   {t.meta.shops}
                 </p>
-                <p className="showcase-display mt-2 text-[var(--sc-type-figure)] leading-none tracking-[-0.04em] text-[var(--sc-ink)]">
+                <p className="showcase-sans mt-2 text-[var(--sc-type-figure)] font-semibold leading-none tracking-[-0.055em] text-[var(--sc-ink)]">
                   {shopCount}
                 </p>
               </div>

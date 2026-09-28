@@ -1,3 +1,5 @@
+import { Bell, Bike, ChefHat, ClipboardCheck, DoorOpen, Hand, Star } from "lucide-react";
+
 import { useI18n } from "@/components/providers/i18n-provider";
 import { Reveal, TextReveal } from "@/lib/motion/text-reveal";
 
@@ -18,6 +20,17 @@ import { Reveal, TextReveal } from "@/lib/motion/text-reveal";
 
 const STEP_KEYS = ["choose", "confirm", "prepare", "dispatch", "notify", "arrive", "rate"] as const;
 
+/** One lucide glyph per step, in the order the steps happen. */
+const STEP_ICONS = [
+  Hand,
+  ClipboardCheck,
+  ChefHat,
+  Bike,
+  Bell,
+  DoorOpen,
+  Star,
+] as const;
+
 export function OrderJourneyBlock() {
   const { messages } = useI18n();
   const t = messages.site.showcase.journey;
@@ -27,7 +40,7 @@ export function OrderJourneyBlock() {
       <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
         <div className="max-w-2xl">
           <Reveal>
-            <p className="showcase-sans mb-5 text-[0.75rem] font-bold uppercase tracking-[0.22em] text-[var(--sc-amber)]">
+            <p className="showcase-sans mb-5 text-[0.75rem] font-bold uppercase tracking-[0.22em] text-[var(--sc-amber-300)]">
               {t.eyebrow}
             </p>
           </Reveal>
@@ -53,19 +66,22 @@ export function OrderJourneyBlock() {
         <ol className="relative mt-14 border-l border-[var(--sc-panel-line)] pl-6 sm:ml-6 sm:border-l-0 sm:pl-0">
           {STEP_KEYS.map((key, index) => {
             const step = t.steps[key];
+            const Icon = STEP_ICONS[index];
 
             return (
               <li key={key} className="relative pb-8 last:pb-0 sm:ml-6 sm:pl-12">
                 {/* The marker sits on the rail. */}
                 <span
                   aria-hidden="true"
-                  className="absolute -left-[1.6875rem] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--sc-amber)] bg-[var(--sc-panel)] sm:left-0"
+                  className="absolute -left-[1.6875rem] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--sc-amber-300)] bg-[var(--sc-panel)] sm:left-0"
                 />
 
                 <Reveal delay={index * 70} from="0.5rem">
-                  <div className="sm:grid sm:grid-cols-[3rem_minmax(0,1fr)] sm:gap-4">
-                    <span className="showcase-display block text-[var(--sc-type-lead)] leading-none text-[var(--sc-amber)]">
-                      {String(index + 1).padStart(2, "0")}
+                  <div className="flex items-start gap-4">
+                    {/* The brand's own step treatment: a lucide glyph in near-black on an
+                        amber tile, which is how the old platform cards set their icons. */}
+                    <span className="showcase-icon-tile shrink-0">
+                      <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
                     </span>
                     <div>
                       <h3 className="showcase-sans text-base font-semibold tracking-[-0.02em] text-[var(--sc-on-dark)]">

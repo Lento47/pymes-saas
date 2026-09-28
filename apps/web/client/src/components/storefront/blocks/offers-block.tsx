@@ -81,14 +81,14 @@ export function OffersBlock({ promotions }: Props) {
             {promotions.map((promotion, index) => (
               <li key={promotion.id}>
                 <Reveal delay={index * 80} from="0.75rem">
-                  <article className="h-full rounded-[var(--sc-radius)] border border-[var(--sc-hairline)] bg-white/70 p-5">
+                  <article className="h-full rounded-[var(--sc-radius-lg)] border border-[var(--sc-hairline)] bg-[var(--sc-paper-card)] p-5">
                     <p className="showcase-sans text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[var(--sc-ink-muted)]">
                       {t.code}
                     </p>
 
                     {/* The code is the thing being announced, so it is the one place the
                         accent is allowed to be large. */}
-                    <p className="showcase-display mt-3 text-[var(--sc-type-title)] tracking-[-0.03em] text-[var(--sc-accent-text)]">
+                    <p className="showcase-sans mt-3 text-[var(--sc-type-title)] font-bold tracking-[-0.03em] text-[var(--sc-accent-text)]">
                       {promotion.code}
                     </p>
 

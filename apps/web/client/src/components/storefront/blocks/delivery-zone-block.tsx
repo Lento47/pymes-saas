@@ -90,7 +90,7 @@ export function DeliveryZoneBlock({ businesses, hasLocation, onRequestLocation }
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-center lg:gap-16">
           <div>
             <Reveal>
-              <p className="showcase-sans mb-5 text-[0.75rem] font-bold uppercase tracking-[0.22em] text-[var(--sc-amber)]">
+              <p className="showcase-sans mb-5 text-[0.75rem] font-bold uppercase tracking-[0.22em] text-[var(--sc-amber-300)]">
                 {t.eyebrow}
               </p>
             </Reveal>
@@ -128,7 +128,7 @@ export function DeliveryZoneBlock({ businesses, hasLocation, onRequestLocation }
                 <button
                   type="button"
                   onClick={onRequestLocation}
-                  className="showcase-sans mt-4 min-h-11 rounded-[var(--sc-radius)] bg-[var(--sc-amber)] px-5 text-sm font-semibold text-[var(--sc-ink)] transition-colors"
+                  className="showcase-sans mt-4 min-h-11 rounded-[var(--sc-radius)] bg-[var(--sc-amber)] px-5 text-sm font-semibold text-[var(--sc-navy)] transition-colors hover:bg-[var(--sc-amber-300)]"
                 >
                   {messages.site.showcase.hero.secondary}
                 </button>
@@ -142,7 +142,7 @@ export function DeliveryZoneBlock({ businesses, hasLocation, onRequestLocation }
             <ul className="showcase-sans grid gap-x-8 gap-y-2 text-sm text-[var(--sc-on-dark-muted)] sm:grid-cols-2 lg:grid-cols-3">
               {unplaced.map((business) => (
                 <li key={business.id} className="flex items-center gap-2">
-                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--sc-amber)]" />
+                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--sc-amber-300)]" />
                   {business.name}
                 </li>
               ))}
@@ -209,12 +209,12 @@ function DistanceDiagram({ placed }: { placed: (BusinessCard & { distanceKm: num
         ))}
 
         {/* The customer. */}
-        <circle cx={CENTRE} cy={CENTRE} r="4" fill="var(--sc-amber)" />
+        <circle cx={CENTRE} cy={CENTRE} r="4" fill="var(--sc-amber-300)" />
         <text
           x={CENTRE}
           y={CENTRE + 20}
           textAnchor="middle"
-          fill="var(--sc-amber)"
+          fill="var(--sc-amber-300)"
           fontSize="10"
           className="showcase-sans"
         >
