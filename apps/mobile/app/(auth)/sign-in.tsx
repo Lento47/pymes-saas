@@ -3,17 +3,41 @@ import type { MessageKey } from "@pymeshub/i18n";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
+import Animated, {
+	cancelAnimation,
+	useAnimatedStyle,
+	useSharedValue,
+	withSequence,
+	withSpring,
+	withTiming,
+} from "react-native-reanimated";
 import { ActionBar } from "@/components/action-bar";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Field } from "@/components/field";
+import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
-import { getAccountProfile, setAccountProfile } from "@/lib/device-prefs";
+import {
+	type AccountProfile,
+	getAccountProfile,
+	setAccountProfile,
+} from "@/lib/device-prefs";
+import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
-import { icon, space, type as typeScale, useTheme } from "@/theme";
+import { duration, PRESS_SCALE_ROW, STATE_POP, spring } from "@/lib/motion";
+import { useReducedMotion } from "@/lib/reduced-motion";
+import {
+	icon,
+	MIN_TOUCH_TARGET,
+	radius,
+	space,
+	TEXT_STACK_GAP,
+	type as typeScale,
+	useTheme,
+} from "@/theme";
 
 /**
  * Entering, and creating, an account.
@@ -73,29 +97,46 @@ import { icon, space, type as typeScale, useTheme } from "@/theme";
  * finds afterwards. Both forms ask, and they ask different questions because they are
  * different questions:
  *
- * - **Sign-in** offers the two ways this device can *enter*: shopping, or the courier's
- *   board. Same credential either way — one account, one email, one password — and the
- *   answer decides only where the verified session lands (`/(delivery)` or `/`) and which
- *   device preference is written, which is exactly what `lib/role.ts` reconciles at cold
- *   start. The group answers from the device's own last choice (`getAccountProfile`), so a
- *   courier signing back in finds "Repartidor" already selected.
- * - **Sign-up** offers the three things an account can be *for*: a customer, a business, a
- *   courier. It is `registrationMode`, not `role`, and it is the input the whole signup is
+ * - **Sign-in** offers the same three types as cards, drawn here as a **segment** because
+ *   the answer is a claim about this device rather than a decision about a new account:
+ *   same credential either way — one account, one email, one password — and the answer only
+ *   decides where the verified session lands (`/(delivery)`, `/(business)` or `/`) and
+ *   which device preference is written, which is exactly what `lib/role.ts` reconciles at
+ *   cold start. It is a segment and not three cards because three full-width rows with a
+ *   promise each would be three sentences to read on the way *back* in, where the reader
+ *   has already decided and wants the shortest answer on the screen. The segment answers
+ *   from the device's own last choice (`getAccountProfile`), so a courier signing back in
+ *   finds "Repartidor" already selected.
+ * - **Sign-up** offers the three things an account can be *for*: a business, a customer, a
+ *   courier — as three **cards** rather than a segment, because each one is a *promise*
+ *   ("sell and manage", "buy", "deliver") and a segment has nowhere to put a sentence.
+ *   This is `components/option-card`'s argument about prices, in a place where the words
+ *   matter more than the count: a control that can only hold a word has to be a different
+ *   control. It is `registrationMode`, not `role`, and it is the input the whole sign-up is
  *   shaped by: the title changes to the mode's own, the device profile is written from it,
  *   and success lands on the mode's first screen — `/new-business` for the shop,
  *   `/courier-profile` for the courier (their profile and vehicle, before any membership
  *   exists), `/` for the customer. A sign-up that could not express "business" or
  *   "delivery" was a sign-up that silently made every account a customer — which is the
- *   failure this group exists to prevent, and the reason it is above the fields rather
- *   than behind a setting.
+ *   failure this group exists to prevent.
  *
- * The help line under a selected mode states that mode's dedicated use in the
- * dictionary's words — it is the reason the choice exists at all — and it appears with
- * the selection rather than always, because for a customer it would be a sentence about
- * somebody else.
+ * Two things about that group are decisions rather than layout. **The business card is
+ * first and preselected**: the shop is the account this product exists for, and a form that
+ * opens on the customer answer has already decided for the reader — the customer, who is
+ * the exception here, is one tap away. And it sits **below the fields**, while the sign-in
+ * door stays above them: on the way in the reader is answering "who am I", and only then is
+ * "what is this account for" a question they can answer, whereas on the way back in that
+ * same question is about the device this app is re-entering with — which is why this half
+ * keeps the compact segment and seeds itself from the device's own last answer.
+ *
+ * Each card carries the one sentence that says what that account is *for*, inside the card
+ * rather than under the group, because under a group there is one slot and three answers —
+ * the line under the customer card would be about somebody else. The selection is said
+ * three ways, as in `option-card`: the accent fill, the weight of the title and the tick,
+ * and `accessibilityState.checked` for a reader who has none of them.
  *
  * The choice is disabled while the wait is open, the same rule as the form-switch button:
- * a role swapped mid-flight would change where the in-progress session is about to land.
+ * a type swapped mid-flight would change where the in-progress session is about to land.
  *
  * What this screen deliberately does **not** ask is which identity provider to use: that
  * is plumbing, not something a reader picking a role should adjudicate, so sign-in and
@@ -118,7 +159,7 @@ import { icon, space, type as typeScale, useTheme } from "@/theme";
  * is three nodes. So this screen asks for no `title` and composes the strip itself — the
  * route `app/store/[slug].tsx` takes for the same reason — which means paying the two
  * numbers the strip paid: `space.md` above it and `space.xs` between the title and its
- * subtitle (`components/screen.tsx:196-197`). The form title stays the loudest thing on the
+ * subtitle (`components/screen.tsx:220-225`). The form title stays the loudest thing on the
  * screen (Rule 1); the wordmark above it is `type.heading` and does not compete.
  *
  * ## The keyboard
@@ -192,6 +233,8 @@ const MIN_PASSWORD = 12;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FieldName = "name" | "email" | "password";
+/** The two assertions, tracked apart because they are two different claims. */
+type ConsentName = "terms" | "age";
 /**
  * What the new account is *for*, and the only three answers this platform has — see
  * "The door is asked differently by each side". It is a distinct piece of state from
@@ -228,21 +271,49 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	});
 	const [submitted, setSubmitted] = useState(false);
 	// What the session is for, asked at the door (see "The courier is identified at the door"):
-	// seeded from the device's own last answer, so a returning courier finds their role selected.
-	const [role, setRole] = useState<"customer" | "delivery">(() =>
-		signingUp || getAccountProfile() !== "delivery" ? "customer" : "delivery",
+	// seeded from the device's own last answer, so a returning courier finds their role
+	// selected.
+	//
+	// `AccountProfile`, not `"customer" | "delivery"`. It used to be the narrower pair,
+	// which is the whole bug: a merchant who signed up as `business` and then signed
+	// back in found no business on the rail, the `else` below wrote `"customer"` over
+	// the stored preference, and the root resolver sent them to the storefront instead
+	// of `/(business)`. The device already remembers all three and `lib/role.ts`
+	// already resolves all three — only this state refused to name one of them.
+	const [role, setRole] = useState<AccountProfile>(() =>
+		signingUp ? "customer" : getAccountProfile(),
 	);
-	// What a sign-up is *for*, asked above the fields. The setter is the door's own —
-	// see the docblock: this state being unwritable was exactly how every registration
-	// silently became a customer.
+	// What a sign-up is *for*, asked in the cards below the fields. The setter is the
+	// door's own — see the docblock: this state being unwritable was exactly how every
+	// registration silently became a customer. `business` is the seed, not `customer`:
+	// the shop is the account this product exists for, and a form that opens on the
+	// customer answer has already answered for the reader.
 	const [registrationMode, setRegistrationMode] =
-		useState<RegistrationMode>("customer");
+		useState<RegistrationMode>("business");
 	const inFlight = useRef(false);
+
+	/**
+	 * The two sign-up assertions, held as their own state rather than folded into
+	 * `problems`.
+	 *
+	 * They are not a field with an error but a control the reader has to operate, so
+	 * they sit with the rest of the form's state and are read straight into the
+	 * sign-up call. The Worker refuses a sign-up that arrives without both
+	 * (`packages/trpc-api/src/auth.ts`, `databaseHooks.user.create.before`), which
+	 * makes them mandatory rather than advisory — so they are checked in `problems`
+	 * too, to stop the round trip rather than to report a refusal after one.
+	 */
+	const [termsAccepted, setTermsAccepted] = useState(false);
+	const [ageConfirmed, setAgeConfirmed] = useState(false);
 
 	// Derived, never stored: a second copy of "is this valid" is a second answer that can go
 	// stale. The message is the dictionary's, and the check is the shape of what was typed.
 	const problems = useMemo(() => {
-		const found: Partial<Record<FieldName, string>> = {};
+		// Widened past `FieldName` because the two consent rows are reported the same
+		// way a field is: the same reserved sentence, in the same slot, under the
+		// control they belong to. Treating them as a different kind of thing is what
+		// made the web form able to carry a checkbox the server never heard about.
+		const found: Partial<Record<FieldName | ConsentName, string>> = {};
 
 		if (signingUp && !name.trim()) found.name = t("form.required");
 
@@ -255,12 +326,34 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			found.password = t("form.tooShort", { min: MIN_PASSWORD });
 		}
 
-		return found;
-	}, [email, name, password, signingUp, t]);
+		// Sign-up only. On sign-in these are already true of every account that can
+		// exist, so asking again would be a control that could not change anything.
+		if (signingUp && !termsAccepted)
+			found.terms = t("auth.signUp.consentRequired");
+		if (signingUp && !ageConfirmed)
+			found.age = t("auth.signUp.consentRequired");
 
-	/** The sentence for `field`, but only once it is fair to show it. */
-	const messageFor = (field: FieldName): string | null =>
-		submitted || blurred[field] ? (problems[field] ?? null) : null;
+		return found;
+	}, [ageConfirmed, email, name, password, signingUp, t, termsAccepted]);
+
+	/**
+	 * The sentence for `field`, but only once it is fair to show it.
+	 *
+	 * A text field earns its refusal on losing focus, because that is when the reader
+	 * has stopped changing it. A checkbox has no such moment: it is either set or it
+	 * is not, and the only fair time to complain is a submit that did nothing — which
+	 * is what `submitted` marks. So the two are read from different state on purpose,
+	 * and indexing `blurred` with a consent key would be a type error that is really
+	 * a design statement.
+	 */
+	const messageFor = (field: FieldName | ConsentName): string | null => {
+		if (field in blurred) {
+			return submitted || blurred[field as FieldName]
+				? (problems[field] ?? null)
+				: null;
+		}
+		return submitted ? (problems[field] ?? null) : null;
+	};
 
 	const leave = (field: FieldName) =>
 		setBlurred((was) => ({ ...was, [field]: true }));
@@ -305,7 +398,10 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			// credential is plumbing, and a picker for it on this form was asking a
 			// person picking a role to also adjudicate an infrastructure decision.
 			const result = signingUp
-				? await auth.signUp(email.trim(), password, name.trim())
+				? await auth.signUp(email.trim(), password, name.trim(), {
+						termsAccepted,
+						ageConfirmed,
+					})
 				: await auth.signIn(email.trim(), password);
 
 			if (result.ok) {
@@ -313,6 +409,13 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				// customer choice too: writing only `delivery` left a previous courier
 				// preference on the device, and the root resolver then sent a newly
 				// registered customer to `/(delivery)` immediately after sign-up.
+				//
+				// All three answers are named on the sign-in path as well, for the same
+				// reason. A merchant signing back in used to fall to the `"customer"`
+				// else, which overwrote the stored `business` preference with the
+				// storefront's — so even the corrected navigation above would have been
+				// undone the moment `lib/role.ts` read the device back on the next cold
+				// start.
 				await setAccountProfile(
 					signingUp && registrationMode === "delivery"
 						? "delivery"
@@ -320,7 +423,9 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 							? "business"
 							: role === "delivery"
 								? "delivery"
-								: "customer",
+								: role === "business"
+									? "business"
+									: "customer",
 				);
 				// Recorded, not navigated from. The effect below navigates on the provider's
 				// verified status; this handler only knows the call was accepted.
@@ -340,6 +445,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			setPending(false);
 		}
 	}, [
+		ageConfirmed,
 		auth,
 		email,
 		name,
@@ -349,6 +455,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		role,
 		signingUp,
 		t,
+		termsAccepted,
 	]);
 
 	/**
@@ -386,13 +493,22 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		// the delivery tree — which its own guard re-resolves from the preference this form just
 		// wrote — while everyone else lands at `/`, whose resolver is the one place that knows
 		// the three trees.
+		//
+		// A merchant signing back in goes straight to `/(business)` for the same reason the
+		// courier does. Falling through to `/` here was the visible half of the bug: the
+		// preference was already being written as `"customer"`, so the root resolver would
+		// have sent a shop owner to the storefront even if this branch had been left alone.
 		if (sent && auth.status === "signed-in") {
 			if (signingUp && registrationMode === "business") {
 				router.replace("/new-business");
 			} else if (signingUp && registrationMode === "delivery") {
-				router.replace("/courier-profile");
+				router.replace("/(delivery)/courier-profile");
+			} else if (role === "delivery") {
+				router.replace("/(delivery)");
+			} else if (role === "business") {
+				router.replace("/(business)");
 			} else {
-				router.replace(role === "delivery" ? "/(delivery)" : "/");
+				router.replace("/");
 			}
 		}
 	}, [auth.status, registrationMode, role, sent, signingUp]);
@@ -460,8 +576,9 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 					</View>
 				</View>
 
-				{/* The door - see "The door is asked differently by each side" above.
-				    Sign-in asks how this device enters; sign-up asks what the account is for. */}
+				{/* The door on the way back in — see "The door is asked differently by each
+				    side" above. Only sign-in asks it here: a sign-up asks the same question
+				    as cards, below the fields. */}
 				{!signingUp ? (
 					<View style={styles.role}>
 						<Segmented
@@ -469,30 +586,12 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 							value={role}
 							disabled={waiting}
 							onChange={(next) =>
-								setRole(next === "delivery" ? "delivery" : "customer")
-							}
-							options={[
-								{ value: "customer", label: t("auth.role.customer") },
-								{ value: "delivery", label: t("auth.role.delivery") },
-							]}
-						/>
-						{role === "delivery" ? (
-							<Text variant="caption" tone="muted">
-								{t("auth.role.deliveryHelp")}
-							</Text>
-						) : null}
-					</View>
-				) : (
-					<View style={styles.role}>
-						<Segmented
-							label={t("auth.role.label")}
-							value={registrationMode}
-							disabled={waiting}
-							onChange={(next) =>
-								setRegistrationMode(
-									next === "business" || next === "delivery"
-										? next
-										: "customer",
+								setRole(
+									next === "delivery"
+										? "delivery"
+										: next === "business"
+											? "business"
+											: "customer",
 								)
 							}
 							options={[
@@ -501,21 +600,17 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 								{ value: "delivery", label: t("auth.role.delivery") },
 							]}
 						/>
-						{/* The dedicated use of the selected mode, not of the form: for a
-						    customer either sentence would be about somebody else. The business's
-						    line is its own sign-up subtitle - same words, same claim, one
-						    dictionary entry. */}
-						{registrationMode === "business" ? (
-							<Text variant="caption" tone="muted">
-								{t("auth.signUp.business.subtitle")}
-							</Text>
-						) : registrationMode === "delivery" ? (
+						{role === "delivery" ? (
 							<Text variant="caption" tone="muted">
 								{t("auth.role.deliveryHelp")}
 							</Text>
+						) : role === "business" ? (
+							<Text variant="caption" tone="muted">
+								{t("auth.role.businessHelp")}
+							</Text>
 						) : null}
 					</View>
-				)}
+				) : null}
 
 				{signingUp ? (
 					<Field
@@ -551,6 +646,54 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 					help={signingUp ? t("auth.password.minimum") : undefined}
 					onSubmitEditing={() => void submit()}
 				/>
+
+				{/*
+					The two assertions, above the status slot and below the fields: the last
+					thing a reader passes before the button they came to press.
+
+					They are inside the form rather than inside `ActionBar` because they are
+					not the screen's action — the action is on the floor, and a bar that
+					held a contract acceptance would be a bar holding two different kinds
+					of control. The bar's docblock says it holds one action, and that still
+					holds.
+
+					`accessibilityRole="checkbox"` with `accessibilityState` is what makes
+					VoiceOver and TalkBack announce the control as a checkbox rather than
+					as a button that is pressed — a reader who cannot see the tick still
+					has to be able to ask what state it is in. The whole row is the target,
+					not just the box, because the label is the larger part of it.
+				*/}
+				{signingUp ? (
+					<View style={styles.consent}>
+						<ConsentCheck
+							label={t("auth.signUp.termsLabel")}
+							link={t("auth.signUp.termsLink")}
+							checked={termsAccepted}
+							disabled={waiting}
+							error={messageFor("terms")}
+							onChange={setTermsAccepted}
+						/>
+						<ConsentCheck
+							label={t("auth.signUp.ageLabel")}
+							checked={ageConfirmed}
+							disabled={waiting}
+							error={messageFor("age")}
+							onChange={setAgeConfirmed}
+						/>
+					</View>
+				) : null}
+
+				{/* The question the door above asks as a segment, asked here as cards and
+				    asked last — the reasons are in the docblock: the type is what the
+				    account is *for*, and it reads as a promise only once the reader knows
+				    who is filling this in. */}
+				{signingUp ? (
+					<AccountTypes
+						value={registrationMode}
+						disabled={waiting}
+						onChange={setRegistrationMode}
+					/>
+				) : null}
 
 				{/* One slot for both the failure and the wait, and it is reserved: the two controls
 			    under it must not move when either appears. The word is the whole waiting state for
@@ -609,20 +752,432 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	);
 }
 
+/**
+ * What the account is *for*: three cards, each carrying the promise that type makes.
+ *
+ * A group of choices, exactly as `components/option-card` is one, with one difference —
+ * these are the reader's three doors and each of them has a sentence to say, so the group
+ * is a column of full-width rows rather than a rail of thumbnails: what distinguishes a
+ * shop from a courier is that sentence, and a reader comparing three promises needs them
+ * stacked where all three are visible at once.
+ *
+ * **The order is the funnel's** — business first, then the customer, then the courier —
+ * because the shop is the account this product exists for and the customer is the
+ * exception. The merchant is also the one every other language in the app writes first
+ * (`auth.signUp.business.title` is the merchant's sign-up title, and `/new-business` is its
+ * first screen), so the card that is selected on arrival is the one the rest of the form
+ * is already shaped for.
+ *
+ * The titles are the sign-in door's own words (`auth.role.*`) and not a second set: the
+ * same three types appear in both forms, and two dictionaries for them is two answers to
+ * "what is a courier called" waiting to disagree. The one line under each is the type's
+ * promise, and it is inside the card because under the group there is one slot and three
+ * answers.
+ *
+ * The selection is drawn three ways — fill, weight, tick — and announced as
+ * `accessibilityState.checked`, the same three-plus-one as `option-card` and for the same
+ * reasons. The fill **settles** rather than snapping, as a crossfade between two painted
+ * layers, and that is `step-progress`'s shape for its own fill and its own stated reason: a
+ * colour is not a value reanimated interpolates cleanly across themes, while an opacity
+ * between two layers is — so this is also the one code path that survives a reduced-motion
+ * request intact. The tick's pop is a transform, and that one is gated, exactly as
+ * `option-card` gates its own.
+ */
+const ACCOUNT_TYPES = [
+	{
+		value: "business",
+		glyph: "storefront-outline",
+		title: "auth.role.business",
+		help: "auth.signUp.type.businessHelp",
+	},
+	{
+		value: "customer",
+		glyph: "person-outline",
+		title: "auth.role.customer",
+		help: "auth.signUp.type.customerHelp",
+	},
+	{
+		value: "delivery",
+		glyph: "car-outline",
+		title: "auth.role.delivery",
+		help: "auth.signUp.type.deliveryHelp",
+	},
+] as const;
+
+/**
+ * What choosing a type changes, in the sentence the page's own subtitle would use.
+ *
+ * The group prints this under its heading, and the reason it is not the card's own promise
+ * line is that the two answer different questions: the card says what that *type* can do,
+ * this says what the *account* is about — which is also what the title at the top of the
+ * screen changes to. Without it, picking a courier changes a title that is off-screen at the
+ * moment of choosing, so the consequence of the choice is somewhere the reader is not
+ * looking; here it is printed next to the choice, and it is the same word for word, because
+ * it is the same entry.
+ *
+ * A map rather than a sixth field on `ACCOUNT_TYPES`: the type's *name* and its *promise*
+ * belong to the card, and this line is a fact about the mode rather than about the card —
+ * the title logic in the form above reads the same three keys for the same reason.
+ */
+const CONSEQUENCE: Record<RegistrationMode, MessageKey> = {
+	business: "auth.signUp.business.subtitle",
+	customer: "auth.signUp.customer.subtitle",
+	delivery: "auth.signUp.delivery.subtitle",
+};
+
+function AccountTypes({
+	value,
+	disabled,
+	onChange,
+}: {
+	value: RegistrationMode;
+	disabled: boolean;
+	onChange: (next: RegistrationMode) => void;
+}) {
+	const { t } = useT();
+
+	return (
+		<View style={styles.types}>
+			<View style={styles.typesHead}>
+				{/* `header` because this is a heading and a screen reader's rotor navigates by
+				    heading — and because the reader is about to walk three radios, and a group
+				    that announces itself as three radios with nothing above them gives them no
+				    question to answer. */}
+				<Text variant="heading" accessibilityRole="header">
+					{t("auth.signUp.typeLabel")}
+				</Text>
+				<Text variant="label" tone="muted">
+					{t(CONSEQUENCE[value])}
+				</Text>
+			</View>
+
+			{/* The role is on this box and not the outer one: `radiogroup` is a claim about
+			    what is inside it, and two lines of prose are not options. */}
+			<View style={styles.typeList} accessibilityRole="radiogroup">
+				{ACCOUNT_TYPES.map((account) => (
+					<TypeCard
+						key={account.value}
+						account={account}
+						chosen={account.value === value}
+						disabled={disabled}
+						onPress={() => onChange(account.value)}
+					/>
+				))}
+			</View>
+		</View>
+	);
+}
+
+/**
+ * `space.huge + space.md` — 44, the touch floor, built from spacing steps rather than typed.
+ *
+ * `./empty-state`'s badge is the same construction for the same reason: `theme/tokens.ts` has
+ * no icon-badge size, and a bare number at a call site is how a design system grows a second
+ * scale. Forty-four is also the right number here for a second reason — the plate is inside
+ * a row the reader aims at, so making it the minimum touch target costs the row nothing and
+ * gives the glyph a square that is not smaller than the control it sits in.
+ */
+const PLATE = space.huge + space.md;
+
+/**
+ * One type, as a card: the promise it makes, and what choosing it does.
+ *
+ * Its own component rather than three copies inline in `AccountTypes` because the animation
+ * is three shared values and a hook is not allowed inside a `.map` callback — and because
+ * this is `option-card`'s shape exactly (a row per choice, one at a time, each with its own
+ * state), which is the argument for not inventing a second version of the same control.
+ */
+function TypeCard({
+	account,
+	chosen,
+	disabled,
+	onPress,
+}: {
+	account: (typeof ACCOUNT_TYPES)[number];
+	chosen: boolean;
+	disabled: boolean;
+	onPress: () => void;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+	const reduceMotion = useReducedMotion();
+
+	// The fill, as a crossfade between two painted layers rather than an animated colour:
+	// `step-progress` says why, and the two overlays below are its construction.
+	const fill = useSharedValue(chosen ? 1 : 0);
+	// The tick's pop, seeded with the state the card mounted at — so the card that arrives
+	// chosen does not pop on the way in, which is `option-card`'s second of its three rules.
+	const scale = useSharedValue(1);
+	const shown = useRef(chosen);
+
+	useEffect(() => {
+		fill.value = withTiming(chosen ? 1 : 0, { duration: duration.standard });
+	}, [chosen, fill]);
+
+	useEffect(() => {
+		if (reduceMotion) {
+			shown.current = chosen;
+			cancelAnimation(scale);
+			scale.value = 1;
+			return;
+		}
+		if (shown.current === chosen) return;
+		shown.current = chosen;
+		scale.value = withSequence(
+			withTiming(STATE_POP, { duration: duration.instant }),
+			withSpring(1, spring.press),
+		);
+	}, [chosen, reduceMotion, scale]);
+
+	const settle = useAnimatedStyle(() => ({ opacity: fill.value }));
+	const pop = useAnimatedStyle(() => ({
+		transform: [{ scale: reduceMotion ? 1 : scale.value }],
+	}));
+
+	return (
+		<Pressable
+			onPress={() => {
+				// The same tick the option rail gives a choice, so a hand that has already
+				// learned "this felt like this" is not taught again here.
+				selection();
+				onPress();
+			}}
+			disabled={disabled}
+			accessibilityRole="radio"
+			// No `accessibilityLabel`: the card's own title and promise are the label, and a
+			// card that overrides it stops reading the promise — which is the half that says
+			// what picking this one means.
+			accessibilityState={{ checked: chosen, disabled }}
+			style={[
+				styles.type,
+				{
+					// `input` and not `border`, and this is the token file's own argument rather
+					// than a preference: `border` is the decorative hairline (1.34:1 on `card`),
+					// `input` is "the boundary that tells a reader where a control begins"
+					// (3.24:1). This row is a control and its edge is the only thing saying so
+					// before it is touched, so it is owed the 3:1 and not the rumour.
+					backgroundColor: colors.card,
+					borderColor: colors.input,
+				},
+			]}
+		>
+			{/* The two overlays, absolute and inert: the fill and the chosen edge. Neither can
+			    move the text or shrink the hit box, so the card's layout is the same whichever
+			    type is selected — which is the point of a crossfade here rather than a colour
+			    swap. */}
+			<Animated.View
+				pointerEvents="none"
+				style={[
+					StyleSheet.absoluteFill,
+					styles.typeFill,
+					// `accent` and not `primary`, as in `option-card`: three filled cards in the
+					// colour of the submit button would read as three submit buttons, and this
+					// screen has one action on the floor.
+					{ backgroundColor: colors.accent },
+					settle,
+				]}
+			/>
+			<Animated.View
+				pointerEvents="none"
+				style={[
+					StyleSheet.absoluteFill,
+					styles.typeFill,
+					{ borderWidth: 1, borderColor: colors.primary },
+					settle,
+				]}
+			/>
+
+			<View
+				style={[
+					styles.typeGlyph,
+					{
+						// The plate inverts with the card rather than staying `muted`: on an
+						// accent fill a muted plate is a hole.
+						backgroundColor: chosen ? colors.card : colors.muted,
+					},
+				]}
+			>
+				<Ionicons
+					name={account.glyph}
+					size={icon.action}
+					color={chosen ? colors.primary : colors.mutedForeground}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			</View>
+
+			<View style={styles.typeBody}>
+				<Text variant="body" bold={chosen}>
+					{t(account.title)}
+				</Text>
+				{/* `label` and not `caption`: 12 is this app's smallest text and this is a
+				    sentence the reader is being asked to choose by, not a caption on the choice.
+				    `option-card`'s own two lines are `body` and `label`, and matching them is
+				    what makes the two "choose one" surfaces in this app read as one system. */}
+				<Text variant="label" tone="muted">
+					{t(account.help)}
+				</Text>
+			</View>
+
+			{chosen ? (
+				<Animated.View style={pop}>
+					<Ionicons
+						name="checkmark"
+						size={icon.control}
+						color={colors.primary}
+						// The radio's own state is announced; an image read after it repeats it.
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+				</Animated.View>
+			) : null}
+		</Pressable>
+	);
+}
+
+/**
+ * One assertion: a tick, the sentence, and the reserved line the refusal appears on.
+ *
+ * The three parts are one target. Tapping the sentence has to count, because the
+ * sentence is most of the control's width and a reader aiming at the words they are
+ * reading should not miss; a box 20 points wide is a target that punishes a large
+ * thumb for being imprecise.
+ *
+ * `Pressable` rather than `Button` because this is not an action that happens — it is
+ * a state the reader sets, and it stays where it is with its answer visible, which is
+ * what `accessibilityRole="checkbox"` tells the screen reader it is.
+ *
+ * The error line is reserved at the label's own line height for the same reason
+ * `Field` reserves its own: a sentence appearing under an unchecked box must not push
+ * the box the reader is reaching for. Both boxes hold their position whether or not
+ * either is answered.
+ */
+function ConsentCheck({
+	label,
+	link,
+	checked,
+	disabled,
+	error,
+	onChange,
+}: {
+	label: string;
+	/** Optional trailing affordance. Present only on the terms row. */
+	link?: string;
+	checked: boolean;
+	disabled: boolean;
+	error: string | null;
+	onChange: (next: boolean) => void;
+}) {
+	const { colors } = useTheme();
+	return (
+		<View style={styles.consentRow}>
+			<Pressable
+				accessibilityRole="checkbox"
+				accessibilityState={{ checked, disabled }}
+				accessibilityLabel={label}
+				disabled={disabled}
+				onPress={() => onChange(!checked)}
+				// A row whose edges are the form's edges, so it takes the row scale
+				// rather than the button one — see `components/pressable.tsx`.
+				scaleTo={PRESS_SCALE_ROW}
+				// `disabledOpacity={1}` because this control is *unavailable*, not busy:
+				// the shared default would fade the label toward the background, and
+				// the label is the thing that says what is being agreed to.
+				disabledOpacity={1}
+				style={[styles.consentTarget, disabled ? { opacity: 0.5 } : null]}
+			>
+				<Ionicons
+					name={checked ? "checkbox" : "square-outline"}
+					size={icon.action}
+					color={checked ? colors.primary : colors.mutedForeground}
+				/>
+				<Text variant="caption" tone="muted" style={styles.consentLabel}>
+					{label}
+					{link ? (
+						<Text variant="caption" tone="action" style={styles.consentLink}>
+							{" "}
+							{link}
+						</Text>
+					) : null}
+				</Text>
+			</Pressable>
+			{error ? (
+				<Text
+					variant="caption"
+					tone="destructive"
+					accessibilityLiveRegion="polite"
+				>
+					{error}
+				</Text>
+			) : null}
+		</View>
+	);
+}
+
 const styles = StyleSheet.create({
-	// The scroller and the bar divide the screen between them: the form takes the whole height
 	// and the bar is its footer, which is the arrangement `app/profile.tsx` uses for the same
 	// pair. A bar outside a `flex: 1` column is a bar with no height to sit under.
 	root: { flex: 1 },
 	content: { gap: space.lg, paddingTop: space.md },
 	identity: { gap: space.md },
 	mark: { flexDirection: "row", alignItems: "center", gap: space.sm },
-	// `Screen`'s strip put this between the title and its subtitle (`screen.tsx:197`); the strip
-	// is composed here now, so the number is paid here.
+	// `Screen`'s strip put this between the title and its subtitle
+	// (`components/screen.tsx:220-225`); the strip is composed here now, so the number is
+	// paid here.
 	subtitle: { marginTop: space.xs },
 	// The identification group and its one help line, kept together: the line is the
 	// delivery choice's own sentence and must not float free of the control that chose it.
 	role: { gap: space.xs },
+	// The two assertions as one block, so they read as the pair they are rather
+	// than as two unrelated controls that happen to sit near each other.
+	consent: { gap: space.sm },
+	consentRow: { gap: space.xs },
+	// The whole row is the target — see `ConsentCheck`.
+	consentTarget: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		gap: space.sm,
+		paddingVertical: space.xs,
+	},
+	consentLabel: { flex: 1 },
+	consentLink: { textDecorationLine: "underline" },
+	// The sign-up door, below the fields: the heading is a peer of the field labels
+	// (`Field`'s own, not smaller) so the group reads as the last question of the form
+	// rather than as a caption on the password.
+	types: { gap: space.md },
+	// The heading and the line that says what the chosen type changes, at the gap the page's
+	// own title strip uses between a title and its subtitle — the two are the same pair of
+	// lines, and the group is not a second strip with a different rhythm.
+	typesHead: { gap: space.xs },
+	// Cards 8 apart rather than 12: this is a set of one choice, and the tighter rhythm is
+	// what reads as "these three are alternatives" rather than "these are three sections".
+	typeList: { gap: space.sm },
+	// A full-width row, not a card in a column of its own: the line beside the title is the
+	// promise, and it needs the width. `minHeight` is a floor - at 200% Dynamic Type both
+	// lines grow past it and the row grows with them rather than clipping them.
+	type: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		padding: space.md,
+		borderRadius: radius.md,
+		borderWidth: 1,
+		minHeight: MIN_TOUCH_TARGET,
+	},
+	// The two overlays and the card's own corner, in one rule: an overlay without the corner
+	// would square off the row's `radius.md` at whichever end the fill is settling toward.
+	typeFill: { borderRadius: radius.md },
+	typeGlyph: {
+		alignItems: "center",
+		justifyContent: "center",
+		width: PLATE,
+		height: PLATE,
+		// `radius.full` and not the row's own corner: a rounded plate inside a row carrying
+		// the same radius reads as one shape that was drawn twice, and a circle is what
+		// `./empty-state`'s badge is for a glyph of this size.
+		borderRadius: radius.full,
+	},
+	typeBody: { flex: 1, gap: TEXT_STACK_GAP },
 	// `minHeight` is a floor: at 200% Dynamic Type the sentence and the word both grow past
 	// it, and the slot grows with them instead of clipping them.
 	status: { minHeight: typeScale.body.lineHeight, justifyContent: "center" },

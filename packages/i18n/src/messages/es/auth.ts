@@ -38,9 +38,46 @@ export const auth = {
 	"auth.signUp.business.subtitle": "Crea una cuenta para abrir tu tienda.",
 	"auth.signUp.delivery.title": "Regístrate como repartidor",
 	"auth.signUp.delivery.subtitle": "Crea una cuenta para aceptar entregas.",
+	/**
+	 * La pareja del cliente, que leen tanto el título del registro como el grupo de tipo. Las
+	 * dos frases de negocio y reparto existen porque esos dos modos cambian para qué *es* el
+	 * formulario; el cliente es el caso llano, así que su frase está escrita en vez de vacía
+	 * — o elegirlo dejaría sin contenido la línea que el grupo imprime bajo su encabezado.
+	 */
+	"auth.signUp.customer.subtitle":
+		"Crea una cuenta para tener tus pedidos en un solo lugar.",
 	"auth.signUp.notCustomer": "¿No eres cliente?",
 	"auth.signUp.businessOption": "Regístrate como negocio",
 	"auth.signUp.courierOption": "Regístrate como repartidor",
+
+	/**
+	 * Para qué es la cuenta, una línea por tipo. Cada una es una promesa del tipo, y la
+	 * tarjeta que la lleva es la razón de que la puerta del registro sean tarjetas y no
+	 * un segmento — ver `apps/mobile/app/(auth)/sign-in.tsx`.
+	 */
+	"auth.signUp.typeLabel": "Tipo de cuenta",
+	"auth.signUp.type.businessHelp":
+		"Vende, gestiona tus pedidos y haz crecer tu negocio.",
+	"auth.signUp.type.customerHelp": "Compra a tus negocios favoritos.",
+	"auth.signUp.type.deliveryHelp": "Realiza entregas y confirma pedidos.",
+
+	/**
+	 * La portada del grupo de autenticación: qué es esta app y las dos formas de entrar.
+	 * Es el destino del índice del grupo, no el arranque en frío de la app — el mercado
+	 * le responde completo a quien no ha iniciado sesión, y una pared delante de eso le
+	 * costaría el embudo que existen para alimentar las páginas públicas.
+	 */
+	"auth.welcome.title": "Tu negocio en movimiento.",
+	"auth.welcome.subtitle":
+		"Gestiona ventas, entregas y pagos desde un solo lugar.",
+	"auth.welcome.signUp": "Crear una cuenta",
+	/**
+	 * La segunda puerta, dicha como una frase con la acción dentro y no como un segundo
+	 * botón: un solo control relleno en esta pantalla, y quien ya tiene cuenta llega igual
+	 * en un toque. La palabra de la acción es `action.signIn`, compartida con el cambio de
+	 * formulario, para que el mismo acto no tenga dos nombres.
+	 */
+	"auth.welcome.hasAccount": "¿Ya tienes cuenta?",
 
 	"auth.field.email": "Correo",
 	"auth.field.email.placeholder": "tu@correo.com",
@@ -67,6 +104,7 @@ export const auth = {
 	"auth.role.business": "Negocio",
 	"auth.role.delivery": "Repartidor",
 	"auth.role.deliveryHelp": "Solo para aceptar y entregar pedidos.",
+	"auth.role.businessHelp": "Para administering tu tienda y recibir pedidos.",
 
 	"auth.provider.label": "Entrar con",
 	"auth.provider.marketplace": "Marketplace",
