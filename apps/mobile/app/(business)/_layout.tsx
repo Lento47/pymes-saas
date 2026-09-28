@@ -133,6 +133,12 @@ export default function BusinessLayout() {
 								onLongPress={
 									(onLongPress ?? undefined) as (() => void) | undefined
 								}
+								// No Android ripple: a bounded ripple takes the button's
+								// rectangular frame (this item is ~80×70), so every tap
+								// flashed a grey square. The press still answers with
+								// the primitive's spring and dim — the same feedback
+								// iOS gets, on both platforms.
+								ripple={false}
 								accessibilityState={accessibilityState}
 								accessibilityLabel={accessibilityLabel}
 								// The navigator types this as a state callback; what it
