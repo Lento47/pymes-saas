@@ -196,6 +196,11 @@ export default function BusinessLayout() {
 							alignItems: "center",
 							justifyContent: "center",
 							paddingVertical: 0,
+							// Optical correction from the device screenshot: the row
+							// reads ~3pt high. 6pt here moves the shared centerline
+							// down 3 with air to spare on both sides — revisit, do not
+							// stack, if the underlying inset changes.
+							paddingTop: 6,
 						},
 						// Neutralize any icon-wrapper offset the navigator brings:
 						// margins or padding here would lift the glyph off the
