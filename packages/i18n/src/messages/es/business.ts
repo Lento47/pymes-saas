@@ -45,6 +45,8 @@ export const business = {
 	"biz.dashboard.refreshHelp":
 		"Actualizar negocio, ubicaci\u00f3n, pedidos y anal\u00edtica",
 	"biz.home.attention": "Necesita atención",
+	"biz.home.attentionCount": "{count} asunto pendiente",
+	"biz.home.attentionCount_plural": "{count} asuntos pendientes",
 	"biz.home.newOrders": "Pedidos por confirmar",
 	"biz.home.outOfStock": "Productos agotados",
 	"biz.home.catalogSummary":

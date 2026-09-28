@@ -75,6 +75,7 @@ import {
 	radius,
 	space,
 	TEXT_STACK_GAP,
+	type as typeScale,
 	useTheme,
 } from "@/theme";
 
@@ -209,7 +210,7 @@ function withAvailability(product: ProductCard, quantity: number): ProductCard {
 
 export default function MerchantHome() {
 	const trpc = useTRPC();
-	const { t, intlLocale } = useT();
+	const { t, tp, intlLocale } = useT();
 	const { status } = useSession();
 	const cache = useQueryClient();
 	const toast = useToast();
@@ -335,6 +336,11 @@ export default function MerchantHome() {
 		}
 		return [...grouped.values()];
 	}, [home.data?.attention]);
+
+	// The bell's number: every attention the board already groups, summed. A
+	// derived count, never stored — and no badge at zero, because a dot with
+	// nothing behind it is decoration applying for a job.
+	const attentionTotal = attention.reduce((sum, group) => sum + group.count, 0);
 
 	const orders = home.data?.orders ?? [];
 
@@ -739,7 +745,11 @@ export default function MerchantHome() {
 								<Pressable
 									onPress={() => router.push("/inbox")}
 									accessibilityRole="button"
-									accessibilityLabel={t("account.inbox")}
+									accessibilityLabel={
+										attentionTotal > 0
+											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
+											: t("account.inbox")
+									}
 									accessibilityHint={t("account.inbox.help")}
 									style={styles.headerControl}
 								>
@@ -750,6 +760,26 @@ export default function MerchantHome() {
 										accessibilityElementsHidden
 										importantForAccessibility="no"
 									/>
+									{attentionTotal > 0 ? (
+										<View
+											style={[
+												styles.bellBadge,
+												{ backgroundColor: colors.destructive },
+											]}
+										>
+											{/* The destructive pair, not `inverse`: the merchant
+											    palette spends `primaryForeground` on ink, which
+											    on this fill would be a dark-on-dark count. */}
+											<Text
+												variant="caption"
+												bold
+												tabular
+												style={{ color: colors.destructiveForeground }}
+											>
+												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
+											</Text>
+										</View>
+									) : null}
 								</Pressable>
 								<Pressable
 									onPress={() => router.push("/profile")}
@@ -1393,8 +1423,25 @@ const styles = StyleSheet.create({
 	 * container *is* the target here, so there is no `hitSlop` to inflate it with.
 	 */
 	headerControl: {
+		// Relative: the bell's count pins to this box's corner, the same
+		// geometry the cart count and the card heart use.
+		position: "relative",
 		width: 48,
 		height: 48,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	// The bell's count, pinned over the glyph's corner. No fixed height: the
+	// padding wraps the `caption` line the way `./status-badge`'s compact dot
+	// does, so the disc grows with the reader instead of clipping at 200%.
+	bellBadge: {
+		position: "absolute",
+		top: 2,
+		right: 2,
+		minWidth: typeScale.label.lineHeight,
+		paddingHorizontal: space.xs,
+		paddingVertical: space.xs / 2,
+		borderRadius: radius.full,
 		alignItems: "center",
 		justifyContent: "center",
 	},

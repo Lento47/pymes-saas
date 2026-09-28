@@ -36,6 +36,8 @@ export const business = {
 	"biz.dashboard.refreshHelp":
 		"Refresh business, location, orders and analytics",
 	"biz.home.attention": "Needs attention",
+	"biz.home.attentionCount": "{count} item needing attention",
+	"biz.home.attentionCount_plural": "{count} items needing attention",
 	"biz.home.newOrders": "Orders awaiting response",
 	"biz.home.outOfStock": "Sold-out products",
 	"biz.home.catalogSummary":
