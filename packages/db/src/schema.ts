@@ -198,6 +198,52 @@ export const user = sqliteTable(
 	(table) => [uniqueIndex("user_email_unique").on(table.email)],
 );
 
+/**
+ * What a person agreed to when they made the account, and when.
+ *
+ * A separate table rather than two nullable timestamps on `user` for three reasons,
+ * and the third is the one that matters legally.
+ *
+ * 1. **The two assertions are separate acts.** "I accept the terms" and "I am 18 or
+ *    over" answer different questions, are refused independently, and under Costa
+ *    Rica's Ley 8968 Art. 5 the second is provenance for the first: a minor's consent
+ *    needs a representative, so a row that recorded acceptance without recording who
+ *    gave it would not say whether the consent was validly obtained.
+ * 2. **A timestamp per act, not per row.** Both columns here are stamped by the same
+ *    `databaseHooks.user.create` pair in `packages/trpc-api/src/auth.ts`, from one
+ *    instant, because one reader on one form asserted them in one breath.
+ * 3. **Art. 6 of the Reglamento puts the burden of proof on the collector.** That is
+ *    an evidentiary question, and the answer to it is a row a person can be shown.
+ *    Two columns on a row a reader never sees is a weaker answer than a row whose
+ *    only subject is the agreement.
+ *
+ * `revokedAt` is nullable and expected to stay null in the common case. It exists
+ * because Art. 5 makes consent revocable "de la misma forma" it was given, and a
+ * revocation that overwrites the original timestamp destroys the record of the grant
+ * — so a revocation is a second event on the same row, not a replacement of the
+ * first.
+ *
+ * One row per user (`user_id` is the primary key), not one per event: a person's
+ * agreement is a standing fact they revise, not a stream. The revision history that
+ * a compliance audit would want is a `consent_event` append-only table, which is not
+ * built because nothing revokes consent yet and building it for a case that cannot
+ * occur is schema for a fantasy — the same test `user`'s notification columns were
+ * held to.
+ */
+export const accountConsent = sqliteTable("account_consent", {
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	/** When the terms were accepted. Never null: a row exists because they were. */
+	termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp_ms" }).notNull(),
+	/** When the reader asserted they were an adult. Never null, for the same reason. */
+	ageConfirmedAt: integer("age_confirmed_at", { mode: "timestamp_ms" }).notNull(),
+	/** When consent was last revoked, if it was. Null means it still stands. */
+	revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+	/** Why it was revoked, when it was. A revocation with no recorded reason is hard to act on. */
+	revokedReason: text("revoked_reason"),
+});
+
 // ---------------------------------------------------------------------------
 // Marketplace
 // ---------------------------------------------------------------------------

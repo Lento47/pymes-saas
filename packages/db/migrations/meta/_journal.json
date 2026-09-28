@@ -99,6 +99,13 @@
       "when": 1790496000000,
       "tag": "0012_business_listed",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1790550914385,
+      "tag": "0014_account_consent",
+      "breakpoints": true
     }
   ]
 }

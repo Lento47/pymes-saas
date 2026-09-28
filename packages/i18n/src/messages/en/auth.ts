@@ -18,6 +18,14 @@ export const auth = {
 	"auth.signUp.submit": "Create account",
 	"auth.signUp.hasAccount": "Already have an account?",
 
+	// Two controls, not one: accepting the terms is agreeing to a contract, and
+	// confirming an age is a claim about the person that Ley 8968 Art. 5 makes the
+	// agreement depend on. One checkbox would leave the second unprovable.
+	"auth.signUp.termsLabel": "I accept the Terms of Service.",
+	"auth.signUp.ageLabel": "I confirm I am 18 or older.",
+	"auth.signUp.consentRequired": "Accept the terms and confirm your age to continue.",
+	"auth.signUp.termsLink": "View Terms",
+
 	"auth.signUp.business.title": "Register your business",
 	"auth.signUp.business.subtitle": "Create an account to open your shop.",
 	"auth.signUp.delivery.title": "Register as a courier",

@@ -1,0 +1,12 @@
+-- Record when an account holder asserted they are 18 or over.
+--
+-- Nullable, and left null for every existing row on purpose. A backfilled value
+-- would assert something about accounts that were created before the question was
+-- ever asked of them, and a timestamp that claims consent to a statement nobody
+-- made is worse than an honest gap: it is indistinguishable from a real assertion
+-- once it is in the column.
+--
+-- Postgres supplies now() rather than the migration's clock so the value reflects
+-- the same instant the column became readable, independent of how long the
+-- migration took to run.
+ALTER TABLE "User" ADD COLUMN "age_confirmed_at" TIMESTAMP(3);

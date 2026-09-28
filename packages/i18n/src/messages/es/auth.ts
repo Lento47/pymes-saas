@@ -20,6 +20,20 @@ export const auth = {
 	"auth.signUp.submit": "Crear cuenta",
 	"auth.signUp.hasAccount": "¿Ya tienes cuenta?",
 
+	/**
+	 * The two assertions, and the sentence for when one is missing.
+	 *
+	 * Two controls and not one because they are two different claims. Accepting the
+	 * terms is agreeing to a contract; confirming an age is asserting something about
+	 * the person, which under Ley 8968 Art. 5 is what makes the agreement the
+	 * agreement — a minor's consent needs a representative. Collapsing them into one
+	 * checkbox would make the second one unprovable after the fact.
+	 */
+	"auth.signUp.termsLabel": "Acepto los Términos de Servicio.",
+	"auth.signUp.ageLabel": "Confirmo que tengo 18 años o más.",
+	"auth.signUp.consentRequired": "Acepta los términos y confirma tu edad para continuar.",
+	"auth.signUp.termsLink": "Ver Términos",
+
 	"auth.signUp.business.title": "Registra tu negocio",
 	"auth.signUp.business.subtitle": "Crea una cuenta para abrir tu tienda.",
 	"auth.signUp.delivery.title": "Regístrate como repartidor",

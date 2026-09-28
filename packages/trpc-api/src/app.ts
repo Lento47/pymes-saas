@@ -9,7 +9,11 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { createAuth } from "./auth";
+import {
+	createAuth,
+	parseSignUpConsent,
+	withoutConsentFlags,
+} from "./auth";
 import { createContext } from "./context";
 import { corsOrigins, type Env, orderRoomFor } from "./env";
 import { DomainError, InternalError } from "./errors";
@@ -259,6 +263,57 @@ export function createApp() {
 		if (!result.ok) return c.json({ error: result.code }, result.status);
 		c.header("set-auth-token", result.token);
 		return c.json({ user: result.user });
+	});
+
+	/**
+	 * The consent gate for a sign-up, before Better Auth parses anything.
+	 *
+	 * The mobile app posts here and this is the only point in the request where the
+	 * body still has the shape the client sent. `app.ts` used to forward
+	 * `c.req.raw` untouched, which meant a sign-up carrying no terms acceptance and no
+	 * age assertion created an account — on the surface that then asks the device for
+	 * location and a push token. The web sign-up has been gated at the NestJS app for
+	 * a while; this is the other door to the same product.
+	 *
+	 * It has to be here and not in a Better Auth hook. The body is parsed into
+	 * Better Auth's own shape before any hook runs, so fields it does not model are
+	 * already gone by then — see `parseSignUpConsent` in `./auth`, which records the
+	 * correction rather than leaving the reason implicit.
+	 *
+	 * The body is read once and re-sent rather than consumed: `c.req.raw` is a stream,
+	 * and a forwarded request whose body has been drained reaches Better Auth with no
+	 * credentials at all. The clone is what gets drained; the original is rebuilt from
+	 * the flags-stripped body.
+	 */
+	app.on(["POST"], `${AUTH_PREFIX}/sign-up/email`, async (c) => {
+		let body: unknown;
+		try {
+			body = await c.req.raw.clone().json();
+		} catch {
+			// A body that is not JSON is Better Auth's problem to word, not this
+			// gate's — this gate only answers "were the assertions made".
+			body = undefined;
+		}
+
+		const parsed = parseSignUpConsent(body);
+		if (!parsed.ok) {
+			c.header("Cache-Control", "no-store");
+			return c.json(
+				{ error: parsed.refusal.code, message: parsed.refusal.message },
+				400,
+			);
+		}
+
+		const auth = createAuth(c.env, parsed.consent);
+		if (!auth) return c.json({ error: "auth_not_configured" }, 503);
+		c.header("Cache-Control", "no-store");
+		return auth.handler(
+			new Request(c.req.raw.url, {
+				method: "POST",
+				headers: c.req.raw.headers,
+				body: JSON.stringify(withoutConsentFlags(body)),
+			}),
+		);
 	});
 
 	app.on(["GET", "POST"], `${AUTH_PREFIX}/*`, async (c) => {
