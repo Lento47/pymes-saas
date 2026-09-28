@@ -270,13 +270,9 @@ export const accountConsent = sqliteTable("account_consent", {
 		.primaryKey()
 		.references(() => user.id, { onDelete: "cascade" }),
 	/** When the terms were accepted. Never null: a row exists because they were. */
-	termsAcceptedAt: integer("terms_accepted_at", {
-		mode: "timestamp_ms",
-	}).notNull(),
+	termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp_ms" }).notNull(),
 	/** When the reader asserted they were an adult. Never null, for the same reason. */
-	ageConfirmedAt: integer("age_confirmed_at", {
-		mode: "timestamp_ms",
-	}).notNull(),
+	ageConfirmedAt: integer("age_confirmed_at", { mode: "timestamp_ms" }).notNull(),
 	/** When consent was last revoked, if it was. Null means it still stands. */
 	revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
 	/** Why it was revoked, when it was. A revocation with no recorded reason is hard to act on. */
@@ -894,10 +890,7 @@ export const delivery = sqliteTable(
 		courierUserId: text("courier_user_id").references(() => user.id, {
 			onDelete: "set null",
 		}),
-		status: text("status")
-			.$type<DeliveryStatus>()
-			.notNull()
-			.default("SEARCHING"),
+		status: text("status").$type<DeliveryStatus>().notNull().default("SEARCHING"),
 		pickupName: text("pickup_name").notNull(),
 		pickupLine1: text("pickup_line1").notNull(),
 		pickupLine2: text("pickup_line2"),
@@ -919,9 +912,7 @@ export const delivery = sqliteTable(
 		dropoffPhone: text("dropoff_phone"),
 		dropoffInstructions: text("dropoff_instructions"),
 		acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
-		startedToPickupAt: integer("started_to_pickup_at", {
-			mode: "timestamp_ms",
-		}),
+		startedToPickupAt: integer("started_to_pickup_at", { mode: "timestamp_ms" }),
 		arrivedPickupAt: integer("arrived_pickup_at", { mode: "timestamp_ms" }),
 		pickedUpAt: integer("picked_up_at", { mode: "timestamp_ms" }),
 		deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
@@ -1458,6 +1449,7 @@ export const upload = sqliteTable(
  * not been shown to anyone.
  */
 
+
 // ---------------------------------------------------------------------------
 // Inferred row types
 // ---------------------------------------------------------------------------
@@ -1473,6 +1465,7 @@ export type NewMerchantLocation = typeof merchantLocation.$inferInsert;
 
 export type Membership = typeof membership.$inferSelect;
 export type NewMembership = typeof membership.$inferInsert;
+
 
 export type CourierInvite = typeof courierInvite.$inferSelect;
 export type NewCourierInvite = typeof courierInvite.$inferInsert;

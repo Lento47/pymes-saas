@@ -106,7 +106,7 @@ import {
 } from "./mappers";
 
 /**
- * Orders — the one table where money has already changed hands.
+ * Orders ΓÇö the one table where money has already changed hands.
  *
  * Three rules the whole file is built on:
  *
@@ -115,7 +115,7 @@ import {
  *   row and the option deltas from the option rows, so a client cannot choose what it
  *   pays by sending a number.
  * - **An order is scoped by the caller.** By id, it is reachable by the customer who
- *   placed it and by a member of the business fulfilling it, and by nobody else — and
+ *   placed it and by a member of the business fulfilling it, and by nobody else ΓÇö and
  *   "nobody else" gets the `NotFoundError` a fabricated id gets.
  * - **Every move is an event, written once and announced twice.** The event row goes into
  *   the same batch as the move it describes (`outbox_event`), and only then is it sent
@@ -125,7 +125,7 @@ import {
  *
  *   Nothing is holding one of those sockets. No client connects: web polls `orders.byId`
  *   and `orders.track`, and the apps poll `orders.byId`. The second announcement is
- *   therefore addressed to nobody today — it is kept because it is correct and cheap, and
+ *   therefore addressed to nobody today ΓÇö it is kept because it is correct and cheap, and
  *   this line used to claim the apps were subscribed to it.
  */
 
@@ -196,7 +196,7 @@ export async function place(
 	);
 
 	if (!isPaymentMethodEnabled(input.paymentMethod)) {
-		throw new ValidationError("Ese método de pago todavía no está disponible", {
+		throw new ValidationError("Ese m├⌐todo de pago todav├¡a no est├í disponible", {
 			field: "paymentMethod",
 		});
 	}
@@ -204,17 +204,17 @@ export async function place(
 	// A duplicate that arrives after the first request *finished* is answered from the ledger
 	// row, and this read has to come before the cart: the winner has already checked that
 	// cart out, so the second attempt would otherwise be refused for an empty basket instead
-	// of being handed the order it is asking about — which is the double-tap this whole
+	// of being handed the order it is asking about ΓÇö which is the double-tap this whole
 	// mechanism exists for. It is a read, not the concurrency control: the claim below is.
 	const settled = await orderIdForDedupeKey(ctx, input.clientRequestId);
 	if (settled) return detail(ctx, settled, "CUSTOMER");
 
 	// No open cart is not a "not found": nothing here takes an id a probe could guess, and
 	// the honest answer for a customer whose basket was cleared on another device is the one
-	// they can act on — the same sentence the empty-cart branch below gives, as a
+	// they can act on ΓÇö the same sentence the empty-cart branch below gives, as a
 	// `BAD_REQUEST` with a message in it rather than a dead-end not-found state.
 	const cart = await openCartOf(ctx.db, ctx.user.id);
-	if (!cart) throw new ValidationError("Tu carrito está vacío");
+	if (!cart) throw new ValidationError("Tu carrito est├í vac├¡o");
 
 	const lines = await ctx.db
 		.select({ item: cartItemTable, product: productTable })
@@ -222,7 +222,7 @@ export async function place(
 		.innerJoin(productTable, eq(cartItemTable.productId, productTable.id))
 		.where(eq(cartItemTable.cartId, cart.id));
 
-	if (lines.length === 0) throw new ValidationError("Tu carrito está vacío");
+	if (lines.length === 0) throw new ValidationError("Tu carrito est├í vac├¡o");
 
 	const business = orNotFound(
 		(
@@ -238,7 +238,7 @@ export async function place(
 	// must be told before the money is recorded rather than after.
 	if (business.status !== "ACTIVE") {
 		throw new ValidationError(
-			"La tienda no está aceptando pedidos en este momento",
+			"La tienda no est├í aceptando pedidos en este momento",
 		);
 	}
 
@@ -261,7 +261,7 @@ export async function place(
 	}
 	if (operationalStatus(location, business, new Date()) !== "open") {
 		throw new ValidationError(
-			"Esta sucursal no está aceptando pedidos en este momento",
+			"Esta sucursal no est├í aceptando pedidos en este momento",
 			{ field: "locationId" },
 		);
 	}
@@ -294,7 +294,7 @@ export async function place(
 	);
 
 	if (business.minOrderMinor > 0 && subtotalMinor < business.minOrderMinor) {
-		throw new ValidationError("Tu pedido no alcanza el mínimo de la tienda", {
+		throw new ValidationError("Tu pedido no alcanza el m├¡nimo de la tienda", {
 			field: "subtotalMinor",
 			minimumMinor: business.minOrderMinor,
 		});
@@ -345,17 +345,17 @@ export async function place(
 		input.expectedTotalMinor !== totalMinor
 	) {
 		throw new ConflictError(
-			"El total cambió. Revisa el pedido y confirma de nuevo",
+			"El total cambi├│. Revisa el pedido y confirma de nuevo",
 		);
 	}
 
 	// The claim is taken last, and that is deliberate: it is the gate on the *writes*, so a
-	// request that is going to be refused — an empty cart, a shop that closed, a basket under
-	// the minimum, a promotion that expired while they browsed — must not consume the
+	// request that is going to be refused ΓÇö an empty cart, a shop that closed, a basket under
+	// the minimum, a promotion that expired while they browsed ΓÇö must not consume the
 	// customer's `clientRequestId` on its way out. Taken before those reads it did exactly
 	// that: the ledger row survived the refusal with no order behind it, and every later
 	// retry of that id answered `existingOrderFor`'s "your previous order did not finish"
-	// until it gave up — so the retry the message asks for could never succeed.
+	// until it gave up ΓÇö so the retry the message asks for could never succeed.
 	const now = new Date();
 	const orderId = newId("order");
 	const reference = newOrderReference();
@@ -506,7 +506,7 @@ export async function place(
 				),
 			);
 		throw new ValidationError(
-			"Esta sucursal no está aceptando pedidos en este momento",
+			"Esta sucursal no est├í aceptando pedidos en este momento",
 			{ field: "locationId" },
 		);
 	}
@@ -539,7 +539,7 @@ async function claim(
 			id: newId("notification"),
 			userId: ctx.user.id,
 			kind: ORDER_LEDGER_KIND,
-			// Never rendered — `users.listNotifications` filters this kind out precisely
+			// Never rendered ΓÇö `users.listNotifications` filters this kind out precisely
 			// because a ledger row addressed to the customer would be a bell entry saying
 			// nothing. The columns are `notNull`, so they get honest text.
 			title: "Pedido en proceso",
@@ -559,8 +559,8 @@ async function claim(
  * The order this request id already produced, or nothing.
  *
  * One read, so both callers can share it: `place` asks once at the top, because a duplicate
- * that arrives after the first attempt finished should be answered before the cart — which
- * the winner has already checked out — is even looked at.
+ * that arrives after the first attempt finished should be answered before the cart ΓÇö which
+ * the winner has already checked out ΓÇö is even looked at.
  */
 async function orderIdForDedupeKey(
 	ctx: UserContext,
@@ -584,8 +584,8 @@ async function orderIdForDedupeKey(
  *
  * Bounded waiting rather than an immediate answer: the winner is writing its order right
  * now, and a loser that answered "conflict" to a double-tap would show the customer an
- * error for the thing that just succeeded. The wait is short — the winner's remaining work
- * is one batch — and it ends in a `ConflictError` rather than in a fabricated success, so
+ * error for the thing that just succeeded. The wait is short ΓÇö the winner's remaining work
+ * is one batch ΓÇö and it ends in a `ConflictError` rather than in a fabricated success, so
  * a request that genuinely cannot resolve says so.
  */
 async function existingOrderFor(
@@ -600,16 +600,16 @@ async function existingOrderFor(
 	}
 
 	// The ledger row exists and never got its order id, so the winning request died inside
-	// its batch — the only failure left that can strand a claim, since everything that can
+	// its batch ΓÇö the only failure left that can strand a claim, since everything that can
 	// refuse a placement now runs before the claim is taken. Nothing was written (the batch
 	// is atomic), so a retry is safe; it needs a fresh id, which is what the app supplies
 	// when the customer taps again.
 	throw new ConflictError(
-		"Tu pedido anterior no terminó de registrarse. Intenta de nuevo.",
+		"Tu pedido anterior no termin├│ de registrarse. Intenta de nuevo.",
 	);
 }
 
-/** `ORDER_PLACED:<customerId>:<clientRequestId>` — identifies the request, never a clock. */
+/** `ORDER_PLACED:<customerId>:<clientRequestId>` ΓÇö identifies the request, never a clock. */
 function ledgerKey(customerId: string, clientRequestId: string): string {
 	return `ORDER_PLACED:${customerId}:${clientRequestId}`;
 }
@@ -623,8 +623,8 @@ function delay(ms: number): Promise<void> {
  *
  * Scoped by owner in the same statement that reads it: somebody else's address id resolves
  * to nothing, and the customer is told the address is missing rather than that it is not
- * theirs. A pickup carries no address at all — `placeOrderInput` refuses an input that
- * sends both — and an order that kept one from an earlier delivery attempt is a driver
+ * theirs. A pickup carries no address at all ΓÇö `placeOrderInput` refuses an input that
+ * sends both ΓÇö and an order that kept one from an earlier delivery attempt is a driver
  * sent to a house for nothing.
  */
 async function resolveAddress(
@@ -647,7 +647,7 @@ async function resolveAddress(
 	const address = rows[0];
 	// The same answer for "no such address" and "not yours"; see `orNotFound`.
 	if (!address) {
-		throw new ValidationError("Elige una dirección para la entrega", {
+		throw new ValidationError("Elige una direcci├│n para la entrega", {
 			field: "addressId",
 		});
 	}
@@ -662,8 +662,8 @@ async function resolveAddress(
  * can change while a basket sits there, and the total the customer agreed to is the total
  * this function produces.
  *
- * The reason it refuses is a **message key** — the same `PROMOTION_ERROR_KEYS` set
- * `services/cart.ts` answers with — and not the Spanish sentence it used to be. This is the
+ * The reason it refuses is a **message key** ΓÇö the same `PROMOTION_ERROR_KEYS` set
+ * `services/cart.ts` answers with ΓÇö and not the Spanish sentence it used to be. This is the
  * one place that reason is *thrown* rather than returned as a field: placing an order is a
  * request that failed, so there is no cart to hang it on. `placeOrder` passes the key to the
  * `ValidationError`, and a client that reads `message` resolves it through its dictionary
@@ -755,8 +755,8 @@ async function promotionFor(
 /**
  * A promotion row as a `Discount`.
  *
- * `FREE_DELIVERY` takes nothing off a subtotal. The fee is a checkout concern — it depends
- * on the fulfilment mode — and the honest thing to take off the goods is nothing; the free
+ * `FREE_DELIVERY` takes nothing off a subtotal. The fee is a checkout concern ΓÇö it depends
+ * on the fulfilment mode ΓÇö and the honest thing to take off the goods is nothing; the free
  * delivery is realised by the fee being zero for that kind, which is read here rather than
  * in pricing a line.
  */
@@ -774,7 +774,7 @@ function discountOf(kind: PromotionKind, value: number): Discount {
  *
  * **Not** a `businessProcedure`, and that is a deliberate divergence from
  * `api-surface.md`'s "every procedure here takes `businessId`": `advanceOrderInput`
- * carries an `orderId` and no business, and it cannot carry one — the customer's own app
+ * carries an `orderId` and no business, and it cannot carry one ΓÇö the customer's own app
  * cancels through the same shape. So the order is read first, the caller's relationship to
  * it is resolved from the row, and a caller who is neither the customer, a member of the
  * business, nor an admin gets the same `NotFoundError` a fabricated order id gets.
@@ -791,14 +791,14 @@ export async function advance(
 	const actor = actorFor(ctx, order);
 
 	if (input.expectedStatus && input.expectedStatus !== order.status) {
-		throw new ConflictError("El pedido cambió mientras lo mirabas", {
+		throw new ConflictError("El pedido cambi├│ mientras lo mirabas", {
 			currentStatus: order.status,
 		});
 	}
 
 	// A courier moves only the run they carry. Without this a courier could
-	// advance any order of the shop — including ones another courier is
-	// already riding — because the membership check in `reachableOrder` only
+	// advance any order of the shop ΓÇö including ones another courier is
+	// already riding ΓÇö because the membership check in `reachableOrder` only
 	// says they belong to the business. Same `NotFoundError` as a fabricated
 	// id: a courier probing other runs learns nothing about which exist.
 	if (actor === "COURIER" && order.courierUserId !== ctx.user.id) {
@@ -827,7 +827,7 @@ export async function advance(
 		const expectedDeliveryStatus =
 			input.to === "OUT_FOR_DELIVERY" ? "AT_PICKUP" : "PICKED_UP";
 		if (linkedDelivery.status !== expectedDeliveryStatus) {
-			throw new ConflictError("La entrega todavía no llegó a este paso", {
+			throw new ConflictError("La entrega todav├¡a no lleg├│ a este paso", {
 				deliveryStatus: linkedDelivery.status,
 			});
 		}
@@ -905,7 +905,7 @@ const LOCATE_WINDOW_SECONDS = 60;
 /**
  * Hand a READY delivery order to one of the shop's couriers.
  *
- * MANAGER or OWNER only — handing out runs is staffing, and `staff:manage` is
+ * MANAGER or OWNER only ΓÇö handing out runs is staffing, and `staff:manage` is
  * the capability that names it, but this procedure takes an `orderId` rather
  * than a `businessId` (like `advance`, it resolves the business from the
  * row), so the role is checked here against the order's own shop instead of
@@ -915,7 +915,7 @@ const LOCATE_WINDOW_SECONDS = 60;
  * The assignee must already be a COURIER member of the shop: an id, not a
  * typed name, because a name typed at dispatch is a different person every
  * time it is spelled differently. The row's name and phone are copied from
- * the member's profile at assignment — denormalised the way `actorName` is,
+ * the member's profile at assignment ΓÇö denormalised the way `actorName` is,
  * so a courier who is later removed keeps their name on the runs they rode.
  * Reassigning while still READY overwrites; once the run left, the courier is
  * history and only the machine moves it.
@@ -946,7 +946,7 @@ export async function assign(
 		throw new ValidationError("Solo los pedidos a domicilio llevan repartidor");
 	}
 	if (order.status !== "READY") {
-		throw new ValidationError("El pedido todavía no está listo para salir", {
+		throw new ValidationError("El pedido todav├¡a no est├í listo para salir", {
 			status: order.status,
 		});
 	}
@@ -985,7 +985,7 @@ export async function assign(
 		profile[0] &&
 		(!profile[0].isAvailable || profile[0].verificationStatus !== "VERIFIED")
 	) {
-		throw new ValidationError("Este repartidor no está disponible ahora mismo");
+		throw new ValidationError("Este repartidor no est├í disponible ahora mismo");
 	}
 
 	const now = new Date();
@@ -1049,7 +1049,7 @@ export async function reportLocation(
 		throw new NotFoundError("No encontramos ese pedido");
 	}
 	if (order.status !== "OUT_FOR_DELIVERY") {
-		throw new ValidationError("La ubicación solo se comparte en camino", {
+		throw new ValidationError("La ubicaci├│n solo se comparte en camino", {
 			status: order.status,
 		});
 	}
@@ -1103,10 +1103,10 @@ async function applyMove(
 	// JavaScript is not: two movers read the same number and both write the same increment,
 	// so the second one's event would claim a version the first already speaks for. The CAS
 	// makes exactly one caller the owner of `version + 1`, so no two events ever claim the
-	// same version of one order — which is the property `aggregateVersion` exists to give a
+	// same version of one order ΓÇö which is the property `aggregateVersion` exists to give a
 	// projection and a stale-event check.
 	//
-	// The alternative — the same guard in the `where` of the update inside the batch below —
+	// The alternative ΓÇö the same guard in the `where` of the update inside the batch below ΓÇö
 	// was rejected for a specific reason: a D1 batch is atomic, so a lost CAS would roll back
 	// nothing but its own effect, and the `outbox_event` row sitting next to it would still
 	// commit. That is an event about a move that never happened, carrying an `eventId` the
@@ -1117,16 +1117,16 @@ async function applyMove(
 	// CAS is keyed on `version` alone and the status write is in the batch that *follows* it.
 	// A mover that reads the row inside that window sees the new version with the old status,
 	// so its own `expectedStatus` check passes and its CAS matches too. Two taps, two moves,
-	// two events — distinct and correctly identified, so both are processed: a duplicate
+	// two events ΓÇö distinct and correctly identified, so both are processed: a duplicate
 	// notification, not a lost one. Closing it needs the status write and the CAS in the same
 	// statement, and then the two log inserts have to be conditional on that statement
-	// (`insert … select … where exists`) or the batch commits an event for a move that lost.
+	// (`insert ΓÇª select ΓÇª where exists`) or the batch commits an event for a move that lost.
 	// That belongs with the per-order Durable Object, which serialises one order's moves by
 	// construction. Not here.
 	//
 	// The other cost: a batch that fails *after* this line leaves a version consumed with no
-	// move to show for it. The number skips, which nothing observes — `aggregateVersion`
-	// promises order, not consecutiveness — and the retry reads the row again and reserves
+	// move to show for it. The number skips, which nothing observes ΓÇö `aggregateVersion`
+	// promises order, not consecutiveness ΓÇö and the retry reads the row again and reserves
 	// the next one.
 	const reserved = await ctx.db
 		.update(orderTable)
@@ -1146,7 +1146,7 @@ async function applyMove(
 			.from(orderTable)
 			.where(eq(orderTable.id, order.id))
 			.limit(1);
-		throw new ConflictError("El pedido cambió mientras lo mirabas", {
+		throw new ConflictError("El pedido cambi├│ mientras lo mirabas", {
 			currentStatus: current?.status ?? order.status,
 		});
 	}
@@ -1162,7 +1162,7 @@ async function applyMove(
 	if (move.to === "READY") patch.readyAt = now;
 	if (move.to === "COMPLETED") {
 		patch.completedAt = now;
-		// Completing a cash or SINPE order is the moment the money changes hands — nobody
+		// Completing a cash or SINPE order is the moment the money changes hands ΓÇö nobody
 		// hands over food unpaid. A payment status left UNPAID on a finished order is a
 		// payout report that never reconciles. See `requiresCollection`.
 		if (requiresCollection(order.paymentStatus)) patch.paymentStatus = "PAID";
@@ -1279,14 +1279,14 @@ async function applyMove(
  *
  * Both are best-effort *now*, and the reason is the outbox: the caller wrote an
  * `outbox_event` row in the same batch as the move, so the event is already durable before
- * this function runs. A failure here costs a delay — the sweeper publishes what this
- * attempt missed — and never a notification. That is what makes it safe to not care
+ * this function runs. A failure here costs a delay ΓÇö the sweeper publishes what this
+ * attempt missed ΓÇö and never a notification. That is what makes it safe to not care
  * whether the room answered.
  *
  * The room is told second so that a Durable Object which is slow, evicted or unreachable
  * cannot delay the queue publish behind it, and it must never fail the staff member's tap.
  * It is also told nobody: the room fans out to whatever sockets are open, and no client
- * opens one — both apps and the web app poll. So the `warn` below is not a degraded
+ * opens one ΓÇö both apps and the web app poll. So the `warn` below is not a degraded
  * live-update path today, it is a request that would have gone to an empty room.
  *
  * The failure is logged by name only. There is no token, header or body in reach here, and
@@ -1350,7 +1350,7 @@ export async function byId(
  * The kitchen works in parallel: the longest line sets the wait. A line whose
  * product carries no per-product value inherits the shop default, so explicit
  * values can only raise the estimate above what the shop promises, never lower
- * it. `null` when neither side has a number — the mapper falls back to
+ * it. `null` when neither side has a number ΓÇö the mapper falls back to
  * `DEFAULT_PREP_MINUTES` there, which is the same answer as before this rule.
  */
 export function effectivePrepTimeMinutes(
@@ -1405,7 +1405,7 @@ export async function track(
  * One procedure for both clients, because the two questions are the same query with a
  * different scope: a customer's own orders and a business's queue are both "orders, newest
  * first, filtered". The branch is on `role`, and the business side is checked against
- * `membership` here rather than in a middleware — `orders.list` is a `protectedProcedure`,
+ * `membership` here rather than in a middleware ΓÇö `orders.list` is a `protectedProcedure`,
  * so the check has to exist, and a scope that arrives as a *parameter* is exactly the kind
  * of thing that must never be trusted.
  */
@@ -1446,7 +1446,7 @@ export async function queue(
 
 	// The courier's board is this flag rather than a procedure of its own: same
 	// rows, same paging, one fewer name for two clients to agree on. The cast
-	// is safe because every element spread in is defined — `and` only answers
+	// is safe because every element spread in is defined ΓÇö `and` only answers
 	// `undefined` for an empty list, and the business half is unconditional.
 	return pageOf(
 		ctx,
@@ -1576,7 +1576,7 @@ export async function stats(
 		// Today's completed revenue, for the merchant home's pulse band: the same
 		// COMPLETED-only meaning as the all-time query below, scoped to the market day
 		// `today` above is counted against. A client-side sum over a listed page is
-		// not this — a page is not the day, and the day is not a page.
+		// not this ΓÇö a page is not the day, and the day is not a page.
 		ctx.db
 			.select({
 				currency: orderTable.currency,
@@ -1752,7 +1752,7 @@ export async function stats(
  * - **Only what can still be bought.** `status = 'ACTIVE'`, `archivedAt` null, and
  *   `publicBusiness()` - the same three conditions every public read of a product
  *   carries (`helpers.ts`: "both must be filtered the same way in every public read"), so
- *   `Frutería La Cosecha` - `SUSPENDED` in the seed - drops off the shelf the moment the
+ *   `Fruter├¡a La Cosecha` - `SUSPENDED` in the seed - drops off the shelf the moment the
  *   platform closes the shop. A card that cannot be tapped is the bug that filter is for.
  *
  * Two reads and no third. The first decides *which* products and in what order - the
@@ -1834,7 +1834,7 @@ export async function purchasedProducts(
  *   implementation of any of those is a second answer to "what does this line cost".
  * - **A line that cannot come back is skipped and reported, never fatal.** A shop that
  *   renamed an option, or took a product down, would otherwise make yesterday's order
- *   permanently unbuyable — the customer would get a refusal and no other information,
+ *   permanently unbuyable ΓÇö the customer would get a refusal and no other information,
  *   with no way to see which of their five lines was the problem.
  *
  * The two failure kinds are told apart **by error class, never by the message string**:
@@ -1845,8 +1845,8 @@ export async function purchasedProducts(
  * "your cart is from another shop" case, which the client answers with a sheet, and
  * swallowing it per line would turn a decision into a silent partial reorder.
  *
- * Nothing here is idempotent — a second call adds the quantities again, exactly as a
- * second `cart.addItem` would — so the screen disables its button while this is in
+ * Nothing here is idempotent ΓÇö a second call adds the quantities again, exactly as a
+ * second `cart.addItem` would ΓÇö so the screen disables its button while this is in
  * flight. That is a client concern and not something a key on the input could fix.
  */
 export async function reorder(
@@ -1869,8 +1869,8 @@ export async function reorder(
 	);
 
 	// Before any write, and that ordering is the point: a suspended or deleted shop must
-	// not leave a cart behind. `cart.addItem` would refuse the first line anyway — same
-	// check, same `isPublicBusiness` — but by then the cart may already exist from an
+	// not leave a cart behind. `cart.addItem` would refuse the first line anyway ΓÇö same
+	// check, same `isPublicBusiness` ΓÇö but by then the cart may already exist from an
 	// earlier line, or the client would get a bare "not found" about a *product* when the
 	// truth is about the shop. A cart pointing at a shop nobody can buy from is an orphan,
 	// and this is the one refusal in the function, so it is the one place a key is needed.
@@ -1900,9 +1900,9 @@ export async function reorder(
 
 	// The room left in the basket, measured before the loop instead of discovered by it.
 	//
-	// `cart.addItem` throws "Tu carrito está lleno" at `MAX_CART_LINES`, and that throw
+	// `cart.addItem` throws "Tu carrito est├í lleno" at `MAX_CART_LINES`, and that throw
 	// would land in the classifier below, where the only `ValidationError` left is the
-	// options one — so a full basket would be reported as five lines with broken options.
+	// options one ΓÇö so a full basket would be reported as five lines with broken options.
 	// Counting first is what keeps that impossible: a line that *merges* into one already
 	// there costs no slot (the key below is the same `(productId, optionsHash)` the unique
 	// index is built on), and a line that would open a slot at the cap is skipped with the
@@ -1953,7 +1953,7 @@ export async function reorder(
 				productId: line.productId,
 				// Clamped rather than refused, at both ends. `addToCartInput` already bounds a
 				// quantity to `1..MAX_LINE_QUANTITY`, so this is a no-op for every order this
-				// API wrote — it is here because `addItem` is called as a function here and not
+				// API wrote ΓÇö it is here because `addItem` is called as a function here and not
 				// through that schema, so a row written by a migration or a hand-run script is
 				// otherwise the one input that reaches a cart line without zod seeing it.
 				quantity: Math.min(Math.max(line.quantity, 1), MAX_LINE_QUANTITY),
@@ -1962,7 +1962,7 @@ export async function reorder(
 			});
 		} catch (error) {
 			const reason = skipReasonOf(error);
-			// Anything else — the conflict, a rate limit, a genuine fault — is the caller's
+			// Anything else ΓÇö the conflict, a rate limit, a genuine fault ΓÇö is the caller's
 			// to see. A reorder that half-succeeded and reported nothing would be worse than
 			// one that stopped.
 			if (!reason) throw error;
@@ -1971,7 +1971,7 @@ export async function reorder(
 		}
 
 		addedCount += 1;
-		// Only the replacing call reports it, and only one line can be the replacing one —
+		// Only the replacing call reports it, and only one line can be the replacing one ΓÇö
 		// which is why the flag is carried out of the loop instead of read off the last
 		// cart. The returned cart is the last successful one, so the earlier `true` would
 		// otherwise be lost and the "your basket was replaced" notice never shown.
@@ -1993,7 +1993,7 @@ export async function reorder(
 	return { cart, addedCount, skipped };
 }
 
-/** One skipped line, named from the order's snapshot — the product row is what may be gone. */
+/** One skipped line, named from the order's snapshot ΓÇö the product row is what may be gone. */
 function skippedLineOf(
 	line: { productId: string; name: string; quantity: number },
 	reason: ReorderSkipReason,
@@ -2009,7 +2009,7 @@ function skippedLineOf(
 /**
  * Whether this refusal is a fact about one line, and which.
  *
- * By class and not by text — see `reorder`'s docblock. `null` means "not a line's
+ * By class and not by text ΓÇö see `reorder`'s docblock. `null` means "not a line's
  * problem", and the caller rethrows.
  */
 function skipReasonOf(error: unknown): ReorderSkipReason | null {
@@ -2030,8 +2030,8 @@ async function pageOf(
 	const after = decodeCursor<{ v: number; id: string }>(input.cursor);
 	const ascending = input.sortDirection === "asc";
 	const direction = ascending ? asc : desc;
-	// Two sort keys, and both are integers on the row — a timestamp in milliseconds, money
-	// in minor units — so the cursor carries a number and the boundary is raw SQL rather
+	// Two sort keys, and both are integers on the row ΓÇö a timestamp in milliseconds, money
+	// in minor units ΓÇö so the cursor carries a number and the boundary is raw SQL rather
 	// than a typed `gt`/`lt` whose column type differs per key.
 	const column =
 		input.sort === "total" ? orderTable.totalMinor : orderTable.placedAt;
@@ -2281,8 +2281,8 @@ async function detail(
  * One order, if the caller has any business knowing about it.
  *
  * Three ways to be entitled and no fourth: the customer who placed it, a member of the
- * business fulfilling it, or a platform admin. Everything else — including a signed-in
- * stranger holding a real order id — gets the same `NotFoundError`, so the endpoint cannot
+ * business fulfilling it, or a platform admin. Everything else ΓÇö including a signed-in
+ * stranger holding a real order id ΓÇö gets the same `NotFoundError`, so the endpoint cannot
  * be used to learn which order ids exist.
  */
 async function reachableOrder(
@@ -2327,7 +2327,7 @@ function actorFor(
 	// quietly downgraded to BUSINESS on an order they are investigating.
 	if (ctx.user.isAdmin) return "ADMIN";
 	// A courier is a member with the COURIER role, and the machine has moves only
-	// they can make (READY → OUT_FOR_DELIVERY → COMPLETED on a delivery). Any
+	// they can make (READY ΓåÆ OUT_FOR_DELIVERY ΓåÆ COMPLETED on a delivery). Any
 	// other role stays BUSINESS, exactly as before this role existed.
 	const membership = ctx.memberships.find(
 		(entry) => entry.businessId === order.businessId,

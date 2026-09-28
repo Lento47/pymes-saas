@@ -23,23 +23,42 @@ export const auth = {
 	// agreement depend on. One checkbox would leave the second unprovable.
 	"auth.signUp.termsLabel": "I accept the Terms of Service.",
 	"auth.signUp.ageLabel": "I confirm I am 18 or older.",
-	"auth.signUp.consentRequired":
-		"Accept the terms and confirm your age to continue.",
+	"auth.signUp.consentRequired": "Accept the terms and confirm your age to continue.",
 	"auth.signUp.termsLink": "View Terms",
 
 	"auth.signUp.business.title": "Register your business",
 	"auth.signUp.business.subtitle": "Create an account to open your shop.",
 	"auth.signUp.delivery.title": "Register as a courier",
 	"auth.signUp.delivery.subtitle": "Create an account to accept deliveries.",
+	/**
+	 * The customer's own pair, which the sign-up title and the type group both read. The two
+	 * business and courier sentences above exist because those two modes change what the form
+	 * is *for*; the customer is the plain case, so its sentence has to be written rather than
+	 * left blank, or choosing it would empty the line the type group prints under its
+	 * heading.
+	 */
+	"auth.signUp.customer.subtitle":
+		"Create an account to keep your orders in one place.",
 	"auth.signUp.notCustomer": "Not a customer?",
 	"auth.signUp.businessOption": "Register as a business",
 	"auth.signUp.courierOption": "Register as a courier",
 
 	/**
+	 * What the account is for, one line per type. Each of these is a promise the type
+	 * makes, and the card that carries it is the whole reason the sign-up door is cards
+	 * and not a segment - see `apps/mobile/app/(auth)/sign-in.tsx`.
+	 */
+	"auth.signUp.typeLabel": "Account type",
+	"auth.signUp.type.businessHelp":
+		"Sell, manage your orders and grow your business.",
+	"auth.signUp.type.customerHelp": "Buy from your favourite businesses.",
+	"auth.signUp.type.deliveryHelp": "Make deliveries and confirm orders.",
+
+	/**
 	 * The auth tree's front door: what this app is, and the two ways in. It is the
-	 * group's base route, not the app's cold start - the marketplace answers a
+	 * group's index destination, not the app's cold start - the marketplace answers a
 	 * signed-out reader in full, and putting a wall in front of that would cost the
-	 * funnel the public pages exist to feed.
+	 * funnel the marketing pages exist to feed.
 	 */
 	"auth.welcome.title": "Your business, in motion.",
 	"auth.welcome.subtitle":
@@ -78,6 +97,7 @@ export const auth = {
 	"auth.role.business": "Business",
 	"auth.role.delivery": "Courier",
 	"auth.role.deliveryHelp": "Only for accepting and delivering orders.",
+	"auth.role.businessHelp": "To run your shop and receive orders.",
 
 	"auth.provider.label": "Sign in with",
 	"auth.provider.marketplace": "Marketplace",

@@ -82,9 +82,7 @@ describe("scrubTelemetryPayload", () => {
 		// `PHONE_IN_TEXT` exists because the bare digit rule cannot span a separator:
 		// `\b\d{8,}\b` does not match `8712-3456`, which is how the number is actually
 		// written. Each shape below is one that has to be caught.
-		expect(scrubTelemetryPayload({ a: "8712-3456" })).toEqual({
-			a: "[Filtered]",
-		});
+		expect(scrubTelemetryPayload({ a: "8712-3456" })).toEqual({ a: "[Filtered]" });
 		expect(scrubTelemetryPayload({ a: "+506 8712 3456" })).toEqual({
 			a: "[Filtered]",
 		});

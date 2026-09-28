@@ -49,6 +49,7 @@ import {
 	like,
 	lte,
 	ne,
+	notInArray,
 	or,
 	type SQL,
 	sql,

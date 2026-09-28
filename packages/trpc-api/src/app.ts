@@ -9,7 +9,11 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { createAuth, parseSignUpConsent, withoutConsentFlags } from "./auth";
+import {
+	createAuth,
+	parseSignUpConsent,
+	withoutConsentFlags,
+} from "./auth";
 import { createContext } from "./context";
 import { corsOrigins, type Env, orderRoomFor } from "./env";
 import { DomainError, InternalError } from "./errors";

@@ -45,9 +45,7 @@ export type ConsentRefusal = { code: string; message: string };
  * is the assertion a refusal is most often about, and naming the wrong one sends the
  * reader to fix something that was already fine.
  */
-export function parseSignUpConsent(
-	body: unknown,
-):
+export function parseSignUpConsent(body: unknown):
 	| { ok: true; consent: SignUpConsent }
 	| { ok: false; refusal: ConsentRefusal } {
 	const flags =
@@ -63,8 +61,7 @@ export function parseSignUpConsent(
 			ok: false,
 			refusal: {
 				code: "AGE_CONFIRMATION_REQUIRED",
-				message:
-					"Debés confirmar que tenés 18 años o más para crear una cuenta.",
+				message: "Debés confirmar que tenés 18 años o más para crear una cuenta.",
 			},
 		};
 	}
@@ -73,8 +70,7 @@ export function parseSignUpConsent(
 			ok: false,
 			refusal: {
 				code: "TERMS_ACCEPTANCE_REQUIRED",
-				message:
-					"Debés aceptar los Términos de Servicio para crear una cuenta.",
+				message: "Debés aceptar los Términos de Servicio para crear una cuenta.",
 			},
 		};
 	}
@@ -94,10 +90,7 @@ export function parseSignUpConsent(
  */
 export function withoutConsentFlags(body: unknown): unknown {
 	if (typeof body !== "object" || body === null) return body;
-	const { termsAccepted, ageConfirmed, ...rest } = body as Record<
-		string,
-		unknown
-	>;
+	const { termsAccepted, ageConfirmed, ...rest } = body as Record<string, unknown>;
 	void termsAccepted;
 	void ageConfirmed;
 	return rest;

@@ -280,11 +280,11 @@ function toArrayBuffer(
 	if (typeof value === "string") {
 		const out = new Uint8Array(value.length);
 		for (let i = 0; i < value.length; i += 1) out[i] = value.charCodeAt(i);
-		return out.buffer;
+		return out.buffer as ArrayBuffer;
 	}
 	if (value instanceof ArrayBuffer) return value;
 	const view = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-	return view.slice().buffer;
+	return view.slice().buffer as ArrayBuffer;
 }
 
 /**
