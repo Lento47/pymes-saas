@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'wouter';
+import { Link } from 'wouter';
 import { ArrowRight } from 'lucide-react';
 import { FEATURE_COMPARISON, FAQS, PRICING_TIERS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
@@ -6,6 +6,7 @@ import { FAQSection } from '@/components/pricing/FAQSection';
 import { Footer } from '@/components/marketing/footer';
 import { BrandLockup } from '@/components/marketing/brand-lockup';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
+import { ChamferedCta, ChamferedCtaGhost } from '@/components/marketing/cta-button';
 
 /**
  * The pricing page, rewritten around the one product that actually exists.
@@ -33,7 +34,6 @@ import { LanguageSwitcher } from '@/components/shared/language-switcher';
  *   for — and one the reader waited on.
  */
 export default function PricingPage() {
-  const [, navigate] = useLocation();
   const [weekly, monthly] = PRICING_TIERS;
 
   return (
@@ -54,13 +54,19 @@ export default function PricingPage() {
                 >
                   Ingresar
                 </Link>
+                {/* The site's own chamfered CTA instead of a generic gradient pill. */}
                 <Link
                   href="/register"
-                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:gap-2 sm:px-5 sm:py-2.5"
-                  style={{ background: 'linear-gradient(135deg, #B45309 0%, #F59E0B 100%)' }}
+                  className="group relative inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap px-5 text-sm font-semibold uppercase leading-none tracking-[0.08em]"
                 >
-                  Registrar mi comercio
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <svg aria-hidden="true" viewBox="0 0 220 50" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+                    <path d="M220 42L212.932 50H0V0H220V42Z" className="fill-[#0E0F14]" />
+                    <path d="M220 42L212.932 50H0V0H220V42Z" className="fill-[#f59e0b] origin-left scale-x-0 transition-transform duration-[250ms] ease-[cubic-bezier(0.33,0,0,1)] group-hover:scale-x-100" />
+                    <path d="M220 42L212.932 50H0V0H220V42Z" fill="none" stroke="#f59e0b" strokeOpacity="0.25" />
+                    <path d="M205 49.5H213L219.5 42V36 M212 0.5H219.5V7 M8 0.5H0.5V7 M7.5 49.5H0.5V42.5" fill="none" className="stroke-[#f59e0b]" />
+                  </svg>
+                  <span className="relative z-10 text-[#f59e0b] transition-colors duration-[250ms] group-hover:text-[#05091d]">Registrar mi comercio</span>
+                  <ArrowRight className="relative z-10 h-3.5 w-3.5 text-[#f59e0b] transition-all duration-150 group-hover:translate-x-1 group-hover:text-[#05091d]" />
                 </Link>
               </div>
             </nav>
@@ -188,19 +194,12 @@ export default function PricingPage() {
                 semanal es lo único que pagás hasta que tu negocio crezca.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <button
-                  onClick={() => navigate('/register')}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90"
-                >
+                <ChamferedCta href="/register">
                   Registrar mi comercio
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-8 py-3 font-semibold text-foreground transition hover:bg-muted/35"
-                >
+                </ChamferedCta>
+                <ChamferedCtaGhost href="/login">
                   Ya tengo cuenta
-                </Link>
+                </ChamferedCtaGhost>
               </div>
             </div>
           </div>

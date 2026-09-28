@@ -113,13 +113,13 @@ export default function AiAgentsPage() {
                     <ul className="space-y-2">
                       {steps.map((line, i) => (
                         <li key={i} className="flex items-baseline gap-3">
-                          <span className="text-[10px] text-slate-600 select-none">
+                          <span className="text-[10px] text-slate-400 select-none">
                             {String(i + 1).padStart(2, "0")}
                           </span>
                           <span className="text-[12px] font-medium text-slate-200">
                             {line.step}
                           </span>
-                          <span className="ml-auto text-[11px] text-slate-500 shrink-0 text-right">
+                          <span className="ml-auto text-[11px] text-slate-400 shrink-0 text-right">
                             {line.detail}
                           </span>
                         </li>

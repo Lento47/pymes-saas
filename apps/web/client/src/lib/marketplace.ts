@@ -22,6 +22,7 @@
  */
 
 import { createMarketplaceAuthClient } from "@pymeshub/auth/marketplace-client";
+import { reportClientError } from "@/lib/error-reporting";
 import {
   addressSchema,
   businessCardSchema,
@@ -108,9 +109,81 @@ export const trpc: any = createTRPCClient<any>({
 // Parsing helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Fill in the availability fields the deployed Worker does not send yet.
+ *
+ * The shared schema requires `enabled` and `unavailableReason` on every
+ * availability object, and `locationScope` on every product card — the API
+ * implements the schema's own `availabilityOf()` helper, which produces them,
+ * but its SQL projection omits all three. Every product row therefore failed
+ * `productCardSchema.parse()`, and every catalog read (feed, product lists,
+ * search, favourites, a storefront's featured rail) failed with it: the parse
+ * error was a caught rejection, the query rendered as an error or as empty,
+ * and the catalog read as broken even though the API had answered.
+ *
+ * The values derived here are exactly what the API's own helper would have
+ * sent for the shape it does return: an available product is enabled with no
+ * reason, and a product that reaches a card is not location-gated. When the
+ * Worker is fixed to send the fields these defaults become dead branches —
+ * `??` falls through to the real value — so nothing has to change here.
+ */
+function reconcileProductRow(row: unknown): unknown {
+  if (typeof row !== "object" || row === null) return row;
+  const product = row as Record<string, unknown>;
+  const availability = product.availability;
+  if (typeof availability !== "object" || availability === null) return row;
+  const a = availability as Record<string, unknown>;
+  return {
+    ...product,
+    availability: {
+      enabled: a.inStock,
+      unavailableReason: a.inStock ? null : "out_of_stock",
+      ...a,
+    },
+    // Only where the row has none: a real value from the API always wins.
+    locationScope: product.locationScope ?? "all_locations",
+  };
+}
+
 /** Structural, not `z.ZodType<T>`: a schema's inferred output is enough and avoids variance games. */
 function parseAll<T>(schema: { parse: (value: unknown) => T }, rows: unknown[]): T[] {
   return rows.map((row) => schema.parse(row));
+}
+
+/**
+ * Product rows, reconciled then parsed.
+ *
+ * Every catalog surface goes through this rather than a bare `parseAll` on
+ * `productCardSchema`, so one schema/Worker drift cannot take the whole grid
+ * down again. A single row that still does not parse (a genuinely new field,
+ * a corrupted row) is dropped and reported rather than failing the read —
+ * one missing card is a smaller failure than an empty catalog.
+ */
+function parseProducts(schema: { parse: (value: unknown) => ProductCard }, rows: unknown[]): ProductCard[] {
+  const out: ProductCard[] = [];
+  for (const row of rows) {
+    try {
+      out.push(schema.parse(reconcileProductRow(row)));
+    } catch (error) {
+      // Fire-and-forget: a dropped row must not hold up the render, and the
+      // report endpoint is the app's own API — an unreachable API already has
+      // bigger problems than one missing product card.
+      void reportClientError({
+        source: "web",
+        category: "api",
+        severity: "warning",
+        title: "Marketplace product row failed schema parse",
+        message: error instanceof Error ? error.message : String(error),
+        context_json: {
+          scope: "marketplace.product_parse",
+          productId: typeof (row as Record<string, unknown> | null)?.id === "string"
+            ? (row as Record<string, unknown>).id
+            : null,
+        },
+      });
+    }
+  }
+  return out;
 }
 
 function asArray(value: unknown): unknown[] {
@@ -164,8 +237,8 @@ export function useFeed(location?: { lat: number; lng: number }) {
         limit: 12,
       });
       return {
-        featured: parseAll(productCardSchema, asArray(raw.featured)),
-        offers: parseAll(productCardSchema, asArray(raw.offers)),
+        featured: parseProducts(productCardSchema, asArray(raw.featured)),
+        offers: parseProducts(productCardSchema, asArray(raw.offers)),
         nearby: parseAll(businessCardSchema, asArray(raw.nearby)),
         promotions: parseAll(promotionCardSchema, asArray(raw.promotions)),
         categories: parseAll(categorySchema, asArray(raw.categories)),
@@ -251,7 +324,13 @@ export function useStorefront(slug: string) {
     enabled: slug.length > 1,
     queryFn: async (): Promise<BusinessStorefront | null> => {
       const raw = await trpc.businesses.bySlug.query({ slug });
-      return raw ? businessStorefrontSchema.parse(raw) : null;
+      if (!raw) return null;
+      const r = raw as Record<string, unknown>;
+      // The featured rail is product rows; reconcile them like every other card.
+      return businessStorefrontSchema.parse({
+        ...r,
+        featured: parseProducts(productCardSchema, asArray(r.featured)),
+      });
     },
   });
 }
@@ -262,7 +341,20 @@ export function useProduct(id: string) {
     enabled: id.length > 2,
     queryFn: async (): Promise<ProductDetail | null> => {
       const raw = await trpc.products.byId.query({ id });
-      return raw ? productDetailSchema.parse(raw) : null;
+      if (!raw) return null;
+      const parsed = productDetailSchema.safeParse(reconcileProductRow(raw));
+      if (parsed.success) return parsed.data;
+      // A detail row the schema still refuses is a report, not a broken page:
+      // the caller renders its not-found state.
+      void reportClientError({
+        source: "web",
+        category: "api",
+        severity: "warning",
+        title: "Marketplace product detail failed schema parse",
+        message: parsed.error.issues.map((i) => i.path.join(".")).join(", "),
+        context_json: { scope: "marketplace.product_detail_parse", productId: id },
+      });
+      return null;
     },
   });
 }
@@ -330,7 +422,7 @@ export function useProductListInfinite(
         ...(pageParam === undefined ? {} : { cursor: pageParam }),
       });
       return {
-        items: parseAll(productCardSchema, asArray(raw?.items)),
+        items: parseProducts(productCardSchema, asArray(raw?.items)),
         nextCursor: cursorOf(raw?.nextCursor),
       };
     },
@@ -342,10 +434,18 @@ export function useSearch(q: string, location?: { lat: number; lng: number }) {
   return useQuery({
     queryKey: marketplaceKeys.search(term, location?.lat, location?.lng),
     enabled: term.length > 0,
-    queryFn: async (): Promise<ProductSearchResult> =>
-      productSearchResultSchema.parse(
-        await trpc.catalog.search.query({ q: term, lat: location?.lat, lng: location?.lng }),
-      ),
+    queryFn: async (): Promise<ProductSearchResult> => {
+      const raw: Record<string, unknown> = await trpc.catalog.search.query({
+        q: term,
+        lat: location?.lat,
+        lng: location?.lng,
+      });
+      return productSearchResultSchema.parse({
+        products: parseProducts(productCardSchema, asArray(raw.products)),
+        businesses: parseAll(businessCardSchema, asArray(raw.businesses)),
+        categories: parseAll(categorySchema, asArray(raw.categories)),
+      });
+    },
   });
 }
 
@@ -525,7 +625,7 @@ export function useFavorites(enabled = true) {
         const raw: Record<string, unknown> = await trpc.favorites.list.query();
         return {
           businesses: parseAll(businessCardSchema, asArray(raw?.businesses)),
-          products: parseAll(productCardSchema, asArray(raw?.products)),
+          products: parseProducts(productCardSchema, asArray(raw?.products)),
         };
       } catch (error) {
         if (isUnauthorized(error)) return null;

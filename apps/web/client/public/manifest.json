@@ -12,14 +12,20 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/images/appIcon.png",
+      "src": "/images/appIcon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/appIcon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png",
-      "sizes": "192x192",
+      "src": "/images/appIcon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -30,14 +36,14 @@
       "short_name": "Bandeja",
       "description": "Abrir bandeja de mensajes",
       "url": "/inbox",
-      "icons": [{ "src": "/images/appIcon.png", "sizes": "512x512" }]
+      "icons": [{ "src": "/images/appIcon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Facturación",
       "short_name": "Facturas",
       "description": "Ir a facturación",
       "url": "/invoices",
-      "icons": [{ "src": "/images/appIcon.png", "sizes": "512x512" }]
+      "icons": [{ "src": "/images/appIcon-192.png", "sizes": "192x192" }]
     }
   ]
 }

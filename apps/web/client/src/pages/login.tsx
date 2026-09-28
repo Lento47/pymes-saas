@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { ChamferedSubmit } from "@/components/marketing/cta-button";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
@@ -413,14 +414,18 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
+                  <ChamferedSubmit
+                    testId="button-login"
                     disabled={loading}
-                    data-testid="button-login"
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-semibold text-[#05091d] shadow-[0_10px_24px_rgba(245,158,11,0.25)] transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    pending={
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {copy.logIn}
+                      </span>
+                    }
                   >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.logIn}
-                  </button>
+                    {copy.logIn}
+                  </ChamferedSubmit>
                 </form>
 
                 {/* Divider */}

@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { Link, Redirect } from "wouter";
 import {
-  ArrowRight, CheckCircle2, Inbox, Bike, MapPin, Users,
+  CheckCircle2, Inbox, Bike, MapPin, Users,
   ShoppingBag, Globe, Repeat,
   MessageCircle, AlertCircle, Clock, TrendingUp,
 } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { ChamferedCta, ChamferedCtaGhost } from "@/components/marketing/cta-button";
 import { Footer } from "@/components/marketing/footer";
 
 const ACCENT = "#F59E0B";
@@ -149,13 +150,9 @@ export default function SolutionPage({ slug }: { slug: string }) {
           <Link href="/"><BrandLockup compact /></Link>
           <div className="flex items-center gap-4">
             <Link href="/pricing" className="text-sm text-slate-400 hover:text-white transition">Precios para comercios</Link>
-            <Link
-              href="/register"
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90"
-              style={{ background: ACCENT }}
-            >
+            <ChamferedCta href="/register" className="!h-10 !px-5 !text-xs">
               Registrar mi comercio
-            </Link>
+            </ChamferedCta>
           </div>
         </div>
       </header>
@@ -175,21 +172,12 @@ export default function SolutionPage({ slug }: { slug: string }) {
           {subtext}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
-            style={{ background: ACCENT }}
-          >
+          <ChamferedCta href="/register">
             Registrar mi comercio
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link
-            href="/categories"
-            className="inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
-            style={{ borderColor: BORDER }}
-          >
+          </ChamferedCta>
+          <ChamferedCtaGhost href="/categories">
             Ver la tienda
-          </Link>
+          </ChamferedCtaGhost>
         </div>
       </section>
 
@@ -313,13 +301,9 @@ export default function SolutionPage({ slug }: { slug: string }) {
           <p className="text-slate-300 text-sm mb-8 max-w-md mx-auto">
             Registrá tu comercio, armá tu catálogo y empezá a recibir pedidos organizados. Sin costo de instalación, sin comisión por pedido.
           </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
-          >
+          <ChamferedCta href="/register">
             Registrar mi comercio
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          </ChamferedCta>
         </div>
       </section>
 

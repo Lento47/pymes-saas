@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LockKeyhole, Mail, User } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
-import { Button } from "@/components/ui/button";
+import { ChamferedSubmit } from "@/components/marketing/cta-button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -230,13 +230,17 @@ export default function RegisterPage() {
             </label>
 
             {/* ── Submit ── */}
-            <Button
-              type="submit"
+            <ChamferedSubmit
               disabled={loading || !ageConfirmed || !termsAccepted}
-              className="h-[46px] w-full rounded-[10px] bg-amber-500 text-sm font-semibold text-[#05091d] shadow-[0_0_24px_rgba(245,158,11,0.30),0_1px_3px_rgba(0,0,0,0.4)] transition hover:bg-amber-400 disabled:opacity-60"
+              pending={
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Crear cuenta
+                </span>
+              }
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Crear cuenta"}
-            </Button>
+              Crear cuenta
+            </ChamferedSubmit>
           </form>
 
           {/* ── Footer ── */}

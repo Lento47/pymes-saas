@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { ChamferedCta } from "@/components/marketing/cta-button";
 import { Footer } from "@/components/marketing/footer";
 
 const ACCENT = "#F59E0B";
@@ -37,12 +38,9 @@ export default function ComingSoonPage({ eyebrow, title, description }: ComingSo
           <p className="text-sm font-medium mb-8" style={{ color: ACCENT }}>
             Próximamente
           </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/[0.08] hover:text-white transition"
-          >
-            ← Volver al inicio
-          </Link>
+          <ChamferedCta href="/" className="mx-auto">
+            Volver al inicio
+          </ChamferedCta>
         </div>
       </main>
 

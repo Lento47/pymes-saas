@@ -356,9 +356,16 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/categories"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-marketing text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
+                  className="group relative inline-flex h-12 items-center justify-center gap-[1.6em] px-8 font-marketing text-[0.875rem] font-semibold uppercase leading-none tracking-[0.08em]"
                 >
-                  Empezar a pedir <ArrowRight className="h-4 w-4" />
+                  <svg aria-hidden="true" viewBox="0 0 220 50" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+                    <path d="M220 42L212.932 50H0V0H220V42Z" className="fill-[#0E0F14]" />
+                    <path d="M220 42L212.932 50H0V0H220V42Z" className="fill-[#f59e0b] origin-left scale-x-0 transition-transform duration-[250ms] ease-[cubic-bezier(0.33,0,0,1)] group-hover:scale-x-100" />
+                    <path d="M220 42L212.932 50H0V0H220V42Z" fill="none" stroke="#f59e0b" strokeOpacity="0.25" />
+                    <path d="M205 49.5H213L219.5 42V36 M212 0.5H219.5V7 M8 0.5H0.5V7 M7.5 49.5H0.5V42.5" fill="none" className="stroke-[#f59e0b]" />
+                  </svg>
+                  <span className="relative z-10 text-[#f59e0b] transition-colors duration-[250ms] group-hover:text-[#05091d]">Empezar a pedir</span>
+                  <ArrowRight className="relative z-10 h-3.5 w-3.5 text-[#f59e0b] transition-all duration-150 group-hover:translate-x-1 group-hover:text-[#05091d]" />
                 </Link>
                 <Link
                   href="/"
@@ -375,7 +382,7 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
                   <MapPin className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="font-marketing text-xs uppercase tracking-[0.24em] text-slate-500">
+                  <p className="font-marketing text-xs uppercase tracking-[0.24em] text-slate-400">
                     Tema principal
                   </p>
                   <h2 className="font-marketing text-xl font-semibold tracking-[-0.02em] text-white">
@@ -426,9 +433,7 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
         <section className="px-4 pb-20 md:px-8">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
-                FAQ
-              </p>
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">FAQ</p>
               <h2 className="font-marketing mt-3 text-3xl font-bold tracking-[-0.04em] text-white">
                 Preguntas frecuentes sobre {config.primaryKeyword}
               </h2>

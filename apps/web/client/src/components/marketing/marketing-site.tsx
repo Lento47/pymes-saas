@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle,
-  ArrowRight,
   Bot,
   BrainCircuit,
   CheckCircle2,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { ChamferedCta, ChamferedCtaGhost } from "@/components/marketing/cta-button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -139,12 +139,9 @@ export function MarketingHeader() {
             >
               {t.nav.logIn}
             </Link>
-            <Link
-              href={SITE_ROUTES.categories}
-              className="rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-[#05091d] hover:bg-amber-400"
-            >
+            <ChamferedCta href={SITE_ROUTES.categories} className="!h-10 !px-5 !text-xs">
               {t.nav.startFree}
-            </Link>
+            </ChamferedCta>
           </div>
           <button
             type="button"
@@ -199,12 +196,9 @@ export function MarketingHeader() {
               >
                 {t.nav.logIn}
               </Link>
-              <Link
-                href={SITE_ROUTES.categories}
-                className="rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-[#05091d]"
-              >
+              <ChamferedCta href={SITE_ROUTES.categories} className="!py-3">
                 {t.nav.startFree}
-              </Link>
+              </ChamferedCta>
             </div>
           </div>
         </div>
@@ -235,7 +229,8 @@ function PlatformCard({
       </div>
       <h3 className="mt-6 text-xl font-semibold tracking-[-0.03em] text-white">{title}</h3>
       <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
-      <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">{meta}</p>
+      {/* slate-600 on the navy card failed contrast — the muted-2 token passes. */}
+      <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400/90">{meta}</p>
     </div>
   );
 }
@@ -287,7 +282,8 @@ export function MessageFlow() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.07] text-amber-300">
                   <Icon className="h-4 w-4" />
                 </div>
-                <span className="text-xs font-semibold text-white/30">0{i + 1}</span>
+                {/* white/30 on a dark plate was unreadable — 55% passes AA large. */}
+                <span className="text-xs font-semibold text-white/55">0{i + 1}</span>
               </div>
               <h3 className="text-sm font-semibold text-white">{title}</h3>
               <p className="mt-2 text-xs leading-5 text-slate-400">{body}</p>
@@ -384,7 +380,7 @@ export function BillingFlow() {
   return (
     <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6">
       {stages.map((s, i) => (
-        <div key={s} className="flex items-center gap-4 border-b border-slate-100 py-4 last:border-0">
+        <div key={s} className="flex items-center gap-4 border-b border-white/10 py-4 last:border-0">
           <div
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold",
@@ -397,7 +393,8 @@ export function BillingFlow() {
           </div>
           <div>
             <p className="text-sm font-medium text-white">{s}</p>
-            <p className="text-xs text-slate-500">{b.tracked}</p>
+            {/* slate-500 on the navy card failed AA; slate-400 passes. */}
+            <p className="text-xs text-slate-400">{b.tracked}</p>
           </div>
         </div>
       ))}
@@ -484,7 +481,8 @@ export function FaqSection() {
     <section className="border-y border-white/10 bg-white/[0.02] px-4 py-24 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
         <SectionLabel>{f.eyebrow}</SectionLabel>
-        <h2 className="text-4xl font-semibold tracking-[-0.055em] text-slate-950 sm:text-5xl">{f.title}</h2>
+        {/* text-slate-950 was near-black on a near-black section — invisible. */}
+        <h2 className="text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">{f.title}</h2>
         <div className="mt-10">
           {items.map((it) => (
             <FaqItem key={it.q} question={it.q} answer={it.a} />
@@ -506,18 +504,8 @@ export function FinalCta() {
         </h2>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-400">{t.finalCta.subtitle}</p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href={SITE_ROUTES.categories}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-amber-500 px-6 text-sm font-semibold text-[#05091d] hover:bg-amber-400"
-          >
-            {t.cta.startFree} <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-          <Link
-            href={SITE_ROUTES.pricing}
-            className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-6 text-sm font-semibold text-white hover:bg-white/10"
-          >
-            {t.cta.viewPricing}
-          </Link>
+          <ChamferedCta href={SITE_ROUTES.categories}>{t.cta.startFree}</ChamferedCta>
+          <ChamferedCtaGhost href={SITE_ROUTES.pricing}>{t.cta.viewPricing}</ChamferedCtaGhost>
         </div>
       </div>
     </section>
@@ -554,18 +542,8 @@ export function ProductPageHero({
         </h1>
         <p className="mx-auto mt-7 max-w-2xl text-balance text-lg leading-8 text-slate-400">{subtitleNode ?? subtitle}</p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href={SITE_ROUTES.categories}
-            className="group inline-flex h-12 items-center justify-center rounded-full bg-amber-500 px-6 text-sm font-semibold text-[#05091d] hover:bg-amber-400"
-          >
-            {t.cta.startFree} <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-          <Link
-            href={SITE_ROUTES.pricing}
-            className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-6 text-sm font-semibold text-white hover:bg-white/10"
-          >
-            {t.cta.viewPricing}
-          </Link>
+          <ChamferedCta href={SITE_ROUTES.categories}>{t.cta.startFree}</ChamferedCta>
+          <ChamferedCtaGhost href={SITE_ROUTES.pricing}>{t.cta.viewPricing}</ChamferedCtaGhost>
         </div>
       </div>
     </section>

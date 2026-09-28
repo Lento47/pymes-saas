@@ -90,7 +90,7 @@ export function Footer({ className }: { className?: string }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-slate-500 transition hover:border-white/25 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-slate-400 transition hover:border-white/25 hover:text-white"
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </a>
@@ -100,7 +100,7 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 1 — Producto */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               {f.colProduct}
             </h3>
             <ul className="mt-4 space-y-3">
@@ -118,7 +118,7 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 2 — Soluciones */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               {f.colSolutions}
             </h3>
             <ul className="mt-4 space-y-3">
@@ -136,7 +136,7 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 3 — Empresa */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               {f.colCompany}
             </h3>
             <ul className="mt-4 space-y-3">
@@ -154,7 +154,7 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 4 — Recursos */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               {f.colResources}
             </h3>
             <ul className="mt-4 space-y-3">
@@ -174,12 +174,12 @@ export function Footer({ className }: { className?: string }) {
         {/* Bottom bar */}
         <div className="mt-12 border-t border-white/10 pt-8 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               &copy; {new Date().getFullYear()} PymesHub Inc. &middot; {f.builtIn} &middot; Costa Rica
             </p>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {LEGAL_LINKS.map(({ href, key }) => (
-                <a key={key} href={href} className="text-xs text-slate-500 transition hover:text-slate-200">
+                <a key={key} href={href} className="text-xs text-slate-400 transition hover:text-white">
                   {(f as any)[key]}
                 </a>
               ))}
@@ -187,13 +187,13 @@ export function Footer({ className }: { className?: string }) {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             {COMPLIANCE_LINKS.map(({ href, label }) => (
-              <Link key={href} href={href} className="text-xs text-slate-500 transition hover:text-slate-200">
+              <Link key={href} href={href} className="text-xs text-slate-400 transition hover:text-white">
                 {label}
               </Link>
             ))}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
-              className="text-xs text-slate-500 transition hover:text-slate-200"
+              className="text-xs text-slate-400 transition hover:text-white"
             >
               Preferencias de Cookies
             </button>

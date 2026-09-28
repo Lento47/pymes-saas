@@ -74,9 +74,14 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-              P
-            </span>
+            {/* The brand's own mark — the same app icon the browser tab and PWA carry,
+                not a letter placeholder. */}
+            <img
+              src="/images/appIcon.png"
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 shrink-0 rounded-md object-contain"
+            />
             <span className="hidden text-sm font-semibold tracking-tight sm:inline">PymesHub</span>
           </Link>
 
