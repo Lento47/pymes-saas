@@ -190,6 +190,111 @@ describe("a plan's limits", () => {
 		w.close();
 	});
 
+	test("a rider is not an employee, so the weekly cap does not refuse one", async () => {
+		const w = world();
+		const businessId = await seedBusiness(w.db, {
+			id: "biz_limit_rider",
+			plan: "WEEKLY",
+		});
+		const owner = await seedUser(w.db, { id: "usr_rider_owner" });
+		// Both riders exist before either is invited: the invitee must already hold an
+		// account, and "a rider has to sign up before a shop can ask them" is a separate
+		// rule this spec must not end up measuring instead of the cap.
+		const first = await seedUser(w.db, {
+			id: "usr_rider_one",
+			email: "repartidor.uno@example.test",
+		});
+		const second = await seedUser(w.db, {
+			id: "usr_rider_two",
+			email: "repartidor.dos@example.test",
+		});
+		await seedMembership(w.db, owner.id, businessId, "OWNER");
+		const caller = appRouter.createCaller(await authed(w, owner)) as Caller;
+
+		// The state that refused every rider in production, pinned before the fix is
+		// credited for anything: the owner alone already fills the weekly cap, so the
+		// number the check reads is at the limit before a single rider is invited.
+		const employees = w.sqlite
+			.prepare(
+				"select count(*) as n from membership where business_id = ? and role <> 'COURIER'",
+			)
+			.get(businessId) as { n: number };
+		expect(employees.n).toBeGreaterThanOrEqual(
+			PLAN_LIMITS.WEEKLY.staffAccounts,
+		);
+
+		// Two riders, not one. The second is the assertion that matters: a fix that merely
+		// let the first one through would satisfy a shop which only ever needs one rider at
+		// a time, which is not the claim — a shop takes a second order while the first is
+		// still out.
+		const one = await caller.business.inviteStaff({
+			businessId,
+			email: "repartidor.uno@example.test",
+			role: "COURIER",
+		});
+		expect(one.userId).toBe(first.id);
+		expect(one.role).toBe("COURIER");
+		const two = await caller.business.inviteStaff({
+			businessId,
+			email: "repartidor.dos@example.test",
+			role: "COURIER",
+		});
+		expect(two.userId).toBe(second.id);
+
+		// Stored as memberships, which is what `orders.assignCourier` resolves an assignee
+		// against: a rider who is not a member of the shop cannot be handed a run, so the
+		// row is the whole of what "added" means here.
+		const stored = w.sqlite
+			.prepare(
+				"select count(*) as n from membership where business_id = ? and role = 'COURIER'",
+			)
+			.get(businessId) as { n: number };
+		expect(stored.n).toBe(2);
+
+		// The cap still bites where it was always meant to. Without this the spec would
+		// also pass against a service that had stopped counting employees altogether,
+		// which is the opposite repair.
+		await seedUser(w.db, {
+			id: "usr_rider_employee",
+			email: "empleado@example.test",
+		});
+		const error = await refused(
+			caller.business.inviteStaff({
+				businessId,
+				email: "empleado@example.test",
+				role: "STAFF",
+			}),
+		);
+		expect(error.code).toBe("FORBIDDEN");
+		const details = error.details as { error: string; limit: string };
+		expect(details.error).toBe("QUOTA_EXCEEDED");
+		expect(details.limit).toBe("staffAccounts");
+
+		// A MONTHLY shop, whose cap is three, still refuses the fourth employee. The
+		// number differs from the spec above; the rule does not.
+		const { businessId: monthlyId, caller: monthlyCaller } =
+			await monthlyOwner(w);
+		for (const email of ["a@example.test", "b@example.test"]) {
+			await seedUser(w.db, { id: `usr_monthly_emp_${email}`, email });
+			await monthlyCaller.business.inviteStaff({
+				businessId: monthlyId,
+				email,
+				role: "STAFF",
+			});
+		}
+		await seedUser(w.db, { id: "usr_monthly_emp_c", email: "c@example.test" });
+		const monthlyError = await refused(
+			monthlyCaller.business.inviteStaff({
+				businessId: monthlyId,
+				email: "c@example.test",
+				role: "STAFF",
+			}),
+		);
+		expect(monthlyError.code).toBe("FORBIDDEN");
+
+		w.close();
+	});
+
 	test("inventory tracking is refused on the weekly plan and allowed on the monthly one", async () => {
 		const w = world();
 

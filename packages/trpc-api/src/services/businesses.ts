@@ -946,30 +946,47 @@ export async function inviteStaff(
 		throw new ConflictError("Esa persona ya forma parte del equipo");
 
 	/**
-	 * The plan's staff cap.
+	 * The plan's staff cap, and why a rider never reaches it.
 	 *
-	 * **Couriers are excluded**, and the exclusion is the whole point of the filter.
-	 * A courier is a rider the platform routes deliveries to — a per-order relationship
-	 * that comes and goes — and a shop with two couriers on a Tuesday may have none on
-	 * Sunday. Capping staff at 1 or 3 and counting couriers in it would stop a weekly shop
-	 * from having a single rider, which is a shop that cannot deliver at all. The plan
-	 * caps *employees*; riders are not employees.
+	 * `staffAccounts` counts **employees**. The filter below drops couriers from the
+	 * count for exactly that reason: a courier is a rider the platform routes deliveries
+	 * to — a per-order relationship that comes and goes — and a shop with two couriers on
+	 * a Tuesday may have none on Sunday. The plan caps employees; riders are not
+	 * employees.
+	 *
+	 * Which is why the cap is not merely *excluded* from the count but is not
+	 * **consulted** for a rider, and the second half is the part that was missing. The two
+	 * are one rule seen from two sides, and reading only the count left the check
+	 * contradicting it: the weekly cap is one, the owner already holds that seat, so
+	 * `checkCount` compared 1 against 1 and refused. Every shop on the default plan was
+	 * therefore unable to add the first courier its own onboarding asks for — not because
+	 * it had reached a limit, but because the owner is not an addition. The invitation
+	 * never wrote a row, and the client had no vocabulary for a refusal that does not go
+	 * away on a retry.
+	 *
+	 * The branch is on the role rather than on the number, so the count query is not spent
+	 * on an invitation that cannot change its answer: a rider does not grow the population
+	 * the cap measures. The filter stays inside the branch because a shop may already hold
+	 * riders — the role is a column, and anything that put one there is a membership this
+	 * cap has never counted.
 	 */
-	const [staff] = await ctx.db
-		.select({ count: sql<number>`count(*)` })
-		.from(membershipTable)
-		.where(
-			and(
-				eq(membershipTable.businessId, businessId),
-				ne(membershipTable.role, "COURIER"),
-			),
-		);
-	checkCount({
-		ctx,
-		limitName: "staffAccounts",
-		resourceType: "cuentas de equipo",
-		current: staff?.count ?? 0,
-	});
+	if (input.role !== "COURIER") {
+		const [staff] = await ctx.db
+			.select({ count: sql<number>`count(*)` })
+			.from(membershipTable)
+			.where(
+				and(
+					eq(membershipTable.businessId, businessId),
+					ne(membershipTable.role, "COURIER"),
+				),
+			);
+		checkCount({
+			ctx,
+			limitName: "staffAccounts",
+			resourceType: "cuentas de equipo",
+			current: staff?.count ?? 0,
+		});
+	}
 
 	const now = new Date();
 	const id = newMembershipId();
