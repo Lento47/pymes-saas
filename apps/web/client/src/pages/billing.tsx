@@ -363,8 +363,19 @@ export default function BillingPage() {
                   <CardDescription>
                     <span className="text-xl font-bold text-foreground">${tier.monthlyUSD}</span>
                     <span className="text-xs text-muted-foreground font-normal">/mes</span>
+                    {/*
+                      What PayPal actually charges is the USD figure above; the colón
+                      line is a reference amount, not the charge. The Reglamento a la
+                      Ley 7472 requires an offer made in foreign currency to say so
+                      visibly and to name the rate, so the estimate is labelled and
+                      attributed rather than presented as a second price.
+                    */}
                     <div className="text-[11px] text-muted-foreground mt-0.5">
-                      ₡{tier.monthlyCRC.toLocaleString()}/mes
+                      ≈ ₡{tier.monthlyCRC.toLocaleString()}/mes, al tipo de cambio de referencia de venta
+                      del Banco Central
+                    </div>
+                    <div className="text-[10px] text-muted-foreground/80 mt-0.5">
+                      Se cobra en dólares, no en colones.
                     </div>
                   </CardDescription>
                 </CardHeader>
@@ -396,6 +407,31 @@ export default function BillingPage() {
                       'Elegir plan'
                     )}
                   </Button>
+
+                  {/*
+                    The recurring-charge terms, beside the button that starts them.
+
+                    This is the one place in the product where a charge *is* automatic:
+                    `handleUpgrade` calls `api.createCheckout(planKey, 'MONTHLY')`,
+                    which is `POST /v1/billing/subscriptions` — a PayPal subscription
+                    that recurs. The marketplace plans at /pricing are invoiced by hand
+                    and say so, so this page is where a reader who is about to be billed
+                    without asking needs the terms.
+
+                    Cancellation is described as it behaves, not as it ideally would:
+                    `handleCancel` ends access **immediately** rather than at the end of
+                    the paid period. Softening that here would be the same class of
+                    misdescription this whole pass exists to remove, so it is stated.
+                  */}
+                  <div className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2">
+                    <p className="text-[10px] leading-relaxed text-muted-foreground">
+                      <span className="font-semibold text-foreground">Suscripción recurrente:</span>{' '}
+                      PayPal cobra ${tier.monthlyUSD} cada mes de forma automática hasta que la canceles. Podés
+                      cancelarla en cualquier momento con el botón «Cancelar suscripción» de esta pantalla; la
+                      cancelación es inmediata y termina el acceso a tu plan en el momento. Si subimos el
+                      precio, el nuevo valor aplica a partir de tu siguiente renovación.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             );
