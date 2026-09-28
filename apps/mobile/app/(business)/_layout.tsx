@@ -167,6 +167,11 @@ export default function BusinessLayout() {
 								height: BUSINESS_TAB_BAR_HEIGHT,
 								// Inset outside the bar, never inside it: paddingBottom
 								// here is the exact bug — dead air under the icons.
+								// Both physical edges are zeroed explicitly because a
+								// vertical shorthand does not reliably cancel an
+								// explicit bottom edge the navigator sets itself.
+								paddingTop: 0,
+								paddingBottom: 0,
 								paddingVertical: 0,
 								alignItems: "center",
 								justifyContent: "center",
@@ -191,6 +196,15 @@ export default function BusinessLayout() {
 							alignItems: "center",
 							justifyContent: "center",
 							paddingVertical: 0,
+						},
+						// Neutralize any icon-wrapper offset the navigator brings:
+						// margins or padding here would lift the glyph off the
+						// shared centerline the 52 discs are measured against.
+						tabBarIconStyle: {
+							marginTop: 0,
+							marginBottom: 0,
+							paddingTop: 0,
+							paddingBottom: 0,
 						},
 						// Icon-only bar: the words live in each tab's
 						// `tabBarAccessibilityLabel`, so nothing spoken is lost
