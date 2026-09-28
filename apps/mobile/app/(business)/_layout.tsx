@@ -5,7 +5,6 @@ import {
 	Platform,
 	type StyleProp,
 	StyleSheet,
-	Text as RNText,
 	useWindowDimensions,
 	View,
 	type ViewStyle,
@@ -21,10 +20,7 @@ import {
 	BUSINESS_TAB_BAR_LIFT,
 	icon,
 	radius,
-	space,
-	TAB_BAR_LABEL_SIZE,
 	useTheme,
-	weight as weights,
 } from "@/theme";
 
 /**
@@ -187,24 +183,10 @@ export default function BusinessLayout() {
 							CAPSULE_SHADOW,
 						],
 						tabBarItemStyle: { paddingVertical: 0 },
-						// The label carries the selection with the disc: ink and
-						// semibold when focused, muted and regular when not — so the
-						// icon's state and the word's state are never two answers.
-						// A navigator tint alone recolors the word without weighting
-						// it, which is how the label read as fallen out of the disc.
-						tabBarLabel: ({ focused, color, children }) => (
-							<RNText
-								numberOfLines={1}
-								style={{
-									fontSize: TAB_BAR_LABEL_SIZE,
-									fontWeight: focused ? weights.semibold : weights.regular,
-									color,
-									includeFontPadding: false,
-								}}
-							>
-								{children}
-							</RNText>
-						),
+						// Icon-only bar: the words live in each tab's
+						// `tabBarAccessibilityLabel`, so nothing spoken is lost
+						// when nothing printed remains.
+						tabBarShowLabel: false,
 					}}
 				>
 					<Tabs.Screen
