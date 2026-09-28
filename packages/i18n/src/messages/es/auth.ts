@@ -31,7 +31,8 @@ export const auth = {
 	 */
 	"auth.signUp.termsLabel": "Acepto los Términos de Servicio.",
 	"auth.signUp.ageLabel": "Confirmo que tengo 18 años o más.",
-	"auth.signUp.consentRequired": "Acepta los términos y confirma tu edad para continuar.",
+	"auth.signUp.consentRequired":
+		"Acepta los términos y confirma tu edad para continuar.",
 	"auth.signUp.termsLink": "Ver Términos",
 
 	"auth.signUp.business.title": "Registra tu negocio",

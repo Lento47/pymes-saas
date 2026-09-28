@@ -17,6 +17,12 @@ export const ID_PREFIXES = {
 	business: "biz",
 	location: "loc",
 	membership: "mem",
+	courierProfile: "cpr",
+	courierInvite: "cin",
+	courierPresence: "cps",
+	delivery: "dlv",
+	deliveryOffer: "dof",
+	deliveryRating: "drt",
 	address: "adr",
 	category: "cat",
 	product: "prd",
@@ -47,7 +53,6 @@ export const ID_PREFIXES = {
 	auditLog: "aud",
 	session: "ses",
 	account: "acc",
-	courierProfile: "cpr",
 	upload: "upl",
 } as const;
 

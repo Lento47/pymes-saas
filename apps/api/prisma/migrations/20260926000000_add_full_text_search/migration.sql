@@ -13,7 +13,8 @@
 --      query-side tsvector, so index and query cannot drift.
 --   4. A GIN index on that tsvector per table.
 --   5. A `gin_trgm_ops` GIN index on each table's primary name
---      column, for typo tolerance.
+--      column, so the partial-query path is an index lookup and
+--      not a per-keystroke sequential scan.
 --
 -- Why an expression index and not a `search_tsv` column
 --   Prisma's `schema.prisma` is the source of truth for the
@@ -204,13 +205,23 @@ CREATE INDEX orders_search_tsv_idx ON "orders"
 CREATE INDEX products_search_tsv_idx ON "products"
   USING GIN (products_search_tsv(name, sku, description));
 
--- ─── trigram indexes, for the typo a tsvector cannot see ─────
--- `websearch_to_tsquery` turns "contable" into the token
--- "contabl" and misses "contabilidad" only if stemming fails;
--- it turns "contavle" into "contavl" and misses outright. A
--- trigram index answers that one. `%` uses `pg_trgm`'s
--- `similarity_threshold` (0.3 by default), so it is a fuzzy
--- second chance and never the primary path.
+-- ─── trigram indexes, for the partial query a tsvector cannot see ──
+-- A tsvector only ever matches whole lexemes. Typing "ma" while
+-- looking for "María" finds nothing, because "ma" is not a stem
+-- of anything. The service therefore ORs a substring predicate
+-- into every query:
+--
+--     f_unaccent(coalesce(<name>, '')) ILIKE '%' || f_unaccent($2) || '%'
+--
+-- Plain `ILIKE '%…%'` is a sequential scan. `gin_trgm_ops` is what
+-- turns it into an index lookup: Postgres extracts trigrams from the
+-- pattern and probes the GIN index for the rows that could contain
+-- them. It is a filter, not a ranker — it answers "could this row
+-- contain the substring", and the ILIKE still has to confirm it.
+--
+-- Indexed on the primary name column only. Substring search over
+-- every description would be a large index for a match nobody asked
+-- for; the tsvector already covers full words there.
 --
 -- The expression is `f_unaccent(col)` so the fold is inside the
 -- indexed expression and the query side reuses the same call.

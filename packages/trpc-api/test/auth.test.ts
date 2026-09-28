@@ -392,7 +392,11 @@ describe("a session that verified", () => {
 				"select terms_accepted_at, age_confirmed_at, revoked_at from account_consent where user_id = ?",
 			)
 			.get(userId) as
-			| { terms_accepted_at: number; age_confirmed_at: number; revoked_at: number | null }
+			| {
+					terms_accepted_at: number;
+					age_confirmed_at: number;
+					revoked_at: number | null;
+			  }
 			| undefined;
 
 		expect(consent).toBeDefined();
@@ -436,7 +440,11 @@ describe("a session that verified", () => {
 	}[] = [
 		{
 			label: "omits the adult assertion",
-			body: { email: "sin-edad@example.test", name: "Sin Edad", termsAccepted: true },
+			body: {
+				email: "sin-edad@example.test",
+				name: "Sin Edad",
+				termsAccepted: true,
+			},
 			expected: "AGE_CONFIRMATION_REQUIRED",
 		},
 		{
@@ -451,7 +459,11 @@ describe("a session that verified", () => {
 		},
 		{
 			label: "omits the terms acceptance",
-			body: { email: "sin-terminos@example.test", name: "Sin Terminos", ageConfirmed: true },
+			body: {
+				email: "sin-terminos@example.test",
+				name: "Sin Terminos",
+				ageConfirmed: true,
+			},
 			expected: "TERMS_ACCEPTANCE_REQUIRED",
 		},
 		{

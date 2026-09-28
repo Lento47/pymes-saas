@@ -2,7 +2,10 @@ import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
-import { SearchService } from "./search.service";
+import { SEARCHABLE_TYPES, SearchService } from "./search.service";
+
+/** Every type, so omitting `?types=` searches the whole workspace. */
+const DEFAULT_TYPES = SEARCHABLE_TYPES.join(",");
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("search")
@@ -13,7 +16,7 @@ export class SearchController {
   search(
     @CurrentUser("workspace_id") workspaceId: string,
     @Query("q") q: string,
-    @Query("types") types: string = "contacts,conversations,tasks,documents",
+    @Query("types") types: string = DEFAULT_TYPES,
     @Query("limit") limit: number = 10,
   ) {
     const typeList = types

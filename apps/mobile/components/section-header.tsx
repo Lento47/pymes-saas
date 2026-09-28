@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { space } from "@/theme";
 
@@ -28,14 +28,22 @@ export function SectionHeader({
 	title,
 	action,
 	accessibilityHint,
+	style,
 }: {
 	title: string;
 	/** The "see all" out of this section. Omitted, the header is only a title. */
 	action?: { label: string; onPress: () => void; accessibilityHint?: string };
 	accessibilityHint?: string;
+	/**
+	 * The caller's step under this header — the gap between a section title and its own
+	 * content. The default `space.md` is the storefront's rhythm; a denser surface (the
+	 * merchant console's analytics plot) passes its own so tightening one section is one
+	 * prop rather than a second component that differs by four points.
+	 */
+	style?: StyleProp<ViewStyle>;
 }) {
 	return (
-		<View style={styles.row}>
+		<View style={[styles.row, style]}>
 			<Text variant="heading" bold style={styles.title}>
 				{title}
 			</Text>

@@ -15,8 +15,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       connectionString: process.env.DATABASE_URL,
       max: 15,
       idleTimeoutMillis: 60000,
+      // `acquireTimeoutMillis` used to sit here too. `pg.PoolConfig` has no such
+      // option — that name belongs to generic-pool/knex — so `pg` ignored it and
+      // the real timeout was always `connectionTimeoutMillis` above. Dropped it
+      // rather than carried a key that only existed to fail typechecking.
       connectionTimeoutMillis: 30000,
-      acquireTimeoutMillis: 30000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 30000,
       application_name: `pymeshub-api-${process.pid}`,

@@ -9,11 +9,7 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import {
-	createAuth,
-	parseSignUpConsent,
-	withoutConsentFlags,
-} from "./auth";
+import { createAuth, parseSignUpConsent, withoutConsentFlags } from "./auth";
 import { createContext } from "./context";
 import { corsOrigins, type Env, orderRoomFor } from "./env";
 import { DomainError, InternalError } from "./errors";
@@ -321,6 +317,37 @@ export function createApp() {
 		if (!auth) return c.json({ error: "auth_not_configured" }, 503);
 		c.header("Cache-Control", "no-store");
 		return auth.handler(c.req.raw);
+	});
+
+	/**
+	 * Uploaded images, served from R2.
+	 *
+	 * Public, and necessarily so: the URL ends up in an `<img>` - a business
+	 * reading a courier's vehicle profile, the same picture on web and on the
+	 * phone - and an `<img>` sends no credentials worth checking. The objects
+	 * are public-by-construction anyway: nothing sensitive is uploaded through
+	 * `uploads.image`, and a signed URL would expire inside a profile row that
+	 * is meant to outlive the request that wrote it.
+	 *
+	 * `immutable` because the keys are generated per upload: a replaced photo
+	 * is a new key, never a re-used one, so no cache ever holds a stale picture
+	 * under a current URL.
+	 */
+	app.get("/uploads/*", async (c) => {
+		const key = c.req.param("*");
+		if (!key || key.startsWith("/") || key.includes(".."))
+			return c.json({ error: "not_found" }, 404);
+
+		const object = await c.env.MEDIA.get(key);
+		if (!object) return c.json({ error: "not_found" }, 404);
+
+		return new Response(object.body, {
+			headers: {
+				"Content-Type":
+					object.httpMetadata?.contentType ?? "application/octet-stream",
+				"Cache-Control": "public, max-age=31536000, immutable",
+			},
+		});
 	});
 
 	/** Public, and it must stay public: the smoke test that gates a deploy runs first. */

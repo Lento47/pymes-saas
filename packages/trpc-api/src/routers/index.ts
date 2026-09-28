@@ -5,6 +5,7 @@ import { businessesRouter } from "./businesses";
 import { cartRouter } from "./cart";
 import { catalogRouter } from "./catalog";
 import { couriersRouter } from "./couriers";
+import { deliveriesRouter } from "./deliveries";
 import { favoritesRouter } from "./favorites";
 import { healthRouter } from "./health";
 import { notificationsRouter } from "./notifications";
@@ -36,6 +37,7 @@ export const appRouter = router({
 	users: usersRouter,
 	cart: cartRouter,
 	couriers: couriersRouter,
+	deliveries: deliveriesRouter,
 	orders: ordersRouter,
 	favorites: favoritesRouter,
 	notifications: notificationsRouter,

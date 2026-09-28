@@ -1,10 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
+import { Button } from "@/components/button";
 import { Card } from "@/components/card";
+import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { hitSlopFor, Pressable } from "@/components/pressable";
@@ -15,6 +17,8 @@ import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
 import { Spinner } from "@/components/spinner";
 import { Text } from "@/components/text";
+import { useApiFailure } from "@/lib/api-error";
+import { warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 import { MIN_TOUCH_TARGET, space, type, useTheme } from "@/theme";
@@ -130,6 +134,25 @@ function Overview() {
 	const query = useQuery(
 		trpc.admin.metrics.queryOptions(undefined, { refetchInterval: 15000 }),
 	);
+	const cache = useQueryClient();
+	const courierReview = useQuery(
+		trpc.admin.courierProfiles.queryOptions({ status: "PENDING", limit: 10 }),
+	);
+	const reviewCourier = useMutation(
+		trpc.admin.reviewCourier.mutationOptions({
+			onSuccess: async () => {
+				await cache.invalidateQueries({
+					queryKey: trpc.admin.pathKey(),
+				});
+			},
+		}),
+	);
+	const reviewFailure = useApiFailure(reviewCourier.error);
+	const [reviewTarget, setReviewTarget] = useState<{
+		profileId: string;
+		name: string;
+		decision: "VERIFIED" | "REJECTED";
+	} | null>(null);
 	// `isPending`, not `isFetching`: the first is "no answer yet" and the second is "asking
 	// again while the answer is on screen". Only the first one is a skeleton.
 	const waiting = useSkeletonHold(query.isPending);
@@ -267,6 +290,98 @@ function Overview() {
 					</View>
 				)}
 			</ScreenSection>
+
+			<ScreenSection title={t("admin.courier.title")}>
+				{courierReview.isPending ? (
+					<Skeleton style={styles.courierCard} />
+				) : courierReview.isError ? (
+					<ErrorState
+						error={courierReview.error}
+						onRetry={() => courierReview.refetch()}
+					/>
+				) : courierReview.data?.rows.length ? (
+					<View style={styles.courierList}>
+						{courierReview.data.rows.map((courier) => (
+							<Card key={courier.id} style={styles.courierCard}>
+								<Text variant="heading" bold>
+									{courier.displayName}
+								</Text>
+								<Text tone="muted">{courier.userEmail}</Text>
+								<Text tone="muted">
+									{t("admin.courier.serviceArea")}: {courier.serviceArea}
+								</Text>
+								{courier.bio ? <Text tone="muted">{courier.bio}</Text> : null}
+								<View style={styles.courierActions}>
+									<Button
+										label={t("admin.courier.verify")}
+										size="sm"
+										loading={
+											reviewCourier.isPending &&
+											reviewCourier.variables?.profileId === courier.id
+										}
+										disabled={reviewCourier.isPending}
+										onPress={() =>
+											setReviewTarget({
+												profileId: courier.id,
+												name: courier.displayName,
+												decision: "VERIFIED",
+											})
+										}
+									/>
+									<Button
+										label={t("admin.courier.reject")}
+										variant="ghost"
+										size="sm"
+										disabled={reviewCourier.isPending}
+										onPress={() =>
+											setReviewTarget({
+												profileId: courier.id,
+												name: courier.displayName,
+												decision: "REJECTED",
+											})
+										}
+									/>
+								</View>
+							</Card>
+						))}
+						{reviewFailure.message ? (
+							<Text tone="destructive" accessibilityRole="alert">
+								{reviewFailure.message}
+							</Text>
+						) : null}
+					</View>
+				) : (
+					<Text tone="muted">{t("admin.courier.empty")}</Text>
+				)}
+			</ScreenSection>
+			<ConfirmSheet
+				open={reviewTarget !== null}
+				onClose={() => setReviewTarget(null)}
+				title={
+					reviewTarget?.decision === "VERIFIED"
+						? t("admin.courier.verify.confirm", {
+								name: reviewTarget.name,
+							})
+						: t("admin.courier.reject.confirm", {
+								name: reviewTarget?.name ?? "",
+							})
+				}
+				confirmLabel={
+					reviewTarget?.decision === "VERIFIED"
+						? t("admin.courier.verify")
+						: t("admin.courier.reject")
+				}
+				onConfirm={() => {
+					if (!reviewTarget) return;
+					const target = reviewTarget;
+					setReviewTarget(null);
+					if (target.decision === "REJECTED") warning();
+					reviewCourier.mutate({
+						profileId: target.profileId,
+						decision: target.decision,
+					});
+				}}
+			/>
 		</View>
 	);
 }
@@ -385,6 +500,9 @@ const styles = StyleSheet.create({
 		gap: space.md,
 	},
 	metric: { gap: space.sm },
+	courierList: { gap: space.md },
+	courierCard: { gap: space.sm },
+	courierActions: { flexDirection: "row", gap: space.sm },
 	skeletonCard: { gap: space.sm },
 	// The totals group's own two spacings, and they are not one number — see the note in
 	// `ConsoleSkeleton`.

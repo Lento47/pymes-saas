@@ -14,7 +14,7 @@ import { and, asc, eq } from "drizzle-orm";
 
 import { ForbiddenError, ValidationError } from "../errors";
 import type { BusinessContext } from "./helpers";
-import { isOpenAt, orNotFound } from "./helpers";
+import { isOpenAt, localDayAndMinute, orNotFound } from "./helpers";
 import { checkCount } from "./plan-limits";
 
 type LocationRow = typeof locationTable.$inferSelect;
@@ -43,6 +43,10 @@ function locationOf(
 	const pauseIsCurrent =
 		location.pauseReason !== null &&
 		(location.resumeAt === null || location.resumeAt > now);
+	const { day } = localDayAndMinute(now);
+	const todayHours = (location.hours ?? business.hours)?.find(
+		(entry) => entry.day === day,
+	);
 	return {
 		id: location.id,
 		businessId: location.businessId,
@@ -57,6 +61,7 @@ function locationOf(
 		lat: location.lat,
 		lng: location.lng,
 		status: operationalStatus(location, business, now),
+		todayHours: todayHours && !todayHours.isClosed ? todayHours : null,
 		pausedAt: pauseIsCurrent ? location.pausedAt : null,
 		resumeAt: pauseIsCurrent ? location.resumeAt : null,
 		createdAt: location.createdAt,

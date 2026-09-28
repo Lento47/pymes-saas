@@ -39,6 +39,7 @@ export type SessionStatus = "loading" | "signed-in" | "signed-out";
  * nothing here ever shows text written for a network tab.
  */
 export type SignInResult = { ok: true } | { ok: false; messageKey: string };
+type SignUpAssertions = { termsAccepted: boolean; ageConfirmed: boolean };
 type SessionValue = {
 	session: MarketplaceSession | null;
 	status: SessionStatus;
@@ -58,6 +59,7 @@ type SessionValue = {
 		email: string,
 		password: string,
 		name: string,
+		assertions: SignUpAssertions,
 	) => Promise<SignInResult>;
 	signInWithSupabase: (
 		email: string,
@@ -242,9 +244,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			email: string,
 			password: string,
 			name: string,
+			assertions: SignUpAssertions,
 		): Promise<SignInResult> => {
 			try {
-				await marketplaceAuth.signUp(email, password, name);
+				await marketplaceAuth.signUp(email, password, name, assertions);
 				await read();
 				return { ok: true };
 			} catch (error) {
