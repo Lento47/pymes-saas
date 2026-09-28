@@ -599,7 +599,7 @@ export default function MerchantHome() {
 							{/* §12's leading pair. The layout it draws is `controls | identity | logo` —
 						    the pair leads and the last two were already here:
 						    this is the pair on the left, top-aligned with the logo so it
-						    answers the *title* rather than floating in the middle of a header
+						    answers the business block rather than floating in the middle of a header
 						    that grows at 200% text.
 
 						    Both doors leave the business tree, and both already exist as root
@@ -667,9 +667,6 @@ export default function MerchantHome() {
 								</Pressable>
 							</View>
 							<View style={styles.merchantIdentity}>
-								<Text variant="title" bold numberOfLines={1}>
-									{shop.businessName}
-								</Text>
 								{selectedLocation ? (
 									<View style={styles.operatingState}>
 										<Pressable
@@ -1461,7 +1458,7 @@ const styles = StyleSheet.create({
 		paddingBottom: space.lg,
 	},
 	merchantLogo: { width: 56, height: 56, borderWidth: 1 },
-	merchantIdentity: { flex: 1, alignItems: "flex-start", gap: TEXT_STACK_GAP },
+	merchantIdentity: { flex: 1, alignItems: "flex-end", gap: TEXT_STACK_GAP },
 	// ┬º12's controls, in a row of their own and top-aligned: they belong to the title,
 	// the same rule `./home-header` writes for the avatar beside its own.
 	merchantControls: {
@@ -1505,7 +1502,7 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET,
 		flexDirection: "row",
 		alignItems: "center",
-		alignSelf: "flex-start",
+		alignSelf: "flex-end",
 		gap: space.sm,
 		paddingHorizontal: space.md,
 		borderRadius: radius.sm,
