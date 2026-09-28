@@ -47,6 +47,13 @@ let hapticsEnabled = true;
 let boardSoundEnabled = true;
 let defaultFulfilment: FulfilmentKind = "PICKUP";
 let accountProfile: AccountProfile = "customer";
+const accountProfileListeners = new Set<() => void>();
+
+function publishAccountProfile(next: AccountProfile): void {
+	if (accountProfile === next) return;
+	accountProfile = next;
+	for (const listener of accountProfileListeners) listener();
+}
 
 async function readBool(key: string, fallback: boolean): Promise<boolean> {
 	try {
@@ -93,7 +100,7 @@ export async function initDevicePrefs(): Promise<void> {
 	hapticsEnabled = haptics;
 	boardSoundEnabled = boardSound;
 	defaultFulfilment = fulfilment;
-	accountProfile = profile;
+	publishAccountProfile(profile);
 }
 
 /** What `lib/haptics.ts` gates every buzz on. */
@@ -137,8 +144,14 @@ export function getAccountProfile(): AccountProfile {
 	return accountProfile;
 }
 
+/** Subscribe React consumers to profile changes made during this app session. */
+export function subscribeAccountProfile(listener: () => void): () => void {
+	accountProfileListeners.add(listener);
+	return () => accountProfileListeners.delete(listener);
+}
+
 export async function setAccountProfile(value: AccountProfile): Promise<void> {
-	accountProfile = value;
+	publishAccountProfile(value);
 	try {
 		await AsyncStorage.setItem(PROFILE_KEY, value);
 	} catch {

@@ -8,6 +8,7 @@ import { WelcomeAnimation } from "@/components/welcome-animation";
 import { SessionProvider } from "@/lib/auth/session";
 import { initDevicePrefs } from "@/lib/device-prefs";
 import { I18nProvider } from "@/lib/i18n";
+import { useResolvedRole } from "@/lib/role";
 import { ApiProvider } from "@/lib/trpc/provider";
 import { ThemeModeProvider, useTheme } from "@/theme";
 
@@ -75,6 +76,8 @@ export default function RootLayout() {
 
 function ThemedStack() {
 	const { colors, scheme } = useTheme();
+	const resolved = useResolvedRole();
+	const role = resolved.state === "ready" ? resolved.role : null;
 
 	/**
 	 * The device's own answers before anything can ask them. `lib/haptics.ts`
@@ -101,12 +104,19 @@ function ThemedStack() {
 					headerStyle: { backgroundColor: colors.background },
 				}}
 			>
-				{/* The screens are declared by their own route groups — `(customer)/_layout.tsx`,
-			    `(business)/_layout.tsx` and `(delivery)/_layout.tsx`, each guarding itself against a
-			    resolved role it does not serve. The only entry this stack names by hand is the one
-			    that behaves differently: `(auth)` is presented as a modal. Every other route is
-			    registered by expo-router on its own; these declarations existed only to set a
-			    per-screen option, and the header is already off for all of them. */}
+				{/* A role change removes the previous tree from native history. This matters most
+				    when auth is a modal: replacing that modal must not reveal the customer stack
+				    that was underneath it when a courier presses Android Back. The child layouts
+				    keep their entitlement guards for deep links; these root guards own history. */}
+				<Stack.Protected guard={role === "customer"}>
+					<Stack.Screen name="(customer)" />
+				</Stack.Protected>
+				<Stack.Protected guard={role === "business"}>
+					<Stack.Screen name="(business)" />
+				</Stack.Protected>
+				<Stack.Protected guard={role === "delivery"}>
+					<Stack.Screen name="(delivery)" />
+				</Stack.Protected>
 				<Stack.Screen name="(auth)" options={{ presentation: "modal" }} />
 			</Stack>
 		</>

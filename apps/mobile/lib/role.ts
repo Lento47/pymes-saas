@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { useSession } from "@/lib/auth/session";
 import {
@@ -7,6 +7,7 @@ import {
 	getAccountProfile,
 	initDevicePrefs,
 	setAccountProfile,
+	subscribeAccountProfile,
 } from "@/lib/device-prefs";
 import { useTRPC } from "@/lib/trpc/context";
 
@@ -75,7 +76,11 @@ export function useResolvedRole(): ResolvedRole {
 	const { status } = useSession();
 	const trpc = useTRPC();
 
-	const [preference, setPreference] = useState<AccountProfile>("customer");
+	const preference = useSyncExternalStore(
+		subscribeAccountProfile,
+		getAccountProfile,
+		getAccountProfile,
+	);
 	const [loaded, setLoaded] = useState(false);
 
 	// AsyncStorage is the only async on the fast path, and `initDevicePrefs` is the same call
@@ -83,7 +88,6 @@ export function useResolvedRole(): ResolvedRole {
 	// `getAccountProfile()` reads synchronously from.
 	useEffect(() => {
 		void initDevicePrefs().then(() => {
-			setPreference(getAccountProfile());
 			setLoaded(true);
 		});
 	}, []);

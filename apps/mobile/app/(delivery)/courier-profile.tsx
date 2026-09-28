@@ -24,6 +24,9 @@ import { useTRPC } from "@/lib/trpc/context";
 import { radius, space } from "@/theme";
 
 /**
+ * The courier-owned `/courier-profile` route. Keeping it inside `(delivery)` gives a fresh
+ * registration the delivery index as its native back destination and applies the role guard.
+ *
  * `/files/:id` is a path on the API's origin - `imageUrlSchema` accepts a path
  * and no `http://`, and the web client is same-origin and needs no help. The
  * phone is neither, so this is the one place the prefix is added.

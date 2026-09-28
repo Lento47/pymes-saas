@@ -415,7 +415,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			if (signingUp && registrationMode === "business") {
 				router.replace("/new-business");
 			} else if (signingUp && registrationMode === "delivery") {
-				router.replace("/courier-profile");
+				router.replace("/(delivery)/courier-profile");
 			} else {
 				router.replace(role === "delivery" ? "/(delivery)" : "/");
 			}
