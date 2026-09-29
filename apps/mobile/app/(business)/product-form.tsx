@@ -24,6 +24,7 @@ import { BackButton } from "@/components/back-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field, SOFT_FIELD_HEIGHT } from "@/components/field";
+import { FieldGlyph } from "@/components/field-glyph";
 import { ListRow } from "@/components/list-row";
 import { PHOTO_MODULE_HEIGHT, PhotoPicker } from "@/components/photo-picker";
 import { Screen, ScreenSection } from "@/components/screen";
@@ -38,6 +39,7 @@ import {
 	indentFor,
 	shopSector,
 } from "@/lib/category-scope";
+import { amountHint, currencySymbol } from "@/lib/currency";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
@@ -428,7 +430,7 @@ function Fields({
 	 * digit.
 	 */
 	const symbol = currencySymbol(currency, locale);
-	const priceHint = currencyExponent(currency) === 0 ? "0" : "0.00";
+	const priceHint = amountHint(currency);
 
 	const submit = () => {
 		if (inFlight.current) return;
@@ -776,69 +778,6 @@ const DESCRIPTION_MAX = 500;
  * draw. `FormSkeleton` reads this same constant rather than typing `104` again.
  */
 const DESCRIPTION_HEIGHT = 104;
-
-/**
- * The currency's own mark, from CLDR rather than from a table written here.
- *
- * `currencyDisplay: "symbol"` answers for the reader in their own locale — `₡` for a
- * Costa Rican shop, `$` for a US one — which is why there is no map from currency to glyph
- * in this file. A hand-written table would be a second source for a fact `Intl` already
- * carries, and the day a shop is billed in a currency nobody wrote down it would draw a
- * code in the chip and look broken.
- *
- * `formatToParts` rather than `format`, because `format` returns the *amount* with the mark
- * somewhere inside it and the chip wants the mark alone. The `catch` is not decoration: this
- * runs during a render, and a runtime whose `Intl` cannot build the pair throws rather than
- * degrades — the bare ISO code is an ugly chip, and an ugly chip beats a blank screen.
- */
-function currencySymbol(currency: Currency, locale: string): string {
-	try {
-		const parts = new Intl.NumberFormat(locale, {
-			style: "currency",
-			currency,
-			currencyDisplay: "symbol",
-		}).formatToParts(0);
-		return parts.find((part) => part.type === "currency")?.value ?? currency;
-	} catch {
-		return currency;
-	}
-}
-
-/**
- * What a field's leading chip holds: a mark, or the currency.
- *
- * Two shapes because the two affixes are two different things, and the difference is not
- * decoration. A glyph is decoration — `./field` already hides the whole chip from the
- * accessibility tree — and is drawn at `icon.action` in `mutedForeground`. The currency is
- * a short piece of label weight at `type.label` bold, because a price box whose chip says
- * "₡" in the same grey as a pictogram has told the owner nothing about which field they
- * are in.
- */
-function FieldGlyph({
-	name,
-	label: text,
-}: {
-	name?: React.ComponentProps<typeof Ionicons>["name"];
-	label?: string;
-}) {
-	const { colors } = useTheme();
-	if (text !== undefined) {
-		return (
-			<Text variant="label" bold>
-				{text}
-			</Text>
-		);
-	}
-	return (
-		<Ionicons
-			name={name ?? "image-outline"}
-			size={icon.action}
-			color={colors.mutedForeground}
-			accessibilityElementsHidden
-			importantForAccessibility="no"
-		/>
-	);
-}
 
 /**
  * The form's column, before the reads answer.
