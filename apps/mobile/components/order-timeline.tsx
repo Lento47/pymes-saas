@@ -97,12 +97,36 @@ import { Text } from "./text";
  * The *current* step keeps the relative line instead, because "hace 5 min" is the sentence a
  * customer refreshing a tracker is reading, and printing both would say the same timestamp
  * twice in two formats.
+ *
+ * ## The merchant rail, and why it is a variant and not a second file
+ *
+ * `app/(business)/merchant-order/[id]` draws the same five steps in the same order with the
+ * same words — the list is still `customerTimeline`, so a merchant's order and the customer's
+ * view of it cannot disagree about what has happened — inside a warm module under a dark
+ * hero. Four things differ: the completed dot and its connector are `success` rather than
+ * `primary` (a lime dot under a lime hero is the same green spent twice), the row floor is 52
+ * rather than 44, the current step's centre is `foreground` rather than `card`, and `NOTE`
+ * events are interleaved into the rail instead of dropped.
+ *
+ * The notes are the substantive difference and the reason a second component would have been
+ * wrong. The customer's tracker is reassurance, so a comment somebody left is noise on it; the
+ * operator's screen showed the raw log before this and argued for it — *"a note is work and a
+ * rail is reassurance"*. Both are right, and the fact that they differ is the argument for one
+ * component with a variant: two files would be two implementations of the same rail to keep
+ * in step, and the step order is the one thing on this screen that must never drift from the
+ * customer's.
+ *
+ * The customer variant is the default and every existing call site passes nothing, so this is
+ * additive arithmetic rather than a rewrite — which matters because this file has no test and
+ * the app has no component-render suite to catch a regression in it.
  */
 
 export function OrderTimeline({
 	status,
 	fulfilment,
 	reachedAt,
+	variant = "customer",
+	notes,
 }: {
 	status: OrderStatus;
 	fulfilment: FulfilmentKind;
@@ -114,8 +138,72 @@ export function OrderTimeline({
 	 * and it is drawn with no time rather than with a guess.
 	 */
 	reachedAt?: Partial<Record<OrderStatus, Date>>;
+	/**
+	 * Which of the two rails this is. `customer` is the default and is the tracker every
+	 * other surface draws; see the "## The merchant rail" section in this file's docblock for
+	 * what the other one changes and why it is a variant rather than a second component.
+	 */
+	variant?: OrderTimelineVariant;
+	/**
+	 * `NOTE` events, for the merchant rail. The customer's tracker drops them — a note is
+	 * somebody's comment, not a step — and the merchant's screen keeps them because
+	 * `app/(business)/merchant-order/[id]` already showed the raw log and argued for it: "a
+	 * note is work and a rail is reassurance". Read only when `variant === "merchant"`, and
+	 * passed in rather than fetched for the same reason `reachedAt` is.
+	 */
+	notes?: OrderNoteEvent[];
 }) {
 	const steps = customerTimeline(status, fulfilment);
+
+	/**
+	 * One ordered list, built once and drawn the same either way.
+	 *
+	 * A note is interleaved by its own `createdAt` rather than appended, because "a note left
+	 * at 12:50 between Ready and On the way" belongs between those two rows and drawing it
+	 * last would say it was left after the courier left. The log is append-only and arrives
+	 * ordered by `createdAt` ascending, so a single pass that walks both lists in step is
+	 * enough — no sort, which is the kind of allocation a five-row rail should not need.
+	 *
+	 * A step still wins a tie: the status an order *reached* is a fact about the order and a
+	 * note is a fact about it too, and the rail is a reading of the order's progress first.
+	 * `<=` puts the step ahead, which is what that reading wants.
+	 */
+	const rows: OrderTimelineRow[] = [];
+	if (variant === "merchant" && notes !== undefined && notes.length > 0) {
+		// A copy, because `notes` is the caller's array and sorting it in place would be a
+		// surprise to a screen holding it for something else.
+		const ordered = [...notes].sort(
+			(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+		);
+		let cursor = 0;
+		for (const step of steps) {
+			// Every step's own time is what positions it when the log has one; a step with no
+			// event cannot be placed against a note and stays where `customerTimeline` put it,
+			// at the end of what came before.
+			const at = reachedAt?.[step.status];
+			while (at !== undefined && cursor < ordered.length) {
+				// Bound once, read once: `noUncheckedIndexedAccess` makes a bare
+				// `ordered[cursor]` a `| undefined` and a `!` on it is an assertion this
+				// file does not make anywhere else.
+				const next = ordered[cursor];
+				if (next === undefined) break;
+				if (next.createdAt.getTime() > at.getTime()) break;
+				rows.push({ kind: "note", note: next });
+				cursor += 1;
+			}
+			rows.push({ kind: "step", step, reachedAt: at });
+		}
+		// Notes written after the last step reached — the common case, since a note is
+		// usually left once the order is where it is going to be.
+		for (; cursor < ordered.length; cursor += 1) {
+			const note = ordered[cursor];
+			if (note !== undefined) rows.push({ kind: "note", note });
+		}
+	} else {
+		for (const step of steps) {
+			rows.push({ kind: "step", step, reachedAt: reachedAt?.[step.status] });
+		}
+	}
 
 	return (
 		<View
@@ -125,36 +213,117 @@ export function OrderTimeline({
 			// each dot announces "checkmark", "ring", "circle" between the words.
 			accessibilityRole="list"
 		>
-			{steps.map((step, index) => (
+			{rows.map((row, index) => (
 				<TimelineRow
 					// The state is part of the identity on purpose: a step that changes from
 					// `upcoming` to `current` to `done` is a new row as far as the entrance is
 					// concerned, and reusing the old one would spend the animation before the
 					// news arrived.
-					key={`${step.status}:${step.state}`}
-					step={step}
+					key={
+						row.kind === "step"
+							? `${row.step.status}:${row.step.state}`
+							: `note:${row.note.id}`
+					}
+					row={row}
 					index={index}
-					last={index === steps.length - 1}
-					reachedAt={reachedAt?.[step.status]}
+					last={index === rows.length - 1}
+					variant={variant}
 				/>
 			))}
 		</View>
 	);
 }
 
+/**
+ * Which rail this is. `customer` is the tracker; `merchant` is the operator's, inside
+ * `app/(business)/merchant-order/[id]`.
+ *
+ * A word and not a boolean, for the reason `sheet.tsx`'s `variant` is a word: the two rails
+ * differ in four visible things at once, and a set of booleans would permit a third
+ * combination that nobody drew and that no one would then be responsible for.
+ */
+export type OrderTimelineVariant = "customer" | "merchant";
+
+/**
+ * One row of either rail, discriminated so a note can never be read as a step.
+ *
+ * A note has no `status` and no `state`, so a union that pretended otherwise would be a type
+ * lying about what it held and every reader would have to re-check. The screen never inspects
+ * the internals — it hands `notes` in and this file places them.
+ */
+type OrderTimelineRow =
+	| { kind: "step"; step: TimelineStep; reachedAt?: Date }
+	| { kind: "note"; note: OrderNoteEvent };
+
+/**
+ * The three fields this file needs off a `NOTE` event, declared here rather than taking
+ * `OrderEvent[]` so a caller cannot hand over a whole event log and have the status events
+ * silently ignored — which is exactly what would happen otherwise, since a note is the only
+ * one of the eight this rail reads.
+ */
+export type OrderNoteEvent = {
+	id: string;
+	note: string | null;
+	createdAt: Date;
+};
+
 function TimelineRow({
-	step,
+	row,
 	index,
 	last,
-	reachedAt,
+	variant,
 }: {
-	step: TimelineStep;
+	row: OrderTimelineRow;
 	index: number;
 	last: boolean;
-	reachedAt?: Date;
+	variant: OrderTimelineVariant;
 }) {
 	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
+	const merchant = variant === "merchant";
+
+	// A note is not a step, so it has no status, no `TimelineStep["state"]` and no freshness
+	// line. What it does have is a clock — the time the note was left, which is the one thing
+	// about it an operator scanning the rail is looking for — and its own text.
+	if (row.kind === "note") {
+		return (
+			<AnimateIn index={index} reorder>
+				<View style={[styles.row, styles.rowMerchant]}>
+					<View style={styles.rail}>
+						<View style={[styles.marker, { backgroundColor: colors.muted }]}>
+							<Ionicons
+								name="chatbox-ellipses-outline"
+								size={icon.control}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</View>
+						{last ? null : (
+							<View
+								style={[styles.connector, { backgroundColor: colors.border }]}
+							/>
+						)}
+					</View>
+					<View style={styles.body}>
+						<Text variant="body" bold>
+							{t("biz.order.noteEvent")}
+						</Text>
+						{row.note.note ? (
+							<Text variant="label" tone="muted">
+								{row.note.note}
+							</Text>
+						) : null}
+						<Text variant="caption" tone="muted" tabular>
+							{formatClock(row.note.createdAt, intlLocale)}
+						</Text>
+					</View>
+				</View>
+			</AnimateIn>
+		);
+	}
+
+	const { step, reachedAt } = row;
 	const label = t(statusKey(step.status));
 	// `formatRelative` answers `null` when there is no truthful sentence to build (no
 	// timestamp, an unreadable one, or an engine without `Intl.RelativeTimeFormat`). The
@@ -164,9 +333,9 @@ function TimelineRow({
 
 	return (
 		<AnimateIn index={index} reorder>
-			<View style={styles.row}>
+			<View style={[styles.row, merchant ? styles.rowMerchant : null]}>
 				<View style={styles.rail}>
-					<StepMarker state={step.state} colors={colors} />
+					<StepMarker state={step.state} colors={colors} merchant={merchant} />
 					{/* The connector is omitted under the last step rather than drawn and clipped:
 					    a trailing stub below "Entregado" reads as one more thing to come. */}
 					{last ? null : (
@@ -174,8 +343,16 @@ function TimelineRow({
 							style={[
 								styles.connector,
 								{
+									// Green on the merchant rail and lime on the customer's, and the
+									// distinction is the one the variant exists for: on a rail whose
+									// dots are green, a lime connector is a second colour for the
+									// same fact. See the file docblock.
 									backgroundColor:
-										step.state === "done" ? colors.primary : colors.border,
+										step.state === "done"
+											? merchant
+												? colors.success
+												: colors.primary
+											: colors.border,
 								},
 							]}
 						/>
@@ -275,13 +452,26 @@ function TimelineRow({
 function StepMarker({
 	state,
 	colors,
+	merchant = false,
 }: {
 	state: TimelineStep["state"];
 	colors: ThemeColors;
+	/**
+	 * The merchant rail's completed dot is `success`, not `primary`. Not a tint swap for its
+	 * own sake: on the customer's tracker `primary` *is* the step colour and nothing else on
+	 * the rail competes with it, while this rail sits inside a warm module under a lime hero
+	 * where a lime dot would be spending the same green on a second meaning.
+	 */
+	merchant?: boolean;
 }) {
 	if (state === "done") {
 		return (
-			<View style={[styles.marker, { backgroundColor: colors.primary }]}>
+			<View
+				style={[
+					styles.marker,
+					{ backgroundColor: merchant ? colors.success : colors.primary },
+				]}
+			>
 				<Ionicons
 					name="checkmark"
 					size={icon.control}
@@ -317,7 +507,15 @@ function StepMarker({
 					importantForAccessibility="no"
 				/>
 			) : (
-				<View style={[styles.dot, { backgroundColor: colors.card }]} />
+				<View
+					style={[
+						styles.dot,
+						// The merchant's centre is `foreground`, not `card`. A white centre in a
+						// `#F6F5F1` module is a bright dot in a warm field; the customer's rail has
+						// the opposite problem, which is why this is the variant and not a token.
+						{ backgroundColor: merchant ? colors.foreground : colors.card },
+					]}
+				/>
 			)}
 		</View>
 	);
@@ -334,6 +532,17 @@ function StepMarker({
 const MARKER = space.lg + space.xs;
 const DOT = space.sm;
 const CONNECTOR = space.xs / 2;
+
+/**
+ * The merchant row's floor, and it is off the spacing scale like `MARKER` is.
+ *
+ * 52 is `space.huge` (32) plus `space.xl` (20), and it is a floor rather than a step because
+ * the thing it measures is a two-line stack's height — a word and a clock — which is the same
+ * arithmetic `type.heading.lineHeight` plus `type.caption.lineHeight` is. The customer's 44
+ * is `MIN_TOUCH_TARGET` because that rail is read in one pass; this one is scanned, so its
+ * rows are allowed the air the scanning needs.
+ */
+const MERCHANT_ROW = space.huge + space.xl;
 
 /**
  * The halo: one `xs` step wider than the marker it circles, so it stands `space.xs / 2`
@@ -355,6 +564,13 @@ const HALO = MARKER + space.xs;
 const styles = StyleSheet.create({
 	list: { gap: 0 },
 	row: { flexDirection: "row", gap: space.md, minHeight: MIN_TOUCH_TARGET },
+	/**
+	 * 52 rather than the 44 floor, and it is a floor rather than a fixed height for the same
+	 * reason every other control here is: a rail row holds two lines of type and a timestamp,
+	 * and at 200% Dynamic Type the second line is the one that grows. 52 is the merchant
+	 * system's own number for this row.
+	 */
+	rowMerchant: { minHeight: MERCHANT_ROW },
 	rail: { alignItems: "center", width: MARKER },
 	marker: {
 		width: MARKER,

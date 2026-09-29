@@ -142,6 +142,18 @@ export const business = {
 	"biz.order.customer": "Cliente",
 	"biz.order.title": "Pedido #{reference}",
 	"biz.order.address": "Dirección de entrega",
+	// Las tres puertas bajo el bloque del cliente. Cada una se dibuja sólo cuando existen los
+	// datos sobre los que actúa - `biz.order.call` y `biz.order.message` necesitan un
+	// teléfono, `biz.order.openMap` una dirección con línea que señalar - así que las claves
+	// no son `biz.order.*` porque no son sobre un pedido, sino sobre un handoff al sistema.
+	"biz.order.call": "Llamar",
+	"biz.order.message": "Mensaje",
+	"biz.order.openMap": "Ver mapa",
+	// La última línea del héroe oscuro, y el único lugar donde esta pantalla afirma una hora
+	// que el payload no trae. `orderSummarySchema` no tiene `updatedAt`; el evento más nuevo
+	// del log es el último cambio real del pedido, así que la copia nombra el evento en vez de
+	// prometer una frescura que la API nunca envió.
+	"biz.order.updated": "Actualizado {time}",
 	"biz.order.items": "Artículos del pedido",
 	"biz.order.total": "Total del pedido",
 	"biz.order.events": "Actividad",

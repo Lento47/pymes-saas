@@ -124,6 +124,19 @@ export const business = {
 	"biz.order.customer": "Customer",
 	"biz.order.title": "Order #{reference}",
 	"biz.order.address": "Delivery address",
+	// The three doors under the customer block. Each is drawn only when the data it acts on
+	// is there - `action.call` and `action.message` need a customer phone, `biz.order.openMap`
+	// needs a delivery address with a line to point at - so the keys are shared with every
+	// other screen that offers the same hand-off and are not `biz.order.*` because they are
+	// not about an order.
+	"biz.order.call": "Call",
+	"biz.order.message": "Message",
+	"biz.order.openMap": "Open map",
+	// The dark hero's last line, and the only place this screen claims a time the payload does
+	// not carry. `orderSummarySchema` has no `updatedAt`; the newest event in the log is the
+	// order's real last change, so the copy names the event rather than promising a freshness
+	// the API never sent.
+	"biz.order.updated": "Updated {time}",
 	"biz.order.items": "Order items",
 	"biz.order.total": "Order total",
 	"biz.order.events": "Activity",
