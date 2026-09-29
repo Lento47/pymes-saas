@@ -1,5 +1,6 @@
 import {
 	account as accountTable,
+	accountConsent,
 	type Db,
 	session as sessionTable,
 	user as userTable,
@@ -27,6 +28,32 @@ const MAX_TOKEN_LENGTH = 16_384;
 type FailureStatus = 400 | 401 | 403 | 503;
 
 type Failure = { ok: false; status: FailureStatus; code: string };
+
+/**
+ * The two assertions a sign-up must carry, and the only thing a first exchange may not
+ * skip.
+ *
+ * `account_consent` declares `termsAcceptedAt` and `ageConfirmedAt` as NOT NULL with the
+ * comments "a row exists because they were" — and the marketplace's own sign-up refuses
+ * without both (`./auth`, the `before` hook). This file created users through none of
+ * that: an identity with no matching email got a `user` row and no `account_consent` row
+ * at all, which is an account that exists without anybody ever having agreed to anything.
+ *
+ * So the gate is here rather than in the client, for the reason `./auth` gives about its
+ * own half: the client is not where an absent assertion can be noticed. The shape is the
+ * same two booleans the form already sends, and a caller that has them is trusted to
+ * have asked — the server cannot verify a checkbox, only record that one was answered.
+ */
+export type SupabaseSignUpConsent = {
+	termsAccepted: boolean;
+	ageConfirmed: boolean;
+};
+
+function consentIsComplete(
+	consent: SupabaseSignUpConsent | undefined,
+): consent is SupabaseSignUpConsent {
+	return consent?.termsAccepted === true && consent.ageConfirmed === true;
+}
 type Success = {
 	ok: true;
 	token: string;
@@ -286,6 +313,16 @@ async function resolveIdentity(db: Db, identity: SupabaseIdentity) {
 					createdAt: now,
 					updatedAt: now,
 				}),
+				// The same batch as the user, not a second statement after it. A `user`
+				// row with no `account_consent` row is exactly the state this change exists
+				// to remove, and a consent write that could fail on its own would recreate
+				// it. `auth.ts` makes the same argument for its own insert, where the hook
+				// and the insert belong to the request that made the user.
+				db.insert(accountConsent).values({
+					userId,
+					termsAcceptedAt: now,
+					ageConfirmedAt: now,
+				}),
 			]),
 		);
 	} catch (error) {
@@ -327,6 +364,7 @@ export async function exchangeSupabaseSession(
 	accessToken: unknown,
 	env: Env,
 	db: Db,
+	consent?: SupabaseSignUpConsent,
 ): Promise<SupabaseExchangeResult> {
 	if (
 		typeof accessToken !== "string" ||
@@ -339,9 +377,31 @@ export async function exchangeSupabaseSession(
 	const identity = await verifyIdentity(accessToken, env);
 	if (!("sub" in identity)) return identity;
 
+	// Whether this identity would have to be created is decided *before* the write, so
+	// the refusal costs no rows and no session. Asking the caller for consent only when
+	// there is something to consent to is the whole reason this is a two-step exchange
+	// rather than a form that always asks.
+	if (!consentIsComplete(consent) && !(await identityExists(db, identity))) {
+		return fail(400, "consent_required");
+	}
+
 	const user = await resolveIdentity(db, identity);
 	if (!user) return fail(503, "user_resolution_failed");
 	return { ok: true, token: await mintSession(db, user.id), user };
+}
+
+/**
+ * Whether the marketplace already knows this identity — linked, or the same email.
+ *
+ * Deliberately the same two lookups `resolveIdentity` opens with, so the gate and the
+ * writer cannot disagree about which identities are new. A race between the two — a
+ * second device exchanging the same brand-new identity at the same moment — can only make
+ * the gate stricter: both callers are told to consent, and whichever loses the insert
+ * adopts the winner's row.
+ */
+async function identityExists(db: Db, identity: SupabaseIdentity): Promise<boolean> {
+	if (await linkedUser(db, identity.sub)) return true;
+	return (await userByEmail(db, identity.email)) !== null;
 }
 
 export function supabaseConfigured(env: Env): boolean {

@@ -255,10 +255,25 @@ export function createApp() {
 			typeof body === "object" && body !== null
 				? (body as { accessToken?: unknown }).accessToken
 				: undefined;
+		// The two assertions, read as booleans and never as truthy values: `"false"` is
+		// a string, and a caller that sent it must be asked again rather than recorded
+		// as agreement. Absent or not both true, the exchange answers `consent_required`
+		// for an identity it has not seen before — see `supabase-exchange.ts`.
+		const termsAccepted =
+			typeof body === "object" && body !== null
+				? (body as { termsAccepted?: unknown }).termsAccepted
+				: undefined;
+		const ageConfirmed =
+			typeof body === "object" && body !== null
+				? (body as { ageConfirmed?: unknown }).ageConfirmed
+				: undefined;
 		const result = await exchangeSupabaseSession(
 			accessToken,
 			c.env,
 			createDb(c.env.DB),
+			typeof termsAccepted === "boolean" && typeof ageConfirmed === "boolean"
+				? { termsAccepted, ageConfirmed }
+				: undefined,
 		);
 		if (!result.ok) return c.json({ error: result.code }, result.status);
 		c.header("set-auth-token", result.token);
