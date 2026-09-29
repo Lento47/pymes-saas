@@ -7,6 +7,12 @@ dist/
 .enterprise-runtime-bundle/
 .codex-worktrees/
 .worktrees/
+# `git worktree add .wt-<name> <branch>` is the same thing as the two above and lands in
+# the status list the same way. A worktree is a full checkout — including its own
+# `node_modules` — so `git add -A` on a tree with one of these unignored commits an entire
+# second copy of the repository. Two were already listed and this naming was not, which is
+# why `.wt-brand` showed up as `??` while its siblings did not.
+.wt-*/
 .wrangler/
 **/.wrangler/
 .turbo/
