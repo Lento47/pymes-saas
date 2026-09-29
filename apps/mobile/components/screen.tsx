@@ -312,6 +312,15 @@ const sectionStyles = StyleSheet.create({
 		alignItems: "flex-start",
 		justifyContent: "space-between",
 		gap: space.md,
+		/**
+		 * The second of this component's two spacings, and it is load-bearing for the
+		 * fifty-odd call sites that pass no `subtitle` — dropping it once took 12 points
+		 * out of every section heading in the app, and `app/(business)/menu.tsx:563`
+		 * still names both of these in a comment because its skeleton restates them.
+		 * `minHeight` went with it and is not missed: a heading with no help line is one
+		 * text row tall, so the row is the text and the margin is the only air there was.
+		 */
+		marginBottom: space.md,
 	},
 	// The heading and its line as one column, so `action` beside them stays aligned to the
 	// heading's own first line rather than to the middle of both.

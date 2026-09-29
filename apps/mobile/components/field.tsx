@@ -355,9 +355,18 @@ const styles = StyleSheet.create({
 	wrap: { gap: space.sm },
 	// Positioning context for the reveal control, the affix and the counter, and nothing
 	// else: it adds no size of its own, so a field without any of them draws exactly as
-	// before. `overflow: "hidden"` clips an affix or a counter to the box's corner radius,
-	// which is the only reason they are drawn here rather than beside the input.
-	inputWrap: { position: "relative", overflow: "hidden" },
+	// before.
+	//
+	// **No `overflow` here**, and that is a correction rather than an omission. There was an
+	// `overflow: "hidden"` with a comment claiming it clipped the affix and the counter to
+	// the box's corner radius — and this view has no `borderRadius` at all, so it clipped
+	// them to a *square* while the comment described a rounded one. Nothing needed clipping
+	// anyway: the affix is `AFFIX_INSET` in from the leading edge and centred or `space.md`
+	// down, the counter `space.md` in from the trailing foot, and the reveal sits inside at
+	// `right: 0`. What the property did do was put a square clip around every input in the
+	// app, which is a boundary a multiline box's horizontally scrolling text and Android's
+	// cursor both live against.
+	inputWrap: { position: "relative" },
 	input: {
 		minHeight: MIN_TOUCH_TARGET,
 		borderWidth: 1,
