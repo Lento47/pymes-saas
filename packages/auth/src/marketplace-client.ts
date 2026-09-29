@@ -31,13 +31,32 @@ export function createMarketplaceAuthClient(
 		if (!response.ok) {
 			if (response.status === 401 && storage)
 				await storage.removeItem(TOKEN_KEY);
-			throw new Error(
+			// The Worker's own error code, when it sent one, is carried on the thrown
+			// error rather than thrown away. A 400 that means "ask for the terms" and a
+			// 400 that means "that body is malformed" are the same status and two
+			// completely different things for a caller to do about, and collapsing both
+			// into `generic` is what made the Supabase exchange need a second round trip
+			// to find out. `authErrorKey` still only maps the three keys below, so nothing
+			// new reaches a screen by accident.
+			let code: string | undefined;
+			try {
+				const parsed: unknown = await response.clone().json();
+				if (typeof parsed === "object" && parsed !== null) {
+					const error = (parsed as { error?: unknown }).error;
+					if (typeof error === "string") code = error;
+				}
+			} catch {
+				// A non-JSON error body is not a code; the status still is.
+			}
+			const failure = new Error(
 				response.status === 429
 					? "auth.error.rateLimited"
 					: response.status === 401
 						? "auth.error.invalidCredentials"
 						: "auth.error.generic",
-			);
+			) as Error & { code?: string };
+			if (code) failure.code = code;
+			throw failure;
 		}
 		const next = response.headers.get("set-auth-token");
 		if (next && storage) await storage.setItem(TOKEN_KEY, next);
@@ -77,8 +96,38 @@ export function createMarketplaceAuthClient(
 		 * `set-auth-token` path as an ordinary sign-in, so the rest of the app never
 		 * needs to know which provider opened the door.
 		 */
-		async exchangeSupabaseSession(accessToken: string) {
-			await request("/auth-supabase/exchange", { accessToken });
+		/**
+		 * Exchange a Supabase access token for a marketplace session.
+		 *
+		 * The bearer that arrives here belongs to Supabase, while every request after the
+		 * exchange belongs to Better Auth. The response is persisted by the same
+		 * `set-auth-token` path as an ordinary sign-in, so the rest of the app never
+		 * needs to know which provider opened the door.
+		 *
+		 * **Two steps, because the marketplace does not auto-answer this.** The Worker
+		 * creates the D1 user on first exchange, and `account_consent` declares
+		 * `termsAcceptedAt` / `ageConfirmedAt` as NOT NULL — "a row exists because they
+		 * were". So an identity the marketplace has never seen is refused with
+		 * `consent_required` until the two assertions are supplied, and one it has seen
+		 * exchanges straight away. Calling this without `consent` is therefore the
+		 * normal first call for a returning reader, and the caller only has to collect
+		 * the assertions when the answer says they are needed.
+		 */
+		async exchangeSupabaseSession(
+			accessToken: string,
+			consent?: { termsAccepted: boolean; ageConfirmed: boolean },
+		): Promise<"ok" | "consent_required"> {
+			try {
+				await request("/auth-supabase/exchange", {
+					accessToken,
+					...(consent ?? {}),
+				});
+				return "ok";
+			} catch (error) {
+				const code = (error as { code?: unknown }).code;
+				if (code === "consent_required") return "consent_required";
+				throw error;
+			}
 		},
 		async signOut() {
 			await request("sign-out", {});

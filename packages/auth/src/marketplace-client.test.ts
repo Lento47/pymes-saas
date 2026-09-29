@@ -110,6 +110,11 @@ const json = (body: unknown) =>
 		headers: { "content-type": "application/json" },
 	});
 const failure = (status: number) => new Response(null, { status });
+const jsonFailure = (status: number, body: unknown) =>
+	new Response(JSON.stringify(body), {
+		status,
+		headers: { "content-type": "application/json" },
+	});
 
 /**
  * The rejection's message, as an exact string.
@@ -244,6 +249,66 @@ describe("error mapping", () => {
 			createMarketplaceAuthClient(BASE, storage).currentSession(),
 		);
 		expect(storage.read(TOKEN_KEY)).toBe("still-good-token");
+	});
+});
+
+describe("the Supabase exchange", () => {
+	test("an identity the marketplace has never seen comes back as consent_required", async () => {
+		// The Worker refuses to auto-provision without the two assertions, and answers
+		// `consent_required` — a 400, which the error mapping would otherwise reduce to
+		// `auth.error.generic` and lose. This is the case the two-step exchange exists for.
+		installFetch(() => jsonFailure(400, { error: "consent_required" }));
+		const client = createMarketplaceAuthClient(BASE, memoryStorage());
+
+		expect(await client.exchangeSupabaseSession("supabase-token")).toBe(
+			"consent_required",
+		);
+	});
+
+	test("an identity it already knows exchanges straight away", async () => {
+		const calls = installFetch(() => ok({ "set-auth-token": "pymeshub_market" }));
+
+		const result = await createMarketplaceAuthClient(BASE, memoryStorage()).exchangeSupabaseSession(
+			"supabase-token",
+		);
+
+		expect(result).toBe("ok");
+		// A reader returning to an existing account is never asked for the terms again.
+		expect(calls[0]?.body).not.toContain("termsAccepted");
+	});
+
+	test("the assertions travel when the caller has them", async () => {
+		const calls = installFetch(() => ok({ "set-auth-token": "pymeshub_market" }));
+
+		await createMarketplaceAuthClient(BASE, memoryStorage()).exchangeSupabaseSession(
+			"supabase-token",
+			{ termsAccepted: true, ageConfirmed: true },
+		);
+
+		const sent = JSON.parse(String(calls[0]?.body)) as Record<string, unknown>;
+		expect(sent.termsAccepted).toBe(true);
+		expect(sent.ageConfirmed).toBe(true);
+	});
+
+	test("a refusal that is not about consent still throws", async () => {
+		// Only `consent_required` becomes a return value. Anything else is a failure the
+		// caller has to handle, and swallowing it into a string would let a bad token
+		// read as "ask for the terms" and then loop.
+		installFetch(() => jsonFailure(400, { error: "invalid_request" }));
+		const client = createMarketplaceAuthClient(BASE, memoryStorage());
+
+		expect(rejectionMessage(client.exchangeSupabaseSession("supabase-token"))).resolves.toBe(
+			"auth.error.generic",
+		);
+	});
+
+	test("a non-JSON failure carries no code and still throws", async () => {
+		installFetch(() => failure(500));
+		const client = createMarketplaceAuthClient(BASE, memoryStorage());
+
+		expect(rejectionMessage(client.exchangeSupabaseSession("supabase-token"))).resolves.toBe(
+			"auth.error.generic",
+		);
 	});
 });
 
