@@ -276,8 +276,8 @@ function AppRouter() {
       transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
     >
     <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
+      <Route path="/login">{() => <MarketplaceSignInPage initialMode="sign-in" />}</Route>
+      <Route path="/register">{() => <MarketplaceSignInPage initialMode="sign-up" />}</Route>
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
@@ -564,7 +564,7 @@ function AppRouter() {
         {(params) => <MarketplaceOrderPage id={params.id!} />}
       </Route>
       <Route path="/favorites" component={MarketplaceFavoritesPage} />
-      <Route path="/sign-in" component={MarketplaceSignInPage} />
+      <Route path="/sign-in">{() => <MarketplaceSignInPage initialMode="sign-in" />}</Route>
 
       <Route component={NotFound} />
     </Switch>
