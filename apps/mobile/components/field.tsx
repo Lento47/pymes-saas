@@ -36,6 +36,20 @@ const AFFIX_INSET = 12;
 export const SOFT_FIELD_HEIGHT = 52;
 
 /**
+ * The affix chip's own vertical offset inside a single-line box: centred, not guttered.
+ *
+ * `(SOFT_FIELD_HEIGHT - AFFIX_SIZE) / 2` is 8, against the 12 the chip used to sit at — a
+ * number that was the *horizontal* inset, reused on the other axis. The two are unrelated
+ * and the difference is 4 points of the chip hanging below the value beside it, which is
+ * most of what "the squares are not aligned" is.
+ *
+ * A **multiline** box is not centred against this: there `inputMultiline` puts the first
+ * line at `space.md`, so the chip goes to `space.md` with it and lines up with the opening
+ * line of the paragraph rather than with the middle of a 104-point box.
+ */
+const AFFIX_CENTERED = (SOFT_FIELD_HEIGHT - AFFIX_SIZE) / 2;
+
+/**
  * A labelled input.
  *
  * The label is a `<Text>` above the field and not a `placeholder`, because a placeholder
@@ -270,7 +284,13 @@ export function Field({
 				) : null}
 				{affix ? (
 					<View
-						style={[styles.affix, { backgroundColor: colors.accent }]}
+						style={[
+							styles.affix,
+							{
+								backgroundColor: colors.accent,
+								top: rest.multiline === true ? space.md : AFFIX_CENTERED,
+							},
+						]}
 						// Decorative: the label above already names the field, and a chip
 						// holding a currency announced before every price is noise on top of
 						// a name the screen reader has already read.
@@ -397,11 +417,17 @@ const styles = StyleSheet.create({
 	 * `overflow: "hidden"` is what keeps a multiline box's first line from painting over the
 	 * chip, and it is also why the chip is a child of the input's own positioning context
 	 * rather than a sibling above it.
+	 *
+	 * **No `top` here**, and that is the fix rather than an omission. It was `AFFIX_INSET`,
+	 * which is the *horizontal* gutter: 12 from the top and 4 from the bottom of a 52-point
+	 * box, so the chip sat 4pt below the value it belongs to — a square visibly hanging low
+	 * beside text that was centred. The vertical offset is a render-time value because it
+	 * differs by field, so it is applied at the call site below; `AFFIX_CENTERED` and
+	 * `space.md` are the two answers it has.
 	 */
 	affix: {
 		position: "absolute",
 		left: AFFIX_INSET,
-		top: AFFIX_INSET,
 		minWidth: AFFIX_SIZE,
 		minHeight: AFFIX_SIZE,
 		borderRadius: radius.sm,
