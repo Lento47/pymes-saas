@@ -142,8 +142,11 @@ export function Field({
 	 * Destructured rather than left in `rest`, and that is a fix: `rest` is spread as the
 	 * last prop expression so a caller's `onFocus` cannot displace this one's, which means a
 	 * caller who passed `style` replaced the whole computed array rather than adding to it.
-	 * No call site did, so nothing was broken — but this screen is the first to pass one, and
-	 * a `style` that silently discards `minHeight` is how a soft field ends up 44 tall.
+	 * a `style` that silently discards `minHeight` is how a soft field asked for 104 and
+	 * drew 44, which is exactly what it did until this prop existed.
+	 *
+	 * Last also matches `./card.tsx`, which spreads a caller's `style` after the surface for
+	 * the same reason: a caller composing `[a, b]` expects `b` to be the word.
 	 */
 	style: inputStyle,
 	ref,
@@ -190,18 +193,6 @@ export function Field({
 				{label}
 			</Text>
 			<View style={styles.inputWrap}>
-				{affix ? (
-					<View
-						style={[styles.affix, { backgroundColor: colors.accent }]}
-						// Decorative: the label above already names the field, and a chip
-						// holding "US$" announced before every price is noise on top of a
-						// name the screen reader has already read.
-						accessibilityElementsHidden
-						importantForAccessibility="no"
-					>
-						{affix}
-					</View>
-				) : null}
 				<TextInput
 					ref={ref}
 					value={value}
@@ -222,7 +213,6 @@ export function Field({
 					secureTextEntry={secureToggle ? !revealed : secureTextEntry}
 					placeholderTextColor={colors.mutedForeground}
 					style={[
-						inputStyle,
 						styles.input,
 						showToggle && styles.inputWithToggle,
 						soft && styles.inputSoft,
@@ -263,6 +253,8 @@ export function Field({
 							: error && soft
 								? { borderWidth: 2, marginVertical: -1 }
 								: null,
+						// The last word, and last on purpose — see the prop's own note.
+						inputStyle,
 					]}
 					// The field's name in the accessibility tree, and the reason it is not just
 					// the visible `<Text>` above: on iOS the two are separate elements, and a
@@ -275,6 +267,18 @@ export function Field({
 					<Text variant="caption" tone="muted" tabular style={styles.counter}>
 						{(value ?? "").length}/{rest.maxLength}
 					</Text>
+				) : null}
+				{affix ? (
+					<View
+						style={[styles.affix, { backgroundColor: colors.accent }]}
+						// Decorative: the label above already names the field, and a chip
+						// holding a currency announced before every price is noise on top of
+						// a name the screen reader has already read.
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					>
+						{affix}
+					</View>
 				) : null}
 				{showToggle ? (
 					<Pressable

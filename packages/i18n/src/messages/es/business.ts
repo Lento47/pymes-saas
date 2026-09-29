@@ -172,7 +172,7 @@ export const business = {
 	"biz.products.screen.edit": "Actualiza los datos de este producto.",
 	"biz.products.section.basic": "Información básica",
 	"biz.products.section.basic.help":
-		"Dale a tu producto un nombre claro y una descripción.",
+		"Dale a tu producto un nombre que se reconozca.",
 	"biz.products.section.pricing": "Precios",
 	"biz.products.section.pricing.help":
 		"Define el precio y, si quieres, un precio anterior.",

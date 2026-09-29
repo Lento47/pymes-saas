@@ -301,6 +301,11 @@ export function PhotoPicker({
 	// Reserved exactly as `./field` reserves its message row: one `caption` line whether or
 	// not anything is in it, so a refusal never reflows the form. Error wins over help, for
 	// the same reason.
+	//
+	// `module` suppresses the help here, because in that layout the surface already draws
+	// it inside itself and printing it again underneath is the same sentence twice. The
+	// reserved row stays in both layouts — the *error* still needs a slot that exists before
+	// it is needed, or a refused upload reflows the form under the thumb.
 	const message = (
 		<View style={styles.message}>
 			{shownError ? (
@@ -312,7 +317,7 @@ export function PhotoPicker({
 				>
 					{shownError}
 				</Text>
-			) : help ? (
+			) : help && layout !== "module" ? (
 				<Text variant="caption" tone="muted">
 					{help}
 				</Text>

@@ -526,6 +526,7 @@ function Fields({
 						subtitle={t("biz.products.section.pricing.help")}
 					>
 						<View style={styles.pair}>
+							<View style={styles.pairItem}>
 							<Field
 								variant="soft"
 								label={t("biz.products.price")}
@@ -545,6 +546,8 @@ function Fields({
 								keyboardType="decimal-pad"
 								inputMode="decimal"
 							/>
+							</View>
+							<View style={styles.pairItem}>
 							<Field
 								variant="soft"
 								label={t("biz.products.compareAt")}
@@ -563,6 +566,7 @@ function Fields({
 								keyboardType="decimal-pad"
 								inputMode="decimal"
 							/>
+							</View>
 						</View>
 						{/* The long optional text, drawn as a paragraph rather than as a
 						    fifth name field. Its message row is off because it has neither
@@ -709,6 +713,7 @@ function Fields({
 					<Text
 						variant="body"
 						tone="destructive"
+						style={styles.failure}
 						accessibilityRole="alert"
 						accessibilityLiveRegion="polite"
 					>
@@ -912,7 +917,20 @@ function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 
 const styles = StyleSheet.create({
 	root: { flex: 1 },
-	content: { gap: space.lg },
+	/**
+	 * No `gap`, and that is the second half of the dead space this screen used to carry.
+	 *
+	 * `./screen`'s `ScreenSection` already owns a section's top margin, so a `gap` here
+	 * stacked a second separator on top of it: `space.lg` + `space.xxl` is 40 points of
+	 * nothing between two groups, on top of each field's reserved 16-point message row.
+	 * That is how a five-field form ended up carrying roughly 90 points of air. The
+	 * sections' own margin is the whole rhythm now — 24 between groups, which is the
+	 * figure the interface spec gives.
+	 */
+	content: {},
+	// The refusal line is the one child that is not a section, so with the `gap` gone it
+	// needs its own air above it rather than a column gap it would have to share.
+	failure: { marginTop: space.lg },
 	/**
 	 * The two money boxes, side by side, at the width the interface spec measures at a 390pt
 	 * viewport: a 10pt gap and 174pt each, which is `flex: 1` on both sides rather than two
@@ -927,8 +945,9 @@ const styles = StyleSheet.create({
 	pairItem: { flex: 1, minWidth: 0 },
 	// A paragraph, not a fifth name field: 104 points of box under one line of label, which
 	// is the height the spec asks for and the point at which an owner can see three or four
-	// lines of what they have written.
-	description: { minHeight: DESCRIPTION_HEIGHT },
+	// lines of what they have written. The top margin is `./field`'s own `wrap` gap, carried
+	// here because with the column's `gap` gone there is nothing else supplying it.
+	description: { minHeight: DESCRIPTION_HEIGHT, marginTop: space.sm },
 	// The category's surface, matching the fields' language rather than a card's: the same
 	// fill, one step softer on the corner, and a hairline that is the only edge on a white
 	// canvas. `overflow: "hidden"` is what lets the expanded list be clipped by it.
