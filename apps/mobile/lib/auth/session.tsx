@@ -13,11 +13,7 @@ import {
 } from "react";
 import { AppState } from "react-native";
 import { marketplaceAuth } from "@/lib/auth/client";
-import {
-	supabase,
-	supabaseAccessToken,
-	supabaseSignOut,
-} from "@/lib/auth/supabase";
+import { supabase, supabaseSignOut } from "@/lib/auth/supabase";
 import {
 	reconcileTrackingPermissions,
 	stopCourierTracking,
@@ -43,7 +39,19 @@ export type SessionStatus = "loading" | "signed-in" | "signed-out";
  * `@pymeshub/auth`'s transport has already reduced the response to one of three keys, so
  * nothing here ever shows text written for a network tab.
  */
-export type SignInResult = { ok: true } | { ok: false; messageKey: string };
+export type SignInResult =
+	| { ok: true }
+	| {
+			ok: false;
+			messageKey: string;
+			/**
+			 * The marketplace has never seen this identity and the exchange refused to
+			 * create one without the terms and age assertions. The caller shows the two
+			 * consent controls and calls again with them — a separate state from a
+			 * refusal, because the form is not broken and the reader is not wrong.
+			 */
+			needsConsent?: boolean;
+	  };
 type SessionValue = {
 	session: MarketplaceSession | null;
 	status: SessionStatus;
@@ -68,11 +76,14 @@ type SessionValue = {
 	signInWithSupabase: (
 		email: string,
 		password: string,
+		/** Omitted on the first attempt; supplied on the retry after `needsConsent`. */
+		assertions?: { termsAccepted: boolean; ageConfirmed: boolean },
 	) => Promise<SignInResult>;
 	signUpWithSupabase: (
 		email: string,
 		password: string,
 		name: string,
+		assertions?: { termsAccepted: boolean; ageConfirmed: boolean },
 	) => Promise<SignInResult>;
 	signOut: () => Promise<void>;
 	/** Re-read the session. Called when the app comes back to the foreground. */
@@ -267,7 +278,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		[read],
 	);
 	const signInWithSupabase = useCallback(
-		async (email: string, password: string): Promise<SignInResult> => {
+		async (
+			email: string,
+			password: string,
+			assertions?: { termsAccepted: boolean; ageConfirmed: boolean },
+		): Promise<SignInResult> => {
 			if (!supabase) {
 				return { ok: false, messageKey: "auth.error.notConfigured" };
 			}
@@ -285,9 +300,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 								: "auth.error.invalidCredentials",
 					};
 				}
-				await marketplaceAuth.exchangeSupabaseSession(
+				// Two steps, and the second one is usually not needed. The marketplace
+				// creates the D1 user on first exchange, and `account_consent` declares
+				// both timestamps NOT NULL — so an identity it has never seen answers
+				// `consent_required` and the caller has to collect the two assertions and
+				// come back. A returning reader exchanges on the first attempt and is
+				// never shown a terms box they already answered.
+				const outcome = await marketplaceAuth.exchangeSupabaseSession(
 					data.session.access_token,
+					assertions,
 				);
+				if (outcome === "consent_required") {
+					return {
+						ok: false,
+						messageKey: "auth.signUp.consentRequired",
+						needsConsent: true,
+					};
+				}
 				await read();
 				return { ok: true };
 			} catch (error) {
@@ -304,6 +333,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			email: string,
 			password: string,
 			name: string,
+			assertions?: { termsAccepted: boolean; ageConfirmed: boolean },
 		): Promise<SignInResult> => {
 			if (!supabase) {
 				return { ok: false, messageKey: "auth.error.notConfigured" };
@@ -328,9 +358,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				if (!data.session) {
 					return { ok: false, messageKey: "auth.error.emailNotConfirmed" };
 				}
-				await marketplaceAuth.exchangeSupabaseSession(
+				// A sign-up is *always* a creation, so the assertions are not optional
+				// here in the way they are on sign-in — but they are still allowed to be
+				// absent, because a Supabase account that already matches a marketplace
+				// user exchanges without them. The same `consent_required` answer covers
+				// both, and the caller treats it identically.
+				const outcome = await marketplaceAuth.exchangeSupabaseSession(
 					data.session.access_token,
+					assertions,
 				);
+				if (outcome === "consent_required") {
+					return {
+						ok: false,
+						messageKey: "auth.signUp.consentRequired",
+						needsConsent: true,
+					};
+				}
 				await read();
 				return { ok: true };
 			} catch (error) {
@@ -351,8 +394,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		]);
 		// The API deletes the marketplace session; Supabase owns its own refresh token.
 		// Both are cleared so a later sign-in cannot silently reuse the other provider.
+		//
+		// There was a bare `await supabaseAccessToken();` here whose result was thrown
+		// away — the only call to that function in the app, in the sign-out path, doing
+		// nothing. Reading a token in order to discard it cannot sign anybody out, and
+		// `supabaseSignOut()` above is what actually ends the Supabase session. Gone,
+		// because a reader auditing this file should not have to work out what a no-op
+		// in a sign-out path was for.
 		await Promise.all([marketplaceAuth.signOut(), supabaseSignOut()]);
-		await supabaseAccessToken();
 		setSession(null);
 		setStatus("signed-out");
 	}, []);

@@ -19,6 +19,7 @@ import { Screen } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
+import { supabaseAvailable } from "@/lib/auth/supabase";
 import {
 	type AccountProfile,
 	getAccountProfile,
@@ -136,9 +137,31 @@ import {
  * The choice is disabled while the wait is open, the same rule as the form-switch button:
  * a type swapped mid-flight would change where the in-progress session is about to land.
  *
- * What this screen deliberately does **not** ask is which identity provider to use: that
- * is plumbing, not something a reader picking a role should adjudicate, so sign-in and
- * sign-up both go through the marketplace's own transport.
+ * What this screen deliberately does **not** ask is which identity provider to use.
+ *
+ * It used not to, and that is no longer true. Supabase was a second door into the same
+ * marketplace identity that nothing on this screen could reach: `signInWithSupabase` and
+ * `signUpWithSupabase` were on the session context, and no screen, component or route
+ * called either one. The dictionary had already been written for a picker
+ * (`auth.provider.label`, `auth.provider.marketplace`, `auth.provider.supabase` in both
+ * locales) that no screen drew.
+ *
+ * So there is now a choice, with three properties that keep the original reasoning
+ * mostly intact:
+ *
+ * - **It appears only when Supabase is real.** `supabaseAvailable()` is `false` unless
+ *   both public coordinates are configured *and* the platform is not web, so an install
+ *   without it sees exactly the form it saw before.
+ * - **It is one segment, not three cards**, above the credentials and below the role —
+ *   the reader answers "who am I" first and "which door" second.
+ * - **Both doors converge.** Supabase's bearer is exchanged for a marketplace session
+ *   (`POST /auth-supabase/exchange`), so everything downstream — the role segment, the
+ *   navigation on success, `lib/role.ts` — is identical whichever door opened.
+ *
+ * The choice can still cost a reader, so it is stated rather than assumed: the exchange
+ * refuses to auto-provision a marketplace account without the terms and age assertions
+ * (`account_consent` declares both NOT NULL), which is why this screen can come back
+ * with `needsConsent` on a *sign-in*. See "The second step, and why a sign-in needs it".
  *
  * ## The mark
  *
@@ -289,6 +312,23 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	const [registrationMode, setRegistrationMode] =
 		useState<RegistrationMode>("business");
 	const inFlight = useRef(false);
+	/**
+	 * Which door. `supabaseAvailable()` is the gate on whether the question is asked at
+	 * all, and it is resolved once at mount — the configuration is an env read and
+	 * cannot change while the app is open.
+	 */
+	const supabaseDoor = supabaseAvailable();
+	const [provider, setProvider] = useState<"marketplace" | "supabase">("marketplace");
+	/**
+	 * The exchange refused to create a marketplace account for this identity without the
+	 * two assertions, so the consent controls are revealed and the call is made again.
+	 *
+	 * Held as its own state rather than folded into `failure` because it is not a
+	 * refusal: nothing is wrong with what was typed, and the form below it is unchanged.
+	 * On a sign-up the controls are already on screen and this only forces them to be
+	 * answered; on a sign-in they appear for the first time.
+	 */
+	const [needsConsent, setNeedsConsent] = useState(false);
 	// The keyboard's own flow: name → email → password → submit. `Field`
 	// forwards `ref` to its `TextInput` (React 19 ref-as-prop), so the form
 	// moves focus itself rather than making the reader tap each box.
@@ -330,15 +370,18 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			found.password = t("form.tooShort", { min: MIN_PASSWORD });
 		}
 
-		// Sign-up only. On sign-in these are already true of every account that can
-		// exist, so asking again would be a control that could not change anything.
-		if (signingUp && !termsAccepted)
+		// Sign-up always. Sign-in only once the exchange has said it needs them: on a
+		// plain sign-in these are already true of every account that can exist, so
+		// asking again would be two controls that could not change anything — which is
+		// why they are not on this form at all until `needsConsent` reveals them.
+		const consentRequired = signingUp || needsConsent;
+		if (consentRequired && !termsAccepted)
 			found.terms = t("auth.signUp.consentRequired");
-		if (signingUp && !ageConfirmed)
+		if (consentRequired && !ageConfirmed)
 			found.age = t("auth.signUp.consentRequired");
 
 		return found;
-	}, [ageConfirmed, email, name, password, signingUp, t, termsAccepted]);
+	}, [ageConfirmed, email, name, needsConsent, password, signingUp, t, termsAccepted]);
 
 	/**
 	 * The sentence for `field`, but only once it is fair to show it.
@@ -374,6 +417,10 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		(value: string): void => {
 			setFailure(null);
 			setSent(false);
+			// The reader is no longer waiting to be asked for consent once they start
+			// changing the credential — the offer was for this attempt, and the next one
+			// re-asks if it is still needed.
+			setNeedsConsent(false);
 			apply(value);
 		};
 
@@ -398,15 +445,39 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		}
 
 		try {
-			// One transport, never chosen by the reader: which provider backs the
-			// credential is plumbing, and a picker for it on this form was asking a
-			// person picking a role to also adjudicate an infrastructure decision.
-			const result = signingUp
-				? await auth.signUp(email.trim(), password, name.trim(), {
-						termsAccepted,
-						ageConfirmed,
-					})
-				: await auth.signIn(email.trim(), password);
+			// The assertions, whenever the caller has them. Sent on both doors: the
+			// marketplace sign-up refuses without them outright, and the Supabase exchange
+			// refuses to *create* an account without them. Absent on a sign-in that has
+			// not been asked, which is the common case for a returning reader.
+			const assertions =
+				termsAccepted && ageConfirmed
+					? { termsAccepted, ageConfirmed }
+					: undefined;
+
+			const result =
+				provider === "supabase"
+					? signingUp
+						? await auth.signUpWithSupabase(
+								email.trim(),
+								password,
+								name.trim(),
+								assertions,
+							)
+						: await auth.signInWithSupabase(email.trim(), password, assertions)
+					: signingUp
+						? await auth.signUp(email.trim(), password, name.trim(), {
+								termsAccepted,
+								ageConfirmed,
+							})
+						: await auth.signIn(email.trim(), password);
+
+			// Asked, not refused. The controls are revealed below and the reader is sent
+			// back to the same form with the same values; nothing is cleared.
+			if (!result.ok && result.needsConsent) {
+				setNeedsConsent(true);
+				setFailure(null);
+				return;
+			}
 
 			if (result.ok) {
 				// The selected profile is authoritative for this session. Persist the
@@ -455,6 +526,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		name,
 		password,
 		problems,
+		provider,
 		registrationMode,
 		role,
 		signingUp,
@@ -564,6 +636,28 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 
 				<AuthIdentity title={title} subtitle={subtitle} />
 
+				{/* Which door, only when there is more than one. `supabaseAvailable()` is
+				    false on web and false without both public coordinates, so most installs
+				    never draw this — see the docblock. Below the identity block and above
+				    the role segment: "who am I" is the first question, "which door" the
+				    second, and the credential is the same either way. */}
+				{supabaseDoor ? (
+					<Card>
+						<View style={styles.provider}>
+							<Segmented
+								label={t("auth.provider.label")}
+								value={provider}
+								disabled={waiting}
+								onChange={(next) => setProvider(next === "supabase" ? "supabase" : "marketplace")}
+								options={[
+									{ value: "marketplace", label: t("auth.provider.marketplace") },
+									{ value: "supabase", label: t("auth.provider.supabase") },
+								]}
+							/>
+						</View>
+					</Card>
+				) : null}
+
 				{/* The door on the way back in — see "The door is asked differently by each
 				    side" above. Only sign-in asks it here: a sign-up asks the same question
 				    as cards, below the fields. */}
@@ -661,7 +755,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				    rather than inside `ActionBar` because they are not the screen's
 				    action — the action is on the floor, and a bar holding a contract
 				    acceptance would hold two different kinds of control. */}
-				{signingUp ? (
+				{signingUp || needsConsent ? (
 					<Card>
 						<View style={styles.door}>
 							<View style={styles.consent}>
@@ -682,15 +776,18 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 								/>
 							</View>
 
-							{/* The question the door above asks as a segment, asked here as
-							    rows and asked last — the reasons are in the docblock: the
-							    type is what the account is *for*, and it reads as a promise
-							    only once the reader knows who is filling this in. */}
-							<AccountTypes
-								value={registrationMode}
-								disabled={waiting}
-								onChange={setRegistrationMode}
-							/>
+							{/* Sign-up only. A sign-in revealed by `needsConsent` has an
+							    account already — it is being created right now by the
+							    exchange — and asking what it is *for* would be a question
+							    about a decision that was made the first time, and is
+							    already answered by the role segment above. */}
+							{signingUp ? (
+								<AccountTypes
+									value={registrationMode}
+									disabled={waiting}
+									onChange={setRegistrationMode}
+								/>
+							) : null}
 						</View>
 					</Card>
 				) : null}
@@ -1074,6 +1171,11 @@ const styles = StyleSheet.create({
 	// The identification group and its one help line, kept together: the line is the
 	// delivery choice's own sentence and must not float free of the control that chose it.
 	role: { gap: space.xs },
+	// The provider segment has no help line of its own — both doors land in the same
+	// account and the same session, so there is no consequence to print under it. The
+	// padding is kept anyway so the card is the same shape as the role card above it and
+	// revealing one does not reflow the other.
+	provider: { gap: space.xs },
 	// Reserved: the help line exists in both states, so switching roles never
 	// reflows the card. The floor is the line's own height — an empty string
 	// still holds it.
