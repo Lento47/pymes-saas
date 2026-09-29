@@ -16,8 +16,8 @@ function authErrorMessage(error: unknown): string {
   return "No pudimos completar la operación. Intentá de nuevo.";
 }
 
-export default function MarketplaceSignInPage() {
-  const [mode, setMode] = useState<Mode>("sign-in");
+export default function MarketplaceSignInPage({ initialMode = "sign-in" }: { initialMode?: Mode }) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -183,12 +183,9 @@ export default function MarketplaceSignInPage() {
             {busy ? "Un momento…" : mode === "sign-in" ? "Ingresar" : "Crear cuenta y continuar"}
           </AmberButton>
         </form>
-
         <p className="mt-6 text-xs text-muted-foreground">
-          ¿Tenés un negocio?{" "}
-          <Link href="/login" className="text-link hover:text-link/80">
-            Entrá al panel de negocios
-          </Link>
+          Una cuenta sirve para comprar, administrar un negocio o repartir. El acceso se
+          habilita según los permisos de tu perfil después de iniciar sesión.
         </p>
       </div>
     </MarketplaceShell>
