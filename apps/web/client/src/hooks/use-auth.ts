@@ -190,7 +190,11 @@ export function useAuth() {
     }
   }, []);
 
-  // Auto-logout after 10 minutes of inactivity (module-level singleton interval)
+  // Auto-logout after 30 minutes of inactivity (module-level singleton interval).
+// The threshold itself is `INACTIVITY_TIMEOUT_MS` in `lib/api.ts`; the 30s below is only
+// how often that threshold gets checked. An earlier comment here said 10 minutes, which
+// was wrong twice over — it did not match the constant, and it described the poll interval
+// as if it were the timeout.
   useEffect(() => {
     if (isLoggedIn()) {
       _ensureInactivityMonitor();

@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +15,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { DisplayPreferencesProvider, useDisplayPreferences } from "@/components/providers/display-preferences";
 import AccountPage from "@/pages/account";
 import { useAuth } from "@/hooks/use-auth";
+import { api } from "@/lib/api";
 import { CallProvider, useCallContext } from "@/features/calls/CallProvider";
 import { IncomingCallDialog } from "@/features/calls/IncomingCallDialog";
 import { ActiveCallBar } from "@/features/calls/ActiveCallBar";
@@ -130,7 +131,10 @@ function EmailVerificationBanner() {
   const handleResend = async () => {
     setResending(true);
     try {
-      const { api } = await import("@/lib/api");
+      // Was `await import("@/lib/api")`. About eighty other files import this module
+      // statically, so the dynamic form never split anything — it only made this one
+      // call site look as though it had. Now that `api` is imported at the top of this
+      // file, the indirection is gone rather than left alongside its own replacement.
       await api.resendVerificationEmail();
       setResent(true);
     } catch {
@@ -184,11 +188,46 @@ function CallOverlays() {
   );
 }
 
+/**
+ * The platform-admin gate, and the only place the console decides who may see it.
+ *
+ * `useAuth().user` is a snapshot taken when the session was established. But
+ * `JwtStrategy.validate` re-reads `is_platform_admin` from the database on **every**
+ * request, so an operator whose flag is cleared is refused by the API immediately — while
+ * this layout would go on rendering the admin chrome, and every link inside it would
+ * fail, until a reload. That is a console that looks available and is not.
+ *
+ * So the gate asks the server rather than trusting the snapshot: a slow poll plus a
+ * refetch whenever the window regains focus, which is when a person who was just
+ * demoted on another tab comes back and expects the nav to be gone.
+ *
+ * The `enabled` predicate means only someone the snapshot already calls an admin pays
+ * for the poll. That is not a shortcut: a non-admin is redirected out of `/admin` before
+ * this ever renders, so the "promoted while the tab was open" case cannot be reached
+ * from here — it would need a reload, exactly as it does today.
+ */
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, initialized } = useAuth();
+
+  const adminCheck = useQuery({
+    queryKey: ["/api/auth/me", "platform-admin"],
+    queryFn: () => api.getMe(),
+    enabled: isAuthenticated && !!user?.is_platform_admin,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  // The server's answer wins when it has one. Before it arrives — and if the call fails —
+  // the snapshot stands, so a transient network blip does not eject a real admin.
+  const isPlatformAdmin = adminCheck.data
+    ? (adminCheck.data as { is_platform_admin?: boolean }).is_platform_admin === true
+    : user?.is_platform_admin;
+
   if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
   if (!isAuthenticated) return <Redirect to="/login" />;
-  if (!user?.is_platform_admin) return <Redirect to="/" />;
+  if (!isPlatformAdmin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
