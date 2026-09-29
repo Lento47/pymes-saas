@@ -14,6 +14,27 @@ const ADMIN_DOMAINS = (process.env.AUTH0_ADMIN_DOMAINS ?? "")
   .filter(Boolean);
 const PUBLIC_URL = (process.env.PUBLIC_URL ?? "https://pymeshub.lat").trim();
 
+/**
+ * How long the bootstrap code is worth. Long enough for the redirect and one POST, short
+ * enough that a code scraped from an access log is dead long before anyone could use it.
+ */
+const BOOTSTRAP_TTL_SECONDS = 60;
+
+export interface AdminSession {
+  access_token: string;
+  refresh_token: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url: string | null;
+    role: string;
+    is_owner: boolean;
+    is_platform_admin: boolean;
+    workspace: { id: string; name: string; slug: string; plan: string };
+  };
+}
+
 @Injectable()
 export class AdminAuthService {
   private readonly logger = new Logger(AdminAuthService.name);
@@ -38,23 +59,27 @@ export class AdminAuthService {
     return `https://${AUTH0_DOMAIN}/authorize?${params.toString()}`;
   }
 
-  async handleCallback(
-    code: string,
-    stateRaw: string,
-  ): Promise<{
-    access_token: string;
-    refresh_token: string;
-    user: {
-      id: string;
-      email: string;
-      name: string;
-      avatar_url: string | null;
-      role: string;
-      is_owner: boolean;
-      is_platform_admin: boolean;
-      workspace: { id: string; name: string; slug: string; plan: string };
-    };
-  }> {
+  /**
+   * Finish an Auth0 callback and return a **bootstrap code**, not a session.
+   *
+   * This used to return the access token and the refresh token, which the controller
+   * then put in a redirect query string:
+   *
+   * ```
+   * /admin/login?admin_token=<jwt>&admin_refresh=<opaque>&admin_slug=<slug>
+   * ```
+   *
+   * A URL is the worst place for a credential. It lands in the browser's history, in the
+   * `Location` header of every proxy and load balancer between here and the client, and
+   * in any `Referer` sent before the page could scrub itself. The refresh token made it
+   * worse: that one is long-lived and single-use only once rotated.
+   *
+   * So the redirect now carries a 60-second code that is useless to a bearer holder —
+   * `JwtStrategy.validate` rejects any token carrying a `typ` — and the browser trades it
+   * for the real pair over a POST, where the tokens live in a response body and never in
+   * a URL. This is the same shape as the existing `POST /auth/sso-exchange`.
+   */
+  async handleCallback(code: string, stateRaw: string): Promise<{ bootstrap_code: string }> {
     const [state] = (stateRaw ?? "").split("|");
     if (!state || state.length < 16) {
       throw new UnauthorizedException("Invalid state parameter");
@@ -156,6 +181,61 @@ export class AdminAuthService {
         },
         include: { workspace: true },
       });
+    }
+
+    const bootstrap_code = this.jwt.sign(
+      {
+        sub: user.id,
+        workspace_id: membership.workspace_id,
+        typ: "admin_bootstrap" as const,
+      },
+      { expiresIn: BOOTSTRAP_TTL_SECONDS },
+    );
+
+    return { bootstrap_code };
+  }
+
+  /**
+   * Trade a bootstrap code for a real session. `POST /api/auth/admin/exchange`.
+   *
+   * The user and the membership are re-read here rather than carried inside the code, so
+   * that a code minted a minute ago cannot be redeemed by somebody whose account has
+   * since been banned, suspended, or had `is_platform_admin` taken away. `JwtStrategy`
+   * already re-reads the row per request, but that is the *bearer* path; this is the
+   * moment the session is created, and it is the right place to be strict.
+   */
+  async exchangeBootstrapCode(bootstrapCode: string): Promise<AdminSession> {
+    let payload: { sub?: string; workspace_id?: string; typ?: string };
+    try {
+      payload = this.jwt.verify(bootstrapCode) as typeof payload;
+    } catch {
+      // Expired, tampered, or signed with another secret. All three are the same answer
+      // to the caller on purpose — a distinct message would confirm which.
+      throw new UnauthorizedException("El código de acceso expiró o no es válido.");
+    }
+
+    if (payload.typ !== "admin_bootstrap" || !payload.sub || !payload.workspace_id) {
+      throw new UnauthorizedException("El código de acceso expiró o no es válido.");
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: {
+        workspace_users: {
+          where: { workspace_id: payload.workspace_id },
+          include: { workspace: true },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user || user.status !== "ACTIVE" || !user.is_platform_admin) {
+      throw new UnauthorizedException("Este correo no tiene acceso de administrador.");
+    }
+
+    const membership = user.workspace_users?.[0];
+    if (!membership) {
+      throw new UnauthorizedException("Este correo no tiene acceso de administrador.");
     }
 
     const access_token = this.jwt.sign({

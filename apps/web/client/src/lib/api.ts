@@ -183,7 +183,34 @@ async function request<T>(
   if (res.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
     const refreshed = await _tryRefresh();
     if (refreshed) {
-      res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, credentials: "include" });
+      // A `FormData` body is a one-shot stream. The first attempt already consumed it, so
+      // there is nothing left to replay — resending it would upload an empty multipart body
+      // under a freshly-minted token, and the server would happily accept a truncated file.
+      // The session is fine; the upload is not, so this is the user's to retry and the
+      // message says exactly that. JSON bodies are strings and replay without trouble.
+      if (options?.isFormData) {
+        throw new Error(
+          "401: La sesión se renovó, pero un archivo no se puede reenviar solo. Volvé a seleccionar el archivo e intentá de nuevo.",
+        );
+      }
+
+      // The retry gets its own controller and the same timeout as the first attempt.
+      // This line used to pass neither `signal` nor a timeout, which meant a retry that
+      // hung had nothing to abort it, and the whole request hung with it. Reusing the
+      // original `controller.signal` would be no better: it has already settled.
+      const retryController = new AbortController();
+      const retryTimeout = setTimeout(() => retryController.abort(), timeoutMs);
+      try {
+        res = await fetch(`${API_BASE}${path}`, {
+          method,
+          headers: buildHeaders(),
+          body,
+          signal: retryController.signal,
+          credentials: "include",
+        });
+      } finally {
+        clearTimeout(retryTimeout);
+      }
     }
     if (!refreshed || res.status === 401) {
       history.pushState(null, "", "/login?expired=true");
@@ -644,6 +671,23 @@ export const api = {
   // Feature flags & profile
   platformUpdateWorkspaceProfile: (slug: string, profile: string) =>
     request<any>("PATCH", `/api/platform/workspaces/${slug}/profile`, { profile }),
+  /**
+   * Trade an admin bootstrap code for a session.
+   *
+   * This is a POST on purpose. The code arrives in a redirect URL, and the tokens must
+   * not travel back the same way — the whole point of the exchange is that the
+   * credentials come back in a response body instead of a `Location` header.
+   *
+   * It goes through `request()` rather than a bare `fetch` so it inherits the bearer,
+   * the `x-workspace-slug` header, the timeout and the 401 handling, none of which
+   * matter yet but all of which this client would otherwise have to remember.
+   */
+  adminExchange: (code: string) =>
+    request<{
+      access_token: string;
+      refresh_token: string;
+      user: { workspace: { slug: string } };
+    }>("POST", "/api/auth/admin/exchange", { code }),
   getFeatureFlags: () => request<any>("GET", "/api/feature-flags/profile"),
 
   // ── Agents (Flowise) ──────────────────────────────────────────────────────
