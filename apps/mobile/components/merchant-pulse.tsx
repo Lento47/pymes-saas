@@ -10,6 +10,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 
 import { useT } from "@/lib/i18n";
 import { duration, staggerDelay } from "@/lib/motion";
+import { NO_VALUE } from "@/lib/no-value";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import {
 	merchantType,
@@ -107,10 +108,11 @@ export type MerchantPulseData = Pick<
  *
  * An em dash is punctuation, so it cannot be anybody's figure; it is what a table in any
  * language prints for "no value here", and it is the same glyph in both dictionaries,
- * which is why it is a constant here and not a key in `@pymeshub/i18n`: there is nothing
- * in it to translate. `app/account.tsx` keeps the same constant for the same reason.
+ * which is why it is a constant and not a key in `@pymeshub/i18n`: there is nothing
+ * in it to translate. It now lives in `@/lib/no-value` with the other two copies that
+ * used to sit in `app/account.tsx` and `app/(business)/index.tsx` — one of which had
+ * rotted, which is the whole reason there is one.
  */
-const NO_VALUE = "—";
 
 /**
  * The band's small step: the two word layers the contract writes at 11 points.
@@ -175,7 +177,16 @@ const COLUMNS: ReadonlyArray<PulseColumn> = [
 	{
 		flex: 24,
 		labelKey: "biz.dashboard.ordersToday",
-		value: (data) => String(data.orderCount),
+		// `NO_VALUE` and not `String(data.orderCount)`, which was here and printed the
+		// word "undefined" in 34-point figures on the band's own canvas whenever the read
+		// left the count out. The other two columns have gone through `moneyOrNothing`
+		// since the module was written, and this one did not — so a shop with no orders
+		// counted yet drew a dash beside two dashes on its left and right, and a shop the
+		// API answered partially drew a bug where a dash belonged. `== null` rather than
+		// `=== null` because a count that arrives absent is the same case as one that
+		// arrives null, and `String` is what turned the first into the word.
+		value: (data) =>
+			data.orderCount == null ? NO_VALUE : String(data.orderCount),
 		delta: (data) => {
 			const previousDay = data.comparisons?.find(
 				({ period }) => period === "previous_day",

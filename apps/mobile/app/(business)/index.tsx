@@ -65,6 +65,7 @@ import { formatClock, formatDayMonth, formatRelative } from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
+import { NO_VALUE } from "@/lib/no-value";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
@@ -1279,13 +1280,13 @@ function MerchantInsight({
 					style={styles.insightItem}
 					accessible
 					accessibilityRole="text"
-					accessibilityLabel={`${item.label}: ${item.value ?? "ΓÇö"}`}
+					accessibilityLabel={`${item.label}: ${item.value ?? NO_VALUE}`}
 				>
 					<Text variant="caption" tone="muted">
 						{item.label}
 					</Text>
 					<Text variant="body" bold>
-						{item.value ?? "ΓÇö"}
+						{item.value ?? NO_VALUE}
 					</Text>
 				</View>
 			))}

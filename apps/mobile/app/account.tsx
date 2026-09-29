@@ -28,6 +28,7 @@ import {
 } from "@/lib/device-prefs";
 import { warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { NO_VALUE } from "@/lib/no-value";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
@@ -45,10 +46,11 @@ import {
  *
  * An em dash is punctuation, so it cannot be anybody's name; it is what a table
  * in any language prints for "no value here", and it is the same glyph in both
- * dictionaries, which is why it is a constant here and not a key in
- * `@pymeshub/i18n`: there is nothing in it to translate.
+ * dictionaries, which is why it is a constant and not a key in
+ * `@pymeshub/i18n`: there is nothing in it to translate. It now comes from
+ * `@/lib/no-value` with `components/merchant-pulse` and
+ * `app/(business)/index.tsx`, which each used to keep their own.
  */
-const NO_VALUE = "—";
 
 /**
  * One door in the account group. The same shape the four rows and the three conditional ones
