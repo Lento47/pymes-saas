@@ -37,6 +37,7 @@ export * from "./schemas/notification";
 export * from "./schemas/order";
 export * from "./schemas/promotions";
 export * from "./schemas/subscription";
+export * from "./schemas/support";
 export * from "./schemas/upload";
 export * from "./schemas/user";
 export * from "./telemetry";

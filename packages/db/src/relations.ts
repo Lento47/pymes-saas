@@ -46,6 +46,8 @@ import {
 	promotion,
 	review,
 	subscription,
+	supportTicket,
+	supportTicketMessage,
 	upload,
 	user,
 } from "./schema";
@@ -77,6 +79,12 @@ export const userRelations = relations(user, ({ one, many }) => ({
 		relationName: "delivery_rating_to",
 	}),
 	uploads: many(upload),
+	/**
+	 * The questions this person raised, and the answers they wrote under someone else's.
+	 * Two sides of the same table, so they are told apart by name rather than by position.
+	 */
+	openedTickets: many(supportTicket),
+	ticketMessages: many(supportTicketMessage),
 }));
 
 export const businessRelations = relations(business, ({ one, many }) => ({
@@ -104,6 +112,8 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 	}),
 	carts: many(cart),
 	deliveries: many(delivery),
+	/** The shop's support questions, newest first — the order the list screen reads. */
+	supportTickets: many(supportTicket),
 }));
 
 /** A subscription's price history, kept so a raise can be explained after the fact. */
@@ -396,3 +406,48 @@ export const uploadRelations = relations(upload, ({ one }) => ({
 		references: [user.id],
 	}),
 }));
+
+/**
+ * A ticket's two parents and its thread.
+ *
+ * `opener` is the person who asked; `messages` is every word under it. The thread is a
+ * relation rather than a column for the reason `schema.ts` gives: SQLite cannot query
+ * inside a JSON blob, so "every message on this ticket, oldest first" is a table, and a
+ * relation is how a query says that without restating the join.
+ */
+export const supportTicketRelations = relations(
+	supportTicket,
+	({ one, many }) => ({
+		business: one(business, {
+			fields: [supportTicket.businessId],
+			references: [business.id],
+		}),
+		opener: one(user, {
+			fields: [supportTicket.openedBy],
+			references: [user.id],
+		}),
+		messages: many(supportTicketMessage),
+	}),
+);
+
+/**
+ * One message, and the ticket it belongs to.
+ *
+ * `author` is nullable and that is not a hole: `author_id IS NULL` is the message that
+ * opened the ticket, whose author is the ticket's `opened_by`. Declared as a `one` and not
+ * a `many` on purpose — one message has one author and one ticket, and the two nullable
+ * cases (`author` and `fromSupport`) are different facts rather than the same fact twice.
+ */
+export const supportTicketMessageRelations = relations(
+	supportTicketMessage,
+	({ one }) => ({
+		ticket: one(supportTicket, {
+			fields: [supportTicketMessage.ticketId],
+			references: [supportTicket.id],
+		}),
+		author: one(user, {
+			fields: [supportTicketMessage.authorId],
+			references: [user.id],
+		}),
+	}),
+);

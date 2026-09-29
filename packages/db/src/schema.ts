@@ -33,6 +33,8 @@ import type {
 	LocationPauseReason,
 	Plan,
 	SubscriptionStatus,
+	TicketCategory,
+	TicketStatus,
 } from "@pymeshub/shared";
 import type { Currency } from "@pymeshub/shared/money";
 import type {
@@ -270,9 +272,13 @@ export const accountConsent = sqliteTable("account_consent", {
 		.primaryKey()
 		.references(() => user.id, { onDelete: "cascade" }),
 	/** When the terms were accepted. Never null: a row exists because they were. */
-	termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp_ms" }).notNull(),
+	termsAcceptedAt: integer("terms_accepted_at", {
+		mode: "timestamp_ms",
+	}).notNull(),
 	/** When the reader asserted they were an adult. Never null, for the same reason. */
-	ageConfirmedAt: integer("age_confirmed_at", { mode: "timestamp_ms" }).notNull(),
+	ageConfirmedAt: integer("age_confirmed_at", {
+		mode: "timestamp_ms",
+	}).notNull(),
 	/** When consent was last revoked, if it was. Null means it still stands. */
 	revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
 	/** Why it was revoked, when it was. A revocation with no recorded reason is hard to act on. */
@@ -893,7 +899,10 @@ export const delivery = sqliteTable(
 		courierUserId: text("courier_user_id").references(() => user.id, {
 			onDelete: "set null",
 		}),
-		status: text("status").$type<DeliveryStatus>().notNull().default("SEARCHING"),
+		status: text("status")
+			.$type<DeliveryStatus>()
+			.notNull()
+			.default("SEARCHING"),
 		pickupName: text("pickup_name").notNull(),
 		pickupLine1: text("pickup_line1").notNull(),
 		pickupLine2: text("pickup_line2"),
@@ -915,7 +924,9 @@ export const delivery = sqliteTable(
 		dropoffPhone: text("dropoff_phone"),
 		dropoffInstructions: text("dropoff_instructions"),
 		acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
-		startedToPickupAt: integer("started_to_pickup_at", { mode: "timestamp_ms" }),
+		startedToPickupAt: integer("started_to_pickup_at", {
+			mode: "timestamp_ms",
+		}),
 		arrivedPickupAt: integer("arrived_pickup_at", { mode: "timestamp_ms" }),
 		pickedUpAt: integer("picked_up_at", { mode: "timestamp_ms" }),
 		deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
@@ -1538,11 +1549,120 @@ export const upload = sqliteTable(
  * not been shown to anyone.
  */
 
+/**
+ * A support ticket: one thing a shop asked the platform, and the state of the answer.
+ *
+ * The shape is fixed by `packages/shared/src/schemas/support.ts`, which was written first
+ * and is the contract the router validates and the screen draws. Two things there are
+ * easy to get wrong from this side, so they are stated here rather than left to be
+ * rediscovered:
+ *
+ * - **There is no `body` column.** The question a merchant typed is the ticket's *first
+ *   message*, and a message that opened the ticket has `author_id = NULL` because its
+ *   author is `opened_by` on the row above. That is why `opened_by` is not nullable and
+ *   why the message's author is.
+ * - **`message_count` and `last_message_at` are not columns.** The list contract asks for
+ *   both, and they are computed per read from `support_ticket_message`. Storing them would
+ *   mean a counter that drifts the moment a message insert and its update are not one
+ *   statement, and a queue whose ordering depends on a denormalised field nobody audits.
+ *
+ * `status` is text because SQLite has no enum; the vocabulary lives in the shared package
+ * and both columns are typed against it with `$type`, so a value that is not a status is
+ * a compile error in the service rather than an `undefined` at the renderer. Those two
+ * unions are `import type`d from `@pymeshub/shared` rather than re-declared here the way
+ * the four unions above are, and the difference is deliberate: those four carry a
+ * `const` array that something in this package reads as a *value*, which is what the
+ * package note above is about. `TICKET_CATEGORY` and `TICKET_STATUS` have no such reader
+ * here — the vocabulary is the router's to validate and this file only needs the type —
+ * and `import type` is erased, so there is nothing to pay for pointing at the one
+ * declaration rather than copying it a third time.
+ */
+export const supportTicket = sqliteTable(
+	"support_ticket",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id")
+			.notNull()
+			.references(() => business.id, { onDelete: "cascade" }),
+		/** The person who asked. Also the author of the ticket's first message. */
+		openedBy: text("opened_by")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		/** One of `TICKET_CATEGORY`. Closed on purpose — it is what triage filters on. */
+		category: text("category").$type<TicketCategory>().notNull(),
+		/** One line. The list draws it on one row, so it is bounded in the input. */
+		subject: text("subject").notNull(),
+		/** One of `TICKET_STATUS`. See the package note on `WAITING`. */
+		status: text("status").$type<TicketStatus>().notNull().default("OPEN"),
+		/** Stamped when the platform resolves or closes. Null while the question is live. */
+		resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("support_ticket_business_id").on(table.businessId),
+		index("support_ticket_status").on(table.status),
+		// The list's own ordering, so "the shop's open questions, newest first" is an
+		// index rather than a sort the Worker does on every page.
+		index("support_ticket_business_status_created").on(
+			table.businessId,
+			table.status,
+			table.createdAt,
+		),
+	],
+);
+
+/**
+ * One message in a ticket's thread, oldest first.
+ *
+ * Split from the ticket because the two have different lifecycles — the ticket closes,
+ * the thread does not — and because a column that needs querying gets a column: SQLite
+ * cannot query inside a JSON blob, so "every message on this ticket, oldest first" is a
+ * table and not a `messages` field.
+ *
+ * `author_id` is nullable and `NULL` means "this is the message that opened the ticket",
+ * whose author is the ticket's `opened_by`. It is not "unknown" — a ticket always has an
+ * author, and repeating them on the row would be a second answer to keep in step.
+ *
+ * `from_support` is the flag the merchant's side filters on. It is stored rather than
+ * derived from "is this author a platform admin", because the reader needs a boolean and
+ * the platform axis is a boolean on the user row that can be revoked; storing the fact
+ * that *this message* came from support keeps a retracted admin from rewriting history.
+ */
+export const supportTicketMessage = sqliteTable(
+	"support_ticket_message",
+	{
+		id: text("id").primaryKey(),
+		ticketId: text("ticket_id")
+			.notNull()
+			.references(() => supportTicket.id, { onDelete: "cascade" }),
+		/** Null for the message that opened the ticket — see the note above. */
+		authorId: text("author_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		/** True for whoever is on PymesHub's side of the conversation. */
+		fromSupport: integer("from_support", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		body: text("body").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("support_ticket_message_ticket_id").on(table.ticketId),
+		// `id` breaks the tie: two messages written in the same millisecond would otherwise
+		// come back in an order the database chose, and a thread that reshuffles between
+		// two reads is a thread nobody can follow.
+		index("support_ticket_message_thread").on(
+			table.ticketId,
+			table.createdAt,
+			table.id,
+		),
+	],
+);
 
 // ---------------------------------------------------------------------------
 // Inferred row types
 // ---------------------------------------------------------------------------
-
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
 
@@ -1554,7 +1674,6 @@ export type NewMerchantLocation = typeof merchantLocation.$inferInsert;
 
 export type Membership = typeof membership.$inferSelect;
 export type NewMembership = typeof membership.$inferInsert;
-
 
 export type CourierInvite = typeof courierInvite.$inferSelect;
 export type NewCourierInvite = typeof courierInvite.$inferInsert;
@@ -1631,3 +1750,9 @@ export type NewUpload = typeof upload.$inferInsert;
 
 export type CourierProfile = typeof courierProfile.$inferSelect;
 export type NewCourierProfile = typeof courierProfile.$inferInsert;
+
+export type SupportTicket = typeof supportTicket.$inferSelect;
+export type NewSupportTicket = typeof supportTicket.$inferInsert;
+
+export type SupportTicketMessage = typeof supportTicketMessage.$inferSelect;
+export type NewSupportTicketMessage = typeof supportTicketMessage.$inferInsert;
