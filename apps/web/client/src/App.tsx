@@ -81,7 +81,6 @@ import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
 import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import SolutionPage from "@/pages/solutions/SolutionPage";
 import ComingSoonPage from "@/pages/coming-soon";
-import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
@@ -486,7 +485,21 @@ function AppRouter() {
         {() => <ProtectedLayout><Billing /></ProtectedLayout>}
       </Route>
       <Route path="/admin">
-        {() => <PlatformAdminLayout><AdminDashboard /></PlatformAdminLayout>}
+        {/*
+          `/admin` now forwards to the platform console.
+
+          It used to render `AdminDashboard` inside `PlatformAdminLayout`, and both of those
+          reach the retired saas-api: the layout gates on `useAuth()` → `api.getMe()` /
+          `api.login(email, password, workspaceSlug)`, and the dashboard calls
+          `api.platform*`. Nothing serves `/api/*` any more, so this was the page a
+          platform admin landed on after signing in to find it broken — 30 of 30 requests
+          failing, under a browser message naming CORS for what was a dead backend.
+
+          Redirecting rather than replacing keeps every old bookmark working and leaves the
+          dead pages themselves untouched for now, which is the smaller change of the two
+          and reversible on its own.
+        */}
+        {() => <Redirect to="/admin/console" />}
       </Route>
       <Route path="/admin/workspaces">
         {() => <PlatformAdminLayout><AdminWorkspaces /></PlatformAdminLayout>}

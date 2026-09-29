@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,7 @@ import {
   adminApi,
   BUSINESS_STATUSES,
   needsReason,
+  type SubscriptionStatus,
 } from "@/lib/admin";
 
 /**
@@ -253,8 +255,13 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
         {rows.map((b) => (
           <TableRow key={b.id}>
             <TableCell>
-              <div className="font-medium">{b.name}</div>
-              <div className="text-xs text-muted-foreground">{b.ownerEmail ?? "—"}</div>
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="font-medium">{b.name}</div>
+                  <div className="text-xs text-muted-foreground">{b.ownerEmail ?? "—"}</div>
+                </div>
+                <BusinessSheet businessId={b.id} />
+              </div>
             </TableCell>
             <TableCell>{b.city}</TableCell>
             <TableCell>
@@ -911,6 +918,703 @@ function SupportTab() {
   );
 }
 
+const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: "Al día",
+  GRACE: "En gracia",
+  PAST_DUE: "Vencido",
+  SUSPENDED: "Suspendido",
+};
+
+const SUBSCRIPTION_STATUS_CLASS: Record<string, string> = {
+  ACTIVE: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+  GRACE: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  PAST_DUE: "bg-red-500/10 text-red-600 border-red-500/30",
+  SUSPENDED: "bg-muted text-muted-foreground border-border",
+};
+
+/**
+ * Colones as an operator types them, to the minor units the API takes.
+ *
+ * The round trip matters more than it looks: the wire is integer minor units because
+ * money cannot be a float, and a figure typed as `1234.56` has to become `123456` and not
+ * `123456.00000001`. `Math.round` is what makes that exact. A blank or unparseable field
+ * returns `null` rather than `0` — **zero is a real amount** (a merchant who paid nothing
+ * off an arrears balance is a fact worth recording) and must not be what an empty form
+ * sends.
+ */
+function toMinor(typed: string): number | null {
+  const cleaned = typed.replace(/[^\d.,-]/g, "").replace(",", ".");
+  if (cleaned.trim() === "") return null;
+  const value = Number.parseFloat(cleaned);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value * 100);
+}
+
+/** Recording a payment: the dialog an arrears row opens. */
+function RecordPaymentDialog({
+  subscriptionId,
+  businessName,
+  arrearsMinor,
+  currency,
+  onDone,
+}: {
+  subscriptionId: string;
+  businessName: string;
+  arrearsMinor: number;
+  currency: string;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
+  const [reason, setReason] = useState("");
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+
+  const amountMinor = toMinor(amount);
+  /**
+   * A mismatch needs a reason, and that is the service's rule
+   * (`recordPaymentInput` documents it) rather than a nicety here. Offering the field
+   * unconditionally and requiring it only on a mismatch keeps the common case — paying
+   * the exact balance — to one input.
+   */
+  const mismatch = amountMinor !== null && amountMinor !== arrearsMinor;
+  const canSubmit =
+    amountMinor !== null && reference.trim().length >= 4 && (!mismatch || reason.trim().length >= 8);
+
+  const save = useMutation({
+    mutationFn: () =>
+      adminApi.recordPayment({
+        subscriptionId,
+        amountMinor: amountMinor as number,
+        reference: reference.trim(),
+        reason: mismatch ? reason.trim() : undefined,
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      setAmount("");
+      setReference("");
+      setReason("");
+      toast({ title: "Pago registrado" });
+      onDone();
+    },
+    onError: (e: Error) =>
+      toast({ title: "No se pudo registrar", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        Registrar pago
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pago de {businessName}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Debe {money(arrearsMinor, currency)}. La referencia del banco o de SINPE es
+              obligatoria: es lo único que hace el pago conciliable después.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="pay-amount" className="text-xs text-muted-foreground">
+                Monto recibido
+              </label>
+              <Input
+                id="pay-amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                inputMode="decimal"
+                placeholder={String(arrearsMinor / 100)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="pay-ref" className="text-xs text-muted-foreground">
+                Referencia
+              </label>
+              <Input
+                id="pay-ref"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="Referencia bancaria o SINPE"
+                className="mt-1"
+              />
+            </div>
+            {mismatch ? (
+              <div>
+                <label htmlFor="pay-reason" className="text-xs text-muted-foreground">
+                  El monto no cuadra con la deuda — motivo (obligatorio)
+                </label>
+                <Textarea
+                  id="pay-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={2}
+                  className="mt-1"
+                />
+              </div>
+            ) : null}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={!canSubmit || save.isPending} onClick={() => save.mutate()}>
+              Registrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+/**
+ * Cobros — who owes the platform money.
+ *
+ * This is the platform's whole billing surface, and the router is blunt about why it is
+ * shaped this way: *"There is no settlement now — the consumer pays the merchant and the
+ * courier, and the platform charges a flat subscription."* So there is no gross, no
+ * commission and no payout to compute, and this table is an **arrears** table rather than
+ * a settlement one. `arrears` is therefore the default sort, not a nicety: someone opening
+ * this is chasing debt, and a table sorted by name would hide the shop that owes the most.
+ *
+ * The action is recording that a merchant paid, and its required field is the bank's
+ * reference. That is the reconciliation key, and it is why the dialog refuses to submit
+ * without one.
+ */
+function BillingTab() {
+  const [status, setStatus] = useState<"all" | SubscriptionStatus>("all");
+  const [sort, setSort] = useState<"arrears" | "periodEnd" | "businessName">("arrears");
+  const [search, setSearch] = useState("");
+  const queryClient = useQueryClient();
+
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["admin", "subscriptions", status, sort, search],
+    queryFn: () =>
+      adminApi.subscriptions({
+        search: search || undefined,
+        status: status === "all" ? undefined : status,
+        sort,
+      }),
+  });
+
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+  if (isError) {
+    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+  }
+  if (!data) return null;
+
+  const owing = data.rows.filter((s) => s.arrearsMinor > 0).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por comercio o correo"
+          className="max-w-xs"
+          aria-label="Buscar suscripciones"
+        />
+        <div className="flex flex-wrap gap-1">
+          {(["all", "ACTIVE", "GRACE", "PAST_DUE", "SUSPENDED"] as const).map((s) => (
+            <Button
+              key={s}
+              variant={status === s ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatus(s)}
+            >
+              {s === "all" ? "Todos" : (SUBSCRIPTION_STATUS_LABEL[s] ?? s)}
+            </Button>
+          ))}
+        </div>
+        <div className="ml-auto flex gap-1">
+          {(["arrears", "periodEnd", "businessName"] as const).map((s) => (
+            <Button
+              key={s}
+              variant={sort === s ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSort(s)}
+            >
+              {s === "arrears" ? "Deuda" : s === "periodEnd" ? "Vence" : "Nombre"}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {owing > 0 ? `${owing} con deuda · ` : ""}
+        {data.total} en total
+      </p>
+
+      {data.rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Nada por aquí.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Negocio</TableHead>
+              <TableHead>Plan</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Precio</TableHead>
+              <TableHead className="text-right">Debe</TableHead>
+              <TableHead className="text-right">Períodos</TableHead>
+              <TableHead>Vence</TableHead>
+              <TableHead>Último pago</TableHead>
+              <TableHead className="text-right">Acción</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.rows.map((s) => (
+              <TableRow key={s.id} className={s.arrearsMinor > 0 ? "bg-red-500/[0.03]" : undefined}>
+                <TableCell>
+                  <div className="font-medium">{s.businessName}</div>
+                  <div className="text-xs text-muted-foreground">{s.ownerEmail ?? "—"}</div>
+                </TableCell>
+                <TableCell className="text-sm">{s.plan}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={SUBSCRIPTION_STATUS_CLASS[s.status] ?? SUBSCRIPTION_STATUS_CLASS.SUSPENDED}
+                  >
+                    {SUBSCRIPTION_STATUS_LABEL[s.status] ?? s.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {s.priceMinor === null ? "—" : money(s.priceMinor, s.currency)}
+                </TableCell>
+                <TableCell
+                  className={`text-right tabular-nums ${s.arrearsMinor > 0 ? "font-semibold text-red-600" : "text-muted-foreground"}`}
+                >
+                  {money(s.arrearsMinor, s.currency)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{s.periodsOwed || "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {s.periodEnd ? shortDate(s.periodEnd) : "—"}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {s.lastPaidAt ? shortDate(s.lastPaidAt) : "Nunca"}
+                </TableCell>
+                <TableCell>
+                  <div className="flex justify-end">
+                    {s.arrearsMinor > 0 ? (
+                      <RecordPaymentDialog
+                        subscriptionId={s.id}
+                        businessName={s.businessName}
+                        arrearsMinor={s.arrearsMinor}
+                        currency={s.currency}
+                        onDone={() => queryClient.invalidateQueries()}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Planes — the price books, and the lever for raising the price as the app grows.
+ *
+ * A book is a **row, not a setting**, and that is the whole design: inserting one raises
+ * what *new* merchants pay from `effectiveFrom` and moves nobody already subscribed,
+ * because a merchant's `priceMinor` was captured when their period began. A merchant is
+ * never charged a price they were not shown.
+ *
+ * That is also why this form asks for a date and does not try to stop you picking a past
+ * one. `createPriceBook` refuses a past `effectiveFrom` server-side, with a sentence
+ * explaining exactly that outcome, and duplicating the rule here would mean two places to
+ * disagree about the boundary — the clock is the service's to judge, and its message is
+ * better than any `min` attribute.
+ */
+function PriceBooksTab() {
+  const [label, setLabel] = useState("");
+  const [weekly, setWeekly] = useState("");
+  const [monthly, setMonthly] = useState("");
+  const [from, setFrom] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["admin", "priceBooks"],
+    queryFn: adminApi.priceBooks,
+  });
+
+  const weeklyMinor = toMinor(weekly);
+  const monthlyMinor = toMinor(monthly);
+  const canSubmit =
+    label.trim().length >= 2 && weeklyMinor !== null && monthlyMinor !== null && from !== "";
+
+  const create = useMutation({
+    mutationFn: () =>
+      adminApi.createPriceBook({
+        label: label.trim(),
+        weeklyMinor: weeklyMinor as number,
+        monthlyMinor: monthlyMinor as number,
+        // `new Date("YYYY-MM-DD")` is UTC midnight; a local-time parse of the same string
+        // would shift the effective date by a day either side of it.
+        effectiveFrom: new Date(`${from}T00:00:00Z`),
+      }),
+    onSuccess: () => {
+      setLabel("");
+      setWeekly("");
+      setMonthly("");
+      setFrom("");
+      toast({ title: "Precio staged" });
+      queryClient.invalidateQueries();
+    },
+    onError: (e: Error) =>
+      toast({ title: "No se pudo crear", description: e.message, variant: "destructive" }),
+  });
+
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+  if (isError) {
+    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Libro</TableHead>
+            <TableHead className="text-right">Semanal</TableHead>
+            <TableHead className="text-right">Mensual</TableHead>
+            <TableHead>Vigente desde</TableHead>
+            <TableHead>Estado</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                No hay libros de precio todavía.
+              </TableCell>
+            </TableRow>
+          ) : null}
+          {data.map((book) => (
+            <TableRow key={book.id}>
+              <TableCell className="font-medium">{book.label}</TableCell>
+              <TableCell className="text-right tabular-nums">{money(book.weeklyMinor, "CRC")}</TableCell>
+              <TableCell className="text-right tabular-nums">{money(book.monthlyMinor, "CRC")}</TableCell>
+              <TableCell className="text-muted-foreground">{shortDate(book.effectiveFrom)}</TableCell>
+              <TableCell>
+                {book.isStaged ? (
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                    Programado
+                  </Badge>
+                ) : book.isCurrent ? (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                    Vigente
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Reemplazado</Badge>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Programar un precio nuevo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label htmlFor="pb-label" className="text-xs text-muted-foreground">
+                Etiqueta
+              </label>
+              <Input
+                id="pb-label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="2026-Q2"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="pb-weekly" className="text-xs text-muted-foreground">
+                Semanal (₡)
+              </label>
+              <Input
+                id="pb-weekly"
+                value={weekly}
+                onChange={(e) => setWeekly(e.target.value)}
+                inputMode="decimal"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="pb-monthly" className="text-xs text-muted-foreground">
+                Mensual (₡)
+              </label>
+              <Input
+                id="pb-monthly"
+                value={monthly}
+                onChange={(e) => setMonthly(e.target.value)}
+                inputMode="decimal"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="pb-from" className="text-xs text-muted-foreground">
+                Vigente desde
+              </label>
+              <Input
+                id="pb-from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button size="sm" disabled={!canSubmit || create.isPending} onClick={() => create.mutate()}>
+              {create.isPending ? "Guardando…" : "Programar"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** Create or edit a category. An absent `id` is a create; that is the service's contract. */
+function CategoryDialog({
+  category,
+  onDone,
+}: {
+  category?: { id: string; name: string; nameEn: string | null; sortOrder: number };
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(category?.name ?? "");
+  const [nameEn, setNameEn] = useState(category?.nameEn ?? "");
+  const [sortOrder, setSortOrder] = useState(String(category?.sortOrder ?? 0));
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const save = useMutation({
+    mutationFn: () =>
+      adminApi.saveCategory({
+        id: category?.id,
+        name: name.trim(),
+        // An empty English box is sent as `null` — "clear it" — rather than as an empty
+        // string, because absent and `null` are different facts here (see
+        // `adminCategoryInput`): absent would leave an existing name untouched.
+        nameEn: nameEn.trim() === "" ? null : nameEn.trim(),
+        sortOrder: Number.parseInt(sortOrder, 10) || 0,
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      toast({ title: category ? "Categoría actualizada" : "Categoría creada" });
+      queryClient.invalidateQueries();
+      onDone();
+    },
+    onError: (e: Error) =>
+      toast({ title: "No se pudo guardar", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <>
+      <Button size="sm" variant={category ? "outline" : "default"} onClick={() => setOpen(true)}>
+        {category ? "Editar" : "Nueva categoría"}
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{category ? "Editar categoría" : "Nueva categoría"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              El nombre en español es el que ve el mercado. El inglés es opcional; dejarlo vacío
+              lo borra.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="cat-name" className="text-xs text-muted-foreground">
+                Nombre (es)
+              </label>
+              <Input
+                id="cat-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="cat-name-en" className="text-xs text-muted-foreground">
+                Nombre (en)
+              </label>
+              <Input
+                id="cat-name-en"
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="cat-sort" className="text-xs text-muted-foreground">
+                Orden
+              </label>
+              <Input
+                id="cat-sort"
+                type="number"
+                min={0}
+                max={999}
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={name.trim().length === 0 || save.isPending}
+              onClick={() => save.mutate()}
+            >
+              Guardar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function CategoriesTab() {
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["admin", "categories"],
+    queryFn: adminApi.categories,
+  });
+  const queryClient = useQueryClient();
+
+  // No delete mutation here on purpose: `category.delete` is in `REASON_REQUIRED_ACTIONS`,
+  // so deleting goes through `ActionButton`, which asks for the reason and reports its own
+  // outcome. A second path to the same call would be the one that skips the reason.
+
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+  if (isError) {
+    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{data.length} categorías</p>
+        <CategoryDialog onDone={() => queryClient.invalidateQueries()} />
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nombre</TableHead>
+            <TableHead>English</TableHead>
+            <TableHead>Slug</TableHead>
+            <TableHead className="text-right">Productos</TableHead>
+            <TableHead className="text-right">Orden</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((c) => (
+            <TableRow key={c.id}>
+              <TableCell className="font-medium">{c.name}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{c.nameEn ?? "—"}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">{c.slug}</TableCell>
+              <TableCell className="text-right tabular-nums">{c.productCount ?? 0}</TableCell>
+              <TableCell className="text-right tabular-nums">{c.sortOrder}</TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-2">
+                  <CategoryDialog
+                    category={{ id: c.id, name: c.name, nameEn: c.nameEn, sortOrder: c.sortOrder }}
+                    onDone={() => queryClient.invalidateQueries()}
+                  />
+                  <ActionButton
+                    label="Eliminar"
+                    action="category.delete"
+                    targetName={c.name}
+                    onRun={() => adminApi.deleteCategory(c.id)}
+                    variant="destructive"
+                    size="sm"
+                  />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/**
+ * One business, in full.
+ *
+ * `admin.business` is the only live procedure the table above did not use, and it earns
+ * its place by carrying the two fields the row cannot: `ownerName` and `suspendedReason`.
+ * A suspended shop's reason is the sentence somebody will be asked to justify, and it is
+ * the one field on this record that a `SUSPENDED` badge cannot carry on its own.
+ */
+function BusinessSheet({ businessId }: { businessId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isPending } = useQuery({
+    queryKey: ["admin", "business", businessId],
+    queryFn: () => adminApi.business(businessId),
+    enabled: open,
+  });
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="text-left font-medium underline-offset-2 hover:underline"
+        >
+          Ver ficha
+        </button>
+      </SheetTrigger>
+      <SheetContent side="right" className="overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{data?.name ?? "Negocio"}</SheetTitle>
+          <SheetDescription>{data ? `/${data.slug}` : "Cargando…"}</SheetDescription>
+        </SheetHeader>
+        {isPending || !data ? (
+          <Skeleton className="mt-4 h-48 w-full" />
+        ) : (
+          <dl className="mt-6 space-y-4 text-sm">
+            {[
+              ["Estado", <StatusBadge key="s" status={data.status} />],
+              ["Verificado", data.isVerified ? "Sí" : "No"],
+              ["Ciudad", data.city],
+              ["Propietario", data.ownerName ?? "—"],
+              ["Correo", data.ownerEmail ?? "—"],
+              ["Productos", String(data.productCount)],
+              ["Órdenes", String(data.orderCount)],
+              ["Volumen", money(data.grossVolumeMinor, data.currency)],
+              ["Alta", shortDate(data.createdAt)],
+              ["Motivo de suspensión", data.suspendedReason ?? "—"],
+            ].map(([label, value]) => (
+              <div key={String(label)}>
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="mt-0.5">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function AuditTab() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["admin", "audit"],
@@ -1075,7 +1779,10 @@ function AdminConsole() {
           <TabsTrigger value="businesses">Negocios</TabsTrigger>
           <TabsTrigger value="users">Personas</TabsTrigger>
           <TabsTrigger value="orders">Órdenes</TabsTrigger>
+          <TabsTrigger value="billing">Cobros</TabsTrigger>
           <TabsTrigger value="support">Soporte</TabsTrigger>
+          <TabsTrigger value="prices">Planes</TabsTrigger>
+          <TabsTrigger value="categories">Categorías</TabsTrigger>
           <TabsTrigger value="audit">Auditoría</TabsTrigger>
         </TabsList>
 
@@ -1147,6 +1854,30 @@ function AdminConsole() {
           <Card>
             <CardContent className="pt-6">
               <OrdersTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="billing" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <BillingTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="prices" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <PriceBooksTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <CategoriesTab />
             </CardContent>
           </Card>
         </TabsContent>

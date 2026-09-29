@@ -6,6 +6,7 @@ import {
   type AdminListInput,
   type AdminMetrics,
   type AdminOrderRow,
+  type AdminSubscription,
   type AdminSupportTicketDetail,
   type AdminSupportTicketListInput,
   type AdminSupportTicketRow,
@@ -13,11 +14,14 @@ import {
   type AuditLogEntry,
   adminActionSchema,
   adminBusinessRowSchema,
+  adminCategoryInput,
   adminCourierListInput,
   adminCourierRowSchema,
   adminListInput,
   adminMetricsSchema,
   adminOrderRowSchema,
+  adminSubscriptionSchema,
+  adminSubscriptionsInput,
   adminSupportTicketDetailSchema,
   adminSupportTicketListInput,
   adminSupportTicketRowSchema,
@@ -27,6 +31,12 @@ import {
   type BusinessStatus,
   COURIER_VERIFICATION_STATUSES,
   type CourierVerificationStatus,
+  categorySchema,
+  createPriceBookInput,
+  PLANS,
+  recordPaymentInput,
+  SUBSCRIPTION_STATUSES,
+  type SubscriptionStatus,
   TICKET_CATEGORY,
   TICKET_STATUS,
   type TicketCategory,
@@ -34,6 +44,8 @@ import {
   type UserProfile,
   userProfileSchema,
 } from "@pymeshub/shared";
+
+import { z } from "zod";
 
 import { trpc } from "./marketplace";
 
@@ -132,6 +144,40 @@ const orderList = pageOf(adminOrderRowSchema);
 const auditList = pageOf(auditLogEntrySchema);
 const courierList = pageOf(adminCourierRowSchema);
 const ticketList = pageOf(adminSupportTicketRowSchema);
+const subscriptionList = pageOf(adminSubscriptionSchema);
+
+/**
+ * One price book, as `subscriptions.priceBooks` returns it: the row plus the two flags the
+ * service derives from `effectiveFrom` against the clock.
+ *
+ * **Declared here rather than imported, and this is the one exception to the rule above.**
+ * The version split only bites when a schema built in `@pymeshub/shared` has to satisfy a
+ * type from this package's `zod`; a schema built *in* this file from this file's `zod` has
+ * no cross-package boundary to cross, so it composes normally. And it has to be local
+ * because `@pymeshub/shared` exports no price-book schema at all — the service returns a
+ * spread of the `price_book` row and the console is its only reader.
+ */
+const priceBookRowSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  weeklyMinor: z.number().int(),
+  monthlyMinor: z.number().int(),
+  effectiveFrom: z.date(),
+  createdAt: z.date(),
+  /** True once the book's date has arrived. */
+  isCurrent: z.boolean(),
+  /** True for a book dated in the future: staged, charging nobody yet. */
+  isStaged: z.boolean(),
+});
+export type PriceBookRow = z.infer<typeof priceBookRowSchema>;
+
+/** A bare list, for the procedures that answer with an array and no total. */
+function listOf<T>(schema: { parse: (value: unknown) => T }): (value: unknown) => T[] {
+  return (value) => (Array.isArray(value) ? value : []).map((row) => schema.parse(row));
+}
+
+const categoryList = listOf(categorySchema);
+const priceBookList = listOf(priceBookRowSchema);
 
 /**
  * Everything below is one procedure per call, named after the router.
@@ -234,6 +280,76 @@ export const adminApi = {
       await trpc.admin.supportTicket.query({ ticketId }),
     ),
 
+  // ── Billing ──────────────────────────────────────────────────────────────
+  //
+  // The platform's whole money surface, and the reason the router says "there is no
+  // settlement now". The consumer pays the merchant and the courier; the platform charges a
+  // flat subscription. So this is not a payouts table — it is an arrears table, and the
+  // default sort is `arrears` for that reason: someone opening it is looking for debt.
+
+  subscriptions: async (
+    input: Partial<{
+      search: string;
+      status: SubscriptionStatus;
+      sort: "arrears" | "periodEnd" | "businessName";
+    }> = {},
+  ): Promise<Page<AdminSubscription>> =>
+    subscriptionList(await trpc.admin.subscriptions.query(adminSubscriptionsInput.parse(input))),
+
+  /**
+   * Recording that a merchant paid.
+   *
+   * `reference` is the bank's or SINPE's and is **required**: it is the only thing that
+   * makes the payment reconcileable later, and it lives in the audit entry rather than a
+   * column of its own. `reason` is required by `recordPaymentInput` when the amount does
+   * not match what was invoiced — a partial payment or an overpayment is a fact somebody
+   * has to be able to explain, so the service will not take one on trust.
+   */
+  recordPayment: (input: {
+    subscriptionId: string;
+    amountMinor: number;
+    reference: string;
+    reason?: string;
+  }) => trpc.admin.recordPayment.mutate(recordPaymentInput.parse(input)),
+
+  // ── Price books ──────────────────────────────────────────────────────────
+  //
+  // "Raise the price as the app grows" is a row, not a setting. `effectiveFrom` is
+  // required and a past date is refused server-side, because a book dated last week would
+  // reprice every merchant who joined since — the one outcome the design prevents. The
+  // console asks for a date and lets the service refuse the past, rather than second-guess
+  // it with a `min` that would silently disagree about the boundary.
+
+  priceBooks: async (): Promise<PriceBookRow[]> =>
+    priceBookList(await trpc.admin.priceBooks.query()),
+
+  createPriceBook: (input: {
+    label: string;
+    weeklyMinor: number;
+    monthlyMinor: number;
+    effectiveFrom: Date;
+  }) => trpc.admin.createPriceBook.mutate(createPriceBookInput.parse(input)),
+
+  // ── Catalogue taxonomy ───────────────────────────────────────────────────
+
+  categories: async () => categoryList(await trpc.admin.categories.query()),
+
+  /**
+   * Create or edit. **No `id` means create** — the same input schema does both, and that
+   * is the service's choice, so the console sends an absent `id` rather than an empty one.
+   */
+  saveCategory: (input: {
+    id?: string;
+    name: string;
+    nameEn?: string | null;
+    slug?: string;
+    iconName?: string;
+    parentId?: string | null;
+    sortOrder?: number;
+  }) => trpc.admin.saveCategory.mutate(adminCategoryInput.parse(input)),
+
+  deleteCategory: (id: string) => trpc.admin.deleteCategory.mutate({ id }),
+
   // ── Audit ────────────────────────────────────────────────────────────────
 
   auditLog: async (
@@ -309,6 +425,7 @@ export type {
   AdminCourierRow,
   AdminMetrics,
   AdminOrderRow,
+  AdminSubscription,
   AdminSupportTicketDetail,
   AdminSupportTicketListInput,
   AdminSupportTicketRow,
@@ -316,6 +433,7 @@ export type {
   AuditLogEntry,
   BusinessStatus,
   CourierVerificationStatus,
+  SubscriptionStatus,
   TicketCategory,
   TicketStatus,
 };
@@ -323,6 +441,8 @@ export {
   adminActionSchema,
   BUSINESS_STATUSES,
   COURIER_VERIFICATION_STATUSES,
+  PLANS,
+  SUBSCRIPTION_STATUSES,
   TICKET_CATEGORY,
   TICKET_STATUS,
 };
