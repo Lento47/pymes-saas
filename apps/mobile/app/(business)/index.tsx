@@ -81,12 +81,12 @@ import {
  *
  * Bands, not cards (┬º4, ┬º62): the identity header, the pulse band (┬º14), the
  * orders-now section (┬º17) and the command rail (┬º25). The doors card this screen
- * used to draw is gone ΓÇö the rail is the doors, and a card repeating them would be
+ * used to draw is gone — the rail is the doors, and a card repeating them would be
  * the second surface for one job.
  *
  * The screen gives up the gutter (`padded={false}`) because two of those bands are
- * full-bleed by construction ΓÇö the pulse (`./merchant-pulse`) and the command rail
- * (`./merchant-command-rail`) draw edge to edge ΓÇö and a screen gutter around them
+ * full-bleed by construction — the pulse (`./merchant-pulse`) and the command rail
+ * (`./merchant-command-rail`) draw edge to edge — and a screen gutter around them
  * would contradict both files' own docblocks. Every padded block carries its own
  * `styles.pad` instead, so `space.lg` is the single gutter, the same shape
  * `app/(business)/products.tsx` asks for.
@@ -316,7 +316,7 @@ export default function MerchantHome() {
 	 * revenue arrived in another code draws dashes, not another currency's figure
 	 * under this one's label. The orders column counts every order placed today;
 	 * the average divides the completed revenue by the completed count, the set it
-	 * came from ΓÇö both honest numbers, neither invented.
+	 * came from — both honest numbers, neither invented.
 	 */
 	const pulse: MerchantPulseData | null = home.data?.pulse ?? null;
 	const attention = useMemo<AttentionGroup[]>(() => {
@@ -479,8 +479,8 @@ export default function MerchantHome() {
 	 * asserts the role server-side, so a manager's button would be a control
 	 * whose only answer is a refusal. No confirm sheet: going live is reversible
 	 * (`setStatus` CLOSED is the way back) and the interface contract's
-	 * confirm list (┬º47) names pausing, closing, deleting and rejecting ΓÇö not
-	 * publishing ΓÇö and the sheet's red confirm would dress a constructive act
+	 * confirm list (┬º47) names pausing, closing, deleting and rejecting — not
+	 * publishing — and the sheet's red confirm would dress a constructive act
 	 * as a destructive one. Landing invalidates the business reads rather than
 	 * refetching one: the status word, the pulse and the board's own header all
 	 * draw it.
@@ -527,7 +527,7 @@ export default function MerchantHome() {
 			},
 			onSuccess: async (_data, variables) => {
 				light();
-				// ┬º46's trailing Undo ΓÇö see `./locations`, which draws the same pair for the same
+				// ┬º46's trailing Undo — see `./locations`, which draws the same pair for the same
 				// write, and `components/toast` for why the sentence and the button are siblings.
 				toast.show(t("biz.locations.paused"), () => {
 					resume.mutate({
@@ -926,7 +926,7 @@ export default function MerchantHome() {
 							<View style={styles.pad}>
 								<SectionHeader title={t("biz.home.attention")} />
 								{/* All but the last row drop the trailing hairline the row's own
-						    default draws ΓÇö the rhythm the board's rows keep with `last`, so
+						    default draws — the rhythm the board's rows keep with `last`, so
 						    a card of rows never ends in a line for nobody. */}
 								{attention.map((alert, index) => (
 									<AttentionRow
@@ -1045,7 +1045,7 @@ export default function MerchantHome() {
 						    ┬º25 names the *jobs* instead, which is why `Stock` opens the
 						    catalogue the steppers live on and `Pause` gives the order the
 						    header's status chip also gives. The label names the state the
-						    command moves to ΓÇö `./switch`'s contract ΓÇö so the same slot reads
+						    command moves to — `./switch`'s contract — so the same slot reads
 						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
 						<MerchantCommandRail
 							actions={[
@@ -1099,7 +1099,7 @@ export default function MerchantHome() {
 										}
 										// ┬º47 names "pause all orders" as one of the writes that
 										// gets a confirmation, and `pauseStage`'s own flow is that
-										// confirmation ΓÇö a duration, then a `ConfirmSheet`.
+										// confirmation — a duration, then a `ConfirmSheet`.
 										setPauseDuration(undefined);
 										setPauseStage("duration");
 									},

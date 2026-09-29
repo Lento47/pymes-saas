@@ -41,21 +41,21 @@ import {
  * Entering, and creating, an account.
  *
  * One component for both because the two forms differ by a name field, a password rule and
- * two words ΓÇö and two components would be two places for the submit guard, the validation
+ * two words — and two components would be two places for the submit guard, the validation
  * and the error slot to drift apart. `sign-up.tsx` passes `signingUp`.
  *
  * ## Waiting
  *
  * This is one of the two states `docs/design-mobile.md` keeps a spinner for: the shape of
  * the answer genuinely is not known until the Worker replies. The busy state is said three
- * ways and none of them is movement ΓÇö the submit button stops accepting taps and dims, the
+ * ways and none of them is movement — the submit button stops accepting taps and dims, the
  * spinner replaces its label inside the control the reader just pressed, and the slot under
  * the fields carries the word "CargandoΓÇª". A reader who cannot see a rotating ring is told
  * the same thing by the word and by the button's own `busy` accessibility state.
  *
  * The wait is longer than this screen's own round trip: a sign-in that the API accepted is
  * followed by the session read that decides whether it meant anything, and the busy state
- * stays up until that has an answer ΓÇö see "Success is the session's answer, not the call's"
+ * stays up until that has an answer — see "Success is the session's answer, not the call's"
  * below.
  *
  * ## The action is on the floor, not at the end of the form
@@ -68,11 +68,11 @@ import {
  * docked `./action-bar` for that reason, and this is that shape.
  *
  * The bar pays its own bottom inset (`./action-bar`'s docblock), so `bottomInset` came off
- * `Screen` in the same edit rather than being paid twice ΓÇö the frame is no longer the thing
+ * `Screen` in the same edit rather than being paid twice — the frame is no longer the thing
  * next to the home indicator. `keyboardInsets` stays on the frame, where the fields are.
  *
  * The toggle and the way out stay in the form: the screen is not those, and the bar holds one
- * action. What the reserved slot under the fields protects now is them ΓÇö see its own note.
+ * action. What the reserved slot under the fields protects now is them — see its own note.
  *
  * ## Why the double-tap guard is a ref as well as a disabled button
  *
@@ -84,20 +84,20 @@ import {
  * ## When validation speaks
  *
  * A field is checked when it loses focus and when the form is submitted, never on the first
- * keystroke ΓÇö a box that turns red while somebody is still typing their address is a form
+ * keystroke — a box that turns red while somebody is still typing their address is a form
  * arguing with its reader. `components/field.tsx` reserves the line the sentence appears on,
  * so none of this reflows the form or moves the field a thumb is travelling towards.
  *
  * ## The door is asked differently by each side
  *
- * Delivery is a dedicated use ΓÇö an account that exists to accept and deliver ΓÇö and the
+ * Delivery is a dedicated use — an account that exists to accept and deliver — and the
  * identification happens here, where the session is made, not in a setting the reader
  * finds afterwards. Both forms ask, and they ask different questions because they are
  * different questions:
  *
  * - **Sign-in** offers the same three types as cards, drawn here as a **segment** because
  *   the answer is a claim about this device rather than a decision about a new account:
- *   same credential either way ΓÇö one account, one email, one password ΓÇö and the answer only
+ *   same credential either way — one account, one email, one password — and the answer only
  *   decides where the verified session lands (`/(delivery)`, `/(business)` or `/`) and
  *   which device preference is written, which is exactly what `lib/role.ts` reconciles at
  *   cold start. It is a segment and not three cards because three full-width rows with a
@@ -106,29 +106,29 @@ import {
  *   from the device's own last choice (`getAccountProfile`), so a courier signing back in
  *   finds "Repartidor" already selected.
  * - **Sign-up** offers the three things an account can be *for*: a business, a customer, a
- *   courier ΓÇö as three **rows** rather than a segment, because each one is a *promise*
+ *   courier — as three **rows** rather than a segment, because each one is a *promise*
  *   ("sell and manage", "buy", "deliver") and a segment has nowhere to put a sentence.
  *   This is `components/option-card`'s argument about prices, in a place where the words
  *   matter more than the count: a control that can only hold a word has to be a different
  *   control. It is `registrationMode`, not `role`, and it is the input the whole sign-up is
  *   shaped by: the title changes to the mode's own, the device profile is written from it,
- *   and success lands on the mode's first screen ΓÇö `/new-business` for the shop,
+ *   and success lands on the mode's first screen — `/new-business` for the shop,
  *   `/courier-profile` for the courier (their profile and vehicle, before any membership
  *   exists), `/` for the customer. A sign-up that could not express "business" or
- *   "delivery" was a sign-up that silently made every account a customer ΓÇö which is the
+ *   "delivery" was a sign-up that silently made every account a customer — which is the
  *   failure this group exists to prevent.
  *
  * Two things about that group are decisions rather than layout. **The business row is
  * first and preselected**: the shop is the account this product exists for, and a form that
- * opens on the customer answer has already decided for the reader ΓÇö the customer, who is
+ * opens on the customer answer has already decided for the reader — the customer, who is
  * the exception here, is one tap away. And it sits **below the fields**, while the sign-in
  * door stays above them: on the way in the reader is answering "who am I", and only then is
  * "what is this account for" a question they can answer, whereas on the way back in that
- * same question is about the device this app is re-entering with ΓÇö which is why this half
+ * same question is about the device this app is re-entering with — which is why this half
  * keeps the compact segment and seeds itself from the device's own last answer.
  *
  * Each row carries the one sentence that says what that account is *for*, inside the card
- * rather than under the group, because under a group there is one slot and three answers ΓÇö
+ * rather than under the group, because under a group there is one slot and three answers —
  * the line under the customer card would be about somebody else. The selection is said
  * three ways, as in `option-card`: the accent fill, the weight of the title and the tick,
  * and `accessibilityState.checked` for a reader who has none of them.
@@ -146,16 +146,16 @@ import {
  * tokens. There is no logo asset in this app and this screen does not add one: a bundled
  * image would be a file to keep in a density per platform and a second thing that can
  * disagree with the palette, while the palette and the type scale are already the two things
- * every screen agrees with. The glyph is `storefront-outline` ΓÇö the storefront glyph this app
+ * every screen agrees with. The glyph is `storefront-outline` — the storefront glyph this app
  * uses for the marketplace, so the lockup is the app's
- * own vocabulary rather than a new symbol ΓÇö drawn at `icon.action` in `colors.primary`. It
+ * own vocabulary rather than a new symbol — drawn at `icon.action` in `colors.primary`. It
  * is hidden from the accessibility tree: the wordmark beside it is the name, and a glyph
  * with no label of its own is announced as nothing at all.
  *
  * The lockup cannot be `Screen`'s `title`. `Screen` renders its title strip before its
  * children, so nothing in the body can sit above it, and the strip is one string while this
- * is three nodes. So this screen asks for no `title` and composes the strip itself ΓÇö the
- * route `app/store/[slug].tsx` takes for the same reason ΓÇö which means paying the two
+ * is three nodes. So this screen asks for no `title` and composes the strip itself — the
+ * route `app/store/[slug].tsx` takes for the same reason — which means paying the two
  * numbers the strip paid: `space.md` above it and `space.xs` between the title and its
  * subtitle (`components/screen.tsx:220-225`). The form title stays the loudest thing on the
  * screen (Rule 1); the wordmark above it is `type.heading` and does not compete.
@@ -169,10 +169,10 @@ import {
  *
  * ## The failure is the API's sentence, in the one slot, and only while it is true
  *
- * The three keys the transport can produce are the three it names ΓÇö
+ * The three keys the transport can produce are the three it names —
  * `auth.error.invalidCredentials` for a 401, `auth.error.rateLimited` for a 429,
  * `auth.error.generic` for everything else (`packages/auth/src/marketplace-client.ts:30-40`)
- * ΓÇö and `authErrorKey` reduces the thrown message to that same set of three before it
+ * — and `authErrorKey` reduces the thrown message to that same set of three before it
  * reaches this screen (`lib/auth/session.tsx:280-286`). That whitelist is what makes the
  * `MessageKey` cast below a checked claim rather than a hope; without it the cast would be
  * printing a raw key into the slot the first time a transport grew a fourth one.
@@ -183,8 +183,8 @@ import {
  * event for the same reason.
  *
  * The announcement is split by platform, because the platforms are: `accessibilityLiveRegion`
- * is Android's alone ΓÇö RN declares it on `AccessibilityPropsAndroid` with `@platform android`
- * (`types_generated/Libraries/Components/View/ViewAccessibility.d.ts:108-110`) ΓÇö so the slot
+ * is Android's alone — RN declares it on `AccessibilityPropsAndroid` with `@platform android`
+ * (`types_generated/Libraries/Components/View/ViewAccessibility.d.ts:108-110`) — so the slot
  * announces the sentence there, and iOS, which has no counterpart, gets it from
  * `AccessibilityInfo.announceForAccessibility` on the change that produced it. One platform
  * each and never both: a sentence a live region has already spoken is not read twice, it is
@@ -193,7 +193,7 @@ import {
  * ## The exit is not disabled while a request is out
  *
  * `fetch` in the transport takes no `AbortController` (`marketplace-client.ts:21-29`), so a
- * request that never answers is a wait with no timeout and nothing in this app can end it ΓÇö
+ * request that never answers is a wait with no timeout and nothing in this app can end it —
  * which makes the back button the reader's only way out of a wait the app cannot bound. A
  * form that disables its own exit for the duration is the wall `lib/auth/session.tsx:39-48`
  * refuses to build. The form-switch button is a different case and stays disabled: switching
@@ -204,7 +204,7 @@ import {
  *
  * `ok` means the API accepted the call. It does not mean a session exists, and this screen
  * used to treat the two as one by navigating from the handler: `signIn` resolves `ok` after
- * `read()`, and `read()` never reports its own outcome ΓÇö a session read that came back with
+ * `read()`, and `read()` never reports its own outcome — a session read that came back with
  * nothing leaves `status` at `"signed-out"` (`lib/auth/session.tsx:139-140`) and
  * one that failed outright leaves whatever it was (`:156-167`). So the accepted call is
  * recorded in `sent` and the navigation happens in an effect that watches the provider's
@@ -234,7 +234,7 @@ type FieldName = "name" | "email" | "password";
 /** The two assertions, tracked apart because they are two different claims. */
 type ConsentName = "terms" | "age";
 /**
- * What the new account is *for*, and the only three answers this platform has ΓÇö see
+ * What the new account is *for*, and the only three answers this platform has — see
  * "The door is asked differently by each side". It is a distinct piece of state from
  * `role` on purpose: `role` is how this device enters with an account it already has,
  * and this is what account it is about to make.
@@ -254,11 +254,11 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [pending, setPending] = useState(false);
-	/** The API's own sentence, or `null`. The refusal ΓÇö never the wait, and never "error". */
+	/** The API's own sentence, or `null`. The refusal — never the wait, and never "error". */
 	const [failure, setFailure] = useState<string | null>(null);
 	/**
 	 * The API accepted the call. **Not** the same as a session, and the two are kept apart on
-	 * purpose ΓÇö see "Success is the session's answer, not the call's" at the top of this file.
+	 * purpose — see "Success is the session's answer, not the call's" at the top of this file.
 	 */
 	const [sent, setSent] = useState(false);
 	/** Which fields have been left once, and the whole form has been submitted once. */
@@ -277,12 +277,12 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	// back in found no business on the rail, the `else` below wrote `"customer"` over
 	// the stored preference, and the root resolver sent them to the storefront instead
 	// of `/(business)`. The device already remembers all three and `lib/role.ts`
-	// already resolves all three ΓÇö only this state refused to name one of them.
+	// already resolves all three — only this state refused to name one of them.
 	const [role, setRole] = useState<AccountProfile>(() =>
 		signingUp ? "customer" : getAccountProfile(),
 	);
 	// What a sign-up is *for*, asked in the cards below the fields. The setter is the
-	// door's own ΓÇö see the docblock: this state being unwritable was exactly how every
+	// door's own — see the docblock: this state being unwritable was exactly how every
 	// registration silently became a customer. `business` is the seed, not `customer`:
 	// the shop is the account this product exists for, and a form that opens on the
 	// customer answer has already answered for the reader.
@@ -304,7 +304,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 * they sit with the rest of the form's state and are read straight into the
 	 * sign-up call. The Worker refuses a sign-up that arrives without both
 	 * (`packages/trpc-api/src/auth.ts`, `databaseHooks.user.create.before`), which
-	 * makes them mandatory rather than advisory ΓÇö so they are checked in `problems`
+	 * makes them mandatory rather than advisory — so they are checked in `problems`
 	 * too, to stop the round trip rather than to report a refusal after one.
 	 */
 	const [termsAccepted, setTermsAccepted] = useState(false);
@@ -345,7 +345,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 *
 	 * A text field earns its refusal on losing focus, because that is when the reader
 	 * has stopped changing it. A checkbox has no such moment: it is either set or it
-	 * is not, and the only fair time to complain is a submit that did nothing ΓÇö which
+	 * is not, and the only fair time to complain is a submit that did nothing — which
 	 * is what `submitted` marks. So the two are read from different state on purpose,
 	 * and indexing `blurred` with a consent key would be a type error that is really
 	 * a design statement.
@@ -367,7 +367,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 *
 	 * Both halves of the last attempt's outcome go, not just the refusal: a sentence about
 	 * values that have since changed is a sentence about nothing, and so is a recorded call
-	 * whose session never arrived ΓÇö the reader is editing the credential that produced it.
+	 * whose session never arrived — the reader is editing the credential that produced it.
 	 */
 	const typed =
 		(apply: (value: string) => void) =>
@@ -391,7 +391,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 		setSent(false);
 		// Announced from the handler that started the wait, not from an effect watching it:
 		// this is the reader's own action being acknowledged the moment it is made. iOS only,
-		// on the same split as the failure sentence ΓÇö Android announces the slot's own word
+		// on the same split as the failure sentence — Android announces the slot's own word
 		// through the live region when it mounts, and this would be that word again.
 		if (Platform.OS === "ios") {
 			AccessibilityInfo.announceForAccessibility(t("state.loading"));
@@ -417,7 +417,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				// All three answers are named on the sign-in path as well, for the same
 				// reason. A merchant signing back in used to fall to the `"customer"`
 				// else, which overwrote the stored `business` preference with the
-				// storefront's ΓÇö so even the corrected navigation above would have been
+				// storefront's — so even the corrected navigation above would have been
 				// undone the moment `lib/role.ts` read the device back on the next cold
 				// start.
 				await setAccountProfile(
@@ -436,14 +436,14 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				setSent(true);
 				return;
 			}
-			// The transport has already reduced the response to one of three keys ΓÇö a 401, a
-			// 429, or everything else ΓÇö and this renders the key rather than inventing a
+			// The transport has already reduced the response to one of three keys — a 401, a
+			// 429, or everything else — and this renders the key rather than inventing a
 			// sentence. A rate limit reads "Demasiados intentos seguidos"; collapsing it into
 			// "no pudimos entrar" would hide the one thing the reader can act on.
 			setFailure(t(result.messageKey as MessageKey));
 		} finally {
 			// In `finally` because a throw on the way out must not leave the form permanently
-			// busy ΓÇö a submit button that never comes back is a screen the customer has to
+			// busy — a submit button that never comes back is a screen the customer has to
 			// close the app to escape.
 			inFlight.current = false;
 			setPending(false);
@@ -472,7 +472,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 * `"signed-out"` (`lib/auth/session.tsx:139-140` and `:150-154`). Read together with
 	 * `sent` that means one thing: this form's call was accepted and there is no session
 	 * behind it, so the reader is not signed in and has to be told. Without a sentence here
-	 * the round trip is over, the button is no longer busy, and the slot is empty ΓÇö a form
+	 * the round trip is over, the button is no longer busy, and the slot is empty — a form
 	 * that looks like it worked.
 	 *
 	 * It is the generic key, and that is the honest one: what reached us is a session read
@@ -486,7 +486,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 * Whether the wait is still open, and it outlives this form's own round trip.
 	 *
 	 * `pending` is this screen's call; the session read that must follow it belongs to the
-	 * provider, so the slot keeps saying "CargandoΓÇª" until that has an answer too ΓÇö otherwise
+	 * provider, so the slot keeps saying "CargandoΓÇª" until that has an answer too — otherwise
 	 * an accepted sign-in followed by a slow session read would show a form at rest with
 	 * nothing in it, which is the same lie as an empty slot after a refusal.
 	 */
@@ -494,8 +494,8 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 
 	useEffect(() => {
 		// The destination, not always the root resolver: the identified courier goes straight to
-		// the delivery tree ΓÇö which its own guard re-resolves from the preference this form just
-		// wrote ΓÇö while everyone else lands at `/`, whose resolver is the one place that knows
+		// the delivery tree — which its own guard re-resolves from the preference this form just
+		// wrote — while everyone else lands at `/`, whose resolver is the one place that knows
 		// the three trees.
 		//
 		// A merchant signing back in goes straight to `/(business)` for the same reason the
@@ -522,7 +522,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 *
 	 * `accessibilityLiveRegion` is declared on `AccessibilityPropsAndroid` with
 	 * `@platform android` (`types_generated/Libraries/Components/View/ViewAccessibility.d.ts:108-110`),
-	 * so Android says the sentence when the slot changes and iOS ΓÇö which ignores the prop ΓÇö
+	 * so Android says the sentence when the slot changes and iOS — which ignores the prop —
 	 * has to be told. Announcing on both would say it twice on the platform that already
 	 * spoke.
 	 */
@@ -564,7 +564,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 
 				<AuthIdentity title={title} subtitle={subtitle} />
 
-				{/* The door on the way back in ΓÇö see "The door is asked differently by each
+				{/* The door on the way back in — see "The door is asked differently by each
 				    side" above. Only sign-in asks it here: a sign-up asks the same question
 				    as cards, below the fields. */}
 				{!signingUp ? (
@@ -751,7 +751,7 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				</Pressable>
 			</Screen>
 
-			{/* The screen's one action, on the floor rather than at the end of the form ΓÇö the reasons
+			{/* The screen's one action, on the floor rather than at the end of the form — the reasons
 		    are in the docblock. `waiting` and not `pending`, as it was inside the scroll: the
 		    action is not finished when the call is, it is finished when there is a session, so the
 		    control stays busy through the read that confirms it rather than inviting a second
@@ -772,13 +772,13 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 /**
  * What the account is *for*: three rows, each carrying the promise that type makes.
  *
- * A group of choices, exactly as `components/option-card` is one, with one difference ΓÇö
+ * A group of choices, exactly as `components/option-card` is one, with one difference —
  * these are the reader's three doors and each of them has a sentence to say, so the group
  * is a column of full-width rows rather than a rail of thumbnails: what distinguishes a
  * shop from a courier is that sentence, and a reader comparing three promises needs them
  * stacked where all three are visible at once.
  *
- * **The order is the funnel's** ΓÇö business first, then the customer, then the courier ΓÇö
+ * **The order is the funnel's** — business first, then the customer, then the courier —
  * because the shop is the account this product exists for and the customer is the
  * exception. The merchant is also the one every other language in the app writes first
  * (`auth.signUp.business.title` is the merchant's sign-up title, and `/new-business` is its
@@ -791,12 +791,12 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
  * promise, and it is inside the card because under the group there is one slot and three
  * answers.
  *
- * The selection is drawn three ways ΓÇö fill, weight, tick ΓÇö and announced as
+ * The selection is drawn three ways — fill, weight, tick — and announced as
  * `accessibilityState.checked`, the same three-plus-one as `option-card` and for the same
  * reasons. The fill **settles** rather than snapping, as a crossfade between two painted
  * layers, and that is `step-progress`'s shape for its own fill and its own stated reason: a
  * colour is not a value reanimated interpolates cleanly across themes, while an opacity
- * between two layers is ΓÇö so this is also the one code path that survives a reduced-motion
+ * between two layers is — so this is also the one code path that survives a reduced-motion
  * request intact. The tick's pop is a transform, and that one is gated, exactly as
  * `option-card` gates its own.
  */
@@ -826,14 +826,14 @@ const ACCOUNT_TYPES = [
  *
  * The group prints this under its heading, and the reason it is not the card's own promise
  * line is that the two answer different questions: the card says what that *type* can do,
- * this says what the *account* is about ΓÇö which is also what the title at the top of the
+ * this says what the *account* is about — which is also what the title at the top of the
  * screen changes to. Without it, picking a courier changes a title that is off-screen at the
  * moment of choosing, so the consequence of the choice is somewhere the reader is not
  * looking; here it is printed next to the choice, and it is the same word for word, because
  * it is the same entry.
  *
  * A map rather than a sixth field on `ACCOUNT_TYPES`: the type's *name* and its *promise*
- * belong to the card, and this line is a fact about the mode rather than about the card ΓÇö
+ * belong to the card, and this line is a fact about the mode rather than about the card —
  * the title logic in the form above reads the same three keys for the same reason.
  */
 const CONSEQUENCE: Record<RegistrationMode, MessageKey> = {
@@ -857,7 +857,7 @@ function AccountTypes({
 		<View style={styles.types}>
 			<View style={styles.typesHead}>
 				{/* `header` because this is a heading and a screen reader's rotor navigates by
-				    heading ΓÇö and because the reader is about to walk three radios, and a group
+				    heading — and because the reader is about to walk three radios, and a group
 				    that announces itself as three radios with nothing above them gives them no
 				    question to answer. */}
 				<Text variant="heading" accessibilityRole="header">
@@ -987,7 +987,7 @@ function TypeCard({
  * reading should not miss; a box 20 points wide is a target that punishes a large
  * thumb for being imprecise.
  *
- * `Pressable` rather than `Button` because this is not an action that happens ΓÇö it is
+ * `Pressable` rather than `Button` because this is not an action that happens — it is
  * a state the reader sets, and it stays where it is with its answer visible, which is
  * what `accessibilityRole="checkbox"` tells the screen reader it is.
  *
@@ -1022,7 +1022,7 @@ function ConsentCheck({
 				disabled={disabled}
 				onPress={() => onChange(!checked)}
 				// A row whose edges are the form's edges, so it takes the row scale
-				// rather than the button one ΓÇö see `components/pressable.tsx`.
+				// rather than the button one — see `components/pressable.tsx`.
 				scaleTo={PRESS_SCALE_ROW}
 				// `disabledOpacity={1}` because this control is *unavailable*, not busy:
 				// the shared default would fade the label toward the background, and
@@ -1100,7 +1100,7 @@ const styles = StyleSheet.create({
 	// rather than as a caption on the password.
 	types: { gap: space.md },
 	// The heading and the line that says what the chosen type changes, at the gap the page's
-	// own title strip uses between a title and its subtitle ΓÇö the two are the same pair of
+	// own title strip uses between a title and its subtitle — the two are the same pair of
 	// lines, and the group is not a second strip with a different rhythm.
 	typesHead: { gap: space.xs },
 	// Rows 8 apart rather than 12: this is a set of one choice, and the tighter rhythm is

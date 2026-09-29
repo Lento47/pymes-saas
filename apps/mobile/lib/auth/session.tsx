@@ -32,7 +32,7 @@ import { revokeStoredPushToken } from "@/lib/push-token";
  * a button the API still refuses. The one thing this provider owns is the credential, and
  * it does not hold it: on a phone it is a bearer token in SecureStore, in a browser it is
  * an HttpOnly cookie the page cannot read. `@pymeshub/auth` attaches whichever one this
- * platform uses ΓÇö `lib/auth/client.ts` chooses ΓÇö and neither is ever in a file a bundle
+ * platform uses — `lib/auth/client.ts` chooses — and neither is ever in a file a bundle
  * ships.
  */
 export type SessionStatus = "loading" | "signed-in" | "signed-out";
@@ -51,7 +51,7 @@ type SessionValue = {
 	 * Every attempt at the read has been spent and the question is still open.
 	 *
 	 * Not a fourth status: `status` stays `"loading"`, because "we do not know yet" is
-	 * still the honest answer and this does not change what is true ΓÇö only what the screen
+	 * still the honest answer and this does not change what is true — only what the screen
 	 * can offer while it waits. It is here because a read that never answers used to leave
 	 * `./signed-in` spinning with nothing to tap, and a spinner with no exit is a wall.
 	 * The customer is not signed out and must not be told they are; they are offered
@@ -83,7 +83,7 @@ const SessionContext = createContext<SessionValue | null>(null);
  * The one message `@pymeshub/auth`'s transport throws for a refused credential.
  *
  * `request()` in `packages/auth/src/marketplace-client.ts` reduces every non-2xx response to
- * one of three keys, and this is the branch it takes for a 401 ΓÇö the only one that means the
+ * one of three keys, and this is the branch it takes for a 401 — the only one that means the
  * API has looked at the credential and said no. It is spelled out here rather than imported
  * because the transport exports no constant for it; `authErrorKey` below compares the same
  * literal, and if the transport ever renames one, both of these are the places that follow.
@@ -109,13 +109,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	/**
 	 * Whether any read has ever come back with an answer, either one.
 	 *
-	 * A ref rather than state because nothing renders it ΓÇö it exists so that a *later* read
+	 * A ref rather than state because nothing renders it — it exists so that a *later* read
 	 * failing does not raise the stall card. Once a session has been learned, the app knows
 	 * the answer and a failed re-read is a stale answer, not an open question; `status` is
 	 * `"signed-in"` and the screens behind it are showing real content. Marking that as
 	 * `unanswered` would put a retry card in front of a customer whose app works.
 	 *
-	 * A refusal counts as an answer ΓÇö it is the API saying "this credential is not valid",
+	 * A refusal counts as an answer — it is the API saying "this credential is not valid",
 	 * which resolves the question to signed-out. Only a run of the loop that ends without
 	 * either outcome leaves the question open.
 	 */
@@ -126,7 +126,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	 * `read` runs a loop with two waits inside it (`RETRY_DELAYS_MS`), and it is called from
 	 * four places: on mount, on every return to the foreground, by the retry control, and
 	 * after a sign-in. Nothing retired the loop a previous call had left sleeping, so a phone
-	 * taken out of a pocket three times had three loops alive at once ΓÇö three `setTimeout`s
+	 * taken out of a pocket three times had three loops alive at once — three `setTimeout`s
 	 * held open, each of them about to spend a request on a question the newest loop was
 	 * already asking, and the slowest of them free to write its older answer over the newer
 	 * one when it finally came back.
@@ -134,7 +134,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	 * A counter rather than a per-call `cancelled` flag, because the loops overlap rather than
 	 * nest: what retires a loop is not "the provider went away" but "a newer read owns this
 	 * state now", and only the newest may write it. The unmount effect below bumps the same
-	 * number, which is the other half of the same case ΓÇö see the note there.
+	 * number, which is the other half of the same case — see the note there.
 	 */
 	const generation = useRef(0);
 	const read = useCallback(async () => {
@@ -164,7 +164,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				// Only a refusal is a fact about identity, and it is the one failure that
 				// already acted on it: the transport drops the stored token before it throws
 				// this key, so there is genuinely no session left to keep. Everything else a
-				// read can fail with ΓÇö a rate limit, a 500, a phone with no connection ΓÇö is an
+				// read can fail with — a rate limit, a 500, a phone with no connection — is an
 				// unanswered question, and the answer to an unanswered question is the answer
 				// we already had. Rendering that as "signed out" would sign out a customer
 				// whose token is in the keychain and whose session row is in D1 untouched.
@@ -177,7 +177,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				// Not a refusal, so nothing is decided here: the next turn of the loop asks
 				// again, and if the last turn fails too the last known session and status stay
 				// exactly as they were. That means `status` is still "loading" if a read has
-				// never once been answered ΓÇö the honest shape of "we do not know yet", and the
+				// never once been answered — the honest shape of "we do not know yet", and the
 				// screens behind sign-in show the waiting shape rather than a sign-in prompt for
 				// somebody who has not been signed out. The foreground handler below is what
 				// turns that waiting back into an answer.
@@ -187,8 +187,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				// later and with a delay in front of it.
 			}
 		}
-		// Every attempt spent and nothing learned. Nothing is decided ΓÇö `status` stays
-		// "loading" ΓÇö but the wait is now the customer's to end rather than one they can only
+		// Every attempt spent and nothing learned. Nothing is decided — `status` stays
+		// "loading" — but the wait is now the customer's to end rather than one they can only
 		// sit in, which is what `unanswered` is for. `./signed-in` renders the retry.
 		if (mine !== generation.current) return;
 		if (!answered.current) setUnanswered(true);
@@ -199,7 +199,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	/**
 	 * The provider going away is the other reason a sleeping loop should stop.
 	 *
-	 * The same number as above, and it retires every read at once ΓÇö which is what unmounting
+	 * The same number as above, and it retires every read at once — which is what unmounting
 	 * means. Without it the waits keep their timers and their requests, and they resolve into
 	 * `setState` calls on a provider that no longer exists. React ignores those rather than
 	 * warning, so the cost is the traffic and the held timers and not a visible defect, which
@@ -390,7 +390,7 @@ export function useSession() {
 /**
  * The keys the transport can actually hand back, and nothing else.
  *
- * `@pymeshub/auth`'s `request()` throws one of exactly three strings ΓÇö
+ * `@pymeshub/auth`'s `request()` throws one of exactly three strings —
  * `auth.error.invalidCredentials` for a 401, `auth.error.rateLimited` for a 429, and
  * `auth.error.generic` for everything else. A 400 from Better Auth for a password under
  * its 12-character minimum is in that last group, so it arrives here as the generic key
