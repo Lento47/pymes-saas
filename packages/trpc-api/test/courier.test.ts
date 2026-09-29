@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { merchantLocation as locationTable } from "@pymeshub/db";
+import {
+	courierProfile as courierProfileTable,
+	delivery as deliveryTable,
+	merchantLocation as locationTable,
+	membership as membershipTable,
+} from "@pymeshub/db";
 import { addToCartInput } from "@pymeshub/shared";
 import { eq } from "drizzle-orm";
 
@@ -204,6 +209,9 @@ describe("orders.assign", () => {
 			test,
 			"courier_scope",
 		);
+		// A second run, because the assertion below re-assigns after the first one landed and
+		// `assign` refuses to overwrite once the run has left READY.
+		const second = await readyRun(test, "courier_scope_second");
 
 		const staff = await seedUser(test.db, { id: "usr_courier_staff" });
 		await seedMembership(test.db, staff.id, shopId, "STAFF");
@@ -229,11 +237,55 @@ describe("orders.assign", () => {
 		);
 		expect(outsiderError.code).toBe("NOT_FOUND");
 
-		// A STAFF member is not a courier, even of the right shop.
-		const staffError2 = await refused(
-			manager.orders.assign({ orderId: order.id, courierUserId: staff.id }),
+		// A STAFF member of the right shop **with no courier profile** is still assignable,
+		// because `assign` now reads the profile rather than the roster and tolerates its
+		// absence (the shape an unaccepted invitation leaves behind). Staffing a run is not a
+		// reward for having filled in a form.
+		//
+		// This assertion changed with the feature and the change is deliberate: the old
+		// contract refused anyone without a `COURIER` membership, and under an open pool
+		// that would have refused the courier the platform just offered a run to. What still
+		// refuses is a profile that says no.
+		const staffIsAssignable = await manager.orders.assign({
+			orderId: order.id,
+			courierUserId: staff.id,
+		});
+		// The id is read from the delivery row rather than off the return value, and
+		// that is not a workaround. `orders.assign` answers with an `OrderDetail`, and
+		// that shape carries the courier's *displayed* name and phone — not their id —
+		// because it is the shape a customer sees on a tracker, and a customer has no
+		// business holding a user id. The id lives on `delivery.courier_user_id`, which
+		// is also the only place a change of assignee is recorded.
+		//
+		// Reading it from the database is what makes this assertion stronger than the
+		// one it replaces: it checks the row that a courier's whole run hangs off, not
+		// a field the response happens to echo back. The staff member has no courier
+		// profile, so `courier.name` could not stand in for it.
+		const [assigned] = await test.db
+			.select({ courierUserId: deliveryTable.courierUserId })
+			.from(deliveryTable)
+			.where(eq(deliveryTable.orderId, order.id));
+		expect(staffIsAssignable).toBeDefined();
+		expect(assigned?.courierUserId).toBe(staff.id);
+
+		// A profile that exists and is not verified refuses, whoever holds the membership.
+		await test.db.insert(courierProfileTable).values({
+			id: "cpr_courier_scope_staff",
+			userId: staff.id,
+			displayName: "Staff",
+			serviceArea: "San José",
+			isAvailable: true,
+			verificationStatus: "PENDING",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		const unverified = await refused(
+			manager.orders.assign({
+				orderId: second.order.id,
+				courierUserId: staff.id,
+			}),
 		);
-		expect(staffError2.code).toBe("BAD_REQUEST");
+		expect(unverified.code).toBe("BAD_REQUEST");
 
 		test.close();
 	});
@@ -342,27 +394,90 @@ describe("courier moves and pings", () => {
 		test.close();
 	});
 
-	test("the courier's board is their own runs", async () => {
+	/**
+	 * A courier's board is every run carrying their name, across every shop.
+	 *
+	 * The interesting shape here is that **one courier carries runs from two different
+	 * shops and belongs to neither by membership** — `readyRun` gives each shop its own
+	 * rider, so this reassigns both orders to `first.rider` directly and deletes their
+	 * membership rows. That is the situation the open pool creates and the old board could
+	 * not express at all: it was handed one `businessId` and could only ever show that
+	 * shop's queue.
+	 */
+	test("a courier's board is their runs across shops, with no membership", async () => {
 		const test = world();
 		const first = await readyRun(test, "courier_board_a");
 		const second = await readyRun(test, "courier_board_b");
 
+		// Assign first, membership second: `orders.assign` is the one write that still
+		// requires a `COURIER` membership of the shop (a manager handing a run to someone
+		// on their own roster), so the courier has to be a member at the moment of the
+		// assignment and not after it.
 		await first.manager.orders.assign({
 			orderId: first.order.id,
 			courierUserId: first.rider.id,
 		});
+		// The second shop has never heard of this courier, which is the whole point — a
+		// manager is assigning a run to a verified courier the platform matched, and
+		// `assign` reads them off the profile rather than a roster.
 		await second.manager.orders.assign({
 			orderId: second.order.id,
-			courierUserId: second.rider.id,
+			courierUserId: first.rider.id,
 		});
+		// Belongs to nothing. The assignments are the whole relationship now.
+		await test.db
+			.delete(membershipTable)
+			.where(eq(membershipTable.userId, first.rider.id));
 
 		const board = await first.courier.orders.list({
 			role: "BUSINESS",
-			businessId: first.shopId,
 			assignedToMe: true,
 		});
-		expect(board.items.map((item) => item.id)).toEqual([first.order.id]);
+		expect(board.items.map((item) => item.id).sort()).toEqual(
+			[first.order.id, second.order.id].sort(),
+		);
 
+		// A `businessId` is not merely unnecessary on this read, it is refused by the shop
+		// door: `orders.queue` is a `businessProcedure`, and a membership-less caller cannot
+		// get through it. That is why the board reads `orders.list` — and the assertion
+		// documents that the two doors are genuinely different rather than aliases.
+		const viaQueue = await refused(
+			first.courier.orders.queue({
+				role: "BUSINESS",
+				businessId: first.shopId,
+				assignedToMe: true,
+			}),
+		);
+		expect(viaQueue.code).toBe("FORBIDDEN");
+
+		// A plain customer setting the same flag reads an empty board, not somebody else's
+		// runs. `queue` gates on `courierUserId = me` rather than on being a courier, so
+		// there is no row this can return that is not already the caller's own — which is
+		// also why no profile check sits in front of it.
+		const notACourier = await seedUser(test.db, {
+			id: "usr_courier_board_plain_customer",
+		});
+		const plainCustomer = appRouter.createCaller(
+			await authed(test, notACourier),
+		) as Caller;
+		const strangerBoard = await plainCustomer.orders.list({
+			role: "BUSINESS",
+			assignedToMe: true,
+		});
+		expect(strangerBoard.items).toEqual([]);
+
+		test.close();
+	});
+
+	/** The shop board is unchanged by all of the above: still one shop, still membership-checked. */
+	test("a shop's board still lists its own queue", async () => {
+		const test = world();
+		const { manager, order, shopId } = await readyRun(test, "shop_board");
+		const board = await manager.orders.list({
+			role: "BUSINESS",
+			businessId: shopId,
+		});
+		expect(board.items.map((item) => item.id)).toContain(order.id);
 		test.close();
 	});
 });
