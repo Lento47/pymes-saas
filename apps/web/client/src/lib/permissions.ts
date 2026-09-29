@@ -3,6 +3,30 @@
  *
  * IMPORTANT: Frontend hiding is UX only. Backend always enforces permissions.
  * Never use these checks as a security gate — only for showing/hiding UI.
+ *
+ * ## Why "mirrors" is a hard requirement and not a description
+ *
+ * This file is a second, hand-maintained copy of
+ * `apps/api/src/common/permissions/permissions.ts`. Nothing in the type system ties the
+ * two together, so a permission added on one side and forgotten on the other compiles
+ * cleanly and fails silently. It fails in two directions, and they are opposite bugs:
+ *
+ * - **Missing here, present in the API.** `hasPermission` answers `false` for something
+ *   the person is entitled to, so a real capability is hidden from the UI. This is the
+ *   state `CALLS_INITIATE` was in: absent from the constant entirely, so it was absent
+ *   from every role, and `hasPermission(role, "calls.initiate")` was `false` for every
+ *   role including `OWNER`. A permission that no role can hold is not a UI decision, it
+ *   is a capability the frontend can never surface.
+ * - **Present here, absent in the API.** `hasPermission` answers `true` for something the
+ *   API will refuse, so the UI offers a control guaranteed to fail on click. This is the
+ *   more damaging direction, because it looks like a working feature until someone
+ *   presses it.
+ *
+ * `permissions.parity.test.ts` is the guard. It imports the API's map and asserts this
+ * file matches it exactly, in both directions — so the next drift fails a test instead
+ * of a support ticket. `OWNER` is derived from `Object.values(Permission)` here, exactly
+ * as the API derives it, so `OWNER` cannot drift while the constant is in sync; the five
+ * hand-written lists are the ones that can, and the test covers all six.
  */
 
 export const Permission = {
@@ -20,6 +44,7 @@ export const Permission = {
   BILLING_MANAGE:       "billing.manage",
   AI_USE:               "ai.use",
   AI_MANAGE:            "ai.manage",
+  CALLS_INITIATE:       "calls.initiate",
   AUDIT_READ:           "audit.read",
   FILES_READ:           "files.read",
   FILES_MANAGE:         "files.manage",
@@ -36,7 +61,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.CONVERSATIONS_READ, Permission.CONVERSATIONS_REPLY, Permission.CONVERSATIONS_ASSIGN,
     Permission.CONTACTS_READ, Permission.CONTACTS_MANAGE,
     Permission.TASKS_MANAGE, Permission.INVOICES_MANAGE, Permission.BILLING_MANAGE,
-    Permission.AI_USE, Permission.AI_MANAGE,
+    Permission.AI_USE, Permission.AI_MANAGE, Permission.CALLS_INITIATE,
     Permission.AUDIT_READ, Permission.FILES_READ, Permission.FILES_MANAGE,
   ],
   MANAGER: [
@@ -44,13 +69,14 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.CONVERSATIONS_READ, Permission.CONVERSATIONS_REPLY, Permission.CONVERSATIONS_ASSIGN,
     Permission.CONTACTS_READ, Permission.CONTACTS_MANAGE,
     Permission.TASKS_MANAGE, Permission.INVOICES_MANAGE,
-    Permission.AI_USE, Permission.AUDIT_READ, Permission.FILES_READ, Permission.FILES_MANAGE,
+    Permission.AI_USE, Permission.CALLS_INITIATE,
+    Permission.AUDIT_READ, Permission.FILES_READ, Permission.FILES_MANAGE,
   ],
   AGENT: [
     Permission.WORKSPACE_READ,
     Permission.CONVERSATIONS_READ, Permission.CONVERSATIONS_REPLY, Permission.CONVERSATIONS_ASSIGN,
     Permission.CONTACTS_READ, Permission.CONTACTS_MANAGE,
-    Permission.TASKS_MANAGE, Permission.AI_USE, Permission.FILES_READ,
+    Permission.TASKS_MANAGE, Permission.AI_USE, Permission.CALLS_INITIATE, Permission.FILES_READ,
   ],
   BILLING: [
     Permission.WORKSPACE_READ, Permission.BILLING_MANAGE,
