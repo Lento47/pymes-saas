@@ -110,6 +110,10 @@ import {
  * `BackButton` while loading — the same chrome as the customer screen's — so the number
  * arrives with the data it names rather than as a blank to fill in.
  */
+
+/** An unavailable hand-off, dimmed rather than removed — see `styles.hands`. */
+const DISABLED_ALPHA = 0.4;
+
 export default function MerchantOrderDetail() {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const { t, tp, intlLocale } = useT();
@@ -169,7 +173,7 @@ export default function MerchantOrderDetail() {
 	const advance = next[0];
 
 	/**
-	 * The three hand-offs, and the two rules that decide whether they exist.
+	 * The three hand-offs.
 	 *
 	 * `tel:` wants digits and an optional leading `+`; the API stores a number written for a
 	 * human. `app/(customer)/order/[id]` already draws this line and this file is the second
@@ -177,9 +181,11 @@ export default function MerchantOrderDetail() {
 	 * **rejects** on a device with no dialer, and a rejection inside a press handler is a tap
 	 * that looks like it did nothing. The `.catch` covers the query itself rejecting.
 	 *
-	 * `customer.phone` is nullable on the payload, so `dialable` is empty for an order placed
-	 * without one and both telephone actions are not drawn at all. A button that opens nothing
-	 * is worse than no button, and the operator can see the absence and act on it.
+	 * `customer.phone` is nullable, so `dialable` is empty for an order placed without one.
+	 * The two telephone actions are still drawn — see `styles.hands` for why they are
+	 * disabled rather than absent — and `dialable` is what the disabled test reads, so a
+	 * number that strips down to nothing is treated as no number rather than dialled as an
+	 * empty `tel:`.
 	 *
 	 * No haptic: `lib/haptics.ts`'s vocabulary is for a change *this app* made, and handing a
 	 * merchant to the OS dialer is not one.
@@ -395,27 +401,24 @@ export default function MerchantOrderDetail() {
 								    three, and `flex: 1` makes either fill the module. */}
 								{dialable || detail.deliveryAddress ? (
 									<View style={styles.hands}>
-										{dialable ? (
-											<HandOff
-												icon="call-outline"
-												label={t("biz.order.call")}
-												onPress={() => void handOff("tel")}
-											/>
-										) : null}
-										{dialable ? (
-											<HandOff
-												icon="chatbubble-ellipses-outline"
-												label={t("biz.order.message")}
-												onPress={() => void handOff("sms")}
-											/>
-										) : null}
-										{detail.deliveryAddress ? (
-											<HandOff
-												icon="map-outline"
-												label={t("biz.order.openMap")}
-												onPress={() => void openMap()}
-											/>
-										) : null}
+										<HandOff
+											icon="call-outline"
+											label={t("biz.order.call")}
+											onPress={() => void handOff("tel")}
+											disabled={!dialable}
+										/>
+										<HandOff
+											icon="chatbubble-ellipses-outline"
+											label={t("biz.order.message")}
+											onPress={() => void handOff("sms")}
+											disabled={!dialable}
+										/>
+										<HandOff
+											icon="map-outline"
+											label={t("biz.order.openMap")}
+											onPress={() => void openMap()}
+											disabled={!detail.deliveryAddress}
+										/>
 									</View>
 								) : null}
 							</MerchantModule>
@@ -793,18 +796,26 @@ function HandOff({
 	icon: glyph,
 	label,
 	onPress,
+	disabled = false,
 }: {
 	icon: React.ComponentProps<typeof Ionicons>["name"];
 	label: string;
 	onPress: () => void;
+	disabled?: boolean;
 }) {
 	const { colors } = useTheme();
 	return (
 		<Pressable
 			onPress={onPress}
+			disabled={disabled}
 			accessibilityRole="button"
 			accessibilityLabel={label}
-			style={[styles.handOff, { borderColor: colors.border }]}
+			accessibilityState={{ disabled }}
+			style={[
+				styles.handOff,
+				{ borderColor: colors.border },
+				disabled ? { opacity: DISABLED_ALPHA } : null,
+			]}
 		>
 			<Ionicons
 				name={glyph}
@@ -910,10 +921,29 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(0,0,0,0.04)",
 	},
 	moduleRowBody: { flex: 1, gap: 2 },
-	// The three doors. `flex: 1` on each rather than a fixed width, so a pickup order with
-	// two and a delivery order with three both fill the module — a third of a fixed width
-	// would leave a gap in the two-up case.
-	hands: { flexDirection: "row", gap: space.sm, marginTop: space.md },
+	/**
+	 * The three doors, always all three.
+	 *
+	 * They used to be drawn conditionally — no phone meant no Call and no Message — which
+	 * had the effect nobody asked for: on such an order a single `flex: 1` button took the
+	 * whole module and read as a section header rather than as something you press, and
+	 * the row's shape changed with the order's data. The design is three equal thirds, so
+	 * all three are always drawn and an unavailable one is **disabled** instead of absent.
+	 *
+	 * Disabled rather than hidden is the part that matters. A missing button tells the
+	 * operator nothing about *why*; a greyed-out one says the action exists and the customer
+	 * gave no number, which is the thing they can go and fix. It also keeps `accessibility
+	 * *State` honest, which an absent control cannot be.
+	 *
+	 * `flex: 1` on each rather than a fixed width, so a row of three fills the module and a
+	 * narrower one would not leave a ragged edge. No `maxWidth`: there is always more than
+	 * one button now, so the cap that stopped a lone one stretching has nothing to do.
+	 */
+	hands: {
+		flexDirection: "row",
+		gap: space.sm,
+		marginTop: space.md,
+	},
 	handOff: {
 		flex: 1,
 		minHeight: 50,
