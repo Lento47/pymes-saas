@@ -279,8 +279,16 @@ describe("orders.assign", () => {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		});
+		// `second.manager`, not `manager`, and the difference is the whole assertion.
+		// `readyRun` seeds a shop per tag, so `second.order` belongs to
+		// `biz_courier_scope_second` while `manager` owns `biz_courier_scope`. Asking
+		// `manager` about `second.order` therefore never reaches the profile check at
+		// all: `reachableOrder` answers `NOT_FOUND` for a shop the caller is not in, and
+		// the test was asserting on a refusal raised for the wrong reason. The two shops
+		// are the reason a *second* run is needed here in the first place — the one
+		// above has already left `READY`.
 		const unverified = await refused(
-			manager.orders.assign({
+			second.manager.orders.assign({
 				orderId: second.order.id,
 				courierUserId: staff.id,
 			}),
@@ -429,7 +437,16 @@ describe("courier moves and pings", () => {
 			.delete(membershipTable)
 			.where(eq(membershipTable.userId, first.rider.id));
 
-		const board = await first.courier.orders.list({
+		// A caller minted *here*, after the delete — not the one `readyRun` handed back.
+		// `authed` resolves a `Context` whose `memberships` are loaded once, at
+		// construction, and `first.courier` was built back at line 88 with the membership
+		// still present. `businessProcedure` checks `ctx.memberships` and nothing else, so
+		// the stale context would have answered as though the delete had never happened and
+		// this whole test would have asserted nothing. Every call below goes through
+		// `rider`.
+		const rider = appRouter.createCaller(await authed(test, first.rider)) as Caller;
+
+		const board = await rider.orders.list({
 			role: "BUSINESS",
 			assignedToMe: true,
 		});
@@ -442,7 +459,7 @@ describe("courier moves and pings", () => {
 		// get through it. That is why the board reads `orders.list` — and the assertion
 		// documents that the two doors are genuinely different rather than aliases.
 		const viaQueue = await refused(
-			first.courier.orders.queue({
+			rider.orders.queue({
 				role: "BUSINESS",
 				businessId: first.shopId,
 				assignedToMe: true,
