@@ -75,6 +75,7 @@ export const translations = {
       admin: "Admin",
       adminDashboard: "Dashboard",
       adminWorkspaces: "Workspaces",
+      adminUsers: "Users",
       adminPlanLimits: "Plan Limits",
       wsAvailable: (n: number) => `${n} workspace${n !== 1 ? "s" : ""} available`,
       settingsFlyout: {
@@ -1210,6 +1211,7 @@ export const translations = {
       admin: "Admin",
       adminDashboard: "Dashboard",
       adminWorkspaces: "Workspaces",
+      adminUsers: "Usuarios",
       adminPlanLimits: "Límites de Planes",
       wsAvailable: (n: number) => `${n} workspace${n !== 1 ? "s" : ""} disponibles`,
       settingsFlyout: {

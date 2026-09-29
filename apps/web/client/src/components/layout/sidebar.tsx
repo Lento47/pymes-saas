@@ -134,6 +134,7 @@ const NAV_GROUPS: NavGroup[] = [
 const ADMIN_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, key: "adminDashboard" as const },
   { href: "/admin/workspaces", icon: Shield, key: "adminWorkspaces" as const },
+  { href: "/admin/users", icon: Users, key: "adminUsers" as const },
   { href: "/admin/plan-limits", icon: ShieldCheck, key: "adminPlanLimits" as const },
   { href: "/admin/landing", icon: LayoutTemplate, key: "adminLanding" as const },
   { href: "/admin/support", icon: LifeBuoy, key: "adminSupport" as const },
@@ -575,13 +576,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       ? copy.adminDashboard
                       : key === "adminWorkspaces"
                         ? copy.adminWorkspaces
-                        : key === "adminLanding"
-                          ? "Landing Page"
-                          : key === "adminRouterMetrics"
-                            ? "Router IA"
-                            : key === "adminSupport"
-                              ? "Soporte"
-                              : copy.adminPlanLimits;
+                        : key === "adminUsers"
+                          ? copy.adminUsers
+                          : key === "adminLanding"
+                            ? "Landing Page"
+                            : key === "adminRouterMetrics"
+                              ? "Router IA"
+                              : key === "adminSupport"
+                                ? "Soporte"
+                                : copy.adminPlanLimits;
                   return (
                     <Link key={href} href={href}>
                       <div

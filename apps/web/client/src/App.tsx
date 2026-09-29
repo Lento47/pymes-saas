@@ -221,7 +221,6 @@ const TasksFeatureRoute     = makeFeatureRoute("tasks",       Tasks);
 const DocumentsFeatureRoute = makeFeatureRoute("documents",   Documents);
 const BillingFeatureRoute   = makeFeatureRoute("billing",     Invoices);
 const AutomationsFeatureRoute = makeFeatureRoute("automations", Automations);
-const AnalyticsFeatureRoute = makeFeatureRoute("analytics",   InsightsPage);
 
 function AppRouter() {
   const [location] = useLocation();
@@ -333,7 +332,18 @@ function AppRouter() {
         {() => <MapPage />}
       </Route>
       <Route path="/crm" component={CrmFeatureRoute} />
-      <Route path="/analytics" component={AnalyticsFeatureRoute} />
+      {/*
+       * `/analytics` used to be a `makeFeatureRoute` wrapping the *marketing* insights
+       * page — so a signed-in user arriving there got a landing page inside `AppSidebar`,
+       * and a signed-out one was redirected to the storefront. It was a vestige: the
+       * marketing nav links to `/insights` (the same component, correctly public and
+       * unguarded), nothing anywhere in the app linked here, and there has never been an
+       * `analytics.tsx`. Redirect rather than delete, so an old bookmark or an external
+       * link lands on the real page instead of a 404.
+       */}
+      <Route path="/analytics">
+        {() => <Redirect to="/insights" />}
+      </Route>
       <Route path="/">
         {() => <RootRoute />}
       </Route>
