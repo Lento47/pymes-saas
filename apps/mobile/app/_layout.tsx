@@ -1,6 +1,6 @@
 import { scrubTelemetryPayload } from "@pymeshub/shared";
 import * as Sentry from "@sentry/react-native";
-import { Stack, useSegments } from "expo-router";
+import { router, Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -8,12 +8,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RollbackProvider } from "@/components/rollback-surface";
 import { ToastProvider } from "@/components/toast";
 import { WelcomeAnimation } from "@/components/welcome-animation";
-import { SessionProvider } from "@/lib/auth/session";
+import { SessionProvider, useSession } from "@/lib/auth/session";
 import { initDevicePrefs } from "@/lib/device-prefs";
 import { env } from "@/lib/env";
 import { I18nProvider } from "@/lib/i18n";
 import { PushNotificationsProvider } from "@/lib/push-notifications";
 import { useResolvedRole } from "@/lib/role";
+import { takeSignOutNavigation } from "@/lib/sign-out-intent";
 import { ApiProvider } from "@/lib/trpc/provider";
 import {
 	selectTree,
@@ -101,6 +102,7 @@ function RootLayout() {
 										    one with a severity, and they hold different corners of the screen. */}
 										<RollbackProvider>
 											<ToastProvider>
+												<SignOutGate />
 												<ThemedStack />
 												<WelcomeAnimation />
 											</ToastProvider>
@@ -117,6 +119,59 @@ function RootLayout() {
 }
 
 export default Sentry.wrap(RootLayout);
+
+/**
+ * Where a reader goes when they sign out, and the only place in the app that decides it.
+ *
+ * ## Why this is above the navigator and not in the screen
+ *
+ * A sign-out is the one auth transition that **destroys the screen which started it**, and
+ * that is what makes it different from a sign-in. `lib/role.ts`'s signed-out branch answers
+ * `customer`, the `Stack.Protected` guards below read that answer, and the tree the reader was
+ * standing in is unmounted in the same commit. So the merchant's account screen cannot be the
+ * thing that navigates: by the time it could, it is gone. `app/(auth)/sign-in.tsx` solves the
+ * mirror-image problem with a local effect and `router.replace`, and that works there
+ * precisely because signing in does *not* change the role.
+ *
+ * Hence the note. `lib/sign-out-intent.ts` holds it, the screen writes it before it makes the
+ * call, and this reads it. See that file for why it is a module value rather than a param and
+ * why nothing clears it.
+ *
+ * ## Why `signed-out` and not a truthy check
+ *
+ * The gate is keyed on the session becoming `"signed-out"`, not on a flag being set, and the
+ * difference is the loop. `status` stays `"signed-out"` for as long as the reader is out, so a
+ * gate that watched the note alone would fire on every render from here to the end of time.
+ * Pairing the two means each fires once: the note is consumed by `takeSignOutNavigation`, and
+ * a device that was *always* signed out has no note and is left alone — which is the whole
+ * reason this is a note and not a redirect on the status itself, since browsing signed out is
+ * a supported state in this app.
+ *
+ * ## The destination, and why not the group's index
+ *
+ * `/(auth)/sign-in` rather than `/` or `/welcome`. `(auth)/_layout.tsx` sets
+ * `initialRouteName="welcome"` and documents why the callers push the exact form they mean:
+ * *"a reader who arrived from 'your orders' wants the form, not the question of which form."*
+ * A merchant who just signed out wants the form. And this screen's own palette clause in
+ * `theme/select.ts` then paints that form in the consumer palette on purpose — a role nobody
+ * holds yet must not colour the surface where the role is chosen.
+ *
+ * **`replace` and not `push`,** so the hardware back key cannot walk into a tree that has no
+ * session behind it. The note is consumed *before* the navigation, so a second frame cannot
+ * queue a second hop.
+ */
+function SignOutGate() {
+	const { status } = useSession();
+	const signedOut = status === "signed-out";
+
+	useEffect(() => {
+		if (!signedOut) return;
+		if (takeSignOutNavigation() === null) return;
+		router.replace("/(auth)/sign-in");
+	}, [signedOut]);
+
+	return null;
+}
 
 function ThemedStack() {
 	const { colors, scheme } = useTheme();

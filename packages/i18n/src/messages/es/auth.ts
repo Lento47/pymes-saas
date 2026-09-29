@@ -140,6 +140,13 @@ export const auth = {
 
 	"auth.signOut.confirm": "¿Cerrar sesión?",
 	"auth.signOut.body": "Tendrás que volver a entrar para ver tus pedidos.",
+	// The panel's own two states, and the only sign-out strings that are *about the
+	// session* rather than about a tree. The question and its consequence stay with the
+	// tree that asks it — `biz.more.signOut*` for a merchant, the two keys above for a
+	// courier — because "to see your orders" and "to manage your business" are different
+	// sentences about the same act.
+	"auth.signOut.busy": "Cerrando sesión…",
+	"auth.signOut.failed": "No pudimos cerrar tu sesión. Inténtalo de nuevo.",
 
 	"auth.session.expired": "Tu sesión venció. Entra de nuevo para continuar.",
 	"auth.session.refreshing": "Renovando tu sesión…",

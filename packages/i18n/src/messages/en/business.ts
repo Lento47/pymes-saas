@@ -562,8 +562,13 @@ export const business = {
 	"biz.auditHistory.reason": "Reason",
 	"biz.more.business": "Business",
 	"biz.more.signOut": "Sign out",
-	"biz.more.signOutConfirm": "Sign out of PymesHub?",
-	"biz.more.signOutBody": "You can sign in again anytime.",
+	// The question and its consequence, worded for the merchant. "of PymesHub" went with
+	// them: the sheet is a panel inside this app, drawn on this app's canvas, and naming the
+	// product in a heading two lines under a header that already names the account spends
+	// the reader's attention on something they are not being asked about.
+	"biz.more.signOutConfirm": "Sign out?",
+	"biz.more.signOutBody":
+		"You'll need to sign in again to manage your business.",
 	"biz.locations.title": "Locations",
 	"biz.locations.select": "Select location",
 	"biz.locations.current": "Current",

@@ -24,14 +24,39 @@
  * `interface.md` §24 writes 220ms for the new-order surface, and §41 files banners under
  * Standard (160-220) rather than Structural (240-320). Running it on `entering` would put a
  * notice the size of a card on the same clock as a whole block arriving.
+ *
+ * `dialog` is the one value here chosen to satisfy two bands at once rather than one. A
+ * question asked in a sheet arrives in 260-300 and leaves in 200-240, and `EXIT_RATIO` is not
+ * a constant a surface gets to pick — so the entrance is the only free number, and 300 is what
+ * leaves 210 behind it. `sheet` (320) was the nearest existing step and overshoots the arrival
+ * band; `entering` (240) leaves 168, out the other side. It is a step here rather than a number
+ * at the call site for this file's header: a duration typed at a call site is wrong next to the
+ * others.
  */
 export const duration = {
 	instant: 120,
 	standard: 180,
 	banner: 220,
 	entering: 240,
+	dialog: 300,
 	sheet: 320,
 } as const;
+
+/**
+ * The curve a panel that is *talking* to the reader travels on.
+ *
+ * **Four numbers rather than an `EasingFunction`,** because this file's header promises that
+ * nothing here imports reanimated — and an easing curve *is* a reanimated object. The control
+ * points live here as a plain object and `./sheet` hands them to `Easing.bezier` at the one
+ * place that owns a `withTiming`, so a second surface needing this curve reads these four
+ * numbers rather than re-typing a curve nobody can read back.
+ *
+ * The panel leaves fast and arrives without a bounce: the reader has committed to a question,
+ * and a sheet that overshoots its resting position reads as unsettled. The springs below are
+ * right for a finger and wrong here — a finger can be turned around mid-flight and a fixed
+ * curve cannot, but nothing here is a finger, so there is nothing to interrupt.
+ */
+export const EASE_DIALOG = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 } as const;
 
 /**
  * An exit is 0.7 of its entrance.
@@ -77,9 +102,18 @@ export const spring = {
  *
  * `PRESS_SCALE_ROW` is the one for a full-width row: a row that moves 3% looks like the
  * screen shifted under the reader, because its edges are the screen's edges.
+ *
+ * `PRESS_SCALE_DIALOG` is a third and the subtlest of the three, for a control that is the
+ * only filled thing in a panel the reader is being asked to think in. 1.5% is below the point
+ * where a movement reads as movement and above the point where a press reads as nothing at
+ * all — the feedback is meant to say "this registered" without adding a second movement to a
+ * surface whose only job is to be still. It is a scale and not an opacity change because
+ * `PRESS_OPACITY` below already carries the half of the feedback that has to survive reduced
+ * motion, and this is the half that does not.
  */
 export const PRESS_SCALE = 0.97;
 export const PRESS_SCALE_ROW = 0.98;
+export const PRESS_SCALE_DIALOG = 0.985;
 
 /**
  * The opacity a control settles to while pressed.

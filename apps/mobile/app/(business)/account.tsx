@@ -6,17 +6,18 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
-import { ConfirmSheet } from "@/components/confirm-sheet";
 import { ErrorState } from "@/components/error-state";
 import { Image } from "@/components/image";
 import { ListRow } from "@/components/list-row";
 import { Screen, ScreenSection } from "@/components/screen";
+import { SignOutSheet } from "@/components/sign-out-sheet";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
-import { warning } from "@/lib/haptics";
+import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { requestSignOutNavigation } from "@/lib/sign-out-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
@@ -46,23 +47,41 @@ export default function BusinessAccountScreen() {
 	const { colors } = useTheme();
 	const { t } = useT();
 	const { signOut } = useSession();
-	const [signingOut, setSigningOut] = useState(false);
 	const [signOutOpen, setSignOutOpen] = useState(false);
 
 	const me = useQuery(trpc.users.me.queryOptions(undefined));
 	const waiting = useSkeletonHold(me.isPending);
 
 	/**
-	 * Signing out asks once, in `./confirm-sheet`, and the confirm carries the
-	 * warning haptic. The session lives in the device keychain, so this changes
-	 * the *device* rather than a screen — both buttons say what they do, and
-	 * the button that opens the question is a quiet one: the destructive
-	 * weight belongs on the answer, not on the row that asks.
+	 * Signing out, in three parts, and the middle one is the whole of it.
+	 *
+	 * **The note goes in before the call does.** `signOut()` ends by setting
+	 * `status: "signed-out"`, which makes `lib/role.ts` answer `customer`, which flips the
+	 * root `Stack.Protected` guard and unmounts *this screen* in the same commit. A note
+	 * written after the call would be written by a component that is no longer on screen,
+	 * so `app/_layout.tsx`'s gate would find nothing. See `lib/sign-out-intent.ts`.
+	 *
+	 * **The haptic is `light`, not `warning`.** The old confirm buzzed `warning()` for a
+	 * session that ends and destroys nothing: the codes, the catalogue and the account are
+	 * all still there, and the reader signs back in to the same board — which is the whole
+	 * of `lib/role.ts`'s argument for keeping the stored preference across a sign-out. The
+	 * alarm was spent on the reversible action, and `./sign-out-sheet` spends the app's one
+	 * loud colour on the same thing for the same reason.
+	 *
+	 * **The promise is the sheet's to handle.** This used to be
+	 * `void signOut().finally(() => setSigningOut(false))`, which discarded a rejection:
+	 * a failed sign-out left the reader on this screen with a spinner that had already
+	 * stopped and no sentence anywhere. `SignOutSheet` takes the promise, so a refusal is
+	 * reported where the reader is looking, which is inside the panel they are still in.
+	 *
+	 * The `signingOut` state is **gone**, and that is the fix rather than a cleanup: it
+	 * lived on the button *behind* the panel, so its spinner was only ever visible after
+	 * `./confirm-sheet` had closed — a busy state on a screen the reader had left.
 	 */
 	const confirmSignOut = () => {
-		warning();
-		setSigningOut(true);
-		void signOut().finally(() => setSigningOut(false));
+		light();
+		requestSignOutNavigation("authenticate");
+		return signOut();
 	};
 
 	const initials = me.data?.name
@@ -147,28 +166,40 @@ export default function BusinessAccountScreen() {
 							</Card>
 						</ScreenSection>
 
-						{/* Quiet control, destructive weight on the confirm answer. */}
+						{/* Quiet control, and it stays quiet: `./sign-out-sheet` carries the weight of
+						    the answer, and a row that shouted *and* then asked spent the alarm
+						    twice on one decision. */}
 						<Button
 							label={t("biz.more.signOut")}
 							variant="secondary"
 							fullWidth
 							style={styles.signOut}
-							loading={signingOut}
-							disabled={signingOut}
 							onPress={() => setSignOutOpen(true)}
 						/>
 					</>
 				)}
 			</Screen>
 			{/* Sibling of the scroller, not inside it: `./sheet` has no portal, so
-			    inside the `Screen` it would scroll away with the content. */}
-			<ConfirmSheet
+			    inside the `Screen` it would scroll away with the content. And a sibling of
+			    the fragment's end, not before the row — `./sheet`'s own docblock says a later
+			    sibling paints over an earlier overlay, and this is the last thing rendered.
+
+			    Every string arrives as a prop, the same as `./confirm-sheet` took them, and the
+			    words themselves are `biz.more.*` rather than new keys: the question and its
+			    consequence are this screen's copy, and `auth.signOut.*` stays the courier's so
+			    the two trees can word the same question for their own reader. Only the busy
+			    and the refusal are shared, because they are about the session rather than
+			    about the shop. */}
+			<SignOutSheet
 				open={signOutOpen}
 				onClose={() => setSignOutOpen(false)}
 				title={t("biz.more.signOutConfirm")}
 				body={t("biz.more.signOutBody")}
 				confirmLabel={t("biz.more.signOut")}
-				onConfirm={confirmSignOut}
+				busyLabel={t("auth.signOut.busy")}
+				cancelLabel={t("action.cancel")}
+				errorLabel={t("auth.signOut.failed")}
+				onSignOut={confirmSignOut}
 			/>
 		</>
 	);

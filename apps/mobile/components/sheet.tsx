@@ -19,6 +19,7 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	cancelAnimation,
+	Easing,
 	runOnJS,
 	useAnimatedStyle,
 	useSharedValue,
@@ -27,7 +28,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { duration, exitDuration, spring } from "@/lib/motion";
+import { duration, EASE_DIALOG, exitDuration, spring } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import { MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
@@ -168,6 +169,64 @@ import { Text } from "./text";
 const HANDLE_WIDTH = 36;
 const HANDLE_HEIGHT = 4;
 
+/**
+ * The second style, as one object rather than as a prop per number.
+ *
+ * A `panel` is a surface the reader is *choosing things in* — a product's options, a filter
+ * set — and a `dialog` is a surface that is *asking them something*. Almost every visible
+ * number differs, and they differ together: a question panel is squarer, pads its content
+ * less, dims the page behind it far less (a dim you cannot still read through is a dim that
+ * has taken the context away), and travels on a curve rather than a spring. Exposing each of
+ * those as its own prop would be six knobs a caller could mix into a third style nobody
+ * designed, and the mix would be the one that ships.
+ *
+ * **Every one of them is a *variant* rather than an override,** and `panel` is the default, so
+ * the fourteen mounts already in the app are byte-identical. That is the whole reason this is
+ * a word and not five numbers: this file has no test (nothing in the mobile suite renders a
+ * component), so the safety of the fourteen is arithmetic — one defaulted parameter.
+ */
+const VARIANTS = {
+	panel: {
+		/** `lg` is the step the scale reserves for sheets and heroes. */
+		radius: radius.lg,
+		paddingHorizontal: space.lg,
+		/** 62% of `scrim` — see `styles.scrim`. */
+		scrimOpacity: 0.62,
+		/** In: a spring, because the panel is large and stiff reads as a snap. */
+		enter: "spring",
+		exitMs: null,
+	},
+	dialog: {
+		radius: 28,
+		paddingHorizontal: 20,
+		/**
+		 * A fifth of the panel's dim. A question the reader is being asked deserves the
+		 * screen behind it still legible — they may be reading the account page to decide
+		 * whether they mean it — and `panel`'s 62% is chosen to separate a surface full of
+		 * controls from the page, which is a different job.
+		 */
+		scrimOpacity: 0.2,
+		/**
+		 * A timing curve, not a spring. Nothing here is a finger, so there is nothing to
+		 * interrupt: the panel is going somewhere the reader already chose by answering.
+		 */
+		enter: "timing",
+		exitMs: duration.dialog,
+	},
+} as const satisfies Record<
+	string,
+	{
+		radius: number;
+		paddingHorizontal: number;
+		scrimOpacity: number;
+		enter: "spring" | "timing";
+		/** Null means "derive it from the entrance", which is what a spring cannot do. */
+		exitMs: number | null;
+	}
+>;
+
+export type SheetVariant = keyof typeof VARIANTS;
+
 /** How far a release must be past the lowest snap, in points, before it means "close". */
 const CLOSE_DISTANCE = 72;
 
@@ -199,6 +258,12 @@ type SheetProps = {
 	 */
 	initialSnapIndex?: number;
 	/**
+	 * Which of the two styles this is. `panel` is the default and is every sheet that exists
+	 * today; see `VARIANTS` above for what separates the other one and why the numbers are
+	 * not individual props.
+	 */
+	variant?: SheetVariant;
+	/**
 	 * A node pinned under the body, inside the sheet's own surface — an `ActionBar` or a
 	 * single `Button`. It is inside the sheet so it moves with it, which is the whole point
 	 * of putting the decision in the panel rather than behind it. It does not scroll, and it
@@ -217,6 +282,7 @@ export function Sheet({
 	closeLabel,
 	snapPoints = [0.5],
 	initialSnapIndex = 0,
+	variant = "panel",
 	footer,
 	avoidKeyboard = false,
 	children,
@@ -225,6 +291,7 @@ export function Sheet({
 	const { height } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
 	const reduceMotion = useReducedMotion();
+	const style = VARIANTS[variant];
 
 	/**
 	 * Mounted separately from `open`, so the exit can run before the sheet leaves the tree.
@@ -286,9 +353,47 @@ export function Sheet({
 			// sheet is at its snap point on the next frame. The 120ms `withTiming` this used to
 			// be was still travel — it shortened the curve, not the distance, and the distance
 			// here is the panel's full height, which is the largest single movement in the app.
-			translateY.value = reduceMotion ? to : withSpring(to, spring.sheet);
+			//
+			// The two styles part ways here and this is the only line that says so. A `panel`
+			// springs, because a finger may be dragging it and a spring can be turned around
+			// from wherever it is; a `dialog` is not being touched — the reader answered
+			// something and the panel is going to the place the answer implies — so it runs
+			// `EASE_DIALOG` for `duration.dialog`, which `lib/motion.ts` chose to satisfy the
+			// arrival and exit bands together.
+			translateY.value = reduceMotion
+				? to
+				: style.enter === "spring"
+					? withSpring(to, spring.sheet)
+					: withTiming(to, {
+							duration: duration.dialog,
+							easing: Easing.bezier(
+								EASE_DIALOG.x1,
+								EASE_DIALOG.y1,
+								EASE_DIALOG.x2,
+								EASE_DIALOG.y2,
+							),
+						});
 		},
-		[reduceMotion, snapTarget, translateY],
+		[reduceMotion, snapTarget, style.enter, translateY],
+	);
+
+	/**
+	 * The one exit curve, shared by the `open`-going-false effect and the drag's throw-down.
+	 *
+	 * A `panel` derives its length from its own entrance with `exitDuration`, which is the rule
+	 * `lib/motion.ts` states: leaving slower than arriving is what makes an app feel sticky. A
+	 * `dialog` names its own, because its entrance is a *different kind* of animation — a
+	 * timing curve rather than a spring — and there is no spring duration to take seven tenths
+	 * of. `VARIANTS.dialog.exitMs` is 300, which leaves 210: the same proportion the rule would
+	 * have produced had the entrance been a duration, reached by naming the number rather than
+	 * by deriving it, because the thing being derived from is not a number.
+	 */
+	const exitTiming = useMemo(
+		() =>
+			style.exitMs === null
+				? { duration: exitDuration(duration.sheet) }
+				: { duration: style.exitMs },
+		[style.exitMs],
 	);
 
 	useEffect(() => {
@@ -324,13 +429,9 @@ export function Sheet({
 			translateY.value = height;
 			setMounted(false);
 		} else {
-			translateY.value = withTiming(
-				height,
-				{ duration: exitDuration(duration.sheet) },
-				(finished) => {
-					if (finished) runOnJS(setMounted)(false);
-				},
-			);
+			translateY.value = withTiming(height, exitTiming, (finished) => {
+				if (finished) runOnJS(setMounted)(false);
+			});
 		}
 	}, [
 		dismissing,
@@ -343,6 +444,7 @@ export function Sheet({
 		panelHeight,
 		reduceMotion,
 		settle,
+		exitTiming,
 		snapTarget,
 		translateY,
 	]);
@@ -414,13 +516,9 @@ export function Sheet({
 							runOnJS(dismiss)();
 							return;
 						}
-						translateY.value = withTiming(
-							height,
-							{ duration: exitDuration(duration.sheet) },
-							(finished) => {
-								if (finished) runOnJS(dismiss)();
-							},
-						);
+						translateY.value = withTiming(height, exitTiming, (finished) => {
+							if (finished) runOnJS(dismiss)();
+						});
 						return;
 					}
 
@@ -447,6 +545,7 @@ export function Sheet({
 			offsets,
 			reduceMotion,
 			settle,
+			exitTiming,
 			translateY,
 		],
 	);
@@ -475,6 +574,9 @@ export function Sheet({
 			style={styles.scroll}
 			contentContainerStyle={[
 				styles.body,
+				// The variant's gutter, and it is here rather than in `styles.body` because a
+				// `StyleSheet` object is module scope and this is a per-render lookup.
+				{ paddingHorizontal: style.paddingHorizontal },
 				footer ? null : { paddingBottom: insets.bottom },
 			]}
 			keyboardShouldPersistTaps="handled"
@@ -528,8 +630,9 @@ export function Sheet({
 						{ backgroundColor: colors.scrim },
 						// A dim rather than an opaque cover: the sheet is a layer over the screen,
 						// and a reader who cannot see what is behind it has lost the context the
-						// panel was opened to act on.
-						styles.scrim,
+						// panel was opened to act on. The strength is the variant's — see
+						// `VARIANTS` for why a dialog dims a fifth of what a panel does.
+						{ opacity: style.scrimOpacity },
 					]}
 				/>
 			</Pressable>
@@ -543,6 +646,8 @@ export function Sheet({
 						// The sheet's own floor: never taller than the screen, and never short
 						// enough to hide the handle behind the home indicator.
 						maxHeight: height - insets.top - space.lg,
+						borderTopLeftRadius: style.radius,
+						borderTopRightRadius: style.radius,
 					},
 					sheetStyle,
 				]}
@@ -566,13 +671,30 @@ export function Sheet({
 				    component deliberately avoids. The strip is `MIN_TOUCH_TARGET` tall and full
 				    width so the gesture has a 44pt target even though the ink is 4pt. */}
 				<GestureDetector gesture={pan}>
-					<View style={styles.handleArea}>
+					<View
+						style={[
+							styles.handleArea,
+							// A `dialog` places its handle with padding rather than centring it in
+							// a bare 44pt strip: 12 above the ink, 22 below it, which is a tighter
+							// and calmer arrangement than 20 either side. `minHeight` is kept so the
+							// strip is still a 44pt drag target — the padding would otherwise make it
+							// 38, and a target below the floor is not a trade this component makes.
+							variant === "dialog" ? styles.dialogHandleArea : null,
+						]}
+					>
 						<View style={[styles.handle, { backgroundColor: colors.border }]} />
 					</View>
 				</GestureDetector>
 
 				{title ? (
-					<Text variant="title" bold style={styles.title}>
+					<Text
+						variant="title"
+						bold
+						style={[
+							styles.title,
+							{ paddingHorizontal: style.paddingHorizontal },
+						]}
+					>
 						{title}
 					</Text>
 				) : null}
@@ -605,20 +727,20 @@ const styles = StyleSheet.create({
 		bottom: 0,
 		borderRadius: 0,
 	},
-	// 62% of the `scrim` token: dark enough to separate the sheet from the screen, light enough
-	// that the screen is still legible through it. The colour is the token's and the dimming is
-	// this file's — `foreground` was the colour until it was measured, and in the dark theme it
+	// The dim's strength is the variant's, not this object's — it is the one number about the
+	// scrim that a style sheet should not hold, because there are two of them. `VARIANTS.panel`
+	// carries 62%, dark enough to separate the sheet from the screen and light enough that the
+	// screen is still legible through it. The colour is the token's and the dimming is this
+	// file's: `foreground` was the colour until it was measured, and in the dark theme it
 	// inverted the relationship (see `theme/tokens.ts`).
-	scrim: { opacity: 0.62 },
 	sheet: {
 		position: "absolute",
 		left: 0,
 		right: 0,
 		bottom: 0,
-		// `lg` is the token the scale reserves for sheets and heroes. A sheet at `md` is a
-		// card that happens to be at the bottom of the screen.
-		borderTopLeftRadius: radius.lg,
-		borderTopRightRadius: radius.lg,
+		// The corners are the variant's too, and are applied at the call site for the same
+		// reason. `panel` uses `lg`, the step the scale reserves for sheets and heroes: a sheet
+		// at `md` is a card that happens to be at the bottom of the screen.
 		borderTopWidth: 1,
 		overflow: "hidden",
 	},
@@ -629,13 +751,22 @@ const styles = StyleSheet.create({
 		height: MIN_TOUCH_TARGET,
 		justifyContent: "center",
 	},
+	// 12 above the ink and 22 below it, against the strip's 38pt of content — which the
+	// `minHeight` grows back to 44 so the drag target keeps its floor. The 6pt that lands at
+	// the bottom is the price of that floor and is spent on nothing anybody can see.
+	dialogHandleArea: {
+		height: undefined,
+		minHeight: MIN_TOUCH_TARGET,
+		paddingTop: 12,
+		paddingBottom: 22,
+	},
 	handle: {
 		width: HANDLE_WIDTH,
 		height: HANDLE_HEIGHT,
 		borderRadius: radius.full,
 		alignSelf: "center",
 	},
-	title: { paddingHorizontal: space.lg, marginBottom: space.sm },
+	title: { marginBottom: space.sm },
 	// The panel is content-sized and capped by `maxHeight`, and this is the only child
 	// allowed to give height back. When the content is taller than the cap, shrinking this
 	// view is what makes its frame the visible area and its content scrollable inside it —
@@ -643,6 +774,9 @@ const styles = StyleSheet.create({
 	// handle, the title and the footer keep their heights, so the whole of the overflow
 	// lands here.
 	scroll: { flexShrink: 1 },
-	body: { paddingHorizontal: space.lg },
+	// The gutter is the variant's and is applied at the call site; this object is kept rather
+	// than deleted so the `styles.body` reference above still has a name, and so the next
+	// shared property has somewhere to go.
+	body: {},
 	footer: { paddingTop: space.md },
 });

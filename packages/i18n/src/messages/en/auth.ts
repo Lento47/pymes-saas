@@ -127,6 +127,11 @@ export const auth = {
 
 	"auth.signOut.confirm": "Sign out?",
 	"auth.signOut.body": "You'll need to sign in again to see your orders.",
+	// The panel's own two states, shared by every tree that asks the question. See the note
+	// in `./es/auth.ts`: the busy and the refusal are about the session, so they are the
+	// same words everywhere, while the question and its consequence are each tree's own.
+	"auth.signOut.busy": "Signing out…",
+	"auth.signOut.failed": "We couldn't sign you out. Try again.",
 
 	"auth.session.expired": "Your session expired. Sign in again to continue.",
 	"auth.session.refreshing": "Refreshing your session…",
