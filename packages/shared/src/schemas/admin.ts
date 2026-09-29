@@ -48,6 +48,16 @@ export const ADMIN_ACTIONS = [
 	"category.delete",
 	"courier.verify",
 	"courier.reject",
+	/**
+	 * Answering a merchant's support ticket, and closing one. Audited rather than left as
+	 * conversation: a `support.reply` row is the record of what PymesHub told a shop and
+	 * when, which outlives the ticket row and is what makes a disputed answer checkable
+	 * later. The other support acts — a merchant raising a ticket, a merchant replying, a
+	 * merchant marking a question `WAITING` — are not in this set on purpose: they are the
+	 * merchant's own words on their own thread, and an operator did not perform them.
+	 */
+	"support.reply",
+	"support.resolve",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 export const adminActionSchema = z.enum(ADMIN_ACTIONS);

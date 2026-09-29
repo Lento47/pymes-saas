@@ -38,6 +38,8 @@ export const ID_PREFIXES = {
 	event: "evt",
 	outboxEvent: "obx",
 	review: "rev",
+	supportTicket: "tkt",
+	supportTicketMessage: "tkm",
 	favorite: "fav",
 	promotion: "prm",
 	notification: "ntf",

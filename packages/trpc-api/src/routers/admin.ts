@@ -5,6 +5,9 @@ import {
 	adminCourierListInput,
 	adminListInput,
 	adminSubscriptionsInput,
+	adminSupportTicketListInput,
+	adminSupportTicketReplyInput,
+	adminSupportTicketResolveInput,
 	createPriceBookInput,
 	recordPaymentInput,
 } from "@pymeshub/shared";
@@ -162,4 +165,37 @@ export const adminRouter = router({
 			}),
 		)
 		.query(({ ctx, input }) => admin.auditLogEntries(ctx, input)),
+
+	/**
+	 * The support queue. This is the resolution path — without it the merchant side in
+	 * `routers/support.ts` can only ever raise questions nobody closes, which is exactly
+	 * the write-only sink `apps/api`'s `AgentEscalation` has been since it was written.
+	 *
+	 * Note the default: this list shows *every* status, where the merchant's shows only the
+	 * live ones. `adminSupportTicketListInput` explains why the two differ, and the short
+	 * version is that an operator who cannot see yesterday's tickets cannot tell a quiet
+	 * weekend from an ignored one.
+	 */
+	supportTickets: adminProcedure
+		.input(adminSupportTicketListInput)
+		.query(({ ctx, input }) => adminContent.supportTickets(ctx, input)),
+
+	/** One ticket and its thread, with the shop's name — no `businessId`; this is the console. */
+	supportTicket: adminProcedure
+		.input(z.object({ ticketId: z.string() }))
+		.query(({ ctx, input }) => adminContent.supportTicket(ctx, input.ticketId)),
+
+	/** PymesHub answering, without moving the ticket. See `replyOnTicket` for why. */
+	replyOnSupportTicket: adminProcedure
+		.input(adminSupportTicketReplyInput)
+		.mutation(({ ctx, input }) => adminContent.replyOnTicket(ctx, input)),
+
+	/**
+	 * Closing a ticket. The note is required and is posted as the closing message, so a
+	 * resolution always carries the words that resolved it — there is no input here that
+	 * closes a ticket silently.
+	 */
+	resolveSupportTicket: adminProcedure
+		.input(adminSupportTicketResolveInput)
+		.mutation(({ ctx, input }) => adminContent.resolveTicket(ctx, input)),
 });

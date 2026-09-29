@@ -15,6 +15,7 @@ import { productsRouter } from "./products";
 import { promotionsRouter } from "./promotions";
 import { reviewsRouter } from "./reviews";
 import { subscriptionRouter } from "./subscription";
+import { supportRouter } from "./support";
 import { uploadsRouter } from "./uploads";
 import { usersRouter } from "./users";
 
@@ -46,6 +47,13 @@ export const appRouter = router({
 	business: businessRouter,
 	promotions: promotionsRouter,
 	reviews: reviewsRouter,
+	/**
+	 * The merchant side of a support ticket: raise one, read the thread, add to it, and move
+	 * it between `OPEN` and `WAITING`. Resolving and closing are `admin`'s, not this
+	 * router's — see `routers/support.ts` for why that split is the contract's and not a
+	 * missing permission check.
+	 */
+	support: supportRouter,
 	// Was `payouts`, a list of settlement runs. The consumer pays the merchant and the
 	// courier directly, so there is nothing to settle and the namespace now holds the
 	// merchant's own subscription. `payouts:read` survives as the capability name —
