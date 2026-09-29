@@ -481,16 +481,43 @@ export class PlatformService {
     return updated;
   }
 
-  async togglePlatformAdmin(userId: string) {
+  /**
+   * Grant or revoke platform authority.
+   *
+   * This is the most consequential write in the product — the flag bypasses every
+   * permission check in `common/permissions` — and it was also the only mutating method
+   * on this service that wrote no audit row. `updateUserStatus`, `deleteUser`,
+   * `updateWorkspaceFeatures` and `updateWorkspaceBilling` all log; this one did not even
+   * record who acted.
+   *
+   * `audit_logs.workspace_id` is required and a user can belong to several workspaces, so
+   * there is no "the" workspace of the target. The row is filed under the **actor's**
+   * workspace, which is the honest reading: the act happened in the operator's own
+   * context, about somebody else. `user_id` is the actor, and the target is the
+   * `entity_id` — the same before/after shape the rest of the service uses.
+   *
+   * The action names deliberately match the marketplace's `ADMIN_ACTIONS`
+   * (`user.grant_admin`, `user.revoke_admin`) so that a single console can read both
+   * audit logs with one vocabulary instead of translating between two.
+   *
+   * Note there is no self-guard here, unlike `updateUserStatus` and `deleteUser`, which
+   * both refuse to act on the actor. That means the last platform admin can revoke
+   * themselves. Recovery is Auth0 (`AUTH0_ADMIN_DOMAINS` re-provisions the flag on
+   * login), so it is recoverable rather than fatal — but it is a behaviour question, not
+   * a bug fix, so it is deliberately left alone here.
+   */
+  async togglePlatformAdmin(userId: string, actorUserId: string, actorWorkspaceId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, is_platform_admin: true },
     });
     if (!user) throw new NotFoundException("Usuario no encontrado.");
 
-    return this.prisma.user.update({
+    const granted = !user.is_platform_admin;
+
+    const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { is_platform_admin: !user.is_platform_admin },
+      data: { is_platform_admin: granted },
       select: {
         id: true,
         email: true,
@@ -506,6 +533,17 @@ export class PlatformService {
         },
       },
     });
+
+    await this.audit.log(actorWorkspaceId, {
+      user_id: actorUserId,
+      action: granted ? "user.grant_admin" : "user.revoke_admin",
+      entity_type: "user",
+      entity_id: userId,
+      before: { is_platform_admin: user.is_platform_admin },
+      after: { is_platform_admin: granted },
+    });
+
+    return updated;
   }
 
   async deleteUser(userId: string, actorUserId: string) {

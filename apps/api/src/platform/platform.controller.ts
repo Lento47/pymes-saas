@@ -139,8 +139,11 @@ export class PlatformController {
   }
 
   @Patch("users/:userId/toggle-admin")
-  togglePlatformAdmin(@Param("userId", ValidateUUIDPipe) userId: string) {
-    return this.service.togglePlatformAdmin(userId);
+  togglePlatformAdmin(
+    @Param("userId", ValidateUUIDPipe) userId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.togglePlatformAdmin(userId, user.id, user.workspace_id);
   }
 
   @Delete("users/:userId")
