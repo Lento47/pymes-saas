@@ -41,7 +41,7 @@ import {
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 /**
  * One product: "add" and "edit" are the same screen, told apart by `id` in the route.
@@ -527,45 +527,47 @@ function Fields({
 					>
 						<View style={styles.pair}>
 							<View style={styles.pairItem}>
-							<Field
-								variant="soft"
-								label={t("biz.products.price")}
-								value={draft.price}
-								onChangeText={(value) =>
-									edited(() => setDraft((was) => ({ ...was, price: value })))
-								}
-								error={submitted ? (problems.price ?? null) : null}
-								// What the API will store, printed under the box — see the docblock.
-								help={
-									priceMinor === null
-										? undefined
-										: formatMoney(priceMinor, currency)
-								}
-								placeholder={priceHint}
-								affix={<FieldGlyph label={symbol} />}
-								keyboardType="decimal-pad"
-								inputMode="decimal"
-							/>
+								<Field
+									variant="soft"
+									label={t("biz.products.price")}
+									value={draft.price}
+									onChangeText={(value) =>
+										edited(() => setDraft((was) => ({ ...was, price: value })))
+									}
+									error={submitted ? (problems.price ?? null) : null}
+									// What the API will store, printed under the box — see the docblock.
+									help={
+										priceMinor === null
+											? undefined
+											: formatMoney(priceMinor, currency)
+									}
+									placeholder={priceHint}
+									affix={<FieldGlyph label={symbol} />}
+									keyboardType="decimal-pad"
+									inputMode="decimal"
+								/>
 							</View>
 							<View style={styles.pairItem}>
-							<Field
-								variant="soft"
-								label={t("biz.products.compareAt")}
-								value={draft.compareAt}
-								onChangeText={(value) =>
-									edited(() => setDraft((was) => ({ ...was, compareAt: value })))
-								}
-								error={submitted ? (problems.compareAt ?? null) : null}
-								help={
-									compareAtMinor === null
-										? t("biz.products.compareAt.rule")
-										: formatMoney(compareAtMinor, currency)
-								}
-								placeholder={priceHint}
-								affix={<FieldGlyph label={symbol} />}
-								keyboardType="decimal-pad"
-								inputMode="decimal"
-							/>
+								<Field
+									variant="soft"
+									label={t("biz.products.compareAt")}
+									value={draft.compareAt}
+									onChangeText={(value) =>
+										edited(() =>
+											setDraft((was) => ({ ...was, compareAt: value })),
+										)
+									}
+									error={submitted ? (problems.compareAt ?? null) : null}
+									help={
+										compareAtMinor === null
+											? t("biz.products.compareAt.rule")
+											: formatMoney(compareAtMinor, currency)
+									}
+									placeholder={priceHint}
+									affix={<FieldGlyph label={symbol} />}
+									keyboardType="decimal-pad"
+									inputMode="decimal"
+								/>
 							</View>
 						</View>
 						{/* The long optional text, drawn as a paragraph rather than as a
@@ -608,7 +610,18 @@ function Fields({
 						    `shadow.card`, and on a white canvas neither of those is what
 						    separates it from the page — the fill is. The closed row carries no
 						    "Selected" word, because there is one choice on screen and the
-						    checkmark is not available for a row this size. */}
+						    checkmark is not available for a row this size.
+
+						    The gutter is on the **rows**, not on this surface, and that is the
+						    whole correction. `./list-row` has `paddingVertical` and no
+						    `paddingHorizontal` — a row contributes no horizontal air by
+						    design and its container is meant to. The `Card` this replaced
+						    supplied `padding: space.lg`, and taking it away took 16 points
+						    out of every row in the control: measured, the list's text was
+						    sitting 0.7dp inside the surface's own edge, and the mark above it
+						    4dp. Padding the surface instead would fix that and inset every
+						    hairline with it, which is a different look and a bigger change to
+						    what is on screen now. */}
 						<View
 							style={[
 								styles.selector,
@@ -616,6 +629,7 @@ function Fields({
 							]}
 						>
 							<ListRow
+								style={styles.rowGutter}
 								leading={
 									<View style={styles.selectorMark}>
 										<Ionicons
@@ -652,11 +666,19 @@ function Fields({
 										return (
 											<ListRow
 												key={row.id}
+												style={styles.rowGutter}
 												title={localizedName(row, locale)}
 												// A row steps in under its parent exactly when that parent is
 												// also on the list — see `indentFor`. Scoped, the sector is
 												// absent and its children sit flush as peers; unscoped, the
 												// sector is present and its children step in under it.
+												//
+												// This indent is a *nesting* step and stays `space.lg`, measured
+												// from the gutter above. It is deliberately not the closed row's
+												// own indent: that row is this list's summary, and the row it
+												// summarises — the one marked "Selected" — is in here too, so
+												// indenting the list under the summary's label would indent a
+												// row relative to itself.
 												leading={
 													indentFor(pickerRows, row) ? (
 														<View style={styles.indent} />
@@ -869,18 +891,14 @@ function FormSkeleton({ loadingLabel }: { loadingLabel: string }) {
 				    shape they take once the read lands. */}
 				<View style={styles.pair}>
 					<View style={styles.pairItem}>
-						<Skeleton
-							style={[formStyles.label, line("label", fontScale)]}
-						/>
+						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
 						<Skeleton style={formStyles.inputSoft} />
 						<Skeleton
 							style={[formStyles.message, line("caption", fontScale)]}
 						/>
 					</View>
 					<View style={styles.pairItem}>
-						<Skeleton
-							style={[formStyles.label, line("label", fontScale)]}
-						/>
+						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
 						<Skeleton style={formStyles.inputSoft} />
 						<Skeleton
 							style={[formStyles.message, line("caption", fontScale)]}
@@ -965,6 +983,16 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	/**
+	 * The air between a row's edge and its text, and it lives here rather than on
+	 * `styles.selector` for the reason the call site's comment gives: the hairline under a
+	 * divided row runs the full width of the surface, and padding the surface would stop
+	 * every one of them 16 points short.
+	 *
+	 * `ListRow` splices a caller's `style` after its own, so this is the last word on the
+	 * row's padding and nothing else is disturbed.
+	 */
+	rowGutter: { paddingHorizontal: space.lg },
 	// One step of the scale, applied only to a row whose parent is also on the list (`indentFor`).
 	// Scoped, the sector is absent and its children sit flush as peers; unscoped, the sector is
 	// present and its children step in under it. Either way this is air, never a second row shape.
