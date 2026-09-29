@@ -1,5 +1,6 @@
 import {
 	business as businessTable,
+	boundingBox,
 	delivery as deliveryTable,
 	membership as membershipTable,
 	deliveryOffer as offerTable,
@@ -17,10 +18,21 @@ import type {
 	RateDeliveryInput,
 } from "@pymeshub/shared";
 import { newId } from "@pymeshub/shared";
-import { and, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import {
+	and,
+	desc,
+	eq,
+	gt,
+	gte,
+	inArray,
+	isNotNull,
+	lte,
+	ne,
+	sql,
+} from "drizzle-orm";
 
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
-import { dispatchNext } from "./delivery-dispatch";
+import { dispatchNext, OFFER_RADIUS_KM } from "./delivery-dispatch";
 import type { UserContext } from "./helpers";
 import { batchOf } from "./helpers";
 import * as orders from "./orders";
@@ -33,6 +45,16 @@ const VISIBLE_MINE_STATUSES = [
 	"DELIVERED",
 ] as const;
 
+/**
+ * Post where the courier is, which is also what puts them in the dispatch pool.
+ *
+ * **The gate is the profile and nothing else.** It used to be the profile *and* a COURIER
+ * membership of some business, which meant a verified courier who no shop had added could
+ * not say where they were — and since fresh presence is what `candidateFor` requires, they
+ * could not be offered work either. The membership is gone from this check because it no
+ * longer decides anything: the pool is every verified available courier, so the only
+ * questions worth asking here are "are you really a courier" and "are you taking work".
+ */
 export async function reportPresence(
 	ctx: UserContext,
 	input: CourierPresenceInput,
@@ -41,23 +63,18 @@ export async function reportPresence(
 		await ctx.db
 			.select({ id: profileTable.id })
 			.from(profileTable)
-			.innerJoin(
-				membershipTable,
-				eq(membershipTable.userId, profileTable.userId),
-			)
 			.where(
 				and(
 					eq(profileTable.userId, ctx.user.id),
 					eq(profileTable.verificationStatus, "VERIFIED"),
 					eq(profileTable.isAvailable, true),
-					eq(membershipTable.role, "COURIER"),
 				),
 			)
 			.limit(1)
 	)[0];
 	if (!allowed) {
 		throw new ValidationError(
-			"Tu perfil debe estar verificado, disponible y unido a un negocio",
+			"Tu perfil debe estar verificado y disponible para recibir entregas",
 		);
 	}
 
@@ -106,33 +123,53 @@ export async function reportPresence(
 			.where(eq(orderTable.id, active.orderId));
 	}
 
-	const courierBusinessIds = ctx.memberships
-		.filter((membership) => membership.role === "COURIER")
-		.map((membership) => membership.businessId);
-	if (courierBusinessIds.length > 0) {
-		const waiting = await ctx.db
-			.select({ id: deliveryTable.id })
-			.from(deliveryTable)
-			.where(
-				and(
-					inArray(deliveryTable.businessId, courierBusinessIds),
-					eq(deliveryTable.status, "SEARCHING"),
-				),
-			)
-			.orderBy(deliveryTable.createdAt)
-			.limit(10);
-		for (const delivery of waiting) {
-			await dispatchNext(ctx.db, delivery.id);
-		}
+	// Coming online is the moment a waiting delivery can be filled, and this is the only
+	// place it can be noticed without waiting for the sweep.
+	//
+	// **It asks "what is near me" rather than "what belongs to my shops"**, which is the
+	// same widening the pool got: with the membership gone, "my shops" is an empty list for
+	// most couriers and this loop would do nothing at all. The radius is the courier's own
+	// position — the coordinates just posted above — and the pickups are the deliveries that
+	// could plausibly be theirs, so a courier who comes online in San José offers themselves
+	// to San José's waiting deliveries and to nobody else's.
+	const nearby = boundingBox(input.lat, input.lng, OFFER_RADIUS_KM);
+	const waiting = await ctx.db
+		.select({ id: deliveryTable.id })
+		.from(deliveryTable)
+		.where(
+			and(
+				eq(deliveryTable.status, "SEARCHING"),
+				// A pickup with no coordinates has no radius to be near, so it is not in this
+				// box and not in the pool either — `candidateFor` refuses it for the same
+				// reason. It waits for a manager to assign it.
+				isNotNull(deliveryTable.pickupLat),
+				gte(deliveryTable.pickupLat, nearby.minLat),
+				lte(deliveryTable.pickupLat, nearby.maxLat),
+				gte(deliveryTable.pickupLng, nearby.minLng),
+				lte(deliveryTable.pickupLng, nearby.maxLng),
+			),
+		)
+		.orderBy(deliveryTable.createdAt)
+		.limit(10);
+	for (const delivery of waiting) {
+		// `dispatchNext` re-reads the delivery and re-ranks, so this costs a query per row
+		// and the limit is what bounds it. Ten is the same bound the old version used.
+		await dispatchNext(ctx.db, delivery.id);
 	}
 	return { updatedAt };
 }
 
+/**
+ * The offers addressed to this courier and still open.
+ *
+ * **No business filter, and the offer row is the whole authorization.** An offer exists
+ * only because `candidateFor` chose this person — verified, available, standing nearby,
+ * not already carrying something — so `courierUserId = me` is a stronger statement than
+ * "courierUserId = me AND I work for this shop". The old filter also made the read return
+ * an empty array for anyone the pool had stopped considering, which is the same answer as
+ * "you have no offers" and hides a real problem.
+ */
 export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
-	const courierBusinessIds = ctx.memberships
-		.filter((membership) => membership.role === "COURIER")
-		.map((membership) => membership.businessId);
-	if (courierBusinessIds.length === 0) return [];
 	const eligible = (
 		await ctx.db
 			.select({ id: profileTable.id })
@@ -166,7 +203,6 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 				eq(offerTable.status, "PENDING"),
 				gt(offerTable.expiresAt, now),
 				eq(deliveryTable.status, "OFFERED"),
-				inArray(deliveryTable.businessId, courierBusinessIds),
 			),
 		)
 		.orderBy(desc(offerTable.createdAt));
@@ -207,10 +243,7 @@ export async function acceptOffer(
 	if (!offer) throw new NotFoundError();
 	const deliveryRow = (
 		await ctx.db
-			.select({
-				orderId: deliveryTable.orderId,
-				businessId: deliveryTable.businessId,
-			})
+			.select({ orderId: deliveryTable.orderId })
 			.from(deliveryTable)
 			.where(eq(deliveryTable.id, offer.deliveryId))
 			.limit(1)
@@ -228,16 +261,15 @@ export async function acceptOffer(
 			.where(eq(profileTable.userId, ctx.user.id))
 			.limit(1)
 	)[0];
-	const mayAccept = ctx.memberships.some(
-		(membership) =>
-			membership.businessId === deliveryRow.businessId &&
-			membership.role === "COURIER",
-	);
-	if (
-		!mayAccept ||
-		!profile?.isAvailable ||
-		profile.verificationStatus !== "VERIFIED"
-	) {
+	// The gate is the offer and the profile. The offer was created by `candidateFor`, which
+	// already decided this person is verified, available, nearby and free; the two conditions
+	// re-checked here are the ones that can have changed in the minutes since — the courier
+	// went offline, or an admin revoked the profile while the offer sat open.
+	//
+	// `NotFoundError` rather than `ValidationError` on purpose, and it is the pre-existing
+	// choice: a courier probing an offer they were not given must not learn whether it
+	// exists, which is the same reason a fabricated id is a 404 elsewhere in this file.
+	if (!profile?.isAvailable || profile.verificationStatus !== "VERIFIED") {
 		throw new NotFoundError();
 	}
 	const now = new Date();

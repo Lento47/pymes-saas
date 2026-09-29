@@ -114,7 +114,17 @@ export const ordersRouter = router({
 		.input(reportLocationInput)
 		.mutation(({ ctx, input }) => orders.reportLocation(ctx, input)),
 
-	/** The live board. `businessId` is required here, and checked against `membership`. */
+	/**
+	 * A shop's live board. `businessId` is required, and forced to the caller's own
+	 * membership rather than read from the wire.
+	 *
+	 * **This is not where a courier's board comes from.** `businessProcedure` resolves a
+	 * tenant from the input's `businessId`, and a courier's runs belong to shops they are
+	 * not members of — the delivery pool is every verified courier on the platform, so the
+	 * shop carrying a run is not a fact about the courier. They read `orders.list` with
+	 * `role: "BUSINESS"` and `assignedToMe: true` instead, which is the door that was
+	 * already cross-cutting and now carries the one read that names no shop.
+	 */
 	queue: businessProcedure("orders:read")
 		.input(orderListInput.extend({ businessId: z.string() }))
 		.query(({ ctx, input }) =>

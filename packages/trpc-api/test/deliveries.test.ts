@@ -250,6 +250,147 @@ describe("delivery creation and dispatch", () => {
 		test.close();
 	});
 
+	/**
+	 * The shop's own courier outranks a stranger who is standing closer.
+	 *
+	 * This is the `preferred` rank, and it is a decision rather than an obvious good: the
+	 * pool is now everyone, so without a first-place "this shop already asked for you" the
+	 * nearest body on the street would win every time and a shop could never have a
+	 * relationship with its own drivers. The regular courier here is ~7.6 km out and the
+	 * stranger is metres away, and the membership still wins — that inversion is the whole
+	 * assertion.
+	 */
+	test("a courier the shop invited outranks a nearer stranger", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "preferred");
+		// A second shop, so "a member of some other shop" is a real membership row rather
+		// than a fabricated business id — `membership.business_id` is a foreign key and a
+		// made-up id is a constraint failure, not a test.
+		const otherShop = await seedBusiness(test.db, {
+			id: "biz_delivery_unrelated_shop",
+			name: "Otra Tienda",
+		});
+		// Metres from the pickup, and a member of that other shop.
+		const stranger = await seedCourier(test, {
+			businessId: otherShop,
+			id: "usr_delivery_preferred_stranger",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		// ~7.6 km away, and a member of this shop.
+		const regular = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_preferred_regular",
+			lat: 9.98,
+			lng: -84.13,
+		});
+
+		const order = await placeDelivery(ready, "preferred");
+		const delivery = (
+			await test.db
+				.select()
+				.from(deliveryTable)
+				.where(eq(deliveryTable.orderId, order.id))
+		)[0];
+		if (!delivery) throw new Error("Delivery was not created");
+		const offer = (
+			await test.db
+				.select()
+				.from(offerTable)
+				.where(eq(offerTable.deliveryId, delivery.id))
+		)[0];
+		if (!offer) throw new Error("Delivery offer was not created");
+
+		expect(offer.courierUserId).toBe(regular.user.id);
+		expect(stranger.user.id).not.toBe(offer.courierUserId);
+		// Both halves of the premise, asserted rather than assumed: the winner really is
+		// further away, and the loser really was eligible enough to have won on distance.
+		expect(offer.distanceToPickupKm ?? 0).toBeGreaterThan(5);
+		expect(await stranger.caller.deliveries.offers()).toEqual([]);
+		test.close();
+	});
+
+	/**
+	 * The radius is the gate the membership used to provide for free.
+	 *
+	 * A courier 40 km away is verified, available and freshly online — every fact the pool
+	 * asks for — and must still never be a candidate. The old pool made that true by
+	 * accident, because they did not belong to this shop; now it is true because of
+	 * `OFFER_RADIUS_KM`, which is the only thing between a widened pool and a courier in
+	 * one city being offered a delivery in another. The delivery staying `SEARCHING` is
+	 * what proves no offer was created at all.
+	 */
+	test("a courier outside the radius is never offered the delivery", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "faraway");
+		await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_faraway",
+			// ~40 km north-west of the San José pickup.
+			lat: 10.28,
+			lng: -84.42,
+		});
+
+		const order = await placeDelivery(ready, "faraway");
+		const delivery = (
+			await test.db
+				.select()
+				.from(deliveryTable)
+				.where(eq(deliveryTable.orderId, order.id))
+		)[0];
+		if (!delivery) throw new Error("Delivery was not created");
+		expect(delivery.status).toBe("SEARCHING");
+		const offers = await test.db
+			.select()
+			.from(offerTable)
+			.where(eq(offerTable.deliveryId, delivery.id));
+		expect(offers).toEqual([]);
+		test.close();
+	});
+
+	/**
+	 * A pickup with no coordinates gets no automatic offer and stays assignable by hand.
+	 *
+	 * `business.lat` and `merchantLocation.lat` are both nullable, so a delivery can have a
+	 * pickup with no origin. The radius is measured *from* the pickup, so there is nothing
+	 * to measure against, and offering it would mean offering a location-less delivery to
+	 * whoever happened to rank first. It waits in `SEARCHING`, where a manager can still
+	 * assign it — the difference between failing visibly and failing absurdly.
+	 */
+	test("a pickup with no coordinates waits for a human instead of being offered", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "nocoords");
+		await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_nocoords",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		// The shop's location loses its coordinates, as a shop that never set an address
+		// would have.
+		await test.db
+			.update(locationTable)
+			.set({ lat: null, lng: null })
+			.where(eq(locationTable.id, ready.locationId));
+
+		const order = await placeDelivery(ready, "nocoords");
+		const delivery = (
+			await test.db
+				.select()
+				.from(deliveryTable)
+				.where(eq(deliveryTable.orderId, order.id))
+		)[0];
+		if (!delivery) throw new Error("Delivery was not created");
+		expect(delivery.pickupLat).toBeNull();
+		expect(delivery.status).toBe("SEARCHING");
+		const offers = await test.db
+			.select()
+			.from(offerTable)
+			.where(eq(offerTable.deliveryId, delivery.id));
+		expect(offers).toEqual([]);
+		test.close();
+	});
+
 	test("dispatches a waiting delivery when an eligible courier comes online", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "presence_retry");
@@ -283,6 +424,156 @@ describe("delivery creation and dispatch", () => {
 		expect(offers[0]?.deliveryId).toBe(delivery.id);
 		expect(offers[0]?.dropoffArea).toBe("San José, San José");
 		expect(offers[0]).not.toHaveProperty("dropoff");
+		test.close();
+	});
+});
+
+describe("a courier the shop never added", () => {
+	/**
+	 * The whole feature, in one test: a verified courier with no membership of the business
+	 * is offered its deliveries and can accept one.
+	 *
+	 * `seedCourier` always writes a `COURIER` membership because that is what the other
+	 * tests need, so the row is deleted here *after* the profile and presence exist — which
+	 * is the honest way to build the fixture: a courier who was verified by the platform,
+	 * set themselves available, and was never added to anybody's team.
+	 */
+	test("receives an offer and can accept it with no membership of the shop", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "open_pool");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_open_pool",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		await test.db
+			.delete(membershipTable)
+			.where(eq(membershipTable.userId, courier.user.id));
+		const caller = appRouter.createCaller(
+			await authed(test, courier.user),
+		) as Caller;
+
+		const order = await placeDelivery(ready, "open_pool");
+		const delivery = (
+			await test.db
+				.select()
+				.from(deliveryTable)
+				.where(eq(deliveryTable.orderId, order.id))
+		)[0];
+		if (!delivery) throw new Error("Delivery was not created");
+		expect(delivery.status).toBe("OFFERED");
+
+		const offers = await caller.deliveries.offers();
+		expect(offers).toHaveLength(1);
+		if (!offers[0]) throw new Error("The unadded courier received no offer");
+
+		const accepted = await caller.deliveries.acceptOffer({
+			offerId: offers[0].id,
+		});
+		expect(accepted.courier?.id).toBe(courier.user.id);
+		// The customer's order carries the courier, which is what makes them a courier for
+		// every other read on this run — see `actorFor`.
+		const carried = (
+			await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, order.id))
+		)[0];
+		expect(carried?.courierUserId).toBe(courier.user.id);
+		test.close();
+	});
+
+	/**
+	 * The security property, and the reason the membership could not simply be deleted from
+	 * `actorFor` instead of replaced.
+	 *
+	 * Carrying a run makes someone a courier **on that run and nowhere else**. Before the
+	 * open pool, `actorFor` read a membership's role and fell through to `BUSINESS`, which
+	 * was safe because only roster members could ever carry anything. With the pool open, a
+	 * fall-through would have given a courier with no membership at all the shop's order
+	 * machine — reject, cancel, advance any order of the business. This asserts the negative
+	 * directly: the carrier can move their own delivery's order and is refused every other
+	 * order of the same shop, including one that is not even a delivery.
+	 */
+	test("carries one run and gains no shop powers on any other order", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "escalation");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_escalation",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		await test.db
+			.delete(membershipTable)
+			.where(eq(membershipTable.userId, courier.user.id));
+		const caller = appRouter.createCaller(
+			await authed(test, courier.user),
+		) as Caller;
+
+		// A second order of the same shop that the courier does not carry.
+		//
+		// **Pickup, not delivery, and the reason is the pool itself.** A second delivery
+		// order at this location would be offered to this courier too — they are verified,
+		// available and standing on the corner — so they would legitimately become its
+		// carrier and the test would prove nothing. A pickup order creates no delivery, so
+		// there is nothing to offer and `courierUserId` stays null, which is the state a
+		// courier with no membership and no run is actually in.
+		const strangerProduct = await seedProduct(test.db, {
+			id: "prd_delivery_escalation_other",
+			businessId: ready.businessId,
+			priceMinor: 1_500,
+		});
+		const otherBuyer = await seedUser(test.db, {
+			id: "usr_delivery_escalation_buyer",
+			name: "Otro cliente",
+		});
+		const buyer = appRouter.createCaller(
+			await authed(test, otherBuyer),
+		) as Caller;
+		await buyer.cart.addItem(
+			addToCartInput.parse({ productId: strangerProduct.id, quantity: 1 }),
+		);
+		const otherOrder = await buyer.orders.place({
+			fulfilment: "PICKUP",
+			paymentMethod: "CASH",
+			clientRequestId: "request_delivery_escalation_other",
+		});
+		// The premise, stated rather than assumed: nobody is carrying this one.
+		const untouched = (
+			await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, otherOrder.id))
+		)[0];
+		expect(untouched?.courierUserId).toBeNull();
+
+		await placeDelivery(ready, "escalation");
+		const offer = (await caller.deliveries.offers())[0];
+		if (!offer) throw new Error("The unadded courier received no offer");
+		const accepted = await caller.deliveries.acceptOffer({
+			offerId: offer.id,
+		});
+
+		// The shop's own machine on someone else's order: every one of these is a BUSINESS
+		// move, and all of them must be a 404 rather than a success.
+		for (const to of ["ACCEPTED", "REJECTED", "CANCELLED"] as const) {
+			const error = await refused(
+				caller.orders.advance({ orderId: otherOrder.id, to }),
+			);
+			expect(error.code).toBe("NOT_FOUND");
+		}
+
+		// And the courier cannot read it either, which is the `reachableOrder` half. Without
+		// the carrier branch there, `advance` above would be refused by the state machine
+		// instead — a 400 that looks like a correct answer and is really the wrong door.
+		await expect(caller.orders.byId({ id: otherOrder.id })).rejects.toThrow();
+		// The run they do carry is fully theirs, and readable through both doors.
+		expect(accepted.status).toBe("ACCEPTED");
+		expect((await caller.deliveries.byId({ deliveryId: accepted.id })).id).toBe(
+			accepted.id,
+		);
 		test.close();
 	});
 });
@@ -372,7 +663,22 @@ describe("delivery offer authorization", () => {
 		test.close();
 	});
 
-	test("revoking courier membership also revokes a pending offer", async () => {
+	/**
+	 * The offer is revoked by the courier's *availability*, not by their membership.
+	 *
+	 * This test used to delete the `COURIER` membership and assert the offer died with it.
+	 * That was the old contract — the membership was the gate — and the open pool replaces
+	 * it: a courier is offered work because their profile is verified and available, so
+	 * those are the two facts that still withdraw an offer. Deleting a membership now
+	 * changes only whether the shop's own courier is *preferred* in the ranking, which is
+	 * deliberately not a permission, and asserting the offer survives is what pins that
+	 * distinction down rather than leaving it to a comment.
+	 *
+	 * The revocation that matters is a profile going unavailable or unverified while an
+	 * offer is open, because that is the window where `candidateFor` has already decided and
+	 * the courier has not yet answered.
+	 */
+	test("going unavailable revokes a pending offer, leaving the membership does not", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "revoke_offer");
 		const courier = await seedCourier(test, {
@@ -385,6 +691,8 @@ describe("delivery offer authorization", () => {
 		const offer = (await courier.caller.deliveries.offers())[0];
 		if (!offer) throw new Error("Courier did not receive an offer");
 
+		// Leaving the shop's roster is no longer a withdrawal: the offer was made to a
+		// verified, available courier standing next to the pickup, and none of that changed.
 		await test.db
 			.delete(membershipTable)
 			.where(
@@ -393,12 +701,24 @@ describe("delivery offer authorization", () => {
 					eq(membershipTable.userId, courier.user.id),
 				),
 			);
-		const revokedCaller = appRouter.createCaller(
+		const stillACourier = appRouter.createCaller(
 			await authed(test, courier.user),
 		) as Caller;
-		expect(await revokedCaller.deliveries.offers()).toEqual([]);
+		expect((await stillACourier.deliveries.offers()).map((row) => row.id)).toEqual([
+			offer.id,
+		]);
+
+		// Going unavailable is.
+		await test.db
+			.update(profileTable)
+			.set({ isAvailable: false })
+			.where(eq(profileTable.userId, courier.user.id));
+		const unavailableCaller = appRouter.createCaller(
+			await authed(test, courier.user),
+		) as Caller;
+		expect(await unavailableCaller.deliveries.offers()).toEqual([]);
 		await expect(
-			revokedCaller.deliveries.acceptOffer({ offerId: offer.id }),
+			unavailableCaller.deliveries.acceptOffer({ offerId: offer.id }),
 		).rejects.toThrow();
 		test.close();
 	});

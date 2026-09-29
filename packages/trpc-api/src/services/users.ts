@@ -1,6 +1,7 @@
 import {
 	address as addressTable,
 	business as businessTable,
+	courierProfile as courierProfileTable,
 	membership as membershipTable,
 	notification as notificationTable,
 	order as orderTable,
@@ -9,6 +10,7 @@ import {
 import {
 	type Address,
 	type AddressInput,
+	type CourierVerificationStatus,
 	decodeCursor,
 	encodeCursor,
 	isTerminalStatus,
@@ -41,7 +43,30 @@ import {
  * addresses by getting an argument wrong, because there is no argument to get wrong.
  */
 
-export type MeResult = UserProfile & { memberships: MembershipSummary[] };
+/**
+ * The courier half of the answer, and why it is here at all.
+ *
+ * A customer is identified by the *absence* of a membership (`schema.ts` says so of the
+ * `membership` table). A courier used to be identified by the *presence* of a `COURIER` one,
+ * and that stopped being true when the delivery pool opened: a verified courier who no shop
+ * has added is a courier, and has no membership. The profile is the courier's own root, and
+ * this is the device's read of it.
+ *
+ * `isAvailable` is here beside `verificationStatus` rather than merged into one enum
+ * because they answer different questions and the device shows both: "waiting for review"
+ * and "switched off" are different sentences, and a courier who is off is not the same as
+ * one who was refused.
+ */
+export type MeCourier = {
+	verificationStatus: CourierVerificationStatus;
+	isAvailable: boolean;
+};
+
+export type MeResult = UserProfile & {
+	memberships: MembershipSummary[];
+	/** `null` for anyone who has never opened the courier profile. */
+	courier: MeCourier | null;
+};
 
 /**
  * The profile, plus every business the caller belongs to.
@@ -77,9 +102,39 @@ export async function me(ctx: UserContext): Promise<MeResult> {
 		.innerJoin(businessTable, eq(membershipTable.businessId, businessTable.id))
 		.where(eq(membershipTable.userId, ctx.user.id));
 
+	// Whether this person is a courier, and how far along that is.
+	//
+	// **This is here because being a courier is no longer a membership.** `role.ts` on the
+	// device resolved the delivery stack by looking for a `COURIER` row, which was correct
+	// while the only way to become a courier was accepting an invitation. With the pool open
+	// the *common* courier has no membership at all, so that read would send every one of
+	// them to the customer feed at cold start. The profile is the courier's own root now —
+	// the same way the *absence* of a membership is a customer's — so the device asks this
+	// instead.
+	//
+	// Three facts, because the device draws three different states from them and collapsing
+	// them would make one unreachable: awaiting review, approved, and approved-but-switched-
+	// off. `null` is a person who has never opened the courier profile.
+	const courier = (
+		await ctx.db
+			.select({
+				verificationStatus: courierProfileTable.verificationStatus,
+				isAvailable: courierProfileTable.isAvailable,
+			})
+			.from(courierProfileTable)
+			.where(eq(courierProfileTable.userId, ctx.user.id))
+			.limit(1)
+	)[0];
+
 	return {
 		...profile,
 		memberships: memberships.map(membershipSummaryOf),
+		courier: courier
+			? {
+					verificationStatus: courier.verificationStatus,
+					isAvailable: courier.isAvailable,
+				}
+			: null,
 	};
 }
 

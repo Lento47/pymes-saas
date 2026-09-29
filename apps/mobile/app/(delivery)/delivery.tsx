@@ -158,52 +158,80 @@ export default function DeliveryScreen() {
 }
 
 /**
- * Which shop this courier rides for, and then the runs.
+ * This courier's runs, across every shop they carry for.
  *
- * `business.myBusinesses` is the read: it answers every membership with its role
- * (`packages/shared/src/schemas/user.ts:147`), which is the one fact this screen needs before
- * it can ask for a queue — `orders.queue` requires a `businessId`, and a courier's is not
- * guessable from the session.
+ * **The board no longer asks which shop.** It used to read `business.myBusinesses`, find the
+ * one membership with the `COURIER` role, and hand that `businessId` to `orders.queue`,
+ * because a `businessId` was required and a courier's was not guessable from the session.
+ * Both halves of that are gone: the pool that offers deliveries is every verified courier on
+ * the platform, so a courier may be carrying runs for four shops and belong to none of them,
+ * and `orders.queue` now takes `assignedToMe` with no `businessId` at all. The only fact the
+ * board needs is the caller's own, and `couriers.profile` carries it.
  *
- * A person with no `COURIER` membership reaches this and gets the courier-pending sentence
- * rather than an empty board, because those are two different facts: "you have no runs" would
- * be a lie, and "your role can't open this section" would be the wrong fact — the courier who
- * identified at sign-in/sign-up (`auth.role.*`) is *supposed* to be here, and the membership
- * simply arrives later, when a shop adds them by email. `biz.courier.pending.*` says the fact
- * and the step.
+ * Two states are still drawn here rather than in the board, and both are the courier's own
+ * facts rather than anyone else's:
+ *
+ * - **No profile at all.** Identified as a courier at sign-in, has not opened the form yet.
+ * - **Awaiting review.** The form is filled and the platform has not answered. This is a
+ *   wait with its next step named, not a refusal — and it is a different sentence from the
+ *   old "no shop has added you yet", which described an invitation system that no longer
+ *   decides who may work.
  */
 function Runs() {
 	const { t } = useT();
 	const trpc = useTRPC();
-	const query = trpc.business.myBusinesses.queryOptions();
-	const memberships = useQuery(query);
-	const waiting = useSkeletonHold(memberships.isPending);
-	const shops = memberships.data;
+	const query = trpc.couriers.profile.queryOptions();
+	const profile = useQuery(query);
+	const waiting = useSkeletonHold(profile.isPending);
+	const me = profile.data;
 
-	if (memberships.isError)
+	if (profile.isError)
 		return (
 			<ErrorState
-				error={memberships.error}
-				onRetry={() => void memberships.refetch()}
+				error={profile.error}
+				onRetry={() => void profile.refetch()}
 			/>
 		);
 
-	if (waiting || !shops) return <RunsSkeleton label={t("state.loading")} />;
+	if (waiting) return <RunsSkeleton label={t("state.loading")} />;
 
-	const riding = shops.find((shop) => shop.role === "COURIER");
-	if (!riding)
-		// Identified but not yet membered: the tree's guard admits a courier preference with no
-		// `COURIER` row (`lib/role.ts`'s `pending`), so this is the state a new courier sees
-		// first — not a refusal, a wait with its next step named.
+	// `couriers.myProfile` answers `null` for someone who has never opened the form, and a
+	// row for everyone else. `null` and a row are different facts and get different sentences.
+	if (!me)
 		return (
 			<EmptyState
 				icon="bicycle-outline"
-				title={t("biz.courier.pending.title")}
-				body={t("biz.courier.pending.body")}
+				title={t("biz.courier.profileTitle")}
+				body={t("biz.courier.profileRequired")}
 			/>
 		);
 
-	return <Board businessId={riding.businessId} />;
+	if (me.verificationStatus === "PENDING")
+		// Filled in, waiting on the platform. The courier is identified and cannot become
+		// anyone else by waiting, so this resolves `delivery` in `lib/role.ts` and draws here.
+		return (
+			<EmptyState
+				icon="bicycle-outline"
+				title={t("biz.courier.reviewPending")}
+				body={t("biz.courier.reviewPending.body")}
+			/>
+		);
+
+	if (me.verificationStatus === "REJECTED")
+		// Refused, and told so. The one state that does degrade to the customer stack is
+		// handled by `lib/role.ts`; reaching here means the profile was rejected between
+		// that read and this one, so the courier is told rather than shown an empty board.
+		return (
+			<EmptyState
+				icon="bicycle-outline"
+				title={t("biz.courier.rejected")}
+				body={t("biz.courier.rejected.body")}
+			/>
+		);
+
+	// Verified, so the board draws. No `businessId`: the runs are the courier's own, from
+	// whichever shops they happen to be carrying for.
+	return <Board />;
 }
 
 /**
@@ -516,7 +544,22 @@ function Dispatch() {
 	);
 }
 
-function Board({ businessId }: { businessId: string }) {
+/**
+ * The runs this courier is carrying, and the moves they can make on them.
+ *
+ * **No `businessId`, and that is the point of the change.** The board used to be handed the
+ * one shop the courier belonged to and call `orders.queue` with it. With the delivery pool
+ * open a courier's runs come from whichever shops the platform offered them, which is not a
+ * set this device can know in advance — and does not need to, because `assignedToMe` with
+ * no `businessId` is exactly "the runs carrying my name".
+ *
+ * **`orders.list`, not `orders.queue`,** and the reason is the middleware rather than taste:
+ * `queue` is a `businessProcedure`, which resolves a tenant from the input's `businessId` and
+ * refuses a caller with no membership of it. A courier is not a member of the shops carrying
+ * their runs, so that door cannot open. `list` is the `protectedProcedure` that was already
+ * cross-cutting and branches on `role`, and it reaches the same query.
+ */
+function Board() {
 	const { t, intlLocale } = useT();
 	const { session } = useSession();
 	const trpc = useTRPC();
@@ -529,9 +572,8 @@ function Board({ businessId }: { businessId: string }) {
 		expectedStatus: OrderStatus;
 	} | null>(null);
 	const query = useInfiniteQuery(
-		trpc.orders.queue.infiniteQueryOptions(
+		trpc.orders.list.infiniteQueryOptions(
 			{
-				businessId,
 				role: "BUSINESS",
 				assignedToMe: true,
 				activeOnly: true,

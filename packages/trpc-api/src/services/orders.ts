@@ -951,41 +951,45 @@ export async function assign(
 		});
 	}
 
+	// **Any verified courier, not only this shop's roster.** This is the manual twin of the
+	// open delivery pool: a manager handing a `READY` run to someone standing nearby should
+	// not have to invite them first, and requiring a `COURIER` membership here would mean a
+	// manager could not assign a run to the very courier the platform just offered it to.
+	// The profile is the gate — verified, and not switched off — which is the same pair
+	// `deliveries.acceptOffer` checks, so the two ways of taking a delivery cannot disagree
+	// about who may have one.
+	//
+	// A *missing* profile is still tolerated, as it was: a `COURIER` membership with no
+	// profile is the shape an unaccepted invitation leaves behind, and refusing to staff a
+	// run because someone has not filled in a form is worse than riding with someone who
+	// has. Only a profile that exists and says otherwise refuses.
 	const assignee = await ctx.db
 		.select({
 			id: userTable.id,
 			name: userTable.name,
 			phone: userTable.phone,
-			role: membershipTable.role,
-		})
-		.from(membershipTable)
-		.innerJoin(userTable, eq(membershipTable.userId, userTable.id))
-		.where(
-			and(
-				eq(membershipTable.businessId, order.businessId),
-				eq(membershipTable.userId, input.courierUserId),
-			),
-		)
-		.limit(1);
-
-	const courier = assignee[0];
-	if (courier?.role !== "COURIER") {
-		throw new ValidationError("Esa persona no es repartidora de esta tienda");
-	}
-
-	const profile = await ctx.db
-		.select({
 			isAvailable: courierProfileTable.isAvailable,
 			verificationStatus: courierProfileTable.verificationStatus,
 		})
-		.from(courierProfileTable)
-		.where(eq(courierProfileTable.userId, courier.id))
+		.from(userTable)
+		.leftJoin(
+			courierProfileTable,
+			eq(courierProfileTable.userId, userTable.id),
+		)
+		.where(eq(userTable.id, input.courierUserId))
 		.limit(1);
+
+	const courier = assignee[0];
+	if (!courier) throw new NotFoundError();
+
+	// `verificationStatus` is `null` for a user with no profile at all, which is the
+	// tolerated case named above; a profile that exists and is not `VERIFIED`, or is
+	// switched off, refuses.
 	if (
-		profile[0] &&
-		(!profile[0].isAvailable || profile[0].verificationStatus !== "VERIFIED")
+		courier.verificationStatus !== null &&
+		(!courier.isAvailable || courier.verificationStatus !== "VERIFIED")
 	) {
-		throw new ValidationError("Este repartidor no est├í disponible ahora mismo");
+		throw new ValidationError("Este repartidor no está disponible ahora mismo");
 	}
 
 	const now = new Date();
@@ -1446,45 +1450,74 @@ export async function list(
 	return pageOf(ctx, input, eq(orderTable.customerId, ctx.user.id), "CUSTOMER");
 }
 
-/** The live board, for a member of the business. */
+/** The live board, for a member of the business — or for a courier, across businesses. */
 export async function queue(
 	ctx: UserContext,
 	input: OrderListInput,
 ): Promise<{ items: OrderSummary[]; nextCursor: string | null }> {
 	const businessId = input.businessId;
-	if (!businessId) throw new ValidationError("Falta la tienda");
 
-	// The check and the query are one statement's worth of truth: a non-member's
-	// `businessId` matches no membership row, and the answer is the one a non-existent
-	// business gets.
-	const membership = await ctx.db
-		.select({ role: membershipTable.role })
-		.from(membershipTable)
-		.where(
-			and(
-				eq(membershipTable.businessId, businessId),
-				eq(membershipTable.userId, ctx.user.id),
-			),
-		)
-		.limit(1);
+	// **A courier's board is every run they carry, and carries no `businessId` at all.**
+	//
+	// It used to require one, and the board supplied it from the courier's membership — the
+	// single shop they belonged to. With the pool open a courier may be carrying runs from
+	// four shops and belong to none of them, so "which shop's board" stopped being a
+	// question with one answer. The scope is now the only fact that was ever true about it:
+	// `order.courierUserId = me`, which `orderListInput.assignedToMe` already expressed and
+	// which is inherently cross-business.
+	//
+	// **No "is this person a courier" check, and that is deliberate.** The scope is
+	// `courierUserId = me`, so the worst any caller can do is read an empty list — there is
+	// no row belonging to anyone else that this query can return, whatever they claim to
+	// be. A gate here would have to be redundant (the flag already isolates the rows) or
+	// wrong, and the obvious version of wrong is demanding a `VERIFIED` profile: that would
+	// hide a run from the courier physically carrying it the moment an admin suspended
+	// their profile, which is the opposite of when they need to see the board.
+	// `orders.assign` reads a courier's availability the same lenient way, tolerating a
+	// membership with no profile at all.
+	const courierBoard = input.assignedToMe === true;
+	if (!courierBoard && !businessId) throw new ValidationError("Falta la tienda");
 
-	orNotFound(membership[0]);
-	if (input.locationId)
-		await assertLocationInBusiness(ctx, businessId, input.locationId);
+	if (!courierBoard) {
+		// The check and the query are one statement's worth of truth: a non-member's
+		// `businessId` matches no membership row, and the answer is the one a non-existent
+		// business gets.
+		const membership = await ctx.db
+			.select({ role: membershipTable.role })
+			.from(membershipTable)
+			.where(
+				and(
+					eq(membershipTable.businessId, businessId as string),
+					eq(membershipTable.userId, ctx.user.id),
+				),
+			)
+			.limit(1);
+
+		orNotFound(membership[0]);
+		if (input.locationId)
+			await assertLocationInBusiness(ctx, businessId as string, input.locationId);
+	}
 
 	// The courier's board is this flag rather than a procedure of its own: same
 	// rows, same paging, one fewer name for two clients to agree on. The cast
 	// is safe because every element spread in is defined ΓÇö `and` only answers
-	// `undefined` for an empty list, and the business half is unconditional.
+	// `undefined` for an empty list.
+	//
+	// **The `businessId` half is the courier board's exemption**, and it is the one that
+	// makes it a courier's board rather than a shop's: a courier's runs come from whichever
+	// shops they happen to be carrying for, so that half is dropped and `assignedToMe` is
+	// unconditional instead of an extra filter. A shop's board still gets both.
+	const scopedToBusiness =
+		!courierBoard && businessId ? [eq(orderTable.businessId, businessId)] : [];
 	return pageOf(
 		ctx,
 		input,
 		and(
-			eq(orderTable.businessId, businessId),
+			...scopedToBusiness,
 			...(input.locationId
 				? [eq(orderTable.locationId, input.locationId)]
 				: []),
-			...(input.assignedToMe
+			...(courierBoard
 				? [eq(orderTable.courierUserId, ctx.user.id)]
 				: []),
 		) as SQL,
@@ -2328,6 +2361,17 @@ async function reachableOrder(
 	if (order.customerId === ctx.user.id) return order;
 	if (ctx.user.isAdmin) return order;
 
+	// The courier carrying this order. **This is a fourth way in, and it is the one that
+	// lets a courier who belongs to no shop work at all.** A courier is whoever the delivery
+	// says is carrying the run, not whoever holds a membership row: the pool that offers
+	// deliveries is now every verified courier on the platform, so requiring a membership
+	// would lock out most of the people this exists for.
+	//
+	// Reaching an order is not permission to do anything to it. `actorFor` reads this same
+	// fact to pick the state machine, and the two must move together — see its docblock for
+	// what goes wrong if only one of them does.
+	if (order.courierUserId === ctx.user.id) return order;
+
 	const membership = await ctx.db
 		.select({ role: membershipTable.role })
 		.from(membershipTable)
@@ -2354,9 +2398,23 @@ function actorFor(
 	// Admin before membership: a platform operator who happens to own a shop must not be
 	// quietly downgraded to BUSINESS on an order they are investigating.
 	if (ctx.user.isAdmin) return "ADMIN";
-	// A courier is a member with the COURIER role, and the machine has moves only
-	// they can make (READY ΓåÆ OUT_FOR_DELIVERY ΓåÆ COMPLETED on a delivery). Any
-	// other role stays BUSINESS, exactly as before this role existed.
+	// **The carrier, not a membership row.** This is the load-bearing line of the whole
+	// open-pool change, and it is written as a positive test with no `else` because the
+	// failure mode is silent and severe.
+	//
+	// It used to read the membership's role and fall through to BUSINESS. That was correct
+	// when carrying a delivery implied being on the shop's roster. It no longer is: the pool
+	// that offers deliveries is every verified courier on the platform, so a courier with no
+	// membership at all can be handed a run — and would have fallen through to BUSINESS,
+	// which is the role that can reject, cancel and advance any order of the shop. Widening
+	// the pool without this line would have handed every courier in the country the shop's
+	// order machine, and nothing would have said so.
+	//
+	// `order.courierUserId` is the fact that was always true: it is written by
+	// `deliveries.acceptOffer` and by `orders.assign`, and `reachableOrder` admits exactly
+	// this caller, so a courier can only be the actor here on an order they actually carry.
+	// The membership check below is then only ever reached by someone who really is staff.
+	if (order.courierUserId === ctx.user.id) return "COURIER";
 	const membership = ctx.memberships.find(
 		(entry) => entry.businessId === order.businessId,
 	);

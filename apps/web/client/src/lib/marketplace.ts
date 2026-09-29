@@ -63,14 +63,32 @@ import superjson from "superjson";
 /**
  * Where the Worker lives.
  *
- * `VITE_MARKETPLACE_API_URL` is the deployed Worker; staging is the only host with a
- * production-shaped domain today (`docs/technical/architecture/cloudflare-and-maps.md`),
- * so it is the honest default rather than a hardcoded production hostname. Local
- * development points at `wrangler dev`.
+ * `VITE_MARKETPLACE_API_URL` names the deployed Worker: `apps/web/.env.production`
+ * for a production build, and `wrangler dev` locally. There is deliberately **no
+ * production fallback**, and that is a correction rather than a style choice.
+ *
+ * This used to guess `https://api-staging.pymeshub.lat` for any non-dev build. The
+ * guess was justified in a comment that has since gone out of date — staging stopped
+ * being the only host with a production-shaped domain once `env.production` took
+ * `api.pymeshub.lat` — and by the time it was wrong nobody could see it. Production
+ * was calling the staging Worker, the staging Worker refused `https://pymeshub.lat`
+ * as a browser origin, and because that refusal is a 403 with no `Access-Control-*`
+ * headers on it, the browser reported every sign-up as a CORS policy failure. The
+ * misconfiguration was invisible from the outside by construction.
+ *
+ * A build without the variable now stops in `vite.config.ts` instead of shipping.
+ * The throw below is the second half of that: if a bundle ever reaches a browser
+ * without it, a named error beats a request to whichever host was guessed.
  */
-export const MARKETPLACE_API_URL =
-  import.meta.env.VITE_MARKETPLACE_API_URL ||
-  (import.meta.env.DEV ? "http://localhost:8787" : "https://api-staging.pymeshub.lat");
+export const MARKETPLACE_API_URL: string = (() => {
+	const configured = import.meta.env.VITE_MARKETPLACE_API_URL;
+	if (configured) return configured;
+	if (import.meta.env.DEV) return "http://localhost:8787";
+	throw new Error(
+		"VITE_MARKETPLACE_API_URL is not set. The marketplace Worker is a different " +
+			"origin from this app and cannot be defaulted to; see apps/web/.env.production.",
+	);
+})();
 
 /** The auth calls a browser makes. No storage argument: the session is an HttpOnly cookie. */
 export const marketplaceAuth = createMarketplaceAuthClient(MARKETPLACE_API_URL);

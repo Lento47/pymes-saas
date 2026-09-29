@@ -306,6 +306,56 @@ describe("identity is not configured", () => {
 
 		test.close();
 	});
+
+	test("a preflight is answered even from a disallowed origin, so the browser can read the refusal", async () => {
+		const test = world();
+
+		// The same disallowed origin as the test above, asking the question a browser asks
+		// *first*. This used to be answered by the origin gate with a bare 403 that carried
+		// no `Access-Control-*` header, and a response the browser cannot read is reported
+		// by the browser as a CORS policy failure whatever the server said. That is how a
+		// production build pointed at the wrong Worker spent its debugging time being
+		// investigated as a CORS misconfiguration instead of as a 403.
+		//
+		// What is pinned here is the property that makes the exemption safe: the preflight
+		// is answered by `cors()` and does **not** reach Better Auth, while the POST behind
+		// it is still refused. If this ever answers 2xx *and* the POST stops being refused,
+		// the gate has been removed rather than moved.
+		const preflight = await createApp().fetch(
+			new Request("http://api.test/auth/sign-up/email", {
+				method: "OPTIONS",
+				headers: {
+					origin: "https://evil.example",
+					"access-control-request-method": "POST",
+					"access-control-request-headers": "content-type",
+				},
+			}),
+			test.env as never,
+		);
+
+		// Handled, and by the CORS layer rather than falling through to `notFound` — the
+		// original bug on this mount was that OPTIONS matched no route and 404'd.
+		expect(preflight.status).toBeLessThan(300);
+		// And critically: no allow-origin for a caller that is not on the list. This is what
+		// makes the browser block the real request, and it is why the exemption is not a
+		// loosening — an origin we do not trust still gets nothing.
+		expect(preflight.headers.get("access-control-allow-origin")).toBeNull();
+
+		// The POST it was preflighting is still refused, unchanged.
+		const denied = await createApp().fetch(
+			new Request("http://api.test/auth/sign-up/email", {
+				method: "POST",
+				headers: { origin: "https://evil.example", "content-type": "application/json" },
+				body: JSON.stringify({ email: "a@b.example", password: "x".repeat(12) }),
+			}),
+			test.env as never,
+		);
+		expect(denied.status).toBe(403);
+		const deniedBody = (await denied.json()) as { error: string };
+		expect(deniedBody).toEqual({ error: "forbidden" });
+
+		test.close();
+	});
 });
 
 describe("a session that verified", () => {

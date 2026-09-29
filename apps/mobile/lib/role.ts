@@ -33,13 +33,23 @@ import { useTRPC } from "@/lib/trpc/context";
  * `memberships === undefined` (the read is in flight) and a failed read are not the same as
  * "the membership is gone", and they must not print the same sentence: *we could not reach the
  * server* offers a retry, *your membership ended* offers the account hub. The third — a
- * courier preference whose memberships carry no `COURIER` row — is not a failure at all:
- * the identification was made at sign-in/sign-up and the membership arrives later, so it
- * resolves `delivery` with a `pending` mark and the delivery tree draws its own state.
+ * courier preference with no profile yet — is not a failure at all: the identification was
+ * made at sign-in/sign-up and the profile arrives when they fill it in, so it resolves
+ * `delivery` with a `pending` mark and the delivery tree draws its own state.
  * Degrading to the customer stack is right for the two real failures — the sentence is what
  * differs. Signing out is a fourth case
  * and gets **no** notice and **no** correction: a preference is not revoked by a logout, and
  * an owner who signs back in should find their board again.
+ *
+ * ## A courier is a profile, not a membership
+ *
+ * The rule this module originally encoded — *a courier is someone with a `COURIER`
+ * membership* — was true and then stopped being true. Opening the delivery pool to every
+ * verified courier means the common courier belongs to no business at all, so a membership
+ * read would demote the majority of them to the customer stack on every cold start. The
+ * courier's root is now `users.me`'s `courier` field, and `memberships` is asked only about
+ * shop staff. `users.me` is still the single read both clients make at cold start, so this
+ * cost nothing at launch.
  *
  * ## The correction is in memory first, and persisted after
  *
@@ -136,28 +146,60 @@ export function useResolvedRole(): ResolvedRole {
 		resolved = { state: "ready", role: "customer", degraded: "unreachable" };
 	} else if (me.data === undefined) {
 		resolved = { state: "boot", preference };
+	} else if (me.data.courier) {
+		// **The courier profile is the root, not a membership.**
+		//
+		// This branch used to read `memberships.some(m => m.role === "COURIER")`, which was
+		// correct while accepting a business invitation was the only way to become a courier.
+		// It is the change that made the app usable at all: the delivery pool is now every
+		// verified courier on the platform, so the *typical* courier has no membership
+		// anywhere, and the old read would have bounced every one of them to the shopping
+		// feed at cold start. `users.me` carries the profile's own state instead.
+		//
+		// A courier profile resolves to the delivery tree whatever the preference says and
+		// whatever the profile's state is. A `PENDING` profile is still a courier waiting on
+		// the platform to review them, and degrading them to the customer feed would be
+		// saying "you are not a courier yet" to someone who becomes one by waiting — the
+		// `pending` mark is what tells the tree to draw that wait instead of a board.
+		//
+		// The preference is not consulted because the profile is the stronger fact: someone
+		// who filled in a courier profile and also owns a shop is drawing the merchant
+		// stack, and this is the branch that puts them back on the delivery board.
+		//
+		// **Truthiness, not `!== null`.** The field is typed `MeCourier | null`, and a
+		// `!== null` test is also true for `undefined` — which is what a *deployed* server
+		// predating the field actually returns, because tRPC validates no output anywhere in
+		// this repo (there is not a single `.output()` call). The typed read and the running
+		// read therefore disagree, and the typed one crashes the whole app at cold start
+		// against an older deploy. A falsy check treats absent, `null` and empty as the
+		// same answer, which is what all three mean.
+		resolved = {
+			state: "ready",
+			role: "delivery",
+			degraded:
+				me.data.courier.verificationStatus === "PENDING" ? "pending" : null,
+		};
+	} else if (preference === "delivery") {
+		// Identified as a courier at sign-in (`auth.role.*`) who has not opened the courier
+		// profile yet. Degrading to the customer stack would send a newly identified courier
+		// to the shopping feed; the delivery tree draws its own wait state and nothing there
+		// 403s, because `users.me` is the session's own read and every delivery procedure
+		// is `protectedProcedure`.
+		resolved = { state: "ready", role: "delivery", degraded: "pending" };
 	} else if (
-		me.data.memberships.some((membership) =>
-			membership.role !== "COURIER"
-				? preference === "business"
-				: preference === "delivery",
+		me.data.memberships.some(
+			(membership) => membership.role !== "COURIER",
 		)
 	) {
+		// A shop they actually belong to. The `role !== "COURIER"` half is the same fact as
+		// the branch above, stated as a filter: a membership with the COURIER role is not
+		// staff, and a shop board for it would 403 on every call.
 		resolved = { state: "ready", role: preference, degraded: null };
-	} else if (preference === "delivery") {
-		// The courier in waiting: the identification was made at sign-in/sign-up
-		// (`auth.role.*`), and the membership that makes the board work arrives later,
-		// after the courier creates a profile and accepts a business invitation. Degrading
-		// this device to the customer stack would send a newly identified courier to the
-		// shopping feed; the delivery tree instead draws its own pending state
-		// (`biz.courier.pending.*`), and nothing there 403s — `myBusinesses` is the
-		// session's own read, and the board mounts only once a `COURIER` row answers.
-		resolved = { state: "ready", role: "delivery", degraded: "pending" };
 	} else {
-		// The preference outlived the entitlement: the shop was closed, the courier was
-		// deactivated, the membership lapsed. This is the branch nobody writes and everybody
-		// hits — a courier unlinked on Tuesday must not open a delivery stack on Wednesday
-		// that 403s on every call.
+		// The preference outlived the entitlement: the shop was closed, the membership
+		// lapsed, and this person is no longer a courier either. This is the branch nobody
+		// writes and everybody hits — an owner unlinked on Tuesday must not open a business
+		// stack on Wednesday that 403s on every call.
 		resolved = { state: "ready", role: "customer", degraded: "ended" };
 	}
 

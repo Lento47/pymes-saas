@@ -1,7 +1,9 @@
 import type { Db } from "@pymeshub/db";
 import {
 	business as businessTable,
+	boundingBox,
 	delivery as deliveryTable,
+	haversineKm,
 	membership as membershipTable,
 	notification as notificationTable,
 	deliveryOffer as offerTable,
@@ -12,7 +14,18 @@ import {
 	user as userTable,
 } from "@pymeshub/db";
 import { newId } from "@pymeshub/shared";
-import { and, asc, eq, gte, inArray, isNull, lt, max, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	eq,
+	gte,
+	inArray,
+	isNull,
+	lt,
+	lte,
+	max,
+	sql,
+} from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
 import { batchOf } from "./helpers";
@@ -20,6 +33,22 @@ import { batchOf } from "./helpers";
 const PRESENCE_FRESH_MS = 2 * 60 * 1000;
 const OFFER_TTL_MS = 2 * 60 * 1000;
 const FAIRNESS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * How far from the pickup a courier may be and still be offered the run.
+ *
+ * **This number is the only thing standing between a widened pool and absurdity.** The
+ * candidate set used to be "couriers who are members of this shop", which was a
+ * geographic filter for free — a shop's roster is people who work there. Widening the
+ * pool to every verified courier on the platform removes that for free, and a courier in
+ * one city being offered a delivery in another is not a ranking problem, it is a bug a
+ * user would report.
+ *
+ * 15 km is roughly the outer edge of a metropolitan delivery area, and it is a square-then-
+ * -circle like `businesses.ts`'s "near me": `boundingBox` narrows in SQL and the haversine
+ * below rejects the corners, because a box's corner is `radius * 1.41` from its centre.
+ * Without the second step a courier at the edge of a 15 km box gets runs 21 km away.
+ */
+export const OFFER_RADIUS_KM = 15;
 const ACTIVE_DELIVERY_STATUSES = [
 	"ACCEPTED",
 	"TO_PICKUP",
@@ -49,18 +78,36 @@ type RankedCandidate = {
 	recentOffers: number;
 	rating: number | null;
 	lastOfferedAt: Date | null;
+	/**
+	 * The shop already asked for this person by inviting them.
+	 *
+	 * **A rank, not a permission.** When the candidate pool was "members of this shop"
+	 * every candidate was preferred and the flag could not exist. Widening the pool makes
+	 * it meaningful: a business that has worked with someone before gets them offered
+	 * first, and everyone else competes on the same facts as before. Nothing about who may
+	 * accept an offer reads this — see `deliveries.ts`, where the gate is the profile.
+	 */
+	preferred: boolean;
 };
 
 /**
- * The dispatch order is deterministic and uses facts the platform owns:
- * fresh foreground presence, free capacity, pickup distance, recent offer
- * count, received rating, then the oldest last offer. The id is the final
- * tie-break, so two isolates choose the same person for the same snapshot.
+ * The dispatch order is deterministic and uses facts the platform owns: an existing
+ * relationship with the shop, then free capacity, then pickup distance, then recent offer
+ * count, received rating, and the oldest last offer. The id is the final tie-break, so two
+ * isolates choose the same person for the same snapshot.
+ *
+ * **`preferred` leads, and that is a product decision rather than a fact about the world.**
+ * A shop's own courier is 15 km away and a stranger is 200 m away; this order gives the shop
+ * its own courier. That is the deal the invite made — "you asked for this person" outranks
+ * "this person is nearest" — and it is why the flag is a rank and not a filter. A shop that
+ * wants distance to win instead has no way to ask for it, which is the right default: the
+ * alternative silently starves every courier the platform has never worked with.
  */
 export function rankCourierCandidates(
 	candidates: readonly RankedCandidate[],
 ): RankedCandidate[] {
 	return [...candidates].sort((left, right) => {
+		if (left.preferred !== right.preferred) return left.preferred ? -1 : 1;
 		if (left.activeRuns !== right.activeRuns)
 			return left.activeRuns - right.activeRuns;
 		const leftDistance = left.distanceToPickupKm ?? Number.POSITIVE_INFINITY;
@@ -78,6 +125,24 @@ export function rankCourierCandidates(
 	});
 }
 
+/**
+ * The one courier this delivery should be offered to, or `null` for nobody.
+ *
+ * **The pool is every verified, available courier on the platform** — not the shop's
+ * roster. That is the whole point of the change: a business no longer has to add a courier
+ * before that courier can carry its deliveries. What replaces the membership as a *gate* is
+ * the profile (`VERIFIED` and available) plus fresh foreground presence; what remains of
+ * the membership is a *rank* (`preferred`), because "you asked for this person" is a real
+ * signal and dropping it entirely would make every shop's own roster strangers.
+ *
+ * **A delivery with no pickup coordinates gets no offer at all**, and this is deliberate
+ * rather than a fallback. `business.lat` and `merchantLocation.lat` are both nullable, so a
+ * shop without coordinates produces a delivery with no origin — and with no origin there is
+ * no radius to enforce, because the radius is measured *from* the pickup. Offering it to
+ * whoever ranks first would mean offering a delivery with no location to couriers across the
+ * country, ranked by a distance that does not exist. It stays `SEARCHING`, where a manager
+ * can still assign it by hand, and it fails visibly instead of silently absurdly.
+ */
 async function candidateFor(
 	db: Db,
 	input: {
@@ -88,22 +153,30 @@ async function candidateFor(
 		now: Date;
 	},
 ): Promise<RankedCandidate | null> {
+	// Destructured rather than read off `input` twice: the null check below is what makes
+	// these `number`s, and a property access does not carry that narrowing into the closure
+	// the ranking runs in.
+	const { pickupLat, pickupLng } = input;
+	if (pickupLat == null || pickupLng == null) return null;
+	const origin = { lat: pickupLat, lng: pickupLng };
+	const box = boundingBox(pickupLat, pickupLng, OFFER_RADIUS_KM);
+
+	// The pool. No `membership` join: a courier is a candidate because their profile says
+	// they are verified and available and they are standing somewhere, not because a shop
+	// wrote their name down.
 	const rows = await db
 		.select({
-			userId: membershipTable.userId,
+			userId: profileTable.userId,
 			displayName: profileTable.displayName,
 			phone: userTable.phone,
 			lat: presenceTable.lat,
 			lng: presenceTable.lng,
 		})
-		.from(membershipTable)
-		.innerJoin(profileTable, eq(profileTable.userId, membershipTable.userId))
-		.innerJoin(presenceTable, eq(presenceTable.userId, membershipTable.userId))
-		.innerJoin(userTable, eq(userTable.id, membershipTable.userId))
+		.from(profileTable)
+		.innerJoin(presenceTable, eq(presenceTable.userId, profileTable.userId))
+		.innerJoin(userTable, eq(userTable.id, profileTable.userId))
 		.where(
 			and(
-				eq(membershipTable.businessId, input.businessId),
-				eq(membershipTable.role, "COURIER"),
 				eq(profileTable.verificationStatus, "VERIFIED"),
 				eq(profileTable.isAvailable, true),
 				isNull(userTable.suspendedAt),
@@ -111,6 +184,13 @@ async function candidateFor(
 					presenceTable.updatedAt,
 					new Date(input.now.getTime() - PRESENCE_FRESH_MS),
 				),
+				// The box, in SQL. `courierPresence.lat`/`.lng` are `notNull()`, so there is
+				// no null-coordinate courier to exclude the way `businesses.ts` excludes a
+				// shop with no address — a courier without a ping is simply not a row here.
+				gte(presenceTable.lat, box.minLat),
+				lte(presenceTable.lat, box.maxLat),
+				gte(presenceTable.lng, box.minLng),
+				lte(presenceTable.lng, box.maxLng),
 			),
 		);
 	if (rows.length === 0) return null;
@@ -122,6 +202,7 @@ async function candidateFor(
 		pendingOffers,
 		receivedRatings,
 		lastOffers,
+		shopCouriers,
 	] = await Promise.all([
 		db
 			.select({ userId: offerTable.courierUserId })
@@ -178,6 +259,20 @@ async function candidateFor(
 			.from(offerTable)
 			.where(inArray(offerTable.courierUserId, userIds))
 			.groupBy(offerTable.courierUserId),
+		// The one surviving use of the membership: who this shop has already worked with.
+		// Read as a set over the candidate ids rather than joined into the pool query, so it
+		// cannot narrow the pool by accident — a bug in this read degrades the ranking, and
+		// the same bug in the join would silently shrink the pool.
+		db
+			.select({ userId: membershipTable.userId })
+			.from(membershipTable)
+			.where(
+				and(
+					inArray(membershipTable.userId, userIds),
+					eq(membershipTable.businessId, input.businessId),
+					eq(membershipTable.role, "COURIER"),
+				),
+			),
 	]);
 
 	const excluded = new Set(previousOffers.map((row) => row.userId));
@@ -191,6 +286,7 @@ async function candidateFor(
 		receivedRatings.map((row) => [row.userId, Number(row.rating)]),
 	);
 	const fairness = new Map(lastOffers.map((row) => [row.userId, row]));
+	const preferred = new Set(shopCouriers.map((row) => row.userId));
 
 	const ranked = rankCourierCandidates(
 		rows
@@ -200,19 +296,32 @@ async function candidateFor(
 					(active.get(row.userId) ?? 0) === 0 &&
 					(pending.get(row.userId) ?? 0) === 0,
 			)
-			.map((row) => ({
-				userId: row.userId,
-				displayName: row.displayName,
-				phone: row.phone,
-				distanceToPickupKm:
-					input.pickupLat == null || input.pickupLng == null
-						? null
-						: haversineKm(input.pickupLat, input.pickupLng, row.lat, row.lng),
-				activeRuns: active.get(row.userId) ?? 0,
-				recentOffers: Number(fairness.get(row.userId)?.recentOffers ?? 0),
-				rating: ratings.get(row.userId) ?? null,
-				lastOfferedAt: fairness.get(row.userId)?.lastOfferedAt ?? null,
-			})),
+			.flatMap((row) => {
+				const distanceToPickupKm = haversineKm(origin, {
+					lat: row.lat,
+					lng: row.lng,
+				});
+				// The circle, after the square. `boundingBox` above is a square and its
+				// corner sits `OFFER_RADIUS_KM * 1.41` from the pickup, so without this the
+				// radius is a suggestion rather than a limit. Rejecting here rather than in
+				// SQL is what `businesses.ts` does, and for the same reason: D1 has no
+				// spatial index, so the exact test is a function call over the handful of
+				// rows the box let through.
+				if (distanceToPickupKm > OFFER_RADIUS_KM) return [];
+				return [
+					{
+						userId: row.userId,
+						displayName: row.displayName,
+						phone: row.phone,
+						distanceToPickupKm,
+						activeRuns: active.get(row.userId) ?? 0,
+						recentOffers: Number(fairness.get(row.userId)?.recentOffers ?? 0),
+						rating: ratings.get(row.userId) ?? null,
+						lastOfferedAt: fairness.get(row.userId)?.lastOfferedAt ?? null,
+						preferred: preferred.has(row.userId),
+					},
+				];
+			}),
 	);
 
 	return ranked[0] ?? null;
@@ -430,22 +539,4 @@ export async function sweepExpiredOffers(db: Db, limit = 50): Promise<void> {
 		);
 		await dispatchNext(db, row.deliveryId);
 	}
-}
-
-function haversineKm(
-	fromLat: number,
-	fromLng: number,
-	toLat: number,
-	toLng: number,
-): number {
-	const radiusKm = 6371;
-	const radians = (value: number) => (value * Math.PI) / 180;
-	const dLat = radians(toLat - fromLat);
-	const dLng = radians(toLng - fromLng);
-	const a =
-		Math.sin(dLat / 2) ** 2 +
-		Math.cos(radians(fromLat)) *
-			Math.cos(radians(toLat)) *
-			Math.sin(dLng / 2) ** 2;
-	return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

@@ -214,14 +214,30 @@ export function createApp() {
 	 * browser. `cors()` terminates a preflight itself, with an empty 204, and does not
 	 * call `next`, so the router below only ever sees the GET and the POST.
 	 *
-	 * The origin gate runs *before* the middleware writes anything, so a disallowed
-	 * caller is refused while no `Access-Control-*` header exists yet: it gets the 403
-	 * it always got, and a page that cannot read the 403 cannot read anything else.
+	 * **A preflight is exempt from the origin gate, and the 403 above it is not.**
+	 *
+	 * This gate used to run ahead of `cors()` for every method, OPTIONS included, so a
+	 * disallowed origin was refused by a 403 that carried no `Access-Control-*` header —
+	 * and a response the browser cannot read is reported by the browser as a CORS
+	 * policy failure, whatever the server actually said. That is how a production
+	 * build calling the wrong Worker surfaced as "No 'Access-Control-Allow-Origin'
+	 * header is present" instead of the 403 underneath it, and it cost the only
+	 * signal that would have named the cause.
+	 *
+	 * Letting OPTIONS through costs nothing and is not a loosening: a preflight carries
+	 * no cookies, no `Authorization` and no body, and `cors()` answers it without
+	 * calling `next`, so it cannot reach Better Auth. It cannot set a session cookie
+	 * because it never runs a handler. The refusal still happens — on the POST that
+	 * follows, which is the request that could actually do damage — and a disallowed
+	 * origin's preflight now comes back without an `Access-Control-Allow-Origin`, so
+	 * the browser blocks it and the POST behind it for the right reason.
+	 *
+	 * Every method that is not OPTIONS is gated exactly as before.
 	 */
 	app.use(`${AUTH_PREFIX}/*`, async (c, next) => {
 		const allowed = corsOrigins(c.env);
 		const origin = c.req.header("origin");
-		if (origin && !allowed.includes(origin))
+		if (c.req.method !== "OPTIONS" && origin && !allowed.includes(origin))
 			return c.json({ error: "forbidden" }, 403);
 		return cors(browserCors(allowed))(c, next);
 	});
@@ -234,11 +250,16 @@ export function createApp() {
 	 * normal Better Auth session. After this response the two providers are the same
 	 * session to every existing route; the Supabase token itself never reaches D1, a
 	 * membership query or a role decision.
+	 *
+	 * The origin gate is the same one `/auth/*` uses, including the OPTIONS exemption
+	 * and the reason for it: a preflight carries no credential and reaches no handler,
+	 * so gating it only turns this mount's refusals into unreadable CORS errors in the
+	 * browser. The exchange itself is still refused, on the POST.
 	 */
 	app.use(`${SUPABASE_AUTH_PREFIX}/*`, async (c, next) => {
 		const allowed = corsOrigins(c.env);
 		const origin = c.req.header("origin");
-		if (origin && !allowed.includes(origin))
+		if (c.req.method !== "OPTIONS" && origin && !allowed.includes(origin))
 			return c.json({ error: "forbidden" }, 403);
 		return cors(browserCors(allowed))(c, next);
 	});

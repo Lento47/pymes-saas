@@ -258,7 +258,14 @@ export type OrderDetail = z.infer<typeof orderDetailSchema>;
  */
 export const orderListInput = z.object({
 	role: z.enum(["CUSTOMER", "BUSINESS"]).default("CUSTOMER"),
-	/** Business view only; ignored for a customer, whose scope is always themselves. */
+	/**
+	 * Business view only; ignored for a customer, whose scope is always themselves.
+	 *
+	 * **Omitted for a courier's own board**, which is the one read that names no shop: a
+	 * courier's runs come from whichever businesses the platform offered them, which is not
+	 * a set the device can know in advance. `assignedToMe` is what scopes that read instead,
+	 * and `orders.queue` requires `businessId` without `assignedToMe`.
+	 */
 	businessId: z.string().optional(),
 	/** Business view only. The service checks that this location belongs to businessId. */
 	locationId: z.string().optional(),

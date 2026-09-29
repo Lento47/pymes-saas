@@ -169,4 +169,35 @@ describe("response headers", () => {
 
 		test.close();
 	});
+
+	test("/auth answers its preflight too, which is the mount the sign-in form actually uses", async () => {
+		const test = world();
+
+		// The `/trpc` preflight above was pinned while `/auth` had no equivalent, and that
+		// gap is how `/auth` came to answer a preflight with a 403 carrying no
+		// `Access-Control-*` header: a response the browser cannot read, so a sign-up that
+		// never left the tab was reported as a CORS policy failure instead of the refusal it
+		// was. `POST /auth/sign-up/email` is the request behind this preflight, so the mount
+		// carrying the credentials is the one that has to answer it.
+		const response = await createApp().fetch(
+			new Request("http://api.test/auth/sign-up/email", {
+				method: "OPTIONS",
+				headers: {
+					origin: ALLOWED_ORIGIN,
+					"access-control-request-method": "POST",
+					"access-control-request-headers": "content-type",
+				},
+			}),
+			envWith(test, { CORS_ORIGINS: ALLOWED_ORIGIN }) as never,
+		);
+
+		expect(response.status).toBeLessThan(300);
+		// The allowed origin is echoed back, so the browser lets the real POST through.
+		expect(response.headers.get("access-control-allow-origin")).toBe(ALLOWED_ORIGIN);
+		// And `credentials` is why: the session is an HttpOnly cookie, so a preflight that
+		// did not agree to credentials would still fail on the POST behind it.
+		expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+
+		test.close();
+	});
 });
