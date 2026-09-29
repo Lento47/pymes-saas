@@ -86,6 +86,26 @@ migrations_dir = "../../packages/db/migrations"
 # failure mode of a shared bucket is a test picture published as someone's
 # vehicle photo. Created with `wrangler r2 bucket create <name>`; `wrangler dev`
 # runs against a simulated bucket and needs no real one before the first deploy.
+#
+# The bytes behind a `/files/:id`, and the `upload` table is only an index to
+# them. The pairing is the point: D1 has a 10 GB per-database ceiling that
+# Cloudflare documents as unraisable, so a marketplace storing product photos
+# in D1 BLOBs has roughly 5,000 maximum-size images in total, shared with
+# orders, sessions and the audit log. R2 has no such ceiling, costs
+# $0.015/GB-month, and does not charge for egress - which matters here because
+# every storefront image read is an egress event.
+#
+# `pymeshub-media` already exists and was empty; nothing was ever bound to it,
+# so binding it is not a provisioning step. **The deploy token does need R2
+# scope** (`Workers R2 Storage: Edit`) - a token without it fails the deploy
+# rather than silently degrading, but confirm the scope before running
+# `bun run deploy`.
+#
+# Both buckets stay private. `/files/:id` serves the bytes from the Worker, and
+# `maps.pymeshub.lat` is the only public custom domain this account needs.
+#
+# This is the "top-level R2 note" that `[env.staging]` and `[env.production]`
+# below both cite, so the cross-references point here.
 # ---------------------------------------------------------------------------
 [[r2_buckets]]
 binding = "MEDIA"
@@ -121,29 +141,6 @@ bucket_name = "pymeshub-media"
 [[kv_namespaces]]
 binding = "CACHE"
 id = "55e69dde0bbf4e1f872ed48fe546cd23"
-
-# ---------------------------------------------------------------------------
-# R2 — the bytes behind a `/files/:id`.
-#
-# The `upload` table is an index; this bucket is what it points at. The pairing is
-# the point: D1 has a 10 GB per-database ceiling that Cloudflare documents as
-# unraisable, so a marketplace storing product photos in D1 BLOBs has roughly 5,000
-# maximum-size images in total, shared with orders, sessions and the audit log. R2
-# has no such ceiling, costs $0.015/GB-month, and does not charge for egress — which
-# matters here because every storefront image read is an egress event.
-#
-# `pymeshub-media` already exists and was empty; nothing was ever bound to it, so
-# binding it is not a provisioning step. **The deploy token does need R2 scope**
-# (`Workers R2 Storage: Edit`) — the omission this replaces was a missing scope, not
-# a design choice. A token without it fails the deploy rather than silently
-# degrading, but confirm the scope before running `bun run deploy`.
-#
-# Both buckets stay private. `/files/:id` serves the bytes from the Worker, and
-# `maps.pymeshub.lat` is the only public custom domain this account needs.
-# ---------------------------------------------------------------------------
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "pymeshub-media"
 
 # ---------------------------------------------------------------------------
 # Queues — order events, so the request that places an order does not wait for a
@@ -279,7 +276,8 @@ database_id = "fe386601-8828-466b-a6fd-85ef4992dc22"
 # not a staging bug, it is a migration applied against live orders.
 migrations_dir = "../../packages/db/migrations"
 # Staging's **own** bucket - see the top-level R2 note: a staging upload beside a
-# production photograph is the failure this split exists to prevent.
+# production photograph is the failure this split exists to prevent. A wrong bucket
+# name here is a staging deploy that writes into production media.
 [[env.staging.r2_buckets]]
 binding = "MEDIA"
 bucket_name = "pymeshub-media-staging"
@@ -288,11 +286,6 @@ bucket_name = "pymeshub-media-staging"
 [[env.staging.kv_namespaces]]
 binding = "CACHE"
 id = "87ab3d4a4f19467faa2f8aca56504d66"
-# Staging's own bucket, for the same reason staging's own KV id: a wrong bucket name
-# here is a staging deploy that writes into production media.
-[[env.staging.r2_buckets]]
-binding = "MEDIA"
-bucket_name = "pymeshub-media-staging"
 [[env.staging.queues.producers]]
 binding = "ORDER_EVENTS"
 queue = "pymeshub-order-events-staging"
@@ -340,12 +333,6 @@ bucket_name = "pymeshub-media"
 [[env.production.kv_namespaces]]
 binding = "CACHE"
 id = "55e69dde0bbf4e1f872ed48fe546cd23"
-# The **same** bucket as the top-level block, not a new one: this is the same Worker
-# (the `name` and the `database_id` below are both deliberate repeats of the top
-# level), so one bucket serves both deploy paths.
-[[env.production.r2_buckets]]
-binding = "MEDIA"
-bucket_name = "pymeshub-media"
 [[env.production.queues.producers]]
 binding = "ORDER_EVENTS"
 queue = "pymeshub-order-events"
