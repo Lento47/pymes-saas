@@ -90,6 +90,7 @@ import AdminPlanLimits from "@/pages/admin/plan-limits";
 import AdminLogin from "@/pages/admin/login";
 import AdminLandingEditor from "@/pages/admin/landing-editor";
 import AdminRouterMetrics from "@/pages/admin/router-metrics";
+import AdminConsolePage from "@/pages/admin/console";
 import BusinessProfilePage from "@/pages/business-profile";
 import MapPage from "@/pages/map";
 import MarketplaceHomePage from "@/pages/marketplace/home";
@@ -508,6 +509,16 @@ function AppRouter() {
       <Route path="/admin/router-metrics">
         {() => <PlatformAdminLayout><AdminRouterMetrics /></PlatformAdminLayout>}
       </Route>
+      {/*
+        The platform console on the marketplace API, and the only `/admin` route with no
+        layout around it.
+
+        `PlatformAdminLayout` is the saas-api shell: it gates on `useAuth()`, which calls
+        `api.getMe()` and `api.login(email, password, workspaceSlug)`, and the marketplace
+        Worker mounts neither. The console gates itself on `users.me` and reads the same
+        `isAdmin` the Worker's `adminProcedure` checks, so the two cannot disagree.
+      */}
+      <Route path="/admin/console" component={AdminConsolePage} />
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
       </Route>
