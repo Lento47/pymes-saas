@@ -4,6 +4,30 @@ compatibility_date = "2026-05-14"
 workers_dev = true
 preview_urls = true
 
+# The production deploy is `wrangler deploy` with **no** `--env production`. Read this
+# before changing that.
+#
+# `pymeshub.lat` is bound to the **default** Worker above, not to `pymeshubsaas-prod`. So
+# `--env production` publishes a complete, successful build of a site nobody is served: it
+# exits 0, it uploads every asset, and the live site does not change. "Deploy succeeded" is
+# not evidence that anything shipped.
+#
+# Do not "fix" this by adding `routes` to `[env.production]`. That was tried and it fails:
+# the `pymeshub.lat/*` route is already held by a Worker named `outage-worker`, which is not
+# in this repository, and Cloudflare refuses the duplicate (error 10020). Moving the domain
+# is a dashboard change on somebody else's Worker, not a line in this file.
+#
+# Two things to check after any web deploy, because neither shows up in the exit code:
+#
+# 1. The first deploy after a build does not always make the new entry chunk available, and
+#    the second identical one does. The symptom is severe and quiet: `/` still returns 200
+#    and still serves an `index.html` that references the new bundle, while
+#    `/assets/<entry>.js` returns *that same HTML* through the SPA not-found handler. The
+#    page loads and then dies on a syntax error. Check the entry chunk's `Content-Type` —
+#    it must be `text/javascript` and its byte count must match the build.
+# 2. Every other asset under `/assets/` can be fine while that one is missing, so verify
+#    the entry specifically. Vite's 500 kB warning is not cosmetic here: the entry is the
+#    largest object in the deploy and the one that has failed.
 [env.production]
 name = "pymeshubsaas-prod"
 
