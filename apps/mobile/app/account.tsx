@@ -543,7 +543,7 @@ export default function AccountScreen() {
 							</View>
 						</Card>
 					</AnimateIn>
-				)}{" "}
+				)}
 				{/* Only while something is missing, and gone the moment nothing is.
 				    Lists the missing rows rather than every step, so the card shrinks
 				    as it is used. Each row routes to its fix. Never while `users.me` is
