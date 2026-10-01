@@ -59,14 +59,24 @@ import { trpc } from "./marketplace";
  * point of this file: `adminProcedure` checks `isAdmin` on the caller's own row and nothing
  * else. There is no `admin` capability to hold, no second token, no separate service.
  *
- * **`pages/admin/*` used to speak a different API entirely.** Those pages were written
- * against `apps/api` — a NestJS service with `workspaces`, an `x-workspace-slug` header and
- * a bearer `access_token`. That service is gone, and the pages kept calling it:
- * `API_BASE + "/api/auth/login"`, which is a path the marketplace Worker has never mounted.
- * A preflight for it 404s, a 404 carries no `Access-Control-Allow-Origin`, and the browser
- * reported the result as a CORS policy failure. The message named CORS; the cause was a
- * dead backend and a path that does not exist. Those pages are the saas-api console and
- * they are not repaired by pointing them anywhere — they are replaced by this.
+ * **There are two admin surfaces, and this file is the marketplace one.** `apps/api` is a
+ * NestJS service on its own database, serving `workspaces`, `x-workspace-slug` and a bearer
+ * `access_token`. It is deployed (`apps/api/railway.json`, `deploy-railway.yml`, and
+ * `.env.production.example`'s `VITE_API_URL`) and the pages under `/admin/workspaces`,
+ * `/admin/users`, `/admin/support`, `/admin/landing` and their siblings still use it through
+ * `lib/api.ts`, on purpose: they administer the *SaaS* — workspaces, SAML, members, the
+ * landing page — and most of it has no marketplace counterpart at all (the Worker router has
+ * no `saml`, no landing config, no router metrics).
+ *
+ * So this file is not a replacement for those pages, and a previous version of this comment
+ * said it was, which was wrong in the direction that matters: it read as licence to delete
+ * working software. What it *is* is the admin surface for the thing this client is for — the
+ * marketplace, where a business is not a workspace, a courier is not a member, and support
+ * tickets are about an order rather than a diagnostic case.
+ *
+ * The one route that used to blur the two was `/admin`, which rendered `AdminDashboard` from
+ * `api.platformGetStats` — marketplace intent read out of the SaaS database. That page is
+ * deleted and the route redirects here; `App.tsx` says so at the redirect.
  *
  * ## Why every response is parsed
  *

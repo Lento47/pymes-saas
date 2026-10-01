@@ -534,7 +534,6 @@ export const api = {
   platformUpdateUserStatus: (userId: string, status: string) =>
     request<Record<string, any>>("PATCH", `/api/platform/users/${userId}/status`, { status }),
   platformDeleteUser: (userId: string) => request<Record<string, any>>("DELETE", `/api/platform/users/${userId}`),
-  platformGetStats: () => request<Record<string, any>>("GET", "/api/platform/stats"),
   platformToggleAdmin: (userId: string) => request<Record<string, any>>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
   platformGetWorkspaceBySlug: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}`),
   platformDeleteWorkspace: (slug: string) => request<Record<string, any>>("DELETE", `/api/platform/workspaces/${slug}`),

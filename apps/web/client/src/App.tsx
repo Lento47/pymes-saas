@@ -484,18 +484,25 @@ function AppRouter() {
       </Route>
       <Route path="/admin">
         {/*
-          `/admin` now forwards to the platform console.
+          `/admin` forwards to the platform console.
 
-          It used to render `AdminDashboard` inside `PlatformAdminLayout`, and both of those
-          reach the retired saas-api: the layout gates on `useAuth()` → `api.getMe()` /
-          `api.login(email, password, workspaceSlug)`, and the dashboard calls
-          `api.platform*`. Nothing serves `/api/*` any more, so this was the page a
-          platform admin landed on after signing in to find it broken — 30 of 30 requests
-          failing, under a browser message naming CORS for what was a dead backend.
+          It used to render `AdminDashboard`, which called `api.platformGetStats` — one
+          endpoint, rendering three SaaS-scoped views (sector distribution, registrations by
+          month, recent signups). That page is gone, and the redirect is why: it was the page
+          a platform admin landed on after signing in, and it showed marketplace KPIs read
+          from the *SaaS* database, which is a different set of businesses entirely.
 
-          Redirecting rather than replacing keeps every old bookmark working and leaves the
-          dead pages themselves untouched for now, which is the smaller change of the two
-          and reversible on its own.
+          **The redirect is not a sign the SaaS API is retired, and it is worth being
+          precise about that here**, because the previous version of this comment said so and
+          was wrong in a way that invited deleting working software. The SaaS API is
+          deployed — `apps/api/railway.json`, `deploy-railway.yml` on `master`, and
+          `.env.production.example` pointing `VITE_API_URL` at it — and the pages under
+          `/admin/workspaces`, `/admin/users`, `/admin/support` and their siblings below
+          still talk to it, on purpose.
+
+          What is true is narrower: `/admin` itself was the one route that pointed at
+          marketplace intent through a SaaS backend, so it is the one that gets redirected.
+          See `lib/admin.ts` for how the two admin surfaces divide.
         */}
         {() => <Redirect to="/admin/console" />}
       </Route>
