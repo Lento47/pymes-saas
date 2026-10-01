@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PRESS_SCALE_DIALOG } from "@/lib/motion";
 import { merchantType, useTheme } from "@/theme";
@@ -8,6 +7,7 @@ import { merchantType, useTheme } from "@/theme";
 import { Pressable } from "./pressable";
 import { Sheet } from "./sheet";
 import { Spinner } from "./spinner";
+import { useTabBarClearance } from "./tab-bar";
 import { Text } from "./text";
 
 /**
@@ -111,7 +111,23 @@ export function SignOutSheet({
 	onSignedOut,
 }: SignOutSheetProps) {
 	const { colors } = useTheme();
-	const insets = useSafeAreaInsets();
+	// How much room the floating capsule is standing in, on the screen behind this panel.
+	//
+	// **`bottomInsetPaid: true`, and the flag is load-bearing.** `./sheet`'s own body adds
+	// `paddingBottom: insets.bottom` when there is no footer, and this panel passes no
+	// footer — so the home-indicator inset has *already* been paid by the component, and
+	// this one used to pay it a second time. That is why the earlier version read
+	// `insets.bottom + 16` here: 16 of breathing room, correct, and 34 points of the inset
+	// counted twice.
+	//
+	// **The capsule is what was actually missing.** `BUSINESS_TAB_BAR_CLEARANCE` is
+	// `HEIGHT + LIFT` (70 + 12) and the capsule is `position: "absolute"`, so the navigator
+	// reserves nothing for it and it paints over whatever a screen draws last. A panel
+	// rendered inside a screen is *under* it, which is how the confirm button ended up with
+	// the nav bar across it and a reader unable to see what they were about to press. The
+	// safe-area inset knows nothing about a floating capsule; only `useTabBarClearance`
+	// does, which is why the number comes from there and is not typed here.
+	const tabClearance = useTabBarClearance({ bottomInsetPaid: true });
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState(false);
 
@@ -173,37 +189,32 @@ export function SignOutSheet({
 			// reading is `./confirm-sheet`'s and `./filter-sheet`'s; a fraction below it would
 			// ask for an offset this panel's own height cannot reach.
 			snapPoints={[1]}
-			// The question, and it is passed as `title` as well as drawn below. `./sheet` puts
-			// it on `accessibilityLabel` with `accessibilityViewIsModal` beside it, so it is the
-			// modal's *name* to a screen reader; the drawn copy is this component's own because
-			// the two sizes are a pair and `./sheet`'s `title` slot is the shared `title` step
-			// with a fixed margin. Two renderings of one string, deliberately: `title` is what
-			// VoiceOver announces, and the prompt step has negative tracking the shared step
-			// does not.
+			// The question, and it is passed as `title` and **not drawn again here**.
+			//
+			// `./sheet` renders its `title` slot visibly, and separately puts it on
+			// `accessibilityLabel` beside `accessibilityViewIsModal` so it is the modal's name
+			// to a screen reader. It did not always render it — this panel used to draw its own
+			// copy at `merchantType.prompt` on the assumption that `title` was announced-only,
+			// and the panel printed "Sign out?" twice, stacked. One rendering, owned by the
+			// component whose slot it is.
+			//
+			// `merchantType.prompt` is not stranded by that: the merchant order screen's hero
+			// heading is its other reader, which is why it stays a token rather than becoming a
+			// local style here.
 			title={title}
 			closeLabel={cancelLabel}
 		>
-			<View style={styles.body}>
+			{body ? (
 				<Text
-					variant="title"
-					bold
-					style={[merchantType.prompt, { color: colors.foreground }]}
+					style={[
+						merchantType.explain,
+						styles.explain,
+						{ color: colors.mutedForeground },
+					]}
 				>
-					{title}
+					{body}
 				</Text>
-
-				{body ? (
-					<Text
-						style={[
-							merchantType.explain,
-							styles.explain,
-							{ color: colors.mutedForeground },
-						]}
-					>
-						{body}
-					</Text>
-				) : null}
-			</View>
+			) : null}
 
 			{/* The refusal, in the layout rather than floated over it, and only after a delay
 			    so a fast local error is not a flash of red in a panel that was open for a
@@ -221,7 +232,7 @@ export function SignOutSheet({
 				) : null}
 			</View>
 
-			<View style={[styles.actions, { paddingBottom: insets.bottom + 16 }]}>
+			<View style={[styles.actions, { paddingBottom: 16 + tabClearance }]}>
 				<Pressable
 					onPress={() => void confirm()}
 					disabled={busy}
@@ -300,9 +311,6 @@ export function SignOutSheet({
 }
 
 const styles = StyleSheet.create({
-	// `Sheet`'s own body pays the 20pt gutter and the bottom inset; this is the space
-	// *between* the question and the answer, which is the panel's own.
-	body: { gap: 8 },
 	// 320 rather than the panel's full width, because a sentence set to the width of a phone
 	// in a 14pt face runs to a line and a half and the half is the part nobody reads twice.
 	explain: { maxWidth: 320 },
