@@ -370,7 +370,18 @@ export default function ShopSettings() {
 										help={t("biz.settings.photo.help")}
 										radiusToken="full"
 									>
-										<Text variant="title" tone="primary" bold>
+										{/*
+										    `action`, not `primary`, and the difference is whether this letter is
+										    visible at all. `./text`'s `tone="primary"` resolves to `colors.primary`,
+										    which in this tree is the lime **fill** — the merchant palette spends the
+										    brand on surfaces and keeps `action` for ink. On the `muted` box
+										    `./image` puts a missing picture's children on, that is lime `#C8FF18` on
+										    `#F6F5F1`: **1.08:1**, which is not a contrast ratio so much as a rumour of
+										    one. `action` is `#111111` and holds **17.31:1** on the same box.
+										    The consumer palette cannot make this mistake — its `primary` is a dark
+										    ultramarine at 7.00:1 on `card` — which is why it survived a review here.
+									    */}
+										<Text variant="title" tone="action" bold>
 											{name.trim().charAt(0).toUpperCase() ||
 												settings.data.name.trim().charAt(0).toUpperCase()}
 										</Text>
