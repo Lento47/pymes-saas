@@ -14,7 +14,6 @@ import { StyleSheet, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { Button } from "@/components/button";
-import { BusinessThemePicker } from "@/components/business-theme-picker";
 import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
@@ -389,22 +388,6 @@ function SettingsForm({
 							) : null}
 						</Card>
 					</ScreenSection>
-					{/* The console palette, and deliberately its own section rather than another field
-					    in the card above. This is a preference about the device in the merchant's hand,
-					    not a fact about the shop — the shop's fields are what that form is for, and a row
-					    of swatches inside it would read as one more field with a strange value. It sits
-					    where `biz.more.settingsSubtitle` has been promising a "Theme" row all along. */}
-					<ScreenSection
-						title={t("biz.theme.title")}
-						subtitle={t("biz.theme.help")}
-					>
-						<Card>
-							<View style={styles.themePicker}>
-								<BusinessThemePicker />
-							</View>
-						</Card>
-					</ScreenSection>
-
 					<ScreenSection title={t("biz.settings.address")}>
 						<Card>
 							<Field
@@ -757,9 +740,4 @@ const styles = StyleSheet.create({
 		justifyContent: "space-between",
 	},
 	failure: { paddingHorizontal: space.md },
-	// The swatch row wraps, and the padding is the card's own inset plus a little more so
-	// the first swatch's border is not flush against the card edge — a selected swatch is
-	// drawn with a 2pt border in the theme's own accent, and a border flush against the
-	// card reads as a seam rather than as selection.
-	themePicker: { padding: space.sm },
 });

@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
+import { BusinessThemePicker } from "@/components/business-theme-picker";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
 import { DeviceSettings } from "@/components/device-settings";
@@ -215,6 +216,34 @@ export default function Settings() {
 							/>
 						</View>
 
+						{/* The merchant palette, and the second half of the appearance pair: the control
+						    above answers *who decides the scheme* and this one answers *which palette*. They
+						    belong side by side, which is why this is not a section of its own.
+						
+						    It lives in Settings rather than in the shop-details form because
+						    `app/(business)/account.tsx` has a row titled `biz.more.settings`, subtitled
+						    "Tema, notificaciones y privacidad", whose `onPress` is `router.push("/settings")` —
+						    this screen has been advertised as the place a merchant finds a Theme since before
+						    there was one to find. The palette is a preference about the device, not a fact
+						    about the shop.
+						
+						    **Not gated on the role, and inert outside the merchant tree.** Only the business
+						    tree reads this palette; the consumer and delivery trees draw `palette[scheme]`
+						    and ignore it, so for a customer or a courier these swatches are tappable and
+						    nothing happens. Gating it on the role was the alternative and was declined. The
+						    honest fix is a second palette choice for the consumer tree, not a guard here —
+						    `theme/tokens.ts` documents at length that the consumer palette is transcribed
+						    from `packages/ui/src/styles/globals.css` and must not drift from it, so that is
+						    its own piece of work. */}
+						<View style={styles.setting}>
+							<Text variant="label" bold>
+								{t("biz.theme.title")}
+							</Text>
+							<Text variant="caption" tone="muted">
+								{t("biz.theme.help")}
+							</Text>
+							<BusinessThemePicker />
+						</View>
 						<View style={styles.setting}>
 							<Text variant="label" bold>
 								{t("locale.switch")}
