@@ -53,20 +53,24 @@ import { space, type } from "@/theme";
  *
  * ## What the board is made of, and what it deliberately is not
  *
- * The read is `orders.queue` with `assignedToMe` — not a procedure of its own, which is the
- * API's own decision and its own written reason ("same rows, same paging, one fewer name for
- * two clients to agree on"). `assignedToMe` adds exactly one condition,
- * `courierUserId = caller`, AND-ed onto the business scope, so a courier sees their own runs
- * and not the shop's. `businessId` is required by the input and **ignored** by the resolver,
- * which takes it from the caller's membership (`apps/api/src/routers/orders.ts:121`) — it is
- * sent because the contract asks for it, and it decides nothing.
+ * The read is `orders.list` with `role: "BUSINESS"` and `assignedToMe`, and **no**
+ * `businessId` — which is the whole of the change, and the docblock used to say `orders.queue`
+ * in five places after the code stopped doing that. `orders.queue` cannot serve this screen:
+ * it is a `businessProcedure`, so it resolves a tenant from the input's `businessId` and
+ * refuses a caller with no membership of it, and a courier's runs belong to shops they are not
+ * members of. `orders.list` is the `protectedProcedure` that was already cross-cutting, and it
+ * branches on `role` to the same query. `assignedToMe` adds exactly one condition,
+ * `courierUserId = caller`, and that condition *is* the scope: a courier sees their own runs,
+ * from every shop, and no shop's other orders.
  *
  * The move buttons are the order's own `nextStatuses`, which the API computes **for the
- * caller's actor** (`apps/api/src/services/mappers.ts:522` → `actorFor` returns `COURIER` for
- * a courier member). So this screen does not filter a table: it draws what the machine says
- * this person may do, which is exactly two moves — `READY → OUT_FOR_DELIVERY` ("start the
- * run") and `OUT_FOR_DELIVERY → COMPLETED` ("delivered"). Anything else is refused by the API
- * with `ValidationError` before this screen could offer it.
+ * caller's actor** (`apps/api/src/services/mappers.ts:522` → `actorFor` returns `COURIER`
+ * when the caller is the order's carrier, which is the fact rather than a membership —
+ * see `services/orders.ts`'s `actorFor` for why the two must move together). So this screen
+ * does not filter a table: it draws what the machine says this person may do, which is exactly
+ * two moves — `READY → OUT_FOR_DELIVERY` ("start the run") and `OUT_FOR_DELIVERY → COMPLETED`
+ * ("delivered"). Anything else is refused by the API with `ValidationError` before this screen
+ * could offer it.
  *
  * It is not the shop's board with fewer rows. There is no shop header (`business.settings` is
  * the owner's read, and a courier has no reason to see the shop's phone and status), no stats,
@@ -161,12 +165,12 @@ export default function DeliveryScreen() {
  * This courier's runs, across every shop they carry for.
  *
  * **The board no longer asks which shop.** It used to read `business.myBusinesses`, find the
- * one membership with the `COURIER` role, and hand that `businessId` to `orders.queue`,
- * because a `businessId` was required and a courier's was not guessable from the session.
- * Both halves of that are gone: the pool that offers deliveries is every verified courier on
- * the platform, so a courier may be carrying runs for four shops and belong to none of them,
- * and `orders.queue` now takes `assignedToMe` with no `businessId` at all. The only fact the
- * board needs is the caller's own, and `couriers.profile` carries it.
+ * one membership with the `COURIER` role, and hand that `businessId` to the queue, because a
+ * `businessId` was required and a courier's was not guessable from the session. Both halves of
+ * that are gone: the pool that offers deliveries is every verified courier on the platform, so
+ * a courier may be carrying runs for four shops and belong to none of them, and `orders.list`
+ * takes `assignedToMe` with no `businessId` at all. The only fact the board needs is the
+ * caller's own, and `couriers.profile` carries it.
  *
  * Two states are still drawn here rather than in the board, and both are the courier's own
  * facts rather than anyone else's:
@@ -311,7 +315,7 @@ function CourierSharing({
 /**
  * Dispatch offers and active delivery runs (the `deliveries.*` model).
  *
- * The board below reads `orders.queue`; this section reads `deliveries.offers`
+ * The board below reads `orders.list`; this section reads `deliveries.offers`
  * (PENDING, unexpired) plus `deliveries.mine` (active runs) so an offered run
  * has somewhere to be accepted — previously no screen called `acceptOffer`.
  * Accepting navigates to `/delivery/:id`, which is what finally gives that
@@ -335,7 +339,9 @@ function Dispatch() {
 		}),
 	);
 	const { coords, status: locationStatus } = useDeviceLocation();
-	const presence = useMutation(trpc.deliveries.reportPresence.mutationOptions({}));
+	const presence = useMutation(
+		trpc.deliveries.reportPresence.mutationOptions({}),
+	);
 	const reportedKey = useRef<string | null>(null);
 
 	// Best-effort eligibility ping: dispatch only offers runs to couriers with a
@@ -548,10 +554,10 @@ function Dispatch() {
  * The runs this courier is carrying, and the moves they can make on them.
  *
  * **No `businessId`, and that is the point of the change.** The board used to be handed the
- * one shop the courier belonged to and call `orders.queue` with it. With the delivery pool
- * open a courier's runs come from whichever shops the platform offered them, which is not a
- * set this device can know in advance — and does not need to, because `assignedToMe` with
- * no `businessId` is exactly "the runs carrying my name".
+ * one shop the courier belonged to and hand that to the queue. With the delivery pool open a
+ * courier's runs come from whichever shops the platform offered them, which is not a set this
+ * device can know in advance — and does not need to, because `assignedToMe` with no
+ * `businessId` is exactly "the runs carrying my name".
  *
  * **`orders.list`, not `orders.queue`,** and the reason is the middleware rather than taste:
  * `queue` is a `businessProcedure`, which resolves a tenant from the input's `businessId` and
@@ -747,9 +753,7 @@ function Board() {
 										<Button
 											label={t("action.view")}
 											variant="secondary"
-											onPress={() =>
-												router.push(`/order/${order.id}` as Href)
-											}
+											onPress={() => router.push(`/order/${order.id}` as Href)}
 										/>
 									</View>
 								</View>

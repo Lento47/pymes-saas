@@ -187,9 +187,7 @@ export function useResolvedRole(): ResolvedRole {
 		// is `protectedProcedure`.
 		resolved = { state: "ready", role: "delivery", degraded: "pending" };
 	} else if (
-		me.data.memberships.some(
-			(membership) => membership.role !== "COURIER",
-		)
+		me.data.memberships.some((membership) => membership.role !== "COURIER")
 	) {
 		// A shop they actually belong to. The `role !== "COURIER"` half is the same fact as
 		// the branch above, stated as a filter: a membership with the COURIER role is not
