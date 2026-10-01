@@ -173,8 +173,7 @@ export const business = {
 		"Set the price and an optional previous price.",
 	"biz.products.section.category.help":
 		"Choose the category that best fits your product.",
-	"biz.products.section.photo.help":
-		"Add photos to showcase your product.",
+	"biz.products.section.photo.help": "Add photos to showcase your product.",
 	"biz.products.placeholder.name": "Product name",
 	"biz.products.placeholder.description": "Describe your product...",
 	"biz.products.save": "Save product",
@@ -603,6 +602,20 @@ export const business = {
 	"biz.more.signOutBody":
 		"You'll need to sign in again to manage your business.",
 	"biz.locations.title": "Locations",
+	// The shop's own position, and the courier catchment drawn around it. "Pickup point"
+	// is the word the delivery screen already uses for this (`biz.settings.pickup`), so
+	// the ring is named the same way rather than inventing a third name for one place.
+	"biz.location.title": "Shop location",
+	"biz.location.body":
+		"Where your shop is on the map. Orders are offered to couriers near this point.",
+	"biz.location.map": "Pickup point",
+	"biz.location.subtitle": "Pickup point set on the map",
+	"biz.location.unset": "Not set — no courier can be offered your orders",
+	"biz.location.radius":
+		"Couriers up to {count} km from this point can be offered your orders.",
+	"biz.location.useDevice": "Use my current location",
+	"biz.location.noFix":
+		"This shop has no location yet and your phone is not sharing one. Turn location on to place it from where you are standing.",
 	"biz.locations.select": "Select location",
 	"biz.locations.current": "Current",
 	"biz.locations.allBusiness": "All locations",

@@ -12,6 +12,7 @@
  * app, so anything Node-shaped would break at least one of the three.
  */
 
+export * from "./dispatch";
 export * from "./ids";
 export * from "./market-time";
 export * from "./money";

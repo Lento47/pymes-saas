@@ -40,6 +40,7 @@ export const MERCHANT_BARLESS_ROUTES = [
 	"promotion-form",
 	"shop-hours",
 	"shop-settings",
+	"shop-location",
 	"merchant-settings",
 ] as const;
 

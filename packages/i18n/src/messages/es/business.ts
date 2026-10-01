@@ -663,6 +663,22 @@ export const business = {
 	"biz.more.signOutBody":
 		"Tendrás que volver a entrar para gestionar tu negocio.",
 	"biz.locations.title": "Sucursales",
+	// La posición de la tienda y la catchment de repartidores dibujada alrededor. "Punto de
+	// recogida" es la palabra que la pantalla de entrega ya usa para esto
+	// (`biz.settings.pickup`), así que el círculo se llama igual en lugar de inventar un
+	// tercer nombre para el mismo lugar.
+	"biz.location.title": "Ubicación de la tienda",
+	"biz.location.body":
+		"Dónde está tu tienda en el mapa. Los pedidos se ofrecen a repartidores cercanos a este punto.",
+	"biz.location.map": "Punto de recogida",
+	"biz.location.subtitle": "Punto de recogida definido en el mapa",
+	"biz.location.unset":
+		"Sin definir — ningún repartidor puede recibir tus pedidos",
+	"biz.location.radius":
+		"Se pueden ofrecer tus pedidos a repartidores hasta {count} km de este punto.",
+	"biz.location.useDevice": "Usar mi ubicación actual",
+	"biz.location.noFix":
+		"Esta tienda aún no tiene ubicación y tu teléfono no está compartiendo la tuya. Activa la ubicación para colocarla desde donde estás.",
 	"biz.locations.select": "Elegir sucursal",
 	"biz.locations.current": "Actual",
 	"biz.locations.allBusiness": "Todas las sucursales",

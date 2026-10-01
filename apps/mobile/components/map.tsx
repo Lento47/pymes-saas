@@ -9,6 +9,7 @@ import {
 
 import { env } from "@/lib/env";
 import { useT } from "@/lib/i18n";
+import { radiusPolygon } from "@/lib/radius-polygon";
 import { radius, space, useTheme } from "@/theme";
 
 import { Text } from "./text";
@@ -208,6 +209,42 @@ export type MapViewProps = {
 	 * about a primitive, which `docs/design-mobile.md` puts here instead.
 	 */
 	style?: StyleProp<ViewStyle>;
+	/**
+	 * Report the point the reader tapped, or `null`/`undefined` for a map you cannot touch.
+	 *
+	 * This is what makes the band a **picker**, and it is the reason a shop can ever have a
+	 * coordinate: `businessUpdateInput` has carried an optional `lat`/`lng` since before this
+	 * file existed and `businesses.ts` propagates them onto the default `merchant_location`,
+	 * but until this prop nothing in the app was willing to *send* a pair. Every `lat:` in
+	 * `apps/mobile` was a read. So the dispatch radius — measured from the pickup, see
+	 * `OFFER_RADIUS_KM` in `delivery-dispatch.ts` — had no origin to measure from, and a
+	 * shop with delivery enabled simply never received an offer, silently.
+	 *
+	 * Optional and nullable rather than required because four of the five callers show a
+	 * position and none of them may edit one: a customer cannot move their own house, and a
+	 * buyer watching a courier cannot drag the courier. A screen that offers a tap is
+	 * claiming the reader is choosing something.
+	 */
+	onPick?: ((coords: { lat: number; lng: number }) => void) | null;
+	/**
+	 * Draw a ring of this many kilometres around `coords`, or `null` for none.
+	 *
+	 * Kilometres, not metres and not degrees, because the one thing a caller wants to say
+	 * about it is the same number the dispatcher gates on, and the server's own distance
+	 * function (`haversineKm` in `packages/db/src/geo.ts`) is the reference this circle is
+	 * meant to match. Passing anything else would draw a circle that quietly disagrees with
+	 * the rule that produced the number.
+	 *
+	 * The circle is a 64-sided polygon in **geographic** coordinates rather than a
+	 * `CircleLayer` with a metre radius: a MapLibre circle layer measures in pixels and would
+	 * grow with the zoom, which is the opposite of what this is for. These vertices are
+	 * kilometres, so the drawn edge is the edge the gate uses.
+	 *
+	 * Nullable rather than optional-with-a-default for the reason every value on this type
+	 * is: an absent radius must draw nothing rather than draw *some* circle, because a wrong
+	 * circle on this map is a merchant being told something untrue about who can reach them.
+	 */
+	radiusKm?: number | null;
 };
 
 /**
@@ -235,6 +272,17 @@ const STREET_ZOOM = 14;
 const ROUTE_ZOOM = 12;
 
 /**
+ * How opaque the inside of the ring is drawn.
+ *
+ * 0.12, which is a number about street tiles rather than about the radius: the fill's only
+ * job is to say "inside here" without becoming the thing the reader looks at. At 0.3 and up
+ * a 15 km disc is a coloured continent — the basemap under it stops being evidence, and this
+ * map's job is to let somebody judge a position against real streets. Low enough that the
+ * tiles read through it, strong enough to tint.
+ */
+const RADIUS_FILL_OPACITY = 0.12;
+
+/**
  * 2 — the courier pin's ring.
  *
  * The app's border vocabulary is hairline or 1, and a 2 is deliberately outside it: at 1
@@ -245,7 +293,14 @@ const ROUTE_ZOOM = 12;
  */
 const PIN_RING_WIDTH = 2;
 
-export function MapView({ coords, marker, route, style }: MapViewProps) {
+export function MapView({
+	coords,
+	marker,
+	radiusKm,
+	route,
+	style,
+	onPick,
+}: MapViewProps) {
 	const { colors } = useTheme();
 	const { t } = useT();
 	// Called before the guard below, with the other hooks, because it is a hook: the early
@@ -267,7 +322,23 @@ export function MapView({ coords, marker, route, style }: MapViewProps) {
 	const mapStyleUrl = env.mapStyleUrl;
 	if (!mapStyleUrl || !mapCenter || !MapLibre) return null;
 
-	const { Camera, Map: MapLibreMap, Marker, UserLocation } = MapLibre;
+	const {
+		Camera,
+		GeoJSONSource,
+		Layer,
+		Map: MapLibreMap,
+		Marker,
+		UserLocation,
+	} = MapLibre;
+
+	// The ring is drawn around `marker ?? coords` — around the position being talked about —
+	// and not around `mapCenter`, which is the camera.
+	//
+	// On a picker the reader moves the pin with a tap, and a ring left where the camera was
+	// centred would be showing the limit for a position they are no longer choosing. No
+	// caller passes `radiusKm` together with `route`, and `route` draws its own two endpoints
+	// regardless, so the two can never disagree about which point the ring means.
+	const radius = radiusPolygon(marker ?? coords, radiusKm ?? null);
 
 	return (
 		<View style={[styles.band, { borderColor: colors.border }, style]}>
@@ -291,11 +362,56 @@ export function MapView({ coords, marker, route, style }: MapViewProps) {
 				// decoration here, and the fact it draws is in the hero's line above it.
 				accessibilityLabel={t("discovery.map.label")}
 				accessible
+				// Only wired when a caller asked for it, and `undefined` rather than a
+				// no-op function in every other case: a handler that is always attached is a
+				// handler every future reader has to rule out, and the four non-picker callers
+				// must not be one tap away from claiming the reader moved something.
+				onPress={
+					onPick
+						? (event) => {
+								// MapLibre's `LngLat` is a **tuple**, `[longitude, latitude]`
+								// — not the `{ latitude, longitude }` object the web SDK's
+								// `MapMouseEvent` uses. The two orderings are opposite, and
+								// reading a tuple as an object would have type-checked
+								// nowhere and swapped Costa Rica for the Gulf of Guinea.
+								const [lng, lat] = event.nativeEvent.lngLat;
+								onPick({ lat, lng });
+							}
+						: undefined
+				}
 			>
 				<Camera
 					center={[mapCenter.lng, mapCenter.lat]}
 					zoom={route ? ROUTE_ZOOM : STREET_ZOOM}
 				/>
+
+				{radius ? (
+					<GeoJSONSource id="mapRadius" data={radius}>
+						{/* Two layers rather than one, because the reader has to tell *where the
+					    limit is* from *which side of it the shop is on*. A fill alone answers
+					    the second and hides the first under the street tiles; a line alone is a
+					    hairline that disappears against them, which is the exact failure
+					    `PIN_RING_WIDTH` exists to prevent for the pin. So: a low-opacity fill
+					    for the area, and a 2-point line for the edge, matching the pin's own
+					    weight so the two read as one drawing. */}
+						<Layer
+							id="mapRadiusFill"
+							type="fill"
+							paint={{
+								"fill-color": colors.primary,
+								"fill-opacity": RADIUS_FILL_OPACITY,
+							}}
+						/>
+						<Layer
+							id="mapRadiusLine"
+							type="line"
+							paint={{
+								"line-color": colors.primary,
+								"line-width": PIN_RING_WIDTH,
+							}}
+						/>
+					</GeoJSONSource>
+				) : null}
 
 				{route ? (
 					<>

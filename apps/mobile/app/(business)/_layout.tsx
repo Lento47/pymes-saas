@@ -315,6 +315,10 @@ export default function BusinessLayout() {
 						options={merchantBarlessOptions("shop-settings")}
 					/>
 					<Tabs.Screen
+						name="shop-location"
+						options={merchantBarlessOptions("shop-location")}
+					/>
+					<Tabs.Screen
 						name="merchant-settings"
 						options={merchantBarlessOptions("merchant-settings")}
 					/>

@@ -1,7 +1,7 @@
 import type { Db } from "@pymeshub/db";
 import {
-	business as businessTable,
 	boundingBox,
+	business as businessTable,
 	delivery as deliveryTable,
 	haversineKm,
 	membership as membershipTable,
@@ -13,7 +13,7 @@ import {
 	deliveryRating as ratingTable,
 	user as userTable,
 } from "@pymeshub/db";
-import { newId } from "@pymeshub/shared";
+import { newId, OFFER_RADIUS_KM } from "@pymeshub/shared";
 import {
 	and,
 	asc,
@@ -33,22 +33,17 @@ import { batchOf } from "./helpers";
 const PRESENCE_FRESH_MS = 2 * 60 * 1000;
 const OFFER_TTL_MS = 2 * 60 * 1000;
 const FAIRNESS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
- * How far from the pickup a courier may be and still be offered the run.
+ * Re-exported rather than declared, so `deliveries.ts` and the tests keep importing it from
+ * here.
  *
- * **This number is the only thing standing between a widened pool and absurdity.** The
- * candidate set used to be "couriers who are members of this shop", which was a
- * geographic filter for free — a shop's roster is people who work there. Widening the
- * pool to every verified courier on the platform removes that for free, and a courier in
- * one city being offered a delivery in another is not a ranking problem, it is a bug a
- * user would report.
- *
- * 15 km is roughly the outer edge of a metropolitan delivery area, and it is a square-then-
- * -circle like `businesses.ts`'s "near me": `boundingBox` narrows in SQL and the haversine
- * below rejects the corners, because a box's corner is `radius * 1.41` from its centre.
- * Without the second step a courier at the edge of a 15 km box gets runs 21 km away.
+ * The declaration now lives in `@pymeshub/shared` because the merchant's location screen
+ * draws this radius on a map and has to draw *this* number, not a copy of it. Both packages
+ * already depend on `shared`; neither could import the other.
  */
-export const OFFER_RADIUS_KM = 15;
+export { OFFER_RADIUS_KM };
+
 const ACTIVE_DELIVERY_STATUSES = [
 	"ACCEPTED",
 	"TO_PICKUP",

@@ -241,6 +241,30 @@ export default function MenuScreen() {
 							})
 						}
 					/>
+					{/* Where this shop is, on a map — beside "Locations" because it is the same
+					    fact about the same place, told in coordinates instead of a name.
+					    The subtitle is the point of the row. A shop with no coordinates cannot be
+					    offered to any courier, and until this row existed that state was invisible
+					    from every screen in the app: the order sat in `SEARCHING`, the board was
+					    empty, and nothing said why. Naming it here is the difference between a
+	    merchant diagnosing this in five seconds and filing a bug about empty boards. */}
+					<ListRow
+						title={t("biz.location.title")}
+						subtitle={
+							settings.data &&
+							typeof settings.data.lat === "number" &&
+							typeof settings.data.lng === "number"
+								? t("biz.location.subtitle")
+								: t("biz.location.unset")
+						}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/shop-location",
+								params: { businessId },
+							})
+						}
+					/>
 					{/* The codes this shop opened, beside the places it sells from:
 					    both are "where and how this business takes an order", and
 					    `architecture.md` files promotions under More rather than under
