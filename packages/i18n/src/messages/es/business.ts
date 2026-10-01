@@ -274,6 +274,18 @@ export const business = {
 	"biz.reviews.reply.yours": "Tu respuesta",
 
 	"biz.settings.title": "Configuración",
+
+	// La paleta de la consola del comercio. Los cuatro nombres son palabras de color y no
+	// nombres de producto: el control elige un color, y un nombre que halaga a una paleta
+	// hace que la muestra de al lado parezca mentira. `lime` es el predeterminado y es la
+	// que el negocio ya veía antes de que existiera este control.
+	"biz.theme.title": "Apariencia",
+	"biz.theme.help": "El color de tu consola en este dispositivo",
+	"biz.theme.lime": "Lima",
+	"biz.theme.amber": "Ámbar",
+	"biz.theme.coral": "Coral",
+	"biz.theme.sky": "Cielo",
+
 	"biz.settings.profile": "Datos del negocio",
 	"biz.settings.name": "Nombre",
 	"biz.settings.slug": "Dirección web",

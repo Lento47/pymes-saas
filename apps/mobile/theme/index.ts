@@ -1,15 +1,19 @@
 import { useSegments } from "expo-router";
 
+import { useBusinessTheme } from "./business-theme";
 import { useThemeMode } from "./mode";
 import { useThemeScope } from "./scope";
 import { selectTree } from "./select";
 import {
+	businessThemeColors,
 	type ColorScheme,
-	merchant,
 	palette,
 	type ThemeColors,
 } from "./tokens";
 
+export * from "./business-theme";
+export * from "./business-theme-ids";
+export * from "./business-theme-select";
 export * from "./merchant";
 export * from "./mode";
 export * from "./scope";
@@ -71,8 +75,17 @@ export function useTheme(): { colors: ThemeColors; scheme: ColorScheme } {
 	const { scheme } = useThemeMode();
 	const segments = useSegments();
 	const role = useThemeScope();
+	const tree = selectTree({ segments, role });
+	// The merchant palette is read unconditionally, beside the tree test rather than inside
+	// its branch. `useBusinessTheme()` throws when its provider is missing, and a throw
+	// that only happens in one tree is a crash that only happens to merchants — which is
+	// the harder kind to find, because the consumer tree keeps working. Reading it always
+	// costs one context lookup the tree test was going to make anyway.
+	const theme = useBusinessTheme();
 	const colors =
-		selectTree({ segments, role }) === "business" ? merchant : palette[scheme];
+		tree === "business"
+			? businessThemeColors(theme.id, scheme)
+			: palette[scheme];
 	return { colors, scheme };
 }
 

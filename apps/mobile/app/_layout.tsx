@@ -18,6 +18,7 @@ import { takeSignOutNavigation } from "@/lib/sign-out-intent";
 import { ApiProvider } from "@/lib/trpc/provider";
 import {
 	selectTree,
+	BusinessThemeProvider,
 	ThemeModeProvider,
 	ThemeScopeProvider,
 	useTheme,
@@ -91,25 +92,39 @@ function RootLayout() {
 							    screen under them are the only things that read `useTheme()`,
 							    and `theme/scope.tsx` throws rather than guess when no
 							    provider is above it. */}
-							<ThemeScopeProvider>
-								<PushNotificationsProvider>
-									<SafeAreaProvider>
-										{/* A sibling of `ToastProvider`, and inside `SafeAreaProvider` for the top
-										    inset it offsets by. It draws a *refused* write (`components/rollback-surface`),
-										    which is the half `ToastProvider` deliberately cannot carry — a
-										    confirmation floats where the tap happened, a refusal is a correction
-										    that has to be noticed — so the two are separate surfaces rather than
-										    one with a severity, and they hold different corners of the screen. */}
-										<RollbackProvider>
-											<ToastProvider>
-												<SignOutGate />
-												<ThemedStack />
-												<WelcomeAnimation />
-											</ToastProvider>
-										</RollbackProvider>
-									</SafeAreaProvider>
-								</PushNotificationsProvider>
-							</ThemeScopeProvider>
+														{/* Which merchant palette, and a sibling of `ThemeScopeProvider`
+							    rather than a child of it. Both answer a question `useTheme()` asks,
+							    both throw rather than guess when no provider is above them, and
+							    neither needs the other: this one reads `AsyncStorage` alone, so
+							    nesting it inside would make the theme wait on a session it has no
+							    stake in.
+
+							    It sits here — above `SafeAreaProvider`, `ToastProvider`,
+							    `ThemedStack` and every screen beneath — because `useTheme()` reads it,
+							    and the merchant tree is roughly sixty components drawing from the
+							    palette it hands back. Mounted lower, those components would be
+							    drawing from a theme nothing above them could see. */}
+							<BusinessThemeProvider>
+	<ThemeScopeProvider>
+									<PushNotificationsProvider>
+										<SafeAreaProvider>
+											{/* A sibling of `ToastProvider`, and inside `SafeAreaProvider` for the top
+											    inset it offsets by. It draws a *refused* write (`components/rollback-surface`),
+											    which is the half `ToastProvider` deliberately cannot carry — a
+											    confirmation floats where the tap happened, a refusal is a correction
+											    that has to be noticed — so the two are separate surfaces rather than
+											    one with a severity, and they hold different corners of the screen. */}
+											<RollbackProvider>
+												<ToastProvider>
+													<SignOutGate />
+													<ThemedStack />
+													<WelcomeAnimation />
+												</ToastProvider>
+											</RollbackProvider>
+										</SafeAreaProvider>
+									</PushNotificationsProvider>
+								</ThemeScopeProvider>
+							</BusinessThemeProvider>
 						</ApiProvider>
 					</SessionProvider>
 				</I18nProvider>

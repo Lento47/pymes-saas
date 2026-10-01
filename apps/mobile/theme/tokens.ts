@@ -38,6 +38,8 @@
 
 import { Platform } from "react-native";
 
+import type { BusinessThemeId } from "./business-theme-ids";
+
 const light = {
 	background: "#fefdfa",
 	foreground: "#1f1915",
@@ -227,73 +229,475 @@ export type ThemeColors = { [K in keyof typeof light]: string };
 export const palette: Record<ColorScheme, ThemeColors> = { light, dark };
 
 /**
- * The merchant console's palette: white canvas, ink, lime action accent.
+ * The merchant console's palettes: a semantic layer every theme shares, and a brand layer
+ * each theme supplies.
  *
- * Same keys as `ThemeColors` and no more — that is the whole contract. Every component
- * reads `colors.background` and friends without knowing which tree it is in, so the
- * business screens get the commerce system by mounting under `(business)` and nothing
- * else changes. Functional colours (success, warning, destructive, info, price, discount,
- * rating, the eight status pairs) are interface §7's own values or the existing ones
- * where the doc names none: hue carries meaning in an operational console, so only the
- * neutrals and the action colour move.
+ * ## Why two layers
  *
- * Lime is an accent, not a brand fill: `#C8FF18` draws primary actions, live states
- * and selection markers — roughly 5% of visible pixels — on a white canvas with warm
- * neutral secondary surfaces. Scheme-independent by decision rather than by omission:
- * the interface spec draws one light system and no dark one, and an invented dark
- * merchant theme would be improvisation dressed as coverage.
+ * `ThemeColors` is 49 keys and they are not 49 decisions. **Twenty are semantic** — the
+ * eight order-status pairs, `price`, `discount`, `discountForeground` and `rating` — and
+ * hue carries meaning in an operational console: a merchant reads `statusOutForDelivery`
+ * as orange without reading it. Those are held once per *scheme* below and every theme
+ * spreads them, so a theme **cannot** recolour "out for delivery" because it never gets a
+ * key for it. That is the guarantee this file exists to make, and it is structural rather
+ * than a reviewer's job.
+ *
+ * The remaining **twenty-nine are brand and structure**: canvas, ink, the accent pair, the
+ * four functional colours and their on-fill foregrounds, the edges, the shimmer. Those are
+ * what a theme chooses, and they are chosen per theme *and* per scheme.
+ *
+ * The semantic layer is keyed by scheme rather than held constant, and the reason is the
+ * consumer `dark` block above: a `#fbf1c7` pending pill on a `#0F0F0F` canvas is
+ * unreadable, so the eight pairs have to be redrawn for the dark scheme. "Fixed" means
+ * fixed *across themes*, never fixed across light and dark.
+ *
+ * ## The two jobs one token cannot do
+ *
+ * `primary` is a **fill** and `primaryForeground` is **ink on that fill**. `action` is
+ * **ink on a light surface**. Mixing them up is invisible in review and fatal on screen: in
+ * `lime` the brand is `#C8FF18`, so a `tone="primary"` letter on `muted` measured
+ * **1.08:1** — three merchant screens shipped that and were fixed in `ba96b31a`. The
+ * consumer palette cannot make the mistake, because its `primary` is a dark ultramarine at
+ * 7.00:1 and reads fine as ink. **Every ratio below is measured**, and the ink on every
+ * accent fill is listed beside the fill it belongs to.
+ *
+ * ## Why there are now several merchant palettes
+ *
+ * There was one, and `useTheme()` returned it for the business tree regardless of scheme,
+ * which meant `Settings → Tema → Oscuro` did nothing at all in that tree. `./mode.tsx`
+ * already argued the mode is *"who decides"* rather than *light or dark*, and with a
+ * per-theme palette that question is answerable per theme too. The old comment here called
+ * an invented dark merchant theme "improvisation dressed as coverage"; that was a fair
+ * reading of a file that had exactly one palette and no way to offer a second. It is
+ * replaced rather than deleted, because the reason it changed is the reason it was
+ * believed.
  */
-export const merchant: ThemeColors = {
-	background: "#FFFFFF",
-	foreground: "#111111",
-	card: "#FFFFFF",
-	cardForeground: "#111111",
-	popover: "#FFFFFF",
-	popoverForeground: "#111111",
-	primary: "#C8FF18",
-	primaryForeground: "#111111",
-	secondary: "#F6F5F1",
-	secondaryForeground: "#2e2722",
-	muted: "#F6F5F1",
-	mutedForeground: "#707070",
-	accent: "#EFEEE9",
-	accentForeground: "#111111",
-	action: "#111111",
-	destructive: "#D5493E",
-	destructiveForeground: "#ffffff",
-	success: "#138A5B",
-	successForeground: "#ffffff",
-	warning: "#E39A20",
-	warningForeground: "#2b1c08",
-	info: "#4768A9",
-	infoForeground: "#ffffff",
-	border: "#11111114",
-	input: "#79716A",
-	ring: "#111111",
-	scrim: "#1f1915",
-	shimmer: "#A39C90",
-	statusPending: "#fbf1c7",
-	statusPendingForeground: "#704a00",
-	statusAccepted: "#d7f0ff",
-	statusAcceptedForeground: "#07519d",
-	statusPreparing: "#f1e7ff",
-	statusPreparingForeground: "#613897",
-	statusReady: "#bffaf6",
-	statusReadyForeground: "#005d5e",
-	statusOutForDelivery: "#ffe4ca",
-	statusOutForDeliveryForeground: "#8e3c00",
-	statusCompleted: "#cef9dc",
-	statusCompletedForeground: "#005e31",
-	statusCancelled: "#eeede9",
-	statusCancelledForeground: "#54524e",
-	statusRejected: "#ffe1dc",
-	statusRejectedForeground: "#a51f1e",
-	price: "#006533",
-	priceCompare: "#707070",
-	discount: "#c50516",
-	discountForeground: "#fff9f8",
-	rating: "#b37400",
+
+/** The twenty keys whose value is a meaning rather than a brand. */
+const SEMANTIC_KEYS = [
+	"statusPending",
+	"statusPendingForeground",
+	"statusAccepted",
+	"statusAcceptedForeground",
+	"statusPreparing",
+	"statusPreparingForeground",
+	"statusReady",
+	"statusReadyForeground",
+	"statusOutForDelivery",
+	"statusOutForDeliveryForeground",
+	"statusCompleted",
+	"statusCompletedForeground",
+	"statusCancelled",
+	"statusCancelledForeground",
+	"statusRejected",
+	"statusRejectedForeground",
+	"price",
+	"discount",
+	"discountForeground",
+	"rating",
+] as const;
+
+type SemanticColors = Pick<ThemeColors, (typeof SEMANTIC_KEYS)[number]>;
+
+/**
+ * Shared by every merchant theme, once per scheme.
+ *
+ * The light values are the ones the single `merchant` palette already shipped, unchanged.
+ * The dark values are the consumer dark block's, which were measured against a near-black
+ * canvas and are reused rather than reinvented: re-deriving eight status pairs per theme
+ * would mean 32 measured pairs to keep honest instead of 8, for a hue that is doing the
+ * same job in every one of them.
+ */
+const semantic: Record<ColorScheme, SemanticColors> = {
+	light: {
+		statusPending: "#fbf1c7",
+		statusPendingForeground: "#704a00",
+		statusAccepted: "#d7f0ff",
+		statusAcceptedForeground: "#07519d",
+		statusPreparing: "#f1e7ff",
+		statusPreparingForeground: "#613897",
+		statusReady: "#bffaf6",
+		statusReadyForeground: "#005d5e",
+		statusOutForDelivery: "#ffe4ca",
+		statusOutForDeliveryForeground: "#8e3c00",
+		statusCompleted: "#cef9dc",
+		statusCompletedForeground: "#005e31",
+		statusCancelled: "#eeede9",
+		statusCancelledForeground: "#54524e",
+		statusRejected: "#ffe1dc",
+		statusRejectedForeground: "#a51f1e",
+		price: "#006533",
+		discount: "#c50516",
+		discountForeground: "#fff9f8",
+		rating: "#A46A00",
+	},
+	dark: {
+		statusPending: "#392c07",
+		statusPendingForeground: "#f0d186",
+		statusAccepted: "#192f46",
+		statusAcceptedForeground: "#a1d3ff",
+		statusPreparing: "#322843",
+		statusPreparingForeground: "#d6c1ff",
+		statusReady: "#033633",
+		statusReadyForeground: "#87e4de",
+		statusOutForDelivery: "#47270f",
+		statusOutForDeliveryForeground: "#ffbc84",
+		statusCompleted: "#0f3620",
+		statusCompletedForeground: "#94e7b1",
+		statusCancelled: "#2d2b28",
+		statusCancelledForeground: "#c0bdb8",
+		statusRejected: "#4e201e",
+		statusRejectedForeground: "#ffaea6",
+		price: "#76e1a7",
+		discount: "#fb6f6b",
+		discountForeground: "#1b0a09",
+		rating: "#f5b845",
+	},
 };
+
+/** The twenty-nine keys a theme supplies. Everything `SEMANTIC_KEYS` leaves out. */
+const THEME_KEYS = [
+	"background",
+	"foreground",
+	"card",
+	"cardForeground",
+	"popover",
+	"popoverForeground",
+	"primary",
+	"primaryForeground",
+	"secondary",
+	"secondaryForeground",
+	"muted",
+	"mutedForeground",
+	"accent",
+	"accentForeground",
+	"action",
+	"destructive",
+	"destructiveForeground",
+	"success",
+	"successForeground",
+	"warning",
+	"warningForeground",
+	"info",
+	"infoForeground",
+	"border",
+	"input",
+	"ring",
+	"scrim",
+	"shimmer",
+	"priceCompare",
+] as const;
+
+type BrandColors = Pick<ThemeColors, (typeof THEME_KEYS)[number]>;
+
+/**
+ * The merchant themes, and the ids are stable strings because they are written to
+ * `AsyncStorage` and read back on the next launch.
+ *
+ * ## Family A — Duo: a neutral canvas, one accent, and the brand as a fill
+ *
+ * A Duo theme has exactly one hue of its own. It is a **fill**, not a tint: `primary`
+ * carries the moment's one action and `primaryForeground` is the ink on it, and the ink's
+ * luminance is chosen per accent rather than fixed. The accents are all light enough to
+ * take near-black ink, which is the property that makes a single-token accent legible:
+ * ink on fill measures **15.98:1** for `lime`, 9.72:1 for `amber`, 6.25:1 for `coral` and
+ * 8.58:1 for `sky`.
+ *
+ * `coral` is the weakest of the four at 6.25:1. It clears AA and it is listed here rather
+ * than quietly swapped, because a palette chosen for how it looks and then quietly
+ * re-picked for how it measures is how a design system stops being one.
+ *
+ * `action` is `#111111` in every light theme and is what links, chevrons and
+ * price-adjacent glyphs draw with. Lime as text on ivory is ~1.2:1, so an accent that is a
+ * fine fill is a terrible ink; that asymmetry is the single most important fact about
+ * these themes and it is why `action` exists as a separate token at all.
+ */
+// The ids and the default live in `./business-theme-ids` so the selection rule can be
+// tested without pulling this file in, and are re-exported here because every caller
+// that wants a theme already imports this one. One list, two doors, no copy to drift.
+export {
+	BUSINESS_THEME_IDS,
+	type BusinessThemeId,
+	DEFAULT_BUSINESS_THEME,
+} from "./business-theme-ids";
+
+const businessThemes: Record<
+	BusinessThemeId,
+	Record<ColorScheme, BrandColors>
+> = {
+	// #C8FF18 with #111111 on it: 15.98:1. The values below are the `merchant` palette
+	// this replaces, byte for byte, so choosing nothing changes nothing.
+	lime: {
+		light: {
+			background: "#FFFFFF",
+			foreground: "#111111",
+			card: "#FFFFFF",
+			cardForeground: "#111111",
+			popover: "#FFFFFF",
+			popoverForeground: "#111111",
+			primary: "#C8FF18",
+			primaryForeground: "#111111",
+			secondary: "#F6F5F1",
+			secondaryForeground: "#2e2722",
+			muted: "#F6F5F1",
+			mutedForeground: "#707070",
+			accent: "#EFEEE9",
+			accentForeground: "#111111",
+			action: "#111111",
+			destructive: "#D44338",
+			destructiveForeground: "#ffffff",
+			success: "#138759",
+			successForeground: "#ffffff",
+			warning: "#E39A20",
+			warningForeground: "#2b1c08",
+			info: "#4768A9",
+			infoForeground: "#ffffff",
+			border: "#11111114",
+			input: "#79716A",
+			ring: "#111111",
+			scrim: "#1f1915",
+			shimmer: "#A39C90",
+			priceCompare: "#707070",
+		},
+		dark: {
+			background: "#0F0F0F",
+			foreground: "#F5F5F3",
+			card: "#1A1A19",
+			cardForeground: "#F5F5F3",
+			popover: "#212120",
+			popoverForeground: "#F5F5F3",
+			primary: "#C8FF18",
+			primaryForeground: "#111111",
+			secondary: "#232322",
+			secondaryForeground: "#F5F5F3",
+			muted: "#232322",
+			mutedForeground: "#A3A29E",
+			accent: "#2B2B29",
+			accentForeground: "#F5F5F3",
+			action: "#C8FF18",
+			destructive: "#FF6B60",
+			destructiveForeground: "#2A0A08",
+			success: "#3FCB86",
+			successForeground: "#052014",
+			warning: "#F0A93B",
+			warningForeground: "#2A1A03",
+			info: "#6D9BE8",
+			infoForeground: "#04182E",
+			border: "#2E2E2C",
+			input: "#6B6A66",
+			ring: "#C8FF18",
+			scrim: "#000000",
+			shimmer: "#45443F",
+			priceCompare: "#8A8985",
+		},
+	},
+	amber: {
+		light: {
+			background: "#FFFFFF",
+			foreground: "#141210",
+			card: "#FFFFFF",
+			cardForeground: "#141210",
+			popover: "#FFFFFF",
+			popoverForeground: "#141210",
+			primary: "#FFB224",
+			primaryForeground: "#241700",
+			secondary: "#F7F4EF",
+			secondaryForeground: "#2e2722",
+			muted: "#F7F4EF",
+			mutedForeground: "#6E6862",
+			accent: "#F1EEE7",
+			accentForeground: "#141210",
+			action: "#141210",
+			destructive: "#D44338",
+			destructiveForeground: "#ffffff",
+			success: "#138759",
+			successForeground: "#ffffff",
+			warning: "#E39A20",
+			warningForeground: "#2b1c08",
+			info: "#4768A9",
+			infoForeground: "#ffffff",
+			border: "#14121014",
+			input: "#79716A",
+			ring: "#141210",
+			scrim: "#1f1915",
+			shimmer: "#A79F92",
+			priceCompare: "#6E6862",
+		},
+		dark: {
+			background: "#0F0D0A",
+			foreground: "#F6F3ED",
+			card: "#1B1815",
+			cardForeground: "#F6F3ED",
+			popover: "#221E1A",
+			popoverForeground: "#F6F3ED",
+			primary: "#FFB224",
+			primaryForeground: "#241700",
+			secondary: "#242019",
+			secondaryForeground: "#F6F3ED",
+			muted: "#242019",
+			mutedForeground: "#A79E90",
+			accent: "#2C2720",
+			accentForeground: "#F6F3ED",
+			action: "#FFB224",
+			destructive: "#FF6B60",
+			destructiveForeground: "#2A0A08",
+			success: "#3FCB86",
+			successForeground: "#052014",
+			warning: "#F0A93B",
+			warningForeground: "#2A1A03",
+			info: "#6D9BE8",
+			infoForeground: "#04182E",
+			border: "#302A22",
+			input: "#6E675C",
+			ring: "#FFB224",
+			scrim: "#000000",
+			shimmer: "#4A4238",
+			priceCompare: "#8B8478",
+		},
+	},
+	coral: {
+		light: {
+			background: "#FFFFFF",
+			foreground: "#170E0B",
+			card: "#FFFFFF",
+			cardForeground: "#170E0B",
+			popover: "#FFFFFF",
+			popoverForeground: "#170E0B",
+			primary: "#FF6A4D",
+			primaryForeground: "#2E0F06",
+			secondary: "#F8F2F0",
+			secondaryForeground: "#2e2722",
+			muted: "#F8F2F0",
+			mutedForeground: "#72645F",
+			accent: "#F3EBE8",
+			accentForeground: "#170E0B",
+			action: "#170E0B",
+			destructive: "#D44338",
+			destructiveForeground: "#ffffff",
+			success: "#138759",
+			successForeground: "#ffffff",
+			warning: "#E39A20",
+			warningForeground: "#2b1c08",
+			info: "#4768A9",
+			infoForeground: "#ffffff",
+			border: "#170E0B14",
+			input: "#7C6E69",
+			ring: "#170E0B",
+			scrim: "#1f1915",
+			shimmer: "#AB9C96",
+			priceCompare: "#72645F",
+		},
+		dark: {
+			background: "#100B0A",
+			foreground: "#F7F0EE",
+			card: "#1C1513",
+			cardForeground: "#F7F0EE",
+			popover: "#231A18",
+			popoverForeground: "#F7F0EE",
+			primary: "#FF6A4D",
+			primaryForeground: "#2E0F06",
+			secondary: "#251B19",
+			secondaryForeground: "#F7F0EE",
+			muted: "#251B19",
+			mutedForeground: "#AA9A95",
+			accent: "#2E211E",
+			accentForeground: "#F7F0EE",
+			action: "#FF6A4D",
+			destructive: "#FF6B60",
+			destructiveForeground: "#2A0A08",
+			success: "#3FCB86",
+			successForeground: "#052014",
+			warning: "#F0A93B",
+			warningForeground: "#2A1A03",
+			info: "#6D9BE8",
+			infoForeground: "#04182E",
+			border: "#332623",
+			input: "#6F625E",
+			ring: "#FF6A4D",
+			scrim: "#000000",
+			shimmer: "#4C3D39",
+			priceCompare: "#8E807B",
+		},
+	},
+	sky: {
+		light: {
+			background: "#FFFFFF",
+			foreground: "#0B1418",
+			card: "#FFFFFF",
+			cardForeground: "#0B1418",
+			popover: "#FFFFFF",
+			popoverForeground: "#0B1418",
+			primary: "#4CC9F0",
+			primaryForeground: "#04222E",
+			secondary: "#F0F5F7",
+			secondaryForeground: "#2e2722",
+			muted: "#F0F5F7",
+			mutedForeground: "#5E6C72",
+			accent: "#E9F2F6",
+			accentForeground: "#0B1418",
+			action: "#0B1418",
+			destructive: "#D44338",
+			destructiveForeground: "#ffffff",
+			success: "#138759",
+			successForeground: "#ffffff",
+			warning: "#E39A20",
+			warningForeground: "#2b1c08",
+			info: "#4768A9",
+			infoForeground: "#ffffff",
+			border: "#0B141814",
+			input: "#6B787E",
+			ring: "#0B1418",
+			scrim: "#1f1915",
+			shimmer: "#9AAAB1",
+			priceCompare: "#5E6C72",
+		},
+		dark: {
+			background: "#080F12",
+			foreground: "#EDF4F6",
+			card: "#121C21",
+			cardForeground: "#EDF4F6",
+			popover: "#18242A",
+			popoverForeground: "#EDF4F6",
+			primary: "#4CC9F0",
+			primaryForeground: "#04222E",
+			secondary: "#18242A",
+			secondaryForeground: "#EDF4F6",
+			muted: "#18242A",
+			mutedForeground: "#9BAEB5",
+			accent: "#1E2C33",
+			accentForeground: "#EDF4F6",
+			action: "#4CC9F0",
+			destructive: "#FF6B60",
+			destructiveForeground: "#2A0A08",
+			success: "#3FCB86",
+			successForeground: "#052014",
+			warning: "#F0A93B",
+			warningForeground: "#2A1A03",
+			info: "#6D9BE8",
+			infoForeground: "#04182E",
+			border: "#25363E",
+			input: "#61757D",
+			ring: "#4CC9F0",
+			scrim: "#000000",
+			shimmer: "#374A52",
+			priceCompare: "#7E9098",
+		},
+	},
+};
+
+/**
+ * A merchant palette: the semantic layer for the scheme, with the theme's brand over it.
+ *
+ * A function rather than a precomputed object because the 4 themes x 2 schemes x 49 keys
+ * is 392 values, and a precomputed table of that size is a second copy of the tokens that
+ * can drift from the first. This composes on read and cannot.
+ */
+export function businessThemeColors(
+	id: BusinessThemeId,
+	scheme: ColorScheme,
+): ThemeColors {
+	return { ...semantic[scheme], ...businessThemes[id][scheme] } as ThemeColors;
+}
 
 /**
  * The four radius steps — `--radius-sm`, `--radius-md`, `--radius-lg` — plus the

@@ -254,6 +254,18 @@ export const business = {
 	"biz.reviews.reply.yours": "Your reply",
 
 	"biz.settings.title": "Settings",
+
+	// The merchant console palette. The four names are colour words rather than product
+	// names, because the control chooses a colour and a flattering name makes the swatch
+	// beside it look like a lie. `lime` is the default and is what a shop saw before this
+	// control existed.
+	"biz.theme.title": "Appearance",
+	"biz.theme.help": "The colour of your console on this device",
+	"biz.theme.lime": "Lime",
+	"biz.theme.amber": "Amber",
+	"biz.theme.coral": "Coral",
+	"biz.theme.sky": "Sky",
+
 	"biz.settings.profile": "Business details",
 	"biz.settings.name": "Name",
 	"biz.settings.slug": "Web address",
