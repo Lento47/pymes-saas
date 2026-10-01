@@ -17,6 +17,15 @@ type Permission = Awaited<
 // Several mounted screens share the permission, but only an explicit action may ask.
 let permissionRequest: Promise<Permission> | null = null;
 
+/**
+ * How often a `preferCurrent` caller re-reads its position.
+ *
+ * Half the server's `PRESENCE_FRESH_MS`, which is two minutes: the tick lands well inside
+ * the window even when one is dropped, and halving it rather than matching it is what makes
+ * a late tick harmless instead of an outage.
+ */
+const CURRENT_FIX_POLL_MS = 60 * 1000;
+
 function requestPermission(): Promise<Permission> {
 	permissionRequest ??= Location.requestForegroundPermissionsAsync().finally(
 		() => {
@@ -32,79 +41,106 @@ function requestPermission(): Promise<Permission> {
  * A denied permission or unavailable provider clears the previous fix. The sequence
  * prevents an older location read restoring coordinates after a newer refusal.
  */
-export function useDeviceLocation(): {
+export function useDeviceLocation(
+	options: {
+		/**
+		 * Read a **current** fix instead of the cached one.
+		 *
+		 * The cache is the right answer for browsing and the wrong one for presence. A
+		 * cached fix is a claim about where the device *was*, and for a browse screen that
+		 * only sorts a list by distance, where minutes of staleness change nothing. For
+		 * presence it is a claim about where the courier is **right now**, and the server
+		 * stamps whatever it receives with a fresh `updatedAt` — so a cached fix that is
+		 * hours old passes the freshness window while being geographically wrong, and
+		 * `candidateFor` either offers the courier runs across town or none at all.
+		 *
+		 * The cost is the cold GPS wait the cache exists to avoid, which is why this is
+		 * opt-in: the courier board asks for the truth and pays for it, and the browsing
+		 * screens do not.
+		 */
+		preferCurrent?: boolean;
+	} = {},
+): {
 	coords: DeviceLocation;
 	status: LocationStatus;
 	request: () => void;
 } {
+	const { preferCurrent = false } = options;
 	const [coords, setCoords] = useState<DeviceLocation>(null);
 	const [status, setStatus] = useState<LocationStatus>("asking");
 	const mounted = useRef(false);
 	const sequence = useRef(0);
 	const requesting = useRef(false);
 
-	const refresh = useCallback(async (explicit = false) => {
-		if (!mounted.current || requesting.current) return;
-		if (explicit) requesting.current = true;
-		const current = ++sequence.current;
-		const isCurrent = () => mounted.current && sequence.current === current;
-		setCoords(null);
-		setStatus("asking");
+	const refresh = useCallback(
+		async (explicit = false) => {
+			if (!mounted.current || requesting.current) return;
+			if (explicit) requesting.current = true;
+			const current = ++sequence.current;
+			const isCurrent = () => mounted.current && sequence.current === current;
+			setCoords(null);
+			setStatus("asking");
 
-		try {
-			const pendingPermission = permissionRequest;
-			let permission = await (pendingPermission ??
-				Location.getForegroundPermissionsAsync());
-			if (!isCurrent()) return;
-			if (!permission.granted && explicit && !pendingPermission) {
-				if (!permission.canAskAgain) {
+			try {
+				const pendingPermission = permissionRequest;
+				let permission = await (pendingPermission ??
+					Location.getForegroundPermissionsAsync());
+				if (!isCurrent()) return;
+				if (!permission.granted && explicit && !pendingPermission) {
+					if (!permission.canAskAgain) {
+						setStatus("denied");
+						requesting.current = false;
+						await Linking.openSettings();
+						return;
+					}
+					permission = await requestPermission();
+				}
+				if (!isCurrent()) return;
+				if (explicit) requesting.current = false;
+				if (!permission.granted) {
 					setStatus("denied");
-					requesting.current = false;
-					await Linking.openSettings();
 					return;
 				}
-				permission = await requestPermission();
-			}
-			if (!isCurrent()) return;
-			if (explicit) requesting.current = false;
-			if (!permission.granted) {
-				setStatus("denied");
-				return;
-			}
 
-			const enabled = await Location.hasServicesEnabledAsync();
-			if (!isCurrent()) return;
-			if (!enabled) {
-				setStatus("unavailable");
-				return;
-			}
+				const enabled = await Location.hasServicesEnabledAsync();
+				if (!isCurrent()) return;
+				if (!enabled) {
+					setStatus("unavailable");
+					return;
+				}
 
-			// A cached fix avoids a cold GPS wait. Never read it before checking both
-			// permission and services: a cached coordinate can outlive either consent.
-			const cached = await Location.getLastKnownPositionAsync();
-			if (!isCurrent()) return;
-			const position =
-				cached ??
-				(await Location.getCurrentPositionAsync({
-					accuracy: Location.Accuracy.Balanced,
-					// Passive screen reads must not raise Android's provider dialog.
-					mayShowUserSettingsDialog: explicit,
-				}));
-			if (!isCurrent()) return;
-			setCoords({
-				lat: position.coords.latitude,
-				lng: position.coords.longitude,
-			});
-			setStatus("granted");
-		} catch {
-			if (isCurrent()) {
-				setCoords(null);
-				setStatus("unavailable");
+				// A cached fix avoids a cold GPS wait, and `preferCurrent` is what opts
+				// out of it — see that option's own note for why the courier board does. Never
+				// read either before checking both permission and services: a cached coordinate
+				// can outlive either consent.
+				const cached = preferCurrent
+					? null
+					: await Location.getLastKnownPositionAsync();
+				if (!isCurrent()) return;
+				const position =
+					cached ??
+					(await Location.getCurrentPositionAsync({
+						accuracy: Location.Accuracy.Balanced,
+						// Passive screen reads must not raise Android's provider dialog.
+						mayShowUserSettingsDialog: explicit,
+					}));
+				if (!isCurrent()) return;
+				setCoords({
+					lat: position.coords.latitude,
+					lng: position.coords.longitude,
+				});
+				setStatus("granted");
+			} catch {
+				if (isCurrent()) {
+					setCoords(null);
+					setStatus("unavailable");
+				}
+			} finally {
+				if (explicit && isCurrent()) requesting.current = false;
 			}
-		} finally {
-			if (explicit && isCurrent()) requesting.current = false;
-		}
-	}, []);
+		},
+		[preferCurrent],
+	);
 
 	useEffect(() => {
 		mounted.current = true;
@@ -114,13 +150,24 @@ export function useDeviceLocation(): {
 			// A read started before opening settings must not publish while away.
 			else if (!requesting.current) sequence.current += 1;
 		});
+		// The poll, and only for a caller that asked for a current fix. A browse screen
+		// reads once per mount and never repeats it; the courier board cannot, because a
+		// presence the server considers fresh is a promise about *now* and `coords` held in
+		// state stops being that. Half the server's `PRESENCE_FRESH_MS` is the margin: the
+		// tick lands well inside two minutes even when one is dropped.
+		const poll = preferCurrent
+			? setInterval(() => {
+					void refresh();
+				}, CURRENT_FIX_POLL_MS)
+			: null;
 		return () => {
 			mounted.current = false;
 			sequence.current += 1;
 			subscription.remove();
+			if (poll !== null) clearInterval(poll);
 			requesting.current = false;
 		};
-	}, [refresh]);
+	}, [refresh, preferCurrent]);
 
 	const request = useCallback(() => {
 		void refresh(true);

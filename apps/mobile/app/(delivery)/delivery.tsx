@@ -7,7 +7,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { type Href, router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Linking, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
@@ -338,21 +338,32 @@ function Dispatch() {
 			refetchInterval: OFFERS_POLL_MS,
 		}),
 	);
-	const { coords, status: locationStatus } = useDeviceLocation();
+	// `preferCurrent`: presence is a claim about where the courier is now, and the server
+	// timestamps whatever arrives. A cached fix would therefore pass the freshness window
+	// while being hours old — see `useDeviceLocation`'s option note. It also re-reads on an
+	// interval, so `coords` genuinely updates rather than going stale in place.
+	const { coords, status: locationStatus } = useDeviceLocation({
+		preferCurrent: true,
+	});
 	const presence = useMutation(
 		trpc.deliveries.reportPresence.mutationOptions({}),
 	);
-	const reportedKey = useRef<string | null>(null);
 
-	// Best-effort eligibility ping: dispatch only offers runs to couriers with a
-	// fresh presence. `useDeviceLocation` reads the cached fix without prompting,
-	// so this never raises a dialog on its own. Failures stay silent — an offer
-	// list that errors over a background ping would blame the wrong thing.
+	// Best-effort eligibility ping: dispatch only offers runs to couriers with a fresh
+	// presence, and `PRESENCE_FRESH_MS` is two minutes.
+	//
+	// **This follows the position rather than deduplicating it, and that is the fix.** It
+	// used to post once per distinct coordinate and never again, which made the ping an
+	// eligibility signal that switched itself off: a courier standing still — the most
+	// available person there is — posted once and then fell out of the pool two minutes
+	// later, with nothing on screen to say so. `preferCurrent` re-reads on an interval, so
+	// `coords` arrives again even when the courier has not moved, and this effect reposts
+	// and keeps the window open.
+	//
+	// Failures stay silent — an offer list that errors over a background ping would blame
+	// the wrong thing.
 	useEffect(() => {
 		if (!coords) return;
-		const key = `${coords.lat},${coords.lng}`;
-		if (reportedKey.current === key) return;
-		reportedKey.current = key;
 		presence.mutate({ lat: coords.lat, lng: coords.lng });
 	}, [coords, presence]);
 
