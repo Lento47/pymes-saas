@@ -17,7 +17,23 @@
  * removing or renaming one strands whatever a device stored under the old name, which is
  * why `resolveBusinessTheme` falls back rather than throwing.
  */
-export const BUSINESS_THEME_IDS = ["lime", "amber", "coral", "sky"] as const;
+export const BUSINESS_THEME_IDS = [
+	// Family A — Duo: a neutral canvas and one accent.
+	"lime",
+	"amber",
+	"coral",
+	"sky",
+	// Family B — Trio: a fill and a tint, split-complementary.
+	"sunset",
+	"forest",
+	"ocean",
+	"orchid",
+	// Family C — Quartet: a fill, a tint, and an ink, triadic.
+	"citrus",
+	"berry",
+	"dune",
+	"harbor",
+] as const;
 
 export type BusinessThemeId = (typeof BUSINESS_THEME_IDS)[number];
 
