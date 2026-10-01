@@ -162,11 +162,27 @@ export function CategoryRail({
  * for the same rows.
  *
  * A tile and not a pill: categories are destinations, not filters, and a row of
- * identical pills reads as one control repeated. The box is `muted` with the glyph in
- * `mutedForeground` at rest; selected it fills `primary` with `primaryForeground` ink, the
- * same pair the tab bar's active state wears. The label wraps to two lines rather than
- * truncating: "Frutas y verduras" is a category, and an ellipsis would make it a different
- * one.
+ * identical pills reads as one control repeated. The box is `accent` with the glyph in
+ * `accentForeground` at rest; selected it fills `primary` with `primaryForeground` ink, the
+ * same pair the tab bar's active state wears.
+ *
+ * ## The label wraps as many lines as it needs, and never breaks a word
+ *
+ * The first half of that is `./product-tile`'s rule and this file's: **nothing here is
+ * clamped.** No `numberOfLines`, no ellipsis. "Belleza, Salud y Cuidado Personal" runs to
+ * four lines and the tiles below it are uneven, and that is the lesser fault — a cap would
+ * be truncating a category's name to save a layout, and `Juguetes, Pasatiempos y
+ * Coleccionables` would become a different category than the one the reader is looking for.
+ *
+ * The second half is what this file got wrong and why `TILE_WIDTH` is measured rather than
+ * picked. A word wider than its own box is not ellipsised, it is **broken** — and this rail
+ * was rendering `Decoració / n` and `Recreaci / ón` for exactly that reason, with the
+ * comment above claiming a two-line wrap that no width at 13pt can deliver and that nothing
+ * in the code enforced. See the note on `TILE_WIDTH` for the measurement.
+ *
+ * The label's `width` is set explicitly for the same reason the tile's is not enough:
+ * `alignItems: "center"` sizes a child to its content, so without it the text lays out
+ * unbroken and overflows.
  */
 function Chip({
 	label,
@@ -243,14 +259,65 @@ function Chip({
 	);
 }
 
-/** A disc per destination, at the rail's own gap — small enough to read as a strip, not a grid. */
-const TILE_WIDTH = 60;
+/**
+ * The label column, and the width a category's name has to be set in.
+ *
+ * **108 is measured, not chosen.** It is the width at which no single word in any of the
+ * **18 sector** names is too wide for its box, which is the whole defect: a word wider than
+ * its container is not ellipsised or hyphenated, it is *broken*, and this rail was shipping
+ * `Decoració / n`, `Tecnolog / ía` and `Recreaci / ón` because `TILE_WIDTH` was 60 and the
+ * longest words in the taxonomy are wider than that.
+ *
+ * The three that decide it, at the `label` token's 13pt and rounded **up**:
+ *
+ * | word | sector | width |
+ * |---|---|---|
+ * | `Entretenimiento` | Libros, Medios y Entretenimiento | ~98pt |
+ * | `Coleccionables` | Juguetes, Pasatiempos y Coleccionables | ~95pt |
+ * | `Capacitación` | Educación y Capacitación | ~80pt |
+ *
+ * 98 is the floor and 108 is what this is, because 102 left four points of slack and four
+ * points is less than one character: the next sector with a word one letter longer than
+ * `Entretenimiento` would have broken again, and the tile count is the same at 102 and 108,
+ * so the margin is free. `lib/category-rail.test.ts` asserts it rather than trusting this
+ * paragraph.
+ *
+ * ## The two leaves that do not fit, and are not made to
+ *
+ * `Electrodomésticos` and `Electrodomésticos (DIY)` are ~115pt: no column that shows three
+ * tiles across a phone can hold that word, and widening to 120pt would show two. They reach
+ * this rail through exactly one caller — the search screen's *results* rail, which draws the
+ * categories a query matched, and a search for "electrodomésticos" matches them. The other
+ * three callers pass sectors and are fully fixed by the width above.
+ *
+ * That is left visible rather than papered over. An ellipsis would hide it, and the rule this
+ * repo states (`./product-tile`) is that a cap is truncating data to save a layout; a smaller
+ * font would take every sector label down to 10pt to accommodate one word. Both are worse than
+ * the defect they remove. The honest fix is a shorter `name` on those two rows, or a
+ * `shortName` column for the rail — a change to the taxonomy's content, which is not this
+ * file's to make. The test holds both names, so the day one is shortened it says so.
+ *
+ * ## The price
+ *
+ * Three tiles across a 390pt screen where there were five. That is what the sector names
+ * cost, and it is not avoidable at any width — it is what the names are.
+ */
+const TILE_WIDTH = 108;
+
+/**
+ * The disc, which is **not** `TILE_WIDTH`.
+ *
+ * One constant used to drive both the disc and the label column, which is why the fix for a
+ * label that would not fit had nowhere to go: widening the tile also widened the disc, and
+ * the rail would have lost four of its five tiles to buy back a word. Separating them means
+ * the disc keeps the size that makes the strip read as a strip, and only the text gets wider.
+ */
+const DISC_SIZE = 60;
 
 const styles = StyleSheet.create({
 	rail: { paddingHorizontal: space.lg, gap: space.sm },
-	// A tile is a disc with a word under it. The width is fixed so five in a row read
-	// as one rhythm; the label below wraps inside that width rather than
-	// truncating a category's name.
+	// A tile is a disc with a word under it, and the two sizes are independent: the disc is
+	// the rhythm, the label column is the space the name has to fit in.
 	tile: {
 		alignItems: "center",
 		gap: space.xs,
@@ -258,8 +325,8 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET,
 	},
 	tileBox: {
-		width: TILE_WIDTH,
-		height: TILE_WIDTH,
+		width: DISC_SIZE,
+		height: DISC_SIZE,
 		borderRadius: radius.full,
 		alignItems: "center",
 		justifyContent: "center",
@@ -267,5 +334,10 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	tileImage: { width: "100%", height: "100%" },
-	tileLabel: { textAlign: "center" },
+	// The width is stated here rather than left to the tile's, and that is not redundancy.
+	// `tile` sets `alignItems: "center"`, which sizes a child to its *content* rather than
+	// to the parent — so an unconstrained `<Text>` would lay out at its full unbroken width
+	// and overflow the tile rather than wrap inside it. Naming the width is what forces the
+	// wrap at 102pt, which is the entire fix.
+	tileLabel: { textAlign: "center", width: TILE_WIDTH },
 });
