@@ -260,6 +260,8 @@ export const business = {
 	// control existed.
 	"biz.theme.title": "Appearance",
 	"biz.theme.help": "The colour of your console on this device",
+	"biz.theme.scopeNote":
+		"These colours belong to the business console. On a courier or customer account you see the PymesHub colours.",
 	"biz.theme.lime": "Lime",
 	"biz.theme.amber": "Amber",
 	"biz.theme.coral": "Coral",

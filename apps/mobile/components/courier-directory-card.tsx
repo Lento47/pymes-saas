@@ -2,10 +2,9 @@ import { StyleSheet, View } from "react-native";
 
 import { Card } from "@/components/card";
 import { Image } from "@/components/image";
-import { ListRow } from "@/components/list-row";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
-import { space } from "@/theme";
+import { space, useTheme } from "@/theme";
 
 /**
  * One courier as a business sees them in the delivery pool.
@@ -55,6 +54,8 @@ export function CourierDirectoryCard({
 	action?: React.ReactNode;
 }) {
 	const { t } = useT();
+	const { colors } = useTheme();
+	const muted = colors.muted;
 	const initial = courier.displayName.trim().charAt(0).toUpperCase();
 
 	return (
@@ -68,19 +69,35 @@ export function CourierDirectoryCard({
 						accessibilityLabel={courier.displayName}
 					/>
 				) : (
-					<View style={styles.fallback} accessibilityElementsHidden>
+					<View
+						style={[styles.fallback, { backgroundColor: muted }]}
+						accessibilityElementsHidden
+					>
 						<Text variant="label" bold style={styles.initial}>
 							{initial}
 						</Text>
 					</View>
 				)}
+				{/*
+				 * The name on its own line, the area under it, and the verified mark last.
+				 *
+				 * This was a `ListRow` with the mark in its `state` slot, which put
+				 * "Verificado por PymesHub" on the same line as the name and pushed the
+				 * service area onto a third — so the mark read as a peer of the name and the
+				 * area read as a subtitle of it. A shop scanning a pool of twelve needs the
+				 * name first, the area second, and the badge last, and the badge is worth the
+				 * least space of the three.
+				 */}
 				<View style={styles.text}>
-					<ListRow
-						title={courier.displayName}
-						subtitle={courier.serviceArea}
-						state={t("biz.courier.directoryVerified")}
-						divider={false}
-					/>
+					<Text variant="body" bold numberOfLines={1}>
+						{courier.displayName}
+					</Text>
+					<Text variant="caption" tone="muted" numberOfLines={1}>
+						{courier.serviceArea}
+					</Text>
+					<Text variant="caption" tone="action" numberOfLines={1}>
+						{t("biz.courier.directoryVerified")}
+					</Text>
 				</View>
 			</View>
 

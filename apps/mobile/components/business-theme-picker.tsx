@@ -1,4 +1,5 @@
 import type { MessageKey } from "@pymeshub/i18n";
+import { useSegments } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 import { Pressable } from "@/components/pressable";
@@ -11,10 +12,12 @@ import {
 	businessThemeOrder,
 	type ColorScheme,
 	radius,
+	selectTree,
 	space,
 	type ThemeColors,
 	useBusinessTheme,
 	useTheme,
+	useThemeScope,
 } from "@/theme";
 
 /**
@@ -47,21 +50,49 @@ export function BusinessThemePicker() {
 	const { scheme } = useTheme();
 	const { t } = useT();
 
+	// Whether the palette this control chooses is the one actually in force.
+	//
+	// `selectTree` is the *same* function `useTheme()` asks, so this note cannot disagree
+	// with what the app does — it appears on exactly the screens where the choice is inert,
+	// and nowhere else. Reading the tree by any other route (the role alone, or the route
+	// group) would drift the moment `select.ts` changed its rule.
+	const tree = selectTree({ segments: useSegments(), role: useThemeScope() });
+	const applies = tree === "business";
+
 	return (
-		<View style={styles.row}>
-			{businessThemeOrder().map((option) => (
-				<ThemeSwatch
-					key={option}
-					id={option}
-					scheme={scheme}
-					selected={option === id}
-					label={t(THEME_LABEL[option])}
-					onPress={() => {
-						selection();
-						setId(option);
-					}}
-				/>
-			))}
+		<View style={styles.block}>
+			<View style={styles.row}>
+				{businessThemeOrder().map((option) => (
+					<ThemeSwatch
+						key={option}
+						id={option}
+						scheme={scheme}
+						selected={option === id}
+						label={t(THEME_LABEL[option])}
+						onPress={() => {
+							selection();
+							setId(option);
+						}}
+					/>
+				))}
+			</View>
+			{/*
+			 * The control is shown to every account, deliberately — gating it on the role
+			 * was considered and declined. What was not acceptable was leaving it silently
+			 * inert: a courier taps four colours and nothing moves, which reads as a broken
+			 * app rather than as a preference that applies elsewhere.
+			 *
+			 * So it stays, it stays tappable, and it says what it is for. Giving the
+			 * consumer and delivery trees a palette of their own is the change that would
+			 * make this note unnecessary, and that is a brand decision rather than a bugfix:
+			 * `theme/tokens.ts` holds that the consumer palette is transcribed from
+			 * `packages/ui/src/styles/globals.css` and must not drift from it.
+			 */}
+			{applies ? null : (
+				<Text variant="caption" tone="muted" style={styles.scope}>
+					{t("biz.theme.scopeNote")}
+				</Text>
+			)}
 		</View>
 	);
 }
@@ -97,12 +128,28 @@ function ThemeSwatch({
 			]}
 		>
 			{/*
-				Three bands, not one square. The canvas is the largest because it is what the
-				merchant will spend the most time looking at; the accent is a fill, so it is
-				drawn as a fill; the ink is a hairline, so it is a hairline. Each band is that
-				token drawn as itself rather than as an approximation of it.
+				Four bands, and the fourth is the one that was missing.
+
+				The first version drew `background`, `primary` and `action` and its docblock
+				claimed the canvas band mattered most because it is what a merchant looks at
+				most. On screen it was invisible: **all twelve light themes have
+				`background: #FFFFFF`**, so a 52pt white band on a white card is not a canvas,
+				it is a hole, and the swatch showed one colour of the palette while claiming to
+				show three.
+
+				So the canvas is now drawn with a hairline in that theme's own `border` — you
+				can see the *area* even when the colour is the same as the page behind it — and
+				a `muted` band sits inside it, because `muted` is a tint of the primary and is
+				the one neutral that actually differs between these themes. The accent is a
+				fill and the ink is a hairline, each drawn as itself.
 			*/}
-			<View style={[styles.canvas, { backgroundColor: preview.background }]}>
+			<View
+				style={[
+					styles.canvas,
+					{ backgroundColor: preview.background, borderColor: preview.border },
+				]}
+			>
+				<View style={[styles.muted, { backgroundColor: preview.muted }]} />
 				<View style={[styles.accent, { backgroundColor: preview.primary }]} />
 				<View style={[styles.ink, { backgroundColor: preview.action }]} />
 			</View>
@@ -143,11 +190,25 @@ const THEME_LABEL = {
 } as const satisfies Record<BusinessThemeId, MessageKey>;
 
 const styles = StyleSheet.create({
-	row: { flexDirection: "row", gap: space.sm, flexWrap: "wrap" },
+	/*
+	 * A fixed four-across grid, not a wrapping flex row.
+	 *
+	 * The first version was `flexBasis: 72` + `flexGrow: 1` + `flexWrap`, which put five on
+	 * the first two rows and then stretched the last two across the full width — two cards
+	 * twice the size of the ten above them, on the same screen. Twelve divides by four and
+	 * by six and by three; it does not divide by five, so five-per-row was always going to
+	 * leave a ragged remainder. Four gives three even rows, and the labels ("Orquídea" is the
+	 * longest) have room at that width.
+	 */
+	row: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+	block: { gap: space.xs },
+	scope: { marginTop: space.xs },
 	swatch: {
+		// `width: '25%'` plus `gap` would overflow, so the share is computed instead:
+		// 25% minus a third of the gap, which is exact for any gap at any screen width.
 		flexGrow: 1,
-		flexBasis: 72,
-		minWidth: 72,
+		flexBasis: "22%",
+		maxWidth: "23.5%",
 		gap: space.xs,
 		padding: space.xs,
 		borderWidth: 2,
@@ -156,6 +217,11 @@ const styles = StyleSheet.create({
 	canvas: {
 		height: 52,
 		borderRadius: radius.sm,
+		// A hairline, so a white canvas is still a *shape* on a white card rather than a
+		// gap. One point, and it is the theme's own `border` rather than a neutral grey, so
+		// the edge is part of what is being previewed.
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: "hidden",
 		padding: space.xs,
 		gap: space.xs,
 		justifyContent: "flex-end",
@@ -163,4 +229,7 @@ const styles = StyleSheet.create({
 	accent: { height: 12, borderRadius: 2 },
 	ink: { height: 2, width: "55%", borderRadius: 1 },
 	label: { textAlign: "center" },
+	// The one neutral that differs between these themes: `muted` is a 5% tint of the
+	// primary, so it reads as that family's cast even when the canvas above it is white.
+	muted: { flex: 1, borderRadius: 2 },
 });

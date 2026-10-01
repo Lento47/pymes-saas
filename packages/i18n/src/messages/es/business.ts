@@ -281,6 +281,8 @@ export const business = {
 	// que el negocio ya veía antes de que existiera este control.
 	"biz.theme.title": "Apariencia",
 	"biz.theme.help": "El color de tu consola en este dispositivo",
+	"biz.theme.scopeNote":
+		"Estos colores son de la consola de negocios. En tu cuenta de repartidor o de cliente se ven los colores de PymesHub.",
 	"biz.theme.lime": "Lima",
 	"biz.theme.amber": "Ámbar",
 	"biz.theme.coral": "Coral",
