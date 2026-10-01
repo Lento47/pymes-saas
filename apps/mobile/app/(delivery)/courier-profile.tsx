@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
+import { CourierDirectoryCard } from "@/components/courier-directory-card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { Screen, ScreenSection } from "@/components/screen";
@@ -283,6 +284,35 @@ function ProfileForm({
 							: t("biz.courier.reviewPending.body")}
 				</Text>
 			</Card>
+
+			{/*
+			    The directory preview, and only once the profile is actually in the
+			    directory. Everything here is already on screen: `couriers.profile` for the
+			    name, area, bio and availability, and `users.me` for the avatar — which is
+			    the same `user.image` the pool entry reads, so this cannot drift from what a
+			    shop sees. No request, no new shape.
+
+			    `isMember` and `isInvited` are absent on purpose. They say whether *this*
+			    courier is on *that* shop's roster, and there is no "that" here. The card takes
+			    the identity half; the business screen supplies its own row as `action`.
+			*/}
+			{statusValue === "VERIFIED" && profile.data && me.data ? (
+				<ScreenSection
+					title={t("biz.courier.preview.title")}
+					subtitle={t("biz.courier.preview.body")}
+				>
+					<CourierDirectoryCard
+						courier={{
+							profileId: profile.data.id,
+							displayName: profile.data.displayName,
+							image: me.data.image,
+							serviceArea: profile.data.serviceArea,
+							bio: profile.data.bio,
+							isAvailable: profile.data.isAvailable,
+						}}
+					/>
+				</ScreenSection>
+			) : null}
 
 			<ScreenSection title={t("biz.courier.profile")}>
 				<Field

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
+import { CourierDirectoryCard } from "@/components/courier-directory-card";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
@@ -432,31 +433,29 @@ export default function TeamScreen() {
 							) : courierDirectory.data?.length ? (
 								<View style={styles.directoryResults}>
 									{courierDirectory.data.map((courier) => (
-										<Card key={courier.profileId} style={styles.directoryCard}>
-											<ListRow
-												title={courier.displayName}
-												subtitle={courier.serviceArea}
-												state={t("biz.courier.directoryVerified")}
-												divider={false}
-											/>
-											<Button
-												label={
-													courier.isMember
-														? t("biz.courier.invite.alreadyMember")
-														: courier.isInvited
-															? t("biz.courier.invite.alreadySent")
-															: t("biz.courier.invite.send")
-												}
-												disabled={courier.isMember || courier.isInvited}
-												selected={selectedCourierId === courier.profileId}
-												onPress={() => {
-													setSelectedCourierId(courier.profileId);
-													setInviteSubmitted(false);
-												}}
-												size="sm"
-												variant="ghost"
-											/>
-										</Card>
+										<CourierDirectoryCard
+											key={courier.profileId}
+											courier={courier}
+											action={
+												<Button
+													label={
+														courier.isMember
+															? t("biz.courier.invite.alreadyMember")
+															: courier.isInvited
+																? t("biz.courier.invite.alreadySent")
+																: t("biz.courier.invite.send")
+													}
+													disabled={courier.isMember || courier.isInvited}
+													selected={selectedCourierId === courier.profileId}
+													onPress={() => {
+														setSelectedCourierId(courier.profileId);
+														setInviteSubmitted(false);
+													}}
+													size="sm"
+													variant="ghost"
+												/>
+											}
+										/>
 									))}
 								</View>
 							) : (

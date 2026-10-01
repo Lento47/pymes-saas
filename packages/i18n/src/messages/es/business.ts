@@ -537,6 +537,13 @@ export const business = {
 		"Actualiza tus datos y envíalos a revisión de nuevo.",
 	"biz.courier.directoryVerified": "Verificado por PymesHub",
 
+	// La vista previa del directorio, y el encabezado que la introduce. El texto dice lo
+	// que es — "esto es lo que ven" — y no promete nada más: la tarjeta es la misma que el
+	// negocio ve, con los mismos datos, así que no puede mentir por construction.
+	"biz.courier.preview.title": "Cómo te ven los negocios",
+	"biz.courier.preview.body":
+		"Esta es tu tarjeta en el directorio de repartidores, tal como la ve un negocio que te está buscando.",
+
 	/*
 	 * A move the API refused for a reason that is not the conflict below: a transition the
 	 * order is not in, a code with no sentence of its own, the network gone.

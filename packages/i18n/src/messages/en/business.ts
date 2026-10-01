@@ -489,6 +489,13 @@ export const business = {
 		"Update your details and send them for review again.",
 	"biz.courier.directoryVerified": "Verified by PymesHub",
 
+	// The directory preview and the heading that introduces it. The wording says what it
+	// is — "this is what businesses see" — and promises nothing more: the card is the same
+	// one a business renders, from the same data, so it cannot misrepresent by construction.
+	"biz.courier.preview.title": "How businesses see you",
+	"biz.courier.preview.body":
+		"This is your card in the courier directory, exactly as a business looking for a rider sees it.",
+
 	/* A refused move that is not the conflict below — see the Spanish file's note. */
 	"biz.board.moveFailed": "We couldn't move the order",
 	/* Someone else advanced the order while this phone was looking at the board. */
