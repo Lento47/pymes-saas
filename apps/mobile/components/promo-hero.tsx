@@ -116,7 +116,7 @@ export function PromoHero({
 						    where white is the *quiet* colour. `tabular` because a code is read
 						    off one character at a time. */}
 						<View style={[styles.chip, { backgroundColor: colors.card }]}>
-							<Text variant="label" tone="primary" bold tabular>
+							<Text variant="label" tone="action" bold tabular>
 								{code}
 							</Text>
 						</View>

@@ -79,7 +79,7 @@ export function Spinner({
 			accessibilityElementsHidden={!named}
 			importantForAccessibility={named ? "auto" : "no"}
 		>
-			<ActivityIndicator size={size} color={color ?? colors.primary} />
+			<ActivityIndicator size={size} color={color ?? colors.action} />
 			{label ? (
 				<Text variant="label" tone="muted" style={styles.label}>
 					{label}

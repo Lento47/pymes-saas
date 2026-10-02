@@ -164,7 +164,7 @@ export function Gallery({ coverUrl, images, style }: GalleryProps) {
 								index === page ? styles.dotActive : null,
 								{
 									backgroundColor:
-										index === page ? colors.primary : colors.border,
+										index === page ? colors.action : colors.border,
 								},
 							]}
 						/>

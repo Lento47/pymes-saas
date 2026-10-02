@@ -217,7 +217,7 @@ export function HomeHeader({
 					    a generic glyph, because a grid of identical glyphs tells nobody whose
 					    card is whose. */}
 					{avatarUrl ? null : (
-						<Text variant="caption" tone="primary" bold>
+						<Text variant="caption" tone="action" bold>
 							{initials}
 						</Text>
 					)}

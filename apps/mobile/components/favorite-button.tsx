@@ -155,7 +155,7 @@ export function FavoriteButton({
 				<Ionicons
 					name={favorited ? "heart" : "heart-outline"}
 					size={22}
-					color={favorited ? colors.primary : colors.mutedForeground}
+					color={favorited ? colors.action : colors.mutedForeground}
 					// The label is on the button and already says the state; an icon announced
 					// beside it would read the same thing twice.
 					accessibilityElementsHidden

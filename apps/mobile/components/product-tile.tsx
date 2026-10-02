@@ -201,7 +201,7 @@ export function ProductTile({
 							// scaling web's `FALLBACK_TEXT` map does (a 48pt tile takes a small
 							// letter, a grid tile a large one) — the size follows the box, which
 							// is why it is chosen at the call site rather than in one scale.
-							<Text variant="display" tone="primary" bold>
+							<Text variant="display" tone="action" bold>
 								{product.title.trim().charAt(0).toUpperCase()}
 							</Text>
 						)}

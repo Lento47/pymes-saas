@@ -1,13 +1,8 @@
-import { useSegments } from "expo-router";
-
 import { useBusinessTheme } from "./business-theme";
 import { useThemeMode } from "./mode";
-import { useThemeScope } from "./scope";
-import { selectTree } from "./select";
 import {
 	businessThemeColors,
 	type ColorScheme,
-	palette,
 	type ThemeColors,
 } from "./tokens";
 
@@ -73,20 +68,21 @@ export * from "./tokens";
  */
 export function useTheme(): { colors: ThemeColors; scheme: ColorScheme } {
 	const { scheme } = useThemeMode();
-	const segments = useSegments();
-	const role = useThemeScope();
-	const tree = selectTree({ segments, role });
-	// The merchant palette is read unconditionally, beside the tree test rather than inside
-	// its branch. `useBusinessTheme()` throws when its provider is missing, and a throw
-	// that only happens in one tree is a crash that only happens to merchants — which is
-	// the harder kind to find, because the consumer tree keeps working. Reading it always
-	// costs one context lookup the tree test was going to make anyway.
+	// **One palette for the whole app.** This used to be
+	//
+	//     tree === "business" ? businessThemeColors(theme.id, scheme) : palette[scheme]
+	//
+	// and that second branch is what left the theme picker inert for a customer and a
+	// courier: the control was on the Settings screen, it took the tap, and nothing the
+	// reader could see changed. The tree is still resolved — `selectTree` decides which
+	// palette note the picker shows, and `useThemeScope` is still mounted above every screen
+	// — but neither is consulted *here*, because a palette is not a property of a route.
+	//
+	// `palette` survives as an export because `components/hero.tsx` reads `palette.dark.*`
+	// and `palette.light.*` for a photograph scrim, which is deliberately theme-independent:
+	// the dim behind a photo is the same dim whatever the app is wearing.
 	const theme = useBusinessTheme();
-	const colors =
-		tree === "business"
-			? businessThemeColors(theme.id, scheme)
-			: palette[scheme];
-	return { colors, scheme };
+	return { colors: businessThemeColors(theme.id, scheme), scheme };
 }
 
 /*

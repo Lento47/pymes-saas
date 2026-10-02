@@ -188,10 +188,10 @@ export function ProductRow({
 					//
 					// `body` against `./product-tile`'s `display` is web's per-box scaling: the
 					// letter is sized to the box it fills, and this one fills a 60pt thumb.
-					// `tone="primary"` is the accent every sibling stand-in draws
+					// `tone="action"` is the accent every sibling stand-in draws
 					// (`./product-tile`, `./business-card`) — the letter is the one ink inside
-					// a grey box, and `action` is a pressed control's colour, which this is not.
-					<Text variant="body" tone="primary" bold>
+					// a grey box, and `primary` is a fill, which this is not.
+					<Text variant="body" tone="action" bold>
 						{product.title.trim().charAt(0).toUpperCase()}
 					</Text>
 				)}

@@ -8,14 +8,37 @@
  * the same warm neutrals and the same eight order-status pairs, or the two surfaces stop
  * looking like one product and start looking like two that agree about nothing.
  *
- * ## The merchant tree is the exception, and it is exactly one exception
+ * ## What replaced the tree test, and what it cost
  *
- * `(business)` — the owner console — draws the warm editorial system instead: ivory canvas,
- * ink, lime reserved for the primary action. Same `ThemeColors` keys, so every component
- * works unchanged; `theme/index.ts` picks the palette and `theme/select.ts` says which tree the
- * reader is in. The consumer and
- * delivery trees keep the palette above. Three jobs, two palettes, one key set — a fourth
- * palette anywhere would be a second exception, and those do not stack.
+ * This used to say the merchant tree was *the* exception, and that `(business)` alone drew
+ * the warm editorial system — ivory canvas, ink, lime reserved for the primary action — while
+ * "the consumer and delivery trees keep the palette above". `theme/index.ts` was where that
+ * split lived:
+ *
+ *     tree === "business" ? businessThemeColors(theme.id, scheme) : palette[scheme]
+ *
+ * The consequence was not a bug, it was a control that lied. The theme picker sits in
+ * `/settings`, which every reader can reach, it takes the tap, the swatch grid updates — and
+ * a customer or a courier sees nothing change, because the branch above hands them back the
+ * ultramarine palette they arrived with. Twelve themes, and for two of the three trees the
+ * answer was always the same colour.
+ *
+ * So the branch is gone. `useTheme()` returns `businessThemeColors(theme.id, scheme)` for
+ * every tree, and a palette is no longer a property of a route. `selectTree` survives, used
+ * only by the picker to label which palette note to show.
+ *
+ * **The cost, stated plainly: the phone no longer matches `globals.css` by default.**
+ * `DEFAULT_BUSINESS_THEME` is `lime`, so a customer who never opens Settings now sees the
+ * ivory/ink/lime system instead of electric ultramarine, and the web storefront still shows
+ * ultramarine. The web cannot follow: these twelve themes are device choices with no
+ * representation in `packages/ui`, so the two surfaces agree about the tokens and disagree
+ * about the accent. That is a real regression in cross-surface consistency, taken knowingly,
+ * because a design control that visibly does nothing is worse than a product that looks like
+ * one thing on the phone.
+ *
+ * `palette` is still exported — `components/hero.tsx` reads `palette.dark.*` and
+ * `palette.light.*` for a photograph scrim, which is deliberately theme-independent: the dim
+ * behind a photo is the same dim whatever the app is wearing.
  *
  * Every ratio below was measured, not eyeballed: ink on lime is 16.22:1, `mutedForeground`
  * holds 4.72:1 on `muted` and 5.62:1 on `card`, `input` is 4.59:1 on `card` (3:1 owed),
@@ -444,8 +467,12 @@ export {
  * #b37400 -> #A46A00 on card (3.88:1 -> 4.53:1). Each darkened in HSL, so hue and
  * saturation are untouched and only lightness moved.
  *
- * The consumer palette keeps its own values: `tokens.ts:141` documents #b37400 for the
- * storefront and that decision is not this task's to overwrite.
+ * `palette` keeps its own values, and that is now a fallback rather than a branch:
+ * `tokens.ts:141` documents #b37400 for the storefront and nothing here overwrites it. Since
+ * the tree test was removed from `theme/index.ts`, no screen reads `palette` for its colours —
+ * `hero.tsx` reads `palette.dark.*`/`palette.light.*` for the photo scrim alone — so #b37400
+ * is reachable from no route. It is left as it is rather than deleted, because a theme-aware
+ * consumer tree does not mean `globals.css` stops describing the web.
  */
 const base: Record<ColorScheme, BaseColors> = {
 	light: {

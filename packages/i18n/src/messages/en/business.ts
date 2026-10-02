@@ -259,9 +259,7 @@ export const business = {
 	// beside it look like a lie. `lime` is the default and is what a shop saw before this
 	// control existed.
 	"biz.theme.title": "Appearance",
-	"biz.theme.help": "The colour of your console on this device",
-	"biz.theme.scopeNote":
-		"These colours belong to the business console. On a courier or customer account you see the PymesHub colours.",
+	"biz.theme.help": "The colour of PymesHub on this device",
 	"biz.theme.lime": "Lime",
 	"biz.theme.amber": "Amber",
 	"biz.theme.coral": "Coral",

@@ -1037,14 +1037,14 @@ function TypeCard({
 					// reason — three rows in the submit button's fill would read as
 					// three submit buttons.
 					backgroundColor: chosen ? colors.accent : colors.card,
-					borderColor: chosen ? colors.primary : colors.input,
+					borderColor: chosen ? colors.action : colors.input,
 				},
 			]}
 		>
 			<Ionicons
 				name={account.glyph}
 				size={icon.action}
-				color={chosen ? colors.primary : colors.mutedForeground}
+				color={chosen ? colors.action : colors.mutedForeground}
 				accessibilityElementsHidden
 				importantForAccessibility="no"
 			/>
@@ -1130,7 +1130,7 @@ function ConsentCheck({
 				<Ionicons
 					name={checked ? "checkbox" : "square-outline"}
 					size={icon.action}
-					color={checked ? colors.primary : colors.mutedForeground}
+					color={checked ? colors.action : colors.mutedForeground}
 				/>
 				<Text variant="label" tone="muted" style={styles.consentLabel}>
 					{label}

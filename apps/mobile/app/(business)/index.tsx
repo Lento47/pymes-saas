@@ -783,7 +783,7 @@ export default function MerchantHome() {
 									<Ionicons
 										name="refresh"
 										size={18}
-										color={syncing ? colors.primary : colors.mutedForeground}
+										color={syncing ? colors.action : colors.mutedForeground}
 										accessibilityElementsHidden
 										importantForAccessibility="no"
 									/>

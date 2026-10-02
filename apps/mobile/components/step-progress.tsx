@@ -76,7 +76,7 @@ export function StepProgress({
 						key={index}
 						filled={index < step}
 						border={colors.border}
-						primary={colors.primary}
+						primary={colors.action}
 					/>
 				))}
 			</View>

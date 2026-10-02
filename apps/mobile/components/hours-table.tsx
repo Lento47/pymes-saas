@@ -227,7 +227,7 @@ export const HoursTable = memo(function HoursTable({
 									/* The word, not the weight, is what says which row is today: the
 									   emphasis above is the second signal and the ink is not a signal
 									   at all. It is also the half that survives a screen reader. */
-									<Text variant="caption" tone="primary" bold>
+									<Text variant="caption" tone="action" bold>
 										{t("store.today")}
 									</Text>
 								) : null}

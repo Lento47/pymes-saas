@@ -1,5 +1,4 @@
 import type { MessageKey } from "@pymeshub/i18n";
-import { useSegments } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 import { Pressable } from "@/components/pressable";
@@ -12,12 +11,10 @@ import {
 	businessThemeOrder,
 	type ColorScheme,
 	radius,
-	selectTree,
 	space,
 	type ThemeColors,
 	useBusinessTheme,
 	useTheme,
-	useThemeScope,
 } from "@/theme";
 
 /**
@@ -50,15 +47,6 @@ export function BusinessThemePicker() {
 	const { scheme } = useTheme();
 	const { t } = useT();
 
-	// Whether the palette this control chooses is the one actually in force.
-	//
-	// `selectTree` is the *same* function `useTheme()` asks, so this note cannot disagree
-	// with what the app does — it appears on exactly the screens where the choice is inert,
-	// and nowhere else. Reading the tree by any other route (the role alone, or the route
-	// group) would drift the moment `select.ts` changed its rule.
-	const tree = selectTree({ segments: useSegments(), role: useThemeScope() });
-	const applies = tree === "business";
-
 	return (
 		<View style={styles.block}>
 			<View style={styles.row}>
@@ -78,21 +66,22 @@ export function BusinessThemePicker() {
 			</View>
 			{/*
 			 * The control is shown to every account, deliberately — gating it on the role
-			 * was considered and declined. What was not acceptable was leaving it silently
-			 * inert: a courier taps four colours and nothing moves, which reads as a broken
-			 * app rather than as a preference that applies elsewhere.
+			 * was considered and declined. It used to be shown to everyone and *honest*
+			 * about being inert: this note rendered exactly where the choice did nothing,
+			 * so a courier tapped four colours, watched the app stay ultramarine, and was
+			 * told why. Correct, and useless — it described the bug instead of ending it.
 			 *
-			 * So it stays, it stays tappable, and it says what it is for. Giving the
-			 * consumer and delivery trees a palette of their own is the change that would
-			 * make this note unnecessary, and that is a brand decision rather than a bugfix:
-			 * `theme/tokens.ts` holds that the consumer palette is transcribed from
-			 * `packages/ui/src/styles/globals.css` and must not drift from it.
+			 * `useTheme()` no longer branches on the tree, so the choice applies everywhere
+			 * and there is nothing left to qualify. This component keeps no `applies` test
+			 * and `select.ts` keeps its tree, because `select.ts` still answers a real
+			 * question — which root routes a courier reaches that sit outside `(delivery)`
+			 * — it just no longer decides a palette.
+			 *
+			 * The cost is recorded in `theme/tokens.ts`: the phone no longer matches
+			 * `packages/ui/src/styles/globals.css` by default. Twelve themes cannot be
+			 * expressed in the web's token file, so the storefront there stays ultramarine
+			 * while this one is lime until the reader picks otherwise.
 			 */}
-			{applies ? null : (
-				<Text variant="caption" tone="muted" style={styles.scope}>
-					{t("biz.theme.scopeNote")}
-				</Text>
-			)}
 		</View>
 	);
 }
@@ -124,7 +113,7 @@ function ThemeSwatch({
 			accessibilityLabel={label}
 			style={[
 				styles.swatch,
-				{ borderColor: selected ? colors.primary : colors.border },
+				{ borderColor: selected ? colors.action : colors.border },
 			]}
 		>
 			{/*
@@ -202,7 +191,6 @@ const styles = StyleSheet.create({
 	 */
 	row: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
 	block: { gap: space.xs },
-	scope: { marginTop: space.xs },
 	swatch: {
 		// `width: '25%'` plus `gap` would overflow, so the share is computed instead:
 		// 25% minus a third of the gap, which is exact for any gap at any screen width.

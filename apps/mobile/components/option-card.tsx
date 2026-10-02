@@ -310,7 +310,7 @@ function OptionCard({
 						: chosen
 							? colors.accent
 							: colors.card,
-					borderColor: chosen ? colors.primary : colors.border,
+					borderColor: chosen ? colors.action : colors.border,
 				},
 			]}
 		>

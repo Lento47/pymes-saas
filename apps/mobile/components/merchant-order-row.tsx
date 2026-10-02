@@ -324,7 +324,7 @@ export function MerchantOrderRow({
 								{
 									backgroundColor:
 										urgent === "new"
-											? colors.primary
+											? colors.action
 											: urgent === "late"
 												? colors.warning
 												: urgent === "critical"

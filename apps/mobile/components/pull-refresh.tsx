@@ -62,8 +62,8 @@ export function useRefreshControl(
 			refreshing={refreshing}
 			onRefresh={refresh}
 			// Both tints — see the docblock.
-			tintColor={colors.primary}
-			colors={[colors.primary]}
+			tintColor={colors.action}
+			colors={[colors.action]}
 		/>
 	);
 }
