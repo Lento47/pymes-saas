@@ -36,6 +36,57 @@ function declared(name: string): number {
 	return Number(found[1]);
 }
 
+const tokens = readFileSync(
+	join(REPO, "apps", "mobile", "theme", "tokens.ts"),
+	"utf-8",
+);
+
+/** The platform floor for anything a finger lands on. */
+function minTouchTarget(): number {
+	const found = tokens.match(/export const MIN_TOUCH_TARGET = (\d+);/);
+	if (found?.[1] === undefined) throw new Error("MIN_TOUCH_TARGET not found");
+	return Number(found[1]);
+}
+
+const MIN_TOUCH_TARGET = minTouchTarget();
+
+/**
+ * The glyph's size in points, following the `icon.*` reference the rail actually uses.
+ *
+ * The name is read rather than the number, and the number is read rather than restated: a
+ * literal `24` here would keep passing the day someone swapped `icon.back` for something
+ * else, which is the same trap the label-width commit walked into twice.
+ */
+function glyphSize(): number {
+	const name = source.match(/size=\{icon\.(\w+)\}/)?.[1];
+	if (name === undefined) throw new Error("glyph size reference not found");
+	const found = tokens.match(new RegExp(`\\n\\s*${name}: (\\d+),`));
+	if (found?.[1] === undefined)
+		throw new Error(`icon.${name} not found in tokens.ts`);
+	return Number(found[1]);
+}
+
+/** How much of the tile the mark occupies — the number the whole sizing decision turns on. */
+function fillRatio(): number {
+	return glyphSize() / declared("TILE_SIZE");
+}
+
+/**
+ * The corner as a share of the tile's width.
+ *
+ * This is the ratio that decides whether the tile reads as *squared*, and it is not the token
+ * that decides it. A radius is an absolute number, so the same token is a fifth of a 60pt tile
+ * and over a quarter of a 44pt one — which is how `radius.md` became a lozenge without anything
+ * about it changing.
+ */
+function cornerShare(): number {
+	const name = source.match(
+		/tileBox:\s*\{[^}]*borderRadius:\s*radius\.(\w+)/,
+	)?.[1];
+	if (name === undefined) throw new Error("tileBox borderRadius not found");
+	return spaceToken(name as "sm") / declared("TILE_SIZE");
+}
+
 /**
  * The rail's gap and inset, resolved through `theme/tokens.ts` rather than restated.
  *
@@ -111,53 +162,107 @@ describe("the category rail's tiles", () => {
 		expect(codeOnly()).toMatch(/importantForAccessibility="no"/);
 	});
 
-	test("the box is a rounded square, not a disc", () => {
-		// `radius.full` on a square is a circle, and the curve threw away about a third of a
-		// 60pt box's area — corner a 20pt glyph never touches. `radius.md` is `./card`'s own
-		// corner, so the rail is the same kind of surface as the storefront card beside it.
-		expect(source).toMatch(/tileBox:\s*\{[^}]*borderRadius:\s*radius\.md/);
+	test("the box is squared, not a disc and not a lozenge", () => {
+		// `radius.full` on a square is a circle, and the curve threw away about a third of the
+		// box's area — corner a glyph never touches.
+		//
+		// The subtler half is `radius.md`: it is 12pt, which is a fifth of a 60pt tile and reads
+		// as a square with softened corners, but **27% of a 44pt one** and reads as a squircle.
+		// A radius is a share of the box, so shrinking the box without moving the token down
+		// silently rounds it further. `sm` is 14% here — the proportion `md` had at the size
+		// this tile used to be.
+		expect(source).toMatch(/tileBox:\s*\{[^}]*borderRadius:\s*radius\.sm/);
 		expect(codeOnly()).not.toMatch(/borderRadius:\s*radius\.full/);
+		expect(codeOnly()).not.toMatch(/borderRadius:\s*radius\.md/);
+		expect(cornerShare()).toBeLessThan(0.2);
 	});
 
 	test("a category photograph takes the box's corner, not a circle", () => {
-		// `radiusToken="full"` anywhere here would clip a picture to a disc inside a rounded
-		// square — the shape the box just stopped being, drawn again one layer down. And it
-		// would be invisible today: `image_url` is null on all 242 category rows.
+		// `radiusToken="full"` anywhere here would clip a picture to a disc inside a squared
+		// tile — the shape the box stopped being, drawn again one layer down. And it would be
+		// invisible today: `image_url` is null on all 242 category rows.
 		expect(codeOnly()).not.toMatch(/radiusToken="full"/);
-		expect(source).toMatch(/radiusToken="md"/);
+		expect(source).toMatch(/radiusToken="sm"/);
+	});
+
+	test("the corner is under a fifth of the tile", () => {
+		// The ratio, restated as a number so a later resize that changes one without the other
+		// is caught here rather than noticed by eye. 6/44 is 14%; `md` on this tile would be 27%
+		// and read as a lozenge.
+		expect(cornerShare()).toBeCloseTo(6 / 44, 2);
 	});
 
 	test("the tile is one number, not a box beside a label column", () => {
 		// They were split because widening the tile to fit a word also widened the disc. With
 		// no label there is nothing to fit, so a second constant would be two numbers that now
 		// say the same thing.
-		expect(declared("TILE_SIZE")).toBe(60);
+		expect(declared("TILE_SIZE")).toBe(44);
 		expect(codeOnly()).not.toMatch(/const TILE_WIDTH/);
 		expect(codeOnly()).not.toMatch(/const TILE_BOX_SIZE/);
 		expect(codeOnly()).not.toMatch(/tileLabel/);
 	});
 
-	test("five tiles are visible across a 390pt screen", () => {
-		// The cost of the labels, paid back. Five is what the rail showed before the name
-		// column existed, so this asserts the round trip rather than the number alone.
+	test("the mark fills enough of its tile to read as the tile", () => {
+		// The pair, asserted together, because either alone regresses silently. A 20pt glyph
+		// in a 44pt box is 45% fill; a 24pt glyph in a 60pt box is 40%. Both are what the rail
+		// looked like while the marks read as floating inside their containers, and each would
+		// pass a test that only checked one of the two numbers.
+		expect(declared("TILE_SIZE")).toBe(44);
+		expect(source).toMatch(/size=\{icon\.back\}/);
+		expect(codeOnly()).not.toMatch(/size=\{icon\.action\}/);
+		expect(glyphSize()).toBe(24);
+		expect(fillRatio()).toBeGreaterThan(0.5);
+	});
+
+	test("the space a reader sees between two marks is a fifth of the tile, not two thirds", () => {
+		// The complaint this answers, as a number. The gap was always the small part: at 60pt
+		// with a 20pt glyph, the distance between two glyph *edges* was 20 + 4 + 20 = 44pt — so
+		// tightening the gap from 8 to 4 changed almost none of what was actually seen. It is
+		// (44-24)/2 + 4 + (44-24)/2 = 24pt now, a fifth of the tile rather than two thirds.
+		const padding = (declared("TILE_SIZE") - glyphSize()) / 2;
+		const between = padding * 2 + declaredGap();
+		expect(between).toBe(24);
+		// And it is genuinely less than what it was, rather than the same number re-derived
+		// from different inputs: 44pt was the distance at 60/20, and 24 is 45% of that.
+		expect(between).toBeLessThan(44);
+		expect(44 - between).toBe(20);
+	});
+
+	test("the box is not smaller than the touch target", () => {
+		// 44 is `MIN_TOUCH_TARGET` and 40 would have been tighter. A box below the floor is a
+		// target below the floor, and it fails as a missed tap rather than as anything a test
+		// could read — which is why the floor, not the eye, sets this number.
+		expect(declared("TILE_SIZE")).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+	});
+
+	test("the tile keeps its own touch target whatever the box does", () => {
+		// Stated on the tile rather than inherited from a 44pt child, so resizing the mark
+		// later cannot quietly leave the pressable under the platform minimum.
+		expect(source).toMatch(
+			/tile:\s*\{[^}]*width:\s*MIN_TOUCH_TARGET[^}]*height:\s*MIN_TOUCH_TARGET/,
+		);
+	});
+
+	test("seven tiles are visible across a 390pt screen", () => {
+		// More than the five the rail showed with names on it, which is the round trip worth
+		// asserting: the labels cost density and taking them off paid it back twice over.
 		//
-		// The gap and the inset are read from the rail rather than restated as numbers, so
-		// this cannot keep passing after the gap moved from `space.sm` to `space.xs` — which
-		// is a change this assertion was never written to catch.
+		// The gap and inset come from the scale rather than restated, so this cannot keep
+		// passing after `space.sm` became `space.xs` or after the box shrank.
 		const screen = 390;
 		const insets = declaredPadding() * 2;
 		const visible = Math.floor(
 			(screen - insets + declaredGap()) /
 				(declared("TILE_SIZE") + declaredGap()),
 		);
-		expect(visible).toBe(5);
+		expect(visible).toBe(7);
 	});
 
 	test("the gap between tiles is the scale's tightest step", () => {
-		// `space.sm` was two steps too loose once the labels came off: at 8pt two 60pt marks
-		// read as two separate objects, and the word that used to carry the eye across the gap
-		// is gone. `space.xs` is the smallest step in `theme/tokens.ts`, so this is as tight
-		// as the vocabulary allows without inventing a number outside it.
+		// `space.sm` was two steps too loose once the labels came off: at 8pt two marks read
+		// as two separate objects, and the word that used to carry the eye across the gap is
+		// gone. `space.xs` is the smallest step in `theme/tokens.ts`, so this is as tight as
+		// the vocabulary allows without inventing a number outside it.
 		expect(declaredGap()).toBe(4);
 	});
 
@@ -183,10 +288,9 @@ describe("the category rail's tiles", () => {
 	});
 
 	test("the touch target is still the whole tile, not just the mark", () => {
-		// A 60pt mark clears `MIN_TOUCH_TARGET` (44) by itself, but the pressable is what a
-		// finger actually lands on and it must not shrink below the platform floor.
-		expect(source).toMatch(
-			/tile:\s*\{[\s\S]{0,80}?minHeight:\s*MIN_TOUCH_TARGET/,
-		);
+		// The one that reads as a *floor*: the tile may be larger than the target, but a
+		// resize that leaves it smaller is a missed tap rather than anything a reader could
+		// report. Its size is asserted by the two tests above.
+		expect(codeOnly()).toMatch(/tile:\s*\{[\s\S]{0,80}?MIN_TOUCH_TARGET/);
 	});
 });

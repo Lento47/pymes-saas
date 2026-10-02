@@ -250,7 +250,7 @@ function Chip({
 						// The box's own radius, not `full`. The tile is a rounded square now, so a
 						// circular photograph inside it would draw the disc this change removed,
 						// one layer down — and clip the picture's corners for nothing.
-						radiusToken="md"
+						radiusToken="sm"
 						style={styles.tileImage}
 						accessibilityElementsHidden
 						importantForAccessibility="no"
@@ -258,7 +258,17 @@ function Chip({
 				) : (
 					<Ionicons
 						name={categoryIcon(iconName)}
-						size={icon.action}
+						// `icon.back` (24), not `icon.action` (20), and the reason is the fill
+						// ratio rather than the glyph. A 20pt mark in a 44pt box is 45%; at 24 it
+						// is **55%**, which is where a glyph stops reading as something floating
+						// inside its container and starts reading as the tile itself. It is the
+						// next step in the same scale — `theme/tokens.ts` keeps these a handful
+						// of sizes rather than an open one, and 24 is the step above `action`.
+						//
+						// The two numbers are a pair and move together: shrinking `TILE_SIZE`
+						// without growing this regresses the fill silently, which is why
+						// `lib/category-rail.test.ts` asserts the ratio and not the glyph alone.
+						size={icon.back}
 						color={
 							selected ? colors.primaryForeground : colors.accentForeground
 						}
@@ -299,24 +309,40 @@ function Chip({
  *
  * It used to be two: a 108pt label column beside a 60pt box, split because widening the tile
  * to fit a word also widened the disc. With the label gone there is nothing to fit, so the
- * split is removed rather than left behind as two constants that now say the same thing. Five
- * tiles are visible across again, which is what the rail had before the names came off it.
+ * split is removed rather than left behind as two constants that now say the same thing.
+ *
+ * ## 44, and why the space that was left was inside the box
+ *
+ * It was 60, and the rail still read as though the marks were floating apart after the gap
+ * between them came down from 8pt to 4pt. The gap was never where the space was. A 20pt glyph
+ * in a 60pt box is **33% fill**: twenty points of empty `accent` on each side, so the distance
+ * a reader sees between two glyph *edges* was 20 + 4 + 20 = **44pt**, of which four was the gap
+ * and forty was padding inside tiles I had not touched.
+ *
+ * 44 with a 24pt glyph inverts that ratio — **55% fill** — and takes the space between marks to
+ * 24pt, less than half what it was, while a seventh tile fits across a 390pt screen instead of
+ * five. 44 is also `MIN_TOUCH_TARGET` exactly, so this is the tightest the touch target allows:
+ * a 40pt box would be a target under the platform floor, which is why this is 44 and not 40.
  */
-const TILE_SIZE = 60;
+const TILE_SIZE = 44;
 
 const styles = StyleSheet.create({
 	// The gap between tiles is `space.xs`, not `space.sm`, and the reason is what is either
-	// side of it now. At `sm` (8) two 60pt marks sat eight points apart, which at this size
+	// side of it now. At `sm` (8) two marks sat eight points apart, which at this size
 	// reads as two things rather than one row — and once the labels came off there was nothing
 	// to carry the eye across the gap, because a word under each tile used to do it and does
 	// not any more. `xs` is the scale's own next step down and is the tightest it goes without
 	// a value invented outside the vocabulary.
 	rail: { paddingHorizontal: space.lg, gap: space.xs },
-	// A tile is the mark and nothing else, so the wrapper exists only to hold the touch
-	// target: the box is a fixed `TILE_SIZE`, which already clears `MIN_TOUCH_TARGET` on its
-	// own, and there is no second child for `alignItems` or `gap` to arrange.
+	// The touch target, stated here rather than inherited from the box.
+	//
+	// `TILE_SIZE` is 44 and `MIN_TOUCH_TARGET` is 44, so today the tile *happens* to be its own
+	// target and this rule does nothing. It is here so that stays true after the next person
+	// resizes the box: a 40pt mark would silently become a sub-minimum target, and the failure
+	// would only show up as somebody missing a tap rather than as anything a test could read.
 	tile: {
-		minHeight: MIN_TOUCH_TARGET,
+		width: MIN_TOUCH_TARGET,
+		height: MIN_TOUCH_TARGET,
 	},
 	tileBox: {
 		width: TILE_SIZE,
@@ -330,7 +356,19 @@ const styles = StyleSheet.create({
 		// clipped to a circle and loses its corners to the curve; at `md` it keeps the same
 		// framing as every other image on the screen, and `overflow: "hidden"` below does
 		// the clipping that `./card` does with the same token.
-		borderRadius: radius.md,
+		// `radius.sm`, not `radius.md` — and the reason is that the corner is a *share of the tile*,
+		// not an absolute size. `md` is 12pt, which is a fifth of a 60pt tile and reads as a square
+		// with softened corners. On a 44pt tile the same 12pt is **27%** of the width and reads as a
+		// squircle: the mark sits in a lozenge rather than on a tile. `sm` (6pt) is 14% here, which is
+		// the "square with rounded corners" this shape is after, and it is the same ratio `md` had at
+		// the size this tile used to be — so the proportion survives the resize instead of drifting.
+		//
+		// It is no longer `./card`'s corner (`radius.md`), which was the reason to match it in
+		// the first place. That trade is deliberate and worth naming: at 44pt, matching `./card`
+		// exactly means borrowing a corner proportion the card was never drawn at, and a screen
+		// of forty-four rounded squares is a screen of lozenges. The token is one step down the
+		// same scale, so the vocabulary still holds.
+		borderRadius: radius.sm,
 		alignItems: "center",
 		justifyContent: "center",
 		// The photograph fills the box and is clipped to its corner.
