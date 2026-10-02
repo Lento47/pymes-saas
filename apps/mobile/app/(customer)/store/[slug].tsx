@@ -41,6 +41,7 @@ import {
 	StorefrontSkeleton,
 } from "@/components/skeletons";
 import { StoreNav } from "@/components/store-nav";
+import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { toApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
@@ -561,6 +562,16 @@ export default function Store() {
 	const { t, tp, locale, intlLocale } = useT();
 	const { status } = useSession();
 	const bar = useActionBarClearance();
+	/**
+	 * The capsule's own footprint, for this screen's `paddingBottom`.
+	 *
+	 * **`Screen` does not supply this, because it never drew this scroll.** `Screen` applies
+	 * its clearance to the `ScrollView` it renders itself; a screen that brings its own
+	 * scroller gets none, and the last menu row lands under the bar. `bottomInsetPaid` is
+	 * `false` — this screen asks `Screen` for no bottom inset, so the home indicator is still
+	 * unpaid and has to be part of the number, exactly as `Screen` computes it for its own.
+	 */
+	const capsule = useTabBarClearance();
 
 	const store = useQuery(trpc.businesses.bySlug.queryOptions({ slug }));
 
@@ -755,7 +766,8 @@ export default function Store() {
 						// bottom inset the bar pays for itself: see `useActionBarClearance`. The
 						// reason to measure is on this screen as much as any — at 200% text the
 						// menu row under the bar is the row the customer is reading.
-						paddingBottom: (showCart ? bar.clearance : 0) + space.huge,
+						paddingBottom:
+							(showCart ? bar.clearance : 0) + capsule + space.huge,
 					}}
 					refreshControl={refreshControl}
 				>

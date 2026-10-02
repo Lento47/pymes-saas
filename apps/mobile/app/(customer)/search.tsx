@@ -17,6 +17,7 @@ import { SearchInput } from "@/components/search-input";
 import { Segmented } from "@/components/segmented";
 import { useSkeletonHold } from "@/components/skeleton";
 import { SearchResultsSkeleton } from "@/components/skeletons";
+import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
@@ -173,6 +174,14 @@ export default function SearchScreen() {
 	const trpc = useTRPC();
 	const { t, tp } = useT();
 	const { coords } = useDeviceLocation();
+	/**
+	 * The capsule's footprint, for the three scrollers this screen owns.
+	 *
+	 * Results, suggestions and the short-query rail each draw their own `ScrollView`, and
+	 * `./screen` pads only the one it renders itself — so all three would end under the nav bar
+	 * without this. `bottomInsetPaid` is `false`: no bottom edge is asked of `./screen` here.
+	 */
+	const capsule = useTabBarClearance();
 
 	const [query, setQuery] = useState("");
 	const [chosen, setChosen] = useState<SearchMode>("all");
@@ -375,7 +384,10 @@ export default function SearchScreen() {
 
 			{settled.length < 2 ? (
 				<ScrollView
-					contentContainerStyle={styles.scroll}
+					contentContainerStyle={[
+						styles.scroll,
+						{ paddingBottom: space.huge + capsule },
+					]}
 					keyboardShouldPersistTaps="handled"
 					scrollIndicatorInsets={{ bottom: 0 }}
 					// The rail scrolls rather than sitting under a keyboard-anchored list: with
@@ -444,7 +456,10 @@ export default function SearchScreen() {
 				</View>
 			) : waiting || !results.data ? (
 				<ScrollView
-					contentContainerStyle={styles.scroll}
+					contentContainerStyle={[
+						styles.scroll,
+						{ paddingBottom: space.huge + capsule },
+					]}
 					keyboardShouldPersistTaps="handled"
 					scrollIndicatorInsets={{ bottom: 0 }}
 					// iOS only, and no value at all on Android — `components/screen.tsx`'s prop
@@ -470,7 +485,10 @@ export default function SearchScreen() {
 				</View>
 			) : (
 				<ScrollView
-					contentContainerStyle={styles.scroll}
+					contentContainerStyle={[
+						styles.scroll,
+						{ paddingBottom: space.huge + capsule },
+					]}
 					keyboardShouldPersistTaps="handled"
 					scrollIndicatorInsets={{ bottom: 0 }}
 					// iOS only, and no value at all on Android — `components/screen.tsx`'s prop

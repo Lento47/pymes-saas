@@ -36,6 +36,7 @@ import {
 	statusBadgeHeight,
 	statusKey,
 } from "@/components/status-badge";
+import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useSession } from "@/lib/auth/session";
@@ -263,6 +264,15 @@ export default function OrdersScreen() {
 	const { colors } = useTheme();
 	const { status: sessionStatus } = useSession();
 	const [segment, setSegment] = useState<Segment>("active");
+	/**
+	 * The capsule's footprint, for the list's own `paddingBottom`.
+	 *
+	 * This screen draws its own `FlatList` — it has to, for the segment switcher and the pull —
+	 * and `./screen` pads only the `ScrollView` it renders itself. So the nav bar's clearance
+	 * is spent on the list directly, or the last order in the segment is unreadable behind it.
+	 * `bottomInsetPaid` is `false`: this screen asks `./screen` for no bottom edge.
+	 */
+	const capsule = useTabBarClearance();
 
 	/**
 	 * A segment a caller asked for, obeyed once and then forgotten.
@@ -486,7 +496,13 @@ export default function OrdersScreen() {
 				<FlatList
 					data={items}
 					keyExtractor={(order) => order.id}
-					contentContainerStyle={styles.list}
+					// `space.huge` for the tail, plus the capsule. `./screen` pads only the
+					// `ScrollView` it draws itself, and this list is the screen's own — so the
+					// nav bar's clearance is spent here or the last order sits under it.
+					contentContainerStyle={[
+						styles.list,
+						{ paddingBottom: space.huge + capsule },
+					]}
 					// The bar owns its own bottom inset; paying it again opens a gap.
 					scrollIndicatorInsets={{ bottom: 0 }}
 					// From `./pull-refresh`, both tints and its own flag — see that file.

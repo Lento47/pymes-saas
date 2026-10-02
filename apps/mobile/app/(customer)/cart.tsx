@@ -23,6 +23,7 @@ import { SignedIn } from "@/components/signed-in";
 import { useSkeletonHold } from "@/components/skeleton";
 import { CartSkeleton } from "@/components/skeletons";
 import { BarTotal, SummaryCard } from "@/components/summary-card";
+import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useCartLineQuantity } from "@/lib/cart-mutations";
 import { useT } from "@/lib/i18n";
@@ -206,6 +207,16 @@ function Basket() {
 		}),
 	);
 	const { setQuantity, error } = useCartLineQuantity();
+	/**
+	 * The capsule's footprint, for this scroll's own `paddingBottom`.
+	 *
+	 * The cart draws its own `ScrollView` — it has to, so the bar can be a sibling and the
+	 * last line can never sit behind the button — and `Screen` only pads the `ScrollView` it
+	 * renders itself. So the nav bar's clearance is spent here. `bottomInsetPaid` is `false`
+	 * because this screen pays no bottom inset: the docblock on `Cart` above says the action
+	 * bar owns that inset, so it is still unpaid here and belongs in this number.
+	 */
+	const capsule = useTabBarClearance();
 	const waiting = useSkeletonHold(cart.isPending);
 	const [promoOpen, setPromoOpen] = useState(false);
 	/**
@@ -330,7 +341,13 @@ function Basket() {
 	return (
 		<>
 			<ScrollView
-				contentContainerStyle={styles.scroll}
+				// `space.lg` for the tail, plus the capsule. The clearance is added here rather
+				// than left to `./screen` because `./screen` only pads the `ScrollView` it draws
+				// itself, and this one is the cart's own — see the hook's docblock.
+				contentContainerStyle={[
+					styles.scroll,
+					{ paddingBottom: space.lg + capsule },
+				]}
 				keyboardShouldPersistTaps="handled"
 				// The scroll sits above the bar rather than under it — the two are siblings in the
 				// layout, so the last row can never be hidden behind the button — and the indicator
