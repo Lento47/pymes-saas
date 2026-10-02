@@ -26,6 +26,7 @@ import {
   type SubscriptionStatus,
 } from "@/lib/admin";
 import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
+import { EmptyState, QueryErrorState } from "./console-states";
 
 /**
  * The platform console, on the marketplace API.
@@ -222,17 +223,18 @@ function useAdminMetrics() {
  * exactly the duplicate this hook exists to remove.
  */
 function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
-  const { data: metrics, isPending, isError, error } = query;
+  const { data: metrics, isPending, isError, isFetching, error, refetch } = query;
   const [open, setOpen] = useState(false);
 
   if (isPending) return <Skeleton className="h-9 w-full" />;
   if (isError) {
     return (
-      <Card className="border-destructive/40">
-        <CardContent className="pt-6 text-sm text-destructive">
-          {(error as Error)?.message}
-        </CardContent>
-      </Card>
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las métricas."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
   if (!metrics) return null;
@@ -313,7 +315,16 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
 
 function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
   if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Nada por aquí.</p>;
+    // Specific copy rather than "Nada por aquí", which said nothing about whether the
+    // absence was expected. The hint carries the one fact that tells them: a shop that asked
+    // to be seen is never in this table, so an empty one is not a sign that nobody has signed
+    // up — it means there is nothing to verify, which is the good outcome.
+    return (
+      <EmptyState
+        message="No hay negocios en esta lista."
+        hint="Los negocios que esperan verificación aparecen en Aprobaciones."
+      />
+    );
   }
   return (
     <Table>
@@ -392,7 +403,7 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
 
 function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
   const [search, setSearch] = useState("");
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "businesses", onlyPending, search],
     queryFn: () =>
       onlyPending
@@ -402,7 +413,14 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar los negocios."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
   if (!data) return null;
 
@@ -425,14 +443,21 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
 
 function UsersTab() {
   const [search, setSearch] = useState("");
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "users", search],
     queryFn: () => adminApi.users({ search: search || undefined }),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las personas."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
   if (!data) return null;
 
@@ -507,14 +532,21 @@ function UsersTab() {
 }
 
 function OrdersTab() {
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "orders"],
     queryFn: () => adminApi.orders(),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las órdenes."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
   if (!data) return null;
 
@@ -582,7 +614,7 @@ function OrdersTab() {
  */
 function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
   const [search, setSearch] = useState("");
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "couriers", onlyPending ? "PENDING" : "all", search],
     queryFn: () =>
       adminApi.couriers({
@@ -594,7 +626,12 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
-      <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar los repartidores."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
   if (!data) return null;
@@ -748,7 +785,7 @@ function TicketThread({ ticketId }: { ticketId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "ticket", ticketId],
     queryFn: () => adminApi.supportTicket(ticketId),
   });
@@ -787,7 +824,12 @@ function TicketThread({ ticketId }: { ticketId: string }) {
   if (isPending) return <Skeleton className="h-72 w-full" />;
   if (isError) {
     return (
-      <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>
+      <QueryErrorState
+        error={error}
+        fallback="No se pudo cargar el ticket."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
   if (!data) return null;
@@ -903,7 +945,7 @@ function SupportTab() {
   const [status, setStatus] = useState<"live" | "all">("live");
   const [search, setSearch] = useState("");
 
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "tickets", status, search],
     queryFn: () =>
       adminApi.supportTickets({
@@ -918,7 +960,12 @@ function SupportTab() {
   if (isPending) return <Skeleton className="h-72 w-full" />;
   if (isError) {
     return (
-      <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar los tickets."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -1166,7 +1213,7 @@ function BillingTab() {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "subscriptions", status, sort, search],
     queryFn: () =>
       adminApi.subscriptions({
@@ -1178,7 +1225,14 @@ function BillingTab() {
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las suscripciones."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
   if (!data) return null;
 
@@ -1226,7 +1280,10 @@ function BillingTab() {
       </p>
 
       {data.rows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Nada por aquí.</p>
+        <EmptyState
+          message="No hay suscripciones."
+          hint="Un negocio aparece aquí en cuanto se registra; sus facturas pendientes se cobran desde aquí."
+        />
       ) : (
         <Table>
           <TableHeader>
@@ -1319,7 +1376,7 @@ function PriceBooksTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "priceBooks"],
     queryFn: adminApi.priceBooks,
   });
@@ -1353,7 +1410,14 @@ function PriceBooksTab() {
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar los planes."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
 
   return (
@@ -1570,7 +1634,7 @@ function CategoryDialog({
 }
 
 function CategoriesTab() {
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "categories"],
     queryFn: adminApi.categories,
   });
@@ -1582,7 +1646,14 @@ function CategoriesTab() {
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las categorías."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
 
   return (
@@ -1644,7 +1715,7 @@ function CategoriesTab() {
  */
 function BusinessSheet({ businessId }: { businessId: string }) {
   const [open, setOpen] = useState(false);
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "business", businessId],
     queryFn: () => adminApi.business(businessId),
     enabled: open,
@@ -1663,9 +1734,29 @@ function BusinessSheet({ businessId }: { businessId: string }) {
       <SheetContent side="right" className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{data?.name ?? "Negocio"}</SheetTitle>
-          <SheetDescription>{data ? `/${data.slug}` : "Cargando…"}</SheetDescription>
+          <SheetDescription>
+            {isError
+              ? "No se pudo abrir la ficha."
+              : data
+                ? `/${data.slug}`
+                : "Cargando…"}
+          </SheetDescription>
         </SheetHeader>
-        {isPending || !data ? (
+        {/*
+          This one used to render `isPending || !data` and nothing else, so a failed read
+          left a sheet titled "Negocio" showing "Cargando…" above a skeleton that never
+          resolved. It is the only query on the page with no `isError` branch, and it is the
+          worst version of the bug the others had: the others said something was wrong, this
+          one said it was still working.
+        */}
+        {isError ? (
+          <QueryErrorState
+            error={error}
+            fallback="No se pudo cargar la ficha del negocio."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
+        ) : isPending || !data ? (
           <Skeleton className="mt-4 h-48 w-full" />
         ) : (
           <dl className="mt-6 space-y-4 text-sm">
@@ -1694,14 +1785,21 @@ function BusinessSheet({ businessId }: { businessId: string }) {
 }
 
 function AuditTab() {
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "audit"],
     queryFn: () => adminApi.auditLog(),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
-    return <p className="py-8 text-center text-sm text-destructive">{(error as Error)?.message}</p>;
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudo cargar la auditoría."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
   }
   if (!data) return null;
 
@@ -1744,7 +1842,7 @@ function AuditTab() {
  * this check would still be correct and merely ugly.
  */
 function AdminGate({ children }: { children: React.ReactNode }) {
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "viewer"],
     queryFn: adminApi.viewer,
     retry: false,
@@ -1760,21 +1858,35 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 
   // A failed `users.me` is a signed-out visitor, not a server fault, and the two deserve
   // different words: one is "sign in", the other is "try again".
+  //
+  // Only the second one is retryable, and until this was split the branch drew both with the
+  // same dead end — "Vuelve a intentarlo en un momento" with nothing to press, on the one
+  // screen an operator sees before they have done anything at all. Asking somebody whose
+  // session expired to try again is pointless; showing them a button on a genuine server
+  // fault is the whole point.
   if (isError) {
     const status = (error as { data?: { code?: string } } | undefined)?.data?.code;
+    if (status === "UNAUTHORIZED") {
+      return (
+        <div className="p-6">
+          <Card className="mx-auto max-w-md">
+            <CardContent className="pt-6 text-center">
+              <h1 className="text-lg font-semibold">No pudimos verificar tu sesión</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Inicia sesión en PymesHub y vuelve a abrir la consola.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
     return (
-      <div className="p-6">
-        <Card className="mx-auto max-w-md">
-          <CardContent className="pt-6 text-center">
-            <h1 className="text-lg font-semibold">No pudimos verificar tu sesión</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {status === "UNAUTHORIZED"
-                ? "Inicia sesión en PymesHub y vuelve a abrir la consola."
-                : "Vuelve a intentarlo en un momento."}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <QueryErrorState
+        error={error}
+        fallback="No pudimos verificar tu sesión."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
