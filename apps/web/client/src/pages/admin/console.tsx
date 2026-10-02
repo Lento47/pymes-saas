@@ -1,7 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bike, CheckCircle2, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { Bike, CheckCircle2, ChevronDown, ChevronUp, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "wouter";
 
+import { PageTemplate } from "@/components/layout/page-template";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   type AdminAction,
   type AdminBusinessRow,
+  type AdminMetrics,
   type AdminUserRow,
   adminApi,
   BUSINESS_STATUSES,
@@ -187,14 +190,41 @@ function ActionButton({
   );
 }
 
-function Metrics() {
-  const { data, isPending, isError, error } = useQuery({
+/**
+ * The metrics query, in one hook.
+ *
+ * It was written out twice under the same key — once in `AdminConsole` for the queue badges,
+ * once in `Metrics` for the tiles — and each copy carried its own `refetchInterval`. React
+ * Query collapses that into one request, but two observers with two timers is not the same
+ * as one, and the second `refetchInterval` is invisible until you go looking for it.
+ */
+function useAdminMetrics() {
+  return useQuery({
     queryKey: ["admin", "metrics"],
     queryFn: adminApi.metrics,
     refetchInterval: 30_000,
   });
+}
 
-  if (isPending) return <Skeleton className="h-24 w-full" />;
+/**
+ * The KPI tiles, collapsed to one line until asked for.
+ *
+ * These eight tiles used to sit above every one of ten tabs, which meant the tab an operator
+ * actually works in opened with two rows of platform-wide numbers above it and its own
+ * content below the fold. The line that stays visible keeps the two numbers that change on
+ * their own — the queue, and today's orders — because those are the ones worth glancing at,
+ * and puts the four slow-moving counts one click away instead of always in the way.
+ *
+ * `query` arrives as a prop rather than being fetched here, so this component adds no
+ * second observer to the metrics query. Passing `data` alone would have looked like the
+ * same idea and left `isPending`/`isError` needing their own `useQuery` call — which is
+ * exactly the duplicate this hook exists to remove.
+ */
+function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
+  const { data: metrics, isPending, isError, error } = query;
+  const [open, setOpen] = useState(false);
+
+  if (isPending) return <Skeleton className="h-9 w-full" />;
   if (isError) {
     return (
       <Card className="border-destructive/40">
@@ -204,31 +234,66 @@ function Metrics() {
       </Card>
     );
   }
-  if (!data) return null;
+  if (!metrics) return null;
 
   const tiles = [
-    { label: "Negocios pendientes", value: data.businesses.pendingVerification, urgent: data.businesses.pendingVerification > 0 },
-    { label: "Negocios activos", value: data.businesses.active },
-    { label: "Negocios suspendidos", value: data.businesses.suspended },
-    { label: "Usuarios", value: data.users.total },
-    { label: "Admins", value: data.users.admins },
-    { label: "Órdenes hoy", value: data.orders.today },
-    { label: "Órdenes activas", value: data.orders.active },
-    { label: "Tasa de cancelación", value: `${Math.round(data.orders.cancelledRate * 100)}%` },
+    { label: "Negocios pendientes", value: metrics.businesses.pendingVerification, urgent: metrics.businesses.pendingVerification > 0 },
+    { label: "Negocios activos", value: metrics.businesses.active },
+    { label: "Negocios suspendidos", value: metrics.businesses.suspended },
+    { label: "Usuarios", value: metrics.users.total },
+    { label: "Admins", value: metrics.users.admins },
+    { label: "Órdenes hoy", value: metrics.orders.today },
+    { label: "Órdenes activas", value: metrics.orders.active },
+    { label: "Tasa de cancelación", value: `${Math.round(metrics.orders.cancelledRate * 100)}%` },
   ];
 
+  const summary = [
+    metrics.businesses.pendingVerification > 0
+      ? `${metrics.businesses.pendingVerification} por verificar`
+      : null,
+    `${metrics.orders.today} órdenes hoy`,
+  ].filter(Boolean).join(" · ");
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      {tiles.map((t) => (
-        <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
-          <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground">{t.label}</p>
-            <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
-              {t.value}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-3">
+      {/*
+        `aria-expanded` and `aria-controls` rather than a bare button, because the toggle
+        shows and hides a region and a screen reader has no other way to know that the row
+        below it is there. `id` on the region is what makes the relationship real.
+      */}
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-xs text-muted-foreground">{summary}</p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto min-h-0 px-1.5 py-0.5 text-xs"
+          aria-expanded={open}
+          aria-controls="admin-metrics-tiles"
+          onClick={() => setOpen((was) => !was)}
+        >
+          {open ? "Ocultar métricas" : "Ver métricas"}
+          {open ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      </div>
+
+      {open ? (
+        <div id="admin-metrics-tiles" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {tiles.map((t) => (
+            <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
+              <CardContent className="pt-6">
+                <p className="text-xs text-muted-foreground">{t.label}</p>
+                <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
+                  {t.value}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1720,6 +1785,57 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * The console's ten tabs, declared once.
+ *
+ * They used to be ten hardcoded `TabsTrigger`s in the JSX with their labels inline, which
+ * meant the route, the tab strip and the default tab were three separate places that had to
+ * agree about what a tab is called. This is that list: the triggers are generated from it,
+ * the route validates a `:tab` against it, and `defaultTab` picks from it. A new tab is one
+ * entry here plus one `TabsContent`; a renamed tab is one edit.
+ *
+ * `label` is Spanish because the console has always been Spanish and an operator switching
+ * to English mid-task is not the problem this file has.
+ */
+const CONSOLE_TABS = [
+  { value: "approvals", label: "Aprobaciones" },
+  { value: "couriers", label: "Repartidores" },
+  { value: "businesses", label: "Negocios" },
+  { value: "users", label: "Personas" },
+  { value: "orders", label: "Órdenes" },
+  { value: "billing", label: "Cobros" },
+  { value: "support", label: "Soporte" },
+  { value: "prices", label: "Planes" },
+  { value: "categories", label: "Categorías" },
+  { value: "audit", label: "Auditoría" },
+] as const;
+
+type ConsoleTab = (typeof CONSOLE_TABS)[number]["value"];
+
+const TAB_VALUES: readonly string[] = CONSOLE_TABS.map((tab) => tab.value);
+
+/**
+ * The tab a bare `/admin/console` opens on.
+ *
+ * The queue when there is one, otherwise the business list — the same choice the component
+ * state made before tabs had routes, kept because it was right: an operator who opens the
+ * console with two shops waiting is looking for the shops waiting.
+ */
+function defaultTab(hasQueue: boolean): ConsoleTab {
+  return hasQueue ? "approvals" : "businesses";
+}
+
+/**
+ * Whether a `:tab` from the URL names a real tab.
+ *
+ * A route param is a string a person can edit, so an unknown one has to fall back rather
+ * than render a page with nothing in it. Typed so a renamed tab fails the check below at
+ * compile time rather than at the point somebody types the new name into a bookmark.
+ */
+function isConsoleTab(value: string | undefined): value is ConsoleTab {
+  return !!value && TAB_VALUES.includes(value);
+}
+
 export default function AdminConsolePage() {
   return (
     <AdminGate>
@@ -1728,11 +1844,15 @@ export default function AdminConsolePage() {
   );
 }
 function AdminConsole() {
-  const { data: metrics } = useQuery({
-    queryKey: ["admin", "metrics"],
-    queryFn: adminApi.metrics,
-    refetchInterval: 30_000,
-  });
+  const { tab: routeTab } = useParams<{ tab?: string }>();
+  const [, navigate] = useLocation();
+
+  // One metrics query, read by the tiles *and* by the default-tab choice and the queue
+  // badges. It used to be declared twice under the same key — once here, once in `Metrics` —
+  // which React Query deduplicates into a single request but leaves as two observers each
+  // carrying their own `refetchInterval`.
+  const metricsQuery = useAdminMetrics();
+  const { data: metrics } = metricsQuery;
 
   // The courier queue has no count in `adminMetricsSchema`, so its badge asks for one row.
   // It is the same query the tab makes, cached under the same key, so it costs no extra
@@ -1748,164 +1868,186 @@ function AdminConsole() {
   const pending = metrics?.businesses.pendingVerification ?? 0;
   const hasQueue = pending > 0 || pendingCouriers > 0;
 
+  // An unknown or missing `:tab` is rewritten to the default rather than rendered as an
+  // empty page. `/admin/console` with no param is the link the sidebar uses, and an old
+  // bookmark naming a tab that has since been renamed should land somewhere useful too.
+  const tab = isConsoleTab(routeTab) ? routeTab : defaultTab(hasQueue);
+  useEffect(() => {
+    if (routeTab !== tab) navigate(`/admin/console/${tab}`, { replace: true });
+  }, [routeTab, tab, navigate]);
+
+  const approvalBadge = pending + pendingCouriers;
+
+  /*
+   * One `Tabs` root wrapping the whole page, not one around the strip and another around
+   * the panels.
+   *
+   * They have to be the same root: Radix wires each trigger's `aria-controls` to a panel
+   * inside *its own* context, so a strip in one root and panels in another leaves every
+   * trigger announcing a panel that does not exist. `Tabs.Root` renders no DOM node of its
+   * own — it is context only — so wrapping `PageTemplate` costs nothing structurally, and
+   * it is what lets the strip sit in the sticky header while the panels sit in the body.
+   * That split is the reason `PageTemplate` grew a `headerExtra` slot.
+   */
   return (
-    <div className="space-y-6 p-6">
-      <header className="flex items-center gap-3">
-        <ShieldAlert className="h-6 w-6" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Consola de plataforma</h1>
-          <p className="text-sm text-muted-foreground">
-            Todo lo que hay aquí queda registrado con tu nombre.
-          </p>
-        </div>
-      </header>
-
-      <Metrics />
-
-      <Tabs defaultValue={hasQueue ? "approvals" : "businesses"}>
-        <TabsList>
-          <TabsTrigger value="approvals">
-            Aprobaciones
-            {hasQueue ? (
-              <Badge className="ml-2 bg-amber-500 text-black">{pending + pendingCouriers}</Badge>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger value="couriers">
-            Repartidores
-            {pendingCouriers > 0 ? (
-              <Badge className="ml-2 bg-amber-500 text-black">{pendingCouriers}</Badge>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger value="businesses">Negocios</TabsTrigger>
-          <TabsTrigger value="users">Personas</TabsTrigger>
-          <TabsTrigger value="orders">Órdenes</TabsTrigger>
-          <TabsTrigger value="billing">Cobros</TabsTrigger>
-          <TabsTrigger value="support">Soporte</TabsTrigger>
-          <TabsTrigger value="prices">Planes</TabsTrigger>
-          <TabsTrigger value="categories">Categorías</TabsTrigger>
-          <TabsTrigger value="audit">Auditoría</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="approvals" className="mt-4">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CheckCircle2 className="h-4 w-4 text-amber-600" />
-                  Esperan verificación
-                  {pending > 0 ? (
-                    <Badge className="bg-amber-500 text-black">{pending}</Badge>
+    <Tabs value={tab} onValueChange={(next) => navigate(`/admin/console/${next}`)}>
+      <PageTemplate
+        title="Consola de plataforma"
+        description="Todo lo que hay aquí queda registrado con tu nombre."
+        headerExtra={
+          /*
+            Horizontally scrollable rather than wrapped or clipped. Ten labels do not fit a
+            768px viewport, and the three ways to deal with that are each worse than a
+            scroll: wrapping puts the second row's tabs at an unpredictable distance from the
+            first, clipping hides tabs with no affordance that more exist, and a "Más" menu
+            moves the tabs an operator uses daily one tap further away. A scrollbar keeps
+            every tab one click away and keeps Radix's roving arrow-key focus intact, which
+            a hand-built dropdown menu would not.
+          */
+          <TabsList className="w-full justify-start overflow-x-auto">
+            {CONSOLE_TABS.map((entry) => {
+              const badge =
+                entry.value === "approvals"
+                  ? approvalBadge
+                  : entry.value === "couriers"
+                    ? pendingCouriers
+                    : 0;
+              return (
+                <TabsTrigger key={entry.value} value={entry.value} className="shrink-0">
+                  {entry.label}
+                  {badge > 0 ? (
+                    <Badge className="ml-2 bg-amber-500 text-black">{badge}</Badge>
                   ) : null}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <BusinessTab onlyPending />
-              </CardContent>
-            </Card>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        }
+      >
+        <div className="space-y-5">
+          <Metrics query={metricsQuery} />
 
-            {/*
-              The second queue, on the same screen, because "Aprobaciones" is the tab someone
-              opens when they are told someone is waiting. Splitting the courier queue onto
-              its own tab meant the tab with the amber badge hid half of what the badge counts,
-              and a badge that does not add up is worse than no badge.
-            */}
-            {pendingCouriers > 0 ? (
+          <TabsContent value="approvals" className="mt-0">
+            <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Bike className="h-4 w-4 text-amber-600" />
-                    Repartidores por revisar
-                    <Badge className="bg-amber-500 text-black">{pendingCouriers}</Badge>
+                    <CheckCircle2 className="h-4 w-4 text-amber-600" />
+                    Esperan verificación
+                    {pending > 0 ? (
+                      <Badge className="bg-amber-500 text-black">{pending}</Badge>
+                    ) : null}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CouriersTab onlyPending />
+                  <BusinessTab onlyPending />
                 </CardContent>
               </Card>
-            ) : null}
-          </div>
-        </TabsContent>
 
-        <TabsContent value="couriers" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <CouriersTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+              {/*
+                The second queue, on the same screen, because "Aprobaciones" is the tab someone
+                opens when they are told someone is waiting. Splitting the courier queue onto
+                its own tab meant the tab with the amber badge hid half of what the badge counts,
+                and a badge that does not add up is worse than no badge.
+              */}
+              {pendingCouriers > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Bike className="h-4 w-4 text-amber-600" />
+                      Repartidores por revisar
+                      <Badge className="bg-amber-500 text-black">{pendingCouriers}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CouriersTab onlyPending />
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="businesses" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <BusinessTab onlyPending={false} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="couriers" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <CouriersTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="users" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <UsersTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="businesses" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <BusinessTab onlyPending={false} />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="orders" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <OrdersTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="users" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <UsersTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="billing" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <BillingTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="orders" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <OrdersTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="prices" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <PriceBooksTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="billing" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <BillingTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="categories" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <CategoriesTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="prices" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <PriceBooksTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="support" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <SupportTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="categories" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <CategoriesTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="audit" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <AuditTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="support" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <SupportTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      {metrics && metrics.orders.cancelledRate > 0.2 ? (
-        <p className="flex items-center gap-2 text-xs text-amber-600">
-          <XCircle className="h-3 w-3" />
-          La tasa de cancelación está por encima del 20%. Vale la pena mirarla en Auditoría.
-        </p>
-      ) : null}
-    </div>
+          <TabsContent value="audit" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <AuditTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {metrics && metrics.orders.cancelledRate > 0.2 ? (
+            <p className="flex items-center gap-2 text-xs text-amber-600">
+              <XCircle className="h-3 w-3" />
+              La tasa de cancelación está por encima del 20%. Vale la pena mirarla en Auditoría.
+            </p>
+          ) : null}
+        </div>
+      </PageTemplate>
+    </Tabs>
   );
 }
 

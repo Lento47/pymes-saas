@@ -7,6 +7,17 @@ interface PageTemplateProps {
   title: string;
   description?: string;
   children: ReactNode;
+  /**
+   * Rendered inside the sticky block, under the title row — a tab strip, a filter bar, a
+   * segmented control.
+   *
+   * It is a slot rather than something callers wrap themselves because the only thing worth
+   * having above the fold on a wide page is the title and the way to change what you are
+   * looking at. A caller who puts a tab strip outside this block has to hardcode a `top-*`
+   * offset to sit under the header, and that offset is wrong the moment the title wraps or
+   * the description disappears.
+   */
+  headerExtra?: ReactNode;
   actions?: Array<{
     label: string;
     href?: string;
@@ -20,6 +31,7 @@ export function PageTemplate({
   title,
   description,
   children,
+  headerExtra,
   actions,
 }: PageTemplateProps) {
   return (
@@ -61,6 +73,8 @@ export function PageTemplate({
               </div>
             )}
           </div>
+
+          {headerExtra && <div className="mt-3">{headerExtra}</div>}
         </div>
       </div>
 

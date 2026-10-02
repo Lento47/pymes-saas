@@ -535,8 +535,20 @@ function AppRouter() {
         `api.getMe()` and `api.login(email, password, workspaceSlug)`, and the marketplace
         Worker mounts neither. The console gates itself on `users.me` and reads the same
         `isAdmin` the Worker's `adminProcedure` checks, so the two cannot disagree.
+
+        **Two routes, because the tabs are addressable.** `/admin/console` and
+        `/admin/console/:tab` render the same component; the second is what the sidebar and
+        the tab strip point at, so a tab can be linked, bookmarked and reached with the back
+        button. They used to be one route with the tab held in component state, which meant
+        no link to "Cobros" could be shared and the back button left the console entirely.
+
+        `:tab` is validated against the console's own tab list and rewritten to the default
+        if it names nothing real, so a hand-edited or stale URL lands somewhere useful
+        instead of an empty page. No route names a tab here on purpose — the list is the
+        console's, and duplicating it would be the two-lists problem back again.
       */}
       <Route path="/admin/console" component={AdminConsolePage} />
+      <Route path="/admin/console/:tab" component={AdminConsolePage} />
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
       </Route>
