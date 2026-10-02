@@ -25,6 +25,7 @@ import {
   needsReason,
   type SubscriptionStatus,
 } from "@/lib/admin";
+import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
 
 /**
  * The platform console, on the marketplace API.
@@ -280,20 +281,32 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
         </Button>
       </div>
 
-      {open ? (
-        <div id="admin-metrics-tiles" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {tiles.map((t) => (
-            <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
-              <CardContent className="pt-6">
-                <p className="text-xs text-muted-foreground">{t.label}</p>
-                <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
-                  {t.value}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : null}
+      {/*
+        Mounted whether or not it is open, and hidden with the `hidden` attribute when
+        collapsed rather than removed from the tree.
+
+        `aria-controls` on the button has to name something that exists, in both states, or
+        it is a dangling reference — the same defect as putting a tab strip in one Radix
+        `Tabs` root and its panels in another. `hidden` is what removes the region from the
+        accessibility tree *and* from the layout, which is what actually wants to happen when
+        the tiles are collapsed, so one attribute does both jobs correctly.
+      */}
+      <div
+        id="admin-metrics-tiles"
+        hidden={!open}
+        className="grid grid-cols-2 gap-3 md:grid-cols-4"
+      >
+        {tiles.map((t) => (
+          <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
+            <CardContent className="pt-6">
+              <p className="text-xs text-muted-foreground">{t.label}</p>
+              <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
+                {t.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1785,57 +1798,6 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/**
- * The console's ten tabs, declared once.
- *
- * They used to be ten hardcoded `TabsTrigger`s in the JSX with their labels inline, which
- * meant the route, the tab strip and the default tab were three separate places that had to
- * agree about what a tab is called. This is that list: the triggers are generated from it,
- * the route validates a `:tab` against it, and `defaultTab` picks from it. A new tab is one
- * entry here plus one `TabsContent`; a renamed tab is one edit.
- *
- * `label` is Spanish because the console has always been Spanish and an operator switching
- * to English mid-task is not the problem this file has.
- */
-const CONSOLE_TABS = [
-  { value: "approvals", label: "Aprobaciones" },
-  { value: "couriers", label: "Repartidores" },
-  { value: "businesses", label: "Negocios" },
-  { value: "users", label: "Personas" },
-  { value: "orders", label: "Órdenes" },
-  { value: "billing", label: "Cobros" },
-  { value: "support", label: "Soporte" },
-  { value: "prices", label: "Planes" },
-  { value: "categories", label: "Categorías" },
-  { value: "audit", label: "Auditoría" },
-] as const;
-
-type ConsoleTab = (typeof CONSOLE_TABS)[number]["value"];
-
-const TAB_VALUES: readonly string[] = CONSOLE_TABS.map((tab) => tab.value);
-
-/**
- * The tab a bare `/admin/console` opens on.
- *
- * The queue when there is one, otherwise the business list — the same choice the component
- * state made before tabs had routes, kept because it was right: an operator who opens the
- * console with two shops waiting is looking for the shops waiting.
- */
-function defaultTab(hasQueue: boolean): ConsoleTab {
-  return hasQueue ? "approvals" : "businesses";
-}
-
-/**
- * Whether a `:tab` from the URL names a real tab.
- *
- * A route param is a string a person can edit, so an unknown one has to fall back rather
- * than render a page with nothing in it. Typed so a renamed tab fails the check below at
- * compile time rather than at the point somebody types the new name into a bookmark.
- */
-function isConsoleTab(value: string | undefined): value is ConsoleTab {
-  return !!value && TAB_VALUES.includes(value);
-}
-
 export default function AdminConsolePage() {
   return (
     <AdminGate>
@@ -1858,25 +1820,55 @@ function AdminConsole() {
   // It is the same query the tab makes, cached under the same key, so it costs no extra
   // round trip once the tab is open — and `staleTime` keeps it from re-fetching on every
   // 30s metrics tick, which is the whole reason to set it.
-  const { data: pendingCourierPage } = useQuery({
+  const pendingCourierQuery = useQuery({
     queryKey: ["admin", "couriers", "PENDING", 1],
     queryFn: () => adminApi.couriers({ status: "PENDING", limit: 1 }),
     staleTime: 60_000,
   });
-  const pendingCouriers = pendingCourierPage?.total ?? 0;
-
+  const pendingCouriers = pendingCourierQuery.data?.total ?? 0;
   const pending = metrics?.businesses.pendingVerification ?? 0;
-  const hasQueue = pending > 0 || pendingCouriers > 0;
+
+  /*
+   * `isFetched` rather than `isPending`, so a *failed* count still lets the redirect
+   * happen. Waiting on success would leave a console whose metrics endpoint is down sitting
+   * on a spinner forever, with no tab and no way forward except the URL bar.
+   */
+  const queueKnown = metricsQuery.isFetched && pendingCourierQuery.isFetched;
 
   // An unknown or missing `:tab` is rewritten to the default rather than rendered as an
   // empty page. `/admin/console` with no param is the link the sidebar uses, and an old
   // bookmark naming a tab that has since been renamed should land somewhere useful too.
-  const tab = isConsoleTab(routeTab) ? routeTab : defaultTab(hasQueue);
+  const { tab, needsRedirect } = resolveConsoleTab(
+    routeTab,
+    { pending, couriers: pendingCouriers },
+    queueKnown,
+  );
   useEffect(() => {
-    if (routeTab !== tab) navigate(`/admin/console/${tab}`, { replace: true });
-  }, [routeTab, tab, navigate]);
+    if (needsRedirect && tab) navigate(`/admin/console/${tab}`, { replace: true });
+  }, [needsRedirect, tab, navigate]);
 
   const approvalBadge = pending + pendingCouriers;
+
+  /*
+   * Nothing is rendered until the tab is known.
+   *
+   * The alternative — falling back to `businesses` while the queue is still being counted —
+   * is the bug this branch exists to avoid: the operator sees one tab for a few hundred
+   * milliseconds, the redirect lands, and the tab they were reading is replaced by another.
+   * A skeleton for the length of two requests is cheaper than a page that moves under
+   * somebody who has already started working in it.
+   */
+  if (!tab) {
+    return (
+      <PageTemplate
+        title="Consola de plataforma"
+        description="Todo lo que hay aquí queda registrado con tu nombre."
+      >
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="mt-5 h-72 w-full" />
+      </PageTemplate>
+    );
+  }
 
   /*
    * One `Tabs` root wrapping the whole page, not one around the strip and another around
