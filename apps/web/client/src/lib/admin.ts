@@ -1,5 +1,7 @@
 import {
   type AdminAction,
+  type AdminApprovalCounts,
+  adminApprovalCountsSchema,
   type AdminBusinessRow,
   type AdminCourierListInput,
   type AdminCourierRow,
@@ -216,6 +218,16 @@ export const adminApi = {
   metrics: async (): Promise<AdminMetrics> =>
     adminMetricsSchema.parse(await trpc.admin.metrics.query()),
 
+  /**
+   * Queue depth, for the badge and the default tab — not for a dashboard.
+   *
+   * Parsed like every other read here, because the client is typed `any` on purpose and this
+   * file is what holds the contract. Two integers is exactly the case where a silent shape
+   * change matters: a missing field would render a badge reading `NaN` rather than throwing.
+   */
+  approvalCounts: async (): Promise<AdminApprovalCounts> =>
+    adminApprovalCountsSchema.parse(await trpc.admin.approvalCounts.query()),
+
   // ── Businesses, and the verification queue ────────────────────────────────
 
   businesses: async (
@@ -355,6 +367,7 @@ export const adminApi = {
     slug?: string;
     iconName?: string;
     parentId?: string | null;
+    imageUrl?: string | null;
     sortOrder?: number;
   }) => trpc.admin.saveCategory.mutate(adminCategoryInput.parse(input)),
 

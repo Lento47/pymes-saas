@@ -36,6 +36,16 @@ import { adminProcedure, router } from "../trpc";
 export const adminRouter = router({
 	metrics: adminProcedure.query(({ ctx }) => admin.metrics(ctx)),
 
+	/**
+	 * Queue depth for the console's badge, in one read.
+	 *
+	 * Deliberately not read out of `metrics`: that refetches every 30 seconds and returns
+	 * ~30 rows of KPIs, and the courier half of the badge used to come from a separate
+	 * `courierProfiles({ limit: 1 })` page read for its `.total`. Two requests for two
+	 * integers, on the first thing the console has to get right.
+	 */
+	approvalCounts: adminProcedure.query(({ ctx }) => admin.approvalCounts(ctx)),
+
 	businesses: adminProcedure
 		.input(adminListInput)
 		.query(({ ctx, input }) => admin.businesses(ctx, input)),

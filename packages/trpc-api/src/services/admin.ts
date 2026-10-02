@@ -15,6 +15,7 @@ import {
 } from "@pymeshub/db";
 import type {
 	AdminAction,
+	AdminApprovalCounts,
 	AdminBusinessRow,
 	AdminCategoryInput,
 	AdminCourierListInput,
@@ -123,6 +124,51 @@ function offsetOf(cursor: string | undefined): number {
  * no answer, and a dashboard that renders one is a dashboard an operator makes a
  * decision on.
  */
+/**
+ * How deep each approval queue is, in one read.
+ *
+ * The console's badge used to get these two numbers by asking `metrics` — a ~30-row payload
+ * that refetches every 30 seconds — for one of them, and by paging `courierProfiles` with
+ * `limit: 1` and reading `.total` off the single row for the other. This is the same two
+ * integers, honestly named, without either of those.
+ *
+ * **The predicates are copied, not re-derived, and that is the point.** A count that drifts
+ * from the list it sends you to is worse than no badge: the operator sees 4, opens the queue,
+ * and finds 3, and concludes one was handled by somebody who did not say so. So:
+ *
+ * - `pendingVerification` is `metrics`' own predicate, `is_verified = 0 and status <>
+ *   'SUSPENDED'` — a suspended shop is not waiting for verification, it is suspended.
+ * - `pendingCouriers` is `courierProfiles`' own predicate, `verification_status = 'PENDING'`,
+ *   **inner-joined to `user`** because that list is. A profile whose user row has gone is not
+ *   in the list an operator reaches, so counting it would raise the badge above its own page.
+ *
+ * Two `count(*)` over indexes, in one `Promise.all`, cross-tenant — which is what an approval
+ * queue is: one list across everybody's shops, not one per tenant.
+ */
+export async function approvalCounts(
+	ctx: UserContext,
+): Promise<AdminApprovalCounts> {
+	const [businesses, couriers] = await Promise.all([
+		ctx.db
+			.select({
+				total: sql<number>`coalesce(sum(case when ${businessTable.isVerified} = 0 and ${businessTable.status} <> 'SUSPENDED' then 1 else 0 end), 0)`,
+			})
+			.from(businessTable),
+		ctx.db
+			.select({
+				total: sql<number>`count(*)`,
+			})
+			.from(courierProfileTable)
+			.innerJoin(userTable, eq(courierProfileTable.userId, userTable.id))
+			.where(eq(courierProfileTable.verificationStatus, "PENDING")),
+	]);
+
+	return {
+		pendingVerification: Number(businesses[0]?.total ?? 0),
+		pendingCouriers: Number(couriers[0]?.total ?? 0),
+	};
+}
+
 export async function metrics(ctx: UserContext): Promise<AdminMetrics> {
 	const now = new Date();
 	const todayStart = new Date(

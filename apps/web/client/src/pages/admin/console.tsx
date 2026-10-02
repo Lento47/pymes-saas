@@ -1535,12 +1535,19 @@ function CategoryDialog({
   category,
   onDone,
 }: {
-  category?: { id: string; name: string; nameEn: string | null; sortOrder: number };
+  category?: {
+    id: string;
+    name: string;
+    nameEn: string | null;
+    imageUrl: string | null;
+    sortOrder: number;
+  };
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(category?.name ?? "");
   const [nameEn, setNameEn] = useState(category?.nameEn ?? "");
+  const [imageUrl, setImageUrl] = useState(category?.imageUrl ?? "");
   const [sortOrder, setSortOrder] = useState(String(category?.sortOrder ?? 0));
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1554,6 +1561,11 @@ function CategoryDialog({
         // string, because absent and `null` are different facts here (see
         // `adminCategoryInput`): absent would leave an existing name untouched.
         nameEn: nameEn.trim() === "" ? null : nameEn.trim(),
+        // Same convention, third time. An empty photo box clears the picture and the tile
+        // falls back to its icon; a box left alone must send nothing at all, because this
+        // form is also how a name gets corrected and the photograph is on the row rather
+        // than in the form.
+        imageUrl: imageUrl.trim() === "" ? null : imageUrl.trim(),
         sortOrder: Number.parseInt(sortOrder, 10) || 0,
       }),
     onSuccess: () => {
@@ -1602,6 +1614,29 @@ function CategoryDialog({
                 onChange={(e) => setNameEn(e.target.value)}
                 className="mt-1"
               />
+            </div>
+            <div>
+              <label htmlFor="cat-image" className="text-xs text-muted-foreground">
+                Foto
+              </label>
+              <Input
+                id="cat-image"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="/files/… o https://…"
+                className="mt-1"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cuadrada, sin texto ni logotipos. Es lo que ve el cliente en la tira de
+                categorías; vacío vuelve al ícono. Vaciar el campo borra la foto.
+              </p>
+              {imageUrl.trim() === "" ? null : (
+                <img
+                  src={imageUrl.trim()}
+                  alt=""
+                  className="mt-2 size-16 rounded-md border object-cover"
+                />
+              )}
             </div>
             <div>
               <label htmlFor="cat-sort" className="text-xs text-muted-foreground">
@@ -1667,6 +1702,7 @@ function CategoriesTab() {
           <TableRow>
             <TableHead>Nombre</TableHead>
             <TableHead>English</TableHead>
+            <TableHead>Foto</TableHead>
             <TableHead>Slug</TableHead>
             <TableHead className="text-right">Productos</TableHead>
             <TableHead className="text-right">Orden</TableHead>
@@ -1678,13 +1714,33 @@ function CategoriesTab() {
             <TableRow key={c.id}>
               <TableCell className="font-medium">{c.name}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{c.nameEn ?? "—"}</TableCell>
+              <TableCell>
+                {c.imageUrl ? (
+                  <img
+                    src={c.imageUrl}
+                    alt=""
+                    className="size-9 rounded border object-cover"
+                  />
+                ) : (
+                  // The glyph, not a dash. A category with no photograph draws its icon in
+                  // the app, so the table showing "—" where the tile shows a fork would
+                  // make the operator hunt for a photo that is legitimately absent.
+                  <span className="text-xs text-muted-foreground">ícono</span>
+                )}
+              </TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">{c.slug}</TableCell>
               <TableCell className="text-right tabular-nums">{c.productCount ?? 0}</TableCell>
               <TableCell className="text-right tabular-nums">{c.sortOrder}</TableCell>
               <TableCell>
                 <div className="flex justify-end gap-2">
                   <CategoryDialog
-                    category={{ id: c.id, name: c.name, nameEn: c.nameEn, sortOrder: c.sortOrder }}
+                    category={{
+                      id: c.id,
+                      name: c.name,
+                      nameEn: c.nameEn,
+                      imageUrl: c.imageUrl,
+                      sortOrder: c.sortOrder,
+                    }}
                     onDone={() => queryClient.invalidateQueries()}
                   />
                   <ActionButton
@@ -1921,31 +1977,39 @@ function AdminConsole() {
   const { tab: routeTab } = useParams<{ tab?: string }>();
   const [, navigate] = useLocation();
 
-  // One metrics query, read by the tiles *and* by the default-tab choice and the queue
-  // badges. It used to be declared twice under the same key — once here, once in `Metrics` —
-  // which React Query deduplicates into a single request but leaves as two observers each
-  // carrying their own `refetchInterval`.
+  // One metrics query, read by the tiles only. It used to be declared twice under the same
+  // key - once here, once in `Metrics` - which React Query deduplicates into a single request
+  // but leaves as two observers each carrying their own `refetchInterval`.
   const metricsQuery = useAdminMetrics();
   const { data: metrics } = metricsQuery;
 
-  // The courier queue has no count in `adminMetricsSchema`, so its badge asks for one row.
-  // It is the same query the tab makes, cached under the same key, so it costs no extra
-  // round trip once the tab is open — and `staleTime` keeps it from re-fetching on every
-  // 30s metrics tick, which is the whole reason to set it.
-  const pendingCourierQuery = useQuery({
-    queryKey: ["admin", "couriers", "PENDING", 1],
-    queryFn: () => adminApi.couriers({ status: "PENDING", limit: 1 }),
-    staleTime: 60_000,
+  /*
+   * Queue depth, from `admin.approvalCounts`.
+   *
+   * These two integers used to come from two different places: `pendingVerification` out of
+   * `metrics` - a ~30-row payload that refetches every 30 seconds, read for one number - and
+   * the courier half from `couriers({ status: "PENDING", limit: 1 })`, reading `.total` off a
+   * one-row page. One request now, for both, and the badge no longer rides on the metrics
+   * poll: a failing metrics endpoint used to take the queue badge down with it, which is the
+   * wrong dependency - the queue is the thing that matters when the KPIs are broken.
+   *
+   * `staleTime` because queue depth changes on somebody else's action, not on a timer, and
+   * re-reading it every 30 seconds would be asking the same question 30 times.
+   */
+  const approvalCountsQuery = useQuery({
+    queryKey: ["admin", "approvalCounts"],
+    queryFn: adminApi.approvalCounts,
+    staleTime: 30_000,
   });
-  const pendingCouriers = pendingCourierQuery.data?.total ?? 0;
-  const pending = metrics?.businesses.pendingVerification ?? 0;
+  const pending = approvalCountsQuery.data?.pendingVerification ?? 0;
+  const pendingCouriers = approvalCountsQuery.data?.pendingCouriers ?? 0;
 
   /*
    * `isFetched` rather than `isPending`, so a *failed* count still lets the redirect
-   * happen. Waiting on success would leave a console whose metrics endpoint is down sitting
+   * happen. Waiting on success would leave a console whose queue endpoint is down sitting
    * on a spinner forever, with no tab and no way forward except the URL bar.
    */
-  const queueKnown = metricsQuery.isFetched && pendingCourierQuery.isFetched;
+  const queueKnown = approvalCountsQuery.isFetched;
 
   // An unknown or missing `:tab` is rewritten to the default rather than rendered as an
   // empty page. `/admin/console` with no param is the link the sidebar uses, and an old

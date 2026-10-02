@@ -16,7 +16,7 @@
 import { z } from "zod";
 import { BUSINESS_STATUSES } from "./business";
 import { PRODUCT_STATUSES, PROMOTION_KINDS } from "./catalog";
-import { currencySchema, shortText } from "./common";
+import { currencySchema, imageUrlSchema, shortText } from "./common";
 import {
 	COURIER_INVITE_STATUSES,
 	COURIER_VERIFICATION_STATUSES,
@@ -259,6 +259,37 @@ export const adminReviewRowSchema = z.object({
 export type AdminReviewRow = z.infer<typeof adminReviewRowSchema>;
 
 /**
+ * How deep each approval queue is, across every tenant.
+ *
+ * Both numbers already exist inside `adminMetricsSchema`; this makes them **standalone**,
+ * because they are read for two different reasons and the second one is not a dashboard.
+ *
+ * The console's queue badge is the reason. It used to read `pendingVerification` out of
+ * `admin.metrics` — which refetches every 30 seconds and returns ~30 rows of KPIs to learn
+ * one integer — and to ask `courierProfiles({ status: "PENDING", limit: 1 })` for the other,
+ * reading `.total` off a one-row page. That is two requests for two numbers, one of them
+ * wasteful and one of them indirect, and the badge is the first thing on the console that
+ * has to be right: it is how an operator knows whether anything is waiting.
+ *
+ * **The two predicates must match the ones their lists use**, or the badge and the list
+ * disagree and one of them is a lie. `pendingVerification` is `is_verified = 0 and status <>
+ * 'SUSPENDED'`, taken from `metrics`; `pendingCouriers` is `verification_status = 'PENDING'`
+ * **inner-joined to `user`**, taken from `courierProfiles` — a profile whose user row is
+ * missing is absent from that list, so counting it here would make the badge higher than the
+ * list it sends you to.
+ *
+ * No input: this is a fixed pair of counts, and an input that could filter them is an input
+ * with nothing to filter *for* — a queue's depth is the whole number or it is not a number.
+ */
+export const adminApprovalCountsSchema = z.object({
+  /** Shops that asked to be seen and have not been answered. */
+  pendingVerification: z.number().int().nonnegative(),
+  /** Courier profiles awaiting review. */
+  pendingCouriers: z.number().int().nonnegative(),
+});
+export type AdminApprovalCounts = z.infer<typeof adminApprovalCountsSchema>;
+
+/**
  * Platform metrics. Money is grouped by currency and never added across them —
  * "₡4 200 000 + $1 300" has no answer, and the dashboard that renders one is the
  * dashboard an operator makes a decision on.
@@ -322,6 +353,28 @@ export const adminCategoryInput = z.object({
 	 * corrected its name.
 	 */
 	parentId: z.string().nullable().optional(),
+	/**
+	 * The category's photograph, and the third absent-vs-`null` field on this input.
+	 *
+	 * `image_url` has been a column since `0006_category_taxonomy.sql` and `categoryOf` has
+	 * carried it onto the wire since the mapper was written, and **nothing could write it**:
+	 * this input had no key for it, so `saveCategory` had nothing to persist and the web
+	 * console's `CategoryDialog` had nothing to send. The column was a promise with no
+	 * writer behind it, and `components/category-rail.tsx` has been branching on
+	 * `imageUrl` ever since — drawing a glyph for all 241 rows because every one of them
+	 * was null.
+	 *
+	 * Same convention as `nameEn` and `parentId`, for the same reason: absent is "the form
+	 * carried no image", which must leave an existing photo where it is, and `null` is the
+	 * operator deliberately clearing it back to the glyph. Collapsing them would strip the
+	 * photograph off every category each time somebody corrected a name — the photo is on
+	 * the row and not in the form, so a name edit that omitted it would look like a clear.
+	 *
+	 * Root-relative `/files/:id` from `uploads.create`, or an `https://` URL. Both go
+	 * through `imageUrlSchema`, which `components/image.tsx` resolves the same way, so the
+	 * two are interchangeable here and a category photo can be uploaded or linked.
+	 */
+	imageUrl: imageUrlSchema.nullable().optional(),
 	sortOrder: z.number().int().min(0).max(999).default(0),
 });
 export type AdminCategoryInput = z.infer<typeof adminCategoryInput>;
