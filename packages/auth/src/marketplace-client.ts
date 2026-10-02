@@ -19,15 +19,30 @@ export function createMarketplaceAuthClient(
 	async function request(path: string, body?: unknown) {
 		const token = storage ? await storage.getItem(TOKEN_KEY) : null;
 		const endpoint = path.startsWith("/") ? path : `/auth/${path}`;
-		const response = await fetch(`${baseUrl}${endpoint}`, {
-			method: body === undefined ? "GET" : "POST",
-			credentials: storage ? "omit" : "include",
-			headers: {
-				...(body === undefined ? {} : { "content-type": "application/json" }),
-				...(token ? { authorization: `Bearer ${token}` } : {}),
-			},
-			body: body === undefined ? undefined : JSON.stringify(body),
-		});
+		// Authentication must have a finite wait. A stalled edge/TLS connection otherwise
+		// leaves every caller awaiting forever, which means a submit button stays disabled
+		// forever too. Fifteen seconds is deliberately longer than a healthy auth round trip
+		// and short enough that a customer can retry instead of killing the app.
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 15_000);
+		let response: Response;
+		try {
+			response = await fetch(`${baseUrl}${endpoint}`, {
+				method: body === undefined ? "GET" : "POST",
+				credentials: storage ? "omit" : "include",
+				headers: {
+					...(body === undefined ? {} : { "content-type": "application/json" }),
+					...(token ? { authorization: `Bearer ${token}` } : {}),
+				},
+				body: body === undefined ? undefined : JSON.stringify(body),
+				signal: controller.signal,
+			});
+		} catch (error) {
+			if (controller.signal.aborted) throw new Error("auth.error.timeout");
+			throw new Error("auth.error.network", { cause: error });
+		} finally {
+			clearTimeout(timeout);
+		}
 		if (!response.ok) {
 			if (response.status === 401 && storage)
 				await storage.removeItem(TOKEN_KEY);

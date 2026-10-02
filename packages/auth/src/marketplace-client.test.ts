@@ -45,6 +45,7 @@ type RecordedCall = {
 	credentials: RequestCredentials | undefined;
 	headers: Record<string, string>;
 	body: string | undefined;
+	signal: AbortSignal | null | undefined;
 };
 
 /**
@@ -54,7 +55,7 @@ type RecordedCall = {
  * platform's fetch and nothing else.
  */
 function installFetch(
-	respond: (call: RecordedCall) => Response,
+	respond: (call: RecordedCall) => Response | Promise<Response>,
 ): RecordedCall[] {
 	const calls: RecordedCall[] = [];
 	globalThis.fetch = (async (
@@ -67,6 +68,7 @@ function installFetch(
 			credentials: init?.credentials,
 			headers: { ...(init?.headers as Record<string, string> | undefined) },
 			body: typeof init?.body === "string" ? init.body : undefined,
+			signal: init?.signal,
 		};
 		calls.push(call);
 		return respond(call);
@@ -134,7 +136,17 @@ async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
 }
 
 describe("the wire", () => {
-	test("signIn POSTs the credentials to /auth/sign-in/email", async () => {
+	test("auth requests carry an abort signal so a stalled fetch is bounded", async () => {
+		const calls = installFetch(() => ok());
+		await createMarketplaceAuthClient(BASE).signIn(
+			"ana@example.test",
+			"correct-horse-battery",
+		);
+		expect(calls[0]?.signal).toBeInstanceOf(AbortSignal);
+		expect(calls[0]?.signal?.aborted).toBe(false);
+	});
+
+		test("signIn POSTs the credentials to /auth/sign-in/email", async () => {
 		const calls = installFetch(() => ok());
 		await createMarketplaceAuthClient(BASE).signIn(
 			"ana@example.test",
@@ -219,7 +231,17 @@ describe("error mapping", () => {
 		expect(message).toBe("auth.error.invalidCredentials");
 	});
 
-	test("anything else becomes auth.error.generic", async () => {
+	test("network rejection becomes auth.error.network", async () => {
+		installFetch(async () => {
+			throw new TypeError("Load failed");
+		});
+		const message = await rejectionMessage(
+			createMarketplaceAuthClient(BASE).signIn("a@b.test", "password-123456"),
+		);
+		expect(message).toBe("auth.error.network");
+	});
+
+		test("anything else becomes auth.error.generic", async () => {
 		for (const status of [400, 403, 404, 500, 503]) {
 			installFetch(() => failure(status));
 			const message = await rejectionMessage(
