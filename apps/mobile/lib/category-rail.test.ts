@@ -3,71 +3,27 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The rail's label has to fit the words it is given, and this is what holds it to that.
+ * The rail is a shelf of marks, and this is what holds it to that.
  *
- * The defect this file exists for was visible in one screenshot and invisible to every other
- * check: `Decoració / n`, `Tecnolog / ía`, `Recreaci / ón`. A word wider than its box is not
- * ellipsised or hyphenated by the text engine — it is **broken**, silently, and the type
- * checker has nothing to say about it because nothing is mistyped. Typecheck passed, biome
- * passed, 64 tests passed, and the rail still shipped `Decoración` cut in half.
+ * It began as a guard on text: a 60pt tile could not hold the sector names, so `Decoración`
+ * rendered as `Decoració / n` — a word wider than its box is not ellipsised, it is *broken*,
+ * and nothing caught it (typecheck, biome and the suite all passed). The fix widened a label
+ * column to 108pt, which took the visible row from five tiles to three.
  *
- * So the invariant is asserted directly, against the taxonomy **in the repository** rather
- * than a fixture: every category name must have a widest word that fits `TILE_WIDTH`.
- *
- * ## Sectors and leaves are not the same population, and conflating them is how this test
- * first failed
- *
- * The three callers that pass **sectors** — the feed, the search screen's idle rail, and a
- * category's own page — are fully served by `TILE_WIDTH`. The fourth, the search screen's
- * *results* rail, draws whatever a query matched, and a leaf like `Electrodomésticos` is
- * ~115pt: no column that shows three tiles across a phone holds that word.
- *
- * So the two are measured separately and asserted differently. Sectors are a hard invariant
- * that fails the build. Leaves are a **known, counted** exception — asserted as a number so
- * that shortening one of those names, or adding a tenth, is visible in a diff instead of
- * quietly shipping. Reading all 242 names as one population is what produced a first version
- * of this file that failed for 42 categories the rail is never actually given.
+ * Then the labels came off, and that is the better answer: a 20pt glyph in a rounded square
+ * is how a category rail is supposed to read, and the strip is scannable in one pass with no
+ * paragraph under it. The text measurement that justified `TILE_WIDTH` went with them, and
+ * this file is what is left — the shape, the size, and the two things that must survive the
+ * label's removal.
  *
  * ## Read from source, for the reason `lib/tab-bar-coverage.test.ts` reads its layout
  *
- * `components/category-rail.tsx` imports `react-native`, `@/theme` and `expo-router`, none
- * of which resolve under `bun test`. The constants are parsed out of the file. That is weaker
- * than importing the value, and it is the right trade: what is protected is the *number*.
+ * `components/category-rail.tsx` imports `react-native`, `@/theme` and `expo-router`, none of
+ * which resolve under `bun test`. What is protected here is the *declaration*, not behaviour.
  */
 
 const REPO = join(import.meta.dir, "..", "..", "..");
 const RAIL = join(REPO, "apps", "mobile", "components", "category-rail.tsx");
-/** Inserted the hierarchy, with `parent_id` NULL on a sector and a slug on a leaf. */
-const TAXONOMY = join(
-	REPO,
-	"packages",
-	"db",
-	"migrations",
-	"0006_category_taxonomy.sql",
-);
-/** Rewrote `name` into Spanish, keyed by slug. */
-const NAMES_ES = join(
-	REPO,
-	"packages",
-	"db",
-	"migrations",
-	"0008_category_names_es.sql",
-);
-
-/** The `label` token's size — `label: { fontSize: 13, lineHeight: 18 }` in `theme/tokens.ts`. */
-const LABEL_FONT_PT = 13;
-
-/**
- * Leaves whose widest word cannot fit `TILE_WIDTH`, expected by name.
- *
- * Not a number, because a number stops meaning anything the moment somebody fixes one of
- * them and does not touch the test. Naming them means the failure says *which* name to look
- * at, and `Electrodomésticos` is a real category a real reader searches for.
- */
-const KNOWN_UNFITTABLE_LEAVES = [
-	"Electrodomésticos",
-	"Electrodomésticos (DIY)",
-];
 
 const source = readFileSync(RAIL, "utf-8");
 
@@ -81,84 +37,11 @@ function declared(name: string): number {
 }
 
 /**
- * The width of a word in points, rounded **up** on every glyph class.
- *
- * An upper bound, and deliberately generous, because this measures whether a word *could*
- * exceed its box: over-reporting can only make the test stricter, and the margin is far
- * smaller than the ~17pt it would take to fail a name that genuinely fits. `m`/`w` at 0.90em
- * against a true ~0.85, capitals 0.68 against ~0.64, the accented vowels that carry half the
- * Spanish names 0.56 against ~0.52.
- */
-function widestWordPt(word: string, fontPt: number): number {
-	let ems = 0;
-	for (const char of word) {
-		if ("iljtfrI.,;:'!|".includes(char)) ems += 0.34;
-		else if (char === " ") ems += 0.3;
-		else if ("mwMW".includes(char)) ems += 0.9;
-		else if (char >= "A" && char <= "Z") ems += 0.68;
-		else if ("áéíóúñÁÉÍÓÚÑüÜ".includes(char)) ems += 0.56;
-		else if (char >= "0" && char <= "9") ems += 0.6;
-		else ems += 0.56;
-	}
-	return ems * fontPt;
-}
-
-/** The taxonomy as slugs, split by level — a sector's `parent_id` is NULL in `0006`. */
-function taxonomyLevels(): { sectors: string[]; leaves: string[] } {
-	const sql = readFileSync(TAXONOMY, "utf-8");
-	const sectors: string[] = [];
-	const leaves: string[] = [];
-	const row =
-		/\('cat_[^']*',\s*'([^']*)',\s*'[^']*',\s*(?:'[^']*'|NULL),\s*(?:'[^']*'|NULL),\s*(NULL|'cat_[^']*'),/g;
-	for (const match of sql.matchAll(row)) {
-		const slug = match[1];
-		const parent = match[2];
-		if (!slug || !parent) continue;
-		if (parent === "NULL") sectors.push(slug);
-		else leaves.push(slug);
-	}
-	return { sectors, leaves };
-}
-
-/** The Spanish name for every slug, from `0008`. */
-function spanishNames(): Map<string, string> {
-	const sql = readFileSync(NAMES_ES, "utf-8");
-	const names = new Map<string, string>();
-	const update = /set `name` = '([^']+)'.*?where `slug` = '([^']+)'/g;
-	for (const match of sql.matchAll(update)) {
-		const name = match[1];
-		const slug = match[2];
-		if (name && slug) names.set(slug, name);
-	}
-	return names;
-}
-
-/** Every name in a level, resolved through `0008`. */
-function namesIn(level: string[]): string[] {
-	const spanish = spanishNames();
-	return level
-		.map((slug) => spanish.get(slug))
-		.filter((name): name is string => name !== undefined);
-}
-
-/** The names in a level whose widest word overflows the column. */
-function overflowingIn(level: string[]): string[] {
-	const column = declared("TILE_WIDTH");
-	return namesIn(level)
-		.filter((name) =>
-			name
-				.split(/\s+/)
-				.some((word) => widestWordPt(word, LABEL_FONT_PT) > column),
-		)
-		.sort();
-}
-
-/**
  * The rail's source with every comment removed.
  *
- * Not tidiness. This file's own docblock explains the no-truncation rule and therefore
- * *contains the words* `numberOfLines` and `ellipsizeMode`, so a naive grep over the source
- * fails on the explanation of the rule it is checking. Only code is evidence.
+ * Not tidiness. This file's own docblocks explain these rules in prose and therefore *contain
+ * the words* `numberOfLines`, `radius.full` and `disc`; a naive grep over the source fails on
+ * the explanation of the thing it is checking. Only code is evidence.
  */
 function codeOnly(): string {
 	return source
@@ -166,70 +49,84 @@ function codeOnly(): string {
 		.replace(/^[ \t]*\/\/.*$/gm, "");
 }
 
-describe("the category rail's label column", () => {
-	test("no sector name has a word wider than the tile", () => {
-		// The enforceable half, and the one three of the four callers depend on. At 60pt this
-		// failed for 10 of the 18 sectors; `Entretenimiento` (~98pt) is what sets the width.
-		expect(overflowingIn(taxonomyLevels().sectors)).toEqual([]);
+describe("the category rail's tiles", () => {
+	test("a tile draws a mark and nothing else", () => {
+		// The decision, asserted. `<Text>` in this file is the label, and its absence is the
+		// change: a shelf of marks is scannable in one pass, and the names are on
+		// `app/(customer)/categories.tsx` for anyone who wants to read them.
+		expect(codeOnly()).not.toMatch(/<Text/);
 	});
 
-	test("the widest sector word fits with room for one more character", () => {
-		// Not the same assertion. The first says nothing overflows; this says the constant is
-		// not sitting a point above the longest word. Eight points is roughly one character
-		// at this size: 102 left four and was caught here, because four is not enough for the
-		// next sector whose longest word is one letter longer than `Entretenimiento`.
-		const column = declared("TILE_WIDTH");
-		const widest = Math.max(
-			...namesIn(taxonomyLevels().sectors).flatMap((name) =>
-				name.split(/\s+/).map((word) => widestWordPt(word, LABEL_FONT_PT)),
-			),
-		);
-		expect(widest).toBeLessThan(column - 8);
+	test("the name still reaches a screen reader", () => {
+		// Load-bearing, not redundant, now that the visible label is gone. The glyph is
+		// `accessibilityElementsHidden`, so if this prop went the tile would announce as an
+		// unlabelled button — which is exactly the information loss the label was preventing.
+		expect(source).toMatch(/accessibilityLabel=\{label\}/);
+		expect(source).toMatch(/accessibilityRole="button"/);
 	});
 
-	test("the leaves that cannot fit are the two we know about, by name", () => {
-		// `Electrodomésticos` is ~115pt and no column showing three tiles across a phone
-		// holds it. Asserting it as a *list* rather than a count is the point: shortening
-		// either name, or adding a tenth, shows up in this diff instead of shipping.
-		expect(overflowingIn(taxonomyLevels().leaves)).toEqual(
-			[...KNOWN_UNFITTABLE_LEAVES].sort(),
-		);
+	test("the glyph stays out of the accessibility tree", () => {
+		// With the label gone there is nothing to duplicate, so an unhidden glyph would make
+		// the same category announced twice on some platforms.
+		expect(codeOnly()).toMatch(/accessibilityElementsHidden/);
+		expect(codeOnly()).toMatch(/importantForAccessibility="no"/);
 	});
 
-	test("the disc is not the label column, which is what let the fix exist", () => {
-		// One constant drove both, so widening the tile to fit a word would have widened the
-		// disc too and taken tiles off the rail to buy it back. Two numbers now; this stops
-		// them being merged into one again.
-		expect(declared("DISC_SIZE")).toBe(60);
-		expect(declared("TILE_WIDTH")).toBeGreaterThan(declared("DISC_SIZE"));
+	test("the box is a rounded square, not a disc", () => {
+		// `radius.full` on a square is a circle, and the curve threw away about a third of a
+		// 60pt box's area — corner a 20pt glyph never touches. `radius.md` is `./card`'s own
+		// corner, so the rail is the same kind of surface as the storefront card beside it.
+		expect(source).toMatch(/tileBox:\s*\{[^}]*borderRadius:\s*radius\.md/);
+		expect(codeOnly()).not.toMatch(/borderRadius:\s*radius\.full/);
 	});
 
-	test("the label states its own width, because the tile's alignItems will not", () => {
-		// `alignItems: "center"` sizes a child to its *content*, so a `<Text>` with no width
-		// lays out unbroken and overflows rather than wrapping. The width on `tileLabel` is
-		// the mechanism of the fix, not tidying.
-		expect(source).toMatch(/tileLabel:\s*\{[^}]*width:\s*TILE_WIDTH/);
+	test("a category photograph takes the box's corner, not a circle", () => {
+		// `radiusToken="full"` anywhere here would clip a picture to a disc inside a rounded
+		// square — the shape the box just stopped being, drawn again one layer down. And it
+		// would be invisible today: `image_url` is null on all 242 category rows.
+		expect(codeOnly()).not.toMatch(/radiusToken="full"/);
+		expect(source).toMatch(/radiusToken="md"/);
 	});
 
-	test("nothing here truncates a category's name", () => {
-		// `./product-tile`'s rule, applied to the rail: a cap is truncating data to save a
-		// layout, and "Juguetes, Pasatiempos y Coleccionables" with an ellipsis is a different
-		// category from the one the reader is looking for. Checked against the code, because
-		// this file's own docblock names both props in order to explain the rule.
-		const code = codeOnly();
-		expect(code).not.toMatch(/numberOfLines/);
-		expect(code).not.toMatch(/ellipsizeMode/);
+	test("the tile is one number, not a box beside a label column", () => {
+		// They were split because widening the tile to fit a word also widened the disc. With
+		// no label there is nothing to fit, so a second constant would be two numbers that now
+		// say the same thing.
+		expect(declared("TILE_SIZE")).toBe(60);
+		expect(codeOnly()).not.toMatch(/const TILE_WIDTH/);
+		expect(codeOnly()).not.toMatch(/const TILE_BOX_SIZE/);
+		expect(codeOnly()).not.toMatch(/tileLabel/);
 	});
 
-	test("the rail shows three tiles across, and that is the documented price", () => {
-		// The cost of the width, asserted so the docblock's "three where there were five"
-		// cannot quietly become wrong. `space.lg` insets and `space.sm` gaps, on the
-		// narrowest phone the app supports.
-		const column = declared("TILE_WIDTH");
-		const screen = 320;
+	test("five tiles are visible across a 390pt screen again", () => {
+		// The cost of the labels, now paid back. Five is what the rail showed before the name
+		// column existed, so this asserts the round trip rather than the number alone.
+		const screen = 390;
 		const insets = 16 * 2;
 		const gap = 8;
-		const visible = Math.floor((screen - insets + gap) / (column + gap));
-		expect(visible).toBe(2);
+		const visible = Math.floor(
+			(screen - insets + gap) / (declared("TILE_SIZE") + gap),
+		);
+		expect(visible).toBe(5);
+	});
+
+	test("the tile is square, so the row of them reads as one rhythm", () => {
+		// The box's two dimensions are the same number. A width and a height that drift apart
+		// would make the rail a row of mixed rectangles, and nothing else would say so.
+		const box = source.match(/tileBox:\s*\{([\s\S]*?)\n\t\},/);
+		const body = box?.[1] ?? "";
+		const widths = [...body.matchAll(/width:\s*(\w+)/g)].map((m) => m[1]);
+		const heights = [...body.matchAll(/height:\s*(\w+)/g)].map((m) => m[1]);
+		expect(widths.length).toBeGreaterThan(0);
+		expect(widths[0]).toBe("TILE_SIZE");
+		expect(heights[0]).toBe("TILE_SIZE");
+	});
+
+	test("the touch target is still the whole tile, not just the mark", () => {
+		// A 60pt mark clears `MIN_TOUCH_TARGET` (44) by itself, but the pressable is what a
+		// finger actually lands on and it must not shrink below the platform floor.
+		expect(source).toMatch(
+			/tile:\s*\{[\s\S]{0,80}?minHeight:\s*MIN_TOUCH_TARGET/,
+		);
 	});
 });

@@ -10,7 +10,6 @@ import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 import { Image } from "./image";
 import { Pressable } from "./pressable";
-import { Text } from "./text";
 
 /**
  * The category rail: the one row that says what this marketplace sells.
@@ -166,6 +165,24 @@ export function CategoryRail({
  * `accentForeground` at rest; selected it fills `primary` with `primaryForeground` ink, the
  * same pair the tab bar's active state wears.
  *
+ * ## Why the box is a rounded square and not a disc
+ *
+ * It was one. `radius.full` on a 60pt square is a circle, and a circle is the wrong shape for
+ * this particular job for three reasons that only became clear together.
+ *
+ * A 20pt glyph sits in the middle of it, so **the curve throws away about a third of the
+ * area** — the corners that a square spends on nothing are the corners a glyph does not use.
+ * `accent` is `#ececff` on a `#ffffff` card with no border, a tint with no edge, so against a
+ * pale surface the disc read as a smudge rather than a shape. And it was the **only rounded
+ * circle on a screen made of rounded rectangles**: `./card` draws `radius.md`, the search
+ * field draws `radius.md`, and this row of dots sat on top of them speaking a second language.
+ *
+ * `radius.md` is `./card`'s own corner, so the rail becomes three surfaces of one kind instead
+ * of a foreign object laid over them. It is also what makes the photograph branch worth having:
+ * at `full` a square picture is clipped to a circle and loses its corners to the curve, and no
+ * category row has an image today (`image_url` is null on all 242) so that cost was being paid
+ * for a picture that does not exist.
+ *
  * ## The label wraps as many lines as it needs, and never breaks a word
  *
  * The first half of that is `./product-tile`'s rule and this file's: **nothing here is
@@ -230,7 +247,10 @@ function Chip({
 					// so the picture is announced by that and not on its own.
 					<Image
 						uri={imageUrl}
-						radiusToken="full"
+						// The box's own radius, not `full`. The tile is a rounded square now, so a
+						// circular photograph inside it would draw the disc this change removed,
+						// one layer down — and clip the picture's corners for nothing.
+						radiusToken="md"
 						style={styles.tileImage}
 						accessibilityElementsHidden
 						importantForAccessibility="no"
@@ -247,97 +267,68 @@ function Chip({
 					/>
 				)}
 			</View>
-			<Text
-				variant="label"
-				tone="default"
-				bold={selected}
-				style={styles.tileLabel}
-			>
-				{label}
-			</Text>
 		</Pressable>
 	);
 }
 
 /**
- * The label column, and the width a category's name has to be set in.
+ * The tile: a mark, and nothing else.
  *
- * **108 is measured, not chosen.** It is the width at which no single word in any of the
- * **18 sector** names is too wide for its box, which is the whole defect: a word wider than
- * its container is not ellipsised or hyphenated, it is *broken*, and this rail was shipping
- * `Decoració / n`, `Tecnolog / ía` and `Recreaci / ón` because `TILE_WIDTH` was 60 and the
- * longest words in the taxonomy are wider than that.
- *
- * The three that decide it, at the `label` token's 13pt and rounded **up**:
- *
- * | word | sector | width |
- * |---|---|---|
- * | `Entretenimiento` | Libros, Medios y Entretenimiento | ~98pt |
- * | `Coleccionables` | Juguetes, Pasatiempos y Coleccionables | ~95pt |
- * | `Capacitación` | Educación y Capacitación | ~80pt |
- *
- * 98 is the floor and 108 is what this is, because 102 left four points of slack and four
- * points is less than one character: the next sector with a word one letter longer than
- * `Entretenimiento` would have broken again, and the tile count is the same at 102 and 108,
- * so the margin is free. `lib/category-rail.test.ts` asserts it rather than trusting this
+ * There is no label. The names ran to two, three and four lines inside a strip that is
+ * supposed to be scannable in one pass, and fixing that honestly cost the rail more than it
+ * bought — \TILE_WIDTH\ had to grow to 108pt to stop \Decoración\ breaking mid-word, which
+ * took the visible row from five tiles to three. Both problems had the same root, and it was
+ * the words: a 20pt glyph in a rounded square says "food" or "clothing" to anyone who has
+ * seen a category rail before, and the strip's job is to be a shelf of marks, not a
  * paragraph.
  *
- * ## The two leaves that do not fit, and are not made to
+ * ## What this costs, said plainly
  *
- * `Electrodomésticos` and `Electrodomésticos (DIY)` are ~115pt: no column that shows three
- * tiles across a phone can hold that word, and widening to 120pt would show two. They reach
- * this rail through exactly one caller — the search screen's *results* rail, which draws the
- * categories a query matched, and a search for "electrodomésticos" matches them. The other
- * three callers pass sectors and are fully fixed by the width above.
+ * A reader who does not recognise the glyph has no way to tell \Belleza\ from \Hogar\, and
+ * the row of tiles becomes a guessing game where it used to be a list. That is a real loss and
+ * it is not offset by anything below. It is also why \ccessibilityLabel\ on the tile is now
+ * load-bearing rather than redundant: it is the only place the category's name survives, so
+ * the pressable carries it and the glyph stays out of the tree.
  *
- * That is left visible rather than papered over. An ellipsis would hide it, and the rule this
- * repo states (`./product-tile`) is that a cap is truncating data to save a layout; a smaller
- * font would take every sector label down to 10pt to accommodate one word. Both are worse than
- * the defect they remove. The honest fix is a shorter `name` on those two rows, or a
- * `shortName` column for the rail — a change to the taxonomy's content, which is not this
- * file's to make. The test holds both names, so the day one is shortened it says so.
+ * The rail is also where a search result can be a *leaf* rather than a sector, and there the
+ * loss is sharpest — \Dispositivos Inteligentes\ and \Dispositivos Conectados\ are two rows
+ * with one mark between them. \pp/(customer)/categories.tsx\ is the screen that carries the
+ * names, and it is unchanged.
  *
- * ## The price
+ * ## The width is one number again
  *
- * Three tiles across a 390pt screen where there were five. That is what the sector names
- * cost, and it is not avoidable at any width — it is what the names are.
+ * It used to be two: a 108pt label column beside a 60pt box, split because widening the tile
+ * to fit a word also widened the disc. With the label gone there is nothing to fit, so the
+ * split is removed rather than left behind as two constants that now say the same thing. Five
+ * tiles are visible across again, which is what the rail had before the names came off it.
  */
-const TILE_WIDTH = 108;
-
-/**
- * The disc, which is **not** `TILE_WIDTH`.
- *
- * One constant used to drive both the disc and the label column, which is why the fix for a
- * label that would not fit had nowhere to go: widening the tile also widened the disc, and
- * the rail would have lost four of its five tiles to buy back a word. Separating them means
- * the disc keeps the size that makes the strip read as a strip, and only the text gets wider.
- */
-const DISC_SIZE = 60;
+const TILE_SIZE = 60;
 
 const styles = StyleSheet.create({
 	rail: { paddingHorizontal: space.lg, gap: space.sm },
-	// A tile is a disc with a word under it, and the two sizes are independent: the disc is
-	// the rhythm, the label column is the space the name has to fit in.
+	// A tile is the mark and nothing else, so the wrapper exists only to hold the touch
+	// target: the box is a fixed `TILE_SIZE`, which already clears `MIN_TOUCH_TARGET` on its
+	// own, and there is no second child for `alignItems` or `gap` to arrange.
 	tile: {
-		alignItems: "center",
-		gap: space.xs,
-		width: TILE_WIDTH,
 		minHeight: MIN_TOUCH_TARGET,
 	},
 	tileBox: {
-		width: DISC_SIZE,
-		height: DISC_SIZE,
-		borderRadius: radius.full,
+		width: TILE_SIZE,
+		height: TILE_SIZE,
+		// `radius.md`, and not `radius.full`. It is the corner `./card` draws, so the rail
+		// speaks the app's shape language instead of a second one: the storefront card, the
+		// search field and this tile are then three surfaces of the same kind rather than a
+		// row of dots pasted onto a page of rounded rectangles.
+		//
+		// The radius is also what lets a photograph read. At `full` a square photograph is
+		// clipped to a circle and loses its corners to the curve; at `md` it keeps the same
+		// framing as every other image on the screen, and `overflow: "hidden"` below does
+		// the clipping that `./card` does with the same token.
+		borderRadius: radius.md,
 		alignItems: "center",
 		justifyContent: "center",
 		// The photograph fills the box and is clipped to its corner.
 		overflow: "hidden",
 	},
 	tileImage: { width: "100%", height: "100%" },
-	// The width is stated here rather than left to the tile's, and that is not redundancy.
-	// `tile` sets `alignItems: "center"`, which sizes a child to its *content* rather than
-	// to the parent — so an unconstrained `<Text>` would lay out at its full unbroken width
-	// and overflow the tile rather than wrap inside it. Naming the width is what forces the
-	// wrap at 102pt, which is the entire fix.
-	tileLabel: { textAlign: "center", width: TILE_WIDTH },
 });
