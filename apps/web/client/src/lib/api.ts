@@ -17,8 +17,64 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ??
-  ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
+/**
+ * Where the **SaaS** API lives — the NestJS service, not the marketplace Worker.
+ *
+ * This is a different host from the one the console uses. `lib/marketplace.ts` reads
+ * `VITE_MARKETPLACE_API_URL` and talks to the Worker, which mounts `/trpc`, `/auth`,
+ * `/uploads` and nothing under `/api/*`. Every path below the `request` helper is NestJS's,
+ * so it needs `VITE_API_URL` and gets `API_BASE` from here.
+ *
+ * ## Why the empty string used to be the fallback
+ *
+ * `""` is a valid base for a same-origin request, which is why it typechecked and built and
+ * then failed *in a browser*, as a CORS error naming a host nobody had configured. Production
+ * shipped with none of these three variables set, so `API_BASE` was `""`, and
+ * `${API_BASE}/api/auth/refresh` became a request to the page's own origin — which answers
+ * 404 without `Access-Control-Allow-Origin`, which the browser reports as a CORS policy
+ * failure. The message named CORS; the cause was a variable that was never set.
+ *
+ * So an unset base is now **recorded and refused at request time**, rather than silently
+ * becoming `""`. Deliberately *not* a throw at module load: `App.tsx` imports this file and
+ * `main.tsx` imports `App.tsx`, so throwing here would white-screen the entire app —
+ * including the marketplace console, which talks to the Worker and works perfectly well
+ * without `VITE_API_URL`. One missing variable must not take down the surface that does not
+ * need it.
+ */
+const MISSING_API_BASE_MESSAGE =
+  "No SaaS API base configured. Set VITE_API_URL to the NestJS host in " +
+  "apps/web/.env.production. This is NOT the marketplace Worker: that one mounts /trpc " +
+  "and is named by VITE_MARKETPLACE_API_URL, which lib/marketplace.ts reads. This used " +
+  "to fall back to the current origin, and every /api/* call died as a CORS error naming " +
+  "the wrong cause.";
+
+const CONFIGURED_API_BASE =
+  import.meta.env.VITE_PYMESHUB_API_URL ??
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.API_URL;
+
+const API_BASE =
+  typeof CONFIGURED_API_BASE === "string" && CONFIGURED_API_BASE.length > 0
+    ? CONFIGURED_API_BASE
+    : "";
+
+/** Whether the SaaS API host is known. False is the state production shipped in. */
+export const isApiBaseConfigured = API_BASE.length > 0;
+
+/**
+ * The one place a request decides it cannot be made.
+ *
+ * A `TypeError` rather than a rejected promise with a message: this is a configuration fault
+ * in the bundle, not something a caller can catch and recover from, and it should read as
+ * "the build is wrong" the moment it is thrown rather than as a failed fetch. `console.error`
+ * as well, because in a browser console that is where somebody debugging a CORS error will
+ * actually see it — the exact place this went unread for so long.
+ */
+function requireApiBase(path: string): string {
+  if (isApiBaseConfigured) return API_BASE;
+  console.error(`[pymes] ${MISSING_API_BASE_MESSAGE}`);
+  throw new TypeError(`${MISSING_API_BASE_MESSAGE} (requesting ${path})`);
+}
 
 // ── Auth state (access token in-memory only; slug in storage for reload support) ──
 // ── Refresh token is stored exclusively in httpOnly cookie (set by backend) ──
@@ -90,8 +146,11 @@ async function _tryRefresh(): Promise<boolean> {
 
   _refreshPromise = (async () => {
     try {
-      // Refresh token is sent automatically as httpOnly cookie — no body needed
-      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      // Refresh token is sent automatically as httpOnly cookie — no body needed.
+      // This is one of the two calls that were observed failing in production, and it does
+      // not go through `request`, so it needs its own guard: an unset base would send it to
+      // the page origin and it would fail as a CORS error naming the wrong cause.
+      const res = await fetch(`${requireApiBase("/api/auth/refresh")}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -141,6 +200,8 @@ async function request<T>(
   data?: unknown,
   options?: { isFormData?: boolean; timeout?: number; responseType?: "blob" }
 ): Promise<T> {
+  // Refused here rather than fetched against `""`, which would mean the page's own origin.
+  requireApiBase(path);
   const buildHeaders = (): Record<string, string> => {
     const h: Record<string, string> = {};
     const token = getAuthToken();
@@ -273,7 +334,7 @@ export const api = {
     request<Record<string, any>>("POST", "/api/workspaces/current/invite-codes", data),
   revokeInviteCode: (id: string) => request<Record<string, any>>("DELETE", `/api/workspaces/current/invite-codes/${id}`),
   login: async (email: string, password: string, workspaceSlug: string) => {
-    const r = await fetch(`${API_BASE}/api/auth/login`, {
+    const r = await fetch(`${requireApiBase("/api/auth/login")}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-workspace-slug": workspaceSlug },
       body: JSON.stringify({ email, password }),

@@ -1,8 +1,26 @@
-const API_BASE =
+/**
+ * Where the SaaS (NestJS) API lives.
+ *
+ * Same variable chain and same failure mode as `lib/api.ts` — an unset value used to fall
+ * back to `""`, which is the page's own origin, so every client error report was posted to a
+ * host that does not mount `/api/*` and failed as a CORS error. The two files resolve this
+ * separately rather than importing a shared constant, because `error-reporting.ts` is
+ * installed from `main.tsx` before anything else and must not be able to fail to load.
+ *
+ * This is the NestJS host, named by `VITE_API_URL`. It is **not** the marketplace Worker,
+ * which `lib/marketplace.ts` reaches through `VITE_MARKETPLACE_API_URL` and which mounts
+ * `/trpc` rather than `/api/*`.
+ */
+const CONFIGURED_API_BASE =
   import.meta.env.VITE_PYMESHUB_API_URL ??
   import.meta.env.VITE_API_URL ??
-  import.meta.env.API_URL ??
-  ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
+  import.meta.env.API_URL;
+
+const API_BASE =
+  typeof CONFIGURED_API_BASE === "string" && CONFIGURED_API_BASE.length > 0
+    ? CONFIGURED_API_BASE
+    : "";
+
 const LS_SLUG_KEY = "pymes_slug";
 const LS_TOKEN_KEY = "pymes_token";
 const SESSION_KEY = "pymes_error_session";
@@ -73,6 +91,20 @@ function buildPayload(payload: ErrorReportPayload) {
 
 export async function reportClientError(payload: ErrorReportPayload) {
   const body = JSON.stringify(buildPayload(payload));
+
+  // Refused rather than sent to the page origin. This is the one call here that has to
+  // complain out loud: it is the only record that a real user hit a real bug, and it failed
+  // silently in production for as long as `VITE_API_URL` was unset — the reporter was
+  // installed, working, and reporting to a host with no `/api/*` on it. A wrong `url` here
+  // means a bug report is lost, and nobody would have been told.
+  if (API_BASE.length === 0) {
+    console.error(
+      "[pymes] Client error reports are not being sent: VITE_API_URL is unset, so there " +
+        "is no SaaS API host to post to. Set it in apps/web/.env.production. Not the " +
+        "marketplace Worker — that one is VITE_MARKETPLACE_API_URL and mounts /trpc.",
+    );
+    return;
+  }
   const url = `${API_BASE}/api/error-reports/client`;
 
   try {
