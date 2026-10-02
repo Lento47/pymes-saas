@@ -1118,6 +1118,12 @@ export async function subscriptions(
 				businessTable,
 				eq(businessTable.id, subscriptionTable.businessId),
 			)
+			// The same `leftJoin(user)` the rows query above has, and for the same reason:
+			// `where` is shared between the two, and the search branch puts `user.email` in
+			// it. Without this join SQLite fails on `no such column: user.email` and the whole
+			// request 500s — which is what an operator gets the moment they type in the Cobros
+			// search box. Found in production; see the test beside it.
+			.leftJoin(ownerTable, eq(ownerTable.id, ownerUserIdSql))
 			.where(where),
 	]);
 
@@ -1396,6 +1402,12 @@ export async function saveCategory(
 		// The same test, for the same reason: absent means the form carried no English name
 		// and one already on the row must survive the edit.
 		const nameEn = input.nameEn === undefined ? before.nameEn : input.nameEn;
+		// And the photograph, which is the field most likely to be absent by accident: the
+		// photo lives on the row and not in the name form, so `saveCategory` is regularly
+		// called to fix a spelling with no `imageUrl` in the payload at all. Reading `??`
+		// here would clear the picture on every one of those calls.
+		const imageUrl =
+			input.imageUrl === undefined ? before.imageUrl : input.imageUrl;
 
 		await ctx.db.batch([
 			ctx.db
@@ -1406,6 +1418,7 @@ export async function saveCategory(
 					slug,
 					iconName: input.iconName ?? before.iconName,
 					parentId,
+					imageUrl,
 					sortOrder: input.sortOrder,
 				})
 				.where(eq(categoryTable.id, input.id)),
@@ -1418,6 +1431,11 @@ export async function saveCategory(
 					nameEn: before.nameEn,
 					slug: before.slug,
 					parentId: before.parentId,
+					// The photograph is audited for the same reason a rename is. An operator
+					// swapping the picture on "Alimentos y Bebidas" has changed what the
+					// marketplace's first tile looks like to every customer, and an audit log
+					// that could not see it would miss the day a sector's art was repointed.
+					imageUrl: before.imageUrl,
 					sortOrder: before.sortOrder,
 				},
 				after: {
@@ -1425,6 +1443,7 @@ export async function saveCategory(
 					nameEn,
 					slug,
 					parentId,
+					imageUrl,
 					sortOrder: input.sortOrder,
 				},
 				reason: null,
@@ -1455,6 +1474,10 @@ export async function saveCategory(
 			nameEn: input.nameEn ?? null,
 			iconName: input.iconName ?? null,
 			parentId: input.parentId ?? null,
+			// `?? null` rather than `?? undefined` because this is an insert and there is no
+			// `before` row to inherit from — a category created without a photograph is
+			// genuinely null, which is what the column already holds on all 241 seeded rows.
+			imageUrl: input.imageUrl ?? null,
 			sortOrder: input.sortOrder,
 		}),
 		auditStatement(ctx, {
@@ -1467,6 +1490,7 @@ export async function saveCategory(
 				nameEn: input.nameEn ?? null,
 				slug,
 				parentId: input.parentId ?? null,
+				imageUrl: input.imageUrl ?? null,
 				sortOrder: input.sortOrder,
 			},
 			reason: null,

@@ -593,6 +593,71 @@ describe("price", () => {
 });
 
 describe("the admin's view of money owed", () => {
+	test("searching the arrears table does not 500", async () => {
+		// The search filter puts `user.email` into the shared `where`, and the **count**
+		// query is built from that same `where` without the `leftJoin(user)` the rows query
+		// has. SQLite then fails on `no such column: user.email` and the whole request 500s
+		// — which is what an operator sees the moment they type in the Cobros search box.
+		//
+		// Found in production, not here: the endpoint was called with no `search` and
+		// returned 500, and this test exists because the failure only appears on the one
+		// path nobody exercised. `adminSubscriptionsInput` has always allowed `search`; the
+		// console's `BillingTab` has always sent it.
+		const w = world();
+		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		const businessId = await seedBusiness(w.db, {
+			id: "biz_search_arrears",
+			name: "Pulpería La Esquina",
+			plan: "MONTHLY",
+		});
+		const owner = await seedUser(w.db, {
+			id: "usr_search_arrears",
+			email: "duena@laesquina.cr",
+		});
+		await seedMembership(w.db, owner.id, businessId, "OWNER");
+		await seedSubscription(w.db, {
+			businessId,
+			plan: "MONTHLY",
+			daysUntilDue: -5,
+		});
+		const admin = await seedUser(w.db, { id: "usr_arrears_search_admin", isAdmin: true });
+		const adminCaller = appRouter.createCaller(
+			await authed(w, admin),
+		) as Caller;
+
+		// By shop name.
+		const byName = await adminCaller.admin.subscriptions({
+			search: "Esquina",
+			limit: 50,
+			direction: "desc",
+			sort: "arrears",
+		});
+		expect(byName.rows.map((row) => row.businessId)).toEqual([businessId]);
+		expect(byName.total).toBe(1);
+
+		// By owner email — the branch that reaches `user.email` and so the missing join.
+		const byEmail = await adminCaller.admin.subscriptions({
+			search: "duena@laesquina.cr",
+			limit: 50,
+			direction: "desc",
+			sort: "arrears",
+		});
+		expect(byEmail.rows.map((row) => row.businessId)).toEqual([businessId]);
+		expect(byEmail.total).toBe(1);
+
+		// A search that matches nothing is an empty page, not an error.
+		const noMatch = await adminCaller.admin.subscriptions({
+			search: "no such shop",
+			limit: 50,
+			direction: "desc",
+			sort: "arrears",
+		});
+		expect(noMatch.rows).toEqual([]);
+		expect(noMatch.total).toBe(0);
+
+		w.close();
+	});
+
 	test("arrears counts whole periods at the price the merchant joined under", async () => {
 		const w = world();
 		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
