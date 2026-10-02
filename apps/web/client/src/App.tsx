@@ -69,7 +69,6 @@ import Agent from "@/pages/agent";
 import OnboardingPage from "@/pages/onboarding";
 import SetupPage from "@/pages/setup";
 import SupportPage from "@/pages/support";
-import AdminSupportPage from "@/pages/admin/support";
 import InventoryPage from "@/pages/inventory";
 import InventoryDetailPage from "@/pages/inventory-detail";
 import InventoryMovementsPage from "@/pages/inventory-movements";
@@ -80,13 +79,6 @@ import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import SolutionPage from "@/pages/solutions/SolutionPage";
 import ComingSoonPage from "@/pages/coming-soon";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
-import AdminWorkspaces from "@/pages/admin/workspaces";
-import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
-import AdminUsers from "@/pages/admin/users";
-import AdminPlanLimits from "@/pages/admin/plan-limits";
-import AdminLogin from "@/pages/admin/login";
-import AdminLandingEditor from "@/pages/admin/landing-editor";
-import AdminRouterMetrics from "@/pages/admin/router-metrics";
 import AdminConsolePage from "@/pages/admin/console";
 import BusinessProfilePage from "@/pages/business-profile";
 import MapPage from "@/pages/map";
@@ -186,48 +178,20 @@ function CallOverlays() {
   );
 }
 
+
 /**
- * The platform-admin gate, and the only place the console decides who may see it.
+ * `PlatformAdminLayout` is gone with the pages it wrapped.
  *
- * `useAuth().user` is a snapshot taken when the session was established. But
- * `JwtStrategy.validate` re-reads `is_platform_admin` from the database on **every**
- * request, so an operator whose flag is cleared is refused by the API immediately — while
- * this layout would go on rendering the admin chrome, and every link inside it would
- * fail, until a reload. That is a console that looks available and is not.
+ * It polled `api.getMe()` on a 60s timer behind `useAuth()`, and its reason for existing
+ * was sound — `JwtStrategy` re-reads `is_platform_admin` on every request, so a layout
+ * trusting a stale snapshot would keep rendering admin chrome for an operator who had just
+ * been demoted. The reasoning was right and the thing it guarded no longer exists: those
+ * pages all spoke `/api/*`, which nothing serves.
  *
- * So the gate asks the server rather than trusting the snapshot: a slow poll plus a
- * refetch whenever the window regains focus, which is when a person who was just
- * demoted on another tab comes back and expects the nav to be gone.
- *
- * The `enabled` predicate means only someone the snapshot already calls an admin pays
- * for the poll. That is not a shortcut: a non-admin is redirected out of `/admin` before
- * this ever renders, so the "promoted while the tab was open" case cannot be reached
- * from here — it would need a reload, exactly as it does today.
+ * The console does not need it. `pages/admin/console.tsx` carries `AdminGate`, which reads
+ * `users.me` over trpc — the same `isAdmin` the Worker's `adminProcedure` checks, so the
+ * client gate and the server gate cannot disagree.
  */
-function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, initialized } = useAuth();
-
-  const adminCheck = useQuery({
-    queryKey: ["/api/auth/me", "platform-admin"],
-    queryFn: () => api.getMe(),
-    enabled: isAuthenticated && !!user?.is_platform_admin,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
-    retry: false,
-    staleTime: 30_000,
-  });
-
-  // The server's answer wins when it has one. Before it arrives — and if the call fails —
-  // the snapshot stands, so a transient network blip does not eject a real admin.
-  const isPlatformAdmin = adminCheck.data
-    ? (adminCheck.data as { is_platform_admin?: boolean }).is_platform_admin === true
-    : user?.is_platform_admin;
-
-  if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
-  if (!isAuthenticated) return <Redirect to="/login" />;
-  if (!isPlatformAdmin) return <Redirect to="/" />;
-  return <AppSidebar>{children}</AppSidebar>;
-}
 
 function RootRoute() {
   const { isAuthenticated, user, initialized } = useAuth();
@@ -281,7 +245,6 @@ function AppRouter() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/forgot-password" component={ResetPassword} />
       <Route path="/pricing" component={Pricing} />
-      <Route path="/admin/login" component={AdminLogin} />
       <Route path="/setup" component={SetupPage} />
       <Route path="/product">
         {() => <ProductPage />}
@@ -484,57 +447,34 @@ function AppRouter() {
       </Route>
       <Route path="/admin">
         {/*
-          `/admin` forwards to the platform console.
+          `/admin` forwards to the platform console, and it is now the **only** admin route.
 
-          It used to render `AdminDashboard`, which called `api.platformGetStats` — one
-          endpoint, rendering three SaaS-scoped views (sector distribution, registrations by
-          month, recent signups). That page is gone, and the redirect is why: it was the page
-          a platform admin landed on after signing in, and it showed marketplace KPIs read
-          from the *SaaS* database, which is a different set of businesses entirely.
+          The seven that sat here — workspaces, users, plan limits, the landing editor, SaaS
+          support, router metrics — are deleted, and they are gone because there was nothing
+          behind them. They all spoke `/api/*`, which is the NestJS service in `apps/api`.
+          That service is not deployed: Railway is gone, the marketplace Worker at
+          `api.pymeshub.lat` mounts `/trpc`, `/auth`, `/uploads` and nothing under `/api/*`,
+          and `api.pymeshub.com` does not resolve. Every one of those pages was a guaranteed
+          404, and the browser reported it as a CORS failure because a 404 carries no
+          `Access-Control-Allow-Origin`.
 
-          **The redirect is not a sign the SaaS API is retired, and it is worth being
-          precise about that here**, because the previous version of this comment said so and
-          was wrong in a way that invited deleting working software. The SaaS API is
-          deployed — `apps/api/railway.json`, `deploy-railway.yml` on `master`, and
-          `.env.production.example` pointing `VITE_API_URL` at it — and the pages under
-          `/admin/workspaces`, `/admin/users`, `/admin/support` and their siblings below
-          still talk to it, on purpose.
+          **A previous version of this comment claimed the opposite** — that the SaaS API was
+          deployed and the pages were fine, on the strength of `apps/api/railway.json`,
+          `deploy-railway.yml` and `.env.production.example`. All three are stale files, not
+          deployment. That claim was wrong, and it is recorded here because it is the kind of
+          wrong that keeps dead code alive: I read it, believed it, and spent several commits
+          reasoning from it before a DNS lookup settled it.
 
-          What is true is narrower: `/admin` itself was the one route that pointed at
-          marketplace intent through a SaaS backend, so it is the one that gets redirected.
-          See `lib/admin.ts` for how the two admin surfaces divide.
+          `PlatformAdminLayout` went with them. It gated on `useAuth()` → `api.getMe()`, so it
+          was not a shell around live pages but a second way to reach a dead one.
+
+          The console carries its own `AdminGate` instead, reading `users.me` over trpc — the
+          same `isAdmin` the Worker's `adminProcedure` checks, so the two cannot disagree.
         */}
         {() => <Redirect to="/admin/console" />}
       </Route>
-      <Route path="/admin/workspaces">
-        {() => <PlatformAdminLayout><AdminWorkspaces /></PlatformAdminLayout>}
-      </Route>
-      <Route path="/admin/workspaces/:slug">
-        {() => <PlatformAdminLayout><AdminWorkspaceDetail /></PlatformAdminLayout>}
-      </Route>
-      <Route path="/admin/users">
-        {() => <PlatformAdminLayout><AdminUsers /></PlatformAdminLayout>}
-      </Route>
-      <Route path="/admin/plan-limits">
-        {() => <PlatformAdminLayout><AdminPlanLimits /></PlatformAdminLayout>}
-      </Route>
-      <Route path="/admin/landing">
-        {() => <PlatformAdminLayout><AdminLandingEditor /></PlatformAdminLayout>}
-      </Route>
-      <Route path="/admin/support">
-        {() => <PlatformAdminLayout><AdminSupportPage /></PlatformAdminLayout>}
-      </Route>
-      <Route path="/admin/router-metrics">
-        {() => <PlatformAdminLayout><AdminRouterMetrics /></PlatformAdminLayout>}
-      </Route>
       {/*
-        The platform console on the marketplace API, and the only `/admin` route with no
-        layout around it.
-
-        `PlatformAdminLayout` is the saas-api shell: it gates on `useAuth()`, which calls
-        `api.getMe()` and `api.login(email, password, workspaceSlug)`, and the marketplace
-        Worker mounts neither. The console gates itself on `users.me` and reads the same
-        `isAdmin` the Worker's `adminProcedure` checks, so the two cannot disagree.
+        The platform console on the marketplace API, and now the only `/admin` route.
 
         **Two routes, because the tabs are addressable.** `/admin/console` and
         `/admin/console/:tab` render the same component; the second is what the sidebar and

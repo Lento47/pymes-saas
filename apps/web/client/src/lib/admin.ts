@@ -61,24 +61,23 @@ import { trpc } from "./marketplace";
  * point of this file: `adminProcedure` checks `isAdmin` on the caller's own row and nothing
  * else. There is no `admin` capability to hold, no second token, no separate service.
  *
- * **There are two admin surfaces, and this file is the marketplace one.** `apps/api` is a
- * NestJS service on its own database, serving `workspaces`, `x-workspace-slug` and a bearer
- * `access_token`. It is deployed (`apps/api/railway.json`, `deploy-railway.yml`, and
- * `.env.production.example`'s `VITE_API_URL`) and the pages under `/admin/workspaces`,
- * `/admin/users`, `/admin/support`, `/admin/landing` and their siblings still use it through
- * `lib/api.ts`, on purpose: they administer the *SaaS* — workspaces, SAML, members, the
- * landing page — and most of it has no marketplace counterpart at all (the Worker router has
- * no `saml`, no landing config, no router metrics).
+ * **This is now the only admin surface, and the reason is worth stating plainly.**
  *
- * So this file is not a replacement for those pages, and a previous version of this comment
- * said it was, which was wrong in the direction that matters: it read as licence to delete
- * working software. What it *is* is the admin surface for the thing this client is for — the
- * marketplace, where a business is not a workspace, a courier is not a member, and support
- * tickets are about an order rather than a diagnostic case.
+ * There used to be two. The other was the NestJS service in `apps/api`, reached through
+ * `lib/api.ts` under `/api/*`, and it administered the *SaaS* — workspaces, SAML, members,
+ * the landing page, router metrics. **It is not deployed.** Railway is gone, this Worker
+ * mounts `/trpc`, `/auth`, `/uploads` and nothing under `/api/*`, and `api.pymeshub.com`
+ * does not resolve. Those seven admin pages are deleted, as is `PlatformAdminLayout`.
  *
- * The one route that used to blur the two was `/admin`, which rendered `AdminDashboard` from
- * `api.platformGetStats` — marketplace intent read out of the SaaS database. That page is
- * deleted and the route redirects here; `App.tsx` says so at the redirect.
+ * An earlier version of this comment said the opposite — that the SaaS API was deployed and
+ * the pages worked, citing `apps/api/railway.json`, `deploy-railway.yml` and
+ * `.env.production.example`. All three are stale files, not deployment. That was wrong, and
+ * it was the kind of wrong that keeps dead code alive: I read it, believed it, and spent
+ * several commits reasoning from it before a DNS lookup settled it. `App.tsx` carries the
+ * same correction at the `/admin` redirect.
+ *
+ * Two dead consumers of `api.platform*` survive and are not this file's business:
+ * `pages/settings/platform.tsx`, and one call in `components/playground/PlaygroundBoard.tsx`.
  *
  * ## Why every response is parsed
  *

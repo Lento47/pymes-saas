@@ -236,6 +236,18 @@ enabled = true
 [observability.traces]
 enabled = true
 
+# Failure detection and grouping, without an endpoint or any client code.
+#
+# `issues` watches the Worker's own error rate and groups matching failures, which is what
+# `apps/web`'s `error-reporting.ts` was hand-rolling for the client side and never had a
+# server to talk to. Requires Wrangler 4.134.0+; this project is on 4.137.0.
+#
+# `observability` is an **inheritable** key (Wrangler docs, "Inheritable keys"), so this
+# block applies to `[env.staging]` and `[env.production]` without being repeated — the same
+# is true of `enabled` and `traces` above.
+[observability.issues]
+enabled = true
+
 [env.staging]
 name = "pymeshub-api-staging"
 

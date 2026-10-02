@@ -22,7 +22,6 @@ import { usePipelineSocket } from "@/hooks/use-pipeline-socket";
 import { useContactsSocket } from "@/hooks/use-contacts-socket";
 import { api } from "@/lib/api";
 import {
-  BarChart3,
   Bell,
   Bot,
   BrainCircuit,
@@ -37,7 +36,6 @@ import {
   KanbanSquare,
   Layers,
   LayoutDashboard,
-  LayoutTemplate,
   LifeBuoy,
   LogOut,
   Menu,
@@ -48,8 +46,6 @@ import {
   Receipt,
   Search,
   Settings,
-  Shield,
-  ShieldCheck,
   Sun,
   Users,
   UserRound,
@@ -132,61 +128,39 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 /**
- * The marketplace console, on the marketplace Worker (`lib/admin.ts`).
+ * The admin, which is now one entry.
  *
- * One entry for ten tabs, on purpose. The console is a single surface whose tabs are
+ * It was two groups — "Marketplace" and "SaaS" — split because they were two backends.
+ * The SaaS half is gone: those six links led to pages speaking `/api/*`, which is the
+ * NestJS service in `apps/api`, which is not deployed. Railway is gone, the marketplace
+ * Worker mounts `/trpc` and nothing under `/api/*`, and `api.pymeshub.com` does not
+ * resolve. The pages are deleted; so are these links.
+ *
+ * One entry for ten tabs, on purpose: the console is a single surface whose tabs are
  * addressed by route (`/admin/console/:tab`), so ten sidebar rows pointing at it would be
- * the same duplication this grouping exists to remove.
+ * duplication for its own sake.
  */
-const ADMIN_MARKETPLACE_ITEMS = [
+const ADMIN_ITEMS = [
   { href: "/admin/console", icon: LayoutDashboard, key: "adminConsole" as const },
 ] as const;
 
-/**
- * The SaaS admin, on NestJS (`lib/api.ts`) — a different product on a different database.
- *
- * These are not legacy rows waiting to be migrated. Workspaces, SAML, members, the landing
- * editor and the router metrics are SaaS concepts the marketplace Worker has no model of at
- * all; the Worker router has no `saml`, no landing config and no router metrics. They are
- * grouped apart so an operator can tell which backend a click is about to reach — see
- * `lib/admin.ts`, which used to claim the SaaS API was retired and was wrong.
- */
-const ADMIN_SAAS_ITEMS = [
-  { href: "/admin/workspaces", icon: Shield, key: "adminWorkspaces" as const },
-  { href: "/admin/users", icon: Users, key: "adminUsers" as const },
-  { href: "/admin/plan-limits", icon: ShieldCheck, key: "adminPlanLimits" as const },
-  { href: "/admin/landing", icon: LayoutTemplate, key: "adminLanding" as const },
-  { href: "/admin/support", icon: LifeBuoy, key: "adminSupport" as const },
-  { href: "/admin/router-metrics", icon: BarChart3, key: "adminRouterMetrics" as const },
-] as const;
-
-type AdminItem = (typeof ADMIN_MARKETPLACE_ITEMS | typeof ADMIN_SAAS_ITEMS)[number];
-type AdminKey = AdminItem["key"];
+type AdminKey = (typeof ADMIN_ITEMS)[number]["key"];
 
 /**
- * The admin labels, in one place.
+ * The admin label, in one place.
  *
  * The desktop nav and the mobile bottom nav each used to carry their own copy of a
- * six-deep ternary over these same keys, and they had already drifted: the desktop block
+ * six-deep ternary over the same keys, and they had already drifted: the desktop block
  * hardcoded `"Soporte"` while the mobile nav asked the locale for `"Soporte"`/`"Support"`.
  * Two copies of a ternary is two places to forget, so this is the only one.
  *
- * The four keys with no entry below fall through to `copy`, which is why they are absent
- * here rather than repeated: `adminConsole`, `adminWorkspaces`, `adminUsers` and
- * `adminPlanLimits` are translated, and the rest are product names that stay as they are in
- * both locales.
+ * There is one key left and no case to it, which is the point worth recording: a table
+ * that collapses to `copy[key]` is a table that should have been one line all along. It
+ * survives because the next admin entry will want a product name here, and finding that out
+ * by writing the switch is cheaper than finding it out by shipping a raw key.
  */
-function adminLabel(copy: Record<string, any>, key: AdminKey, locale: string): string {
-  switch (key) {
-    case "adminRouterMetrics":
-      return "Router IA";
-    case "adminLanding":
-      return "Landing Page";
-    case "adminSupport":
-      return locale === "es" ? "Soporte" : "Support";
-    default:
-      return copy[key] as string;
-  }
+function adminLabel(copy: Record<string, any>, key: AdminKey): string {
+  return copy[key] as string;
 }
 
 const SETTINGS_ITEMS = [
@@ -611,59 +585,42 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           {user?.is_platform_admin && (
             <div className={cn("border-t border-sidebar-border/60 pt-2", isCollapsed ? "mt-2 space-y-1" : "space-y-1")}>
-              {/*
-                Two labelled groups rather than one flat list, because they are two backends.
-                A single "Admin" heading over both used to leave an operator with no way to
-                tell whether a click lands on the marketplace Worker or on NestJS — which is
-                the one thing worth knowing before pressing a button that can suspend a
-                business. When collapsed both headings are hidden and the icons read as a
-                single stack, so the split only costs anything where there is room for it.
-              */}
-              {(
-                [
-                  { label: copy.adminMarketplace, items: ADMIN_MARKETPLACE_ITEMS },
-                  { label: copy.adminSaas, items: ADMIN_SAAS_ITEMS },
-                ] as const
-              ).map((group) => (
-                <div key={group.label}>
-                  {!isCollapsed && (
-                    <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50">
-                      {group.label}
-                    </div>
-                  )}
-                  <div className={cn(isCollapsed ? "space-y-1" : "space-y-0.5")}>
-                    {group.items.map(({ href, icon: Icon, key }) => {
-                      const active = isActive(href);
-                      const label = adminLabel(copy, key, locale);
-                      return (
-                        <Link key={href} href={href}>
-                          <div
-                            title={isCollapsed ? label : undefined}
-                            className={cn(
-                              "group relative flex items-center rounded-lg cursor-pointer transition-all duration-150",
-                              isCollapsed ? "mx-2 h-9 justify-center px-0" : "gap-2.5 px-3 py-[7px]",
-                              active
-                                ? "bg-primary/[0.14] text-foreground font-medium shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.12)]"
-                                : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50",
-                            )}
-                          >
-                            {active && !isCollapsed && <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />}
-                            <Icon
-                              className={cn(
-                                "shrink-0 transition-colors",
-                                isCollapsed ? "h-[17px] w-[17px]" : "h-[15px] w-[15px]",
-                                active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
-                              )}
-                              strokeWidth={active ? 2.2 : 1.7}
-                            />
-                            {!isCollapsed && <span className="flex-1 text-[13px]">{label}</span>}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
+              {!isCollapsed && (
+                <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50">
+                  {copy.admin}
                 </div>
-              ))}
+              )}
+              <div className={cn(isCollapsed ? "space-y-1" : "space-y-0.5")}>
+                {ADMIN_ITEMS.map(({ href, icon: Icon, key }) => {
+                  const active = isActive(href);
+                  const label = adminLabel(copy, key);
+                  return (
+                    <Link key={href} href={href}>
+                      <div
+                        title={isCollapsed ? label : undefined}
+                        className={cn(
+                          "group relative flex items-center rounded-lg cursor-pointer transition-all duration-150",
+                          isCollapsed ? "mx-2 h-9 justify-center px-0" : "gap-2.5 px-3 py-[7px]",
+                          active
+                            ? "bg-primary/[0.14] text-foreground font-medium shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.12)]"
+                            : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50",
+                        )}
+                      >
+                        {active && !isCollapsed && <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />}
+                        <Icon
+                          className={cn(
+                            "shrink-0 transition-colors",
+                            isCollapsed ? "h-[17px] w-[17px]" : "h-[15px] w-[15px]",
+                            active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+                          )}
+                          strokeWidth={active ? 2.2 : 1.7}
+                        />
+                        {!isCollapsed && <span className="flex-1 text-[13px]">{label}</span>}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           )}
         </nav>
@@ -797,10 +754,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           ...NAV_GROUPS.flatMap(({ items }) => items).filter(({ key }) => canShowNavItem(key)).map(({ path, icon, key }) => ({ path, icon, label: navLabel(copy, key, isBeta) })),
           ...SETTINGS_ITEMS.filter(({ permission }) => hasPermission(user?.role ?? "", permission, !!user?.is_platform_admin)).map(({ path, icon, label }) => ({ path, icon, label })),
           ...(user?.is_platform_admin
-            ? [...ADMIN_MARKETPLACE_ITEMS, ...ADMIN_SAAS_ITEMS].map(({ href, icon, key }) => ({
+            ? ADMIN_ITEMS.map(({ href, icon, key }) => ({
                 path: href,
                 icon,
-                label: adminLabel(copy, key, locale),
+                label: adminLabel(copy, key),
               }))
             : []),
           { path: "/account", icon: UserRound, label: locale === "es" ? "Mi cuenta" : "Account" },
