@@ -13,6 +13,13 @@ import "@testing-library/jest-dom";
  * in the suite, so the three tests that were failing are testing their own subject again
  * rather than the absence of a build variable.
  */
-if (!import.meta.env.VITE_API_URL) {
-  import.meta.env.VITE_API_URL = "https://saas-api.test";
+/**
+ * `ImportMetaEnv` declares its members `readonly`, which is right for a build-time constant
+ * and wrong for a test that has to stand one up. Rather than widen the global type for
+ * every consumer, the cast is local to here and the object it reaches is the same
+ * `import.meta.env` both clients read at module load.
+ */
+const env = import.meta.env as Record<string, string | undefined>;
+if (!env.VITE_API_URL) {
+  env.VITE_API_URL = "https://saas-api.test";
 }
