@@ -37,6 +37,45 @@ function declared(name: string): number {
 }
 
 /**
+ * The rail's gap and inset, resolved through `theme/tokens.ts` rather than restated.
+ *
+ * They are written as `space.xs` and `space.lg` in the rail — names, not numbers — so
+ * `declared` cannot see them and a literal would go stale the moment a token changed. This
+ * reads the scale and follows the reference, which is the only version of the number that
+ * cannot disagree with what is drawn.
+ */
+function spaceToken(name: "xs" | "sm" | "md" | "lg" | "xl" | "xxl"): number {
+	const tokens = readFileSync(
+		join(REPO, "apps", "mobile", "theme", "tokens.ts"),
+		"utf-8",
+	);
+	const found = tokens.match(new RegExp(`\\n\\s*${name}: (\\d+),`));
+	if (found?.[1] === undefined) {
+		throw new Error(`space.${name} not found in theme/tokens.ts`);
+	}
+	return Number(found[1]);
+}
+
+/** The `gap` on the rail's content container, as a token name read back out of the file. */
+function declaredGap(): number {
+	const rail = source.match(/rail:\s*\{[^}]*\}/)?.[0] ?? "";
+	const token = rail.match(/gap:\s*space\.(\w+)/)?.[1];
+	if (token === undefined)
+		throw new Error("rail gap not found in category-rail.tsx");
+	return spaceToken(token as "xs");
+}
+
+/** The rail's horizontal inset, the same way. */
+function declaredPadding(): number {
+	const rail = source.match(/rail:\s*\{[^}]*\}/)?.[0] ?? "";
+	const token = rail.match(/paddingHorizontal:\s*space\.(\w+)/)?.[1];
+	if (token === undefined) {
+		throw new Error("rail paddingHorizontal not found in category-rail.tsx");
+	}
+	return spaceToken(token as "lg");
+}
+
+/**
  * The rail's source with every comment removed.
  *
  * Not tidiness. This file's own docblocks explain these rules in prose and therefore *contain
@@ -98,16 +137,37 @@ describe("the category rail's tiles", () => {
 		expect(codeOnly()).not.toMatch(/tileLabel/);
 	});
 
-	test("five tiles are visible across a 390pt screen again", () => {
-		// The cost of the labels, now paid back. Five is what the rail showed before the name
+	test("five tiles are visible across a 390pt screen", () => {
+		// The cost of the labels, paid back. Five is what the rail showed before the name
 		// column existed, so this asserts the round trip rather than the number alone.
+		//
+		// The gap and the inset are read from the rail rather than restated as numbers, so
+		// this cannot keep passing after the gap moved from `space.sm` to `space.xs` — which
+		// is a change this assertion was never written to catch.
 		const screen = 390;
-		const insets = 16 * 2;
-		const gap = 8;
+		const insets = declaredPadding() * 2;
 		const visible = Math.floor(
-			(screen - insets + gap) / (declared("TILE_SIZE") + gap),
+			(screen - insets + declaredGap()) /
+				(declared("TILE_SIZE") + declaredGap()),
 		);
 		expect(visible).toBe(5);
+	});
+
+	test("the gap between tiles is the scale's tightest step", () => {
+		// `space.sm` was two steps too loose once the labels came off: at 8pt two 60pt marks
+		// read as two separate objects, and the word that used to carry the eye across the gap
+		// is gone. `space.xs` is the smallest step in `theme/tokens.ts`, so this is as tight
+		// as the vocabulary allows without inventing a number outside it.
+		expect(declaredGap()).toBe(4);
+	});
+
+	test("the tiles touch neither the screen edge nor each other", () => {
+		// The two ways "less space" goes wrong. A zero gap welds the marks into one shape the
+		// reader cannot pull apart, and an inset of zero puts the first tile flush against a
+		// rounded screen corner. Asserted because `xs` is only the right answer given where
+		// it sits on the scale relative to the padding.
+		expect(declaredGap()).toBeGreaterThan(0);
+		expect(declaredPadding()).toBeGreaterThanOrEqual(declaredGap());
 	});
 
 	test("the tile is square, so the row of them reads as one rhythm", () => {

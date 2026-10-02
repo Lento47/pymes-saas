@@ -305,7 +305,13 @@ function Chip({
 const TILE_SIZE = 60;
 
 const styles = StyleSheet.create({
-	rail: { paddingHorizontal: space.lg, gap: space.sm },
+	// The gap between tiles is `space.xs`, not `space.sm`, and the reason is what is either
+	// side of it now. At `sm` (8) two 60pt marks sat eight points apart, which at this size
+	// reads as two things rather than one row — and once the labels came off there was nothing
+	// to carry the eye across the gap, because a word under each tile used to do it and does
+	// not any more. `xs` is the scale's own next step down and is the tightest it goes without
+	// a value invented outside the vocabulary.
+	rail: { paddingHorizontal: space.lg, gap: space.xs },
 	// A tile is the mark and nothing else, so the wrapper exists only to hold the touch
 	// target: the box is a fixed `TILE_SIZE`, which already clears `MIN_TOUCH_TARGET` on its
 	// own, and there is no second child for `alignItems` or `gap` to arrange.
