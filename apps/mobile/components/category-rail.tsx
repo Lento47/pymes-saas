@@ -2,18 +2,23 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName } from "@pymeshub/i18n";
 import type { Category } from "@pymeshub/shared";
 import { type Href, router } from "expo-router";
-import { ScrollView, StyleSheet, View } from "react-native";
+import {
+	FlatList,
+	type ListRenderItemInfo,
+	StyleSheet,
+	View,
+} from "react-native";
 
 import { categoryIcon } from "@/lib/category-icon";
 import { useT } from "@/lib/i18n";
-import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
+import { radius, space, useTheme } from "@/theme";
 
 import { Image } from "./image";
 import { Pressable } from "./pressable";
 import { Text } from "./text";
 
 /**
- * The category rail: the one row that says what this marketplace sells.
+ * The category rail: the one strip that says what this marketplace sells.
  *
  * Extracted from the home feed, where it was a local component, because the search
  * results screen draws the same row and two copies of a chip are two chips that drift.
@@ -25,15 +30,15 @@ import { Text } from "./text";
  * ## Chips are buttons here, and links on the web
  *
  * Web draws anchors, because a category there is a URL — shareable, crawlable, openable
- * in a new tab. React Native renders no anchors, so a chip is a `Pressable` that pushes
- * the same route; `./pressable` owns the spring, the dim and Android's ripple, and this
+ * in a new tab. React Native renders no anchors, so a chip is a `Pressable` that pushes the
+ * same route; `./pressable` owns the spring, the dim and Android's ripple, and this
  * component types no pixel of its own.
  *
  * ## A rail draws one level, and the caller says which
  *
- * The taxonomy in `category` is two levels: 18 sectors and their 224 children, and
+ * The taxonomy in `category` is two levels: 18 sectors and their 223 children, and
  * `catalog.categories` returns both, a sector immediately followed by the categories it
- * holds. A strip is one flat row, so it can only ever be one of the two, and the *caller*
+ * holds. A strip is one flat list, so it can only ever be one of the two, and the *caller*
  * picks — this component draws what it is handed, and it is handed the sectors by the
  * feed (`app/index.tsx`), by the search screen's idle state and by a category's own page.
  * The one caller that passes something else is the search *results* rail, which draws the
@@ -61,10 +66,10 @@ import { Text } from "./text";
  * where the reader is. The selection is drawn on the **same box** as its neighbours —
  * the chip is a tile and stays one, and it is not a pill against outlined neighbours —
  * with the box's fill moving from `accent` to `primary` and the glyph's ink from
- * `accentForeground` to `primaryForeground`. The second signal is the label's weight,
- * and the state is also stated to the screen reader through `accessibilityState`, which
- * is the half that does not depend on seeing colour at all. It deliberately does *not*
- * borrow the checkmark `app/business.tsx`'s shop tabs draw: those are a choice between
+ * `accentForeground` to `primaryForeground`. The second signal is the tile's scale, and
+ * the state is also stated to the screen reader through `accessibilityState`, which is the
+ * half that does not depend on seeing colour at all. It deliberately does *not* borrow
+ * the checkmark `app/business.tsx`'s shop tabs draw: those are a choice between
  * alternatives within one screen, and this is a marker on a page whose own title
  * already names the category.
  *
@@ -104,77 +109,108 @@ export function CategoryRail({
 
 	if (categories.length === 0) return null;
 
+	const items = [
+		...(allHref
+			? [
+					{
+						key: "__all",
+						label: t("category.all"),
+						iconName: "grid-outline",
+						// "Todo" is this app's own mark rather than a category, so it has no
+						// photograph to draw and never will.
+						imageUrl: null as string | null,
+						selected: false,
+						onPress: () => router.push(allHref),
+					},
+				]
+			: []),
+		...categories.map((category) => {
+			const selected = category.slug === selectedSlug;
+			const href = {
+				pathname: "/category/[slug]" as const,
+				params: { slug: category.slug },
+			};
+			return {
+				key: category.id,
+				label: localizedName(category, locale),
+				iconName: category.iconName ?? "pricetag-outline",
+				imageUrl: category.imageUrl ?? null,
+				selected,
+				onPress: () => (selected ? router.replace(href) : router.push(href)),
+			};
+		}),
+	];
+
+	const renderItem = ({
+		item,
+		index,
+	}: ListRenderItemInfo<(typeof items)[number]>) => (
+		<Chip
+			label={item.label}
+			iconName={item.iconName}
+			imageUrl={item.imageUrl}
+			selected={item.selected}
+			// The stagger. Even indexes sit on the upper row, odd ones drop by `ROW_OFFSET`,
+			// which is what makes the strip read as a shelf rather than a queue.
+			offset={index % 2 === 0 ? 0 : ROW_OFFSET}
+			onPress={item.onPress}
+		/>
+	);
+
 	return (
-		<ScrollView
+		<FlatList
 			horizontal
+			data={items}
+			renderItem={renderItem}
+			keyExtractor={(item) => item.key}
+			// Exact geometry, stated rather than measured by the list at scroll time: the
+			// stagger makes every column the same width, so one number describes all of them
+			// and `snapToInterval` can use the pitch instead of guessing.
+			getItemLayout={(_, index) => ({
+				length: COLUMN_PITCH,
+				offset: COLUMN_PITCH * index,
+				index,
+			})}
 			showsHorizontalScrollIndicator={false}
 			contentContainerStyle={styles.rail}
-			// Tiles land on tile boundaries. Without it momentum stops wherever the fling ends,
-			// which can leave a tile cut at the edge — and a cut tile the reader did not leave
-			// there reads as broken rather than as "there is more". This is invisible in a
-			// screenshot and obvious in the hand, which is why it survived six rounds of
+			// Tiles land on column boundaries. Without it momentum stops wherever the fling
+			// ends, which can leave a tile cut at the edge — and a cut tile the reader did not
+			// leave there reads as broken rather than as "there is more". This is invisible
+			// in a screenshot and obvious in the hand, which is why it survived six rounds of
 			// tuning that all happened through screenshots.
-			snapToInterval={DISC_SIZE + space.md}
-		>
-			{allHref ? (
-				<Chip
-					label={t("category.all")}
-					iconName="grid-outline"
-					// "Todo" is this app's own mark rather than a category, so it has no
-					// photograph to draw and never will.
-					imageUrl={null}
-					onPress={() => router.push(allHref)}
-				/>
-			) : null}
-
-			{categories.map((category) => {
-				const selected = category.slug === selectedSlug;
-				const href = {
-					pathname: "/category/[slug]" as const,
-					params: { slug: category.slug },
-				};
-
-				return (
-					<Chip
-						key={category.id}
-						label={localizedName(category, locale)}
-						iconName={category.iconName ?? "pricetag-outline"}
-						imageUrl={category.imageUrl ?? null}
-						selected={selected}
-						onPress={() =>
-							selected ? router.replace(href) : router.push(href)
-						}
-					/>
-				);
-			})}
-
-			{/*
-			 * A trailing spacer, and it exists because of arithmetic that happened to bite.
-
-			 * There are 18 sectors and about five fit. A tile cut at the edge is information
-			 * scent — it is how a reader knows the row scrolls and that those five are not all
-			 * there is. That scent is normally free: whatever the width divides by leaves a
-			 * remainder. At `DISC_SIZE` 64 with a 12pt gap, five tiles plus two 16pt insets come
-			 * to **exactly** 412 — the device this was checked on — so the rail ended flush and
-			 * five squares looked like the whole catalogue.
-
-			 * So the peek is made deliberate rather than left to a remainder that happened to
-			 * be non-zero on a different phone. Twenty points is less than half a tile: it is
-			 * not a sixth destination, it is the edge of one.
-			 */}
-			<View style={styles.railEnd} />
-		</ScrollView>
+			snapToInterval={COLUMN_PITCH}
+			/*
+			 * Virtualization, and it is the reason this is a `FlatList`.
+			 *
+			 * A horizontal `ScrollView` mounts every child, so with all 18 sectors now
+			 * carrying a photograph the first paint of the home feed fetched all 18 — about
+			 * 772 KB — before the reader had scrolled a single pixel, and 13 of them were
+			 * for tiles nobody was looking at.
+			 *
+			 * Six renders is two full stagger columns, which is one more than fits on a
+			 * 390pt screen, so the buffer covers a fling without paying for the tail.
+			 */
+			initialNumToRender={6}
+			maxToRenderPerBatch={4}
+			windowSize={5}
+			// The deliberate peek, as a footer rather than a child. A `ScrollView`'s trailing
+			// spacer was a child, which a `FlatList` would virtualise away — and the peek is
+			// the only signal that the row scrolls. `space.xl` is less than half a tile: it is
+			// not a fourth destination, it is the edge of one.
+			ListFooterComponent={<View style={styles.railEnd} />}
+		/>
 	);
 }
 
 /**
- * One tile: a photograph when the category has one, a glyph in a box when it does not.
+ * One column: a photograph when the category has one, a glyph in a box when it does not,
+ * and the category's name under it.
  *
- * `Category` carries `imageUrl` (`packages/shared/src/schemas/catalog.ts`) and the demo
- * catalogue leaves it null (`packages/db/src/seed.ts`), so today every tile draws the glyph
- * and this is the surface that lights up the day categories have art — no screen change
- * needed. That is the whole reason the branch is here rather than somewhere later: the app
- * is drawn ready for imagery, and `docs/imagery.md` is what has to happen for it to arrive.
+ * `Category` carries `imageUrl` (`packages/shared/src/schemas/catalog.ts`) and all 18
+ * sectors have one, seeded by `scripts/seed-category-images.py` into the `MEDIA` bucket
+ * and served by `/files/:id`. The glyph branch is not dead code: it is what a category the
+ * operator has not given a photograph yet draws, and what `app/categories` and a leaf in
+ * the search results rail still draw today.
  *
  * The two marks are not interchangeable. `imageUrl` is a *photograph* and is drawn by
  * `./image` (the right box from the first frame, a fade on load, the same box if it fails).
@@ -188,37 +224,43 @@ export function CategoryRail({
  * `accentForeground` at rest; selected it fills `primary` with `primaryForeground` ink, the
  * same pair the tab bar's active state wears.
  *
- * ## There is no label, and that is a decision with a cost
+ * ## The name is under the picture and is not capped
  *
- * There was one, and this file has now had it both ways. `TILE_WIDTH` grew to 108 to hold
- * `Entretenimiento` (~98pt) so that `Decoración` stopped rendering as `Decoració / n` — and
- * three tiles fit across, with ragged one-and-two-line bottoms, for a strip whose whole job
- * is being scanned. The names are long *page* titles; they were never rail labels, and the
- * honest fix for that is a short name in the taxonomy rather than a wide tile in the app.
+ * There is no `numberOfLines` here and there never will be, for the reason `./product-tile`
+ * states: a cap truncates data to save a layout, and "Juguetes, Pasatiempos y Coleccionables"
+ * with an ellipsis is a different category from the one the reader is looking for. So a long
+ * name wraps, and the columns end ragged — which the stagger was chosen to make look
+ * deliberate rather than accidental.
  *
- * So the names come off and the mark carries the tile, at the size it was already at: the box
- * stays 60pt, the glyph stays `icon.action`, the corner stays squared. What that costs is real
- * and is not offset by anything: a reader who does not recognise the glyph cannot tell
- * `Belleza` from `Hogar`, and in the search screen's *results* rail — the one caller that draws
- * leaves rather than sectors — the loss is sharpest, because `Dispositivos Inteligentes` and
- * `Dispositivos Conectados` are two rows sharing one mark.
+ * That is affordable *because* the tile is 108 wide, which is the width this file used to
+ * give the label before the labels came off. The number did not change; what it was for
+ * did. At 60 the same names broke across lines (`Decoració / n`, `Recreaci / ón`), which is
+ * what removed them.
  *
- * Which is why `accessibilityLabel` on the tile is load-bearing rather than redundant: it is
- * the only place the name survives, and the glyph stays `accessibilityElementsHidden` so it
- * is not announced twice. `app/(customer)/categories.tsx` is the screen that carries every
- * name, and it is unchanged.
+ * ## The tile got bigger because a photograph is not a glyph
+ *
+ * `DISC_SIZE` was 64 and every decision in it was icon geometry: a 24pt glyph in a 60pt box
+ * reads at that size, and the six rounds of tuning the gap comments describe were all about
+ * packing five of them across. A photograph at 64 is legible as *a category* and not as
+ * *which* category — a reader could not tell the burger from a bagel without looking twice.
+ *
+ * At 108 the subject is identifiable, which is the whole argument for photographs over
+ * glyphs, and the column pitch of 120 still shows three of them across a 390pt screen.
  */
 function Chip({
 	label,
 	iconName,
 	imageUrl,
 	selected = false,
+	offset = 0,
 	onPress,
 }: {
 	label: string;
 	iconName: string;
 	imageUrl: string | null;
 	selected?: boolean;
+	/** `ROW_OFFSET` on the lower row of the stagger, 0 on the upper. */
+	offset?: number;
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
@@ -227,10 +269,12 @@ function Chip({
 		<Pressable
 			onPress={onPress}
 			accessibilityRole="button"
+			// Overrides the children's names, so the button announces once: the label is read
+			// from here rather than composed from the visible `Text` plus the hidden picture.
 			accessibilityLabel={label}
 			// The selection reaches the accessibility tree as a state, not only as ink.
 			accessibilityState={selected ? { selected: true } : undefined}
-			style={styles.tile}
+			style={[styles.column, { marginTop: offset }]}
 		>
 			{/*
 			    The tile is `accent` and the glyph `accentForeground` — the palette's own quiet
@@ -247,10 +291,12 @@ function Chip({
 					{
 						backgroundColor: selected ? colors.primary : colors.accent,
 						// The edge, and the reason this tile reads as an object rather than as
-						// a tint. With no label, this boundary is the only thing binding the glyph
-						// into something pressable, and `accent` on the card is a 2-3% luminance
-						// step — detectable, but not enough to *group*. A 1pt `border` fixes that on
-						// every palette at once, where darkening `accent` would need redoing per theme.
+						// a tint. On a photograph the boundary is also what separates the
+						// picture from the canvas behind it, which matters because the set is
+						// mostly light-on-light: a burger on white and a sofa on white are the
+						// same value until something bounds them. A 1pt `border` fixes that on
+						// every palette at once, where darkening `accent` would need redoing per
+						// theme.
 						borderWidth: selected ? 2 : 1,
 						// Selected, the ring is `primaryForeground` on a `primary` fill — the same
 						// pair the tile's ink already wears, so it reads as the same object and not
@@ -273,17 +319,12 @@ function Chip({
 				) : (
 					<Ionicons
 						name={categoryIcon(iconName)}
-						// `icon.back` (24), and **the box grew with it** — 60 to 64. Growing the
-						// glyph alone would have been the wrong half of this change: it would have
-						// taken the padding inside the tile from 20pt to 18pt and made the mark
-						// look *more* cramped, which is the opposite of the ask. At 24 in 64 the
-						// padding is 20pt a side and the fill is 37.5%, up from a 33% that read as
-						// a speck.
-						//
-						// It reads heavier now than it did at 20 for a reason worth keeping: the
-						// border gave every tile a defined edge, and a glyph inside a visible shape
-						// is measured against that shape. Figure-ground first, weight second.
-						size={icon.back}
+						// 40, not `icon.back`. The old 24 was sized for a 64 box at a 37.5% fill;
+						// carried across unchanged to a 108 box it would have been a 9% speck and
+						// the glyph tiles — the categories with no photograph yet, and every leaf
+						// in the search results rail — would have looked broken next to the ones
+						// that have one. 40 in 108 holds the same proportion the 24-in-64 did.
+						size={GLYPH_SIZE}
 						color={
 							selected ? colors.primaryForeground : colors.accentForeground
 						}
@@ -292,87 +333,64 @@ function Chip({
 					/>
 				)}
 			</View>
+
+			<Text variant="caption" style={styles.label}>
+				{label}
+			</Text>
 		</Pressable>
 	);
 }
 
 /**
- * The label column, and the width a category's name has to be set in.
+ * The three numbers the layout is made of.
  *
- * **108 is measured, not chosen.** It is the width at which no single word in any of the
- * **18 sector** names is too wide for its box, which is the whole defect: a word wider than
- * its container is not ellipsised or hyphenated, it is *broken*, and this rail was shipping
- * `Decoració / n`, `Tecnolog / ía` and `Recreaci / ón` because `TILE_WIDTH` was 60 and the
- * longest words in the taxonomy are wider than that.
+ * `TILE` is the old `TILE_WIDTH` of 108, unchanged — the width at which no single word in
+ * any of the **18 sector** names is too wide for its box. That was measured once and it is
+ * the reason the labels can come back: `Entretenimiento` is ~98pt and `Coleccionables`
+ * ~95pt at the `label` token, so 98 is the floor and 108 has ten points of slack over it.
+ * `lib/category-rail.test.ts` asserts it rather than trusting this paragraph.
  *
- * The three that decide it, at the `label` token's 13pt and rounded **up**:
+ * The two leaves that still do not fit are `Electrodomésticos` and
+ * `Electrodomésticos (DIY)` at ~115pt. They reach this rail through exactly one caller —
+ * the search screen's *results* rail — and no column showing three tiles across a phone can
+ * hold them. They are left wrapping rather than papered over with an ellipsis, and the test
+ * holds both names so the day one is shortened it says so.
  *
- * | word | sector | width |
- * |---|---|---|
- * | `Entretenimiento` | Libros, Medios y Entretenimiento | ~98pt |
- * | `Coleccionables` | Juguetes, Pasatiempos y Coleccionables | ~95pt |
- * | `Capacitación` | Educación y Capacitación | ~80pt |
+ * `PITCH` is what `snapToInterval` snaps to and what `getItemLayout` reports, and it is
+ * exact: every column is `TILE` plus the gap, at either vertical offset, because the
+ * stagger moves a column down rather than sideways.
  *
- * 98 is the floor and 108 is what this is, because 102 left four points of slack and four
- * points is less than one character: the next sector with a word one letter longer than
- * `Entretenimiento` would have broken again, and the tile count is the same at 102 and 108,
- * so the margin is free. `lib/category-rail.test.ts` asserts it rather than trusting this
- * paragraph.
- *
- * ## The two leaves that do not fit, and are not made to
- *
- * `Electrodomésticos` and `Electrodomésticos (DIY)` are ~115pt: no column that shows three
- * tiles across a phone can hold that word, and widening to 120pt would show two. They reach
- * this rail through exactly one caller — the search screen's *results* rail, which draws the
- * categories a query matched, and a search for "electrodomésticos" matches them. The other
- * three callers pass sectors and are fully fixed by the width above.
- *
- * That is left visible rather than papered over. An ellipsis would hide it, and the rule this
- * repo states (`./product-tile`) is that a cap is truncating data to save a layout; a smaller
- * font would take every sector label down to 10pt to accommodate one word. Both are worse than
- * the defect they remove. The honest fix is a shorter `name` on those two rows, or a
- * `shortName` column for the rail — a change to the taxonomy's content, which is not this
- * file's to make. The test holds both names, so the day one is shortened it says so.
- *
- * ## The price
- *
- * Three tiles across a 390pt screen where there were five. That is what the sector names
- * cost, and it is not avoidable at any width — it is what the names are.
+ * `OFFSET` is the stagger. It is `space.xl` (30) — about a quarter of a tile, which is
+ * enough to break the straight edge that makes a row read as a queue and little enough that
+ * the lower row is not left hanging below the strip's own height by half a picture.
  */
+const TILE = 108;
+const COLUMN_PITCH = TILE + space.md;
+const ROW_OFFSET = space.xl;
+
 /**
- * The tile: the mark's box, and nothing beside it.
+ * The glyph inside a tile that has no photograph.
  *
- * It is `DISC_SIZE` and that is the whole tile now. There used to be a second number — a
- * `TILE_WIDTH` of 108 holding `Entretenimiento` (~98pt) so that `Decoración` would stop
- * rendering as `Decoració / n` — and it existed only to give the label room. With the label
- * gone the two numbers say the same thing, so there is one.
- *
- * The box keeps 60pt and the glyph keeps `icon.action`, both unchanged: this change removed a
- * `<Text>` and nothing else. An earlier pass here also resized the mark to 44 and grew the
- * glyph to `icon.back`, which packed eight tiles across and turned the strip into a texture;
- * that was reverted because the labels were the problem, not the sizes.
+ * Sized as a proportion rather than taken from `theme`'s `icon` roles: the largest role is
+ * `back` at 24, which is chrome at the top of a pushed screen. A 108pt tile holding a 24pt
+ * glyph is the 9% speck described on the `Ionicons` above.
  */
-const DISC_SIZE = 64;
+const GLYPH_SIZE = 40;
 
 const styles = StyleSheet.create({
-	// `space.md` (12). This gap has been the most fought-over number in this file: 8 to 4 for
-	// density, then back to 8 because two targets 4pt apart have no dead zone between them and
-	// a rail's mis-tap costs a navigation away from the feed, and now 12 because the tiles
-	// grew and gained a border, and a row of *defined* shapes needs more air between them than
-	// a row of tints did.
-	//
-	// WCAG 2.5.8 is satisfied at any of the three — 64pt clears the 24pt floor on its own — but
-	// that guideline is about target *size*, and mis-taps come from the gutter. Five tiles fit
-	// across a 412pt screen here, which is the floor this rail should not go below.
-	rail: { paddingHorizontal: space.lg, gap: space.md },
+	// `space.md` (12) between columns. Unchanged from the single row: mis-taps come from the
+	// gutter, and 12 still leaves 7.7pt of clear air between two 108pt targets, which is
+	// wider than the 1.04 selected scale grows a tile by (2.2pt a side).
+	rail: { paddingHorizontal: space.lg, alignItems: "flex-start" },
 	// The trailing spacer's own width — the deliberate peek. `space.xl`, less than half a tile.
 	railEnd: { width: space.xl },
-	// The tile is its box. `width`/`height` are not stated so the pressable cannot drift away
-	// from the mark it wraps, and `DISC_SIZE` at 60 already clears `MIN_TOUCH_TARGET` (44).
-	tile: {},
+	// A column is the picture and its name, stacked. `width` is stated so the caption wraps
+	// against the tile rather than against the column's content, and `alignItems: center`
+	// centres the name under its own picture rather than under the column's widest child.
+	column: { width: TILE, alignItems: "center" },
 	tileBox: {
-		width: DISC_SIZE,
-		height: DISC_SIZE,
+		width: TILE,
+		height: TILE,
 		borderRadius: radius.sm,
 		alignItems: "center",
 		justifyContent: "center",
@@ -380,24 +398,22 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	tileImage: { width: "100%", height: "100%" },
+	// `space.xs` (4) between the picture and the name. The caption is 12/16, so this leaves
+	// the pair reading as one object: the gap has to be smaller than the caption's own line
+	// box, or the name detaches and looks like a footnote to the picture.
+	label: { marginTop: space.xs, textAlign: "center" },
 });
 
 /**
  * How much larger a selected tile draws.
  *
- * The rail's selection used to be carried by the label's weight as well as the fill, so it was
- * never colour-only. The label went, and with it the second signal — which left a *sighted
- * colour-blind* reader with nothing at all, since `accessibilityState` only reaches a screen
- * reader. WCAG 1.4.1 says colour must not be the only visual means of conveying information,
- * and a fill swap on its own is exactly that.
- *
  * A scale is the signal because it is a *size*: nothing about how the reader sees it is
- * ambiguous, and it survives any palette, any colour vision, and greyscale. The 2pt border is
- * the second signal and is worth keeping for a different reason — `DISC_SIZE` at 60 sits under
- * the 8pt gap well enough that a 4% growth cannot make two selected neighbours touch.
+ * ambiguous, and it survives any palette, any colour vision, and greyscale. The 2pt border
+ * is the second signal and is worth keeping for a different reason — a 4% growth on a 108pt
+ * tile is 4.3pt, or 2.2pt a side, which is well inside the 12pt gutter and cannot make two
+ * selected neighbours touch.
  *
- * `DISC_SIZE` and the border are fixed, so the box's outer size does not change when the
- * selection does; React Native's width/height are border-box, and only the content area
- * shrinks by a point. Nothing reflows.
+ * The width and height are border-box and unchanging, so only the content area shrinks by a
+ * point when selected. Nothing reflows.
  */
 const SELECTED_SCALE = 1.04;
