@@ -17,12 +17,22 @@ category-beauty-health-personal-care.png  category-garden-diy-home-improvement.p
 category-sports-outdoors-recreation.png   category-office-stationery-business-supplies.png
 category-jewelry-watches-luxury.png       category-travel-hospitality-tourism.png
 category-financial-insurance-services.png category-education-training.png
-category-agriculture-industry-b2b.png     category-miscellaneous-specialty.png
+category-agriculture-industrial-b2b.png   category-miscellaneous-specialty.png
 ```
 
 The slug is the filename, not a display name, and that is deliberate. It is the taxonomy's
 identity: the seed migration joins on it, and renaming a category must not drop its
 photograph. A Spanish display name in a filename would make the art depend on a translation.
+
+**Transcribe the slugs from the migration; do not type them from memory.** This list was
+wrong once already: `agriculture-industrial-b2b` was written as
+`agriculture-industry-b2b` by hand, which left that sector with a file no slug matched —
+and because the failure is "no photo for this one", it renders as an ordinary glyph rather
+than as an error. `0006_category_taxonomy.sql:222` is the authority:
+
+```sql
+('cat_agriculture-industrial-b2b', 'agriculture-industrial-b2b', 'Agriculture, Industrial & B2B', ...)
+```
 
 ## What each picture has to satisfy
 
