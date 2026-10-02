@@ -120,7 +120,7 @@ export function SignOutSheet({
 	// `insets.bottom + 16` here: 16 of breathing room, correct, and 34 points of the inset
 	// counted twice.
 	//
-	// **The capsule is what was actually missing.** `BUSINESS_TAB_BAR_CLEARANCE` is
+	// **The capsule is what was actually missing.** `CAPSULE_CLEARANCE` is
 	// `HEIGHT + LIFT` (70 + 12) and the capsule is `position: "absolute"`, so the navigator
 	// reserves nothing for it and it paints over whatever a screen draws last. A panel
 	// rendered inside a screen is *under* it, which is how the confirm button ended up with

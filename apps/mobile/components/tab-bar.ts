@@ -1,9 +1,13 @@
 /**
- * The floating merchant capsule's footprint, and the routes that turn it off.
+ * The floating capsule's footprint, and the routes that turn it off.
  *
- * Two bars can sit at the foot of a merchant screen, and a scroll that has to get out
- * from under one of them should not have to re-derive how tall it is. This is the sibling
- * of `./action-bar`'s `useActionBarClearance`.
+ * Two bars can sit at the foot of a screen, and a scroll that has to get out from under one
+ * of them should not have to re-derive how tall it is. This is the sibling of
+ * `./action-bar`'s `useActionBarClearance`.
+ *
+ * **Both trees draw it.** `(business)` had it first and the customer tree grew the same one
+ * rather than a second shape — `components/tab-capsule.tsx` is the single copy, and these
+ * two lists are the only thing that differs between them.
  *
  * ## Why the navigator's own number cannot be used
  *
@@ -27,7 +31,7 @@
 import { useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BUSINESS_TAB_BAR_CLEARANCE } from "@/theme";
+import { CAPSULE_CLEARANCE } from "@/theme";
 
 /**
  * The routes of the `(business)` tree that own the foot of their own screen.
@@ -43,6 +47,50 @@ export const MERCHANT_BARLESS_ROUTES = [
 	"shop-location",
 	"merchant-settings",
 ] as const;
+
+/**
+ * The `(customer)` routes that own the foot of their own screen.
+ *
+ * **The three screens that cannot keep a bar**, and the test is the one thing both answers
+ * share: is there another way off the screen?
+ *
+ * `checkout` has no `BackButton` and no `router.back` — it is the far end of a flow, and the
+ * capsule would sit on top of the button that commits the purchase. `order/[id]` and
+ * `review/[orderId]` each draw a `BackButton` of their own, so hiding the bar costs the
+ * reader nothing and returns the floor to the one action those screens exist for.
+ *
+ * **The cart is deliberately not on this list**, which is the opposite conclusion and the
+ * reason the list cannot be derived from "has an `ActionBar`": `cart.tsx` draws a title and
+ * no `BackButton`, so a barless cart is a screen with no way out. It stays a tab and its own
+ * `ActionBar` lifts above the capsule — `CUSTOMER_LIFTED_ROUTES`.
+ */
+export const CUSTOMER_BARLESS_ROUTES = [
+	"checkout",
+	"order/[id]",
+	"review/[orderId]",
+] as const;
+
+/**
+ * The `(customer)` screens that keep the capsule *and* draw an `ActionBar`.
+ *
+ * Nothing reads this at runtime. It exists so `lib/tab-bar-coverage.test.ts` can ask the
+ * question the merchant half of that file asks — *is every screen with a bar accounted for?*
+ * — on a tree where "accounted for" has two answers rather than one. Without it the test
+ * would have to infer the second answer from the absence of the first, and a screen that
+ * hid its capsule by accident would read as deliberate.
+ */
+export const CUSTOMER_LIFTED_ROUTES = [
+	"cart",
+	"index",
+	"product/[id]",
+	"store/[slug]",
+] as const;
+
+/** Which tree's barless list answers for a route group, keyed by its first segment. */
+const BARLESS_BY_GROUP: Readonly<Record<string, readonly string[]>> = {
+	"(business)": MERCHANT_BARLESS_ROUTES,
+	"(customer)": CUSTOMER_BARLESS_ROUTES,
+};
 
 /**
  * The tab bar's style on a screen that must not have one.
@@ -67,12 +115,28 @@ export function merchantBarlessOptions(
 }
 
 /**
+ * `merchantBarlessOptions` for the customer tree, over `CUSTOMER_BARLESS_ROUTES`.
+ *
+ * Two functions rather than one over the union of both lists, because the union is what the
+ * compiler cannot say anything useful about: a `Tabs.Screen` for `(customer)/checkout` typed
+ * against the union would compile, and so would one for `(customer)/shop-hours` — a merchant
+ * name — which is a bar silently missing from a checkout floor. Naming the tree keeps each
+ * closed set closed to its own.
+ */
+export function customerBarlessOptions(
+	_name: (typeof CUSTOMER_BARLESS_ROUTES)[number],
+): { href: null; tabBarStyle: { display: "none" } } {
+	return { href: null, tabBarStyle: { display: "none" } };
+}
+
+/**
  * How much room the foot of a scroll has to leave free on this screen.
  *
- * `0` outside `(business)`: the customer and courier trees draw no bar at all, and
- * `./screen`'s own `space.huge` is the whole of their gutter. Inside it, the capsule's
- * footprint — and `0` again on the routes that hide it, because a bar that is not drawn
- * covers nothing and reserving for it is a screen's worth of dead air under a form.
+ * `0` in a tree with no capsule — `(auth)`, `(delivery)`, the root routes — and
+ * `./screen`'s own `space.huge` is the whole of their gutter. Inside `(business)` or
+ * `(customer)`, the capsule's footprint — and `0` again on the routes that hide it, because
+ * a bar that is not drawn covers nothing and reserving for it is a screen's worth of dead
+ * air under a form.
  *
  * The route group is read with `useSegments()`, the same answer `./index.ts`'s `useTheme`
  * gives for the palette. That is one predicate answering two different questions — which
@@ -110,21 +174,26 @@ export function useTabBarClearance({
 	// conditional hook, but only because both of these are above it.
 	if (!drawsTabBar(segments)) return 0;
 
-	return BUSINESS_TAB_BAR_CLEARANCE + (bottomInsetPaid ? 0 : insets.bottom);
+	return CAPSULE_CLEARANCE + (bottomInsetPaid ? 0 : insets.bottom);
 }
 
 /**
  * Whether this route draws the capsule.
  *
- * The first segment names the tree and the second the screen inside it. `(business)`'s
- * `href: null` routes are mounted in the same navigator as the four tabs, which is why
- * the check has to reach the second segment at all: a route group adds no URL segment, so
+ * The first segment names the tree and the second the screen inside it. A tree's
+ * `href: null` routes are mounted in the same navigator as its tabs, which is why the
+ * check has to reach the second segment at all: a route group adds no URL segment, so
  * every screen in the tree is a tab to the navigator whether or not it is a tab to the
  * reader.
+ *
+ * A group absent from `BARLESS_BY_GROUP` draws no bar — `(auth)`, `(delivery)`, the root
+ * routes. That is the default rather than a list of three, so a new tree gets the inert
+ * answer and has to be given a bar on purpose.
  */
 function drawsTabBar(segments: readonly string[]): boolean {
-	if (segments[0] !== "(business)") return false;
+	const barless = BARLESS_BY_GROUP[segments[0] ?? ""];
+	if (barless === undefined) return false;
 	const route = segments[1];
 	if (route === undefined) return true;
-	return !(MERCHANT_BARLESS_ROUTES as readonly string[]).includes(route);
+	return !barless.includes(route);
 }

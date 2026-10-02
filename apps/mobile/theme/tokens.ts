@@ -1282,19 +1282,24 @@ export const TAB_BAR_PADDING_TOP = 6;
 export const TAB_BAR_LABEL_SIZE = 11;
 
 /**
- * The merchant capsule's own height, before the safe-area inset is added to it.
+ * The capsule's own height, before the safe-area inset is added to it.
  *
- * The `(business)` tree's bar is a floating capsule: 320 wide, 70 tall, 12 points
- * above the home-indicator inset. 70 + 12 is the 82 the docked bar occupied, so
+ * The bar in `components/tab-capsule.tsx` is a floating capsule: 320 wide, 70 tall, 12
+ * points above the home-indicator inset. 70 + 12 is the 82 the docked bar occupied, so
  * every screen that reserved room for the old bar keeps the same clearance.
+ *
+ * Named `CAPSULE_*` and not `TAB_BAR_*` because `TAB_BAR_HEIGHT` above already holds the
+ * *former* docked bar's 60, kept for the bottom-corner stack named in its own docblock.
+ * Two live declarations under one name is a collision waiting for a reader to pick the
+ * wrong one silently, so the bar that exists names itself after what it looks like.
  */
-export const BUSINESS_TAB_BAR_HEIGHT = 70;
+export const CAPSULE_HEIGHT = 70;
 
 /** The capsule's lift above the bottom inset. */
-export const BUSINESS_TAB_BAR_LIFT = 12;
+export const CAPSULE_LIFT = 12;
 
 /**
- * What a merchant screen has to leave free at the foot of its scroll, or the capsule
+ * What a screen has to leave free at the foot of its scroll, or the capsule
  * covers the last row and there is no way to scroll it out.
  *
  * **Derived from the two numbers above rather than typed**, which is the whole reason it
@@ -1315,5 +1320,4 @@ export const BUSINESS_TAB_BAR_LIFT = 12;
  * `getTabBarHeight()` reads the flattened `tabBarStyle.height` and answers `70` —
  * short by the lift and by the inset, on every device.
  */
-export const BUSINESS_TAB_BAR_CLEARANCE =
-	BUSINESS_TAB_BAR_HEIGHT + BUSINESS_TAB_BAR_LIFT;
+export const CAPSULE_CLEARANCE = CAPSULE_HEIGHT + CAPSULE_LIFT;

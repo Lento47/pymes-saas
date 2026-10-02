@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, shadow, space, type, useTheme } from "@/theme";
 
 import { BUTTON_BORDER_WIDTH, Button, type ButtonVariant } from "./button";
+import { useTabBarClearance } from "./tab-bar";
 
 /**
  * What a bar covers, measured off this file's own styles rather than off a screenshot.
@@ -248,6 +249,20 @@ export function ActionBar({
 }: ActionBarProps) {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
+	// Whatever else is floating at this screen's foot. `bottomInsetPaid: false` because the
+	// inset is spent *twice* when it is: once by the capsule the caller is lifting above and
+	// once by the bar's own `paddingBottom` below. The lift takes it; the padding drops it.
+	//
+	// The hook runs unconditionally and `docked` filters its answer, because a hook called
+	// inside a ternary is a conditional one — `docked` is a prop, so a screen that toggles it
+	// would change how many hooks ran and React would tear the subtree down.
+	//
+	// Zero on every route that hides the capsule — `./tab-bar`'s barless lists — so the
+	// merchant forms and the checkout floor are byte-for-byte what they were before the
+	// customer tree grew a bar. `docked` is excluded for a second reason: a docked bar is a
+	// form's footer, sized to its content, with nothing scrolling under it to be covered.
+	const tabClearance = useTabBarClearance();
+	const lift = docked ? 0 : tabClearance;
 
 	return (
 		<View
@@ -265,7 +280,11 @@ export function ActionBar({
 				// The inset is added to the padding rather than set as a height, so a phone
 				// without a home indicator gets `space.md` and nothing else — the same rule the
 				// tab bar follows.
-				{ paddingBottom: space.md + insets.bottom },
+				//
+				// **And dropped entirely once `lift` is non-zero**, because `lift` already
+				// contains it. Keeping both would push the bar up by the home indicator twice:
+				// once as margin and once as padding, for the same 34 points.
+				{ paddingBottom: lift > 0 ? space.md : space.md + insets.bottom },
 				docked
 					? {
 							backgroundColor: colors.card,
@@ -274,6 +293,7 @@ export function ActionBar({
 						}
 					: [
 							styles.floating,
+							{ marginBottom: space.sm + lift },
 							{
 								backgroundColor: colors.card,
 								borderColor: colors.border,
