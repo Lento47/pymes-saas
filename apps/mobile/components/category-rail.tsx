@@ -109,6 +109,12 @@ export function CategoryRail({
 			horizontal
 			showsHorizontalScrollIndicator={false}
 			contentContainerStyle={styles.rail}
+			// Tiles land on tile boundaries. Without it momentum stops wherever the fling ends,
+			// which can leave a tile cut at the edge — and a cut tile the reader did not leave
+			// there reads as broken rather than as "there is more". This is invisible in a
+			// screenshot and obvious in the hand, which is why it survived six rounds of
+			// tuning that all happened through screenshots.
+			snapToInterval={DISC_SIZE + space.md}
 		>
 			{allHref ? (
 				<Chip
@@ -141,6 +147,22 @@ export function CategoryRail({
 					/>
 				);
 			})}
+
+			{/*
+			 * A trailing spacer, and it exists because of arithmetic that happened to bite.
+
+			 * There are 18 sectors and about five fit. A tile cut at the edge is information
+			 * scent — it is how a reader knows the row scrolls and that those five are not all
+			 * there is. That scent is normally free: whatever the width divides by leaves a
+			 * remainder. At `DISC_SIZE` 64 with a 12pt gap, five tiles plus two 16pt insets come
+			 * to **exactly** 412 — the device this was checked on — so the rail ended flush and
+			 * five squares looked like the whole catalogue.
+
+			 * So the peek is made deliberate rather than left to a remainder that happened to
+			 * be non-zero on a different phone. Twenty points is less than half a tile: it is
+			 * not a sixth destination, it is the edge of one.
+			 */}
+			<View style={styles.railEnd} />
 		</ScrollView>
 	);
 }
@@ -166,23 +188,25 @@ export function CategoryRail({
  * `accentForeground` at rest; selected it fills `primary` with `primaryForeground` ink, the
  * same pair the tab bar's active state wears.
  *
- * ## The label wraps as many lines as it needs, and never breaks a word
+ * ## There is no label, and that is a decision with a cost
  *
- * The first half of that is `./product-tile`'s rule and this file's: **nothing here is
- * clamped.** No `numberOfLines`, no ellipsis. "Belleza, Salud y Cuidado Personal" runs to
- * four lines and the tiles below it are uneven, and that is the lesser fault — a cap would
- * be truncating a category's name to save a layout, and `Juguetes, Pasatiempos y
- * Coleccionables` would become a different category than the one the reader is looking for.
+ * There was one, and this file has now had it both ways. `TILE_WIDTH` grew to 108 to hold
+ * `Entretenimiento` (~98pt) so that `Decoración` stopped rendering as `Decoració / n` — and
+ * three tiles fit across, with ragged one-and-two-line bottoms, for a strip whose whole job
+ * is being scanned. The names are long *page* titles; they were never rail labels, and the
+ * honest fix for that is a short name in the taxonomy rather than a wide tile in the app.
  *
- * The second half is what this file got wrong and why `TILE_WIDTH` is measured rather than
- * picked. A word wider than its own box is not ellipsised, it is **broken** — and this rail
- * was rendering `Decoració / n` and `Recreaci / ón` for exactly that reason, with the
- * comment above claiming a two-line wrap that no width at 13pt can deliver and that nothing
- * in the code enforced. See the note on `TILE_WIDTH` for the measurement.
+ * So the names come off and the mark carries the tile, at the size it was already at: the box
+ * stays 60pt, the glyph stays `icon.action`, the corner stays squared. What that costs is real
+ * and is not offset by anything: a reader who does not recognise the glyph cannot tell
+ * `Belleza` from `Hogar`, and in the search screen's *results* rail — the one caller that draws
+ * leaves rather than sectors — the loss is sharpest, because `Dispositivos Inteligentes` and
+ * `Dispositivos Conectados` are two rows sharing one mark.
  *
- * The label's `width` is set explicitly for the same reason the tile's is not enough:
- * `alignItems: "center"` sizes a child to its content, so without it the text lays out
- * unbroken and overflows.
+ * Which is why `accessibilityLabel` on the tile is load-bearing rather than redundant: it is
+ * the only place the name survives, and the glyph stays `accessibilityElementsHidden` so it
+ * is not announced twice. `app/(customer)/categories.tsx` is the screen that carries every
+ * name, and it is unchanged.
  */
 function Chip({
 	label,
@@ -222,6 +246,17 @@ function Chip({
 					styles.tileBox,
 					{
 						backgroundColor: selected ? colors.primary : colors.accent,
+						// The edge, and the reason this tile reads as an object rather than as
+						// a tint. With no label, this boundary is the only thing binding the glyph
+						// into something pressable, and `accent` on the card is a 2-3% luminance
+						// step — detectable, but not enough to *group*. A 1pt `border` fixes that on
+						// every palette at once, where darkening `accent` would need redoing per theme.
+						borderWidth: selected ? 2 : 1,
+						// Selected, the ring is `primaryForeground` on a `primary` fill — the same
+						// pair the tile's ink already wears, so it reads as the same object and not
+						// as a second outline drawn on top of it.
+						borderColor: selected ? colors.primaryForeground : colors.border,
+						transform: selected ? [{ scale: SELECTED_SCALE }] : undefined,
 					},
 				]}
 			>
@@ -238,7 +273,17 @@ function Chip({
 				) : (
 					<Ionicons
 						name={categoryIcon(iconName)}
-						size={icon.action}
+						// `icon.back` (24), and **the box grew with it** — 60 to 64. Growing the
+						// glyph alone would have been the wrong half of this change: it would have
+						// taken the padding inside the tile from 20pt to 18pt and made the mark
+						// look *more* cramped, which is the opposite of the ask. At 24 in 64 the
+						// padding is 20pt a side and the fill is 37.5%, up from a 33% that read as
+						// a speck.
+						//
+						// It reads heavier now than it did at 20 for a reason worth keeping: the
+						// border gave every tile a defined edge, and a glyph inside a visible shape
+						// is measured against that shape. Figure-ground first, weight second.
+						size={icon.back}
 						color={
 							selected ? colors.primaryForeground : colors.accentForeground
 						}
@@ -247,14 +292,6 @@ function Chip({
 					/>
 				)}
 			</View>
-			<Text
-				variant="label"
-				tone="default"
-				bold={selected}
-				style={styles.tileLabel}
-			>
-				{label}
-			</Text>
 		</Pressable>
 	);
 }
@@ -302,28 +339,37 @@ function Chip({
  * Three tiles across a 390pt screen where there were five. That is what the sector names
  * cost, and it is not avoidable at any width — it is what the names are.
  */
-const TILE_WIDTH = 108;
-
 /**
- * The disc, which is **not** `TILE_WIDTH`.
+ * The tile: the mark's box, and nothing beside it.
  *
- * One constant used to drive both the disc and the label column, which is why the fix for a
- * label that would not fit had nowhere to go: widening the tile also widened the disc, and
- * the rail would have lost four of its five tiles to buy back a word. Separating them means
- * the disc keeps the size that makes the strip read as a strip, and only the text gets wider.
+ * It is `DISC_SIZE` and that is the whole tile now. There used to be a second number — a
+ * `TILE_WIDTH` of 108 holding `Entretenimiento` (~98pt) so that `Decoración` would stop
+ * rendering as `Decoració / n` — and it existed only to give the label room. With the label
+ * gone the two numbers say the same thing, so there is one.
+ *
+ * The box keeps 60pt and the glyph keeps `icon.action`, both unchanged: this change removed a
+ * `<Text>` and nothing else. An earlier pass here also resized the mark to 44 and grew the
+ * glyph to `icon.back`, which packed eight tiles across and turned the strip into a texture;
+ * that was reverted because the labels were the problem, not the sizes.
  */
-const DISC_SIZE = 60;
+const DISC_SIZE = 64;
 
 const styles = StyleSheet.create({
-	rail: { paddingHorizontal: space.lg, gap: space.xs },
-	// A tile is a disc with a word under it, and the two sizes are independent: the disc is
-	// the rhythm, the label column is the space the name has to fit in.
-	tile: {
-		alignItems: "center",
-		gap: space.xs,
-		width: TILE_WIDTH,
-		minHeight: MIN_TOUCH_TARGET,
-	},
+	// `space.md` (12). This gap has been the most fought-over number in this file: 8 to 4 for
+	// density, then back to 8 because two targets 4pt apart have no dead zone between them and
+	// a rail's mis-tap costs a navigation away from the feed, and now 12 because the tiles
+	// grew and gained a border, and a row of *defined* shapes needs more air between them than
+	// a row of tints did.
+	//
+	// WCAG 2.5.8 is satisfied at any of the three — 64pt clears the 24pt floor on its own — but
+	// that guideline is about target *size*, and mis-taps come from the gutter. Five tiles fit
+	// across a 412pt screen here, which is the floor this rail should not go below.
+	rail: { paddingHorizontal: space.lg, gap: space.md },
+	// The trailing spacer's own width — the deliberate peek. `space.xl`, less than half a tile.
+	railEnd: { width: space.xl },
+	// The tile is its box. `width`/`height` are not stated so the pressable cannot drift away
+	// from the mark it wraps, and `DISC_SIZE` at 60 already clears `MIN_TOUCH_TARGET` (44).
+	tile: {},
 	tileBox: {
 		width: DISC_SIZE,
 		height: DISC_SIZE,
@@ -334,10 +380,24 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	tileImage: { width: "100%", height: "100%" },
-	// The width is stated here rather than left to the tile's, and that is not redundancy.
-	// `tile` sets `alignItems: "center"`, which sizes a child to its *content* rather than
-	// to the parent — so an unconstrained `<Text>` would lay out at its full unbroken width
-	// and overflow the tile rather than wrap inside it. Naming the width is what forces the
-	// wrap at 102pt, which is the entire fix.
-	tileLabel: { textAlign: "center", width: TILE_WIDTH },
 });
+
+/**
+ * How much larger a selected tile draws.
+ *
+ * The rail's selection used to be carried by the label's weight as well as the fill, so it was
+ * never colour-only. The label went, and with it the second signal — which left a *sighted
+ * colour-blind* reader with nothing at all, since `accessibilityState` only reaches a screen
+ * reader. WCAG 1.4.1 says colour must not be the only visual means of conveying information,
+ * and a fill swap on its own is exactly that.
+ *
+ * A scale is the signal because it is a *size*: nothing about how the reader sees it is
+ * ambiguous, and it survives any palette, any colour vision, and greyscale. The 2pt border is
+ * the second signal and is worth keeping for a different reason — `DISC_SIZE` at 60 sits under
+ * the 8pt gap well enough that a 4% growth cannot make two selected neighbours touch.
+ *
+ * `DISC_SIZE` and the border are fixed, so the box's outer size does not change when the
+ * selection does; React Native's width/height are border-box, and only the content area
+ * shrinks by a point. Nothing reflows.
+ */
+const SELECTED_SCALE = 1.04;
