@@ -62,11 +62,11 @@ const tokens = readFileSync(
 
 /** A declared `const NAME = <number>;` out of the rail. */
 function declared(name: string): number {
-	const found = source.match(new RegExp(`const ${name} = (\\d+(?:\\.\\d+)?);`));
-	if (found?.[1] === undefined) {
+	const found = source.match(new RegExp(`const ${name} = (\\d+(?:\\.\\d+)?);`))?.[1];
+	if (found === undefined) {
 		throw new Error(`${name} not found in category-rail.tsx`);
 	}
-	return Number(found[1]);
+	return Number(found);
 }
 
 /**
@@ -88,9 +88,9 @@ function scale(name: "space" | "radius" | "icon", key: string): number {
 
 /** `MIN_TOUCH_TARGET`, read the way it is declared. */
 function minTouchTarget(): number {
-	const found = tokens.match(/export const MIN_TOUCH_TARGET = (\d+);/);
-	if (found?.[1] === undefined) throw new Error("MIN_TOUCH_TARGET not found");
-	return Number(found[1]);
+	const found = tokens.match(/export const MIN_TOUCH_TARGET = (\d+);/)?.[1];
+	if (found === undefined) throw new Error("MIN_TOUCH_TARGET not found");
+	return Number(found);
 }
 
 /** How much of the tile the mark occupies. */
@@ -412,12 +412,17 @@ describe("the category rail's marks", () => {
 		expect(grown - declared("TILE")).toBeLessThan(declaredGap());
 	});
 
-	test("the stagger is a quarter of a tile, so the lower row is not left hanging", () => {
-		// `ROW_OFFSET` is `space.xl` (30) on a 108pt tile — enough to break the straight edge
-		// that makes a strip read as a queue, and small enough that the drop is not half a
-		// picture of empty canvas under the rail.
+	test("the stagger is `space.xl`, and `space.xl` is 20", () => {
+		// Asserted as an exact value against the scale, not as a bound. It was previously
+		// `ROW_OFFSET < TILE / 3` — which is 36 — so it passed at 20 *and* at 30, and the
+		// docblock next to the constant claimed 30 for months because nothing could tell. The
+		// bound was loose enough to be unfalsifiable, which is the failure mode worth avoiding
+		// rather than the number being wrong.
+		expect(rowOffset()).toBe(20);
 		expect(rowOffset()).toBe(scale("space", "xl"));
-		expect(rowOffset()).toBeLessThan(declared("TILE") / 3);
+		// And the share of the tile, as a fact rather than a bound: 20 of 108 is 18.5%. The
+		// docblock used to call this "about a quarter", which it is not.
+		expect(rowOffset() / declared("TILE")).toBeLessThan(0.2);
 		// Applied by parity, so the two rows alternate rather than the whole rail shifting.
 		expect(codeOnly()).toMatch(/index % 2 === 0 \? 0 : ROW_OFFSET/);
 		expect(codeOnly()).toMatch(/marginTop: offset/);

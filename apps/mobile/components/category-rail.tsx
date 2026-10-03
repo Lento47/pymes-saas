@@ -360,9 +360,15 @@ function Chip({
  * exact: every column is `TILE` plus the gap, at either vertical offset, because the
  * stagger moves a column down rather than sideways.
  *
- * `OFFSET` is the stagger. It is `space.xl` (30) — about a quarter of a tile, which is
- * enough to break the straight edge that makes a row read as a queue and little enough that
- * the lower row is not left hanging below the strip's own height by half a picture.
+ * `ROW_OFFSET` is the stagger. It is `space.xl`, which is **20** — 18.5% of the tile. Enough
+ * to break the straight edge that makes a row read as a queue; little enough that the lower row
+ * is not left hanging below the strip's own height by half a picture.
+ *
+ * It was previously written up here as "space.xl (30) — about a quarter of a tile". `space.xl`
+ * is 20. The code always said `space.xl` and always drew 20; the number in this paragraph was
+ * the only thing that was wrong, and nothing caught it because the test asserted
+ * `ROW_OFFSET < TILE / 3` — a bound loose enough to pass at 20 *or* at 30, written for the 30.
+ * `lib/category-rail.test.ts` now asserts the exact value.
  */
 const TILE = 108;
 const COLUMN_PITCH = TILE + space.md;
@@ -382,7 +388,8 @@ const styles = StyleSheet.create({
 	// gutter, and 12 still leaves 7.7pt of clear air between two 108pt targets, which is
 	// wider than the 1.04 selected scale grows a tile by (2.2pt a side).
 	rail: { paddingHorizontal: space.lg, alignItems: "flex-start" },
-	// The trailing spacer's own width — the deliberate peek. `space.xl`, less than half a tile.
+	// The trailing spacer's own width — the deliberate peek. `space.xl` (20), less than a
+	// fifth of a 108pt tile.
 	railEnd: { width: space.xl },
 	// A column is the picture and its name, stacked. `width` is stated so the caption wraps
 	// against the tile rather than against the column's content, and `alignItems: center`

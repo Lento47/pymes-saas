@@ -23,7 +23,8 @@ import {
 import { ActionBar, useActionBarClearance } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { BusinessCard } from "@/components/business-card";
-import { CategoryRail } from "@/components/category-rail";
+import { CategoryShowcase } from "@/components/category-showcase";
+import { PurchaseWash } from "@/components/purchase-wash";
 import { CouponStrip } from "@/components/coupon-strip";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -42,6 +43,7 @@ import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
 import { useSkeletonHold } from "@/components/skeleton";
 import { FeedSkeleton, SearchResultsSkeleton } from "@/components/skeletons";
+import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useSession } from "@/lib/auth/session";
@@ -157,6 +159,16 @@ export default function HomeScreen() {
 		setDegradation(takeDegradation());
 	}, []);
 	const { clearance, onHeightChange } = useActionBarClearance();
+	/**
+	 * The capsule's footprint, for the scroll's own `paddingBottom`.
+	 *
+	 * `Screen` never drew this scroll — the feed brings its own, for the `RefreshControl` and
+	 * the sticky header — and `Screen`'s clearance is applied only to the `ScrollView` it
+	 * renders itself. So the feed reserves for the nav bar here instead. `bottomInsetPaid` is
+	 * `false` because this screen asks `Screen` for no bottom edge, so the home indicator is
+	 * still unpaid and belongs in this number.
+	 */
+	const capsule = useTabBarClearance();
 
 	const feed = useQuery(
 		trpc.catalog.feed.queryOptions(
@@ -222,10 +234,6 @@ export default function HomeScreen() {
 	 * the half a label cannot carry and a hint would have to, which is why none of them
 	 * borrows `discovery.seeAll.hint` ("Abre la búsqueda") — it would be a lie on all three.
 	 */
-	const seeAllCategories = {
-		label: t("action.viewAll"),
-		onPress: () => router.push("/categories"),
-	};
 	const seeAllAgain = {
 		label: t("action.viewAll"),
 		onPress: () => router.push("/orders"),
@@ -309,6 +317,13 @@ export default function HomeScreen() {
 
 	return (
 		<Screen padded={false} contentStyle={styles.fill}>
+			{/*
+			    The purchase wash, first child so it paints first and everything else sits on top of
+			    it. Any later and it would cover the greeting and the search field; `absoluteFill`
+			    with `pointerEvents="none"` and no layout box, so it costs the feed nothing.
+			*/}
+			<PurchaseWash />
+
 			{/* Outside the branch below on purpose. The header is the session's and the field
 			    is static, so neither has any reason to disappear while the feed loads — and a
 			    screen whose top third is stable reads as faster than one that rebuilds itself
@@ -404,7 +419,7 @@ export default function HomeScreen() {
 				ref={scrollerRef}
 				style={styles.scroller}
 				contentContainerStyle={{
-					paddingBottom: clearanceOrSpace(clearance, units > 0),
+					paddingBottom: clearanceOrSpace(clearance, units > 0, capsule),
 				}}
 				// The bar pays its own bottom inset (`./action-bar`'s docblock), so the scroll
 				// reserves the *bar* and nothing more.
@@ -466,7 +481,6 @@ export default function HomeScreen() {
 									quickAdd(product);
 								}}
 								quickAddError={quickAddError}
-								seeAllCategories={seeAllCategories}
 								seeAllAgain={seeAllAgain}
 								seeAllNearby={seeAllNearby}
 								seeAllFeatured={seeAllFeatured}
@@ -753,7 +767,6 @@ function Feed({
 	again,
 	onQuickAdd,
 	quickAddError,
-	seeAllCategories,
 	seeAllAgain,
 	seeAllNearby,
 	seeAllFeatured,
@@ -766,41 +779,27 @@ function Feed({
 	onQuickAdd: (product: ProductCard) => void;
 	/** The failed quick-add, drawn under the shelf that caused it. */
 	quickAddError: unknown;
-	seeAllCategories: SeeAll;
 	seeAllAgain: SeeAll;
 	seeAllNearby: SeeAll;
 	seeAllFeatured: SeeAll;
 }) {
 	const { t } = useT();
 
-	/*
-	 * The rail draws the taxonomy's first level and only that: the sectors. `catalog.feed`
-	 * hands over every active category — 18 sectors and their 224 children — and a strip of
-	 * 242 chips is a row nobody reaches the end of, with the second level indistinguishable
-	 * from the first once it is. The children are one tap in, on the sector's own page
-	 * (`app/category/[slug]`), which is also where `app/categories`' grid sends a tile.
-	 */
-	const sectors = data.categories.filter(
-		(category) => category.parentId === null,
-	);
-
 	return (
 		<>
-			{/* The rail's own top margin is the feed's, not the rail's: the same strip sits
-			    under a section heading on the search results screen, and `./category-rail`
-			    documents why it carries no margin of its own. Its "Todo" chip is not drawn
-			    here (`allHref` is omitted): "every business" is the nearby section's own
-			    "Ver todo", and this one's action is the whole *taxonomy*. */}
+			{/*
+			    The showcase owns its own heading now, so the feed's `SectionHeader` for categories is
+			    gone — "Categorías" printed above a card that also says "Categorías" is the same
+			    fact on the screen twice. `allHref` carries the link the header used to draw.
+			    `seeAllCategories` still exists because the search screen's own rail uses the same
+			    destination, but the feed no longer renders it.
+			    All 241 categories go down, unfiltered: the showcase needs a sector's children to
+			    draw its second card, and a component handed only the sectors could not find them.
+			    Its top margin is the feed's, not the showcase's, for the reason `./category-rail`
+			    documents — the space above a section belongs to the screen, not the section.
+			*/}
 			<View style={styles.rail}>
-				{sectors.length > 0 ? (
-					<View style={styles.sectionHead}>
-						<SectionHeader
-							title={t("search.categories")}
-							action={seeAllCategories}
-						/>
-					</View>
-				) : null}
-				<CategoryRail categories={sectors} />
+				<CategoryShowcase categories={data.categories} allHref="/categories" />
 			</View>
 
 			{/* The offer banner, and the only filled brand surface in the app. It replaces the
@@ -1101,7 +1100,24 @@ function SearchResults({
 	);
 }
 
-/** What the scroll reserves: the bar when there is one, the page's own gutter when not. */
-function clearanceOrSpace(clearance: number, hasBar: boolean) {
-	return hasBar ? clearance : space.huge;
+/**
+ * What the scroll reserves at its foot.
+ *
+ * Two bars can want this space, and they are not the same bar. `clearance` is the *cart* bar's
+ * own measured height, present only when the cart has something in it. `capsule` is the nav
+ * bar's footprint, present on every frame of this screen.
+ *
+ * **They add, and neither replaces the other.** The capsule is `position: "absolute"`, so it
+ * overlays whatever is under it and this scroll — which `Screen` did not draw, and so did not
+ * pad — has to reserve for it itself. When the cart bar is up, `ActionBar` lifts itself clear
+ * of the capsule (`components/action-bar.tsx`), so the two are stacked rather than competing,
+ * and the scroll needs room for the pair. When the cart is empty there is no cart bar at all,
+ * and the capsule is the only thing down there — which is why this is a sum and not a choice:
+ * taking `clearance` alone leaves the last shop card under the nav bar on exactly the frame a
+ * new reader is most likely looking at, an empty cart being the default state.
+ *
+ * `space.huge` is the page's own tail and is paid either way.
+ */
+function clearanceOrSpace(clearance: number, hasBar: boolean, capsule: number) {
+	return (hasBar ? clearance : 0) + capsule + space.huge;
 }
