@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bike, CheckCircle2, ChevronDown, ChevronUp, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
@@ -23,10 +23,11 @@ import {
   adminApi,
   BUSINESS_STATUSES,
   needsReason,
+  REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
-import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
 import { EmptyState, QueryErrorState } from "./console-states";
+import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
 
 /**
  * The platform console, on the marketplace API.
@@ -1373,6 +1374,7 @@ function PriceBooksTab() {
   const [weekly, setWeekly] = useState("");
   const [monthly, setMonthly] = useState("");
   const [from, setFrom] = useState("");
+  const [reason, setReason] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1384,7 +1386,11 @@ function PriceBooksTab() {
   const weeklyMinor = toMinor(weekly);
   const monthlyMinor = toMinor(monthly);
   const canSubmit =
-    label.trim().length >= 2 && weeklyMinor !== null && monthlyMinor !== null && from !== "";
+    label.trim().length >= 2 &&
+    weeklyMinor !== null &&
+    monthlyMinor !== null &&
+    from !== "" &&
+    reason.trim().length >= REASON_MIN_LENGTH;
 
   const create = useMutation({
     mutationFn: () =>
@@ -1395,12 +1401,14 @@ function PriceBooksTab() {
         // `new Date("YYYY-MM-DD")` is UTC midnight; a local-time parse of the same string
         // would shift the effective date by a day either side of it.
         effectiveFrom: new Date(`${from}T00:00:00Z`),
+        reason: reason.trim(),
       }),
     onSuccess: () => {
       setLabel("");
       setWeekly("");
       setMonthly("");
       setFrom("");
+      setReason("");
       toast({ title: "Precio staged" });
       queryClient.invalidateQueries();
     },
@@ -1518,6 +1526,30 @@ function PriceBooksTab() {
                 className="mt-1"
               />
             </div>
+          </div>
+          {/*
+            The reason, and it is required. `subscription.create_price_book` is in
+            `REASON_REQUIRED_ACTIONS`, so this is the console mirroring a server rule rather
+            than inventing a field: the rise is the one act here that changes what *every*
+            future merchant pays, and the audit log is the only place the question "why is
+            everyone being charged ₡20,000" can ever be answered from.
+
+            `REASON_MIN_LENGTH` is the same constant the schema's `min` reads, imported from
+            `@pymeshub/shared` through `@/lib/admin` — not a number typed here, which is how
+            the reason-required list drifted in the first place.
+          */}
+          <div className="mt-3">
+            <label htmlFor="pb-reason" className="text-xs text-muted-foreground">
+              Motivo (obligatorio)
+            </label>
+            <Textarea
+              id="pb-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Por qué sube el precio, y desde cuándo"
+              rows={2}
+              className="mt-1"
+            />
           </div>
           <div className="mt-3 flex justify-end">
             <Button size="sm" disabled={!canSubmit || create.isPending} onClick={() => create.mutate()}>
@@ -1675,9 +1707,11 @@ function CategoriesTab() {
   });
   const queryClient = useQueryClient();
 
-  // No delete mutation here on purpose: `category.delete` is in `REASON_REQUIRED_ACTIONS`,
-  // so deleting goes through `ActionButton`, which asks for the reason and reports its own
-  // outcome. A second path to the same call would be the one that skips the reason.
+  // No second delete path here on purpose: `category.delete` is in
+  // `REASON_REQUIRED_ACTIONS`, so deleting goes through `ActionButton`, which asks for the
+  // reason and reports its own outcome. A second path to the same call would be the one
+  // that skips the reason — and it used to be worse than that: the button asked, the
+  // callback dropped the answer, and the audit row said `reason: null`.
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -1747,7 +1781,7 @@ function CategoriesTab() {
                     label="Eliminar"
                     action="category.delete"
                     targetName={c.name}
-                    onRun={() => adminApi.deleteCategory(c.id)}
+                    onRun={(reason) => adminApi.deleteCategory(c.id, reason ?? "")}
                     variant="destructive"
                     size="sm"
                   />
@@ -1777,6 +1811,22 @@ function BusinessSheet({ businessId }: { businessId: string }) {
     enabled: open,
   });
 
+  /*
+    The envelope, not the row.
+
+    `admin.business` answers with `{ business, recentOrders, auditLog }`, and every field
+    read below used to be `data.<field>` against what is really `data.business.<field>`.
+    The query therefore threw a `ZodError` on open and this sheet could render nothing but
+    its error state — for every business, on every row.
+
+    Naming the row once here rather than at twelve access sites is the point: a sheet that
+    reads `data.business.status` is legible, and one that reads `data.status` reads as
+    though the endpoint had returned the row on its own, which is the belief that produced
+    the bug.
+  */
+  const detail = data ?? null;
+  const business = detail?.business ?? null;
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -1789,12 +1839,12 @@ function BusinessSheet({ businessId }: { businessId: string }) {
       </SheetTrigger>
       <SheetContent side="right" className="overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{data?.name ?? "Negocio"}</SheetTitle>
+          <SheetTitle>{business?.name ?? "Negocio"}</SheetTitle>
           <SheetDescription>
             {isError
               ? "No se pudo abrir la ficha."
-              : data
-                ? `/${data.slug}`
+              : business
+                ? `/${business.slug}`
                 : "Cargando…"}
           </SheetDescription>
         </SheetHeader>
@@ -1812,28 +1862,93 @@ function BusinessSheet({ businessId }: { businessId: string }) {
             onRetry={() => void refetch()}
             isRetrying={isFetching}
           />
-        ) : isPending || !data ? (
+        ) : isPending || !business || !detail ? (
           <Skeleton className="mt-4 h-48 w-full" />
         ) : (
-          <dl className="mt-6 space-y-4 text-sm">
-            {[
-              ["Estado", <StatusBadge key="s" status={data.status} />],
-              ["Verificado", data.isVerified ? "Sí" : "No"],
-              ["Ciudad", data.city],
-              ["Propietario", data.ownerName ?? "—"],
-              ["Correo", data.ownerEmail ?? "—"],
-              ["Productos", String(data.productCount)],
-              ["Órdenes", String(data.orderCount)],
-              ["Volumen", money(data.grossVolumeMinor, data.currency)],
-              ["Alta", shortDate(data.createdAt)],
-              ["Motivo de suspensión", data.suspendedReason ?? "—"],
-            ].map(([label, value]) => (
-              <div key={String(label)}>
-                <dt className="text-xs text-muted-foreground">{label}</dt>
-                <dd className="mt-0.5">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <>
+            <dl className="mt-6 space-y-4 text-sm">
+              {[
+                ["Estado", <StatusBadge key="s" status={business.status} />],
+                ["Verificado", business.isVerified ? "Sí" : "No"],
+                ["Ciudad", business.city],
+                ["Propietario", business.ownerName ?? "—"],
+                ["Correo", business.ownerEmail ?? "—"],
+                ["Productos", String(business.productCount)],
+                ["Órdenes", String(business.orderCount)],
+                ["Volumen", money(business.grossVolumeMinor, business.currency)],
+                ["Alta", shortDate(business.createdAt)],
+                ["Motivo de suspensión", business.suspendedReason ?? "—"],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {/*
+              The two lists the endpoint already returns and the sheet used to throw away.
+
+              They are here because "Ver ficha" is opened to answer a question about a shop,
+              and the question is rarely "what is its product count" — it is "what has this
+              merchant been doing" and "who touched this account". The service was already
+              fetching ten orders and twenty-five audit entries for exactly this; the
+              console parsed them out of existence.
+
+              Each list says so when it is empty rather than rendering nothing, because an
+              absent section and a section with nothing in it look identical otherwise, and
+              "no orders yet" is an answer an operator is asking for.
+            */}
+            <section className="mt-6">
+              <h3 className="text-sm font-semibold">Últimas órdenes</h3>
+              {detail.recentOrders.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Este negocio todavía no tiene órdenes.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {detail.recentOrders.map((o) => (
+                    <li key={o.id} className="text-xs">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono">{o.reference}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {money(o.totalMinor, o.currency)}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {o.customerName} · {o.status} · {shortDate(o.placedAt)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="mt-6">
+              <h3 className="text-sm font-semibold">Auditoría</h3>
+              {detail.auditLog.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Nadie ha tocado este negocio desde que se registró.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {detail.auditLog.map((e) => (
+                    <li key={e.id} className="text-xs">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono">{e.action}</span>
+                        <span className="text-muted-foreground">
+                          {e.actorName ?? "—"} · {shortDate(e.createdAt)}
+                        </span>
+                      </div>
+                      {e.reason ? (
+                        <p className="mt-0.5 text-muted-foreground">{e.reason}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
         )}
       </SheetContent>
     </Sheet>

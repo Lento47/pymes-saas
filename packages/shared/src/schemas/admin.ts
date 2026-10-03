@@ -96,7 +96,29 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	 */
 	"subscription.create_price_book",
 	"courier.reject",
+	/**
+	 * A category is the marketplace's first tile for a whole sector, and deleting one
+	 * removes it from the navigation every customer sees. It is here because the console
+	 * was already asking an operator to type a reason, discarding it, and writing the audit
+	 * row with `reason: null` — a field collected for the record and dropped before it
+	 * reached it. With this entry the dialog the operator already sees is the one the
+	 * policy asks for, rather than a coincidence.
+	 */
+	"category.delete",
 ];
+
+/**
+ * The shortest reason that still says anything.
+ *
+ * `REASON_REQUIRED_ACTIONS` decides *whether* a reason is required; this decides how long
+ * one has to be. It sits beside the list rather than in each schema's `min(8)` because a
+ * console field enforcing a different number than the API refuses is a field that either
+ * blocks a valid reason or accepts one the server discards — which is the
+ * `REASON_REQUIRED` drift in `apps/web/client/src/lib/admin.ts` all over again, one
+ * number smaller. Eight characters is roughly the shortest thing that is a clause rather
+ * than a word, and the reason is read by whoever has to justify this in six months.
+ */
+export const REASON_MIN_LENGTH = 8;
 
 export const adminListInput = z.object({
 	search: z.string().trim().max(120).optional(),
@@ -200,6 +222,37 @@ export const adminOrderRowSchema = z.object({
 });
 export type AdminOrderRow = z.infer<typeof adminOrderRowSchema>;
 
+/**
+ * One business, with the two things its row cannot carry.
+ *
+ * A separate schema rather than `adminBusinessRowSchema.extend(...)` because this is a
+ * different answer, not a richer one: `admin.business` returns the row **plus** its ten
+ * most recent orders and the twenty-five audit entries that touched it, so the row schema
+ * is the `business` key of this object and nothing else.
+ *
+ * It is here, in shared, rather than declared in the console because a composite built in
+ * `apps/web` out of shared schemas cannot type-check there — two zod copies in the graph,
+ * which `apps/web/client/src/lib/admin.ts` documents at length.
+ *
+ * **Declared after `adminOrderRowSchema` on purpose.** It reads three schemas, and zod
+ * evaluates a shape when the schema is constructed rather than when it is parsed, so a
+ * declaration placed next to `adminBusinessRowSchema` would reference `adminOrderRowSchema`
+ * inside its temporal dead zone. That is a `ReferenceError` at import time, not a type
+ * error — the failure would surface as the console failing to load, not as a build.
+ *
+ * The reason this exists at all: the console parsed this envelope *as* `adminBusinessRowSchema`,
+ * which is a plain `z.object` and therefore strips what it does not know and throws on
+ * what it requires. Every "Ver ficha" on the platform raised a `ZodError` and rendered its
+ * error state. `packages/trpc-api/test/admin-contract.test.ts` now pins the service's real
+ * return value against this schema.
+ */
+export const adminBusinessDetailSchema = z.object({
+	business: adminBusinessRowSchema,
+	recentOrders: z.array(adminOrderRowSchema),
+	auditLog: z.array(auditLogEntrySchema),
+});
+export type AdminBusinessDetail = z.infer<typeof adminBusinessDetailSchema>;
+
 export const adminProductRowSchema = z.object({
 	id: z.string(),
 	businessId: z.string(),
@@ -282,10 +335,10 @@ export type AdminReviewRow = z.infer<typeof adminReviewRowSchema>;
  * with nothing to filter *for* — a queue's depth is the whole number or it is not a number.
  */
 export const adminApprovalCountsSchema = z.object({
-  /** Shops that asked to be seen and have not been answered. */
-  pendingVerification: z.number().int().nonnegative(),
-  /** Courier profiles awaiting review. */
-  pendingCouriers: z.number().int().nonnegative(),
+	/** Shops that asked to be seen and have not been answered. */
+	pendingVerification: z.number().int().nonnegative(),
+	/** Courier profiles awaiting review. */
+	pendingCouriers: z.number().int().nonnegative(),
 });
 export type AdminApprovalCounts = z.infer<typeof adminApprovalCountsSchema>;
 
@@ -378,6 +431,25 @@ export const adminCategoryInput = z.object({
 	sortOrder: z.number().int().min(0).max(999).default(0),
 });
 export type AdminCategoryInput = z.infer<typeof adminCategoryInput>;
+
+/**
+ * Deleting a category, and the reason it was deleted.
+ *
+ * A separate input from `adminCategoryInput` rather than a flag on it, because the two do
+ * not overlap: this one carries nothing editable, since there is nothing left to edit. It
+ * exists because a category deletion was the one audited action with **no way to say why**
+ * — `deleteCategory` took `{ id }`, so the console's `ActionButton` collected a reason the
+ * callback threw away and the audit row was written with `reason: null`.
+ *
+ * `reason` is required here because `category.delete` is in `REASON_REQUIRED_ACTIONS`, and
+ * the console's reason dialog is driven by that one list: this schema and that list have to
+ * agree, or the field is asked for and never stored.
+ */
+export const adminDeleteCategoryInput = z.object({
+	id: z.string(),
+	reason: z.string().trim().min(REASON_MIN_LENGTH).max(500),
+});
+export type AdminDeleteCategoryInput = z.infer<typeof adminDeleteCategoryInput>;
 
 // `payoutSchema` stood here and described a run of settled commission — a gross, a
 // platform fee, a net, and an order count. That was the wrong business: the consumer

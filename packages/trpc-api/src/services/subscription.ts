@@ -28,6 +28,7 @@ import {
 import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 
 import { ValidationError } from "../errors";
+import { auditStatement, requireReason } from "./audit";
 import {
 	type BusinessContext,
 	batchOf,
@@ -537,6 +538,14 @@ export async function priceBooks(ctx: UserContext, now: Date) {
  * Refuses a date in the past, and that refusal is the design working rather than a
  * validation nicety: a book dated last week would reprice everyone who joined since,
  * which is the one outcome the whole `priceMinor`-is-a-copy design exists to prevent.
+ *
+ * **The audit row is in the same `batch` as the insert**, and that is the point of this
+ * function having changed. It used to be a bare `insert` followed by a `select`, with no
+ * record of who staged the rise or why — even though `subscription.create_price_book` is
+ * in `ADMIN_ACTIONS` and in `REASON_REQUIRED_ACTIONS`. Raising the price is the most
+ * consequential act on this console, and it was the only one that left no trace. One
+ * `db.batch` is the only atomic unit D1 offers, so the book and the account of it land
+ * together or not at all.
  */
 export async function createPriceBook(
 	ctx: UserContext,
@@ -545,9 +554,12 @@ export async function createPriceBook(
 		weeklyMinor: number;
 		monthlyMinor: number;
 		effectiveFrom: Date;
+		reason: string;
 	},
 	now: Date,
 ) {
+	const reason = requireReason("subscription.create_price_book", input.reason);
+
 	if (input.effectiveFrom.getTime() < now.getTime()) {
 		throw new ValidationError(
 			"La vigencia no puede ser pasada: cambiaría el precio a negocios que ya se suscribieron.",
@@ -555,14 +567,30 @@ export async function createPriceBook(
 		);
 	}
 	const id = newId("priceBook");
-	await ctx.db.insert(priceBookTable).values({
-		id,
-		label: input.label,
-		weeklyMinor: input.weeklyMinor,
-		monthlyMinor: input.monthlyMinor,
-		effectiveFrom: input.effectiveFrom,
-		createdAt: now,
-	});
+	await ctx.db.batch([
+		ctx.db.insert(priceBookTable).values({
+			id,
+			label: input.label,
+			weeklyMinor: input.weeklyMinor,
+			monthlyMinor: input.monthlyMinor,
+			effectiveFrom: input.effectiveFrom,
+			createdAt: now,
+		}),
+		auditStatement(ctx, {
+			action: "subscription.create_price_book",
+			targetType: "price_book",
+			targetId: id,
+			before: null,
+			after: {
+				label: input.label,
+				weeklyMinor: input.weeklyMinor,
+				monthlyMinor: input.monthlyMinor,
+				effectiveFrom: input.effectiveFrom.toISOString(),
+			},
+			reason,
+			now,
+		}),
+	]);
 	return orNotFound(
 		(
 			await ctx.db

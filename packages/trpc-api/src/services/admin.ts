@@ -14,7 +14,6 @@ import {
 	user as userTable,
 } from "@pymeshub/db";
 import type {
-	AdminAction,
 	AdminApprovalCounts,
 	AdminBusinessRow,
 	AdminCategoryInput,
@@ -30,12 +29,7 @@ import type {
 	Subscription,
 	SubscriptionStatus,
 } from "@pymeshub/shared";
-import {
-	canTransition,
-	decodeCursor,
-	newId,
-	REASON_REQUIRED_ACTIONS,
-} from "@pymeshub/shared";
+import { canTransition, decodeCursor, newId } from "@pymeshub/shared";
 import { PLAN_PERIOD_DAYS, subscriptionStatusAt } from "@pymeshub/shared/plans";
 import {
 	and,
@@ -51,7 +45,8 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
-import { ConflictError, ValidationError } from "../errors";
+import { ConflictError } from "../errors";
+import { auditStatement, requireReason } from "./audit";
 import type { UserContext } from "./helpers";
 import { batchOf, likePattern, orNotFound } from "./helpers";
 import {
@@ -1570,8 +1565,10 @@ export async function saveCategory(
  */
 export async function deleteCategory(
 	ctx: UserContext,
-	input: { id: string },
+	input: { id: string; reason: string },
 ): Promise<{ ok: true }> {
+	const reason = requireReason("category.delete", input.reason);
+
 	const existing = await ctx.db
 		.select({ category: categoryTable })
 		.from(categoryTable)
@@ -1601,7 +1598,7 @@ export async function deleteCategory(
 			targetId: input.id,
 			before: { name: before.name, slug: before.slug },
 			after: null,
-			reason: null,
+			reason,
 			now,
 		}),
 	]);
@@ -1676,67 +1673,13 @@ async function auditEntriesFor(
 }
 
 // ---------------------------------------------------------------------------
-// The audit write, and the reads the mutations share
+// The reads the mutations share
+//
+// `auditStatement` and `requireReason` used to be defined here, and this file was the
+// only place either could be reached from — which is why a price rise, written by
+// `services/subscription.ts`, carried neither an audit row nor a reason. They live in
+// `./audit` now. The call sites below are untouched, because a move is not a rename.
 // ---------------------------------------------------------------------------
-
-/**
- * One audit row, as a statement the caller can put in a `batch`.
- *
- * Returning the statement rather than awaiting it is the whole point: the change and
- * the record of the change are then one atomic unit. An `await` here followed by the
- * update would leave a window where the platform suspended a business and has no
- * idea who did it.
- */
-function auditStatement(
-	ctx: UserContext,
-	input: {
-		action: AdminAction;
-		targetType: string;
-		targetId: string;
-		before: unknown;
-		after: unknown;
-		reason: string | null;
-		/** Only `payout.mark_paid` carries one; it is the reference the operator got back. */
-		reference?: string;
-		now: Date;
-	},
-) {
-	return ctx.db.insert(auditLogTable).values({
-		id: newId("auditLog"),
-		actorUserId: ctx.user.id,
-		action: input.action,
-		targetType: input.targetType,
-		targetId: input.targetId,
-		meta: {
-			before: input.before,
-			after: input.after,
-			reason: input.reason,
-			...(input.reference === undefined ? {} : { reference: input.reference }),
-		},
-		createdAt: input.now,
-	});
-}
-
-/**
- * The reason an action cannot proceed without.
- *
- * Driven by `REASON_REQUIRED_ACTIONS` rather than by a list repeated here, so an
- * action added to that set is enforced the moment it is named — and the *message*
- * matters as much as the check: an operator who is refused needs to know which field
- * they left blank.
- */
-function requireReason(
-	action: AdminAction,
-	reason: string | undefined,
-): string {
-	if (!reason || reason.trim().length === 0) {
-		if (REASON_REQUIRED_ACTIONS.includes(action)) {
-			throw new ValidationError("Esta acción requiere un motivo", { action });
-		}
-		return "";
-	}
-	return reason;
-}
 
 async function readBusiness(db: Db, id: string) {
 	const rows = await db

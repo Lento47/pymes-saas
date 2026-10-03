@@ -1,7 +1,7 @@
 import {
   type AdminAction,
   type AdminApprovalCounts,
-  adminApprovalCountsSchema,
+  type AdminBusinessDetail,
   type AdminBusinessRow,
   type AdminCourierListInput,
   type AdminCourierRow,
@@ -15,10 +15,13 @@ import {
   type AdminUserRow,
   type AuditLogEntry,
   adminActionSchema,
+  adminApprovalCountsSchema,
+  adminBusinessDetailSchema,
   adminBusinessRowSchema,
   adminCategoryInput,
   adminCourierListInput,
   adminCourierRowSchema,
+  adminDeleteCategoryInput,
   adminListInput,
   adminMetricsSchema,
   adminOrderRowSchema,
@@ -36,6 +39,8 @@ import {
   categorySchema,
   createPriceBookInput,
   PLANS,
+  REASON_MIN_LENGTH,
+  REASON_REQUIRED_ACTIONS,
   recordPaymentInput,
   SUBSCRIPTION_STATUSES,
   type SubscriptionStatus,
@@ -97,21 +102,28 @@ import { trpc } from "./marketplace";
  * and a button that silently does nothing is how they get lost.
  */
 
-/** Actions the service refuses without a reason. Destructive, and money, mostly. */
-export const REASON_REQUIRED: readonly AdminAction[] = [
-  "business.suspend",
-  "business.delete",
-  "user.suspend",
-  "order.cancel",
-  "order.refund",
-  "product.unpublish",
-  "courier.reject",
-  "category.delete",
-];
+/**
+ * Actions the service refuses without a reason — **imported, not copied**.
+ *
+ * This used to be a second, hand-written copy of `REASON_REQUIRED_ACTIONS` in
+ * `@pymeshub/shared`, and it had drifted in both directions:
+ *
+ * - it was **missing** `subscription.record_payment` and `subscription.create_price_book`,
+ *   so the console never asked for a reason on a payment or a price rise — the two acts
+ *   that move money — and the server refused one of them anyway, after the round trip;
+ * - it carried `order.refund`, an action no procedure implements, and `category.delete`,
+ *   which the server did not require, so the console collected a reason for a category
+ *   deletion and the service wrote `reason: null`.
+ *
+ * Syncing the copy would have fixed today's mismatch and left the mechanism that produced
+ * it, so the copy is gone. `needsReason` now answers from the one list the services
+ * enforce, and an action added there shows a dialog here the day it is named.
+ */
+export { REASON_REQUIRED_ACTIONS };
 
 /** Whether the console must ask for a reason before sending this action. */
 export function needsReason(action: AdminAction): boolean {
-  return REASON_REQUIRED.includes(action);
+	return REASON_REQUIRED_ACTIONS.includes(action);
 }
 
 /** The cursor `adminListInput` takes is an encoded offset, per the router's own note. */
@@ -234,9 +246,17 @@ export const adminApi = {
   ): Promise<Page<AdminBusinessRow>> =>
     businessList(await trpc.admin.businesses.query(page(input))),
 
-  /** One business, for the detail sheet. */
-  business: async (id: string): Promise<AdminBusinessRow> =>
-    adminBusinessRowSchema.parse(await trpc.admin.business.query({ id })),
+  /**
+   * One business in full: the row, its ten most recent orders and the audit entries that
+   * touched it.
+   *
+   * Parsed as the **envelope** the router answers with, not as the row. `admin.business`
+   * returns `{ business, recentOrders, auditLog }`, and parsing that object against
+   * `adminBusinessRowSchema` throws a `ZodError` for every business on the platform —
+   * which is what it did, so the detail sheet could only ever render its error state.
+   */
+  business: async (id: string): Promise<AdminBusinessDetail> =>
+    adminBusinessDetailSchema.parse(await trpc.admin.business.query({ id })),
 
   /**
    * The approvals queue, expressed as a filter rather than its own endpoint.
@@ -340,6 +360,12 @@ export const adminApi = {
   // reprice every merchant who joined since — the one outcome the design prevents. The
   // console asks for a date and lets the service refuse the past, rather than second-guess
   // it with a `min` that would silently disagree about the boundary.
+  //
+  // `reason` is required, and it was missing here as well as in the input schema: the
+  // console staged a price rise — the most consequential act on this screen — without ever
+  // asking why, and nothing server-side asked either. Both halves are now the one rule in
+  // `REASON_REQUIRED_ACTIONS`, and the minimum length is `REASON_MIN_LENGTH` so the field
+  // cannot be looser here than the API is.
 
   priceBooks: async (): Promise<PriceBookRow[]> =>
     priceBookList(await trpc.admin.priceBooks.query()),
@@ -349,6 +375,7 @@ export const adminApi = {
     weeklyMinor: number;
     monthlyMinor: number;
     effectiveFrom: Date;
+    reason: string;
   }) => trpc.admin.createPriceBook.mutate(createPriceBookInput.parse(input)),
 
   // ── Catalogue taxonomy ───────────────────────────────────────────────────
@@ -370,7 +397,17 @@ export const adminApi = {
     sortOrder?: number;
   }) => trpc.admin.saveCategory.mutate(adminCategoryInput.parse(input)),
 
-  deleteCategory: (id: string) => trpc.admin.deleteCategory.mutate({ id }),
+  /**
+   * Delete a category, with the reason.
+   *
+   * The reason is a required argument rather than a second call: `deleteCategory` used to
+   * take only an id, so `ActionButton` collected a reason the callback discarded and the
+   * audit row was written with `reason: null`. Passing it through the same input the server
+   * validates means the dialog, the wire and the audit row cannot disagree about whether a
+   * deletion was explained.
+   */
+  deleteCategory: (id: string, reason: string) =>
+    trpc.admin.deleteCategory.mutate(adminDeleteCategoryInput.parse({ id, reason })),
 
   // ── Audit ────────────────────────────────────────────────────────────────
 
@@ -442,6 +479,7 @@ export const adminApi = {
 
 export type {
   AdminAction,
+  AdminBusinessDetail,
   AdminBusinessRow,
   AdminCourierListInput,
   AdminCourierRow,
@@ -464,6 +502,7 @@ export {
   BUSINESS_STATUSES,
   COURIER_VERIFICATION_STATUSES,
   PLANS,
+  REASON_MIN_LENGTH,
   SUBSCRIPTION_STATUSES,
   TICKET_CATEGORY,
   TICKET_STATUS,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { adminListInput } from "./admin";
+import { adminListInput, REASON_MIN_LENGTH } from "./admin";
 import { planSchema, subscriptionStatusSchema } from "./common";
 
 /**
@@ -60,7 +60,7 @@ export const recordPaymentInput = z.object({
 	/** The bank's or SINPE's reference. Required — this is the reconciliation key. */
 	reference: z.string().trim().min(4).max(80),
 	/** Mandatory when the amount does not match the invoice, per the audit policy. */
-	reason: z.string().trim().min(8).max(500).optional(),
+	reason: z.string().trim().min(REASON_MIN_LENGTH).max(500).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentInput>;
 
@@ -103,5 +103,21 @@ export const createPriceBookInput = z.object({
 	weeklyMinor: z.number().int().min(100).max(10_000_000),
 	monthlyMinor: z.number().int().min(100).max(100_000_000),
 	effectiveFrom: z.date(),
+
+	/**
+	 * Required, and it was not here at all until now.
+	 *
+	 * `subscription.create_price_book` has been in `REASON_REQUIRED_ACTIONS` from the
+	 * start — the policy says a price rise carries a reason "the same way removing a
+	 * storefront does" — and this input had no field to send one in. The service never
+	 * asked either, so staging a rise wrote a `price_book` row and **no `audit_log` row at
+	 * all**: the one operator action that repriced every future merchant was the one
+	 * nobody could name a performer for afterwards.
+	 *
+	 * So the field is added, `createPriceBook` writes the audit row in the same batch as
+	 * the insert, and the reason is mandatory because a price rise is the single most
+	 * consequential thing on this console — see `services/audit.ts`.
+	 */
+	reason: z.string().trim().min(REASON_MIN_LENGTH).max(500),
 });
 export type CreatePriceBookInput = z.infer<typeof createPriceBookInput>;

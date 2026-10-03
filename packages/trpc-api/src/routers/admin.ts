@@ -3,6 +3,7 @@ import {
 	adminCategoryInput,
 	adminCourierDecisionInput,
 	adminCourierListInput,
+	adminDeleteCategoryInput,
 	adminListInput,
 	adminSubscriptionsInput,
 	adminSupportTicketListInput,
@@ -164,7 +165,7 @@ export const adminRouter = router({
 		.mutation(({ ctx, input }) => admin.saveCategory(ctx, input)),
 
 	deleteCategory: adminProcedure
-		.input(z.object({ id: z.string() }))
+		.input(adminDeleteCategoryInput)
 		.mutation(({ ctx, input }) => admin.deleteCategory(ctx, input)),
 
 	auditLog: adminProcedure

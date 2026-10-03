@@ -502,6 +502,7 @@ describe("price", () => {
 				weeklyMinor: 2_500,
 				monthlyMinor: 14_000,
 				effectiveFrom: new Date(Date.now() + 30 * 86_400_000),
+				reason: "Subida de precio de julio 2027",
 			},
 			new Date(),
 		);
@@ -550,6 +551,7 @@ describe("price", () => {
 					weeklyMinor: 3_000,
 					monthlyMinor: 18_000,
 					effectiveFrom: daysAgo(10),
+					reason: "Subida retroactiva, que debe rechazarse",
 				},
 				new Date(),
 			),
