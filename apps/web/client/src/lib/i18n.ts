@@ -74,11 +74,6 @@ export const translations = {
       adminHint: "You're in your personal admin space. To manage a business, select it from the menu above.",
       admin: "Admin",
       adminConsole: "Platform console",
-      adminMarketplace: "Marketplace",
-      adminSaas: "SaaS",
-      adminWorkspaces: "Workspaces",
-      adminUsers: "Users",
-      adminPlanLimits: "Plan Limits",
       wsAvailable: (n: number) => `${n} workspace${n !== 1 ? "s" : ""} available`,
       settingsFlyout: {
         general: "General",
@@ -1212,11 +1207,6 @@ export const translations = {
       adminHint: "Estás en tu espacio personal de administración. Para gestionar una pyme, seleccionala en el menú de arriba.",
       admin: "Admin",
       adminConsole: "Consola de plataforma",
-      adminMarketplace: "Mercado",
-      adminSaas: "SaaS",
-      adminWorkspaces: "Workspaces",
-      adminUsers: "Usuarios",
-      adminPlanLimits: "Límites de Planes",
       wsAvailable: (n: number) => `${n} workspace${n !== 1 ? "s" : ""} disponibles`,
       settingsFlyout: {
         general: "General",
