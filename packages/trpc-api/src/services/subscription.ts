@@ -456,10 +456,18 @@ export async function sweepLapsed(db: Db, now: Date): Promise<number> {
  * card-on-file flow nobody asked for, and the domain here is a shop that settles
  * weekly.
  *
- * The amount is **not** compared to the invoice. A merchant who sends ₡11,000 against
- * a ₡10,000 invoice has overpaid, and that is a conversation for the operator rather
- * than a validation error to refuse at the door — the schema requires a `reason` for
- * a mismatch and this function records the money either way.
+ * **The amount is checked against the invoice in one direction only.** An overpayment is
+ * recorded and audited: a merchant who sends ₡11,000 against a ₡10,000 invoice has
+ * overpaid, and that is a conversation for the operator rather than an error to refuse at
+ * the door. An **under**payment is refused, because this function grants a whole new period
+ * — a shop that pays ₡1 against a ₡2,000 invoice would walk away current, and the arrears
+ * beside it would read zero because arrears is derived from `periodEnd`, which this
+ * function resets.
+ *
+ * That direction is not a detail. The check used to fire on *any* mismatch and so could
+ * never be reached in practice: `recordSubscriptionPayment` passed
+ * `amountMinor: row.priceMinor ?? 0` instead of the operator's figure, which made the
+ * comparison `x !== x`. The guard existed, said something sensible, and was dead.
  *
  * The new period is priced from the price book **in force now**, which is the one
  * place a price rise reaches an existing merchant: at their next renewal, not
@@ -483,11 +491,11 @@ export async function recordPayment(
 		.limit(1);
 	const row = orNotFound(rows[0]);
 
-	if (row.priceMinor !== null && input.amountMinor !== row.priceMinor) {
-		// The schema already demands a reason for this; saying so here names the
-		// difference, which is the number the operator is being asked to sign off on.
+	if (row.priceMinor !== null && input.amountMinor < row.priceMinor) {
+		// Naming the difference here is the point: this is the number the operator is
+		// being asked to reconcile, and it is a shortfall rather than a rounding error.
 		throw new ValidationError(
-			"El monto recibido no coincide con la factura. Registra la diferencia con una nota.",
+			"El monto recibido es menor que la factura del periodo.",
 			{
 				field: "amountMinor",
 				invoiced: row.priceMinor,

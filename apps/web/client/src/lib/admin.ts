@@ -265,9 +265,22 @@ export const adminApi = {
    * same `businesses` query filtered to `DRAFT` — an unverified shop is a draft that has
    * asked to be seen. One query, two views, and no way for the count and the list to
    * disagree.
+   *
+   * The ordering is a parameter, and it is here rather than hardcoded because the queue is
+   * the one table where **oldest first** is the ordering an operator wants: a shop that
+   * asked to be seen three weeks ago is the one that has been waiting, and `newest` puts
+   * it at the bottom. The default stays `newest` because the schema's default is
+   * `newest` and a helper that silently disagreed with it would be a second thing to know.
    */
-  pendingVerifications: async (): Promise<Page<AdminBusinessRow>> =>
-    adminApi.businesses({ status: ["DRAFT"], sort: "newest", direction: "desc" }),
+  pendingVerifications: async (
+    input: Partial<Pick<AdminListInput, "sort" | "direction">> = {},
+  ): Promise<Page<AdminBusinessRow>> =>
+    adminApi.businesses({
+      status: ["DRAFT"],
+      sort: "newest",
+      direction: "desc",
+      ...input,
+    }),
 
   // ── Users ────────────────────────────────────────────────────────────────
 
@@ -340,17 +353,25 @@ export const adminApi = {
   /**
    * Recording that a merchant paid.
    *
+   * `amountMinor` **is** the money received and the service records it, so this is the
+   * operator's statement of fact rather than a field the API discards. It used to be
+   * discarded: `recordSubscriptionPayment` ignored it and passed the invoice instead, which
+   * also disabled the callee's own comparison — so a miscount could be typed into the
+   * console and silently produce a correct-looking record.
+   *
    * `reference` is the bank's or SINPE's and is **required**: it is the only thing that
    * makes the payment reconcileable later, and it lives in the audit entry rather than a
-   * column of its own. `reason` is required by `recordPaymentInput` when the amount does
-   * not match what was invoiced — a partial payment or an overpayment is a fact somebody
-   * has to be able to explain, so the service will not take one on trust.
+   * column of its own.
+   *
+   * `reason` is required — `subscription.record_payment` is in `REASON_REQUIRED_ACTIONS` —
+   * and the schema says so, which it did not. That gap is why the ordinary exact-amount
+   * payment was the one case the API rejected.
    */
   recordPayment: (input: {
     subscriptionId: string;
     amountMinor: number;
     reference: string;
-    reason?: string;
+    reason: string;
   }) => trpc.admin.recordPayment.mutate(recordPaymentInput.parse(input)),
 
   // ── Price books ──────────────────────────────────────────────────────────

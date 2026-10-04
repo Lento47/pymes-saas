@@ -1089,48 +1089,8 @@ export async function subscriptions(
 	const where = conditions.length > 0 ? and(...conditions) : undefined;
 	const direction = input.direction === "asc" ? sql`asc` : sql`desc`;
 
-	/**
-	 * The period length in milliseconds, from the plan the row names.
-	 *
-	 * A subscription stores one `priceMinor` and one `periodEnd`, so arrears is
-	 * "every period since `periodEnd`" and the divisor has to be the plan's own period —
-	 * a weekly row and a monthly row both owe `priceMinor` per period, and using one
-	 * number for both would bill a weekly merchant four times what they owe.
-	 *
-	 * `coalesce(..., 1)` rather than a bare division: a row with no `priceMinor` is a
-	 * trial, and a trial owing money is not a state that exists, so a zero divisor is
-	 * guarded instead of being allowed to make the whole query null.
-	 */
-	const periodMsSql = sql<number>`coalesce(
-		case ${subscriptionTable.plan}
-			when 'WEEKLY' then ${PLAN_PERIOD_DAYS.WEEKLY * DAY_MS}
-			else ${PLAN_PERIOD_DAYS.MONTHLY * DAY_MS}
-		end,
-		1
-	)`;
-
-	/**
-	 * Whole periods owed, floored at one.
-	 *
-	 * `cast(... as integer)` truncates, so 22 days on a 7-day plan is 3 and not 3.14 —
-	 * a fraction of a period is not a thing anybody can pay, and a debt of ₡126 is not
-	 * what "you are late" means to a shop that owes ₡2,000. `max(1, …)` is what makes
-	 * the *first* period count: a shop eleven hours past due still owes one, because
-	 * the period it bought has ended whether or not they have had time to notice.
-	 *
-	 * The two expressions are deliberately identical, and arrears is computed as
-	 * `periodsOwed * priceMinor` rather than re-deriving its own count. Two copies of
-	 * this arithmetic that drift by one is how an operator is told a merchant owes
-	 * ₡8,000 when the period count beside it says three.
-	 */
-	const periodsSql = sql<number>`case
-		when ${subscriptionTable.periodEnd} is null
-			or ${subscriptionTable.periodEnd} > ${now}
-			or ${subscriptionTable.priceMinor} is null
-		then 0
-		else max(1, cast((${now} - ${subscriptionTable.periodEnd}) / ${periodMsSql} as integer))
-	end`;
-	const arrearsSql = sql<number>`(${periodsSql}) * coalesce(${subscriptionTable.priceMinor}, 0)`;
+	const periodsSql = periodsSqlFor(now);
+	const arrearsSql = arrearsSqlFor(now);
 
 	const [rows, counted] = await Promise.all([
 		ctx.db
@@ -1256,18 +1216,31 @@ async function subscriptionPriceBooks(
  */
 export async function recordSubscriptionPayment(
 	ctx: UserContext,
-	input: { subscriptionId: string; reference: string; reason?: string },
+	input: {
+		subscriptionId: string;
+		amountMinor: number;
+		reference: string;
+		reason: string;
+	},
 ): Promise<Subscription> {
 	const reason = requireReason("subscription.record_payment", input.reason);
 
+	const now = new Date();
+
 	const rows = await ctx.db
-		.select({ subscription: subscriptionTable })
+		.select({
+			subscription: subscriptionTable,
+			// The debt as it stands *before* the write, from the same expression the arrears
+			// table renders — see `arrearsSqlFor`. Read here because a payment resets
+			// `periodEnd`, and after the write the debt is zero by construction and tells us
+			// nothing about what was forgiven.
+			arrearsBeforeMinor: arrearsSqlFor(now),
+		})
 		.from(subscriptionTable)
 		.where(eq(subscriptionTable.id, input.subscriptionId))
 		.limit(1);
 	const row = orNotFound(rows[0]);
 
-	const now = new Date();
 	const periodEnded =
 		row.subscription.periodEnd !== null &&
 		row.subscription.periodEnd.getTime() <= now.getTime();
@@ -1280,15 +1253,33 @@ export async function recordSubscriptionPayment(
 		);
 	}
 
-	// The price captured when the period began is what was owed, so that is the amount
-	// recorded — including on a row whose `priceMinor` is null, which is a trial and
-	// which `recordPayment` refuses with a named error rather than writing a ₡0 payment.
+	const arrearsBeforeMinor = Math.max(
+		0,
+		Math.round(row.arrearsBeforeMinor ?? 0),
+	);
+	const invoicedMinor = row.subscription.priceMinor ?? 0;
+	// A trial owes nothing and is not owed anything; `recordPayment` refuses a ₡0 payment
+	// with a named error rather than writing one.
+	const paidMinor = input.amountMinor;
+	const writtenOffMinor = Math.max(0, arrearsBeforeMinor - paidMinor);
+
+	/**
+	 * The operator's figure goes through, not ours.
+	 *
+	 * This used to pass `row.subscription.priceMinor ?? 0` — the expected amount — which
+	 * meant the callee's own comparison was `x !== x` and could never fire. A validation
+	 * written specifically to catch a miscount was disabled by its only caller, and the
+	 * amount the operator typed was discarded: the audit row recorded the *next* period's
+	 * price, under a key called `priceMinor`, which any reader would take for what had
+	 * been collected.
+	 */
 	const after = await subscriptionService.recordPayment(
 		ctx,
 		{
 			subscriptionId: input.subscriptionId,
-			amountMinor: row.subscription.priceMinor ?? 0,
+			amountMinor: paidMinor,
 			reference: input.reference,
+			reason,
 		},
 		now,
 	);
@@ -1307,13 +1298,40 @@ export async function recordSubscriptionPayment(
 					periodEnd: row.subscription.periodEnd?.toISOString() ?? null,
 					gracedUntil: row.subscription.gracedUntil?.toISOString() ?? null,
 					lastPaidAt: row.subscription.lastPaidAt?.toISOString() ?? null,
+					arrearsMinor: arrearsBeforeMinor,
 				},
 				after: {
 					status: after.status,
 					periodStart: after.periodStart?.toISOString() ?? null,
 					periodEnd: after.periodEnd?.toISOString() ?? null,
 					lastPaidAt: after.lastPaidAt?.toISOString() ?? null,
-					priceMinor: after.priceMinor,
+					/**
+					 * Every number named for what it is.
+					 *
+					 * `paidMinor` is what the operator collected. `invoicedMinor` is the
+					 * price of the period being settled. `differenceMinor` is the two apart,
+					 * and it is non-zero when a merchant overpaid — which is recorded, not
+					 * refused, and needs no second place to explain itself.
+					 *
+					 * `nextPeriodMinor` is the successor period's price, priced from the book
+					 * in force now. This used to be written as `priceMinor`, sitting one key
+					 * away from money that had actually been collected: an audit log is read
+					 * months later by someone who has no way to know which of two nearby
+					 * figures meant what.
+					 *
+					 * `writtenOffMinor` is the debt this payment cleared without anyone paying
+					 * it. A payment resets `periodEnd`, and arrears is derived from
+					 * `periodEnd`, so three periods of debt become zero on one payment — the
+					 * guard then refuses a second for the length of the new period, so it
+					 * cannot be paid down in instalments. That is the intended rule (no
+					 * prepayments, one period per payment), and this row is where the operator
+					 * signs off on what it cost.
+					 */
+					paidMinor,
+					invoicedMinor,
+					differenceMinor: paidMinor - invoicedMinor,
+					writtenOffMinor,
+					nextPeriodMinor: after.priceMinor,
 					priceBookLabel: after.priceBookLabel,
 				},
 				reason,
@@ -1819,6 +1837,50 @@ function slugifyCategory(name: string): string {
 // object's field (`${order.businessId}` in `./reviews`, where `order` is a row and not a
 // table) becomes a bound `?`, which is why that file's aggregates are correct as written.
 // ---------------------------------------------------------------------------
+
+/**
+ * Whole periods a subscription owes at `now`, and the money that is.
+ *
+ * **Functions rather than constants, because they now have two readers.** They were
+ * inline inside `admin.subscriptions`, and when `recordSubscriptionPayment` needed the
+ * debt it was clearing — to record how much a payment wrote off — the obvious thing was to
+ * write the arithmetic a second time in JavaScript. That is the failure this file's own
+ * comments warn about twice: *"Two copies of this arithmetic that drift by one is how an
+ * operator is told a merchant owes ₡8,000 when the period count beside it says three."*
+ *
+ * So there is one copy, and both the arrears table and the audit row that describes a
+ * payment read it.
+ *
+ * - `coalesce(…, 1)` rather than a bare division: a row with no `priceMinor` is a trial,
+ *   and a trial owing money is not a state that exists, so a zero divisor is guarded
+ *   instead of being allowed to make the whole query null.
+ * - `cast(... as integer)` truncates, so 22 days on a 7-day plan is 3 and not 3.14 — a
+ *   fraction of a period is not a thing anybody can pay.
+ * - `max(1, …)` is what makes the *first* period count: a shop eleven hours past due still
+ *   owes one, because the period it bought has ended whether or not they noticed.
+ */
+function periodsSqlFor(now: Date) {
+	const periodMsSql = sql<number>`coalesce(
+		case ${subscriptionTable.plan}
+			when 'WEEKLY' then ${PLAN_PERIOD_DAYS.WEEKLY * DAY_MS}
+			else ${PLAN_PERIOD_DAYS.MONTHLY * DAY_MS}
+		end,
+		1
+	)`;
+
+	return sql<number>`case
+		when ${subscriptionTable.periodEnd} is null
+			or ${subscriptionTable.periodEnd} > ${now}
+			or ${subscriptionTable.priceMinor} is null
+		then 0
+		else max(1, cast((${now} - ${subscriptionTable.periodEnd}) / ${periodMsSql} as integer))
+	end`;
+}
+
+/** The same expression the arrears table renders, multiplied out to colones. */
+function arrearsSqlFor(now: Date) {
+	return sql<number>`(${periodsSqlFor(now)}) * coalesce(${subscriptionTable.priceMinor}, 0)`;
+}
 
 const PRODUCT_COUNT_SQL = sql<number>`(select count(*) from ${productTable} where ${productTable.businessId} = ${businessTable}.${businessTable.id})`;
 

@@ -4,7 +4,14 @@ import { adminBusinessDetailSchema } from "@pymeshub/shared";
 import { requireAuthed } from "../src/context";
 import * as admin from "../src/services/admin";
 import * as subscriptions from "../src/services/subscription";
-import { contextFor, refused, seedBusiness, seedUser, world } from "./harness";
+import {
+	contextFor,
+	refused,
+	seedBusiness,
+	seedSubscription,
+	seedUser,
+	world,
+} from "./harness";
 
 /**
  * What the platform console is allowed to do, asserted where it actually happens.
@@ -155,5 +162,180 @@ describe("platform console contracts", () => {
 		expect(Array.isArray(detail.auditLog)).toBe(true);
 
 		w.close();
+	});
+
+	describe("recording a payment", () => {
+		/**
+		 * A shop one period behind, with the numbers a real row carries.
+		 *
+		 * `daysUntilDue: -7` on a WEEKLY plan at ₡2,000 is one period owed: `periodEnd` is a
+		 * week ago, so `periodsOwed` is 1 and `arrearsMinor` is 2,000.
+		 */
+		async function shop(daysUntilDue: number, priceMinor = 2_000) {
+			const w = world();
+			const admin = await seedUser(w.db, {
+				id: "usr_pay_admin",
+				isAdmin: true,
+			});
+			await seedBusiness(w.db, { id: "biz_pay", name: "Arreteros SA" });
+			const subscriptionId = await seedSubscription(w.db, {
+				businessId: "biz_pay",
+				plan: "WEEKLY",
+				priceMinor,
+				daysUntilDue,
+			});
+			return {
+				w,
+				ctx: requireAuthed(await contextFor(w, admin)),
+				subscriptionId,
+			};
+		}
+
+		test("the exact-amount payment succeeds — the case the API used to reject", async () => {
+			const { w, ctx, subscriptionId } = await shop(-7);
+
+			await admin.recordSubscriptionPayment(ctx, {
+				subscriptionId,
+				amountMinor: 2_000,
+				reference: "SINPE-778899",
+				reason: "Pago semanal del periodo vencido",
+			});
+
+			expect(
+				w.sqlite
+					.query(
+						"select count(*) as n from audit_log where action = 'subscription.record_payment'",
+					)
+					.get() as { n: number },
+			).toEqual({ n: 1 });
+
+			w.close();
+		});
+
+		test("no reason is refused, and nothing is written", async () => {
+			const { w, ctx, subscriptionId } = await shop(-7);
+
+			const error = await refused(
+				admin.recordSubscriptionPayment(ctx, {
+					subscriptionId,
+					amountMinor: 2_000,
+					reference: "SINPE-778899",
+					reason: "",
+				}),
+			);
+			expect(error.code).toBe("BAD_REQUEST");
+
+			expect(
+				w.sqlite
+					.query(
+						"select count(*) as n from audit_log where action = 'subscription.record_payment'",
+					)
+					.get() as { n: number },
+			).toEqual({ n: 0 });
+
+			w.close();
+		});
+
+		test("the amount recorded is the one the operator typed", async () => {
+			const { w, ctx, subscriptionId } = await shop(-7);
+
+			// Overpayment: recorded rather than refused, because a merchant who sends more
+			// than the invoice has made a mistake an operator should see, not an error.
+			await admin.recordSubscriptionPayment(ctx, {
+				subscriptionId,
+				amountMinor: 11_000,
+				reference: "SINPE-778899",
+				reason: "El comercio envio de mas por error; se devuelve la diferencia",
+			});
+
+			const row = w.sqlite
+				.query(
+					"select meta as m from audit_log where action = 'subscription.record_payment'",
+				)
+				.get() as { m: string };
+			const meta = JSON.parse(row.m) as {
+				after: Record<string, number>;
+				reference: string;
+			};
+
+			// Each figure named, so a reader six months later cannot confuse the money
+			// collected with the successor period's price — which is what this row used to
+			// call `priceMinor`.
+			expect(meta.after.paidMinor).toBe(11_000);
+			expect(meta.after.invoicedMinor).toBe(2_000);
+			expect(meta.after.differenceMinor).toBe(9_000);
+			expect(meta.after.writtenOffMinor).toBe(0);
+			expect(meta.after.nextPeriodMinor).toBe(2_000);
+			expect(meta.reference).toBe("SINPE-778899");
+
+			w.close();
+		});
+
+		test("an underpayment is refused rather than granting a period", async () => {
+			// The direction that matters. A payment grants a whole new period, so a shop that
+			// paid ₡1 against a ₡2,000 invoice would walk away current. Before this change the
+			// guard was unreachable — the caller passed the invoice, so the comparison was
+			// `x !== x` — which would have made that possible.
+			const { w, ctx, subscriptionId } = await shop(-7, 2_000);
+
+			const error = await refused(
+				admin.recordSubscriptionPayment(ctx, {
+					subscriptionId,
+					amountMinor: 1,
+					reference: "SINPE-778899",
+					reason: "Pago parcial incompleto",
+				}),
+			);
+			expect(error.code).toBe("BAD_REQUEST");
+
+			// And the period did not move.
+			expect(
+				w.sqlite.query("select count(*) as n from audit_log").get() as {
+					n: number;
+				},
+			).toEqual({ n: 0 });
+
+			w.close();
+		});
+
+		test("clearing three periods of debt records the two nobody paid", async () => {
+			// 21 days on a 7-day plan: `periodEnd` is three weeks old, so three periods are
+			// owed — ₡6,000. One payment resets `periodEnd`, arrears is derived from it, and
+			// the debt goes to zero. That is the intended rule, and `writtenOffMinor` is where
+			// it now says so.
+			const { w, ctx, subscriptionId } = await shop(-21);
+
+			const before = await admin.subscriptions(ctx, {
+				search: undefined,
+				sort: "arrears",
+				direction: "desc",
+				limit: 25,
+			});
+			expect(before.rows[0]?.arrearsMinor).toBe(6_000);
+			expect(before.rows[0]?.periodsOwed).toBe(3);
+
+			await admin.recordSubscriptionPayment(ctx, {
+				subscriptionId,
+				amountMinor: 2_000,
+				reference: "SINPE-778899",
+				reason: "Se salda el periodo vencido; el resto se perdona por acuerdo",
+			});
+
+			const row = w.sqlite
+				.query(
+					"select meta as m from audit_log where action = 'subscription.record_payment'",
+				)
+				.get() as { m: string };
+			const meta = JSON.parse(row.m) as {
+				before: { arrearsMinor: number };
+				after: { paidMinor: number; writtenOffMinor: number };
+			};
+
+			expect(meta.before.arrearsMinor).toBe(6_000);
+			expect(meta.after.paidMinor).toBe(2_000);
+			expect(meta.after.writtenOffMinor).toBe(4_000);
+
+			w.close();
+		});
 	});
 });

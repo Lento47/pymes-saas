@@ -1,5 +1,15 @@
 import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bike, CheckCircle2, ChevronDown, ChevronUp, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
+import {
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
+  Bike,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 
@@ -9,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,6 +37,16 @@ import {
   REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
+import {
+  type AdminListSort,
+  directionLabel,
+  flipDirection,
+  LIST_SORT_OPTIONS,
+  nextSort,
+  type SortState,
+  TICKET_SORT_OPTIONS,
+  type TicketSort,
+} from "./console-sort";
 import { EmptyState, QueryErrorState } from "./console-states";
 import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
 
@@ -404,12 +425,31 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
 
 function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
   const [search, setSearch] = useState("");
+  /*
+    The ordering is state rather than a fixed query, because the API has supported it since
+    `adminListInput` gained `sort` and no tab ever sent it: an operator looking for the shop
+    with the most orders had no way to ask.
+
+    Both halves of this tab share one control and one set of options. There is deliberately
+    **no** "oldest first" for the approvals queue, which is the ordering a work queue wants:
+    `adminListInput.sort` has keys `newest | name | orders | revenue` and no `oldest`, so the
+    oldest shop is reachable by flipping *Más recientes* to ascending — not by naming
+    something the schema would refuse at the wire.
+  */
+  const [order, setOrder] = useState<SortState<AdminListSort>>({
+    sort: "newest",
+    direction: "desc",
+  });
   const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "businesses", onlyPending, search],
+    queryKey: ["admin", "businesses", onlyPending, search, order],
     queryFn: () =>
       onlyPending
-        ? adminApi.pendingVerifications()
-        : adminApi.businesses({ search: search || undefined }),
+        ? adminApi.pendingVerifications({ sort: order.sort, direction: order.direction })
+        : adminApi.businesses({
+            search: search || undefined,
+            sort: order.sort,
+            direction: order.direction,
+          }),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
@@ -427,15 +467,23 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
 
   return (
     <div className="space-y-4">
-      {!onlyPending ? (
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre, slug o correo"
-          className="max-w-md"
-          aria-label="Buscar negocios"
+      <div className="flex flex-wrap items-center gap-3">
+        {!onlyPending ? (
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, slug o correo"
+            className="max-w-md"
+            aria-label="Buscar negocios"
+          />
+        ) : null}
+        <TableSort
+          options={LIST_SORT_OPTIONS}
+          value={order}
+          onChange={setOrder}
+          label="negocios"
         />
-      ) : null}
+      </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <BusinessTable rows={data.rows} />
     </div>
@@ -444,9 +492,18 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
 
 function UsersTab() {
   const [search, setSearch] = useState("");
+  const [order, setOrder] = useState<SortState<AdminListSort>>({
+    sort: "newest",
+    direction: "desc",
+  });
   const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "users", search],
-    queryFn: () => adminApi.users({ search: search || undefined }),
+    queryKey: ["admin", "users", search, order],
+    queryFn: () =>
+      adminApi.users({
+        search: search || undefined,
+        sort: order.sort,
+        direction: order.direction,
+      }),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
@@ -464,13 +521,16 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar por nombre o correo"
-        className="max-w-md"
-        aria-label="Buscar usuarios"
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o correo"
+          className="max-w-md"
+          aria-label="Buscar usuarios"
+        />
+        <TableSort options={LIST_SORT_OPTIONS} value={order} onChange={setOrder} label="personas" />
+      </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <Table>
         <TableHeader>
@@ -533,9 +593,13 @@ function UsersTab() {
 }
 
 function OrdersTab() {
+  const [order, setOrder] = useState<SortState<AdminListSort>>({
+    sort: "newest",
+    direction: "desc",
+  });
   const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "orders"],
-    queryFn: () => adminApi.orders(),
+    queryKey: ["admin", "orders", order],
+    queryFn: () => adminApi.orders({ sort: order.sort, direction: order.direction }),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
@@ -553,6 +617,16 @@ function OrdersTab() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {/*
+          *Volumen* here is the order total, which is the only money figure on this table.
+          `admin.orders`'s own docblock notes that its `orders` sort key degenerates to
+          `placedAt` because a row has no order count of its own — so the option reads
+          "Volumen" rather than "Órdenes", which would promise something the query cannot
+          do.
+        */}
+        <TableSort options={LIST_SORT_OPTIONS} value={order} onChange={setOrder} label="órdenes" />
+      </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <Table>
         <TableHeader>
@@ -945,9 +1019,24 @@ function SupportTab() {
   const [selected, setSelected] = useState<string | null>(null);
   const [status, setStatus] = useState<"live" | "all">("live");
   const [search, setSearch] = useState("");
+  /*
+    Activity first, and not by accident.
+
+    `admin.supportTickets`'s own docblock calls `activity` *"the queue's own ordering and the
+    one an operator wants by default in spirit"* — it sorts on the computed
+    `lastMessageAt`, so the ticket somebody spoke on last is at the top, which is the one
+    that might still be waiting. The schema defaults to `newest` because `activity` cannot
+    use an index, so on the console this control is how the better ordering is reachable at
+    all. Before this, no tab sent `sort`, and the queue was ordered by column order rather
+    than by anything a person chose.
+  */
+  const [order, setOrder] = useState<SortState<TicketSort>>({
+    sort: "activity",
+    direction: "desc",
+  });
 
   const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "tickets", status, search],
+    queryKey: ["admin", "tickets", status, search, order],
     queryFn: () =>
       adminApi.supportTickets({
         search: search || undefined,
@@ -955,6 +1044,7 @@ function SupportTab() {
         // the wrong default for auditing: the list's own note says filtering out closed
         // tickets makes a quiet weekend look like an ignored one. So `all` is one click away.
         status: status === "live" ? ["OPEN", "WAITING"] : undefined,
+        sort: order.sort,
       }),
   });
 
@@ -979,6 +1069,19 @@ function SupportTab() {
           placeholder="Buscar por asunto, cuerpo, comercio o persona"
           className="max-w-md"
           aria-label="Buscar tickets"
+        />
+        {/*
+          `sort` has no `direction` of its own on this query: `oldest` already says "the
+          other way", and `activity` and `messages` are aggregates that only read one way. So
+          the support table gets the column picker and **no** flip button — a direction
+          control here would promise an ordering the service cannot produce.
+        */}
+        <TableSort
+          options={TICKET_SORT_OPTIONS}
+          value={order}
+          onChange={setOrder}
+          label="tickets"
+          showDirection={false}
         />
         <div className="flex gap-1">
           <Button
@@ -1081,12 +1184,17 @@ function RecordPaymentDialog({
   subscriptionId,
   businessName,
   arrearsMinor,
+  periodsOwed,
+  priceMinor,
   currency,
   onDone,
 }: {
   subscriptionId: string;
   businessName: string;
   arrearsMinor: number;
+  periodsOwed: number;
+  /** The price of the one period a payment settles. */
+  priceMinor: number | null;
   currency: string;
   onDone: () => void;
 }) {
@@ -1097,15 +1205,32 @@ function RecordPaymentDialog({
   const { toast } = useToast();
 
   const amountMinor = toMinor(amount);
+  const invoicedMinor = priceMinor ?? 0;
+
   /**
-   * A mismatch needs a reason, and that is the service's rule
-   * (`recordPaymentInput` documents it) rather than a nicety here. Offering the field
-   * unconditionally and requiring it only on a mismatch keeps the common case — paying
-   * the exact balance — to one input.
+   * What one payment actually does, stated before it is submitted.
+   *
+   * A payment settles **one period** and starts a new one. Arrears is derived from
+   * `periodEnd`, so on a shop three periods behind the debt does not fall by one period —
+   * it goes to zero, and the guard then refuses a second payment for the length of the new
+   * period. That is the intended rule (the platform is not a credit account), but it used
+   * to be invisible: the operator typed a figure, the service discarded it and recorded the
+   * invoice instead, and the audit row named the successor period's price under a key that
+   * read as what had been collected. Nobody could see that ₡4,000 of debt had been
+   * forgiven, least of all the person who had to justify it later.
+   *
+   * So the write-off is computed here and shown, and it is now on the audit row as
+   * `writtenOffMinor` with the operator's name and reason beside it.
    */
-  const mismatch = amountMinor !== null && amountMinor !== arrearsMinor;
+  const writtenOffMinor =
+    amountMinor === null ? 0 : Math.max(0, arrearsMinor - amountMinor);
+  const periodsForgiven = Math.max(0, periodsOwed - 1);
+
   const canSubmit =
-    amountMinor !== null && reference.trim().length >= 4 && (!mismatch || reason.trim().length >= 8);
+    amountMinor !== null &&
+    amountMinor >= invoicedMinor &&
+    reference.trim().length >= 4 &&
+    reason.trim().length >= REASON_MIN_LENGTH;
 
   const save = useMutation({
     mutationFn: () =>
@@ -1113,7 +1238,7 @@ function RecordPaymentDialog({
         subscriptionId,
         amountMinor: amountMinor as number,
         reference: reference.trim(),
-        reason: mismatch ? reason.trim() : undefined,
+        reason: reason.trim(),
       }),
     onSuccess: () => {
       setOpen(false);
@@ -1137,8 +1262,9 @@ function RecordPaymentDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Pago de {businessName}</AlertDialogTitle>
             <AlertDialogDescription>
-              Debe {money(arrearsMinor, currency)}. La referencia del banco o de SINPE es
-              obligatoria: es lo único que hace el pago conciliable después.
+              Debe {money(arrearsMinor, currency)} en {periodsOwed}{" "}
+              {periodsOwed === 1 ? "periodo" : "periodos"}. La referencia del banco o de
+              SINPE es obligatoria: es lo único que hace el pago conciliable después.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
@@ -1151,9 +1277,24 @@ function RecordPaymentDialog({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
-                placeholder={String(arrearsMinor / 100)}
+                placeholder={String(invoicedMinor / 100)}
                 className="mt-1"
               />
+              {/*
+                The period's own price, not the arrears total. The old placeholder was
+                `arrearsMinor / 100`, which is three periods' worth — so the field
+                defaulted a figure that would be read as a single overpayment. One payment
+                settles one period; the debt beside it is what the write-off line accounts
+                for.
+              */}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Un pago cubre un periodo: {money(invoicedMinor, currency)}.
+              </p>
+              {amountMinor !== null && amountMinor < invoicedMinor ? (
+                <p className="mt-1 text-xs text-red-600">
+                  Menor que la factura del periodo. El API lo rechaza.
+                </p>
+              ) : null}
             </div>
             <div>
               <label htmlFor="pay-ref" className="text-xs text-muted-foreground">
@@ -1167,20 +1308,32 @@ function RecordPaymentDialog({
                 className="mt-1"
               />
             </div>
-            {mismatch ? (
-              <div>
-                <label htmlFor="pay-reason" className="text-xs text-muted-foreground">
-                  El monto no cuadra con la deuda — motivo (obligatorio)
-                </label>
-                <Textarea
-                  id="pay-reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  rows={2}
-                  className="mt-1"
-                />
-              </div>
+            {/*
+              The write-off, in words, before the operator commits to it. `writtenOffMinor`
+              is the same figure the service will write to the audit row, computed there from
+              the same expression that renders the arrears table — so this sentence and the
+              record cannot disagree.
+            */}
+            {writtenOffMinor > 0 ? (
+              <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs">
+                Con este pago quedan saldados {money(arrearsMinor, currency)}. Se perdona{" "}
+                {money(writtenOffMinor, currency)}{" "}
+                {periodsForgiven === 1 ? "de 1 periodo" : `de ${periodsForgiven} periodos`}{" "}
+                que nadie pagó, y queda anotado en la auditoría con tu nombre.
+              </p>
             ) : null}
+            <div>
+              <label htmlFor="pay-reason" className="text-xs text-muted-foreground">
+                Motivo (obligatorio)
+              </label>
+              <Textarea
+                id="pay-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                className="mt-1"
+              />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -1338,6 +1491,8 @@ function BillingTab() {
                         subscriptionId={s.id}
                         businessName={s.businessName}
                         arrearsMinor={s.arrearsMinor}
+                        periodsOwed={s.periodsOwed}
+                        priceMinor={s.priceMinor}
                         currency={s.currency}
                         onDone={() => queryClient.invalidateQueries()}
                       />
@@ -1791,6 +1946,95 @@ function CategoriesTab() {
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+/**
+ * A table's ordering: which column, and which way.
+ *
+ * A `Select` rather than the row of buttons *Cobros* uses, because the support queue has
+ * four options and the other three have too — a button strip that wide stops being a control
+ * and starts being a second toolbar. The direction is a separate button beside it, so
+ * reversing a sort does not require re-picking the column.
+ *
+ * **The icon is never the only signal.** Each way carries its own label on the trigger
+ * itself, so the state is readable without hovering, without colour, and by a screen reader.
+ *
+ * `options` is passed rather than looked up from a table name, because the option lists are
+ * genuinely different — `activity` exists on tickets and nowhere else — and a lookup keyed by
+ * a string would be one more thing that can disagree with the schema.
+ */
+function TableSort<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  showDirection = true,
+}: {
+  options: readonly { value: T; label: string }[];
+  value: SortState<T>;
+  onChange: (next: SortState<T>) => void;
+  /** What is being ordered, for the accessible name. */
+  label: string;
+  /**
+   * Whether this list has a direction to reverse.
+   *
+   * False for the support queue, where the ordering is fixed: `oldest` already says "the
+   * other way", and `activity` and `messages` are aggregates that only read one way. A flip
+   * button there would change nothing and look like it had, which is worse than having none.
+   */
+  showDirection?: boolean;
+}) {
+  const chosen = options.find((option) => option.value === value.sort);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Select
+        value={value.sort}
+        onValueChange={(next) => onChange(nextSort(value, next as T))}
+      >
+        <SelectTrigger
+          aria-label={`Ordenar por — ${label}`}
+          className="h-8 w-auto min-w-40 text-xs"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value} className="text-xs">
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {showDirection ? (
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={`${directionLabel(value.direction)} — ${label}`}
+          title={directionLabel(value.direction)}
+          onClick={() => onChange(flipDirection(value))}
+        >
+          {value.direction === "asc" ? (
+            <ArrowUpNarrowWide className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowDownNarrowWide className="h-3.5 w-3.5" />
+          )}
+          <span className="ml-1.5 text-xs">{directionLabel(value.direction)}</span>
+        </Button>
+      ) : null}
+      {chosen ? (
+        /*
+          The current choice, in text, for a screen reader.
+
+          `SelectTrigger` renders the selected item's own children, so the label is already
+          visible on screen; this is the same fact in the accessibility tree, where the
+          trigger's `aria-label` deliberately describes the *control* ("Ordenar por") rather
+          than overwriting what it currently says.
+        */
+        <span className="sr-only">{`Ordenado por ${chosen.label}`}</span>
+      ) : null}
     </div>
   );
 }

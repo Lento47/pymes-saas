@@ -59,8 +59,21 @@ export const recordPaymentInput = z.object({
 	amountMinor: z.number().int().positive(),
 	/** The bank's or SINPE's reference. Required — this is the reconciliation key. */
 	reference: z.string().trim().min(4).max(80),
-	/** Mandatory when the amount does not match the invoice, per the audit policy. */
-	reason: z.string().trim().min(REASON_MIN_LENGTH).max(500).optional(),
+	/**
+	 * Required, and it used to be optional.
+	 *
+	 * `subscription.record_payment` is in `REASON_REQUIRED_ACTIONS`, so the service
+	 * refuses without one either way — but the schema said optional and the console only
+	 * sent it when the amount differed from the invoice. The result was that the
+	 * **ordinary** payment, the exact balance, was the one case the API rejected:
+	 *
+	 *     exact-amount payment, NO reason: REFUSED -> Esta acción requiere un motivo
+	 *
+	 * Money arriving is the one act on this console that must be attributable, so the
+	 * schema now says what the service already enforced. `REASON_MIN_LENGTH`, like every
+	 * other reason in this package.
+	 */
+	reason: z.string().trim().min(REASON_MIN_LENGTH).max(500),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentInput>;
 
