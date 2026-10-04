@@ -115,11 +115,43 @@ export function HomeHeader({
 	const { colors, scheme } = useTheme();
 	const { t } = useT();
 	const onLimeGradient = colors.primary.toLowerCase() === "#c8ff18";
-	const metaColor = onLimeGradient
+	/**
+	 * The ink for **every** mark drawn on the lime band, and `undefined` off it.
+	 *
+	 * Named for the band rather than for the meta line because the band is what decides it,
+	 * and `./home-gradient` now draws lime at the top of the *dark* theme too — so dark needs
+	 * the same answer light has had since it existed: `primaryForeground`, `#111111`, which
+	 * measures **12.88:1** on the darkest colour any mark here sits on. It was
+	 * `foreground` (`#F5F5F3`) before, which is white on lime at **1.08:1**.
+	 *
+	 * **The light branch is untouched**, down to the token: light keeps `secondaryForeground`,
+	 * and the light ramp in `./home-gradient` keeps every one of its own numbers.
+	 *
+	 * Five marks read this, and the avatar deliberately does not — `./image` paints
+	 * `colors.muted`, so the initials sit on their own disc and never see the ramp. The list:
+	 * the greeting, the meta line's lead, the meta line's value in both its states, and the
+	 * pin beside them.
+	 */
+	const bandInk = onLimeGradient
 		? scheme === "dark"
-			? colors.foreground
+			? colors.primaryForeground
 			: colors.secondaryForeground
 		: undefined;
+
+	/**
+	 * The same ink, but for the two nested `tone` values — and `undefined` everywhere else.
+	 *
+	 * **These two must not use `bandInk`.** The greeting and the pin can, because each is a
+	 * single element whose light value is already dark. These two carry a `tone` that light
+	 * resolves to `#111111` — `default` and `action` both do in `lime.light` — and pointing them
+	 * at `bandInk` would repaint them `#2e2722` on the light theme. Both are readable there
+	 * today, so that would be a light-theme edit wearing a tidy-up's clothes.
+	 *
+	 * Dark-only by construction: in light this is `undefined`, no style is attached at all, and
+	 * the element is byte-identical to what it was.
+	 */
+	const limeDarkInk =
+		onLimeGradient && scheme === "dark" ? colors.primaryForeground : undefined;
 
 	// Two initials where the name has two parts, one where it has one. The avatar's box is
 	// `MIN_TOUCH_TARGET` square — a target drawn at its own floor, like `./business-card`'s
@@ -145,7 +177,15 @@ export function HomeHeader({
 				{/* The title: this screen's `title`, one step above the `heading` `./section-header` gives its own titles,
 				    so the greeting leads the page without out-shouting the
 				    field below it (`docs/design-mobile.md` Rule 1). */}
-				<Text variant="title" bold style={styles.title}>
+				<Text
+					variant="title"
+					bold
+					// The greeting is the one mark here that carried no colour of its own and
+					// took `foreground` by default — white, which on the dark theme's new lime
+					// band is unreadable. `bandInk` is `undefined` off the band, so every other
+					// theme keeps the default it had.
+					style={[styles.title, bandInk ? { color: bandInk } : null]}
+				>
 					{name ? t("home.greeting", { name }) : t("home.greeting.anon")}
 				</Text>
 
@@ -159,9 +199,17 @@ export function HomeHeader({
 						<Ionicons
 							name="location"
 							size={icon.inline}
+							// Three cases, and **light is deliberately untouched**: it keeps
+							// `colors.foreground`, which is what it has always drawn here. Dark
+							// needed a third branch rather than `bandInk`, because light's pin is
+							// `foreground` while its meta line is `secondaryForeground` — the two
+							// have always differed by a hair and folding them together would be a
+							// light-theme change dressed as a tidy-up.
 							color={
-								onLimeGradient && scheme === "light"
-									? colors.foreground
+								onLimeGradient
+									? scheme === "light"
+										? colors.foreground
+										: colors.primaryForeground
 									: colors.primary
 							}
 							accessibilityElementsHidden
@@ -172,13 +220,17 @@ export function HomeHeader({
 							tone="muted"
 							style={[
 								styles.coordinateText,
-								metaColor ? { color: metaColor } : null,
+								bandInk ? { color: bandInk } : null,
 							]}
 						>
 							{lead}
 							{/* Re-declares `variant="label"`: `./text` defaults a nested node to
 							    `body` and would draw the value at 15/21 inside this 13/18 line. */}
-							<Text variant="label" tone="default">
+							<Text
+								variant="label"
+								tone="default"
+								style={limeDarkInk ? { color: limeDarkInk } : undefined}
+							>
 								{t("discovery.hero.currentLocation")}
 							</Text>
 						</Text>
@@ -198,7 +250,7 @@ export function HomeHeader({
 						<Ionicons
 							name="location-outline"
 							size={icon.inline}
-							color={metaColor ?? colors.mutedForeground}
+							color={bandInk ?? colors.mutedForeground}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
 						/>
@@ -207,11 +259,15 @@ export function HomeHeader({
 							tone="muted"
 							style={[
 								styles.coordinateText,
-								metaColor ? { color: metaColor } : null,
+								bandInk ? { color: bandInk } : null,
 							]}
 						>
 							{lead}
-							<Text variant="label" tone="action">
+							<Text
+								variant="label"
+								tone="action"
+								style={limeDarkInk ? { color: limeDarkInk } : undefined}
+							>
 								{t("location.use")}
 							</Text>
 						</Text>

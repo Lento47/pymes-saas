@@ -10,6 +10,7 @@ import {
 } from "@pymeshub/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { router, useFocusEffect } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	BackHandler,
@@ -144,6 +145,23 @@ export default function HomeScreen() {
 	const trpc = useTRPC();
 	const { t, intlLocale } = useT();
 	const { colors, scheme } = useTheme();
+	/**
+	 * Whether this screen is the one that puts a *light* band under the status bar.
+	 *
+	 * `./home-gradient` draws lime at the top of the lime-dark theme, so the root layout's
+	 * `<StatusBar style="light" />` — right for a `#0F0F0F` canvas — would put white clock and
+	 * battery glyphs on `#C8FF18`, which measures **1.08:1**. Unreadable.
+	 *
+	 * **Scoped to this screen rather than taught to the root layout, on purpose.** The root's
+	 * `onLightCanvas` is global, so teaching it about lime-dark would give *every* screen in
+	 * that theme dark status-bar glyphs — and every screen except this one is `#0F0F0F` at the
+	 * top. A `StatusBar` rendered here is mounted after the navigator's own and wins for this
+	 * screen alone, so the other twenty-five theme/scheme combinations cannot regress.
+	 *
+	 * `null` otherwise, which leaves the root's answer untouched — the light theme included.
+	 */
+	const limeBand =
+		scheme === "dark" && colors.primary.toLowerCase() === "#c8ff18";
 	const { session } = useSession();
 	const { coords, request } = useDeviceLocation();
 	const toast = useToast();
@@ -350,6 +368,11 @@ export default function HomeScreen() {
 			contentStyle={styles.fill}
 			background={<HomeGradient scheme={scheme} color={colors.primary} />}
 		>
+			{/* First child rather than a sibling of `<Screen>`, which would mean re-indenting
+			    every line of the feed. `expo-status-bar` draws nothing, so its place in the
+			    tree costs no layout, and being a descendant it mounts after the root layout's
+			    own `<StatusBar>` — which is what lets it win for this screen alone. */}
+			{limeBand ? <StatusBar style="dark" /> : null}
 			{/* Outside the branch below on purpose. The header is the session's and the field
 			    is static, so neither has any reason to disappear while the feed loads — and a
 			    screen whose top third is stable reads as faster than one that rebuilds itself
