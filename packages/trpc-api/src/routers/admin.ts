@@ -87,9 +87,25 @@ export const adminRouter = router({
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.suspendUser(ctx, input)),
 
+	/**
+	 * Both take `adminActionInput` rather than `grantAdmin`'s bare `{ userId }`.
+	 *
+	 * `revokeAdmin` genuinely needs the reason — `REASON_REQUIRED_ACTIONS` names it — and
+	 * `reactivateUser` takes the same schema so the console can send one without a second
+	 * input type for a field only one of the pair requires. `grantAdmin` keeps its narrow
+	 * input because it never wanted one.
+	 */
+	reactivateUser: adminProcedure
+		.input(adminActionInput)
+		.mutation(({ ctx, input }) => admin.reactivateUser(ctx, input)),
+
 	grantAdmin: adminProcedure
 		.input(z.object({ userId: z.string() }))
 		.mutation(({ ctx, input }) => admin.grantAdmin(ctx, input)),
+
+	revokeAdmin: adminProcedure
+		.input(adminActionInput.extend({ userId: z.string() }))
+		.mutation(({ ctx, input }) => admin.revokeAdmin(ctx, input)),
 
 	orders: adminProcedure
 		.input(adminListInput)

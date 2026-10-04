@@ -7,6 +7,7 @@ import {
 import { requireAuthed } from "../src/context";
 import * as admin from "../src/services/admin";
 import * as subscriptions from "../src/services/subscription";
+import type { TestWorld } from "./harness";
 import {
 	contextFor,
 	refused,
@@ -365,6 +366,193 @@ describe("platform console contracts", () => {
 			expect(meta.before.arrearsMinor).toBe(6_000);
 			expect(meta.after.paidMinor).toBe(2_000);
 			expect(meta.after.writtenOffMinor).toBe(4_000);
+
+			w.close();
+		});
+	});
+
+	/**
+	 * The two acts that had no way back.
+	 *
+	 * `suspendUser` could cut a person off and `grantAdmin` could hand out the platform flag,
+	 * and neither had a counterpart. An admin who should not be one any more had to be
+	 * "suspended as a user, or demoted in SQL" — the service's own docblock said so — and
+	 * both routes are worse than a procedure: the SQL route writes no actor, no timestamp and
+	 * no audit entry, so "who restored this account" has no answer anywhere.
+	 *
+	 * Four claims, and the third is the one that protects the platform rather than a user:
+	 *
+	 * 1. lifting a suspension restores access and records **when it started**, not just that
+	 *    there was one;
+	 * 2. revoking admin is a removal, so it demands a reason — and the refusal writes nothing;
+	 * 3. **an admin cannot revoke their own flag**, because if they are the last one the
+	 *    console becomes unreachable and nothing in it can undo that;
+	 * 4. both are idempotent, so a retry does not manufacture a second audit entry for one act.
+	 */
+	describe("reversing a decision", () => {
+		/**
+		 * The flag straight out of SQLite.
+		 *
+		 * Not the service's own return value: these assertions are about whether the *column*
+		 * moved, and reading it back through the same mapper that would have shaped a refusal
+		 * into a success would test the mapper instead of the write.
+		 */
+		const isAdminIn = (w: { sqlite: TestWorld["sqlite"] }, id: string) =>
+			(
+				w.sqlite
+					.query("select is_admin as a from user where id = ?")
+					.get(id) as {
+					a: number;
+				}
+			).a === 1;
+
+		test("lifting a suspension restores access and records when it began", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_rev_admin",
+				isAdmin: true,
+			});
+			const suspendedAt = new Date(Date.now() - 3 * 86_400_000);
+			const target = await seedUser(w.db, {
+				id: "usr_rev_target",
+				suspendedAt,
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const row = await admin.reactivateUser(ctx, { targetId: target.id });
+
+			// `isSuspended`, not `suspendedAt`: the row carries a flag and the audit entry carries the
+			// timestamp. Splitting them this way is what lets the log answer *when*, which a
+			// boolean on the row could not.
+			expect(row.isSuspended).toBe(false);
+
+			const entry = w.sqlite
+				.query("select action, meta as m from audit_log where target_id = ?")
+				.get(target.id) as { action: string; m: string };
+			expect(entry.action).toBe("user.reactivate");
+
+			// The suspension's own timestamp, so "how long was this account cut off" is
+			// answerable from the audit log alone.
+			const meta = JSON.parse(entry.m) as {
+				before: { suspendedAt: string | null };
+				after: { suspendedAt: string | null };
+			};
+			expect(meta.before.suspendedAt).toBe(suspendedAt.toISOString());
+			expect(meta.after.suspendedAt).toBeNull();
+
+			w.close();
+		});
+
+		test("lifting a suspension twice writes one audit row, not two", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_idem_admin",
+				isAdmin: true,
+			});
+			const target = await seedUser(w.db, {
+				id: "usr_idem_target",
+				suspendedAt: new Date(),
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			await admin.reactivateUser(ctx, { targetId: target.id });
+			await admin.reactivateUser(ctx, { targetId: target.id });
+
+			const count = w.sqlite
+				.query(
+					"select count(*) as n from audit_log where action = 'user.reactivate'",
+				)
+				.get() as { n: number };
+			expect(count.n).toBe(1);
+
+			w.close();
+		});
+
+		test("revoking admin without a reason is refused, and writes nothing", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_revreq_admin",
+				isAdmin: true,
+			});
+			const target = await seedUser(w.db, {
+				id: "usr_revreq_target",
+				isAdmin: true,
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const error = await refused(
+				admin.revokeAdmin(ctx, { userId: target.id, reason: "  " }),
+			);
+			expect(error.code).toBe("BAD_REQUEST");
+
+			// The flag is still on. A refused demotion that demoted anyway would be the whole
+			// bug this pair exists to close, one layer down.
+			expect(isAdminIn(w, target.id)).toBe(true);
+			expect(
+				w.sqlite.query("select count(*) as n from audit_log").get() as {
+					n: number;
+				},
+			).toEqual({ n: 0 });
+
+			w.close();
+		});
+
+		test("revoking admin takes the flag, with the reason in the audit entry", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_revok_admin",
+				isAdmin: true,
+			});
+			const target = await seedUser(w.db, {
+				id: "usr_revok_target",
+				isAdmin: true,
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const row = await admin.revokeAdmin(ctx, {
+				userId: target.id,
+				reason: "Dejamos de pertenecer al equipo",
+			});
+			expect(row.isAdmin).toBe(false);
+
+			const entry = w.sqlite
+				.query("select action, meta as m from audit_log")
+				.get() as { action: string; m: string };
+			expect(entry.action).toBe("user.revoke_admin");
+
+			const meta = JSON.parse(entry.m) as {
+				before: { isAdmin: boolean };
+				after: { isAdmin: boolean };
+				reason: string | null;
+			};
+			expect(meta.before.isAdmin).toBe(true);
+			expect(meta.after.isAdmin).toBe(false);
+			expect(meta.reason).toBe("Dejamos de pertenecer al equipo");
+
+			w.close();
+		});
+
+		test("an admin cannot revoke their own flag", async () => {
+			// The refusal that protects the platform. Every route into this console runs
+			// through `adminProcedure`, so the last admin demoting themselves leaves nobody
+			// who can undo it — and they cannot know they are the last, because that count
+			// lives in `admin.metrics` rather than in the row in front of them.
+			const w = world();
+			const sole = await seedUser(w.db, {
+				id: "usr_sole_admin",
+				isAdmin: true,
+			});
+			const ctx = requireAuthed(await contextFor(w, sole));
+
+			const error = await refused(
+				admin.revokeAdmin(ctx, {
+					userId: sole.id,
+					reason: "Me toca salir a mí",
+				}),
+			);
+			expect(error.code).toBe("BAD_REQUEST");
+
+			expect(isAdminIn(w, sole.id)).toBe(true);
 
 			w.close();
 		});

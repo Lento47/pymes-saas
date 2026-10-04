@@ -489,6 +489,22 @@ export const adminApi = {
   suspendUser: (targetId: string, reason: string) =>
     trpc.admin.suspendUser.mutate({ targetId, reason }),
 
+  /**
+   * Both ends of the two decisions the console used to be unable to take back.
+   *
+   * The reasons differ on purpose, and the service is where that difference is enforced —
+   * `user.revoke_admin` is in `REASON_REQUIRED_ACTIONS` and `user.reactivate` is not. Here
+   * both are `reason?: string` because the *schema's* optionality is not this client's
+   * decision: sending nothing for `revokeAdmin` is refused server-side with a sentence
+   * saying why, which is a better outcome than a `never` type that could drift from the
+   * shared table.
+   */
+  reactivateUser: (targetId: string, reason?: string) =>
+    trpc.admin.reactivateUser.mutate({ targetId, reason }),
+
+  revokeAdmin: (userId: string, reason: string) =>
+    trpc.admin.revokeAdmin.mutate({ userId, reason }),
+
   cancelOrder: (targetId: string, reason: string) =>
     trpc.admin.cancelOrder.mutate({ targetId, reason }),
 

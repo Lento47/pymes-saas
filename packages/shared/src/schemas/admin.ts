@@ -85,6 +85,16 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	"business.suspend",
 	"business.delete",
 	"user.suspend",
+	/**
+	 * Taking the platform flag back is a removal, and it is the **only** sanctioned way to
+	 * demote somebody now that `revokeAdmin` exists — so a demotion with no recorded
+	 * justification would be a permanent hole in the audit trail rather than a gap.
+	 *
+	 * The opposite act is deliberately not here. `user.grant_admin` requires no reason and
+	 * `user.reactivate` requires none, because both *add* access: making an operator justify
+	 * a promotion or a reinstatement punishes the correction and excuses the original.
+	 */
+	"user.revoke_admin",
 	"order.cancel",
 	"product.unpublish",
 	"subscription.record_payment",

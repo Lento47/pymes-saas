@@ -56,6 +56,7 @@ const REASON_INPUTS: Record<string, { shape: Record<string, unknown> }> = {
 	"business.suspend": adminActionInput,
 	"business.delete": adminActionInput,
 	"user.suspend": adminActionInput,
+	"user.revoke_admin": adminActionInput,
 	"order.cancel": adminActionInput,
 	"product.unpublish": adminActionInput,
 	"courier.reject": adminCourierDecisionInput,

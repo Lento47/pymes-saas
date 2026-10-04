@@ -199,8 +199,18 @@ function ActionButton({
               {label}: {targetName}
             </AlertDialogTitle>
             <AlertDialogDescription>
+              {/*
+                Was "No se puede deshacer desde aquí." — a claim about every action in this
+                console, including the ones it had just made reversible: `user.suspend` and
+                `user.revoke_admin` both have their counterpart on this same row now. A
+                destructive dialog that lies about being irreversible is worse than one that
+                says nothing, because the operator stops reading it.
+
+                What replaces it is the part that is true of *all* of them: the act is
+                recorded, with a name and a reason, and it outlives the screen.
+              */}
               Esta acción queda en el registro de auditoría con tu nombre, y el motivo va
-              con ella. No se puede deshacer desde aquí.
+              con ella.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
@@ -767,10 +777,12 @@ function UserSheet({ userId }: { userId: string }) {
  * `admin` badge appeared only if the operator happened to reload. A mutation an operator
  * cannot tell worked is indistinguishable from one that did not happen.
  *
- * Now it is a real `useMutation`, so it reports its own outcome and invalidates the list —
- * and, unlike the grant itself, **it is not reversible from this screen.** `grantAdmin` has
- * no opposite by design (`api-surface.md` documents the grant and nothing against it), so
- * this button should look like the one-way door it is.
+ * Now it is a real `useMutation`, so it reports its own outcome and invalidates the list.
+ *
+ * It was, for a while, the only button here with no opposite — `grantAdmin` had no revoke,
+ * and this file's own docblock said so and called it a one-way door. It isn't one any more:
+ * `revokeAdmin` is on the same row, and the reverse of it *does* demand a reason, because
+ * taking the flag back is a removal and handing it out is not.
  */
 function GrantAdminButton({ userId, userName }: { userId: string; userName: string }) {
   const { toast } = useToast();
@@ -904,17 +916,45 @@ function UsersTab() {
               <TableCell className="text-muted-foreground">{shortDate(u.createdAt)}</TableCell>
               <TableCell>
                 <div className="flex justify-end gap-2">
-                  {!u.isAdmin ? (
+                  {/*
+                    Both pairs are **exclusive on state**, not merely hidden when idle.
+                    Offering "Suspender" to somebody already suspended, and "Dar admin" to
+                    somebody already an admin, meant two of the three buttons on this row
+                    were no-ops that still wrote an audit entry claiming something had been
+                    done. `grantAdmin` was already idempotent server-side and that is why the
+                    old UI got away with it; the fix is to not offer the act at all, so the
+                    row says what can actually happen to this person right now.
+                  */}
+                  {u.isAdmin ? (
+                    <ActionButton
+                      label="Quitar admin"
+                      action="user.revoke_admin"
+                      targetName={u.name}
+                      onRun={(reason) => adminApi.revokeAdmin(u.id, reason ?? "")}
+                      variant="outline"
+                      size="sm"
+                    />
+                  ) : (
                     <GrantAdminButton userId={u.id} userName={u.name} />
-                  ) : null}
-                  <ActionButton
-                    label="Suspender"
-                    action="user.suspend"
-                    targetName={u.name}
-                    onRun={(reason) => adminApi.suspendUser(u.id, reason ?? "")}
-                    variant="destructive"
-                    size="sm"
-                  />
+                  )}
+                  {u.isSuspended ? (
+                    <ActionButton
+                      label="Reactivar"
+                      action="user.reactivate"
+                      targetName={u.name}
+                      onRun={(reason) => adminApi.reactivateUser(u.id, reason)}
+                      size="sm"
+                    />
+                  ) : (
+                    <ActionButton
+                      label="Suspender"
+                      action="user.suspend"
+                      targetName={u.name}
+                      onRun={(reason) => adminApi.suspendUser(u.id, reason ?? "")}
+                      variant="destructive"
+                      size="sm"
+                    />
+                  )}
                 </div>
               </TableCell>
             </TableRow>

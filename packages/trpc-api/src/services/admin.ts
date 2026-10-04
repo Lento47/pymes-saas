@@ -49,7 +49,7 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
-import { ConflictError } from "../errors";
+import { ConflictError, ValidationError } from "../errors";
 import { auditStatement, requireReason } from "./audit";
 import type { UserContext } from "./helpers";
 import { batchOf, likePattern, orNotFound } from "./helpers";
@@ -599,10 +599,9 @@ export async function suspendUser(
  * Deliberately not reachable from a business's own screens: `isAdmin` is not a
  * capability any membership confers, so no tenant can promote anybody.
  *
- * There is no revoke. `api-surface.md` documents `grantAdmin` and nothing opposite it,
- * so this does not invent one — the consequence is worth stating rather than papering
- * over: an admin who should not be one any more is suspended as a user, or demoted in
- * SQL, and either way the audit entry says who did it.
+ * Idempotent, and so is `revokeAdmin` below: granting to somebody who already has it
+ * returns their row and writes no second audit entry. A retried request should not
+ * manufacture a second record of an act that happened once.
  */
 export async function grantAdmin(
 	ctx: UserContext,
@@ -625,6 +624,115 @@ export async function grantAdmin(
 			before: { isAdmin: false },
 			after: { isAdmin: true },
 			reason: null,
+			now,
+		}),
+	]);
+
+	return readUserRow(ctx.db, input.userId);
+}
+
+/**
+ * Lift a suspension — the other half of `suspendUser`.
+ *
+ * ## Why it exists
+ *
+ * `suspendUser` could already cut a person off, and nothing could put them back. The only
+ * route was `UPDATE user SET suspended_at = null` by hand, which is the wrong shape for a
+ * platform decision: it leaves no actor, no timestamp and no entry in the audit log, so the
+ * question "who restored this account and why" has no answer anywhere. `ADMIN_ACTIONS` has
+ * listed `user.reactivate` the whole time, with no procedure behind it.
+ *
+ * ## Why this one does **not** require a reason, and the revoke below does
+ *
+ * The asymmetry is deliberate and it is the whole design of this pair.
+ *
+ * Suspending is the punitive act, so it demands a justification — and lifting the
+ * punishment is the remedy. Making an operator type an explanation before undoing their own
+ * mistake inverts the burden: it punishes the correction and excuses the original.
+ *
+ * Revoking admin is the other way round. It removes a person's access to the platform, it
+ * cannot be reasoned about afterwards by looking at what they did, and once this exists it
+ * becomes the *only* sanctioned way to demote somebody — a path with no recorded
+ * justification is worse than not having the path. So it carries a reason, and the reason
+ * goes in the audit entry like every other removal.
+ */
+export async function reactivateUser(
+	ctx: UserContext,
+	input: { targetId: string; reason?: string },
+): Promise<AdminUserRow> {
+	const now = new Date();
+	const target = await readUser(ctx.db, input.targetId);
+
+	// Idempotent for the same reason `grantAdmin` is: a retry must not write a second
+	// audit entry for one act. Also avoids recording a `before` that is already `null`.
+	if (!target.suspendedAt) return readUserRow(ctx.db, input.targetId);
+
+	await ctx.db.batch([
+		ctx.db
+			.update(userTable)
+			.set({ suspendedAt: null, updatedAt: now })
+			.where(eq(userTable.id, input.targetId)),
+		auditStatement(ctx, {
+			action: "user.reactivate",
+			targetType: "user",
+			targetId: input.targetId,
+			// The suspension's own timestamp, not `null`. "Restored at 14:03" is only
+			// meaningful next to "suspended at 09:12", and the audit reader is the one who
+			// has to work out how long the account was cut off.
+			before: { suspendedAt: target.suspendedAt.toISOString() },
+			after: { suspendedAt: null },
+			// Optional and unvalidated: an operator may say why, and nothing obliges them to.
+			reason: input.reason?.trim() ? input.reason.trim() : null,
+			now,
+		}),
+	]);
+
+	return readUserRow(ctx.db, input.targetId);
+}
+
+/**
+ * Take the platform flag back — the counterpart `grantAdmin` did not have.
+ *
+ * ## The self-revoke refusal is the point of this function
+ *
+ * An admin who demotes themselves may be the last one, and then nobody can reach this
+ * console to undo it: every route here is behind `adminProcedure`. That is a platform with
+ * no operator, reached in one click, and it is not a state worth allowing for.
+ *
+ * It is refused rather than allowed-and-warned because the operator cannot always know they
+ * are the last admin — that count lives in `admin.metrics`, not in the row they are looking
+ * at. The remedy costs one message to another admin, which is a cheaper price than a lockout
+ * nobody can price.
+ */
+export async function revokeAdmin(
+	ctx: UserContext,
+	input: { userId: string; reason?: string },
+): Promise<AdminUserRow> {
+	const now = new Date();
+	const reason = requireReason("user.revoke_admin", input.reason);
+	const target = await readUser(ctx.db, input.userId);
+
+	if (!target.isAdmin) return readUserRow(ctx.db, input.userId);
+
+	if (target.id === ctx.user.id) {
+		throw new ValidationError(
+			"No puedes quitarte a ti mismo el acceso de administrador. Que lo haga otro administrador.",
+			{ userId: input.userId },
+		);
+	}
+
+	await ctx.db.batch([
+		ctx.db
+			.update(userTable)
+			.set({ isAdmin: false, updatedAt: now })
+			.where(eq(userTable.id, input.userId)),
+		auditStatement(ctx, {
+			action: "user.revoke_admin",
+			targetType: "user",
+			targetId: input.userId,
+			before: { isAdmin: true },
+			after: { isAdmin: false },
+			reason,
 			now,
 		}),
 	]);
