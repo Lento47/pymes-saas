@@ -273,7 +273,9 @@ export const adminApi = {
    * `newest` and a helper that silently disagreed with it would be a second thing to know.
    */
   pendingVerifications: async (
-    input: Partial<Pick<AdminListInput, "sort" | "direction">> = {},
+    input: Partial<
+      Pick<AdminListInput, "sort" | "direction" | "cursor" | "limit">
+    > = {},
   ): Promise<Page<AdminBusinessRow>> =>
     adminApi.businesses({
       status: ["DRAFT"],

@@ -29,14 +29,19 @@ import { useToast } from "@/hooks/use-toast";
 import {
   type AdminAction,
   type AdminBusinessRow,
+  type AdminCourierRow,
   type AdminMetrics,
+  type AdminOrderRow,
+  type AdminSupportTicketRow,
   type AdminUserRow,
+  type AuditLogEntry,
   adminApi,
   BUSINESS_STATUSES,
   needsReason,
   REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
+import { TablePager } from "./console-pager";
 import {
   type AdminListSort,
   directionLabel,
@@ -49,6 +54,7 @@ import {
 } from "./console-sort";
 import { EmptyState, QueryErrorState } from "./console-states";
 import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
+import { useAdminPage } from "./use-admin-page";
 
 /**
  * The platform console, on the marketplace API.
@@ -440,19 +446,31 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
     sort: "newest",
     direction: "desc",
   });
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "businesses", onlyPending, search, order],
-    queryFn: () =>
+
+  /**
+   * The search box writes straight into the query key, and every keystroke resets the page.
+   *
+   * The reset is the part that matters: a narrowed result set makes the old offset
+   * meaningless, so without it an operator who filters on page four is looking at an empty
+   * table that is not empty.
+   */
+  const page = useAdminPage<AdminBusinessRow>({
+    queryKey: [onlyPending, search, order],
+    queryFn: ({ cursor, limit }) =>
       onlyPending
-        ? adminApi.pendingVerifications({ sort: order.sort, direction: order.direction })
+        ? adminApi.pendingVerifications({ sort: order.sort, direction: order.direction, cursor, limit })
         : adminApi.businesses({
             search: search || undefined,
             sort: order.sort,
             direction: order.direction,
+            cursor,
+            limit,
           }),
   });
 
-  if (isPending) return <Skeleton className="h-64 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -471,7 +489,10 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
         {!onlyPending ? (
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              page.reset();
+            }}
             placeholder="Buscar por nombre, slug o correo"
             className="max-w-md"
             aria-label="Buscar negocios"
@@ -480,12 +501,25 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
         <TableSort
           options={LIST_SORT_OPTIONS}
           value={order}
-          onChange={setOrder}
+          onChange={(next) => {
+            setOrder(next);
+            page.reset();
+          }}
           label="negocios"
         />
       </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <BusinessTable rows={data.rows} />
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="negocios"
+      />
     </div>
   );
 }
@@ -496,17 +530,22 @@ function UsersTab() {
     sort: "newest",
     direction: "desc",
   });
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "users", search, order],
-    queryFn: () =>
+
+  const page = useAdminPage<AdminUserRow>({
+    queryKey: [search, order],
+    queryFn: ({ cursor, limit }) =>
       adminApi.users({
         search: search || undefined,
         sort: order.sort,
         direction: order.direction,
+        cursor,
+        limit,
       }),
   });
 
-  if (isPending) return <Skeleton className="h-64 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -524,12 +563,23 @@ function UsersTab() {
       <div className="flex flex-wrap items-center gap-3">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            page.reset();
+          }}
           placeholder="Buscar por nombre o correo"
           className="max-w-md"
           aria-label="Buscar usuarios"
         />
-        <TableSort options={LIST_SORT_OPTIONS} value={order} onChange={setOrder} label="personas" />
+        <TableSort
+          options={LIST_SORT_OPTIONS}
+          value={order}
+          onChange={(next) => {
+            setOrder(next);
+            page.reset();
+          }}
+          label="personas"
+        />
       </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <Table>
@@ -597,12 +647,16 @@ function OrdersTab() {
     sort: "newest",
     direction: "desc",
   });
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "orders", order],
-    queryFn: () => adminApi.orders({ sort: order.sort, direction: order.direction }),
+
+  const page = useAdminPage<AdminOrderRow>({
+    queryKey: [order],
+    queryFn: ({ cursor, limit }) =>
+      adminApi.orders({ sort: order.sort, direction: order.direction, cursor, limit }),
   });
 
-  if (isPending) return <Skeleton className="h-64 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -625,7 +679,15 @@ function OrdersTab() {
           "Volumen" rather than "Órdenes", which would promise something the query cannot
           do.
         */}
-        <TableSort options={LIST_SORT_OPTIONS} value={order} onChange={setOrder} label="órdenes" />
+        <TableSort
+          options={LIST_SORT_OPTIONS}
+          value={order}
+          onChange={(next) => {
+            setOrder(next);
+            page.reset();
+          }}
+          label="órdenes"
+        />
       </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <Table>
@@ -667,6 +729,16 @@ function OrdersTab() {
           ))}
         </TableBody>
       </Table>
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="órdenes"
+      />
     </div>
   );
 }
@@ -689,16 +761,26 @@ function OrdersTab() {
  */
 function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
   const [search, setSearch] = useState("");
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "couriers", onlyPending ? "PENDING" : "all", search],
-    queryFn: () =>
+
+  /*
+    No sort control here, and it is not an oversight: `adminCourierListInput` has no `sort`
+    field at all — search, status, cursor, limit. There is nothing to send, so offering a
+    picker would produce an ordering the API refuses or ignores.
+  */
+  const page = useAdminPage<AdminCourierRow>({
+    queryKey: [onlyPending, search],
+    queryFn: ({ cursor, limit }) =>
       adminApi.couriers({
         search: search || undefined,
         status: onlyPending ? "PENDING" : undefined,
+        cursor,
+        limit,
       }),
   });
 
-  if (isPending) return <Skeleton className="h-64 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -716,7 +798,10 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
       {!onlyPending ? (
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            page.reset();
+          }}
           placeholder="Buscar por nombre, zona o correo"
           className="max-w-md"
           aria-label="Buscar repartidores"
@@ -809,6 +894,16 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
           ))}
         </TableBody>
       </Table>
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="repartidores"
+      />
     </div>
   );
 }
@@ -1035,9 +1130,9 @@ function SupportTab() {
     direction: "desc",
   });
 
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "tickets", status, search, order],
-    queryFn: () =>
+  const page = useAdminPage<AdminSupportTicketRow>({
+    queryKey: [status, search, order],
+    queryFn: ({ cursor, limit }) =>
       adminApi.supportTickets({
         search: search || undefined,
         // `live` hides what is already answered, which is the default an operator wants and
@@ -1045,10 +1140,14 @@ function SupportTab() {
         // tickets makes a quiet weekend look like an ignored one. So `all` is one click away.
         status: status === "live" ? ["OPEN", "WAITING"] : undefined,
         sort: order.sort,
+        cursor,
+        limit,
       }),
   });
 
-  if (isPending) return <Skeleton className="h-72 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-72 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -1065,7 +1164,10 @@ function SupportTab() {
       <div className="flex flex-wrap items-center gap-3">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            page.reset();
+          }}
           placeholder="Buscar por asunto, cuerpo, comercio o persona"
           className="max-w-md"
           aria-label="Buscar tickets"
@@ -1079,7 +1181,10 @@ function SupportTab() {
         <TableSort
           options={TICKET_SORT_OPTIONS}
           value={order}
-          onChange={setOrder}
+          onChange={(next) => {
+            setOrder(next);
+            page.reset();
+          }}
           label="tickets"
           showDirection={false}
         />
@@ -1087,20 +1192,43 @@ function SupportTab() {
           <Button
             variant={status === "live" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatus("live")}
+            onClick={() => {
+              setStatus("live");
+              page.reset();
+            }}
           >
             Sin resolver
           </Button>
           <Button
             variant={status === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatus("all")}
+            onClick={() => {
+              setStatus("all");
+              page.reset();
+            }}
           >
             Todos
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{data?.total ?? 0} en total</p>
       </div>
+
+      {/*
+        The pager sits between the filter row and the two panes, so it reads as belonging to
+        the queue rather than to the thread beside it. On a narrow screen that puts it above
+        both, which is why it is not inside the left column — that column is a fixed 20rem and
+        would clip the buttons at 375px.
+      */}
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="tickets"
+      />
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <div className="space-y-2">
@@ -1361,6 +1489,25 @@ function RecordPaymentDialog({
  * reference. That is the reconciliation key, and it is why the dialog refuses to submit
  * without one.
  */
+/*
+  **No pager here, deliberately, and this is the one table in the console that is paged by
+  hand or not at all.**
+
+  `admin.subscriptions` applies its status filter *after* shaping — deliberately, because the
+  stored `status` column is stale and the derived one is correct — which means its `total` is
+  **unfiltered**. Verified against the service:
+
+      unfiltered        -> rows: 3 | total: 3
+      filtered PAST_DUE -> rows: 1 | total: 3
+
+  A pager built on `total` would offer "page 2 of 3" on a list holding one row, and the
+  operator would click into an empty table that is not empty. So this table keeps its own
+  25-row window and says so in the footer, rather than gaining a control that lies.
+
+  The fix is a service change — `total` should count the shaped set — and it belongs in its
+  own commit, where it can be reviewed as a behaviour change rather than smuggled in beside a
+  pager.
+  */
 function BillingTab() {
   const [status, setStatus] = useState<"all" | SubscriptionStatus>("all");
   const [sort, setSort] = useState<"arrears" | "periodEnd" | "businessName">("arrears");
@@ -2200,12 +2347,26 @@ function BusinessSheet({ businessId }: { businessId: string }) {
 }
 
 function AuditTab() {
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "audit"],
-    queryFn: () => adminApi.auditLog(),
+  const page = useAdminPage<AuditLogEntry>({
+    /*
+      No sort is sent, and no sort control is offered.
+
+      `adminListInput` carries `sort` and `adminApi.auditLog` would forward it — but
+      `auditLogEntries` never reads it: the query orders by `createdAt` and nothing else. A
+      picker on this table would change nothing while looking like it had, and an operator
+      sorting by *Volumen* here would be reading an order they did not ask for with no cue
+      that tells them it is one.
+
+      A missing feature is recoverable; a lying control is not. This is the one table in the
+      console that gets a pager and no sort, and that asymmetry is deliberate.
+    */
+    queryKey: [],
+    queryFn: ({ cursor, limit }) => adminApi.auditLog({ cursor, limit }),
   });
 
-  if (isPending) return <Skeleton className="h-64 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -2239,6 +2400,16 @@ function AuditTab() {
           ))}
         </TableBody>
       </Table>
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="entradas de auditoría"
+      />
     </div>
   );
 }
