@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-
+import { MetricCard } from "@/components/arc/metric-card/metric-card";
 import { PageTemplate } from "@/components/layout/page-template";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ import {
   REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
+import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
 import { TablePager } from "./console-pager";
 import {
@@ -270,21 +271,24 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
   if (!metrics) return null;
 
   const tiles = [
-    { label: "Negocios pendientes", value: metrics.businesses.pendingVerification, urgent: metrics.businesses.pendingVerification > 0 },
-    { label: "Negocios activos", value: metrics.businesses.active },
-    { label: "Negocios suspendidos", value: metrics.businesses.suspended },
+    { label: "Negocios pendientes", value: metrics.businesses.pendingVerification, urgent: metrics.businesses.pendingVerification > 0, context: "Esperan verificación" },
+    { label: "Negocios activos", value: metrics.businesses.active, context: "Publicados en el mercado" },
+    { label: "Negocios suspendidos", value: metrics.businesses.suspended, context: "Cerrados por la plataforma" },
     // Three counts the service has always sent and this table never drew. `businesses.total`
     // is the denominator for the three above it, so an operator reading "3 suspendidos" with
     // no total cannot tell 3 of 40 from 3 of 400 — and `users.suspended` was the only signal
     // that anybody had been cut off.
-    { label: "Negocios totales", value: metrics.businesses.total },
-    { label: "Usuarios", value: metrics.users.total },
-    { label: "Usuarios suspendidos", value: metrics.users.suspended },
-    { label: "Admins", value: metrics.users.admins },
-    { label: "Órdenes hoy", value: metrics.orders.today },
-    { label: "Órdenes activas", value: metrics.orders.active },
-    { label: "Órdenes totales", value: metrics.orders.total },
-    { label: "Tasa de cancelación", value: `${Math.round(metrics.orders.cancelledRate * 100)}%` },
+    { label: "Negocios totales", value: metrics.businesses.total, context: "Registrados en la plataforma" },
+    { label: "Usuarios", value: metrics.users.total, context: "Cuentas de cliente y comercio" },
+    { label: "Usuarios suspendidos", value: metrics.users.suspended, context: "Cuentas cortadas" },
+    { label: "Admins", value: metrics.users.admins, context: "Con acceso a esta consola" },
+    { label: "Órdenes hoy", value: metrics.orders.today, context: "Desde medianoche, UTC" },
+    { label: "Órdenes activas", value: metrics.orders.active, context: "En curso ahora" },
+    { label: "Órdenes totales", value: metrics.orders.total, context: "Histórico completo" },
+    // The one rate on the screen, so it is the one tile that is not an integer. It gets the
+    // same treatment as a count and the same `suffix`, which is why `value` stayed a number
+    // and the string is built here rather than baked into the card's API.
+    { label: "Tasa de cancelación", value: Math.round(metrics.orders.cancelledRate * 100), suffix: "%", context: "Canceladas sobre el total" },
   ];
 
   const summary = [
@@ -362,14 +366,14 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {tiles.map((t) => (
-            <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
-              <CardContent className="pt-6">
-                <p className="text-xs text-muted-foreground">{t.label}</p>
-                <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
-                  {t.value}
-                </p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              key={t.label}
+              label={t.label}
+              value={t.value}
+              suffix={"suffix" in t ? t.suffix : undefined}
+              context={t.context}
+              urgent={t.urgent}
+            />
           ))}
         </div>
 
@@ -495,6 +499,11 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
     sort: "newest",
     direction: "desc",
   });
+  /*
+    `from`/`to` have been on `adminListInput` since it was written and this tab has never sent
+    them — the query was already there (`gte(createdAt, from)`), and so was the index it uses.
+  */
+  const dates = useDateRange();
 
   /**
    * The search box writes straight into the query key, and every keystroke resets the page.
@@ -504,7 +513,7 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
    * table that is not empty.
    */
   const page = useAdminPage<AdminBusinessRow>({
-    queryKey: [onlyPending, search, order],
+    queryKey: [onlyPending, search, order, dates.from, dates.to],
     queryFn: ({ cursor, limit }) =>
       onlyPending
         ? adminApi.pendingVerifications({ sort: order.sort, direction: order.direction, cursor, limit })
@@ -512,6 +521,8 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
             search: search || undefined,
             sort: order.sort,
             direction: order.direction,
+            from: dates.range.from,
+            to: dates.range.to,
             cursor,
             limit,
           }),
@@ -546,6 +557,9 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
             className="max-w-md"
             aria-label="Buscar negocios"
           />
+        ) : null}
+        {!onlyPending ? (
+          <DateRangeFilter range={dates} onChange={page.reset} column="alta" />
         ) : null}
         <TableSort
           options={LIST_SORT_OPTIONS}
@@ -793,14 +807,17 @@ function UsersTab() {
     sort: "newest",
     direction: "desc",
   });
+  const dates = useDateRange();
 
   const page = useAdminPage<AdminUserRow>({
-    queryKey: [search, order],
+    queryKey: [search, order, dates.from, dates.to],
     queryFn: ({ cursor, limit }) =>
       adminApi.users({
         search: search || undefined,
         sort: order.sort,
         direction: order.direction,
+        from: dates.range.from,
+        to: dates.range.to,
         cursor,
         limit,
       }),
@@ -834,6 +851,7 @@ function UsersTab() {
           className="max-w-md"
           aria-label="Buscar usuarios"
         />
+        <DateRangeFilter range={dates} onChange={page.reset} column="alta" />
         <TableSort
           options={LIST_SORT_OPTIONS}
           value={order}
@@ -911,11 +929,21 @@ function OrdersTab() {
     sort: "newest",
     direction: "desc",
   });
+  const dates = useDateRange();
 
   const page = useAdminPage<AdminOrderRow>({
-    queryKey: [order],
+    queryKey: [order, dates.from, dates.to],
     queryFn: ({ cursor, limit }) =>
-      adminApi.orders({ sort: order.sort, direction: order.direction, cursor, limit }),
+      adminApi.orders({
+        sort: order.sort,
+        direction: order.direction,
+        // `orders` filters on `placedAt`, not `createdAt` — the one table where the column
+        // name matters, which is why the label says "fecha" rather than "alta".
+        from: dates.range.from,
+        to: dates.range.to,
+        cursor,
+        limit,
+      }),
   });
 
   const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
@@ -952,6 +980,7 @@ function OrdersTab() {
           }}
           label="órdenes"
         />
+        <DateRangeFilter range={dates} onChange={page.reset} column="fecha" />
       </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <Table>
@@ -2680,6 +2709,7 @@ function AuditDiffTable({ rows }: { rows: readonly AuditLogEntry[] }) {
 }
 
 function AuditTab() {
+  const dates = useDateRange();
   const page = useAdminPage<AuditLogEntry>({
     /*
       No sort is sent, and no sort control is offered.
@@ -2693,8 +2723,14 @@ function AuditTab() {
       A missing feature is recoverable; a lying control is not. This is the one table in the
       console that gets a pager and no sort, and that asymmetry is deliberate.
     */
-    queryKey: [],
-    queryFn: ({ cursor, limit }) => adminApi.auditLog({ cursor, limit }),
+    queryKey: [dates.from, dates.to],
+    queryFn: ({ cursor, limit }) =>
+      adminApi.auditLog({
+        from: dates.range.from,
+        to: dates.range.to,
+        cursor,
+        limit,
+      }),
   });
 
   const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
@@ -2714,6 +2750,7 @@ function AuditTab() {
 
   return (
     <div className="space-y-4">
+      <DateRangeFilter range={dates} onChange={page.reset} column="cuándo" />
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
       <Table>
         <TableHeader>

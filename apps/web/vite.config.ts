@@ -69,6 +69,21 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
+      /**
+       * `motion/react` → the `framer-motion` this app already ships.
+       *
+       * The Arc components in `client/src/components/arc` import from `motion/react`,
+       * because the package `motion` was renamed to `framer-motion` after those components
+       * were written. They are the same library at the same major: `framer-motion@12`
+       * exports every symbol they use — `motion`, `AnimatePresence`, `animate`,
+       * `useMotionValue`, `useTransform`, `useInView`, `useReducedMotion` — and this repo
+       * already imports it in seven files, including `lib/motion/springs.ts`.
+       *
+       * So the alias avoids adding a second copy of one animation library for the sake of
+       * an import specifier, and it means the Arc components animate on exactly the same
+       * runtime as everything else in the app.
+       */
+      "motion/react": "framer-motion",
     },
   },
   optimizeDeps: {

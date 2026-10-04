@@ -23,3 +23,33 @@ const env = import.meta.env as Record<string, string | undefined>;
 if (!env.VITE_API_URL) {
   env.VITE_API_URL = "https://saas-api.test";
 }
+
+/**
+ * `IntersectionObserver`, which jsdom does not implement.
+ *
+ * `motion`'s `useInView` constructs one at mount, so any component using it throws
+ * `ReferenceError: IntersectionObserver is not defined` on render — which is how the Arc
+ * `AnimatedCounter` first failed here. Every real browser has had it for years, so this is a
+ * jsdom gap and not a runtime one, and the stub belongs in the shared setup rather than in
+ * whichever test happens to render a motion component today.
+ *
+ * The stub reports **not intersecting**, which is the honest answer for an element that was
+ * never laid out: `animateOnView` stays armed, digits render at their real value, and the
+ * roll-up simply never plays. Asserting the *final* state rather than the animation is what
+ * makes a test here meaningful anyway — the animation is the part that does not run.
+ */
+if (typeof globalThis.IntersectionObserver === "undefined") {
+  class TestIntersectionObserver implements IntersectionObserver {
+    readonly root = null;
+    readonly rootMargin = "";
+    readonly thresholds: ReadonlyArray<number> = [];
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+
+  globalThis.IntersectionObserver = TestIntersectionObserver;
+}

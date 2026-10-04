@@ -1,0 +1,152 @@
+/*
+ * Arc's design tokens, adapted to this app's palette.
+ *
+ * ## What this file is, and why it is not Arc's verbatim
+ *
+ * Arc ships `arc-foundation.css`, which every Arc component pulls in as a registry
+ * dependency. It defines about forty custom properties on `:root` and ends with:
+ *
+ *     :is(*:focus, *:focus-visible, *:focus-within) { outline: none !important; }
+ *
+ * Two problems with dropping that in beside this app's `index.css`:
+ *
+ * **1. It removes focus outlines from the whole application.** That rule is
+ * unconditional, `!important`, and global. It would take the focus ring off every Radix
+ * control in the platform console — the pager, the sort select, the filter toggle groups,
+ * the support thread's inputs — every one of which was built and tested for keyboard
+ * operation. This app uses Tailwind's `ring` utilities and `focus-visible` throughout; Arc's
+ * product decision is the opposite one, and it is a *product* decision, not a technical
+ * limitation.
+ *
+ * **2. It redefines tokens this app already owns.** `--background`, `--foreground`,
+ * `--border`, `--accent`, `--success`, `--danger` and `--warning` are all core tokens in
+ * `index.css`. Whichever stylesheet is imported last wins, so importing Arc's foundation
+ * would silently repaint every border, surface and accent in the app — order-dependent, and
+ * therefore the kind of bug that appears on one machine and not another.
+ *
+ * So the colour half of Arc's foundation is **not** used. Everything below maps Arc's token
+ * *names* onto this app's *values*, which is the opposite of a fork: Arc's CSS modules ask
+ * for `var(--surface)` and `var(--border)` and get this app's palette, so an Arc component
+ * dropped into the console is indistinguishable from a shadcn one.
+ *
+ * That is also the answer to depending on Arc. The components ship here as source in
+ * `arc/`, the motion primitives are the `framer-motion` this repo already depends on, and
+ * the only thing borrowed is layout and behaviour. The look is entirely ours, and the day we
+ * stop using an Arc component we delete a folder.
+ *
+ * ## What is kept verbatim
+ *
+ * Spacing, radii, the type scale, easing curves, durations and the chart series palette.
+ * None of those collide with `index.css`, and they are the parts that carry Arc's
+ * proportions rather than its colours.
+ *
+ * ## The one deliberate divergence, stated plainly
+ *
+ * `--focus-ring` is set to this app's accent instead of `transparent`. Arc's components
+ * reference it, so it has to exist; making it the ring colour rather than `none` is what
+ * keeps Arc's own controls focusable. Everything else below is a value substitution.
+ */
+
+:root {
+  /* ── Spacing. Arc's scale; no collision. ─────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* ── Radii and control heights. Arc's shapes; the console's own
+     `panel`/`card`/`control` scale in `tailwind.config.ts` is untouched. ── */
+  --radius-control: 0.75rem;
+  --radius-panel: 1rem;
+  --radius-surface: 1rem;
+  --radius-pill: 9999px;
+  --control-height-sm: 2rem;
+  --control-height-md: 2.5rem;
+  --control-height-lg: 3rem;
+
+  /* ── Type. Arc's scale, on this app's fonts. ─────────────────────────── */
+  --font-display: var(--font-sans);
+  --font-body: var(--font-sans);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 0.875rem;
+  --text-lg: 0.9375rem;
+  --text-xl: 1.0625rem;
+  --text-2xl: 1.375rem;
+  --text-3xl: 1.5rem;
+  --text-4xl: 1.75rem;
+  --text-5xl: 2rem;
+  --tracking-display: -0.01em;
+  --tracking-body: 0;
+  --leading-display: 1.2;
+  --leading-body: 1.5;
+
+  /* ── Motion. Arc's curves and durations, verbatim. ───────────────────── */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-instant: 120ms;
+  --duration-fast: 160ms;
+  --duration-standard: 240ms;
+  --duration-considered: 480ms;
+  --duration-spring: 580ms;
+
+  /* ── The adapter. Every Arc token name resolved against this app. ────── */
+
+  /* Surfaces map to the app's own surface ramp: card, elevated, hover. */
+  --surface: var(--bg-card);
+  --surface-raised: var(--bg-elevated);
+  --surface-muted: var(--bg-hover);
+
+  /* Text. `--fg-2` is the app's secondary text, used for every muted string. */
+  --text-secondary: var(--fg-2);
+  --text-muted: var(--fg-2);
+
+  /* Borders: one border colour, three weights of emphasis. */
+  --border-subtle: var(--border);
+  --border-strong: var(--fg-3);
+
+  /* Accent, and its tints, from the app's accent rather than Arc's eight-accent
+     picker. This app has one accent by decision (AGENTS.md), so the eight-way system is
+     not installed at all — there is nothing to select between. */
+  --accent-strong: var(--accent);
+  --accent-subtle: color-mix(in srgb, hsl(var(--accent)) 13%, transparent);
+  --accent-foreground: var(--accent-fg);
+
+  /* Shadows, matched to the depths the console already uses. */
+  --shadow-resting: 0 1px 2px 0 rgb(0 0 0 / 0.08);
+  --shadow-raised: 0 8px 22px rgba(0, 0, 0, 0.22);
+  --shadow-floating: 0 22px 55px rgba(0, 0, 0, 0.34);
+
+  /* Selection controls. Kept so an Arc component's switch or checkbox resolves, using
+     this app's accent as the "on" fill. */
+  --control-on: hsl(var(--accent));
+  --control-glyph: var(--accent-fg);
+  --control-track: hsl(var(--border));
+  --control-track-hover: var(--bg-active);
+  --control-thumb: hsl(var(--bg-elevated));
+  --control-thumb-on: var(--accent-fg);
+  --control-thumb-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  --control-on-subtle: var(--accent-subtle);
+  --control-fill: hsl(var(--accent));
+
+  /* The one place Arc's source is deliberately not followed. See the header. */
+  --focus-ring: hsl(var(--accent));
+
+  /* Chart series. Arc derives four from its accent hue; this app's `tailwind.config.ts`
+     already declares a chart ramp, so Arc's charts read the same four. */
+  --series-1: hsl(var(--accent));
+  --series-2: hsl(var(--success));
+  --series-3: hsl(var(--warning));
+  --series-4: hsl(var(--info));
+}

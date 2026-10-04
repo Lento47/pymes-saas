@@ -21,6 +21,17 @@
 			// use-mobile.ts arrives the same way, pulled in by `sidebar`.
 			"!packages/ui/src/components",
 			"!packages/ui/src/hooks/use-mobile.ts",
+			// Vendored Arc UI source, from the free `@uiarc` registry. Same reasoning as
+			// `packages/ui/src/components` above: kept in upstream form so
+			// `shadcn add @uiarc/<name> --diff` stays readable when re-syncing, and so a
+			// rule that fires on upstream's code does not have to be suppressed comment by
+			// comment inside a file we do not own.
+			//
+			// Two local edits are deliberate and marked in place: an `urgent` prop on
+			// `MetricCard` (the console's queue tile has to be visibly different, and Arc has
+			// no such prop), and Arc's own token file replaced by an adapter in
+			// `foundation.css` so Arc renders in this app's palette. See that file's header.
+			"!apps/web/client/src/components/arc",
 			"!**/.next",
 			"!**/dist",
 			// Static assets, not source.

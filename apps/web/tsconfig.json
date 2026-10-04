@@ -18,7 +18,21 @@
     "ignoreDeprecations": "5.0",
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./client/src/*"]
+      "@/*": ["./client/src/*"],
+      /**
+       * `motion/react` → `framer-motion`, matching the alias in `vite.config.ts`.
+       *
+       * The Arc components in `client/src/components/arc` are published importing
+       * `motion/react`, which is the same library under its pre-rename name. Pointing the
+       * specifier at the installed `framer-motion@12` types keeps one animation library in
+       * the graph instead of adding `motion` as a second copy of it, and gives the compiler
+       * the real types — without this, every `useTransform` callback parameter falls back
+       * to `any` and the implicit-any errors appear one file at a time.
+       *
+       * Both halves of the mapping must exist. Vite resolves it for the bundle; this
+       * resolves it for the type checker.
+       */
+      "motion/react": ["../../node_modules/framer-motion/dist/index.d.ts"]
     }
   }
 }
