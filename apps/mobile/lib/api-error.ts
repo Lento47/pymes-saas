@@ -117,8 +117,16 @@ const DEFAULT_KEYS: Partial<Record<string, MessageKey>> = {
 	// knows *what* is missing, not in a classifier that only knows *which status* came back.
 	NOT_FOUND: "state.error.body",
 	FORBIDDEN: "state.error.body",
-	BAD_REQUEST: "state.error.body",
-	CONFLICT: "state.error.body",
+	// **Not** `state.error.body`, and this was a real bug rather than a copy-and-paste. Both of
+	// these are refusals the request earned: the API decided the answer instead of failing to
+	// produce one. `orders.place` throws `ValidationError` when the shop is closed, the cart
+	// is empty, the minimum is unmet or a promotion code has expired — all ordinary, all
+	// decided, and all `BAD_REQUEST`. Answering those with "that's on our side, not yours"
+	// told the customer a working shop was broken, and printed a support request id under it.
+	// The specific sentence still has to come from the screen — see `FailureOverrides` — but
+	// the fallback must not claim fault that is not ours.
+	BAD_REQUEST: "state.error.rejected",
+	CONFLICT: "state.error.rejected",
 	INTERNAL_SERVER_ERROR: "state.error.body",
 };
 

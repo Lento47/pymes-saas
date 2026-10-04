@@ -195,8 +195,13 @@ export async function place(
 		PLACE_WINDOW_SECONDS,
 	);
 
+	// The messages in this function are **message keys**, not sentences, and every `details`
+	// payload is untouched. See `CHECKOUT_REFUSAL_KEYS` in `@pymeshub/shared` for why: a refusal
+	// this screen earned was reaching the customer as "that's on our side, not yours", because
+	// `BAD_REQUEST` cannot tell a closed shop from a malformed request and the sentence could.
+	// `promotionFor`'s refusal further down already travelled this way; these are the rest.
 	if (!isPaymentMethodEnabled(input.paymentMethod)) {
-		throw new ValidationError("Ese m├⌐todo de pago todav├¡a no est├í disponible", {
+		throw new ValidationError("checkout.refusal.paymentUnavailable", {
 			field: "paymentMethod",
 		});
 	}
@@ -214,7 +219,7 @@ export async function place(
 	// they can act on ΓÇö the same sentence the empty-cart branch below gives, as a
 	// `BAD_REQUEST` with a message in it rather than a dead-end not-found state.
 	const cart = await openCartOf(ctx.db, ctx.user.id);
-	if (!cart) throw new ValidationError("Tu carrito est├í vac├¡o");
+	if (!cart) throw new ValidationError("checkout.refusal.emptyCart");
 
 	const lines = await ctx.db
 		.select({ item: cartItemTable, product: productTable })
@@ -222,7 +227,8 @@ export async function place(
 		.innerJoin(productTable, eq(cartItemTable.productId, productTable.id))
 		.where(eq(cartItemTable.cartId, cart.id));
 
-	if (lines.length === 0) throw new ValidationError("Tu carrito est├í vac├¡o");
+	if (lines.length === 0)
+		throw new ValidationError("checkout.refusal.emptyCart");
 
 	const business = orNotFound(
 		(
@@ -237,9 +243,7 @@ export async function place(
 	// A shop suspended while the basket sat there cannot take the order, and the customer
 	// must be told before the money is recorded rather than after.
 	if (business.status !== "ACTIVE") {
-		throw new ValidationError(
-			"La tienda no est├í aceptando pedidos en este momento",
-		);
+		throw new ValidationError("checkout.refusal.shopInactive");
 	}
 
 	const locations = await ctx.db
@@ -252,18 +256,21 @@ export async function place(
 			? locations[0]
 			: undefined;
 	if (!location) {
-		throw new ValidationError(
-			input.locationId
-				? "La sucursal elegida no pertenece a esta tienda"
-				: "Elige una sucursal para este pedido",
-			{ field: "locationId" },
-		);
+		// Both sentences here were the same request from the customer - a branch this shop can
+		// take the order at - and `field: "locationId"` is already in `details` for the client to
+		// act on, so one key covers them. A shop with several branches and none chosen is not a
+		// refusal to name separately; it is the same "we cannot see where this goes".
+		throw new ValidationError("checkout.refusal.locationNotFound", {
+			field: "locationId",
+		});
 	}
 	if (operationalStatus(location, business, new Date()) !== "open") {
-		throw new ValidationError(
-			"Esta sucursal no est├í aceptando pedidos en este momento",
-			{ field: "locationId" },
-		);
+		// The one that reached a customer at 22:07 against a shop whose hours had ended.
+		// `checkout.businessClosed` already existed in both dictionaries and was referenced by
+		// nothing; its words were always right and only the wiring was missing.
+		throw new ValidationError("checkout.businessClosed", {
+			field: "locationId",
+		});
 	}
 
 	const deliveryAddress = await resolveAddress(ctx, input);
@@ -294,7 +301,10 @@ export async function place(
 	);
 
 	if (business.minOrderMinor > 0 && subtotalMinor < business.minOrderMinor) {
-		throw new ValidationError("Tu pedido no alcanza el m├¡nimo de la tienda", {
+		// `minimumMinor` stays: `checkout.tsx`'s `blockedReason()` reads it and `blocked()` renders
+		// the shortfall from it, so the amount the customer is short of is a fact this screen has
+		// and the key alone would not carry.
+		throw new ValidationError("checkout.refusal.minOrder", {
 			field: "subtotalMinor",
 			minimumMinor: business.minOrderMinor,
 		});
@@ -344,9 +354,7 @@ export async function place(
 		input.expectedTotalMinor !== undefined &&
 		input.expectedTotalMinor !== totalMinor
 	) {
-		throw new ConflictError(
-			"El total cambi├│. Revisa el pedido y confirma de nuevo",
-		);
+		throw new ConflictError("checkout.refusal.totalChanged");
 	}
 
 	// The claim is taken last, and that is deliberate: it is the gate on the *writes*, so a
@@ -505,10 +513,12 @@ export async function place(
 					isNull(notificationTable.data),
 				),
 			);
-		throw new ValidationError(
-			"Esta sucursal no est├í aceptando pedidos en este momento",
-			{ field: "locationId" },
-		);
+		// The same fact the pre-batch check above refuses with, arriving from the trigger instead:
+		// a pause that committed between the read and this insert. One key for both, because to
+		// the customer it is one sentence - the shop is not taking orders right now.
+		throw new ValidationError("checkout.businessClosed", {
+			field: "locationId",
+		});
 	}
 
 	await announce(ctx, envelope, "PENDING", now, null);
@@ -972,10 +982,7 @@ export async function assign(
 			verificationStatus: courierProfileTable.verificationStatus,
 		})
 		.from(userTable)
-		.leftJoin(
-			courierProfileTable,
-			eq(courierProfileTable.userId, userTable.id),
-		)
+		.leftJoin(courierProfileTable, eq(courierProfileTable.userId, userTable.id))
 		.where(eq(userTable.id, input.courierUserId))
 		.limit(1);
 
@@ -1476,7 +1483,8 @@ export async function queue(
 	// `orders.assign` reads a courier's availability the same lenient way, tolerating a
 	// membership with no profile at all.
 	const courierBoard = input.assignedToMe === true;
-	if (!courierBoard && !businessId) throw new ValidationError("Falta la tienda");
+	if (!courierBoard && !businessId)
+		throw new ValidationError("Falta la tienda");
 
 	if (!courierBoard) {
 		// The check and the query are one statement's worth of truth: a non-member's
@@ -1495,7 +1503,11 @@ export async function queue(
 
 		orNotFound(membership[0]);
 		if (input.locationId)
-			await assertLocationInBusiness(ctx, businessId as string, input.locationId);
+			await assertLocationInBusiness(
+				ctx,
+				businessId as string,
+				input.locationId,
+			);
 	}
 
 	// The courier's board is this flag rather than a procedure of its own: same
@@ -1517,9 +1529,7 @@ export async function queue(
 			...(input.locationId
 				? [eq(orderTable.locationId, input.locationId)]
 				: []),
-			...(courierBoard
-				? [eq(orderTable.courierUserId, ctx.user.id)]
-				: []),
+			...(courierBoard ? [eq(orderTable.courierUserId, ctx.user.id)] : []),
 		) as SQL,
 		"BUSINESS",
 	);

@@ -99,6 +99,63 @@ export function isPromotionErrorKey(
 	);
 }
 
+/**
+ * Why `orders.place` refused - as **message keys**, never as sentences.
+ *
+ * The same decision `PROMOTION_ERROR_KEYS` records, for the same reason, and it exists because
+ * a refusal the customer earned was being reported as a fault of ours. Placing an order against
+ * a shop whose hours have ended is a `ValidationError`: nothing broke, the answer is "not right
+ * now", and `apps/mobile`'s `DEFAULT_KEYS` sent `BAD_REQUEST` to `state.error.rejected` - honest,
+ * but it cannot say *which* thing to check.
+ *
+ * **The status code structurally cannot carry the reason.** `code` and `domainCode` are both the
+ * generic `BAD_REQUEST` for every refusal on this list and for a malformed request alike, so a
+ * client reading the code cannot tell a closed shop from a broken payload - only the message can.
+ * `apps/mobile/components/reorder-outcome.tsx` already says this of its own case; this is the
+ * same argument for checkout.
+ *
+ * A closed set, for `PROMOTION_ERROR_KEYS`' reason: the API cannot return an eighth reason nobody
+ * wrote words for, and a client holding an unrecognised value gets a parse failure rather than a
+ * raw key printed at a customer.
+ *
+ * `checkout.businessClosed` is the one that already existed in both dictionaries and was
+ * referenced by nothing. It is listed here rather than renamed because its words were always
+ * right; only the wiring was missing.
+ */
+export const CHECKOUT_REFUSAL_KEYS = [
+	// The one refusal that covers "not now": past hours, a pause, or a branch offline. All three
+	// are `operationalStatus(...) !== "open"` and all three are the same sentence to a customer —
+	// come back later. Splitting them would mean three keys with identical copy, and a key whose
+	// copy never differs is a distinction nobody can act on.
+	"checkout.businessClosed",
+	// A shop suspended outright, which is a different fact from being closed for the evening: it
+	// may never reopen, and it is not about the hour.
+	"checkout.refusal.shopInactive",
+	// No branch this shop can take the order at, and no `locationId` that names one.
+	"checkout.refusal.locationNotFound",
+	"checkout.refusal.emptyCart",
+	"checkout.refusal.minOrder",
+	"checkout.refusal.totalChanged",
+	"checkout.refusal.paymentUnavailable",
+] as const;
+export type CheckoutRefusalKey = (typeof CHECKOUT_REFUSAL_KEYS)[number];
+
+/**
+ * Whether a value that arrived over the wire is one of the keys above.
+ *
+ * The checkout twin of `isPromotionErrorKey`, asked once for the same reason: a client holding
+ * either a sentence from an older `DomainError` or the name of a refusal that never was one needs
+ * to tell them apart without printing a key at a customer.
+ */
+export function isCheckoutRefusalKey(
+	value: unknown,
+): value is CheckoutRefusalKey {
+	return (
+		typeof value === "string" &&
+		(CHECKOUT_REFUSAL_KEYS as readonly string[]).includes(value)
+	);
+}
+
 export const cartItemSchema = z.object({
 	id: z.string(),
 	productId: z.string(),

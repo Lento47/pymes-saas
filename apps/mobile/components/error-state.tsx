@@ -100,12 +100,29 @@ export function ErrorState({
 	 */
 	overrides,
 	title,
+	body,
 	style,
 }: {
 	error: unknown;
 	onRetry?: () => unknown;
 	overrides?: FailureOverrides;
 	title?: string;
+	/**
+	 * The sentence, when the screen has already resolved one the code cannot give it.
+	 *
+	 * `useApiFailure` chooses by code, and `code`/`domainCode` are both the generic
+	 * `BAD_REQUEST` for every refusal `orders.place` can raise *and* for a malformed request -
+	 * so the status alone cannot say which happened. When the API names the reason in the
+	 * failure's own text (see `CHECKOUT_REFUSAL_KEYS`), the screen that understands that name
+	 * resolves it and passes the finished sentence here.
+	 *
+	 * **Optional, and the default is unchanged.** Omit it and this component answers exactly as
+	 * it did before, which is why `checkout.tsx` spreads it conditionally rather than passing
+	 * `undefined`: a caller with nothing to add should not have to think about this prop. It
+	 * also keeps the iOS announcement honest - the effect below reads `message`, so a body
+	 * passed here is announced on both platforms rather than only where the live region speaks.
+	 */
+	body?: string;
 	/**
 	 * Placement, and only placement: `flex: 1` beside a dismiss control, an `alignSelf`.
 	 *
@@ -117,6 +134,9 @@ export function ErrorState({
 }) {
 	const { t } = useT();
 	const { message, supportLine } = useApiFailure(error, overrides);
+	// Resolved here rather than at the call site so the announcement and the rendered sentence
+	// cannot disagree - see the `body` docblock.
+	const sentence = body ?? message;
 	const [retrying, setRetrying] = useState(false);
 	// A ref as well as the state: the state is what the button renders and the ref is what
 	// the guard reads, because two taps inside one frame both see the pre-update value.
@@ -136,9 +156,9 @@ export function ErrorState({
 	// announcement and asking twice is a sentence read twice. `message` is empty when there is
 	// no error, and nothing is said then.
 	useEffect(() => {
-		if (!message || Platform.OS !== "ios") return;
-		AccessibilityInfo.announceForAccessibility(message);
-	}, [message]);
+		if (!sentence || Platform.OS !== "ios") return;
+		AccessibilityInfo.announceForAccessibility(sentence);
+	}, [sentence]);
 
 	return (
 		<View
@@ -150,7 +170,7 @@ export function ErrorState({
 				{title ?? t("state.error.title")}
 			</Text>
 			<Text variant="body" tone="muted" style={styles.centered}>
-				{message}
+				{sentence}
 			</Text>
 			{supportLine ? (
 				// Rendered smaller and muted: it is a thing to read *if* the problem comes

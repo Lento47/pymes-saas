@@ -28,6 +28,7 @@ export const customer = {
 		"Tu membresía terminó, así que estás en la vista de cliente.",
 	"home.categories": "Categorías",
 	"home.featured": "Recomendados",
+	"home.discover": "Productos disponibles",
 	/*
 	 * The featured grid with nothing in it, on the full list behind "Ver todo". A section on
 	 * the feed can be absent without explaining itself — it is one band among several and the
@@ -130,6 +131,12 @@ export const customer = {
 	 * already draws the same pair (`cart.promotion`: "Código de descuento").
 	 */
 	"home.promotion.code": "Código {code}",
+	"home.promotion.browse": "Ver productos",
+	"home.promotion.minimum": "Compra al menos {amount} en productos",
+	"home.promotion.eligibility": "Revisa los requisitos en tu carrito",
+	"home.minOrder.next":
+		"Agrega {amount} más de {business} para llegar al mínimo",
+	"home.minOrder.help": "Abre los productos de este negocio",
 	/*
 	 * Where the card goes, for the screen reader. A card is not a chevron row and has no
 	 * arrow to promise anything, so the destination is the half of the press that only a
@@ -164,6 +171,12 @@ export const customer = {
 	"search.clear": "Limpiar",
 
 	"category.all": "Todo",
+	"category.showAll": "Ver más subcategorías",
+	"category.showLess": "Ver menos subcategorías",
+	"category.browseAll": "Explorar otras categorías",
+	"category.products.title": "Productos disponibles",
+	"category.products.empty.title": "No hay productos disponibles ahora",
+	"category.products.empty.body": "Explora otra categoría o vuelve más tarde.",
 	/*
 	 * A slug that `catalog.categories` does not carry. It is not "no results": the link is
 	 * wrong, and the only honest thing to do with a wrong link is say so. No apology and no
@@ -185,6 +198,7 @@ export const customer = {
 	"category.empty.body": "Mira otra categoría, o busca por nombre.",
 
 	"store.title": "Negocio",
+	"store.promotion.ready": "Usa este código en tu carrito",
 	"store.open": "Abierto",
 	"store.closed": "Cerrado",
 	"store.closed.until": "Cerrado · abre {time}",
@@ -332,6 +346,7 @@ export const customer = {
 	"product.badge.popular": "Popular",
 	"product.badge.shipping": "Domicilio",
 	"product.add": "Agregar",
+	"product.addToCart": "Agregar al carrito",
 	/* The quick-add target names the product: a bare "Agregar" is indistinguishable
 	 * between rows once a card's own label has replaced its children for a reader. */
 	"product.add.named": "Agregar {name}",
@@ -378,6 +393,7 @@ export const customer = {
 	/* Marks an option group the customer must choose from before the product can be added. */
 	"product.required": "Obligatorio",
 	"product.notes": "Notas para el negocio",
+	"product.notes.add": "Agregar una nota (opcional)",
 	"product.notes.placeholder": "Sin cebolla, por favor",
 	"product.soldOut": "Agotado",
 	/*
@@ -423,10 +439,11 @@ export const customer = {
 	 * be reused here — a bar button and a screen heading are not the same string. */
 	"cart.bar.viewCart": "Ver carrito",
 	"cart.bar.checkout": "Ir al pago",
+	"cart.bar.addItems": "Agregar productos",
 	"cart.title": "Tu carrito",
 	"cart.empty.title": "Tu carrito está vacío",
-	"cart.empty.body": "Cuando agregues algo, aparece aquí.",
-	"cart.empty.action": "Ver negocios cerca",
+	"cart.empty.body": "Encuentra algo que te guste y aparecerá aquí.",
+	"cart.empty.action": "Explorar productos",
 	"cart.item.remove": "Quitar",
 	"cart.item.unavailable": "Este producto ya no está disponible y lo quitamos",
 	"cart.subtotal": "Subtotal",
@@ -435,11 +452,16 @@ export const customer = {
 	"cart.tax": "Impuestos",
 	"cart.tip": "Propina",
 	"cart.total": "Total",
+	"cart.itemsTotal": "Total de productos",
+	"cart.deliveryAtCheckout": "El costo de envío, si aplica, aparece al pagar.",
 	"cart.checkout": "Continuar al pago",
+	"cart.moreFromShop": "Agregar más de este negocio",
+	"cart.promotion.addProducts": "Agrega productos para usar este código",
 	"cart.minOrderMissing": "Te faltan {amount} para el pedido mínimo",
 	"cart.promotion": "Código de descuento",
 	"cart.promotion.apply": "Aplicar",
 	"cart.promotion.applied": "Código {code} aplicado",
+	"cart.promotion.suggested": "Código {code} listo para aplicar",
 	/*
 	 * The toast after a code is taken off. It names no code, and that is deliberate: by the time
 	 * this is shown the code has already gone from the cart the customer is looking at, and a
@@ -487,18 +509,46 @@ export const customer = {
 	"checkout.address.add": "Agregar dirección",
 	"checkout.address.none": "Necesitas una dirección para que te lo entreguen",
 	"checkout.payment": "Forma de pago",
-	"checkout.payment.cash": "Efectivo al recibir",
+	"checkout.payment.cash": "Efectivo",
 	"checkout.payment.sinpe": "SINPE Móvil",
 	"checkout.payment.note":
 		"El pago se coordina con el negocio. Todavía no cobramos en la app.",
 	"checkout.tip": "Propina para el negocio",
 	"checkout.tip.none": "Sin propina",
 	"checkout.notes": "Notas del pedido",
+	"checkout.notes.add": "Agregar notas al pedido (opcional)",
 	"checkout.place": "Hacer el pedido",
 	"checkout.placing": "Enviando tu pedido…",
 	"checkout.businessClosed": "El negocio está cerrado ahora mismo",
 	"checkout.estimate": "Tiempo estimado: {minutes} min",
 	"checkout.failed": "No pudimos hacer el pedido",
+
+	/* Por qué `orders.place` dijo que no — ver `CHECKOUT_REFUSAL_KEYS` en `@pymeshub/shared`.
+	   Estas son las razones por las que una petición puede fallar, y cada una es la frase que la
+	   nombra. Una negativa que el cliente se ganó no es culpa nuestra y no puede leerse como
+	   tal: `BAD_REQUEST` es el mismo código para todas ellas y para una petición mal formada.
+
+	   `shopInactive` dice "en este momento" a propósito, y no "para siempre": una tienda
+	   suspendida puede reabrir, y el cliente tiene que poder volver. `checkout.businessClosed`
+	   cubre todo lo que sea "ahora no" —fuera de horario, en pausa, o una sucursal caída—
+	   porque para el cliente es una sola frase.
+
+	   `emptyCart` no es una pantalla vacía —allí el carrito se ve, con lo que
+	   tiene— sino una petición que llegó sin nada que pedir, y por eso no reutiliza
+	   `cart.empty.title`, que es un encabezado. `minOrder` habla del pedido y no del carrito
+	   porque es el pedido el que no llega; el monto que falta lo formatea esta pantalla con
+	   `details.minimumMinor`, y por eso el cliente ve la frase con la cantidad y no
+	   `checkout.refusal.minOrder` a secas. */
+	"checkout.refusal.shopInactive":
+		"Esta tienda no está aceptando pedidos en este momento.",
+	"checkout.refusal.locationNotFound":
+		"No pudimos encontrar a dónde enviar este pedido.",
+	"checkout.refusal.emptyCart": "Tu carrito está vacío.",
+	"checkout.refusal.minOrder": "Este pedido no alcanza el mínimo de la tienda.",
+	"checkout.refusal.totalChanged":
+		"El total cambió. Revisa el pedido y confirma de nuevo.",
+	"checkout.refusal.paymentUnavailable":
+		"Ese método de pago todavía no está disponible.",
 
 	"order.title": "Pedido",
 	"order.number": "Pedido {code}",

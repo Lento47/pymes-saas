@@ -5,6 +5,7 @@ import {
 	type Currency,
 	type FulfilmentKind,
 	formatMoney,
+	isCheckoutRefusalKey,
 	type PaymentMethod,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { StepProgress } from "@/components/step-progress";
 import { BarTotal, SummaryCard } from "@/components/summary-card";
 import { Text } from "@/components/text";
+import { toApiFailure } from "@/lib/api-error";
 import { getDefaultFulfilment, initDevicePrefs } from "@/lib/device-prefs";
 import { selection, success } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
@@ -147,9 +149,8 @@ import {
  * announced as selected, and it fires the `selection` haptic itself under the same-value
  * guard, so the call site here no longer repeats either.
  *
- * The two other sets are pickers too, and both keep the radio state they had: payment stays
- * a pair of `selected` buttons, and the addresses are drawn by `./`'s own `AddressPicker`
- * below, which is a radio group in either of its two shapes.
+ * Payment uses the same compact radio group, so its selected method does not compete with
+ * the lime Continue button. Addresses keep `AddressPicker`'s radio group in either shape.
  *
  * ## Placing the order is not optimistic
  *
@@ -237,6 +238,7 @@ function CheckoutForm({
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
 	const [addressId, setAddressId] = useState<string>();
 	const [notes, setNotes] = useState("");
+	const [notesOpen, setNotesOpen] = useState(false);
 
 	// The customer's own default, read once. Until storage answers the screen
 	// holds PICKUP — the same value a fresh install behaves as — so the first
@@ -333,6 +335,31 @@ function CheckoutForm({
 					currency: order.totals.currency,
 				});
 			},
+			/**
+			 * The other half of the retry contract, and the half that was missing.
+			 *
+			 * `orders.place` takes a claim on the request id *before* its write batch
+			 * (`packages/trpc-api/src/services/orders.ts:387`). The batch is atomic, so a
+			 * failure inside it writes nothing - but the claim, which is taken outside it,
+			 * survives with no order behind it. The server waits for that order id, does not
+			 * find it, and answers `ConflictError`: "tu pedido anterior no terminó de
+			 * registrarse".
+			 *
+			 * That is only reachable on a retry, and only because `submit()` reuses
+			 * `requestId.current` via `??=`. So the second tap after a failure re-sent the id
+			 * that was already spent and got a misleading error about a previous order
+			 * instead of a clean retry. Clearing it here makes the next tap a genuinely new
+			 * attempt, which is what the server's own comment at `orders.ts:602-606` says
+			 * the client supplies.
+			 *
+			 * Clearing on *every* error is safe, not just this one. A `ValidationError` is
+			 * thrown before the claim is taken, so there was never a claim to strand; and a
+			 * race genuinely lost is answered with the order itself rather than an error, so
+			 * this cannot discard a real order.
+			 */
+			onError: () => {
+				requestId.current = null;
+			},
 		}),
 	);
 
@@ -349,6 +376,8 @@ function CheckoutForm({
 	// bought nothing: `submit()` sends `expectedTotalMinor`, so a quote that moved is refused
 	// rather than charged, and the tap that arrives mid-poll is answered by the API either way.
 	const quoteless = !quote.data;
+	const hasItems = Boolean(cart.data?.items.length);
+	const businessSlug = cart.data?.businessSlug;
 	const last = step === STEPS.length - 1;
 
 	/**
@@ -429,13 +458,8 @@ function CheckoutForm({
 		);
 	}
 
-	// The two pickers that are still buttons, each with the guard that keeps the haptic honest:
-	// `selection()` is for a choice that landed, and tapping the option that is already on
-	// commits nothing. The fulfilment kind's guard lives in `./segmented`, which fires it.
-	function pickPayment(next: PaymentMethod) {
-		if (next === paymentMethod) return;
-		selection();
-		setPaymentMethod(next);
+	function pickPayment(next: string) {
+		if (next === "CASH" || next === "SINPE_MOVIL") setPaymentMethod(next);
 	}
 
 	function pickAddress(next: string) {
@@ -498,8 +522,8 @@ function CheckoutForm({
 		const name = STEPS[next];
 		if (!name) return;
 		setStep(next);
-		// `t(STEPS[next])` is the heading the arriving body draws (`checkout.tsx:538`, `:616`,
-		// `:649`), so the announcement names the screen the customer is now on rather than counts it.
+		// The progress heading names the arriving step, so the announcement names the
+		// customer's next decision rather than only counting it.
 		AccessibilityInfo.announceForAccessibility(t(name));
 	}
 
@@ -512,7 +536,7 @@ function CheckoutForm({
 	 * it is, and repeating it a screen-width lower would be the same sentence twice.
 	 */
 	function blockedReason(): string | null {
-		if (short && quote.data) {
+		if (short && quote.data && hasItems) {
 			return t("cart.minOrderMissing", {
 				amount: formatMoney(
 					quote.data.missingForMinOrderMinor,
@@ -528,6 +552,54 @@ function CheckoutForm({
 	}
 
 	const blocked = blockedReason();
+
+	/**
+	 * The reason the API gave, as a sentence, when it named one this screen can read.
+	 *
+	 * `orders.place` refuses with a **message key** in the `DomainError`'s text rather than a
+	 * Spanish sentence (`CHECKOUT_REFUSAL_KEYS` in `@pymeshub/shared`). Without this the refusal
+	 * reached the customer as `state.error.rejected` - honest, since nothing was broken, but it
+	 * cannot say *which* thing to check, and the answer to "the business is closed right now"
+	 * is not "check the details".
+	 *
+	 * **Keyed on `serverMessage`, never on the code.** `code` and `domainCode` are both the
+	 * generic `BAD_REQUEST` for every refusal on that list *and* for a malformed request, so the
+	 * code cannot tell a closed shop from a broken payload and the sentence can. This is the
+	 * same argument `components/reorder-outcome.tsx` makes for its own case.
+	 *
+	 * `isCheckoutRefusalKey` is what keeps a raw key off the screen: an unrecognised value - an
+	 * older API still sending prose, a newer one naming a reason this build has no words for -
+	 * falls through to `null`, and the caller keeps `state.error.rejected`. Returning `null`
+	 * rather than the key itself is the whole point of the guard.
+	 */
+	const placeReason = ((): string | null => {
+		if (!place.error) return null;
+		// Read once: `toApiFailure` re-derives the shape from the throw on every call, and the
+		// two reads here want the *same* failure — `serverMessage` names the reason and
+		// `details` carries what the sentence needs to fill in.
+		const { serverMessage, details } = toApiFailure(place.error);
+		if (!isCheckoutRefusalKey(serverMessage)) return null;
+		// The minimum is the one refusal whose sentence has a blank in it, and the blank is
+		// filled from `details.minimumMinor` rather than from the key: the API sends the shop's
+		// minimum, and `blockedReason()` above formats the same fact from the quote before the
+		// tap is even possible. This is the sentence under the button that failed, for the case
+		// where the quote moved between the two.
+		if (serverMessage === "checkout.refusal.minOrder") {
+			const minimumMinor =
+				(details as { minimumMinor?: number } | null)?.minimumMinor ??
+				quote.data?.missingForMinOrderMinor;
+			if (minimumMinor != null) {
+				return t("cart.minOrderMissing", {
+					amount: formatMoney(
+						minimumMinor,
+						quote.data?.currency ?? ("CRC" as Currency),
+						{ locale: intlLocale },
+					),
+				});
+			}
+		}
+		return t(serverMessage);
+	})();
 
 	return (
 		<>
@@ -581,9 +653,6 @@ function CheckoutForm({
 				{step === 0 ? (
 					<AnimateIn key="fulfilment" index={1}>
 						<View style={styles.group}>
-							<Text variant="heading" bold>
-								{t("checkout.fulfilment")}
-							</Text>
 							{/* Only the kinds this shop does — see the note at `collects`/`delivers`.
 							    A one-option group is a statement rather than a choice, and that is
 							    what it should be: it names the only way this order leaves this
@@ -607,13 +676,19 @@ function CheckoutForm({
 										: []),
 								]}
 							/>
+							{quote.isError && quoteless && hasItems ? (
+								<ErrorState
+									error={quote.error}
+									onRetry={() => void quote.refetch()}
+								/>
+							) : null}
 
 							{/* The fee, directly under the control that decides it — see the docblock.
 							    `DELIVERY` only, because it is the mode with a fee to name; and no
 							    loading branch, because an amount the quote has not answered yet draws
 							    `MoneyLine`'s own skeleton, so the switch shows the shape of the row
 							    rather than the previous kind's number or none at all. */}
-							{fulfilment === "DELIVERY" ? (
+							{fulfilment === "DELIVERY" && (!quote.isError || quote.data) ? (
 								<MoneyLine
 									label={t("cart.delivery")}
 									amountMinor={quote.data?.deliveryFeeMinor}
@@ -673,32 +748,24 @@ function CheckoutForm({
 				{step === 1 ? (
 					<AnimateIn key="payment" index={1}>
 						<View style={styles.group}>
-							<Text variant="heading" bold>
-								{t("checkout.payment")}
-							</Text>
-							<View
-								style={styles.choice}
-								accessibilityRole="radiogroup"
-								accessibilityLabel={t("checkout.payment")}
-							>
-								<Button
-									label={t("checkout.payment.cash")}
-									selected={paymentMethod === "CASH"}
-									variant={paymentMethod === "CASH" ? "primary" : "secondary"}
-									onPress={() => pickPayment("CASH")}
-								/>
-								<Button
-									label={t("checkout.payment.sinpe")}
-									selected={paymentMethod === "SINPE_MOVIL"}
-									variant={
-										paymentMethod === "SINPE_MOVIL" ? "primary" : "secondary"
-									}
-									onPress={() => pickPayment("SINPE_MOVIL")}
-								/>
-							</View>
+							<Segmented
+								label={t("checkout.payment")}
+								value={paymentMethod}
+								onChange={pickPayment}
+								options={[
+									{ value: "CASH", label: t("checkout.payment.cash") },
+									{ value: "SINPE_MOVIL", label: t("checkout.payment.sinpe") },
+								]}
+							/>
 							<Text variant="label" tone="muted">
 								{t("checkout.payment.note")}
 							</Text>
+							{quote.isError && quoteless && hasItems ? (
+								<ErrorState
+									error={quote.error}
+									onRetry={() => void quote.refetch()}
+								/>
+							) : null}
 						</View>
 					</AnimateIn>
 				) : null}
@@ -706,9 +773,6 @@ function CheckoutForm({
 				{step === 2 ? (
 					<AnimateIn key="review" index={1}>
 						<View style={styles.group}>
-							<Text variant="heading" bold>
-								{t("order.items")}
-							</Text>
 							{cart.isError ? (
 								<ErrorState
 									error={cart.error}
@@ -744,7 +808,7 @@ function CheckoutForm({
 									</AnimateIn>
 								))
 							) : (
-								// The branch this step was missing — the heading above it used to render
+								// The branch this step was missing — the progress heading used to render
 								// with nothing under it and no sentence, which is the one gap in the app's
 								// load/empty/error triad. It is reachable rather than defensive: `cart.quote`
 								// answers an empty cart with zeroed totals instead of refusing, so `short`
@@ -756,8 +820,11 @@ function CheckoutForm({
 								// Nothing else has to say the order cannot be placed: the bar's button is
 								// disabled by this same emptiness.
 								<EmptyState
+									icon="bag-outline"
 									title={t("cart.empty.title")}
+									body={t("cart.empty.body")}
 									actionLabel={t("cart.empty.action")}
+									actionVariant="primary"
 									onAction={() => router.replace("/")}
 								/>
 							)}
@@ -793,26 +860,59 @@ function CheckoutForm({
 										/>
 									)}
 
-									<Field
-										label={t("checkout.notes")}
-										value={notes}
-										onChangeText={setNotes}
-										multiline
-										maxLength={500}
-									/>
+									{notesOpen ? (
+										<Field
+											label={t("checkout.notes")}
+											value={notes}
+											onChangeText={setNotes}
+											multiline
+											maxLength={500}
+										/>
+									) : (
+										<Button
+											label={t("checkout.notes.add")}
+											variant="ghost"
+											size="sm"
+											onPress={() => setNotesOpen(true)}
+										/>
+									)}
 								</View>
 							</AnimateIn>
 						</View>
 					</AnimateIn>
 				) : null}
+
+				{step < 2 && cart.isError && !cart.data ? (
+					<ErrorState error={cart.error} onRetry={() => void cart.refetch()} />
+				) : null}
+				{step < 2 && cart.data && !hasItems ? (
+					<EmptyState
+						icon="bag-outline"
+						title={t("cart.empty.title")}
+						body={t("cart.empty.body")}
+						actionLabel={t("cart.empty.action")}
+						actionVariant="primary"
+						onAction={() => router.replace("/")}
+					/>
+				) : null}
 			</ScrollView>
 
 			{/* A failed place belongs where the button that failed is: the customer taps "Hacer el
 			    pedido", it does not happen, and the sentence explaining it appears directly above
-			    that button rather than at the bottom of a receipt they have already scrolled past. */}
+			    that button rather than at the bottom of a receipt they have already scrolled past.
+
+			    `placeReason` is the API's own reason when it named one (`placeReason`'s docblock),
+			    and `ErrorState` answers the rest: an unrecognised failure keeps
+			    `state.error.rejected`, which says a thing was refused without claiming fault. The
+			    title stays `checkout.failed` in both branches because "We couldn't place your
+			    order" is true either way, and the body is the part that differs. */}
 			{place.error ? (
 				<View style={styles.above}>
-					<ErrorState error={place.error} title={t("checkout.failed")} />
+					<ErrorState
+						error={place.error}
+						title={t("checkout.failed")}
+						{...(placeReason ? { body: placeReason } : {})}
+					/>
 				</View>
 			) : null}
 
@@ -821,6 +921,19 @@ function CheckoutForm({
 					<Text variant="label" tone="muted">
 						{blocked}
 					</Text>
+					{short && hasItems && businessSlug ? (
+						<Button
+							label={t("cart.moreFromShop")}
+							variant="ghost"
+							size="sm"
+							onPress={() =>
+								router.push({
+									pathname: "/store/[slug]",
+									params: { slug: businessSlug },
+								})
+							}
+						/>
+					) : null}
 				</View>
 			) : null}
 
@@ -865,11 +978,7 @@ function CheckoutForm({
 									: t("checkout.place"),
 								onPress: submit,
 								loading: place.isPending,
-								disabled:
-									!cart.data?.items.length ||
-									quoteless ||
-									short ||
-									needsAddress,
+								disabled: !hasItems || quoteless || short || needsAddress,
 								// The same sentence the strip carries, for a reader who reached the
 								// button without passing it.
 								accessibilityHint: blocked ?? undefined,
@@ -877,8 +986,12 @@ function CheckoutForm({
 						: {
 								label: t("action.continue"),
 								onPress: () => goToStep(step + 1),
-								disabled: needsAddress,
-								accessibilityHint: blocked ?? undefined,
+								disabled: !hasItems || quoteless || short || needsAddress,
+								accessibilityHint:
+									blocked ??
+									(quoteless
+										? t(quote.isError ? "state.error.title" : "state.loading")
+										: undefined),
 							}
 				}
 			/>
@@ -1040,7 +1153,7 @@ const styles = StyleSheet.create({
 	// one shape to match.
 	blockSkeleton: { height: MIN_TOUCH_TARGET },
 	// The strip above the bar, for the sentences that explain why its button is off.
-	why: { paddingHorizontal: space.lg, paddingBottom: space.sm },
+	why: { paddingHorizontal: space.lg, paddingBottom: space.sm, gap: space.xs },
 	above: { paddingHorizontal: space.lg },
 	// The bar's summary, when it also has to hold the way back.
 	summary: { flexDirection: "row", alignItems: "center", gap: space.md },

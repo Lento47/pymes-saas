@@ -58,6 +58,14 @@ export const common = {
 	"state.empty": "Nothing here yet",
 	"state.error.title": "We couldn't load this",
 	"state.error.body": "That's on our side, not yours. Try again in a moment.",
+	/* For a refusal the *request* earned — a `BAD_REQUEST` or a `CONFLICT`, where the API
+	   decided the answer rather than failing to produce one. Placing an order at 22:07
+	   against a shop whose hours end at 20:00 is a `ValidationError`: nothing broke, the
+	   answer is "not right now", and it is not ours to apologise for. Saying `on our side`
+	   there sent the customer to support with a request id for a closed shop — see
+	   `apps/mobile/lib/api-error.ts` and its `DEFAULT_KEYS`. */
+	"state.error.rejected":
+		"We couldn't do that. Check the details and try again.",
 	/* The one-line form, for a failed action inside a working screen — see the Spanish
 	   file's note. `On our end` rather than `our side` so the short line reads as one
 	   sentence on its own and not as a truncation of the one above. */

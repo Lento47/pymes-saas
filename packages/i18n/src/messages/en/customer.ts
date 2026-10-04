@@ -20,6 +20,7 @@ export const customer = {
 		"Your membership has ended, so this is the customer view.",
 	"home.categories": "Categories",
 	"home.featured": "Recommended",
+	"home.discover": "Available products",
 	/* The featured page with nothing in it — see the Spanish file's note on why it is not a search-empty state. */
 	"home.featured.empty.title": "Nothing recommended yet",
 	"home.featured.empty.body":
@@ -50,6 +51,12 @@ export const customer = {
 	/* The code, drawn and spoken as one string — see the Spanish file's note on why it is a
 	   chip and why it is not a bare `{code}`. */
 	"home.promotion.code": "Code {code}",
+	"home.promotion.browse": "Browse products",
+	"home.promotion.minimum": "Spend at least {amount} on products",
+	"home.promotion.eligibility": "Check offer requirements in your cart",
+	"home.minOrder.next":
+		"Add {amount} more from {business} to reach the minimum",
+	"home.minOrder.help": "Opens this business's products",
 	/*
 	 * Where the card goes, for the screen reader. A card is not a chevron row and has no
 	 * arrow to promise anything, so the destination is the half of the press that only a
@@ -71,6 +78,13 @@ export const customer = {
 	"search.clear": "Clear",
 
 	"category.all": "All",
+	"category.showAll": "Show more subcategories",
+	"category.showLess": "Show fewer subcategories",
+	"category.browseAll": "Explore other categories",
+	"category.products.title": "Available products",
+	"category.products.empty.title": "No products available right now",
+	"category.products.empty.body":
+		"Explore another category or check back later.",
 	/*
 	 * A slug that `catalog.categories` does not carry. It is not "no results": the link is
 	 * wrong, and the only honest thing to do with a wrong link is say so. No apology and no
@@ -89,6 +103,7 @@ export const customer = {
 	"category.empty.body": "Look at another category, or search by name.",
 
 	"store.title": "Business",
+	"store.promotion.ready": "Use this code in your cart",
 	"store.open": "Open",
 	"store.closed": "Closed",
 	"store.closed.until": "Closed · opens {time}",
@@ -143,6 +158,7 @@ export const customer = {
 	"product.badge.popular": "Popular",
 	"product.badge.shipping": "Delivery",
 	"product.add": "Add",
+	"product.addToCart": "Add to cart",
 	/* The quick-add target names the product: a bare "Add" is indistinguishable between
 	 * rows once a card's own label has replaced its children for a reader. */
 	"product.add.named": "Add {name}",
@@ -158,6 +174,7 @@ export const customer = {
 	"product.quantity.increase": "Add one",
 	"product.required": "Required",
 	"product.notes": "Notes for the business",
+	"product.notes.add": "Add a note (optional)",
 	"product.notes.placeholder": "No onion, please",
 	"product.soldOut": "Sold out",
 	/* The sold count under the title, drawn only above zero — see the Spanish file's note on why it is not `product.soldOut`. */
@@ -186,10 +203,11 @@ export const customer = {
 	 * `cart.title` and `cart.checkout` cannot be reused here. See the Spanish file. */
 	"cart.bar.viewCart": "View cart",
 	"cart.bar.checkout": "Checkout",
+	"cart.bar.addItems": "Add items",
 	"cart.title": "Your cart",
 	"cart.empty.title": "Your cart is empty",
-	"cart.empty.body": "Anything you add shows up here.",
-	"cart.empty.action": "See businesses nearby",
+	"cart.empty.body": "Find something you like and it will appear here.",
+	"cart.empty.action": "Explore products",
 	"cart.item.remove": "Remove",
 	"cart.item.unavailable":
 		"This product isn't available anymore, so we removed it",
@@ -199,11 +217,16 @@ export const customer = {
 	"cart.tax": "Taxes",
 	"cart.tip": "Tip",
 	"cart.total": "Total",
+	"cart.itemsTotal": "Items total",
+	"cart.deliveryAtCheckout": "Delivery cost, if any, appears at checkout.",
 	"cart.checkout": "Continue to checkout",
+	"cart.moreFromShop": "Add more from this shop",
+	"cart.promotion.addProducts": "Add items to use this code",
 	"cart.minOrderMissing": "You're {amount} away from the minimum order",
 	"cart.promotion": "Promo code",
 	"cart.promotion.apply": "Apply",
 	"cart.promotion.applied": "Code {code} applied",
+	"cart.promotion.suggested": "Code {code} ready to apply",
 	/* The toast after a code is taken off — see the Spanish file's note on why it names no code. */
 	"cart.promotion.removed": "Code removed",
 	/* `state.saving` is "Saving…" and a removal is not a save. See the Spanish entry. */
@@ -228,18 +251,43 @@ export const customer = {
 	"checkout.address.add": "Add address",
 	"checkout.address.none": "You need an address to have it delivered",
 	"checkout.payment": "Payment method",
-	"checkout.payment.cash": "Cash on delivery",
+	"checkout.payment.cash": "Cash",
 	"checkout.payment.sinpe": "SINPE Móvil",
 	"checkout.payment.note":
 		"Payment is arranged with the business. We don't charge in the app yet.",
 	"checkout.tip": "Tip for the business",
 	"checkout.tip.none": "No tip",
 	"checkout.notes": "Order notes",
+	"checkout.notes.add": "Add order notes (optional)",
 	"checkout.place": "Place order",
 	"checkout.placing": "Sending your order…",
 	"checkout.businessClosed": "The business is closed right now",
 	"checkout.estimate": "Estimated time: {minutes} min",
 	"checkout.failed": "We couldn't place your order",
+
+	/* Why `orders.place` said no, as keys rather than sentences - see
+	   `CHECKOUT_REFUSAL_KEYS` in `@pymeshub/shared`. These arrive as the *message* of a failed
+	   request, so each is the one sentence naming the refusal. A refusal the customer earned is
+	   not a fault of ours and must not read as one, and `BAD_REQUEST` alone cannot say which of
+	   these it was: the status is identical for every one of them and for a malformed request
+	   besides.
+
+	   Deliberately a `refusal.` segment rather than reusing the cart's keys. `cart.empty.title`
+	   and `cart.minOrderMissing` are screen copy - a heading, and a sentence with an `{amount}`
+	   the cart formats - while these are reasons a request failed, and one name cannot be two
+	   things at once. `checkout.businessClosed` covers every "not right now" the shop can be in,
+	   hours or a pause or a branch offline, because they are one sentence to the customer.
+	   The Spanish file carries the note on why each is worded as it is. */
+	"checkout.refusal.shopInactive":
+		"This shop isn't accepting orders at the moment.",
+	"checkout.refusal.locationNotFound":
+		"We couldn't find where to send this order.",
+	"checkout.refusal.emptyCart": "Your cart is empty.",
+	"checkout.refusal.minOrder": "This order hasn't reached the shop's minimum.",
+	"checkout.refusal.totalChanged":
+		"The total changed. Check the order and confirm again.",
+	"checkout.refusal.paymentUnavailable":
+		"That payment method isn't available yet.",
 
 	"order.title": "Order",
 	"order.number": "Order {code}",

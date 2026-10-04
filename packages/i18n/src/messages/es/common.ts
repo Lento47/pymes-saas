@@ -110,6 +110,16 @@ export const common = {
 	"state.error.body":
 		"Es de nuestro lado, no tuyo. Intenta de nuevo en un momento.",
 	/*
+	 * Para una negativa que la*petición*se ganó — un `BAD_REQUEST` o un `CONFLICT`, donde la
+	 * API decidió la respuesta en vez de fallar al producirla. Pedir un pedido a las 22:07 en
+	 * una tienda que cierra a las 20:00 es un `ValidationError`: no se rompió nada, la
+	 * respuesta es "ahora no", y no es cosa nuestra disculparse. Decir "es de nuestro lado"
+	 * ahí mandó al cliente a soporte con un código de petición por una tienda cerrada — ver
+	 * `apps/mobile/lib/api-error.ts` y su `DEFAULT_KEYS`.
+	 */
+	"state.error.rejected":
+		"No pudimos hacer eso. Revisa los detalles e inténtalo de nuevo.",
+	/*
 	 * The one-line sibling of `state.error.body`, for a failed *action* rather than a failed
 	 * screen: it sits under the button that did not work, in a screen that is otherwise fine.
 	 * "Es de nuestro lado, no tuyo. Intenta de nuevo en un momento." is the right sentence

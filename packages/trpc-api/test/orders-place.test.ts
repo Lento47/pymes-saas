@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addToCartInput } from "@pymeshub/shared";
+import { addToCartInput, isCheckoutRefusalKey } from "@pymeshub/shared";
 
 import { appRouter } from "../src/routers";
 import {
@@ -258,5 +258,186 @@ describe("placing an order", () => {
 		expect(count(test.sqlite, "order")).toBe(1);
 
 		test.close();
+	});
+
+	/**
+	 * Every refusal is a **message key**, and this is the test that keeps it that way.
+	 *
+	 * The customer was shown "that's on our side, not yours" for a shop that was simply closed,
+	 * because `api-error.ts` maps `BAD_REQUEST` to a generic sentence and the API's own Spanish
+	 * was discarded unread. The fix routes the reason as a key from `CHECKOUT_REFUSAL_KEYS`
+	 * instead, and the reason a contract like that decays is that a Spanish string is easier to
+	 * type than a key and nothing complains. So: assert the *membership*, not the wording.
+	 *
+	 * Asserting on the sentence would be the wrong test twice over — it would pin prose that
+	 * translators own, and it would pass just as happily on a key that happened to be spelled
+	 * like the sentence it replaced.
+	 */
+	describe("every refusal names itself with a key the client can resolve", () => {
+		/** Closed for the whole week, which is what "not open" means to `isOpenAt`. */
+		const ALWAYS_CLOSED = JSON.stringify(
+			Array.from({ length: 7 }, (_, day) => ({
+				day,
+				opensMinute: 600,
+				closesMinute: 1200,
+				isClosed: true,
+			})),
+		);
+
+		/**
+		 * The refusal's own text, with a basket in place and exactly one thing wrong.
+		 *
+		 * Each case arranges one fault so a failure names its own cause rather than "some
+		 * refusal happened". `withBasket` is a parameter and not something `arrange` returns
+		 * because an earlier version inferred it from the callback's value — and a callback
+		 * that arranges a fault and returns nothing left the basket empty, so every case
+		 * measured `checkout.refusal.emptyCart` and the suite passed for the wrong reason.
+		 */
+		async function refusalText(
+			arrange: (test: Test) => void,
+			withBasket = true,
+		): Promise<string> {
+			const test = world();
+			const shopId = await seedBusiness(test.db, { id: "biz_refusal_shop" });
+			await seedProduct(test.db, {
+				id: "prd_refusal_item",
+				businessId: shopId,
+				priceMinor: 1750,
+			});
+			const customer = await seedUser(test.db, { id: "usr_refusal_customer" });
+			const caller = appRouter.createCaller(
+				await authed(test, customer),
+			) as Caller;
+
+			if (withBasket) {
+				await caller.cart.addItem(
+					addToCartInput.parse({ productId: "prd_refusal_item", quantity: 1 }),
+				);
+			}
+			// After the basket, so a fault that would refuse the *add* does not mask the one
+			// under test.
+			arrange(test);
+
+			const error = await refused(
+				caller.orders.place({
+					fulfilment: "PICKUP",
+					paymentMethod: CASH,
+					clientRequestId: "req_refusal_shared",
+				}),
+			);
+			test.close();
+			return error.userMessage;
+		}
+
+		test("a shop that is not open answers with a key, not a sentence", async () => {
+			// The case that reached a customer: 22:07, past closing, told it was our fault.
+			const message = await refusalText((test) => {
+				// `merchant_location`, not `location`: the schema's export is `merchantLocation`
+				// and the two do not agree, which is the kind of thing a spec finds by running.
+				test.sqlite
+					.prepare(
+						"update merchant_location set hours = ? where business_id = ?",
+					)
+					.run(ALWAYS_CLOSED, "biz_refusal_shop");
+			});
+			expect(isCheckoutRefusalKey(message)).toBe(true);
+			expect(message).toBe("checkout.businessClosed");
+		});
+
+		test("a suspended shop answers with its own key", async () => {
+			const message = await refusalText((test) => {
+				test.sqlite
+					.prepare("update business set status = 'SUSPENDED' where id = ?")
+					.run("biz_refusal_shop");
+			});
+			expect(isCheckoutRefusalKey(message)).toBe(true);
+			expect(message).toBe("checkout.refusal.shopInactive");
+		});
+
+		test("an order below the minimum answers with a key and keeps the amount", async () => {
+			const test = world();
+			const shopId = await seedBusiness(test.db, { id: "biz_refusal_min" });
+			await seedProduct(test.db, {
+				id: "prd_refusal_min_item",
+				businessId: shopId,
+				priceMinor: 900,
+			});
+			test.sqlite
+				.prepare("update business set min_order_minor = 5000 where id = ?")
+				.run(shopId);
+			const customer = await seedUser(test.db, {
+				id: "usr_refusal_min_customer",
+			});
+			const caller = appRouter.createCaller(
+				await authed(test, customer),
+			) as Caller;
+			await caller.cart.addItem(
+				addToCartInput.parse({
+					productId: "prd_refusal_min_item",
+					quantity: 1,
+				}),
+			);
+
+			const error = await refused(
+				caller.orders.place({
+					fulfilment: "PICKUP",
+					paymentMethod: CASH,
+					clientRequestId: "req_refusal_min",
+				}),
+			);
+			// The key travels in the text; the amount the customer is short of stays in
+			// `details`, because `blockedReason()` reads it and a key cannot carry a number.
+			expect(error.userMessage).toBe("checkout.refusal.minOrder");
+			expect(isCheckoutRefusalKey(error.userMessage)).toBe(true);
+			expect(error.details).toMatchObject({ minimumMinor: 5000 });
+
+			test.close();
+		});
+
+		test("an empty cart answers with a key", async () => {
+			// No basket at all, so the refusal is the first check rather than a side effect of
+			// whatever else the helper arranged.
+			const message = await refusalText(() => {}, false);
+			expect(isCheckoutRefusalKey(message)).toBe(true);
+			expect(message).toBe("checkout.refusal.emptyCart");
+		});
+
+		test("a total that moved answers with a key, and is a CONFLICT", async () => {
+			const test = world();
+			await seedBusiness(test.db, { id: "biz_refusal_total" });
+			await seedProduct(test.db, {
+				id: "prd_refusal_total_item",
+				businessId: "biz_refusal_total",
+				priceMinor: 1750,
+			});
+			const customer = await seedUser(test.db, { id: "usr_refusal_total" });
+			const caller = appRouter.createCaller(
+				await authed(test, customer),
+			) as Caller;
+			await caller.cart.addItem(
+				addToCartInput.parse({
+					productId: "prd_refusal_total_item",
+					quantity: 1,
+				}),
+			);
+
+			const error = await refused(
+				caller.orders.place({
+					fulfilment: "PICKUP",
+					paymentMethod: CASH,
+					clientRequestId: "req_refusal_total",
+					// What the customer agreed to, which the rows no longer add up to.
+					expectedTotalMinor: 1,
+				}),
+			);
+			// `CONFLICT` and not `BAD_REQUEST`: the order is fine, the number they confirmed
+			// is not — a different code from the seven above, and the client's `CONFLICT`
+			// sentence has to be the same kind of refusal as its `BAD_REQUEST` ones.
+			expect(error.code).toBe("CONFLICT");
+			expect(error.userMessage).toBe("checkout.refusal.totalChanged");
+			expect(isCheckoutRefusalKey(error.userMessage)).toBe(true);
+
+			test.close();
+		});
 	});
 });
