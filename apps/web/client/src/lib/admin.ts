@@ -360,11 +360,19 @@ export const adminApi = {
   // default sort is `arrears` for that reason: someone opening it is looking for debt.
 
   subscriptions: async (
-    input: Partial<{
-      search: string;
-      status: SubscriptionStatus;
-      sort: "arrears" | "periodEnd" | "businessName";
-    }> = {},
+    // `AdminListInput` for `cursor`/`limit`/`from`/`to`, minus the two fields the
+    // subscription table redefines — exactly the `.omit({ status, sort })` its schema does.
+    // The `omit` is not optional: intersecting a `SubscriptionStatus` with the business
+    // statuses would produce a type no value can satisfy, because billing status is derived
+    // from dates and business status is a set a row can hold at once.
+    //
+    // This list was the last one left off pagination, and the wrapper was part of why: it
+    // spelled its input out by hand and omitted the paging fields, so the pager had nowhere
+    // to send a cursor even once the service's `total` became trustworthy.
+    input: Omit<Partial<AdminListInput>, "status" | "sort"> & {
+      status?: SubscriptionStatus;
+      sort?: "arrears" | "periodEnd" | "businessName";
+    } = {},
   ): Promise<Page<AdminSubscription>> =>
     subscriptionList(await trpc.admin.subscriptions.query(adminSubscriptionsInput.parse(input))),
 

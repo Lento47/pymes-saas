@@ -33,6 +33,7 @@ import {
   type AdminCourierRow,
   type AdminMetrics,
   type AdminOrderRow,
+  type AdminSubscription,
   type AdminSupportTicketRow,
   type AdminUserRow,
   type AuditLogEntry,
@@ -1807,17 +1808,26 @@ function BillingTab() {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
-  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
-    queryKey: ["admin", "subscriptions", status, sort, search],
-    queryFn: () =>
+  // Paged like the other five tables, and only now honestly so. Cobros was the one table
+  // left out of pagination because `total` counted the **unfiltered** set — the status
+  // filter ran in JavaScript after the page was chosen — so a pager over it would have
+  // offered "página 1 de 4" above a single matching row. `derivedStatusSql` fixed the count,
+  // and this is that fix's other half.
+  const page = useAdminPage<AdminSubscription>({
+    queryKey: [status, sort, search],
+    queryFn: ({ cursor, limit }) =>
       adminApi.subscriptions({
         search: search || undefined,
         status: status === "all" ? undefined : status,
         sort,
+        cursor,
+        limit,
       }),
   });
 
-  if (isPending) return <Skeleton className="h-64 w-full" />;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
     return (
       <QueryErrorState
@@ -1837,7 +1847,12 @@ function BillingTab() {
       <div className="flex flex-wrap items-center gap-3">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            // The offset is meaningless against a new result set: typing narrows the list
+            // the operator is three pages into.
+            page.reset();
+          }}
           placeholder="Buscar por comercio o correo"
           className="max-w-xs"
           aria-label="Buscar suscripciones"
@@ -1859,6 +1874,7 @@ function BillingTab() {
           onValueChange={(next) => {
             if (next === "") return;
             setStatus(next as SubscriptionStatus);
+            page.reset();
           }}
           variant="outline"
           size="sm"
@@ -1880,6 +1896,7 @@ function BillingTab() {
             onValueChange={(next) => {
               if (next === "") return;
               setSort(next as "arrears" | "periodEnd" | "businessName");
+              page.reset();
             }}
             variant="outline"
             size="sm"
@@ -1893,8 +1910,16 @@ function BillingTab() {
         </div>
       </div>
 
+      {/*
+        `owing` is counted over `data.rows`, which is now **one page** — so the number is
+        about what is on screen and nothing else. Saying "3 con deuda · 200 en total" without
+        that distinction reads as "three shops owe money out of two hundred", which is a claim
+        about the platform, not about the table. It is scoped to the page in the label because
+        the count the service could give for the whole set does not exist yet: summing
+        `arrearsMinor` over a page of a `total`-ordered query is not the platform's debt.
+    */}
       <p className="text-xs text-muted-foreground">
-        {owing > 0 ? `${owing} con deuda · ` : ""}
+        {owing > 0 ? `${owing} con deuda en esta página · ` : ""}
         {data.total} en total
       </p>
 
@@ -1971,6 +1996,17 @@ function BillingTab() {
           </TableBody>
         </Table>
       )}
+
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="suscripciones"
+      />
     </div>
   );
 }

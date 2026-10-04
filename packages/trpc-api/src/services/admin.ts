@@ -30,7 +30,11 @@ import type {
 	SubscriptionStatus,
 } from "@pymeshub/shared";
 import { canTransition, decodeCursor, newId } from "@pymeshub/shared";
-import { PLAN_PERIOD_DAYS, subscriptionStatusAt } from "@pymeshub/shared/plans";
+import {
+	GRACE_DAYS,
+	HIDDEN_AFTER_DAYS,
+	PLAN_PERIOD_DAYS,
+} from "@pymeshub/shared/plans";
 import {
 	and,
 	asc,
@@ -1047,11 +1051,12 @@ export async function cancelOrder(
  * is the same division, and it is what separates "a week late" from "gone for a
  * month" on the operator's screen.
  *
- * `status` is **not** filtered in SQL even when one is asked for. The stored value is
- * whatever last wrote the row; the derived one is correct for now. Filtering on the
- * stored column would show an operator a list of shops that are current and shops
- * that are suspended and nothing in between, which is exactly the population that
- * needs watching.
+ * `status` is derived **in SQL**, from `periodEnd`/`gracedUntil` against `now` — not read
+ * from the stored `subscription.status` column, which is whatever last wrote the row. An
+ * operator filtering `PAST_DUE` must see the shops that are past due *today*, not the ones a
+ * sweeper happened to write down. The derivation lives in one expression, `derivedStatusSql`,
+ * read by both the rows query and the count, so `total` counts the filtered set and the
+ * pager's arithmetic is right.
  */
 export async function subscriptions(
 	ctx: UserContext,
@@ -1086,6 +1091,12 @@ export async function subscriptions(
 		conditions.push(gte(subscriptionTable.periodStart, input.from));
 	if (input.to) conditions.push(lte(subscriptionTable.periodEnd, input.to));
 
+	// The status filter, pushed down into `conditions` so it lands in the `where` that
+	// **both** queries share. Before this it was applied after shaping, which left the count
+	// describing the unfiltered set. See `derivedStatusSql`.
+	if (input.status)
+		conditions.push(sql`${derivedStatusSql(now)} = ${input.status}`);
+
 	const where = conditions.length > 0 ? and(...conditions) : undefined;
 	const direction = input.direction === "asc" ? sql`asc` : sql`desc`;
 
@@ -1101,6 +1112,10 @@ export async function subscriptions(
 				currency: businessTable.currency,
 				arrearsMinor: arrearsSql,
 				periodsOwed: periodsSql,
+				// Read back from the same expression the filter uses, rather than re-derived in
+				// JavaScript, so a row can never be counted under one status and displayed
+				// under another. See `derivedStatusSql`.
+				derivedStatus: derivedStatusSql(now),
 			})
 			.from(subscriptionTable)
 			.innerJoin(
@@ -1133,7 +1148,7 @@ export async function subscriptions(
 	]);
 
 	const shaped = rows.map((row) => {
-		const status = subscriptionStatusAt(row.subscription, now);
+		const status = row.derivedStatus;
 		return {
 			id: row.subscription.id,
 			businessId: row.subscription.businessId,
@@ -1155,19 +1170,11 @@ export async function subscriptions(
 	});
 
 	return {
-		// The status filter is applied **after** shaping, and that is not an
-		// optimisation. Filtering in SQL would filter on `subscription.status`, which is
-		// whatever last wrote the row; the shaped value is derived from the dates and is
-		// correct for now. An operator filtering `PAST_DUE` must see the shops that are
-		// past due *today*, not the ones a sweeper happened to write down.
-		//
-		// A consequence worth stating: `total` counts before the status filter, so a
-		// filtered page can come back short. It is the honest number for "how many
-		// subscriptions match this search" and a wrong one for "how many are past due",
-		// and no single field can be both.
-		rows: input.status
-			? shaped.filter((row) => row.status === input.status)
-			: shaped,
+		// `shaped` is the page the `where` above selected — the status filter is already
+		// applied, so no second pass here. `total` is that same `where` counted, which is
+		// what makes a pager honest: "page 1 of 3" over 3 matching rows, never over 3 rows
+		// of which 1 matched.
+		rows: shaped,
 		total: Number(counted[0]?.total ?? 0),
 	};
 }
@@ -1880,6 +1887,46 @@ function periodsSqlFor(now: Date) {
 /** The same expression the arrears table renders, multiplied out to colones. */
 function arrearsSqlFor(now: Date) {
 	return sql<number>`(${periodsSqlFor(now)}) * coalesce(${subscriptionTable.priceMinor}, 0)`;
+}
+
+/**
+ * The subscription's status **as of `now`**, in SQL.
+ *
+ * ## Why this exists at all
+ *
+ * `admin.subscriptions` applies its status filter *after* shaping, because the stored
+ * `subscription.status` column is whatever last wrote the row and the derived one is the
+ * truth. Which left `total` counting the **unfiltered** set, and a pager built on it offering
+ * "page 2 of 3" over a single matching row:
+ *
+ *     filtered PAST_DUE -> rows: 1 | total: 3
+ *
+ * The filter could not be pushed into SQL because the derived status was computed in
+ * JavaScript, one row at a time, after the page had already been chosen.
+ *
+ * So the derivation moves into SQL, and **both** the rows query and the count query read the
+ * same expression. That is the whole fix: the count and the list are now two readings of one
+ * statement rather than one reading of a column and one reading of a page.
+ *
+ * ## It mirrors `subscriptionStatusAt`, and the two must agree
+ *
+ * `subscriptionStatusAt` is still the authority for the merchant's own screens and for
+ * `effectivePlan`, and it reads exactly these four branches. The duplication is real and
+ * unavoidable — one is a function over a row, the other an expression over a table — so it is
+ * pinned by a spec that seeds a subscription in **each** of the four states and asserts the
+ * status this expression produces equals the status the shared helper produces. If someone
+ * changes one and not the other, that test fails rather than the console quietly filtering
+ * on something else.
+ */
+function derivedStatusSql(now: Date) {
+	const periodEnd = sql`coalesce(${subscriptionTable.periodEnd}, ${subscriptionTable.createdAt})`;
+	const gracedUntil = sql`coalesce(${subscriptionTable.gracedUntil}, ${periodEnd} + ${GRACE_DAYS * DAY_MS})`;
+	return sql<SubscriptionStatus>`case
+		when ${periodEnd} > ${now} then 'ACTIVE'
+		when ${now} < ${gracedUntil} then 'GRACE'
+		when ${now} - ${periodEnd} >= ${HIDDEN_AFTER_DAYS * DAY_MS} then 'SUSPENDED'
+		else 'PAST_DUE'
+	end`;
 }
 
 const PRODUCT_COUNT_SQL = sql<number>`(select count(*) from ${productTable} where ${productTable.businessId} = ${businessTable}.${businessTable.id})`;

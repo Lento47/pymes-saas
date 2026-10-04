@@ -89,7 +89,8 @@ export const changePlanInput = z.object({
  * already encodes an offset into a `cursor`, and two pagination schemes in one console
  * is how a table ends up showing page 3 of an empty second page. `status` is a single
  * subscription status rather than the array `adminListInput` carries for business
- * statuses, because the filter is applied after shaping — see `admin.subscriptions`.
+ * statuses, because billing status is derived from two dates and a single filter has to
+ * name one of four values — the business statuses are a set a row can hold at once.
  */
 export const adminSubscriptionsInput = adminListInput
 	.omit({ status: true, sort: true })

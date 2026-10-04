@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { subscription as subscriptionTable } from "@pymeshub/db";
 import { addToCartInput, productCreateInput } from "@pymeshub/shared";
 import {
 	GRACE_DAYS,
 	HIDDEN_AFTER_DAYS,
 	PLAN_LIMITS,
 	priceMinorFor,
+	subscriptionStatusAt,
 } from "@pymeshub/shared/plans";
+import { eq } from "drizzle-orm";
 
 import { requireAuthed } from "../src/context";
 import { appRouter } from "../src/routers";
@@ -622,7 +625,10 @@ describe("the admin's view of money owed", () => {
 			plan: "MONTHLY",
 			daysUntilDue: -5,
 		});
-		const admin = await seedUser(w.db, { id: "usr_arrears_search_admin", isAdmin: true });
+		const admin = await seedUser(w.db, {
+			id: "usr_arrears_search_admin",
+			isAdmin: true,
+		});
 		const adminCaller = appRouter.createCaller(
 			await authed(w, admin),
 		) as Caller;
@@ -730,6 +736,145 @@ describe("the admin's view of money owed", () => {
 		expect(rows[0]?.arrearsMinor).toBeGreaterThanOrEqual(
 			rows[rows.length - 1]?.arrearsMinor ?? 0,
 		);
+
+		w.close();
+	});
+
+	test("the SQL status derivation agrees with the shared helper, in all four states", async () => {
+		// The reader derives status in SQL (`derivedStatusSql`) while the merchant's own
+		// screens and `effectivePlan` go through `subscriptionStatusAt`. Both exist: one is an
+		// expression over a table, the other a function over a row, and they cannot share an
+		// implementation. What they can do is be *pinned to each other*, which is this test.
+		//
+		// If someone edits one branch and not the other, this fails — rather than the console
+		// quietly filtering on something the rest of the platform does not believe.
+		const w = world();
+		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+
+		// One subscription per status, dated so each branch is the deciding one:
+		// ACTIVE     periodEnd in the future
+		// GRACE      period ended, but inside the 30-day window
+		// PAST_DUE   grace spent, but under the 90 days that unlists a shop
+		// SUSPENDED  90 days past the period end
+		const cases = [
+			{ id: "biz_status_active", status: "ACTIVE", daysUntilDue: 10 },
+			{ id: "biz_status_grace", status: "GRACE", daysUntilDue: -5 },
+			{ id: "biz_status_past", status: "PAST_DUE", daysUntilDue: -60 },
+			{ id: "biz_status_suspended", status: "SUSPENDED", daysUntilDue: -120 },
+		] as const;
+
+		for (const entry of cases) {
+			await seedBusiness(w.db, { id: entry.id, plan: "MONTHLY" });
+			await seedSubscription(w.db, {
+				businessId: entry.id,
+				plan: "MONTHLY",
+				priceMinor: 10_000,
+				daysUntilDue: entry.daysUntilDue,
+				// Deliberately disagreeing with the dates, so the assertion below cannot be
+				// satisfied by a reader that just echoes the column.
+				storedStatus: "ACTIVE",
+			});
+		}
+
+		const admin = await seedUser(w.db, {
+			id: "usr_status_admin",
+			isAdmin: true,
+		});
+		const adminCaller = appRouter.createCaller(
+			await authed(w, admin),
+		) as Caller;
+
+		const { rows } = await adminCaller.admin.subscriptions({
+			limit: 50,
+			direction: "desc",
+			sort: "arrears",
+		});
+
+		const now = new Date();
+		for (const entry of cases) {
+			const stored = await w.db
+				.select()
+				.from(subscriptionTable)
+				.where(eq(subscriptionTable.businessId, entry.id));
+
+			// The shared helper, on the real row — and the seeded intent asserted alongside,
+			// so a failure names which of the two broke.
+			// Named rather than asserted: a missing row would otherwise throw on `undefined`,
+			// and "cannot read property of undefined" says nothing about which seed broke.
+			const row = stored[0];
+			if (!row) throw new Error(`no subscription was seeded for ${entry.id}`);
+			const expected = subscriptionStatusAt(row, now);
+			expect(expected).toBe(entry.status);
+
+			// And what the SQL derivation says, read through the endpoint the console calls.
+			const found = rows.find((row) => row.businessId === entry.id);
+			expect(found?.status).toBe(expected);
+		}
+
+		w.close();
+	});
+
+	test("filtering by status counts the filtered set, not the table", async () => {
+		// The bug this closes: the status filter was applied *after* shaping, so `total`
+		// counted the whole table. A pager built on that total offers "page 1 of 4" over one
+		// matching row, and the footer contradicts the table it sits under.
+		//
+		// Four subscriptions, one per status. `total` must now answer "how many are in this
+		// filtered view", which for any single status is 1 — not 4.
+		const w = world();
+		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+
+		for (const [id, daysUntilDue] of [
+			["biz_count_active", 10],
+			["biz_count_grace", -5],
+			["biz_count_past", -60],
+			["biz_count_suspended", -120],
+		] as const) {
+			await seedBusiness(w.db, { id, plan: "MONTHLY" });
+			await seedSubscription(w.db, {
+				businessId: id,
+				plan: "MONTHLY",
+				priceMinor: 10_000,
+				daysUntilDue,
+			});
+		}
+
+		const admin = await seedUser(w.db, {
+			id: "usr_count_admin",
+			isAdmin: true,
+		});
+		const adminCaller = appRouter.createCaller(
+			await authed(w, admin),
+		) as Caller;
+
+		// Unfiltered: all four, and the count says so.
+		const all = await adminCaller.admin.subscriptions({
+			limit: 50,
+			direction: "desc",
+			sort: "arrears",
+		});
+		expect(all.rows).toHaveLength(4);
+		expect(all.total).toBe(4);
+
+		// Filtered: one row, and a count that matches it. Every status is checked, because
+		// the two queries can disagree per-branch, and disagreeing on only one of them still
+		// looks plausible on screen.
+		for (const status of [
+			"ACTIVE",
+			"GRACE",
+			"PAST_DUE",
+			"SUSPENDED",
+		] as const) {
+			const filtered = await adminCaller.admin.subscriptions({
+				status,
+				limit: 50,
+				direction: "desc",
+				sort: "arrears",
+			});
+			expect(filtered.rows.length).toBe(1);
+			expect(filtered.total).toBe(1);
+			expect(filtered.rows[0]?.status).toBe(status);
+		}
 
 		w.close();
 	});
