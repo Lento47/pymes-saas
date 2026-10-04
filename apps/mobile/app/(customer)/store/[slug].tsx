@@ -30,6 +30,7 @@ import { HoursTable } from "@/components/hours-table";
 import { ListEnd } from "@/components/list-end";
 import { Price } from "@/components/price";
 import { ProductRow } from "@/components/product-row";
+import { PromoReminder } from "@/components/promo-hero";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { ReviewList, reviewDistribution } from "@/components/review-list";
 import { ReviewSummary } from "@/components/review-summary";
@@ -52,6 +53,7 @@ import {
 } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
+import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { radius, space, TEXT_STACK_GAP, type } from "@/theme";
@@ -559,6 +561,7 @@ export default function Store() {
 	const { slug } = useLocalSearchParams<{ slug: string }>();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
+	const offerSelection = useOfferSelection();
 	const { t, tp, locale, intlLocale } = useT();
 	const { status } = useSession();
 	const bar = useActionBarClearance();
@@ -588,6 +591,7 @@ export default function Store() {
 	);
 
 	const card = store.data?.card;
+	const selectedOffer = offerForBusiness(offerSelection, card?.id);
 
 	// The shop's category, in the reader's language — the same `localizedName` the menu's
 	// group headings read. `categoryNameEn` is nullable (the six demo categories the seed
@@ -822,6 +826,12 @@ export default function Store() {
 									}
 								/>
 							</View>
+
+							{selectedOffer ? (
+								<View style={styles.pad}>
+									<PromoReminder offer={selectedOffer} />
+								</View>
+							) : null}
 
 							{/* When the shut shop opens — the hero says "Cerrado" and this says
 							    when that ends. A closed day draws nothing: the "Hoy" row in

@@ -1,5 +1,10 @@
 import { useCallback, useState } from "react";
-import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
+import {
+	type LayoutChangeEvent,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { radius, shadow, space, type, useTheme } from "@/theme";
@@ -57,6 +62,8 @@ export const ACTION_BAR_CLEARANCE =
 	space.lg * 2 +
 	type.heading.lineHeight +
 	BUTTON_BORDER_WIDTH * 2;
+
+const STACKED_FONT_SCALE = 1.75;
 
 /**
  * The room a screen must leave for the bar, measured off the bar rather than predicted.
@@ -133,38 +140,32 @@ export function useActionBarClearance(): {
  * The two are one component because the *contents* are identical and the summary must not
  * reflow differently between them.
  *
- * ## Two things on one line, at any text size
+ * ## Two things on one line, until text needs two
  *
  * The bar is one row of two items, and until this was read the row could not wrap. That is
  * invisible at 100% and wrong at 200%: `./button`'s label has no `numberOfLines`, so it grows
  * with the text scale, and the button's main-axis size is its label's width with `flexShrink: 0`
- * — it cannot give way. The summary beside it has `flexBasis: 0` and grows into whatever is
+ * — it cannot give way. A zero-basis summary grows into whatever is
  * left, so when the label is wider than the bar there is nothing left: **the total collapses to
  * zero width and vanishes.** Not truncated, not ellipsized — gone, in the one configuration
  * where the reader needs it most, on the one element Rule 1 calls the loudest thing on the
  * surface. A bar whose total cannot be read at 200% text is not a layout preference.
  *
- * Two properties, each answering one half of that:
+ * Two properties preserve the horizontal layout when it still fits:
  *
- * - `flexWrap: "wrap"` on the bar, so the two items are allowed to be two lines. Where the row
- *   cannot hold both, the button takes a second line and the summary keeps the first, where it
- *   has the whole width to itself and grows into it. The bar gets taller and still says
- *   everything, which is the same trade `./button` makes for its own label.
+ * - `flexWrap: "wrap"` on the bar and an auto-basis summary allow a second line without
+ *   collapsing the summary to zero width. Android can still squeeze `CRC 1,700` into
+ *   `CRC 1,70` plus `0` at 200% text, which is why the stacked fallback is explicit.
  * - `maxWidth: "100%"` on the button, so the line it lands on bounds it. `flexShrink: 0` is
  *   still what keeps a long "Continuar al pago" from squeezing the total *at 100%*, where both
  *   do fit; the cap is what stops the item's own content width from being an unbounded floor
  *   once it is alone on its line, so a label wider than the screen wraps inside the pill
  *   instead of running off the edge of it.
  *
- * Neither changes anything at the default text size, and that is arithmetic rather than a
- * claim: the button's hypothetical width is one line of its label, the summary's is `flexBasis:
- * 0`, and one line plus `space.lg` of gap is narrower than this bar's content width for every
- * label in the app — so the row never breaks, the button never hits the cap, and the free space
- * is distributed between them exactly as before.
- *
- * `summary`'s own `flex: 1, minWidth: 0` is unchanged and is the other half of the pair: the
- * column has to be allowed to be narrower than its longest word, or a long total would push the
- * button off the row at 100% instead.
+ * At default text size the total and button fit beside one another, and the summary grows
+ * into the spare width. At 175% text and above they stack deliberately: on the tested
+ * 200% Android layout, the price's last digit otherwise wraps onto a second line. The
+ * stacked button spans the bar, preserving one clear target rather than a half-width pill.
  *
  * **A taller bar is the screen's problem, and the screen is told about it.** The wrap above is
  * the thing `ACTION_BAR_CLEARANCE` cannot predict, so the bar reports its own height through
@@ -248,6 +249,7 @@ export function ActionBar({
 	onHeightChange,
 }: ActionBarProps) {
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
 	// Whatever else is floating at this screen's foot. `bottomInsetPaid: false` because the
 	// inset is spent *twice* when it is: once by the capsule the caller is lifting above and
@@ -263,6 +265,7 @@ export function ActionBar({
 	// form's footer, sized to its content, with nothing scrolling under it to be covered.
 	const tabClearance = useTabBarClearance();
 	const lift = docked ? 0 : tabClearance;
+	const stacked = Boolean(summary) && fontScale >= STACKED_FONT_SCALE;
 
 	return (
 		<View
@@ -277,6 +280,7 @@ export function ActionBar({
 			}
 			style={[
 				styles.bar,
+				stacked && styles.stacked,
 				// The inset is added to the padding rather than set as a height, so a phone
 				// without a home indicator gets `space.md` and nothing else — the same rule the
 				// tab bar follows.
@@ -303,7 +307,11 @@ export function ActionBar({
 			]}
 			accessibilityLabel={accessibilityLabel}
 		>
-			{summary ? <View style={styles.summary}>{summary}</View> : null}
+			{summary ? (
+				<View style={[styles.summary, stacked && styles.summaryStacked]}>
+					{summary}
+				</View>
+			) : null}
 			<Button
 				label={primary.label}
 				onPress={primary.onPress}
@@ -317,7 +325,13 @@ export function ActionBar({
 				// illegal; this is the sanctioned `full` step, not a new one.
 				size="lg"
 				shape="pill"
-				style={summary ? styles.buttonBeside : styles.buttonAlone}
+				style={
+					stacked
+						? styles.buttonStacked
+						: summary
+							? styles.buttonBeside
+							: styles.buttonAlone
+				}
 			/>
 		</View>
 	);
@@ -335,6 +349,7 @@ const styles = StyleSheet.create({
 		paddingTop: space.md,
 		paddingHorizontal: space.lg,
 	},
+	stacked: { flexDirection: "column", alignItems: "stretch" },
 	floating: {
 		marginHorizontal: space.lg,
 		marginBottom: space.sm,
@@ -346,12 +361,13 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		paddingHorizontal: space.lg,
 	},
-	// `flex: 1` and a shrinkable minimum: a long total ("₡128.500 con envío") wraps or
-	// truncates rather than pushing the button off the screen, because the button is the
-	// part that must not move.
-	summary: { flex: 1, minWidth: 0 },
-	// `flexShrink: 0` keeps the button's width at 100% text; `maxWidth` bounds it on a line of
-	// its own at 200%, where the label wraps inside the pill rather than leaving the screen.
+	// Measure the total before wrapping the row; a zero basis squeezes the final digit off
+	// a price at large text sizes rather than moving the button to its own line.
+	summary: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0 },
+	summaryStacked: { flexGrow: 0, flexShrink: 0 },
+	// `flexShrink: 0` keeps the button's width at normal text sizes; `maxWidth` bounds it
+	// before the stacked fallback takes over at large sizes.
 	buttonBeside: { flexShrink: 0, maxWidth: "100%" },
+	buttonStacked: { width: "100%" },
 	buttonAlone: { flex: 1 },
 });

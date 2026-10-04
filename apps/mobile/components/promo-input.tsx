@@ -6,6 +6,8 @@ import { StyleSheet, View } from "react-native";
 
 import { useApiFailure } from "@/lib/api-error";
 import { useT } from "@/lib/i18n";
+import { clearOfferSelection, type OfferSelection } from "@/lib/offer-intent";
+import { promotionCopy } from "@/lib/promotion";
 import { useTRPC } from "@/lib/trpc/context";
 import { space } from "@/theme";
 
@@ -109,6 +111,7 @@ export function usePromoCode() {
 			// does not have.
 			onSuccess: (cart) => {
 				replaceCart(cart);
+				clearOfferSelection();
 				// A refusal arrives here too — see the docblock — so the toast is keyed on the
 				// answer's own field rather than on having reached this callback. `promotionCode`
 				// is the second term because the sentence needs the code the *server* stored, and
@@ -126,6 +129,7 @@ export function usePromoCode() {
 			// and nothing to guess at while it is in flight.
 			onSuccess: (cart) => {
 				replaceCart(cart);
+				clearOfferSelection();
 				// The answer is the evidence, exactly as above and from the other side: the removal
 				// is confirmed when the cart comes back without a code, which is the state the toast
 				// claims. A cart that still carries one — another device applied a code between the
@@ -164,8 +168,8 @@ export function usePromoCode() {
  * The receipt's promo line: "Código de descuento" with what happened to it underneath.
  *
  * A row rather than a field, because the code is not edited here — it is opened, in a sheet
- * with room for the keyboard and the reason that comes back. The line shows the *result*:
- * the applied code when one is on the cart, the refusal when the last attempt failed.
+ * with room for the keyboard and the reason that comes back. The line shows the applied
+ * code or refusal first, and suggests a selected Home offer only when neither exists.
  *
  * The refusal wins over the applied sentence when both exist, which is the only ordering
  * that can be right: it is the newest thing the customer caused, and it is what the sheet
@@ -176,17 +180,33 @@ export function usePromoCode() {
 export function PromoInput({
 	code,
 	error,
+	suggestedOffer,
 	onPress,
 }: {
 	code?: string | null;
 	/** The cart's `promotionError`: a key, rendered here — never a sentence from the API. */
 	error?: MessageKey | null;
+	suggestedOffer?: OfferSelection;
 	onPress: () => void;
 }) {
-	const { t } = useT();
+	const { t, intlLocale } = useT();
+	const selectedCopy = suggestedOffer
+		? promotionCopy(suggestedOffer, t, intlLocale)
+		: null;
+	const suggestedDetail =
+		suggestedOffer && selectedCopy
+			? [
+					selectedCopy.benefit,
+					t("cart.promotion.suggested", { code: suggestedOffer.code }),
+					selectedCopy.minimum ?? selectedCopy.eligibility,
+				]
+					.filter(Boolean)
+					.join(" · ")
+			: undefined;
 	const detail =
 		(error ? t(error) : undefined) ??
-		(code ? t("cart.promotion.applied", { code }) : undefined);
+		(code ? t("cart.promotion.applied", { code }) : undefined) ??
+		suggestedDetail;
 
 	return (
 		<ListRow
@@ -253,6 +273,7 @@ export function PromoSheet({
 	onClose,
 	code,
 	error,
+	suggestedCode,
 	pending,
 	failure,
 	removing,
@@ -269,6 +290,7 @@ export function PromoSheet({
 	code?: string | null;
 	/** The cart's `promotionError`, as a key. See `PromoInput`. */
 	error?: MessageKey | null;
+	suggestedCode?: string;
 	pending: boolean;
 	/** A request that did not arrive; distinct from a code that was refused. */
 	failure: unknown;
@@ -291,14 +313,14 @@ export function PromoSheet({
 	 * that poll. Re-seed the draft then and the customer watches a stranger's code replace the
 	 * one under their cursor.
 	 *
-	 * `useState(code ?? "")` runs when this component mounts and never again, which is exactly
+	 * `useState(code ?? suggestedCode ?? "")` runs only when this component mounts, giving
 	 * re-seed-on-open and never-while-typing — provided the mount is a *fresh* one per opening.
 	 * That is the caller's job: `app/cart.tsx` passes a `key` that changes on open, and its
 	 * docblock has the arithmetic. The effect that used to live here depended on `[open, code]`,
 	 * so it was the second case it got wrong: any change to `code` while the sheet was open,
 	 * including its own poll, overwrote the draft mid-keystroke.
 	 */
-	const [text, setText] = useState(code ?? "");
+	const [text, setText] = useState(code ?? suggestedCode ?? "");
 	const trimmed = text.trim();
 
 	function submit() {

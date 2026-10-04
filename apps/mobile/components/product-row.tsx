@@ -1,9 +1,15 @@
-import { MAX_LINE_QUANTITY, type ProductCard } from "@pymeshub/shared";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import {
+	formatMoney,
+	MAX_LINE_QUANTITY,
+	type ProductCard,
+} from "@pymeshub/shared";
 import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
 import { PRESS_SCALE_ROW } from "@/lib/motion";
 import {
+	icon,
 	MIN_TOUCH_TARGET,
 	media,
 	radius,
@@ -103,13 +109,15 @@ export function ProductRow({
 	onPress,
 	/** Suppressed on a storefront, where the shop's name is the screen's title. */
 	showSeller = false,
+	showDisclosure = false,
 }: {
 	product: ProductCard;
 	onPress: () => void;
 	showSeller?: boolean;
+	showDisclosure?: boolean;
 }) {
 	const { colors } = useTheme();
-	const { t, tp } = useT();
+	const { t, tp, intlLocale } = useT();
 
 	// Availability is the API's word (`availabilityOf`), not a stock number: a row that
 	// computed `soldOut` locally from a count would disagree with the detail screen the
@@ -147,15 +155,40 @@ export function ProductRow({
 				// than one form bent over both. See the Spanish file's note on the pair.
 				tp("product.lowStock", remaining)
 			: null;
+	const price = formatMoney(product.priceMinor, product.currency, {
+		locale: intlLocale,
+	});
+	const compareAt =
+		product.compareAtPriceMinor !== null &&
+		product.compareAtPriceMinor > product.priceMinor
+			? t("product.compareAt", {
+					amount: formatMoney(product.compareAtPriceMinor, product.currency, {
+						locale: intlLocale,
+					}),
+				})
+			: null;
+	const discount = product.discountPercent
+		? t("product.discount", { percent: product.discountPercent })
+		: null;
+	const spoken = [
+		product.title,
+		showSeller ? product.seller.name : null,
+		price,
+		compareAt,
+		discount,
+		availability,
+	]
+		.filter(
+			(part): part is string => typeof part === "string" && part.length > 0,
+		)
+		.join(" · ");
 
 	return (
 		<Pressable
 			onPress={onPress}
 			scaleTo={PRESS_SCALE_ROW}
 			accessibilityRole="button"
-			accessibilityLabel={
-				availability ? `${product.title} · ${availability}` : product.title
-			}
+			accessibilityLabel={spoken}
 			style={({ pressed }) => [
 				styles.row,
 				{ borderBottomColor: colors.border },
@@ -259,6 +292,15 @@ export function ProductRow({
 					</Text>
 				) : null}
 			</View>
+			{showDisclosure ? (
+				<Ionicons
+					name="chevron-forward"
+					size={icon.control}
+					color={colors.mutedForeground}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			) : null}
 		</Pressable>
 	);
 }

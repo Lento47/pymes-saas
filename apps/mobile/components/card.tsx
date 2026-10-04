@@ -32,7 +32,8 @@ export function Card({
 	accessibilityLabel?: string;
 	accessibilityHint?: string;
 	/**
-	 * Which surface this is: the page's own card, or the brand fill.
+	 * Which surface this is: the page's own card, the brand fill, or a dark
+	 * spotlight that lets a brand-coloured detail stand apart from the page.
 	 *
 	 * A variant and not a `style` at the call site, which is the rule `docs/design-mobile.md`
 	 * states in its first paragraphs — colour belongs to the primitive, and a second
@@ -43,7 +44,7 @@ export function Card({
 	 * the corner still separate it from the page, and a grey line around a filled surface is
 	 * a border nobody asked for. Every other number on it is the same card.
 	 */
-	tone?: "surface" | "brand";
+	tone?: "surface" | "brand" | "spotlight";
 	/**
 	 * `StyleProp<ViewStyle>` and not a bare `ViewStyle`, which is what `View` accepts and
 	 * what a caller composing `[a, b]` needs. It is spread **last** into the surface array,
@@ -53,12 +54,20 @@ export function Card({
 	 */
 	style?: StyleProp<ViewStyle>;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
+	const spotlight = tone === "spotlight";
 
 	const surface = [
 		styles.card,
 		{
-			backgroundColor: tone === "brand" ? colors.primary : colors.card,
+			backgroundColor:
+				tone === "brand"
+					? colors.primary
+					: spotlight
+						? scheme === "light"
+							? colors.foreground
+							: colors.accent
+						: colors.card,
 			borderColor: tone === "brand" ? colors.primary : colors.border,
 		},
 		shadow.card,

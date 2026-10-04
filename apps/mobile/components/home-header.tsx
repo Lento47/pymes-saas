@@ -112,8 +112,14 @@ export function HomeHeader({
 	avatarUrl: string | null;
 	onAvatarPress: () => void;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 	const { t } = useT();
+	const onLimeGradient = colors.primary.toLowerCase() === "#c8ff18";
+	const metaColor = onLimeGradient
+		? scheme === "dark"
+			? colors.foreground
+			: colors.secondaryForeground
+		: undefined;
 
 	// Two initials where the name has two parts, one where it has one. The avatar's box is
 	// `MIN_TOUCH_TARGET` square — a target drawn at its own floor, like `./business-card`'s
@@ -153,11 +159,22 @@ export function HomeHeader({
 						<Ionicons
 							name="location"
 							size={icon.inline}
-							color={colors.primary}
+							color={
+								onLimeGradient && scheme === "light"
+									? colors.foreground
+									: colors.primary
+							}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
 						/>
-						<Text variant="label" tone="muted" style={styles.coordinateText}>
+						<Text
+							variant="label"
+							tone="muted"
+							style={[
+								styles.coordinateText,
+								metaColor ? { color: metaColor } : null,
+							]}
+						>
 							{lead}
 							{/* Re-declares `variant="label"`: `./text` defaults a nested node to
 							    `body` and would draw the value at 15/21 inside this 13/18 line. */}
@@ -181,11 +198,18 @@ export function HomeHeader({
 						<Ionicons
 							name="location-outline"
 							size={icon.inline}
-							color={colors.mutedForeground}
+							color={metaColor ?? colors.mutedForeground}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
 						/>
-						<Text variant="label" tone="muted" style={styles.coordinateText}>
+						<Text
+							variant="label"
+							tone="muted"
+							style={[
+								styles.coordinateText,
+								metaColor ? { color: metaColor } : null,
+							]}
+						>
 							{lead}
 							<Text variant="label" tone="action">
 								{t("location.use")}

@@ -1,4 +1,3 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMemo, useState } from "react";
 import {
 	type NativeScrollEvent,
@@ -11,9 +10,10 @@ import {
 } from "react-native";
 
 import { useT } from "@/lib/i18n";
-import { icon, radius, space, useTheme } from "@/theme";
+import { radius, space, useTheme } from "@/theme";
 
 import { Image } from "./image";
+import { Text } from "./text";
 
 /**
  * A product's photographs, as a pager.
@@ -51,10 +51,9 @@ import { Image } from "./image";
  *
  * ## No image at all
  *
- * An empty page list — no `imageUrl` and no `images` — is `./image`'s own placeholder at the
- * same box and the same corner, with the stand-in glyph `./product-row` draws inside a media
- * box that has no photograph. A shop with no picture gets the composed surface the design doc
- * asks for, never a grey rectangle standing in for a photograph that does not exist.
+ * An empty page list uses the product's initial rather than a generic picture glyph. The
+ * caller gives that state a shorter box, so absent imagery does not push title, price and
+ * choices down as if a photograph were still loading.
  *
  * The pager is a `ScrollView` with `pagingEnabled`, which is the platform's own snap: no
  * gesture library, no dependency, and the native scroll physics the rest of the app has.
@@ -65,6 +64,7 @@ type GalleryProps = {
 	coverUrl?: string | null;
 	/** `productDetailSchema.images` — the shop's order, after the cover. */
 	images?: string[];
+	fallbackName: string;
 	/**
 	 * The box one page is drawn in, from the screen. Required: a pager with no height is a
 	 * pager that is not on screen.
@@ -72,7 +72,12 @@ type GalleryProps = {
 	style: StyleProp<ViewStyle>;
 };
 
-export function Gallery({ coverUrl, images, style }: GalleryProps) {
+export function Gallery({
+	coverUrl,
+	images,
+	fallbackName,
+	style,
+}: GalleryProps) {
 	const { t } = useT();
 	const { colors } = useTheme();
 	const [pageWidth, setPageWidth] = useState(0);
@@ -101,12 +106,11 @@ export function Gallery({ coverUrl, images, style }: GalleryProps) {
 				style={style}
 				radiusToken="lg"
 				accessibilityElementsHidden
+				importantForAccessibility="no"
 			>
-				<Ionicons
-					name="image-outline"
-					size={icon.action}
-					color={colors.mutedForeground}
-				/>
+				<Text variant="display" bold style={{ color: colors.action }}>
+					{fallbackName.trim().charAt(0).toUpperCase()}
+				</Text>
 			</Image>
 		);
 	}

@@ -8,7 +8,6 @@ import { BackButton } from "@/components/back-button";
 import { BusinessCard } from "@/components/business-card";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
-import { CategoryRail } from "@/components/category-rail";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -19,7 +18,9 @@ import {
 } from "@/components/filter-sheet";
 import { ListRow } from "@/components/list-row";
 import { PaginatedList } from "@/components/paginated-list";
+import { ProductRow } from "@/components/product-row";
 import { Screen } from "@/components/screen";
+import { SectionHeader } from "@/components/section-header";
 import { useSkeletonHold } from "@/components/skeleton";
 import {
 	BusinessCardsSkeleton,
@@ -31,16 +32,16 @@ import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
 import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
-import { space } from "@/theme";
+import { radius, space, useTheme } from "@/theme";
 
 /**
- * One category's shops — the screen a category chip opens.
+ * One category's products and shops — the screen a category chip opens.
  *
  * `apps/web/app/(shop)/category/[slug]/page.tsx` is the model, and the data path is the
  * same one: the slug has to be resolved to an id first, because `businesses.list` filters
  * on `categoryId` and nothing else on this screen carries one. That one extra read also
- * gives this screen the rest of the rail to scroll through, and the children of the sector
- * it resolved, so the resolution is not a request spent on a redirect.
+ * gives this screen the children of the sector it resolved, so the resolution is not a
+ * request spent on a redirect.
  *
  * `catalog.categories` is the authority on which slugs exist, so a slug that matches
  * nothing is answered honestly — "we don't have that category", with the way back — rather
@@ -68,19 +69,17 @@ import { space } from "@/theme";
  *
  * `filters` is screen state rather than a param or a store, so leaving the category and
  * coming back starts clean. That is deliberate for now and worth naming: a customer who
- * filtered to "abierto ahora" and taps a different chip in the rail gets an unfiltered list,
+ * filtered to "abierto ahora" and visits another category gets an unfiltered list,
  * because nothing in the app remembers a filter across a navigation. The alternative —
  * carrying it — needs a home that outlives the screen, and inventing one here would make
  * this file the owner of a decision three screens share.
  *
- * ## Two waits, drawn differently
+ * ## Independent waits
  *
- * The name and the rail come from one read and the shops from another, and they are waited
- * for separately. Before `catalog.categories` answers, `CategorySkeleton` stands in for the
- * whole page. Once it has, the heading and the rail are *real* — and the rail is usable, so
- * a reader who landed on the wrong category can leave without waiting for a list they did
- * not want — while only the column of cards is grey. Replacing real content with a skeleton
- * is a step backwards the reader can see.
+ * The taxonomy, product preview and shops arrive independently. Before the category name
+ * resolves, `CategorySkeleton` stands in for the page. Afterward the real heading and
+ * taxonomy link stay usable while the shop column waits; the product preview appears
+ * when available.
  *
  * ## No count line
  *
@@ -113,14 +112,13 @@ import { space } from "@/theme";
  * pulled, a remount or a stale window, and a spinner appearing under a thumb without a gesture
  * claims credit for a request the reader did not make.
  *
- * Both reads are refetched, not just the shops: the heading and the rail are half of what
- * the page is showing, and a pull that moved the list while leaving a failed
- * `catalog.categories` broken would answer for one of the two.
+ * All three reads are refetched so a pull updates the heading, preview and shops together.
  */
 export default function Category() {
 	const { slug } = useLocalSearchParams<{ slug: string }>();
 	const trpc = useTRPC();
 	const { t, tp, locale } = useT();
+	const { colors } = useTheme();
 	const { coords } = useDeviceLocation();
 
 	const categories = useQuery(trpc.catalog.categories.queryOptions());
@@ -130,32 +128,24 @@ export default function Category() {
 	 * The taxonomy's second level, on the page that owns the first.
 	 *
 	 * This is the whole reason the block below is drawn rather than left out as scope: a
-	 * sector's own shop list filters on `categoryId` exactly (`businesses.list`,
-	 * `apps/api/src/services/businesses.ts:279`), so a shop filed under a child does not
-	 * appear on its sector's page. Without these rows the 224 child categories have no door
-	 * anywhere in the app — they are not in the rail, not in the grid, and each has shops
-	 * behind it. So the children are drawn here, on the parent they belong to, and each row
-	 * opens its own page.
+	 * `businesses.list` includes descendants for a sector, but product categories and shop
+	 * categories are separate fields. Child rows preserve a route to each part of the taxonomy;
+	 * the product preview below links directly to buyable items in the selected category.
 	 */
 	const children = (categories.data ?? []).filter(
 		(entry) => entry.parentId === category?.id,
 	);
-
-	/*
-	 * A child's page is inside its sector, so the rail marks the sector rather than
-	 * nothing at all: a rail with no selected chip on a page that plainly is a category
-	 * says the reader is nowhere.
-	 */
-	const parent = categories.data?.find(
-		(entry) => entry.id === category?.parentId,
+	const stockedChildren = children.filter(
+		(child) => (child.productCount ?? 0) > 0,
 	);
-
-	// The rail draws the first level here too — see `./category-rail`'s "a rail draws one
-	// level, and the caller says which". The children are the block below, which is a
-	// stacked list with room for a count and a chevron; a strip is not.
-	const sectors = (categories.data ?? []).filter(
-		(entry) => entry.parentId === null,
+	const otherChildren = children.filter(
+		(child) => (child.productCount ?? 0) === 0,
 	);
+	const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
+	const expanded = expandedSlug === slug;
+	const shownChildren = expanded
+		? [...stockedChildren, ...otherChildren]
+		: (stockedChildren.length > 0 ? stockedChildren : children).slice(0, 4);
 
 	const [filters, setFilters] = useState(DEFAULT_BUSINESS_FILTERS);
 	const [filtersOpen, setFiltersOpen] = useState(false);
@@ -188,6 +178,20 @@ export default function Category() {
 			},
 		),
 	);
+	const categoryProducts = useQuery(
+		trpc.products.list.queryOptions(
+			{
+				categoryId: category?.id,
+				sort: "popular",
+				inStockOnly: true,
+				limit: 3,
+			},
+			{ enabled: !!category },
+		),
+	);
+	const productPreview = (categoryProducts.data?.items ?? [])
+		.filter((product) => product.availability.inStock)
+		.slice(0, 3);
 
 	const waitingForCategories = useSkeletonHold(categories.isPending);
 	const waitingForShops = useSkeletonHold(shops.isPending);
@@ -235,11 +239,14 @@ export default function Category() {
 					hasNextPage={shops.hasNextPage}
 					loadingMore={shops.isFetchingNextPage}
 					onLoadMore={() => void shops.fetchNextPage()}
-					// Both reads, not just the shops: the heading and the rail are half of what
-					// this page is showing, and a pull that moved the list while leaving a failed
-					// `catalog.categories` broken would answer for one of the two. The flag behind
-					// the spinner is `./paginated-list`'s own state — see the docblock.
-					onRefresh={() => Promise.all([categories.refetch(), shops.refetch()])}
+					// The flag behind the spinner is `./paginated-list`'s own state.
+					onRefresh={() =>
+						Promise.all([
+							categories.refetch(),
+							shops.refetch(),
+							...(category ? [categoryProducts.refetch()] : []),
+						])
+					}
 					header={
 						<View>
 							<View style={styles.pad}>
@@ -276,30 +283,61 @@ export default function Category() {
 										</Text>
 									</View>
 
-									{/* The one rail that draws "Todo", like the web page's `allHref="/"`: a
-									    customer who landed in the wrong category is one chip from the
-									    unfiltered feed. Not a filter being cleared — every shop in the
-									    marketplace is not this category, and a chip offering to show them
-									    *here* would be a lie. */}
-									<CategoryRail
-										categories={sectors}
-										selectedSlug={parent?.slug ?? slug}
-										allHref="/"
-									/>
+									{productPreview.length > 0 ? (
+										<View>
+											<View style={styles.pad}>
+												<SectionHeader
+													title={t("search.products")}
+													action={
+														categoryProducts.data?.nextCursor
+															? {
+																	label: t("action.viewAll"),
+																	onPress: () =>
+																		router.push({
+																			pathname: "/category-products/[slug]",
+																			params: { slug },
+																		}),
+																}
+															: undefined
+													}
+												/>
+											</View>
+											<View
+												style={[
+													styles.productRows,
+													{
+														backgroundColor: colors.card,
+														borderColor: colors.border,
+													},
+												]}
+											>
+												{productPreview.map((product, index) => (
+													<AnimateIn key={product.id} index={index}>
+														<ProductRow
+															product={product}
+															showSeller
+															showDisclosure
+															onPress={() =>
+																router.push({
+																	pathname: "/product/[id]",
+																	params: { id: product.id },
+																})
+															}
+														/>
+													</AnimateIn>
+												))}
+											</View>
+										</View>
+									) : null}
 
 									{children.length > 0 ? (
 										<View style={styles.pad}>
-											{/* A stacked card rather than another rail: a sector's children are
-											    the categories filed under it, and this list is the one place they
-											    are all on screen together with their counts. Each row opens its
-											    own page, which is where its shops are — the sector's list below
-											    does not include them (see the note above). */}
 											<Card>
-												{children.map((child, index) => (
+												{shownChildren.map((child, index) => (
 													<ListRow
 														key={child.id}
 														title={localizedName(child, locale)}
-														divider={index < children.length - 1}
+														divider={index < shownChildren.length - 1}
 														// The same number the grid's tiles print, through the same
 														// landed plural pair, so a category's size reads the same
 														// wherever it is drawn. `productCount` is optional, so a
@@ -319,8 +357,31 @@ export default function Category() {
 													/>
 												))}
 											</Card>
+											{children.length > shownChildren.length || expanded ? (
+												<Button
+													variant="secondary"
+													size="sm"
+													fullWidth
+													style={styles.moreCategories}
+													label={t(
+														expanded ? "category.showLess" : "category.showAll",
+													)}
+													onPress={() =>
+														setExpandedSlug(expanded ? null : slug)
+													}
+												/>
+											) : null}
 										</View>
 									) : null}
+
+									<View style={styles.pad}>
+										<Button
+											variant="ghost"
+											fullWidth
+											label={t("category.browseAll")}
+											onPress={() => router.push("/categories")}
+										/>
+									</View>
 
 									{/* The way into the filters. The count is in the label rather than a badge
 									    dot, because "Filtros · 2" is a sentence and a dot is a question — and
@@ -328,19 +389,21 @@ export default function Category() {
 									    over from a lost fix is not counted. It does not fire a haptic: opening a
 									    panel is not a choice, and the haptics in `./filter-sheet` mark the ones
 									    that are. */}
-									<View style={styles.pad}>
-										<Button
-											variant="secondary"
-											label={
-												active > 0
-													? t("discovery.filters.button.active", {
-															count: active,
-														})
-													: t("discovery.filters.button")
-											}
-											onPress={() => setFiltersOpen(true)}
-										/>
-									</View>
+									{items.length > 0 || active > 0 ? (
+										<View style={styles.pad}>
+											<Button
+												variant="secondary"
+												label={
+													active > 0
+														? t("discovery.filters.button.active", {
+																count: active,
+															})
+														: t("discovery.filters.button")
+												}
+												onPress={() => setFiltersOpen(true)}
+											/>
+										</View>
+									) : null}
 
 									{shops.isError ? (
 										<View style={styles.pad}>
@@ -351,7 +414,11 @@ export default function Category() {
 										</View>
 									) : waitingForShops || !shops.data ? (
 										<BusinessCardsSkeleton />
-									) : items.length === 0 ? (
+									) : !categoryProducts.isPending &&
+										items.length === 0 &&
+										(active > 0 ||
+											(children.length === 0 &&
+												productPreview.length === 0)) ? (
 										<View style={styles.pad}>
 											{active > 0 ? (
 												/* An empty list under active filters is a different fact from an
@@ -359,7 +426,7 @@ export default function Category() {
 												   "there is nothing here" over a list the reader narrowed
 												   themselves would read as the filters having emptied it, which
 												   is a claim about the marketplace that this screen cannot make.
-												   The way out is the clear, not the rail. */
+												   The way out is the clear, not another category. */
 												<EmptyState
 													icon="options-outline"
 													title={t("discovery.filters.empty.title")}
@@ -372,7 +439,7 @@ export default function Category() {
 												/>
 											) : (
 												/* Says the plain thing: this category has no shops in it right
-												   now. It does not promise that it is coming, and the rail above
+												   now. It does not promise that it is coming, and the taxonomy link above
 												   is the way to a category that does have some. */
 												<EmptyState
 													icon="storefront-outline"
@@ -417,13 +484,20 @@ const PAGE_SIZE = 20;
 const styles = StyleSheet.create({
 	// The body's height, which `./paginated-list`'s `flex: 1` needs. See that file.
 	fill: { flex: 1 },
-	// This screen is edge-to-edge because the rail is; everything that is not a row pays the
+	// This screen is edge-to-edge for shop cards; everything that is not a row pays the
 	// horizontal padding for itself, so it is one style and it cannot drift.
 	pad: { paddingHorizontal: space.lg },
-	// The heading, the rail, the button into the sheet and whichever of the error, skeleton or
+	// The heading, browse link, button into the sheet and whichever of the error, skeleton or
 	// empty block is standing in for the cards: the `space.lg` column the scroll used to pay
 	// between its children. The back button above it is outside this, with no gap under it,
 	// which is also what the scroll did. The cards' own gutter, the gap down to the first card
 	// and the foot are `./paginated-list`'s.
 	sections: { gap: space.lg },
+	productRows: {
+		marginHorizontal: space.lg,
+		borderRadius: radius.md,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: "hidden",
+	},
+	moreCategories: { marginTop: space.sm },
 });

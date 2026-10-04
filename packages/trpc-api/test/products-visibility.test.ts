@@ -5,6 +5,7 @@ import {
 	authed,
 	contextFor,
 	seedBusiness,
+	seedCategory,
 	seedMembership,
 	seedProduct,
 	seedUser,
@@ -156,5 +157,64 @@ describe("an open shop's products", () => {
 
 		// The filter that closes the leak must not close the marketplace with it.
 		expect(ids).toContain(shown.id);
+	});
+});
+
+describe("in-stock product discovery", () => {
+	test("finds available products beyond a page of sold-out listings", async () => {
+		const test = world();
+		const businessId = await seedBusiness(test.db, { id: "biz_vis_inventory" });
+		const categoryId = await seedCategory(test.db, "cat_vis_inventory");
+		for (let index = 0; index < 12; index++) {
+			await seedProduct(test.db, {
+				id: `prd_vis_sold_${String(index).padStart(2, "0")}`,
+				businessId,
+				categoryId,
+				trackInventory: true,
+				stockQuantity: 0,
+			});
+		}
+		await seedProduct(test.db, {
+			id: "prd_vis_stocked",
+			businessId,
+			categoryId,
+			trackInventory: true,
+			stockQuantity: 4,
+		});
+		await seedProduct(test.db, {
+			id: "prd_vis_untracked",
+			businessId,
+			categoryId,
+			trackInventory: false,
+			stockQuantity: 0,
+		});
+
+		const caller = appRouter.createCaller(
+			await contextFor(test, null),
+		) as Caller;
+		const firstPage = await caller.products.list({
+			categoryId,
+			sort: "popular",
+			limit: 12,
+		});
+		expect(firstPage.items).toHaveLength(12);
+		expect(
+			firstPage.items.every((product) => !product.availability.inStock),
+		).toBe(true);
+
+		const available = await caller.products.list({
+			categoryId,
+			sort: "popular",
+			inStockOnly: true,
+			limit: 3,
+		});
+		expect(available.items.map((product) => product.id)).toEqual([
+			"prd_vis_stocked",
+			"prd_vis_untracked",
+		]);
+		expect(
+			available.items.every((product) => product.availability.inStock),
+		).toBe(true);
+		expect(available.nextCursor).toBeNull();
 	});
 });

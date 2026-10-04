@@ -339,6 +339,7 @@ export function promotionCardOf(
 		// giving away, in the shop's own unit, and the row has no currency of its own to
 		// disagree with.
 		currency: currencyOf(business.currency),
+		minOrderMinor: row.minOrderMinor,
 		art: promotionArtOf(row.imageUrl),
 		business: sellerSummaryOf(business),
 	};

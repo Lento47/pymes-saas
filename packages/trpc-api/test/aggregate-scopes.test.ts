@@ -76,6 +76,55 @@ describe("aggregates that read their outer row", () => {
 		expect(counts.get(`categoria-${bread}`)).toBe(1);
 	});
 
+	test("catalog.categories excludes products a shopper cannot open", async () => {
+		const test = world();
+		const category = await seedCategory(test.db, "cat_visibility");
+		const active = await seedBusiness(test.db, {
+			id: "biz_count_active",
+			status: "ACTIVE",
+		});
+		const closed = await seedBusiness(test.db, {
+			id: "biz_count_closed",
+			status: "CLOSED",
+		});
+		const draft = await seedBusiness(test.db, {
+			id: "biz_count_draft",
+			status: "DRAFT",
+		});
+		const suspended = await seedBusiness(test.db, {
+			id: "biz_count_suspended",
+			status: "SUSPENDED",
+		});
+
+		for (const [businessId, suffix] of [
+			[active, "active"],
+			[closed, "closed"],
+			[draft, "draft"],
+			[suspended, "suspended"],
+		] as const) {
+			await seedProduct(test.db, {
+				id: `prd_count_${suffix}`,
+				businessId,
+				categoryId: category,
+			});
+		}
+		await seedProduct(test.db, {
+			id: "prd_count_product_draft",
+			businessId: active,
+			categoryId: category,
+			status: "DRAFT",
+		});
+
+		const caller = await anonymous(test);
+		const rows = await caller.catalog.categories();
+		expect(rows.find((row) => row.id === category)?.productCount).toBe(2);
+		const products = await caller.products.list({
+			categoryId: category,
+			limit: 50,
+		});
+		expect(products.items).toHaveLength(2);
+	});
+
 	test("admin.businesses names the owner and counts what the shop holds", async () => {
 		const test = world();
 		const admin = await seedUser(test.db, {

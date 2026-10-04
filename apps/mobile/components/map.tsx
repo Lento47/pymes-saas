@@ -120,14 +120,11 @@ function loadMapLibre(): MapLibreModule | null {
 }
 
 /**
- * The basemap, on the phone — a picture of where the customer is.
+ * The native basemap for choosing a shop position or following a delivery.
  *
- * `./home-header` states the fact in words ("Entregar en · Tu ubicación actual") and this
- * is the same fact drawn. It goes under the hero rather than on a screen of its own
- * because there is nothing to *do* on it: the app has no marker layer, no pin picker and no
- * route, and a map you can only pan costs the feed a third of the fold to answer a question
- * the line above it already answered in one line. A band, then — the smallest one that
- * shows a neighbourhood.
+ * Home no longer mounts it: the header already states the customer's location, and a
+ * basemap with no decision to make would spend the shopping fold on the same fact twice.
+ * Here a pin, radius or route gives the band a concrete job.
  *
  * ## There is no `addProtocol` here, and that is the whole native story
  *
@@ -148,9 +145,8 @@ function loadMapLibre(): MapLibreModule | null {
  * pay its own `marginTop` and leave a gap where the map is not. `.env.example` spells the
  * rule out for this key — a missing value removes a capability and never throws.
  *
- * The same `null` covers "no coordinate yet", and deliberately: the map is a *picture of the
- * sentence above it*, and with no fix that sentence reads "Sin ubicación". A map centred on
- * a guess would be the one thing on this screen that is not true.
+ * The same `null` covers "no coordinate yet": a map centred on a guess would claim a
+ * position the screen does not know.
  *
  * ## Attribution is a licence condition, not copy
  *
@@ -172,16 +168,17 @@ function loadMapLibre(): MapLibreModule | null {
  *
  * ## What is not here
  *
- * No markers. `businessCardSchema` carries no coordinate — `distanceKm`, which the server
- * computes, is the only geographic fact a card has — so a pin layer could only invent
- * positions. It goes in when the API sends them, and not before.
+ * No public business markers. `businessCardSchema` carries no coordinate — `distanceKm`,
+ * which the server computes, is the only geographic fact a card has — so a marketplace
+ * pin layer could only invent positions. The shop-position and courier markers here use
+ * coordinates those screens actually have.
  */
 export type MapViewProps = {
 	/**
 	 * Where to centre, or `null` when the customer has not granted location.
 	 *
-	 * Nullable rather than optional so a caller cannot forget it: the screen already holds
-	 * this value (`useDeviceLocation`) and the map is only ever the second reading of it.
+	 * Nullable rather than optional so a caller cannot forget it: the screen must supply
+	 * the position it actually knows.
 	 */
 	coords: { lat: number; lng: number } | null;
 	/**
@@ -190,12 +187,10 @@ export type MapViewProps = {
 	 * The first caller is the buyer's tracker (`app/order/[id].tsx`), and the position is the
 	 * courier's: the API has carried it since `orders.reportLocation` existed
 	 * (`orderTrackingSchema.courier.lat`) and no surface had drawn it. It is optional and
-	 * nullable because the four existing callers have no second position, and because a
+	 * nullable because a map need not have a second position, and because a
 	 * courier who has not shared one yet is the ordinary case rather than an error.
 	 *
-	 * The `coords` docblock's "no markers" note is retired by this prop and not contradicted
-	 * by it: what that note refused was *inventing* a position the API had never sent. This one
-	 * is sent.
+	 * A marker must come from a real position, not an invented public-business pin.
 	 */
 	marker?: { lat: number; lng: number } | null;
 	/** The fixed pickup and delivery endpoints for an active delivery. */
@@ -359,12 +354,12 @@ export function MapView({
 				attributionPosition={{ bottom: space.sm, right: space.sm }}
 				// One label for the whole surface. Without it a screen reader walks
 				// MapLibre's own view tree and announces position after position; the map is
-				// decoration here, and the fact it draws is in the hero's line above it.
+				// its position is described by the surrounding screen's text.
 				accessibilityLabel={t("discovery.map.label")}
 				accessible
 				// Only wired when a caller asked for it, and `undefined` rather than a
 				// no-op function in every other case: a handler that is always attached is a
-				// handler every future reader has to rule out, and the four non-picker callers
+				// handler every future reader has to rule out, and the non-picker callers
 				// must not be one tap away from claiming the reader moved something.
 				onPress={
 					onPick
@@ -508,7 +503,7 @@ const styles = StyleSheet.create({
 	band: {
 		height: BAND_HEIGHT,
 		// `md`: the card step — the same corner `./card` draws, so the band
-		// reads as one of the feed's surfaces rather than as a hero.
+		// reads as one of the screen's surfaces rather than as a hero.
 		borderRadius: radius.md,
 		borderWidth: 1,
 		overflow: "hidden",

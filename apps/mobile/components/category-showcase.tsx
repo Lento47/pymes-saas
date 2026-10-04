@@ -14,7 +14,7 @@ import { Pressable } from "./pressable";
 import { Text } from "./text";
 
 /**
- * Two cards on the home feed: the sectors as a grid, and one sector's children as a strip.
+ * The home feed's category shortcuts, with a stocked sector's children as an optional strip.
  *
  * ## What this replaced, and why the scroller came back in a box
  *
@@ -30,19 +30,18 @@ import { Text } from "./text";
  * The horizontal strip *did* come back, and the difference from the rail is the box. A gesture
  * that hides twelve sectors is a defect; the same gesture inside a card with a title naming what
  * it holds is a disclosure. Card 2 says what it is — a sector, by name, with its product count —
- * and the sub-card cut off at the edge says it scrolls. Nothing here hides anything: card 1
- * names all eighteen and `View all` goes to the index.
+ * and the sub-card cut off at the edge says it scrolls. `View all` keeps the full taxonomy
+ * one tap away without letting eighteen choices crowd the first viewport.
  *
  * ## Card 1 is positional, and card 2 is a fact
  *
- * Card 1 takes the first six sectors in `sortOrder`, which the API owns. Nothing names a sector,
+ * Card 1 takes the first three sectors in `sortOrder`, which the API owns. Nothing names a sector,
  * so a reordering in the database is what changes this screen. An earlier draft picked its two
  * hero cards by slug; that was an editorial decision wearing a data-driven costume.
  *
- * Card 2 picks its sector by **`productCount`**, the field `catalog.categories` already returns
- * and already documents as counting *buyable* products only. The busiest sector is a fact about
- * the catalogue rather than an opinion held by this file, and it is the one whose children a new
- * reader is most likely to want. No slug is named anywhere in this component.
+ * Card 2 picks the sector with the most active products across its children. The API's
+ * `productCount` is per-category, so reading only the parent would miss leaf products. An
+ * unstocked catalogue does not draw a second card of empty destinations.
  *
  * ## Three across, not four, and the number that decided it
  *
@@ -111,22 +110,26 @@ export function CategoryShowcase({
 	const childrenOf = (id: string): Category[] =>
 		categories.filter((category) => category.parentId === id);
 
-	// The busiest sector that actually has children to show. `productCount` is optional on the
-	// schema, so a sector without it sorts last rather than crashing the comparison, and a
-	// marketplace where no sector reports a count still draws — it just falls back to the first
-	// sector with children, in `sortOrder`, which is a defensible answer and not a random one.
-	const featured = [...sectors]
-		.filter((sector) => childrenOf(sector.id).length > 0)
-		.sort((a, b) => (b.productCount ?? -1) - (a.productCount ?? -1))[0];
+	const stockedChildrenOf = (id: string): Category[] =>
+		childrenOf(id).filter((child) => (child.productCount ?? 0) > 0);
+	const buyableCount = (sector: Category): number =>
+		stockedChildrenOf(sector.id).reduce(
+			(total, child) => total + (child.productCount ?? 0),
+			0,
+		);
 
-	const count = featured?.productCount ?? 0;
+	const featured = [...sectors]
+		.filter((sector) => stockedChildrenOf(sector.id).length > 1)
+		.sort((first, second) => buyableCount(second) - buyableCount(first))[0];
+
+	const count = featured ? buyableCount(featured) : 0;
 	// A zero is not a fact worth printing on a discovery card; see the note at the draw site.
 	const hasCount = count > 0;
 
 	const gridSectors = sectors.slice(0, GRID_COUNT);
-	const featuredChildren = featured ? childrenOf(featured.id) : [];
+	const featuredChildren = featured ? stockedChildrenOf(featured.id) : [];
 
-	// Fewer than six is a real state, not an error: a fresh install can hold fewer sectors.
+	// Fewer than three is a real state, not an error: a fresh install can hold fewer sectors.
 	// A card with an empty grid inside it is worse than no card, so each is conditional.
 	return (
 		<View style={styles.showcase}>
@@ -158,7 +161,7 @@ export function CategoryShowcase({
 					</View>
 
 					{/*
-					    Two rows of `GRID_PER_ROW`, built as rows rather than left to wrap: `flexWrap`
+					    Fixed rows of `GRID_PER_ROW`, built as rows rather than left to wrap: `flexWrap`
 					    would put three on the first row and whatever fitted on the second, so a name
 					    that wraps taller than its neighbours would unbalance the row count. Stating
 					    it means the card's height is a fact rather than a consequence.
@@ -184,22 +187,22 @@ export function CategoryShowcase({
 				</Card>
 			) : null}
 
-			{featured && featuredChildren.length > 0 ? (
+			{hasCount && featured && featuredChildren.length > 0 ? (
 				<Card style={styles.card}>
 					<View style={styles.cardHead}>
 						{/*
 						    The sector's own name is the card's title, and the count beneath it is
 						    `store.category.count` read with `tp` — that key has a `_plural`
 						    sibling, so it is a count of *products* and the noun has to agree.
-						    `productCount` counts buyable products only, which is what the API
-						    documents, so "128 productos" never claims stock that is all drafts.
+						    `productCount` counts public active listings, including sold-out items,
+						    so "128 productos" never claims stock that is all drafts.
 						*/}
 						<View style={styles.cardHeadText}>
 							<Text variant="heading" bold>
 								{localizedName(featured, locale)}
 							</Text>
 							{/*
-							    Only when it is something. `productCount` counts *buyable* products, so a
+							    Only when it is something. The summed count names active products, so a
 							    marketplace whose catalogue is all drafts reads `0` — true, and useless on
 							    a discovery card. "Food & Beverage / 0 productos" advertises an empty shelf as
 							    though it, and a reader who cannot buy anything there learns nothing they did
@@ -358,7 +361,7 @@ function chunk<T>(items: T[], size: number): T[][] {
  * word, and the margin at 3 is 7.8 points, which is thin enough that the test asserts it rather
  * than asserting the fit.
  *
- * `GRID_COUNT` is six: what the rail showed before it asked for a gesture.
+ * `GRID_COUNT` is three: one row of high-level choices before the shoppable feed.
  *
  * `STRIP_WIDTH` is **120**, sized by the widest word in the *whole* taxonomy rather than in the
  * sectors — `Electrodomésticos`, 106.6 at `caption`. Card 1's grid could be narrower because it
@@ -373,7 +376,7 @@ function chunk<T>(items: T[], size: number): T[][] {
  * sub-card read as "there is more" rather than as "this is all of it".
  */
 const GRID_PER_ROW = 3;
-const GRID_COUNT = 6;
+const GRID_COUNT = 3;
 const STRIP_WIDTH = 120;
 const PEEK = space.lg;
 

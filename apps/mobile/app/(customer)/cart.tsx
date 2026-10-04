@@ -1,8 +1,7 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { formatMoney } from "@pymeshub/shared";
 import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useState } from "react";
+import { router, useNavigation } from "expo-router";
+import { useEffect, useEffectEvent, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
@@ -24,11 +23,13 @@ import { useSkeletonHold } from "@/components/skeleton";
 import { CartSkeleton } from "@/components/skeletons";
 import { BarTotal, SummaryCard } from "@/components/summary-card";
 import { useTabBarClearance } from "@/components/tab-bar";
+import { useCapsuleScreenOptions } from "@/components/tab-capsule";
 import { Text } from "@/components/text";
 import { useCartLineQuantity } from "@/lib/cart-mutations";
 import { useT } from "@/lib/i18n";
+import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, media, radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
+import { media, radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
 /**
  * The basket.
@@ -94,8 +95,9 @@ import { icon, media, radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
  *
  * The cart's totals carry no delivery fee — the API zeroes it until a fulfilment mode is
  * chosen, because it cannot know yet whether this order is collected or brought. So this
- * screen draws no delivery row and the checkout draws one; that is the only difference
- * either is allowed, and it is reported rather than worked around here.
+ * screen draws no delivery row and calls the result "Items total"; the checkout draws
+ * the chosen fee and calls its result "Total". The label changes with what the API can
+ * actually price, rather than promising the cart's number is the final charge.
  *
  * ## What else you might add
  *
@@ -198,6 +200,13 @@ function Basket() {
 	const { t, intlLocale } = useT();
 	const trpc = useTRPC();
 	const { colors } = useTheme();
+	const navigation = useNavigation();
+	const capsuleOptions = useCapsuleScreenOptions();
+	const capsuleStyle =
+		typeof capsuleOptions === "function"
+			? undefined
+			: capsuleOptions.tabBarStyle;
+	const offerSelection = useOfferSelection();
 	const cart = useQuery(
 		trpc.cart.get.queryOptions(undefined, {
 			// Read off the answer rather than decided once, so the interval follows the cart
@@ -219,14 +228,22 @@ function Basket() {
 	const capsule = useTabBarClearance();
 	const waiting = useSkeletonHold(cart.isPending);
 	const [promoOpen, setPromoOpen] = useState(false);
+	const restoreCapsule = useEffectEvent(() => {
+		navigation.setOptions({ tabBarStyle: capsuleStyle });
+	});
+	useEffect(() => {
+		if (!promoOpen) return;
+		navigation.setOptions({ tabBarStyle: { display: "none" } });
+		return () => restoreCapsule();
+	}, [navigation, promoOpen]);
 	/**
 	 * Which *opening* of the promo sheet this is — the sheet's React key, and the whole
 	 * mechanism behind its draft.
 	 *
 	 * `./promo-input`'s field is a draft of the code on the cart, and it has to be re-seeded
 	 * when the customer opens the sheet and left alone while they are typing. It re-seeds from
-	 * a fresh mount (`useState(code ?? "")` runs once, at mount), so the only question is when
-	 * to mount. Keying on the open state — `key={promoOpen ? "open" : "closed"}`, the obvious
+	 * a fresh mount (`useState(code ?? suggestedCode ?? "")` runs once), so the question is
+	 * when to mount. Keying on the open state — `key={promoOpen ? "open" : "closed"}`, the obvious
 	 * spelling — answers that with "on both edges", and the closing edge is the problem: React
 	 * unmounts the old element and mounts a new one, so `./sheet`'s own `mounted`/`open` split
 	 * never runs and the panel disappears between two frames instead of paying the 224ms exit
@@ -295,14 +312,26 @@ function Basket() {
 		return (
 			<View style={styles.pad}>
 				<EmptyState
+					icon="bag-outline"
 					title={t("cart.empty.title")}
+					body={t("cart.empty.body")}
 					actionLabel={t("cart.empty.action")}
+					actionVariant="primary"
 					onAction={() => router.replace("/")}
 				/>
 			</View>
 		);
 
 	const { currency, totals, promotionCode, promotionError } = basket;
+	const suggestedOffer =
+		!promotionCode && !promotionError
+			? (offerForBusiness(offerSelection, basket.businessId) ?? undefined)
+			: undefined;
+	const suggestedCode = suggestedOffer?.code;
+	const promoNeedsMore = promotionError === "cart.promotion.error.belowMinimum";
+	const browseLabel = basket.businessSlug
+		? t(promoNeedsMore ? "cart.promotion.addProducts" : "cart.moreFromShop")
+		: t("cart.empty.action");
 	const short = totals.missingForMinOrderMinor > 0;
 	// Formatting the shortfall needs the currency the cart is in, which is in hand by here —
 	// the sentence is the API's number, formatted once and used in both places it appears (the
@@ -372,25 +401,12 @@ function Basket() {
 									// unlabelled image announced on every line of a basket is what a
 									// reader hears instead of the name.
 									accessibilityElementsHidden
+									importantForAccessibility="no"
 								>
-									{/* Only drawn when there is no photograph, so a transparent one never
-									    shows the fallback icon through it — the same pairing
-									    `./product-row` draws, at the same size.
-
-									    `image-outline`, the app's one mark for this absence:
-									    `./gallery`'s hero and `./product-tile`'s photo box draw the
-									    same name for the same missing `imageUrl`. This line and the
-									    menu row used to draw `fast-food-outline`, which is a claim
-									    about what the product is rather than a stand-in for the
-									    picture it does not have — see `./product-row`. */}
 									{item.imageUrl ? null : (
-										<Ionicons
-											name="image-outline"
-											size={icon.action}
-											color={colors.mutedForeground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
+										<Text variant="body" tone="action" bold>
+											{item.name.trim().charAt(0).toUpperCase()}
+										</Text>
 									)}
 								</Image>
 
@@ -509,7 +525,7 @@ function Basket() {
 				    enters with the last line and never after it — and at seven lines and beyond,
 				    where the stagger has already flattened, it enters with all of them.
 
-				    "Ver negocios cerca" stays at the end of this block rather than in the bar: the
+				    The explore-products action stays at the end of this block rather than in the bar: the
 				    bar holds the action the screen is for, and a second button beside it would be two
 				    primaries in one place. It is the way back, not the way forward. */}
 				<AnimateIn index={basket.items.length + 2} reorder>
@@ -517,13 +533,21 @@ function Basket() {
 						<PromoInput
 							code={promotionCode}
 							error={promotionError}
+							suggestedOffer={suggestedOffer}
 							onPress={openPromo}
 						/>
-						<SummaryCard totals={totals} />
+						<SummaryCard totals={totals} beforeFulfilment />
 						<Button
-							label={t("cart.empty.action")}
+							label={browseLabel}
 							variant="ghost"
-							onPress={() => router.replace("/")}
+							onPress={() =>
+								basket.businessSlug
+									? router.push({
+											pathname: "/store/[slug]",
+											params: { slug: basket.businessSlug },
+										})
+									: router.replace("/")
+							}
 						/>
 					</View>
 				</AnimateIn>
@@ -562,7 +586,7 @@ function Basket() {
 			<ActionBar
 				summary={
 					<BarTotal
-						label={t("cart.total")}
+						label={t("cart.itemsTotal")}
 						amountMinor={totals.totalMinor}
 						currency={currency}
 					/>
@@ -594,6 +618,7 @@ function Basket() {
 				onClose={() => setPromoOpen(false)}
 				code={promotionCode}
 				error={promotionError}
+				suggestedCode={suggestedCode}
 				pending={promo.pending}
 				// Both writes fail the same way from the sheet's point of view — a request that did
 				// not arrive — so the last of the two wins the slot under the field. Without the

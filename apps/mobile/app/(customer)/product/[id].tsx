@@ -21,6 +21,7 @@ import { Field } from "@/components/field";
 import { Gallery } from "@/components/gallery";
 import { OptionCardRow } from "@/components/option-card";
 import { Price } from "@/components/price";
+import { PromoReminder } from "@/components/promo-hero";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { Rating } from "@/components/rating";
 import { Screen } from "@/components/screen";
@@ -35,6 +36,7 @@ import { useAddToCart } from "@/lib/cart-mutations";
 import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
+import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import { icon, space, useTheme } from "@/theme";
 
@@ -100,10 +102,9 @@ const NOTES_MAX_LENGTH = 300;
  * around a late image. It draws `productDetailSchema.imageUrl` first and the shop's `images`
  * after it — this page used to draw `imageUrl ?? images[0]`, which left seven of the eight
  * photographs a shop may upload (`productCreateInput.images` is `max(8)`) unreachable — and a
- * product with no photograph at all gets the composed placeholder rather than a grey
- * rectangle. The wait before it is `ProductDetailSkeleton`, whose first block is the same 4:3
- * box, because on a page whose shape is already decided a spinner is a rectangle that answers
- * a question nobody asked.
+ * product with no photograph gets a compact initial instead of a gallery-sized empty box.
+ * The wait before it is `ProductDetailSkeleton`: before the payload arrives it cannot know
+ * whether a photograph exists, so it reserves the fuller photographic shape.
  *
  * ## The bar, and what it is for
  *
@@ -174,13 +175,13 @@ const NOTES_MAX_LENGTH = 300;
  *
  * `cart.addToCartInput` has carried `notes` — `trim().max(300)` — since the cart was built,
  * and `lib/cart-mutations.ts` already draws a provisional line with a `notes` field, so the
- * one thing missing was a field to type in. It goes in the tail above the stepper, it is
+ * one thing missing was a field to type in. It opens below the stepper when requested, it is
  * `notes.trim()`-ed at both ends (the input's `notes` and the drawn line's), and it is empty
  * by default: `product.notes` and `product.notes.placeholder` were in the dictionary with no
  * caller until this field. `maxLength` is the schema's 300 rather than a number of the
  * field's own, so the refusal the API would make cannot be typed.
  *
- * The field is why this screen passes `keyboardInsets` to `./screen` — it is the last thing in
+ * The field is why this screen passes `keyboardInsets` to `./screen` — it is near the end of
  * the scroll, which is where a keyboard opens over. It also means the note is per *add* and not
  * per line: `cart.addItem` stores the note on the line and overwrites it when a later add
  * resolves to the same `optionsHash` (`apps/api/src/services/cart.ts`), so typing a second note
@@ -235,7 +236,8 @@ const NOTES_MAX_LENGTH = 300;
  * ## What arrives, and what does not
  *
  * The page is a column of blocks and they enter as one (`./animate-in`), in the order they are
- * read: the name, the badges and the sold count, the rating, the price, the shop, the
+ * read: the name, the badges and the sold count, the rating, the price, an available
+ * shop offer when one was selected on Home, the shop, the
  * description, the tags, then the choices. The hero is deliberately **not** one of them. It is
  * `./gallery`, whose every page is `./image` — fading the photograph in over a box that is
  * already the right size, which is what the 4:3 box above is for — and a rise on the box would
@@ -278,6 +280,7 @@ export default function Product() {
 	const trpc = useTRPC();
 	const { t, tp, locale } = useT();
 	const { colors } = useTheme();
+	const offerSelection = useOfferSelection();
 	const { status } = useSession();
 	const { show } = useToast();
 	const cache = useQueryClient();
@@ -285,6 +288,7 @@ export default function Product() {
 	const [quantity, setQuantity] = useState(1);
 	const [options, setOptions] = useState<string[]>([]);
 	const [notes, setNotes] = useState("");
+	const [noteOpen, setNoteOpen] = useState(false);
 	const [conflictOpen, setConflictOpen] = useState(false);
 
 	const product = useQuery(trpc.products.byId.queryOptions({ id }));
@@ -333,6 +337,7 @@ export default function Product() {
 			// — `notes: input.notes ?? line[0].notes`), so a note nobody retyped would still
 			// rewrite the line. Cleared here, the customer types a new one or sends none.
 			setNotes("");
+			setNoteOpen(false);
 			router.push("/cart");
 		},
 		onError: (error) => {
@@ -388,10 +393,14 @@ export default function Product() {
 	}
 
 	const data = product.data;
+	const selectedOffer = data?.availability.inStock
+		? offerForBusiness(offerSelection, data.seller.id)
+		: null;
 	// The cover, and the one the cart row shows: the first page of the pager, which is what
 	// the customer was looking at when they added it. `./gallery` dedupes the two fields, so
 	// this is that same first page rather than a second reading of them.
 	const cover = data?.imageUrl ?? data?.images[0] ?? null;
+	const hasPhoto = Boolean(data?.imageUrl || data?.images.some(Boolean));
 	const ready = !product.isError && !waiting && !!data;
 
 	// The category, in the reader's language. `categoryNameEn` is nullable — the six demo
@@ -564,15 +573,14 @@ export default function Product() {
 					// blocks and *not* on this container, which would inset a rail twice and stop it
 					// reaching the screen's edge. `./option-card` explains why the rail owns it.
 					<View style={styles.sections}>
-						{/* Always drawn, and never conditionally: `./gallery` composes the
-						    placeholder itself when the shop uploaded nothing, so a branch here
-						    would be a second, differently-shaped empty state for the same
-						    absence. It is outside `./animate-in` — see the docblock. */}
+						{/* The gallery keeps a full photo crop; missing imagery uses a shorter
+						    product mark so the name and price move into view. */}
 						<View style={styles.pad}>
 							<Gallery
 								coverUrl={data.imageUrl}
 								images={data.images}
-								style={styles.hero}
+								fallbackName={data.title}
+								style={hasPhoto ? styles.hero : styles.heroEmpty}
 							/>
 						</View>
 
@@ -648,6 +656,12 @@ export default function Product() {
 								compareAtMinor={data.compareAtPriceMinor}
 							/>
 						</AnimateIn>
+
+						{selectedOffer ? (
+							<View style={styles.pad}>
+								<PromoReminder offer={selectedOffer} compact />
+							</View>
+						) : null}
 
 						{/* The shop's own control, and — see the docblock — the only route from this
 						    page to the shop's reviews. It is a `./button` and not a `./facts` chip
@@ -757,43 +771,14 @@ export default function Product() {
 							</AnimateIn>
 						))}
 
-						{/* The foot of the page, which is now everything that is not the bar: the note,
-						    the stepper the bar cannot hold (see the docblock), and the failure if the
+						{/* The foot of the page, which is now everything that is not the bar: the
+						    stepper the bar cannot hold (see the docblock), the optional note, and
+						    the failure if the
 						    add was refused. Last because it is the last thing before the CTA, and the
 						    `index` is past the option groups — the stagger caps at six, so anything
 						    from there on arrives together, which is what a foot should do. */}
 						<AnimateIn index={7 + data.optionGroups.length} style={styles.pad}>
 							<View style={styles.tail}>
-								{/* `cart.addToCartInput.notes` — `trim().max(300).optional()` — carried no
-								    field anywhere in the app until this one, and `product.notes` /
-								    `product.notes.placeholder` were in the dictionary with no caller.
-								    `./field` and not a bare `TextInput`: the label above the box is what
-								    a screen reader announces as the field's name, and a label that lives
-								    only in the accessibility tree is invisible to everyone else.
-
-								    `maxLength` is the schema's 300 rather than a number of this field's
-								    own, so the refusal the API would make cannot be typed. `multiline`,
-								    because a note is a sentence: a single-line box scrolls a long one
-								    sideways, and the customer cannot read back what they wrote.
-
-								    Empty by default and never required — an empty note is sent as absent
-								    (`notes.trim() || undefined` in `addItem`), which is what the schema's
-								    `.optional()` asks for. */}
-								<Field
-									label={t("product.notes")}
-									value={notes}
-									onChangeText={setNotes}
-									placeholder={t("product.notes.placeholder")}
-									multiline
-									maxLength={NOTES_MAX_LENGTH}
-									// No `style`: `./field` spreads its remaining props **last**, so a
-									// `style` from here would replace the input's own box — its border,
-									// its radius and the focus ring — rather than narrow it. The field
-									// places itself, and it sits above the stepper rather than inside
-									// the bar because the bar is one row with one number and one CTA,
-									// and a box that grows with a sentence would move the button.
-								/>
-
 								{/* The shared stepper rather than two `Button`s drawn here. The hand-rolled
 								    pair had the accessible *name* of each control set to its glyph — a reader
 								    announced "−, botón" and then a hint about a quantity — and it re-decided
@@ -812,6 +797,33 @@ export default function Product() {
 									max={data.availability.maxOrderQuantity}
 									disabled={!data.availability.inStock}
 								/>
+
+								{noteOpen ? (
+									<Field
+										label={t("product.notes")}
+										value={notes}
+										onChangeText={setNotes}
+										placeholder={t("product.notes.placeholder")}
+										multiline
+										maxLength={NOTES_MAX_LENGTH}
+									/>
+								) : (
+									<Button
+										label={t("product.notes.add")}
+										variant="ghost"
+										size="sm"
+										icon={
+											<Ionicons
+												name="create-outline"
+												size={icon.control}
+												color={colors.foreground}
+												accessibilityElementsHidden
+												importantForAccessibility="no"
+											/>
+										}
+										onPress={() => setNoteOpen(true)}
+									/>
+								)}
 
 								{/* `CONFLICT` is the one refusal this block is not for: it is a
 								    question, and the sheet at the foot of the screen asks it. Two
@@ -869,7 +881,7 @@ export default function Product() {
 							// broken, one question above it is open, and the bar's summary is where
 							// that is said.
 							label: data.availability.inStock
-								? t("product.add")
+								? t("product.addToCart")
 								: t("product.soldOut"),
 							loading: adding,
 							disabled: blockedReason !== null,
@@ -976,6 +988,7 @@ const styles = StyleSheet.create({
 	// The cross-shop panel's body: the sentence, then the answer that is not the bar's action.
 	prompt: { gap: space.md },
 	hero: { width: "100%", aspectRatio: 4 / 3 },
+	heroEmpty: { width: "100%", height: 144 },
 	metaRow: {
 		flexDirection: "row",
 		alignItems: "center",

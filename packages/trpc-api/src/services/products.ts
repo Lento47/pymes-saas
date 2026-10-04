@@ -23,6 +23,7 @@ import {
 	asc,
 	desc,
 	eq,
+	gt,
 	gte,
 	inArray,
 	isNull,
@@ -182,6 +183,13 @@ export async function list(
 	if (input.categoryId)
 		conditions.push(inCategory(productTable.categoryId, input.categoryId));
 	if (input.featuredOnly) conditions.push(eq(productTable.isFeatured, true));
+	if (input.inStockOnly) {
+		const hasStock = or(
+			eq(productTable.trackInventory, false),
+			gt(productTable.stockQuantity, 0),
+		);
+		if (hasStock) conditions.push(eq(productTable.status, "ACTIVE"), hasStock);
+	}
 	if (input.minPriceMinor !== undefined)
 		conditions.push(gte(productTable.priceMinor, input.minPriceMinor));
 	if (input.maxPriceMinor !== undefined)

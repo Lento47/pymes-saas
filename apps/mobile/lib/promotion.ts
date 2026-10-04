@@ -1,5 +1,5 @@
-import type { MessageKey } from "@pymeshub/i18n";
-import type { PromotionCard } from "@pymeshub/shared";
+import type { MessageKey, Translator } from "@pymeshub/i18n";
+import { formatMoney, type PromotionCard } from "@pymeshub/shared";
 
 /**
  * A promotion's kind, in the customer's words.
@@ -30,3 +30,36 @@ export const PROMOTION_LABELS: Record<PromotionCard["kind"], MessageKey> = {
 	FIXED: "home.promotion.fixed",
 	FREE_DELIVERY: "home.promotion.freeDelivery",
 };
+
+export function promotionCopy(
+	promotion: Pick<
+		PromotionCard,
+		"kind" | "value" | "currency" | "minOrderMinor"
+	>,
+	t: Translator["t"],
+	intlLocale: string,
+) {
+	const money =
+		promotion.kind === "FIXED"
+			? formatMoney(promotion.value, promotion.currency, { locale: intlLocale })
+			: "";
+	const benefit = t(PROMOTION_LABELS[promotion.kind], {
+		percent: String(promotion.value),
+		amount: money,
+	});
+	const minimum =
+		promotion.minOrderMinor !== null &&
+		promotion.minOrderMinor !== undefined &&
+		promotion.minOrderMinor > 0
+			? t("home.promotion.minimum", {
+					amount: formatMoney(promotion.minOrderMinor, promotion.currency, {
+						locale: intlLocale,
+					}),
+				})
+			: null;
+	const eligibility =
+		promotion.minOrderMinor === undefined
+			? t("home.promotion.eligibility")
+			: null;
+	return { benefit, minimum, eligibility };
+}

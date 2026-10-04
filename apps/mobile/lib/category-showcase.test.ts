@@ -175,43 +175,41 @@ function gridColumn(): number {
 }
 
 describe("the showcase's two cards", () => {
-	test("card 1 draws six sectors and card 2 draws one sector's children", () => {
-		// Six is what the rail it replaced showed before it asked for a gesture. Both numbers
+	test("card 1 draws three sectors and card 2 draws one stocked sector's children", () => {
+		// One row keeps the home feed's first screen focused. Both numbers
 		// are asserted rather than trusted, because they are the composition.
-		expect(declared("GRID_COUNT")).toBe(6);
+		expect(declared("GRID_COUNT")).toBe(3);
 		expect(declared("GRID_PER_ROW")).toBe(3);
-		// Card 2 has no count of its own: it draws *every* child of the chosen sector, which is
-		// a median of 12 and a maximum of 29, and a strip is the right control for a length that
-		// is neither six nor a hundred.
+		// Card 2 draws only stocked children, so a reader never lands on an empty shelf.
 		expect(codeOnly()).toMatch(/featuredChildren\.map/);
 		expect(codeOnly()).not.toMatch(/featuredChildren\.slice\(/);
+		expect(codeOnly()).toMatch(/child\.productCount \?\? 0\) > 0/);
 	});
 
 	test("card 1 is positional and card 2 is a fact, so no slug is named anywhere", () => {
 		// Checked as the *absence* of every sector slug, because that is the specific failure:
 		// a hardcoded slug reads as a data-driven layout and outlives whatever reason it had.
-		// Card 1 takes `sortOrder`'s first six, which the API owns; card 2 takes the busiest
-		// sector by `productCount`, which is a fact about the catalogue.
+		// Card 1 takes `sortOrder`'s first three, which the API owns; card 2 takes the busiest
+		// sector by its stocked children's counts, which is a fact about the catalogue.
 		const code = codeOnly();
 		for (const slug of level(true)) {
 			expect(code).not.toMatch(new RegExp(`["']${slug}["']`));
 		}
 		// And the two mechanisms are both present and stated.
 		expect(code).toMatch(/sectors\.slice\(0, GRID_COUNT\)/);
-		expect(code).toMatch(/productCount \?\? -1/);
+		expect(code).toMatch(/buyableCount\(second\) - buyableCount\(first\)/);
+		expect(code).toMatch(/child\.productCount \?\? 0/);
 	});
 
-	test("a sector with no children cannot become card 2", () => {
-		// `Varios y Especialidad` has children today; a newly added sector may not. Drawing an
-		// empty strip under a title would be a card that says nothing.
-		expect(codeOnly()).toMatch(/childrenOf\(sector\.id\)\.length > 0/);
+	test("card 2 needs more than one stocked child to justify a strip", () => {
+		expect(codeOnly()).toMatch(/stockedChildrenOf\(sector\.id\)\.length > 1/);
 	});
 
 	test("neither card renders empty", () => {
-		// A fresh install can hold fewer than six sectors, which is a real state. A card with an
+		// A fresh install can hold fewer than three sectors, which is a real state. A card with an
 		// empty grid inside it is worse than no card, so each is conditional on having something.
 		expect(codeOnly()).toMatch(/gridSectors\.length > 0 \?/);
-		expect(codeOnly()).toMatch(/featured && featuredChildren\.length > 0 \?/);
+		expect(codeOnly()).toMatch(/hasCount && featured && featuredChildren\.length > 0 \?/);
 	});
 
 	test("the whole showcase renders nothing for no categories", () => {
@@ -342,7 +340,7 @@ describe("the showcase's sub-cards", () => {
 
 describe("the showcase's scroll", () => {
 	test("only card 2 scrolls", () => {
-		// One `ScrollView`, in card 2. Card 1's six fit at three across and a gesture there would
+		// One `ScrollView`, in card 2. Card 1's three fit across and a gesture there would
 		// be hiding something nothing named \u2014 the defect the rail was built to remove.
 		expect(codeOnly()).toMatch(/<ScrollView/);
 		expect((codeOnly().match(/<ScrollView/g) ?? []).length).toBe(1);

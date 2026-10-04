@@ -183,6 +183,7 @@ export const productListInput = z.object({
 	status: z.array(z.enum(PRODUCT_STATUSES)).max(3).optional(),
 	minPriceMinor: moneyMinorSchema.optional(),
 	maxPriceMinor: moneyMinorSchema.optional(),
+	inStockOnly: z.boolean().default(false),
 	featuredOnly: z.boolean().default(false),
 	sort: z
 		.enum(["relevance", "price", "rating", "newest", "popular"])
@@ -353,7 +354,7 @@ export type PromotionArt = z.infer<typeof promotionArtSchema>;
  * resolves it — so a card can advertise a code without the client knowing what it is worth,
  * and without either client being able to compute a discount the API would not agree with.
  *
- * ## What is on it, and the two things that are not
+ * ## What is on it, and what is not
  *
  * `value` is the code's own unit, which depends on `kind` — a whole percent for `PERCENT`,
  * minor units for `FIXED`, and ignored entirely for `FREE_DELIVERY`. That is the column's
@@ -362,13 +363,11 @@ export type PromotionArt = z.infer<typeof promotionArtSchema>;
  * subtotal it does not have: "10% off" is a fact about the code, and "₡1 500 off" would be a
  * fact about a cart nobody has filled yet.
  *
- * `minOrderMinor`, `redemptions`, `startsAt` and `endsAt` are all columns on the row and none
- * of them is here. A browse card has no key to print a threshold in — `store.minOrder.short`
- * is the *shop's* minimum order and printing the code's threshold with those words would be
- * two different numbers under one sentence — and a deadline counts down, which is a clock
- * this card has no reason to own. The server filters on all four (`apps/api/src/services/
- * catalog.ts`), so what arrives here is already live and available; the cart re-reads them at
- * redemption and refuses with its own sentence if they no longer hold.
+ * `minOrderMinor` is the code's own threshold, not the shop's minimum order. The banner
+ * states it so a customer does not build a basket for a discount they cannot yet use.
+ * `redemptions`, `startsAt` and `endsAt` stay off the card: the server filters on those
+ * three (`packages/trpc-api/src/services/catalog.ts`), and a deadline countdown would
+ * turn the browse card into a clock. The cart re-reads every condition at redemption.
  *
  * The business is a `SellerSummary` and not a `BusinessCard`, which is the same decision
  * `productCardSchema.seller` makes and for the same reason: a card that carries a second
@@ -389,7 +388,7 @@ export type PromotionArt = z.infer<typeof promotionArtSchema>;
  * every switch that reads it rather than a card that quietly draws the wrong thing.
  *
  * `kind: "none"` is a state rather than an absent field on purpose: "this promotion has
- * no picture and draws its brand fill" is a decision somebody made, and a client that
+ * no picture and draws its own composed surface" is a decision somebody made, and a client that
  * cannot tell it from "nobody has decided yet" will invent a placeholder for the second
  * one.
  */
@@ -407,6 +406,7 @@ export const promotionCardSchema = z.object({
 	 * is the one guess `formatMoney` exists to make unnecessary.
 	 */
 	currency: currencySchema,
+	minOrderMinor: moneyMinorSchema.nullable().optional(),
 	art: promotionArtSchema,
 	business: sellerSummarySchema,
 });

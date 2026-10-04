@@ -9,22 +9,18 @@ import { Card } from "./card";
 import { Text } from "./text";
 
 /**
- * The strip above the cart bar: how far this basket is from the shop's minimum order.
+ * The strip above the cart bar: the next useful action toward the shop's minimum order.
  *
  * It is the shape the design for this screen gives the slot — a ticket, one loud line, a
  * way forward — and the *fact* is deliberately different from the one in that design's
  * example. "Ahorra ₡2 500 en tu próximo pedido de ₡10 000 o más" is a promotion carrying a
- * threshold, and `promotionCardSchema` does not carry one, on purpose and in two places:
- * `packages/shared/src/schemas/catalog.ts` ("a browse card has no key to print a threshold
- * in — `store.minOrder.short` is the *shop's* minimum order and printing the code's
- * threshold with those words would be two different numbers under one sentence") and
- * `docs/api-surface.md` ("PromotionCard, and the columns it deliberately leaves out").
+ * code-specific threshold, which `./promo-hero` now states on the feed. This strip instead
+ * describes the shop's separate minimum order for the customer's current basket.
  *
- * What this app *can* state truthfully about a threshold is about **this basket**, and it
+ * What this strip can state truthfully about a threshold is about **this basket**, and it
  * comes with the number already computed: `cart.totals.missingForMinOrderMinor`, the gap to
- * the shop's own minimum, read through `cart.minOrderMissing` — a sentence that exists for
- * exactly this and says "Te faltan {amount} para el pedido mínimo". So the slot carries the
- * one threshold that is a fact about the customer's own order, and the codes themselves live
+ * the shop's own minimum. The sentence names the shop whose products can close that gap,
+ * rather than sending the customer back to a cart they already know is short. Codes live
  * where they belong: `./promo-hero` at the top of the feed, and the cart's own code field.
  *
  * Two consequences of that choice, both deliberate:
@@ -32,38 +28,39 @@ import { Text } from "./text";
  * - **It is drawn only when the gap exists.** `missingForMinOrderMinor > 0` is the condition,
  *   so a basket that clears the minimum — or an empty one — gets no strip. A "you're almost
  *   there" that is not true is the pressure `docs/design-mobile.md` rules out.
- * - **It opens the cart, not a shop.** The reader's next useful act is to add the missing
- *   amount or to look at what they have, and both are the cart. `cart.minOrderMissing` is a
- *   state of that screen, so the chevron leads to where the sentence is also drawn.
+ * - **It opens that shop.** The cart summary beside it already opens the cart. The shortfall
+ *   needs products from the same business, so this chevron leads to its menu.
  *
  * The disc is filled `accent`, the glyph in `accentForeground` — the palette's *light*
- * brand pair, the fill a category tile (`./category-rail`) wears at rest — because the
- * one filled brand surface in this app is `./promo-hero`'s (`./card`'s `tone="brand"`)
- * and a second one here would make the banner ordinary. The glyph is `cash-outline`,
+ * brand pair, the fill a category tile (`./category-rail`) wears at rest — because
+ * `./promo-hero` reserves the stronger `primary` fill for the promotion code chip.
+ * The glyph is `cash-outline`,
  * the same mark `app/store/[slug]` draws for a shop's `store.minOrder.short`: one fact,
  * one mark, on both surfaces.
  */
 export function CouponStrip({
 	amountMinor,
 	currency,
+	businessName,
 	onPress,
 }: {
 	/** The gap to the minimum, in the currency's minor unit. Never divided at a call site. */
 	amountMinor: number;
 	currency: Currency;
+	businessName: string;
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
 
 	const amount = formatMoney(amountMinor, currency, { locale: intlLocale });
-	const sentence = t("cart.minOrderMissing", { amount });
+	const sentence = t("home.minOrder.next", { amount, business: businessName });
 
 	return (
 		<Card
 			onPress={onPress}
 			accessibilityLabel={sentence}
-			accessibilityHint={t("cart.title")}
+			accessibilityHint={t("home.minOrder.help")}
 			// Flat: no `shadow.card` lift. The strip sits one screen above the
 			// floating `ActionBar`, and two lifted cards 8pt apart read as one
 			// surface split in two — the bar keeps the lift, this keeps the border.

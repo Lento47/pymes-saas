@@ -24,14 +24,12 @@ import { ActionBar, useActionBarClearance } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { BusinessCard } from "@/components/business-card";
 import { CategoryShowcase } from "@/components/category-showcase";
-import { PurchaseWash } from "@/components/purchase-wash";
 import { CouponStrip } from "@/components/coupon-strip";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { HeroSearch } from "@/components/hero-search";
+import { HomeGradient } from "@/components/home-gradient";
 import { HomeHeader } from "@/components/home-header";
-import { ListEnd } from "@/components/list-end";
-import { MapView } from "@/components/map";
 import { hitSlopFor, Pressable } from "@/components/pressable";
 import { ProductRail } from "@/components/product-rail";
 import { ProductRow } from "@/components/product-row";
@@ -42,7 +40,11 @@ import { RollbackNotice } from "@/components/rollback-notice";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
 import { useSkeletonHold } from "@/components/skeleton";
-import { FeedSkeleton, SearchResultsSkeleton } from "@/components/skeletons";
+import {
+	FeedSkeleton,
+	ProductRowsSkeleton,
+	SearchResultsSkeleton,
+} from "@/components/skeletons";
 import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
@@ -71,23 +73,22 @@ import {
 /**
  * The home feed: where this order goes, what there is to buy, and what is in the basket.
  *
- * One call — `catalog.feed` — for the catalogue's four lists, because they are one screen
- * and three requests would be three chances to render half a feed. Two more reads belong to
- * *this customer* rather than to the marketplace and are drawn only for a session:
+ * One call — `catalog.feed` — for the catalogue's five lists, because they are one screen
+ * and three requests would be three chances to render half a feed. An older feed response
+ * without discovery products uses `products.list` only until the API catches up. Two more
+ * reads belong to *this customer* rather than to the marketplace and are drawn only for a session:
  * `orders.purchasedProducts` (the "Pide de nuevo" shelf) and `cart.get` (the bar at the
  * foot and the strip above it).
  *
- * The composition is the one the design for this screen sets out — a header stating the
- * customer and the coordinate, the field, the categories, the offer banner, the repeat
- * shelf, the shops near you, and the basket's own facts at the foot — and every block below
- * is either that or a section this feed has always had, in that order.
+ * The header and search stay fixed. When the catalogue has live commerce, offers and
+ * purchasable products lead the feed; shops and category shortcuts follow. An empty
+ * marketplace keeps categories first so the screen offers a path without inventing products.
  *
  * ## The coordinate is stated once, above everything
  *
- * `./home-header` states it and nothing else repeats it: not the map band, which draws a
- * *picture* of it, and not the nearby heading, which follows the same coordinate it sorts
- * by. The reasoning — two files holding one fact can disagree about it, and these two did —
- * lives in that component's docblock now, where the line is drawn.
+ * `./home-header` states it and the feed does not spend the fold on a second picture of
+ * the same fact. The map stays on screens where it helps someone choose or track a place.
+ * The nearby heading follows the coordinate it sorts by, without repeating the address.
  *
  * The distances are a bonus, never a gate: without coords the API answers with the same
  * shape and `nearby` is the newest businesses rather than the closest — which is why the
@@ -99,8 +100,8 @@ import {
  * `docs/design-mobile.md` Rule 1: a screen with two loud things has none. The header defers
  * (a `heading` title over a `label` meta line — the register `./section-header` already
  * draws its own titles at, so nothing above the field out-shouts it), the banner is one
- * filled mark rather than four competing numbers, and prices stay `body` on every browse
- * surface — money is the loudest thing in a *commit*, and the only commit on this screen is
+ * dark spotlight with one brand-colour mark rather than four competing numbers, and prices
+ * stay `body` on every browse surface — money is the loudest thing in a *commit*, and the only commit on this screen is
  * the bar at its foot.
  *
  * ## What each "Ver todo" means
@@ -123,10 +124,9 @@ import {
  *
  * ## The foot says what the basket needs
  *
- * `./coupon-strip` is the gap to the shop's minimum order — the one threshold this API will
- * state truthfully (a promotion's own threshold is deliberately not on the wire; see that
- * file) — and `./action-bar` is the basket itself: how much and how many on the left, the
- * one commit on the right. Both read the cart that is already in the cache from the tab
+ * `./coupon-strip` is the gap to the shop's minimum order; the promotion's separate
+ * threshold belongs on its own banner. `./action-bar` is the basket itself: how much and how
+ * many on the left, the one commit on the right. Both read the cart already in the cache from the tab
  * that owns it, so neither adds a request the app was not already making. The bar is absent
  * for an empty basket: a "Ver carrito" over nothing is a door to an empty room.
  *
@@ -142,8 +142,8 @@ import {
  */
 export default function HomeScreen() {
 	const trpc = useTRPC();
-	const { t } = useT();
-	const { colors } = useTheme();
+	const { t, intlLocale } = useT();
+	const { colors, scheme } = useTheme();
 	const { session } = useSession();
 	const { coords, request } = useDeviceLocation();
 	const toast = useToast();
@@ -182,6 +182,21 @@ export default function HomeScreen() {
 			{ placeholderData: keepPreviousData },
 		),
 	);
+	const needsLegacyDiscover =
+		feed.data?.discover === undefined &&
+		feed.data !== undefined &&
+		![...feed.data.featured, ...feed.data.offers].some(
+			(product) => product.availability.inStock,
+		);
+	const legacyDiscover = useQuery(
+		trpc.products.list.queryOptions(
+			{ sort: "popular", inStockOnly: true, limit: 50 },
+			{ enabled: needsLegacyDiscover },
+		),
+	);
+	const fallbackDiscover = (legacyDiscover.data?.items ?? [])
+		.filter((product) => product.availability.inStock)
+		.slice(0, DISCOVER_PREVIEW);
 
 	// Not `feed.isPending` alone: the first frame after a cache hit is a frame of skeleton,
 	// and the hold is what keeps it from being a flicker.
@@ -251,7 +266,16 @@ export default function HomeScreen() {
 	const items = cart.data?.items ?? [];
 	const units = items.reduce((sum, item) => sum + item.quantity, 0);
 	const currency: Currency = cart.data?.currency ?? "CRC";
-	const shortfall = cart.data?.totals.missingForMinOrderMinor ?? 0;
+	const shortfall =
+		units > 0 ? (cart.data?.totals.missingForMinOrderMinor ?? 0) : 0;
+	const cartBusinessName = cart.data?.businessName;
+	const cartBusinessSlug = cart.data?.businessSlug;
+	const needsMoreItems = shortfall > 0;
+	const shortfallHint = needsMoreItems
+		? t("cart.minOrderMissing", {
+				amount: formatMoney(shortfall, currency, { locale: intlLocale }),
+			})
+		: undefined;
 
 	/**
 	 * Search, in place rather than on its own route.
@@ -313,17 +337,19 @@ export default function HomeScreen() {
 		}, [searching]),
 	);
 
-	const refreshControl = useRefreshControl(feed.refetch);
+	const refreshControl = useRefreshControl(() =>
+		Promise.all([
+			feed.refetch(),
+			...(needsLegacyDiscover ? [legacyDiscover.refetch()] : []),
+		]),
+	);
 
 	return (
-		<Screen padded={false} contentStyle={styles.fill}>
-			{/*
-			    The purchase wash, first child so it paints first and everything else sits on top of
-			    it. Any later and it would cover the greeting and the search field; `absoluteFill`
-			    with `pointerEvents="none"` and no layout box, so it costs the feed nothing.
-			*/}
-			<PurchaseWash />
-
+		<Screen
+			padded={false}
+			contentStyle={styles.fill}
+			background={<HomeGradient scheme={scheme} color={colors.primary} />}
+		>
 			{/* Outside the branch below on purpose. The header is the session's and the field
 			    is static, so neither has any reason to disappear while the feed loads — and a
 			    screen whose top third is stable reads as faster than one that rebuilds itself
@@ -453,13 +479,6 @@ export default function HomeScreen() {
 					/>
 				) : (
 					<>
-						{/* The picture of the line the header just drew — and it is the *whole*
-						    header's coordinate that both read, so the two cannot say different
-						    things. `./map` returns `null` before it renders anything, so an
-						    unconfigured basemap pays no margin and leaves no hole; nothing else
-						    on this screen depends on it. */}
-						<MapView coords={coords} style={styles.heroMap} />
-
 						{feed.isError ? (
 							// `padded` is off for this screen, because the rows are edge-to-edge;
 							// the error is not a row, so it pays the horizontal padding itself.
@@ -474,6 +493,10 @@ export default function HomeScreen() {
 						) : (
 							<Feed
 								data={feed.data}
+								fallbackDiscover={fallbackDiscover}
+								discoveryLoading={
+									needsLegacyDiscover && legacyDiscover.isLoading
+								}
 								hasCoords={coords !== null}
 								again={pastItems}
 								onQuickAdd={(product: ProductCard) => {
@@ -487,17 +510,23 @@ export default function HomeScreen() {
 							/>
 						)}
 
-						{/* The basket's own facts sit outside the catalogue's branch, for the
-						    reason the map band does: they are not catalogue data and they do not
+						{/* The basket's own facts sit outside the catalogue's branch because
+						    they are not catalogue data and they do not
 						    wait for it. A strip above the bar is the place the design for this
-						    screen gives it, and `./coupon-strip` draws nothing when the gap is
-						    closed — so this is `null` in most states, by design. */}
-						{shortfall > 0 ? (
+						    screen gives it. Without a started cart and its shop, or after the
+						    minimum is reached, this block is absent. */}
+						{shortfall > 0 && cartBusinessName && cartBusinessSlug ? (
 							<View style={styles.strip}>
 								<CouponStrip
 									amountMinor={shortfall}
 									currency={currency}
-									onPress={() => router.push("/cart")}
+									businessName={cartBusinessName}
+									onPress={() =>
+										router.push({
+											pathname: "/store/[slug]",
+											params: { slug: cartBusinessSlug },
+										})
+									}
 								/>
 							</View>
 						) : null}
@@ -516,8 +545,18 @@ export default function HomeScreen() {
 						/>
 					}
 					primary={{
-						label: t("cart.bar.checkout"),
-						onPress: () => router.push("/checkout"),
+						label: t(
+							needsMoreItems ? "cart.bar.addItems" : "cart.bar.checkout",
+						),
+						onPress: () => {
+							if (!needsMoreItems) return router.push("/checkout");
+							if (!cartBusinessSlug) return router.push("/cart");
+							router.push({
+								pathname: "/store/[slug]",
+								params: { slug: cartBusinessSlug },
+							});
+						},
+						accessibilityHint: shortfallHint,
 					}}
 					onHeightChange={onHeightChange}
 				/>
@@ -542,6 +581,7 @@ export default function HomeScreen() {
  */
 const NEARBY_PREVIEW = 3;
 const FEATURED_PREVIEW = 5;
+const DISCOVER_PREVIEW = 3;
 const AGAIN_LIMIT = 8;
 
 /** The banner peeks the next offer — `./rail`'s rule that a row must show it scrolls. */
@@ -556,9 +596,9 @@ const HERO_RATIO = 0.85;
  * are the two halves of the same decision and both are navigation. `./action-bar` takes a
  * node here precisely so the three screens that draw one can put their own thing in it.
  *
- * The count is a number over the glyph rather than a word, because the words beside it are
- * already "₡4 400 · 2 artículos" — `tp("order.itemCount", units)` is what the row *says*,
- * and the badge is what it shows at a glance.
+ * The count is a number over the glyph, while the text names the items total explicitly:
+ * delivery has not been chosen yet, so this figure cannot promise the final charge.
+ * The accessible label still speaks the full item count, including numbers above 99.
  */
 function CartSummary({
 	units,
@@ -575,6 +615,7 @@ function CartSummary({
 	const { t, tp, intlLocale } = useT();
 
 	const money = formatMoney(totalMinor, currency, { locale: intlLocale });
+	const itemsTotal = `${t("cart.itemsTotal")}: ${money}`;
 
 	return (
 		<Pressable
@@ -582,7 +623,7 @@ function CartSummary({
 			accessibilityRole="button"
 			// The label is the action and it names where it goes ("Ver carrito"), so no hint
 			// is owed — `app/settings.ts`'s rule is for labels that do *not* say.
-			accessibilityLabel={`${t("cart.bar.viewCart")} · ${money} · ${tp("order.itemCount", units)}`}
+			accessibilityLabel={`${t("cart.bar.viewCart")} · ${itemsTotal} · ${tp("order.itemCount", units)}`}
 			style={styles.summary}
 		>
 			<View style={styles.summaryIcon}>
@@ -604,10 +645,8 @@ function CartSummary({
 				<Text variant="label" bold>
 					{t("cart.bar.viewCart")}
 				</Text>
-				{/* Money and quantity on one line, both `tabular`, because the two are what
-				    changes under the reader as they add things and neither may reflow the row. */}
 				<Text variant="caption" tone="muted" tabular>
-					{`${money} · ${tp("order.itemCount", units)}`}
+					{itemsTotal}
 				</Text>
 			</View>
 		</Pressable>
@@ -617,7 +656,6 @@ function CartSummary({
 const styles = StyleSheet.create({
 	fill: { flex: 1 },
 	hero: { marginTop: space.md },
-	heroMap: { marginTop: space.md, marginHorizontal: space.lg },
 	// `flex: 1` and not `flexGrow`/`flexShrink`, and the difference is `flexBasis`: RN's
 	// `ScrollView` base style leaves the basis `auto`, so the scroller's hypothetical height
 	// is its *content* and Android then clamps the scroll range to it — the last stretch of
@@ -663,8 +701,6 @@ const styles = StyleSheet.create({
 	// toast, because neither is "a fact about why this screen is not the one you asked for".
 	degraded: { paddingHorizontal: space.lg, paddingTop: space.sm },
 	strip: { paddingHorizontal: space.lg, marginTop: space.xxl },
-	// The page's own foot, and what the huge gutter is for when there is no bar.
-	endStatement: { paddingBottom: 0 },
 	// The searching field: `./hero-search`'s own box and tokens, in its place.
 	searchField: {
 		flexDirection: "row",
@@ -737,9 +773,10 @@ const styles = StyleSheet.create({
 	iconButton: { alignItems: "center", justifyContent: "center" },
 });
 
-/** `catalog.feed`'s four lists and its taxonomy, as `Feed` draws them. */
+/** `catalog.feed`'s five lists and its taxonomy, as `Feed` draws them. */
 type FeedData = {
 	featured: ProductCard[];
+	discover?: ProductCard[];
 	offers: ProductCard[];
 	nearby: BusinessCardData[];
 	promotions: PromotionCard[];
@@ -758,11 +795,13 @@ type SeeAll = { label: string; onPress: () => void };
  *
  * Every rail and list draws **nothing** when its own list is empty, so a marketplace with no
  * codes is a feed without the section rather than a heading with a shrug under it. The one
- * exception is "near you", which is the screen's own answer about *place* and therefore
- * carries the sentence for an empty one.
+ * exception is "near you" when the marketplace has no commerce to show; its empty sentence
+ * does not crowd a product-led feed when the customer can still shop for pickup.
  */
 function Feed({
 	data,
+	fallbackDiscover,
+	discoveryLoading,
 	hasCoords,
 	again,
 	onQuickAdd,
@@ -772,6 +811,8 @@ function Feed({
 	seeAllFeatured,
 }: {
 	data: FeedData;
+	fallbackDiscover: ProductCard[];
+	discoveryLoading: boolean;
 	/** Whether the sort behind "near you" was a distance at all — see the file docblock. */
 	hasCoords: boolean;
 	/** The repeat shelf's products, already filtered to what can still be bought. */
@@ -784,25 +825,37 @@ function Feed({
 	seeAllFeatured: SeeAll;
 }) {
 	const { t } = useT();
-
-	return (
-		<>
-			{/*
-			    The showcase owns its own heading now, so the feed's `SectionHeader` for categories is
-			    gone — "Categorías" printed above a card that also says "Categorías" is the same
-			    fact on the screen twice. `allHref` carries the link the header used to draw.
-			    `seeAllCategories` still exists because the search screen's own rail uses the same
-			    destination, but the feed no longer renders it.
-			    All 241 categories go down, unfiltered: the showcase needs a sector's children to
-			    draw its second card, and a component handed only the sectors could not find them.
-			    Its top margin is the feed's, not the showcase's, for the reason `./category-rail`
-			    documents — the space above a section belongs to the screen, not the section.
-			*/}
+	const { colors } = useTheme();
+	const productRowSurface = {
+		backgroundColor: colors.card,
+		borderColor: colors.border,
+		borderWidth: StyleSheet.hairlineWidth,
+	};
+	const hasAvailableFeature = [...data.featured, ...data.offers].some(
+		(product) => product.availability.inStock,
+	);
+	const discover = data.discover ?? fallbackDiscover;
+	const showDiscover = !hasAvailableFeature && discover.length > 0;
+	const hasCommerce =
+		data.nearby.length > 0 ||
+		data.featured.length > 0 ||
+		discoveryLoading ||
+		discover.length > 0 ||
+		data.offers.length > 0 ||
+		data.promotions.length > 0 ||
+		again.length > 0;
+	const categories =
+		data.categories.length > 0 ? (
 			<View style={styles.rail}>
 				<CategoryShowcase categories={data.categories} allHref="/categories" />
 			</View>
+		) : null;
 
-			{/* The offer banner, and the only filled brand surface in the app. It replaces the
+	return (
+		<>
+			{!hasCommerce ? categories : null}
+
+			{/* The offer banner, with the code as its brand-colour mark. It replaces the
 			    "Cupones" rail this feed used to end with rather than joining it: one
 			    promotion list drawn twice is the same fact on the screen twice, which is the
 			    duplication `./home-header` exists to prevent. */}
@@ -844,57 +897,47 @@ function Feed({
 				</View>
 			) : null}
 
-			<View style={styles.section}>
-				<View style={styles.sectionHead}>
-					{/* The heading is the sort the API actually applied. Without a coordinate
-					    `nearby` is the newest businesses rather than the closest, so a fixed
-					    "Cerca de ti" would claim a proximity the request never asked about —
-					    and it would claim it in the one state the customer cannot tell apart
-					    from the state where it is true. No "Ver todo" over an empty section. */}
-					<SectionHeader
-						title={hasCoords ? t("home.nearby") : t("home.newest")}
-						action={data.nearby.length > 0 ? seeAllNearby : undefined}
-					/>
+			{showDiscover || discoveryLoading ? (
+				<View style={styles.section}>
+					<View style={styles.sectionHead}>
+						<SectionHeader title={t("home.discover")} />
+					</View>
+					{discoveryLoading ? (
+						<ProductRowsSkeleton />
+					) : (
+						<View style={[styles.rows, productRowSurface]}>
+							{discover.map((product, index) => (
+								<AnimateIn key={product.id} index={index}>
+									<ProductRow
+										product={product}
+										showSeller
+										showDisclosure
+										onPress={() =>
+											router.push({
+												pathname: "/product/[id]",
+												params: { id: product.id },
+											})
+										}
+									/>
+								</AnimateIn>
+							))}
+						</View>
+					)}
 				</View>
-
-				{data.nearby.length === 0 ? (
-					<View style={styles.empty}>
-						{/* A fact, and the fact the request supports. With no coordinate the API
-						    filtered by no zone at all, so naming a zone would invent the filter. */}
-						<Text variant="body" tone="muted">
-							{hasCoords ? t("home.nearby.empty") : t("home.nearby.empty.all")}
-						</Text>
-					</View>
-				) : (
-					<View style={styles.cards}>
-						{data.nearby.slice(0, NEARBY_PREVIEW).map((business, index) => (
-							<AnimateIn key={business.id} index={index}>
-								<BusinessCard
-									business={business}
-									onPress={() =>
-										router.push({
-											pathname: "/store/[slug]",
-											params: { slug: business.slug },
-										})
-									}
-								/>
-							</AnimateIn>
-						))}
-					</View>
-				)}
-			</View>
+			) : null}
 
 			{data.featured.length > 0 ? (
 				<View style={styles.section}>
 					<View style={styles.sectionHead}>
 						<SectionHeader title={t("home.featured")} action={seeAllFeatured} />
 					</View>
-					<View style={styles.rows}>
+					<View style={[styles.rows, productRowSurface]}>
 						{data.featured.slice(0, FEATURED_PREVIEW).map((product, index) => (
 							<AnimateIn key={product.id} index={index}>
 								<ProductRow
 									product={product}
 									showSeller
+									showDisclosure
 									onPress={() =>
 										router.push({
 											pathname: "/product/[id]",
@@ -917,33 +960,47 @@ function Feed({
 				</View>
 			) : null}
 
-			{/*
-			 * Where the page stops, said out loud. `catalog.feed` caps each list and there is
-			 * no cursor here and no second page — but a feed that never *says* so ends the
-			 * way a fadeout ends, and a customer who reached the bottom cannot tell "that was
-			 * everything" from "more is loading". `./list-end` is the one sentence this app
-			 * has for it. `rows` is the five lists' loaded lengths, which is deliberately more
-			 * than the previews draw: the single thing it decides is whether anything was
-			 * drawn at all, so a feed with nothing in it stays silent instead of ending a page
-			 * that never started.
-			 *
-			 * The way out underneath is `search`, and it is deliberate: the reader who has run
-			 * out of *suggestions* has not run out of appetite.
-			 */}
-			<ListEnd
-				rows={
-					data.nearby.length +
-					data.featured.length +
-					data.offers.length +
-					data.promotions.length +
-					again.length
-				}
-				hasNextPage={false}
-				loading={false}
-				onPress={() => router.push("/search")}
-				style={styles.endStatement}
-			/>
-			{/* `ListEnd` is the feed's only exit now: one way out is enough. */}
+			{data.nearby.length > 0 ? (
+				<View style={styles.section}>
+					<View style={styles.sectionHead}>
+						<SectionHeader
+							title={hasCoords ? t("home.nearby") : t("home.newest")}
+							action={seeAllNearby}
+						/>
+					</View>
+					<View style={styles.cards}>
+						{data.nearby.slice(0, NEARBY_PREVIEW).map((business, index) => (
+							<AnimateIn key={business.id} index={index}>
+								<BusinessCard
+									business={business}
+									onPress={() =>
+										router.push({
+											pathname: "/store/[slug]",
+											params: { slug: business.slug },
+										})
+									}
+								/>
+							</AnimateIn>
+						))}
+					</View>
+				</View>
+			) : null}
+
+			{hasCommerce ? categories : null}
+			{data.nearby.length === 0 && !hasCommerce ? (
+				<View style={styles.section}>
+					<View style={styles.sectionHead}>
+						<SectionHeader
+							title={hasCoords ? t("home.nearby") : t("home.newest")}
+						/>
+					</View>
+					<View style={styles.empty}>
+						<Text variant="body" tone="muted">
+							{hasCoords ? t("home.nearby.empty") : t("home.nearby.empty.all")}
+						</Text>
+					</View>
+				</View>
+			) : null}
 		</>
 	);
 }

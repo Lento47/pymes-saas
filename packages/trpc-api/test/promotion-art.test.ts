@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import { appRouter } from "../src/routers";
-import { authed, seedBusiness, seedMembership, seedUser, world } from "./harness";
+import {
+	authed,
+	seedBusiness,
+	seedMembership,
+	seedUser,
+	world,
+} from "./harness";
 
 /**
  * A promotion's banner picture, and the narrowing that turns it into a named state.
@@ -56,6 +62,25 @@ function codeInput(businessId: string, imageUrl?: string | null) {
 }
 
 describe("a promotion's banner", () => {
+	test("carries the code's minimum order amount onto the public card", async () => {
+		const test = world();
+		const { caller, businessId } = await owner(test);
+
+		await caller.promotions.create({
+			...codeInput(businessId),
+			minOrderMinor: 5000,
+		});
+
+		const feed = await caller.catalog.feed({ limit: 20 });
+		const card = feed.promotions.find(
+			(promotion) => promotion.code === "SAVE10",
+		);
+		expect(card?.minOrderMinor).toBe(5000);
+		expect(card?.currency).toBe("CRC");
+
+		test.close();
+	});
+
 	test("is `none` when the shop never chose one", async () => {
 		const test = world();
 		const { caller, businessId } = await owner(test);
@@ -88,7 +113,9 @@ describe("a promotion's banner", () => {
 		// union exists for — the feed's read is a different query from the detail's, so
 		// "the mapper works" is only true if it was checked on both.
 		const feed = await caller.catalog.feed({ limit: 20 });
-		const card = feed.promotions.find((promotion) => promotion.code === "SAVE10");
+		const card = feed.promotions.find(
+			(promotion) => promotion.code === "SAVE10",
+		);
 		expect(card?.art).toEqual({ kind: "photo", imageUrl: SERVE_PATH });
 
 		test.close();
@@ -101,8 +128,11 @@ describe("a promotion's banner", () => {
 		await caller.promotions.create(codeInput(businessId));
 
 		const feed = await caller.catalog.feed({ limit: 20 });
-		const card = feed.promotions.find((promotion) => promotion.code === "SAVE10");
+		const card = feed.promotions.find(
+			(promotion) => promotion.code === "SAVE10",
+		);
 		expect(card?.art).toEqual({ kind: "none" });
+		expect(card?.minOrderMinor).toBeNull();
 
 		test.close();
 	});
@@ -136,7 +166,9 @@ describe("a promotion's banner", () => {
 		expect(cleared.imageUrl).toBeNull();
 
 		const feed = await caller.catalog.feed({ limit: 20 });
-		const card = feed.promotions.find((promotion) => promotion.code === "SAVE10");
+		const card = feed.promotions.find(
+			(promotion) => promotion.code === "SAVE10",
+		);
 		expect(card?.art).toEqual({ kind: "none" });
 
 		test.close();

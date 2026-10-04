@@ -58,6 +58,7 @@ import {
 
 /** The most a home feed will show of each kind, whatever a client asks for. */
 const FEED_FEATURED_LIMIT = 12;
+const FEED_DISCOVER_LIMIT = 3;
 const FEED_NEARBY_LIMIT = 12;
 /**
  * The two offer bands. Smaller than the other two on purpose: a rail is read by scrolling
@@ -85,8 +86,8 @@ const FAVORITE_LIMIT = 50;
  * 100, 200, 300 … and its children just above it, so a parent is immediately followed by
  * the categories it holds and a client renders the strip without building the tree itself.
  *
- * `productCount` counts *buyable* products only — a category whose every item is a
- * draft reads as empty, which is true, rather than as stocked, which is not.
+ * `productCount` counts active products from public businesses only. A draft product or
+ * a suspended shop cannot inflate a category that leads to an empty public shelf.
  *
  * The outer reference is written `category.category.id` — table, then column — and the
  * duplication is load-bearing. Drizzle renders an interpolated Column inside a `sql`
@@ -105,9 +106,12 @@ export async function categories(ctx: Context): Promise<Category[]> {
 			category: categoryTable,
 			productCount: sql<number>`(
 				select count(*) from ${productTable}
-				where ${productTable.categoryId} = ${categoryTable}.${categoryTable.id}
-					and ${productTable.status} = 'ACTIVE'
-					and ${productTable.archivedAt} is null
+				inner join ${businessTable}
+					on ${businessTable}.${businessTable.id} = ${productTable}.${productTable.businessId}
+				where ${productTable}.${productTable.categoryId} = ${categoryTable}.${categoryTable.id}
+					and ${productTable}.${productTable.status} = 'ACTIVE'
+					and ${productTable}.${productTable.archivedAt} is null
+					and ${publicBusiness()}
 			)`,
 		})
 		.from(categoryTable)
@@ -154,8 +158,7 @@ export async function categories(ctx: Context): Promise<Category[]> {
  * redemption — inactive, not yet started, expired, out of redemptions — so the rail
  * cannot advertise a code the cart will reject. `minOrderMinor` is deliberately **not**
  * a filter: a minimum is not a reason the code fails, it is a condition the customer
- * meets by spending more, and the copy on the card states the amount. What is *not* here
- * is the sentence that says it — see `promotionCardSchema`.
+ * meets by spending more, and the card carries the threshold so the client can state it.
  *
  * Neither filter is a substitute for the other check. The cart re-reads all of this when
  * it redeems, because every one of these conditions can change between the rail being
@@ -166,6 +169,7 @@ export async function feed(
 	input: { lat?: number; lng?: number; limit?: number },
 ): Promise<{
 	featured: ProductCard[];
+	discover: ProductCard[];
 	offers: ProductCard[];
 	nearby: BusinessCard[];
 	promotions: PromotionCard[];
@@ -187,7 +191,7 @@ export async function feed(
 			? null
 			: { lat: input.lat, lng: input.lng };
 
-	// Above the `Promise.all`, not below it. Two of the five reads below are windows on the
+	// Above the `Promise.all`, not below it. Two of the six reads below are windows on the
 	// clock — a promotion starts, a promotion ends — and a `now` taken after the batch
 	// resolved would be a *later* instant than the one those rows were filtered against, so
 	// a code that expired in between would be advertised by a response that also knew it had
@@ -195,105 +199,133 @@ export async function feed(
 	// reason about.
 	const now = new Date();
 
-	const [featuredRows, offerRows, nearbyRows, promotionRows, strip] =
-		await Promise.all([
-			ctx.db
-				.select({ product: productTable, business: businessTable })
-				.from(productTable)
-				.innerJoin(businessTable, eq(productTable.businessId, businessTable.id))
-				.where(
-					and(
-						eq(productTable.status, "ACTIVE"),
-						isNull(productTable.archivedAt),
-						eq(productTable.isFeatured, true),
-						publicBusiness(),
+	const [
+		featuredRows,
+		discoverRows,
+		offerRows,
+		nearbyRows,
+		promotionRows,
+		strip,
+	] = await Promise.all([
+		ctx.db
+			.select({ product: productTable, business: businessTable })
+			.from(productTable)
+			.innerJoin(businessTable, eq(productTable.businessId, businessTable.id))
+			.where(
+				and(
+					eq(productTable.status, "ACTIVE"),
+					isNull(productTable.archivedAt),
+					eq(productTable.isFeatured, true),
+					publicBusiness(),
+				),
+			)
+			// Best-rated first, then newest: a home screen that reshuffles between two
+			// loads of the same data is a screen nobody trusts to be the same place.
+			.orderBy(desc(productTable.ratingAvg), desc(productTable.createdAt))
+			.limit(featuredLimit),
+		ctx.db
+			.select({ product: productTable, business: businessTable })
+			.from(productTable)
+			.innerJoin(businessTable, eq(productTable.businessId, businessTable.id))
+			.where(
+				and(
+					eq(productTable.status, "ACTIVE"),
+					isNull(productTable.archivedAt),
+					or(
+						eq(productTable.trackInventory, false),
+						gt(productTable.stockQuantity, 0),
 					),
-				)
-				// Best-rated first, then newest: a home screen that reshuffles between two
-				// loads of the same data is a screen nobody trusts to be the same place.
-				.orderBy(desc(productTable.ratingAvg), desc(productTable.createdAt))
-				.limit(featuredLimit),
-			ctx.db
-				.select({ product: productTable, business: businessTable })
-				.from(productTable)
-				.innerJoin(businessTable, eq(productTable.businessId, businessTable.id))
-				.where(
-					and(
-						eq(productTable.status, "ACTIVE"),
-						isNull(productTable.archivedAt),
-						isNotNull(productTable.compareAtPriceMinor),
-						// `gt` between two columns, not against a literal: the rule is "the
-						// compare-at is above the price", which is a comparison the row carries
-						// and not a number anybody here knows.
-						gt(productTable.compareAtPriceMinor, productTable.priceMinor),
-						publicBusiness(),
-					),
-				)
-				// Deepest cut first. The depth is a *ratio* and not the difference in minor
-				// units, because a ₡500 cut on a ₡2 000 item and a ₡500 cut on a ₡20 000 one
-				// are the same number and not the same offer — sorting by the subtrahend
-				// would put the expensive product first for being expensive.
-				//
-				// The division is by the compare-at price, which the `where` above has already
-				// established is non-null and above a non-null price, so nothing here divides
-				// by zero or by a null. SQLite's `/` on two integers is integer division, hence
-				// the `1.0`: without it every ratio below 1 truncates to 0 and the whole rail
-				// sorts by the tiebreak.
-				.orderBy(
-					desc(
-						sql`((${productTable.compareAtPriceMinor} - ${productTable.priceMinor}) * 1.0
+					publicBusiness(),
+				),
+			)
+			.orderBy(
+				desc(productTable.soldCount),
+				desc(productTable.ratingAvg),
+				desc(productTable.createdAt),
+				asc(productTable.id),
+			)
+			.limit(FEED_DISCOVER_LIMIT),
+		ctx.db
+			.select({ product: productTable, business: businessTable })
+			.from(productTable)
+			.innerJoin(businessTable, eq(productTable.businessId, businessTable.id))
+			.where(
+				and(
+					eq(productTable.status, "ACTIVE"),
+					isNull(productTable.archivedAt),
+					isNotNull(productTable.compareAtPriceMinor),
+					// `gt` between two columns, not against a literal: the rule is "the
+					// compare-at is above the price", which is a comparison the row carries
+					// and not a number anybody here knows.
+					gt(productTable.compareAtPriceMinor, productTable.priceMinor),
+					publicBusiness(),
+				),
+			)
+			// Deepest cut first. The depth is a *ratio* and not the difference in minor
+			// units, because a ₡500 cut on a ₡2 000 item and a ₡500 cut on a ₡20 000 one
+			// are the same number and not the same offer — sorting by the subtrahend
+			// would put the expensive product first for being expensive.
+			//
+			// The division is by the compare-at price, which the `where` above has already
+			// established is non-null and above a non-null price, so nothing here divides
+			// by zero or by a null. SQLite's `/` on two integers is integer division, hence
+			// the `1.0`: without it every ratio below 1 truncates to 0 and the whole rail
+			// sorts by the tiebreak.
+			.orderBy(
+				desc(
+					sql`((${productTable.compareAtPriceMinor} - ${productTable.priceMinor}) * 1.0
 							/ ${productTable.compareAtPriceMinor})`,
+				),
+				// Deterministic to the end: two products cut by the same percentage, or by
+				// the same percentage to the rounding SQLite does, must not swap places
+				// between two loads of the same data.
+				desc(productTable.ratingAvg),
+				asc(productTable.id),
+			)
+			.limit(FEED_OFFER_LIMIT),
+		publicBusinesses(ctx.db, { origin, limit: nearbyLimit }),
+		ctx.db
+			.select({ promotion: promotionTable, business: businessTable })
+			.from(promotionTable)
+			.innerJoin(businessTable, eq(promotionTable.businessId, businessTable.id))
+			.where(
+				and(
+					eq(promotionTable.isActive, true),
+					// The three conditions `livePromotionOf` refuses a code for, in the same
+					// order, so the two cannot drift into disagreeing about whether a code is
+					// live. `or(isNull(...), ...)` rather than a bare comparison because both
+					// columns are nullable and mean "no bound" — and SQL three-valued logic
+					// makes `ends_at > now` evaluate to NULL, not true, on an unbounded code.
+					or(
+						isNull(promotionTable.startsAt),
+						lte(promotionTable.startsAt, now),
 					),
-					// Deterministic to the end: two products cut by the same percentage, or by
-					// the same percentage to the rounding SQLite does, must not swap places
-					// between two loads of the same data.
-					desc(productTable.ratingAvg),
-					asc(productTable.id),
-				)
-				.limit(FEED_OFFER_LIMIT),
-			publicBusinesses(ctx.db, { origin, limit: nearbyLimit }),
-			ctx.db
-				.select({ promotion: promotionTable, business: businessTable })
-				.from(promotionTable)
-				.innerJoin(
-					businessTable,
-					eq(promotionTable.businessId, businessTable.id),
-				)
-				.where(
-					and(
-						eq(promotionTable.isActive, true),
-						// The three conditions `livePromotionOf` refuses a code for, in the same
-						// order, so the two cannot drift into disagreeing about whether a code is
-						// live. `or(isNull(...), ...)` rather than a bare comparison because both
-						// columns are nullable and mean "no bound" — and SQL three-valued logic
-						// makes `ends_at > now` evaluate to NULL, not true, on an unbounded code.
-						or(
-							isNull(promotionTable.startsAt),
-							lte(promotionTable.startsAt, now),
-						),
-						or(isNull(promotionTable.endsAt), gt(promotionTable.endsAt, now)),
-						or(
-							isNull(promotionTable.maxRedemptions),
-							lt(promotionTable.redemptions, promotionTable.maxRedemptions),
-						),
-						publicBusiness(),
+					or(isNull(promotionTable.endsAt), gt(promotionTable.endsAt, now)),
+					or(
+						isNull(promotionTable.maxRedemptions),
+						lt(promotionTable.redemptions, promotionTable.maxRedemptions),
 					),
-				)
-				// Ending soonest first, and the ones with no deadline last. Ordering the rail by
-				// what a code is *worth* is not available and would not be honest if it were:
-				// `value` is a percent for one kind and minor units for another, and comparing
-				// the two sorts by nothing. Urgency is the one axis every kind shares.
-				.orderBy(
-					asc(sql`${promotionTable.endsAt} is null`),
-					asc(promotionTable.endsAt),
-					asc(promotionTable.id),
-				)
-				.limit(FEED_PROMO_LIMIT),
-			categories(ctx),
-		]);
+					publicBusiness(),
+				),
+			)
+			// Ending soonest first, and the ones with no deadline last. Ordering the rail by
+			// what a code is *worth* is not available and would not be honest if it were:
+			// `value` is a percent for one kind and minor units for another, and comparing
+			// the two sorts by nothing. Urgency is the one axis every kind shares.
+			.orderBy(
+				asc(sql`${promotionTable.endsAt} is null`),
+				asc(promotionTable.endsAt),
+				asc(promotionTable.id),
+			)
+			.limit(FEED_PROMO_LIMIT),
+		categories(ctx),
+	]);
 
 	return {
 		featured: featuredRows.map((row) =>
+			productCardOf(row.product, row.business, { now }),
+		),
+		discover: discoverRows.map((row) =>
 			productCardOf(row.product, row.business, { now }),
 		),
 		offers: offerRows.map((row) =>

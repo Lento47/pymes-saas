@@ -508,14 +508,8 @@ const feedStyles = StyleSheet.create({
  * The group is `app/search.tsx`'s own head: a heading and a count sharing a line at
  * `minHeight` of one `heading` line (`groupHead`), then the list under it (`children`). The count
  * the group carries is not drawn as a number — a `label` line stands in for it at the width
- * a two-digit count takes, the same compromise `sectionAction` makes.
- *
- * The "Ver todo" link is drawn beside that count, in the `space.md`-gapped row the screen
- * puts the two in (`groupMeta`, whose own rule is `gap: space.md`). It belongs here for the
- * same reason the group is a column of cards: the group this block stands for is the shops
- * under "Todo", which is the one group the screen gives an action to (`shopsAction`),
- * and the word is the feed's own — so the block is `sectionAction`'s width, not a second
- * guess at it.
+ * a two-digit count takes. The first group is products, so its rows use `RowBlock`; the
+ * heading has no "View all" link because the query has no matching-results index behind it.
  *
  * ## What the switch's presence is, and is not
  *
@@ -539,16 +533,11 @@ export function SearchResultsSkeleton() {
 					]}
 				>
 					<Skeleton style={[styles.groupTitle, line("heading", fontScale)]} />
-					<View style={styles.groupMeta}>
-						<Skeleton style={[styles.groupCount, line("label", fontScale)]} />
-						<Skeleton
-							style={[styles.sectionAction, line("label", fontScale)]}
-						/>
-					</View>
+					<Skeleton style={[styles.groupCount, line("label", fontScale)]} />
 				</View>
-				<View style={styles.cards}>
+				<View style={styles.rows}>
 					{[0, 1].map((index) => (
-						<CardBlock key={index} />
+						<RowBlock key={index} />
 					))}
 				</View>
 			</View>
@@ -1181,7 +1170,7 @@ export function ProductDetailSkeleton() {
  *
  * ## What is not drawn
  *
- * The bar, and the "Ver negocios cerca" button at the end of the tail: a grey pill standing in
+ * The bar, and the explore-products button at the end of the tail: a grey pill standing in
  * for a control nobody can press is a control drawn before it exists. The bar is the screen's
  * floor rather than part of the scroll this stands in for, and it arrives whole with the cart.
  */
@@ -1309,12 +1298,8 @@ const styles = StyleSheet.create({
 		marginBottom: space.md,
 	},
 	groupTitle: { width: "35%" },
-	// The count and the action cluster at the far end of the head, in the row the screen's own
-	// `groupMeta` is — `space-between` on the head spreads two children to the two edges, and
-	// would spread three evenly, which is not the head.
-	groupMeta: { flexDirection: "row", alignItems: "center", gap: space.md },
 	// The group's count, which is a number whose digits are not known yet: one `label` line at
-	// the width a two-digit count takes. Same compromise as `sectionAction`.
+	// the width a two-digit count takes.
 	groupCount: { width: "15%" },
 	rows: {
 		marginHorizontal: space.lg,

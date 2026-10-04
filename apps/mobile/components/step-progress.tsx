@@ -21,9 +21,8 @@ import { Text } from "./text";
  * two-step form is a promise the form does not keep.
  *
  * The name of the current step is beside the bar and not only inside it, because a bar
- * tells a reader that they are somewhere in the middle and never tells them where. The
- * word is the step's own heading, translated at the call site, so the bar and the heading
- * below it cannot disagree.
+ * tells a reader that they are somewhere in the middle and never tells them where. It is
+ * the step's own heading, translated at the call site, so the body does not repeat it.
  *
  * ## The count for a screen reader, without inventing a sentence in either language
  *
@@ -81,7 +80,7 @@ export function StepProgress({
 				))}
 			</View>
 			<View style={styles.head}>
-				<Text variant="label" bold>
+				<Text variant="heading" bold>
 					{label}
 				</Text>
 				<Text variant="label" tone="muted" tabular>

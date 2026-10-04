@@ -104,6 +104,7 @@ export default function CustomerLayout() {
 			    action bar lifts above it (`./action-bar`'s `lift`). */}
 			<Tabs.Screen name="categories" options={{ href: null }} />
 			<Tabs.Screen name="category/[slug]" options={{ href: null }} />
+			<Tabs.Screen name="category-products/[slug]" options={{ href: null }} />
 			<Tabs.Screen name="favorites" options={{ href: null }} />
 			<Tabs.Screen name="featured" options={{ href: null }} />
 			<Tabs.Screen name="nearby" options={{ href: null }} />

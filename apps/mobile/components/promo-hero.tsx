@@ -1,11 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { formatMoney, type PromotionCard as Promotion } from "@pymeshub/shared";
+import type { PromotionCard as Promotion } from "@pymeshub/shared";
 import { router } from "expo-router";
 import type { StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
-import { PROMOTION_LABELS } from "@/lib/promotion";
+import {
+	type OfferSelection,
+	rememberOfferSelection,
+} from "@/lib/offer-intent";
+import { promotionCopy } from "@/lib/promotion";
 import { icon, radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
 import { AnimateIn } from "./animate-in";
 import { Card } from "./card";
@@ -15,8 +19,9 @@ import { Text } from "./text";
  * A shop's offer, at the size of the thing it is advertising.
  *
  * A promotion draws on exactly one surface now, and it is this one: the feed's own
- * banner, the one promotion a reader sees before they have decided to browse anything,
- * and the only surface in the app that wears the brand fill (`./card`'s `tone="brand"`).
+ * banner, the one promotion a reader sees before they have decided to browse anything.
+ * Its dark spotlight separates the offer from the Home gradient while the code chip
+ * carries the brand fill (`./card`'s `tone="spotlight"`).
  * The shelf-size coupon rail it used to share the fact with (`./promotion-card`) was
  * deleted when the feed's rail became this banner — `lib/promotion.ts` records the
  * retirement — and the rail tile the feed's other shelves draw is `./product-tile`, a
@@ -28,7 +33,7 @@ import { Text } from "./text";
  * field and the first shop card. A banner that competed with it would make two loud things
  * and therefore none — so this surface defers where it can and states its fact where it
  * must: the benefit is `title`, not `display`; the shop is a caption; the code is a chip.
- * What is loud here is the *fill*, and a fill is one mark rather than four competing
+ * What is loud here is the code chip, one mark rather than four competing
  * numbers — which is the failure Rule 1 actually names ("price, promo, rating and a badge
  * all shout, so the customer reads none of them").
  *
@@ -37,7 +42,7 @@ import { Text } from "./text";
  * There is no `image` on `PromotionCard` and none is invented here. Rule 3: draw the
  * photograph the data has, and never one it does not — no stock image, no gradient standing
  * in for one. What the data has is a *kind*, a *value*, a *code* and a *shop*, so the
- * banner is composed of type on the brand fill, which is what a promotion with a photograph
+ * banner is composed of type on a dark neutral surface, which a promotion photograph
  * will simply replace at `./image`'s size when one exists. The demo catalogue carries no
  * imagery at all (`packages/db/src/seed.ts`), so this composed surface is what ships.
  *
@@ -48,11 +53,9 @@ import { Text } from "./text";
  * into the `accessibilityLabel` as well as drawn in the chip, so the code a reader hears is
  * the code a reader sees.
  *
- * `minOrderMinor`, `redemptions`, `startsAt` and `endsAt` are not on the payload
- * (`packages/shared/src/schemas/catalog.ts` says why, at length) so no threshold, no
- * countdown and no "ends in 2 days" is drawn here. `docs/design-mobile.md` outlaws an
- * invented hurry in any case; what arrives is already live, because the feed filtered on
- * all four before answering.
+ * The code's minimum is stated when it has one. `redemptions`, `startsAt` and `endsAt`
+ * stay off the payload, so no countdown or invented hurry is drawn here. The feed has
+ * already filtered those three before answering.
  */
 export function PromoHero({
 	promotion,
@@ -65,89 +68,191 @@ export function PromoHero({
 	/** The caller owns the width — the same contract `./product-tile` has. */
 	style?: StyleProp<ViewStyle>;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
+	const spotlightInk =
+		scheme === "dark" ? colors.accentForeground : colors.background;
 	const { t, intlLocale } = useT();
 
-	// `FIXED` is money and needs the currency that travelled beside it; the other two kinds
-	// carry none, so their sentences have no `{amount}` slot to fill. The one branch of its
-	// kind in the app now that the coupon rail is gone — deliberately the only copy of this
-	// arithmetic, so there is no second one to drift.
-	const money =
-		promotion.kind === "FIXED"
-			? formatMoney(promotion.value, promotion.currency, { locale: intlLocale })
-			: "";
-
-	const benefit = t(PROMOTION_LABELS[promotion.kind], {
-		percent: String(promotion.value),
-		amount: money,
-	});
-
+	const { benefit, minimum, eligibility } = promotionCopy(
+		promotion,
+		t,
+		intlLocale,
+	);
+	const condition = minimum ?? eligibility;
 	const code = t("home.promotion.code", { code: promotion.code });
 
-	const spoken = `${promotion.business.name} · ${benefit} · ${code}`;
+	const spoken = [promotion.business.name, benefit, code, condition]
+		.filter(Boolean)
+		.join(" · ");
 
 	return (
 		<AnimateIn index={index} style={style}>
 			<Card
-				tone="brand"
+				tone="spotlight"
 				style={style}
-				onPress={() =>
+				onPress={() => {
+					rememberOfferSelection(promotion.business.id, promotion);
 					router.push({
 						pathname: "/store/[slug]",
 						params: { slug: promotion.business.slug },
-					})
-				}
+					});
+				}}
 				accessibilityLabel={spoken}
 				accessibilityHint={t("home.promotion.help")}
 			>
 				<View style={styles.body}>
 					{/* The shop is the caption: whose offer this is comes before what it is
 					    worth, because that is the order a reader decides to care in. */}
-					<Text variant="caption" tone="inverse">
+					<Text variant="caption" style={{ color: spotlightInk }}>
 						{promotion.business.name}
 					</Text>
 
-					<Text variant="heading" bold tone="inverse">
+					<Text variant="heading" bold style={{ color: spotlightInk }}>
 						{benefit}
 					</Text>
 
 					<View style={styles.codeRow}>
-						{/* The chip is `card` on the brand fill — the one surface in this app
-						    where white is the *quiet* colour. `tabular` because a code is read
-						    off one character at a time. */}
-						<View style={[styles.chip, { backgroundColor: colors.card }]}>
-							<Text variant="label" tone="action" bold tabular>
+						{/* `tabular` because a code is read off one character at a time. */}
+						<View style={[styles.chip, { backgroundColor: colors.primary }]}>
+							<Text variant="label" tone="inverse" bold tabular>
 								{code}
 							</Text>
 						</View>
-						<Ionicons
-							name="arrow-forward"
-							size={icon.control}
-							color={colors.primaryForeground}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
+						<View style={styles.browseCue}>
+							<Text variant="label" style={{ color: spotlightInk }}>
+								{t("home.promotion.browse")}
+							</Text>
+							<Ionicons
+								name="arrow-forward"
+								size={icon.control}
+								color={spotlightInk}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</View>
 					</View>
+					{condition ? (
+						<Text variant="label" style={{ color: spotlightInk }}>
+							{condition}
+						</Text>
+					) : null}
 				</View>
 			</Card>
 		</AnimateIn>
 	);
 }
 
+export function PromoReminder({
+	offer,
+	compact = false,
+}: {
+	offer: OfferSelection;
+	compact?: boolean;
+}) {
+	const { colors, scheme } = useTheme();
+	const { t, intlLocale } = useT();
+	const spotlightInk =
+		scheme === "dark" ? colors.accentForeground : colors.background;
+	const { benefit, minimum, eligibility } = promotionCopy(offer, t, intlLocale);
+	const condition = minimum ?? eligibility;
+	const codeLabel = t("home.promotion.code", { code: offer.code });
+	const readyLabel = t("store.promotion.ready");
+
+	if (compact)
+		return (
+			<View
+				style={styles.cue}
+				accessible
+				accessibilityLabel={[benefit, codeLabel, readyLabel, condition]
+					.filter(Boolean)
+					.join(". ")}
+			>
+				<View
+					style={[
+						styles.chip,
+						styles.cueChip,
+						{ backgroundColor: colors.primary },
+					]}
+				>
+					<Text variant="label" tone="inverse" bold tabular>
+						{codeLabel}
+					</Text>
+				</View>
+				<View style={styles.cueDetail}>
+					<Text variant="label" bold>
+						{benefit}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{readyLabel}
+					</Text>
+					{condition ? (
+						<Text variant="caption" tone="muted">
+							{condition}
+						</Text>
+					) : null}
+				</View>
+			</View>
+		);
+
+	return (
+		<Card tone="spotlight">
+			<View style={styles.body}>
+				<Text variant="heading" bold style={{ color: spotlightInk }}>
+					{benefit}
+				</Text>
+				<View style={[styles.chip, { backgroundColor: colors.primary }]}>
+					<Text variant="label" tone="inverse" bold tabular>
+						{codeLabel}
+					</Text>
+				</View>
+				<Text variant="caption" style={{ color: spotlightInk }}>
+					{readyLabel}
+				</Text>
+				{condition ? (
+					<Text variant="caption" style={{ color: spotlightInk }}>
+						{condition}
+					</Text>
+				) : null}
+			</View>
+		</Card>
+	);
+}
+
 const styles = StyleSheet.create({
 	// The banner is a hero: `lg` inside as well as out, which is the step
 	// `docs/design-mobile.md` gives "sheets and heroes". The gap is `TEXT_STACK_GAP` because
-	// the three lines are one text stack — the same number `./product-tile` stacks its body
+	// the lines are one text stack — the same number `./product-tile` stacks its body
 	// at, and the one `theme/tokens.ts` names for `./business-card` and `./product-row`. The
 	// vertical padding is `./card`'s own, so none is added here.
 	body: { gap: TEXT_STACK_GAP },
-	// The code's row is the stack's third line, so it carries no margin of its own: the
+	// The code's row is part of the stack, so it carries no margin of its own: the
 	// stack's gap is its spacing, and a `marginTop` here stacked on top of the gap and gave
 	// the step between the benefit and the code 6 points while the other pairs sat at 2.
 	codeRow: {
 		flexDirection: "row",
 		alignItems: "center",
+		flexWrap: "wrap",
+		justifyContent: "space-between",
 		gap: space.sm,
+	},
+	browseCue: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		flexShrink: 1,
+	},
+	cue: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		flexWrap: "wrap",
+	},
+	cueChip: { maxWidth: "100%" },
+	cueDetail: {
+		flexGrow: 1,
+		flexShrink: 1,
+		minWidth: 120,
+		gap: TEXT_STACK_GAP,
 	},
 	chip: {
 		alignSelf: "flex-start",

@@ -109,6 +109,7 @@ type ScreenProps = AccessibilityProps & {
 	onRefresh?: () => unknown;
 	children?: React.ReactNode;
 	contentStyle?: ViewStyle;
+	background?: React.ReactNode;
 };
 
 export function Screen({
@@ -122,6 +123,7 @@ export function Screen({
 	onRefresh,
 	children,
 	contentStyle,
+	background,
 	...a11y
 }: ScreenProps) {
 	const { colors } = useTheme();
@@ -190,6 +192,11 @@ export function Screen({
 			style={[styles.root, { backgroundColor: colors.background }]}
 			{...a11y}
 		>
+			{background ? (
+				<View style={StyleSheet.absoluteFill} pointerEvents="none">
+					{background}
+				</View>
+			) : null}
 			{title ? (
 				<View style={styles.header}>
 					{leading}

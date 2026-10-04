@@ -39,8 +39,8 @@ import { Text } from "./text";
  * The taxonomy in `category` is two levels: 18 sectors and their 223 children, and
  * `catalog.categories` returns both, a sector immediately followed by the categories it
  * holds. A strip is one flat list, so it can only ever be one of the two, and the *caller*
- * picks — this component draws what it is handed, and it is handed the sectors by the
- * feed (`app/index.tsx`), by the search screen's idle state and by a category's own page.
+ * picks — this component draws what it is handed, and the search screen's idle state
+ * hands it the sectors.
  * The one caller that passes something else is the search *results* rail, which draws the
  * categories a query matched: that set is capped at ten by `catalog.search`, it means
  * "what your word matched" rather than "the taxonomy", and a child in it is a real answer
@@ -51,7 +51,7 @@ import { Text } from "./text";
  *
  * The all chip is drawn only when the caller passes `allHref` — web's rule, and the same
  * prop name. A rail on a screen that is already showing everything (a set of search
- * results, a category's own page) has no destination to offer it, and a chip that goes
+ * results) has no destination to offer it, and a chip that goes
  * where the reader already is is a chip that does nothing.
  *
  * The home feed used to be named in that list and no longer is, and the change is a fact
@@ -62,8 +62,8 @@ import { Text } from "./text";
  *
  * ## The selected chip
  *
- * `selectedSlug` is the category being browsed, so a rail on the category page shows
- * where the reader is. The selection is drawn on the **same box** as its neighbours —
+ * `selectedSlug` can mark the category being browsed. The selection is drawn on the
+ * **same box** as its neighbours —
  * the chip is a tile and stays one, and it is not a pill against outlined neighbours —
  * with the box's fill moving from `accent` to `primary` and the glyph's ink from
  * `accentForeground` to `primaryForeground`. The second signal is the tile's scale, and

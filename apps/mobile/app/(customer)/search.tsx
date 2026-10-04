@@ -61,7 +61,7 @@ import { radius, space, type } from "@/theme";
  * refused, a search that found nothing, and the results. (Five since the category banner was
  * deleted — it was drawn *over* one of these rather than being one, so removing it changed
  * no count.) The running one is `SearchResultsSkeleton` — the count, the switcher and one
- * headed group of shop cards, in grey — because the shape of a result list is not a question,
+ * headed group of product rows, in grey — because the shape of a result list is not a question,
  * and because the field above it stays mounted and usable while it is there. The idle one is
  * the field, the categories heading and the rail under it. Of the four that remain, two are
  * sentences with a way out of each — a search the API refused, and a search that matched
@@ -72,8 +72,8 @@ import { radius, space, type } from "@/theme";
  * That grey is exactly that shape and no more, and the limit is `./skeletons`' own: how many
  * of the three kinds a query will return is not knowable before the response arrives, so a
  * second and a third group would resolve into nothing and pull the page up under a reader who
- * was already looking at it. The one group it draws is the first the results draw — the shops,
- * as `CardBlock`s in the same `space.lg`-inset, `space.md`-gapped column — so the wait matches
+ * was already looking at it. The one group it draws is the first the results draw — the products,
+ * as `RowBlock`s in the same inset column — so the wait matches
  * the page down to the end of its first group and stops there. The count and the switcher
  * above it are the screen's own boxes at the screen's own margins, so nothing that is on
  * screen before the results move when they land.
@@ -131,7 +131,7 @@ import { radius, space, type } from "@/theme";
  * filter. A `/search?category=` link that still exists somewhere opens a plain search box,
  * which is the truth of what this screen does with it.
  *
- * ## The filter sheet, and the only way in this screen can honestly offer
+ * ## Search does not pretend to filter nearby businesses
  *
  * The brief for this pass asked for the sheet's entry point here, and this screen cannot host
  * the sheet itself. `catalog.search` takes `{q, lat?, lng?}` and nothing else — that input
@@ -141,19 +141,18 @@ import { radius, space, type } from "@/theme";
  * worse lie than the deleted category banner: the banner printed a filter that had not been
  * applied, and a sheet here would *ask* for one.
  *
- * So the entry point is the shops group's "Ver todo" (`shopsAction` above the return), which
- * opens `app/nearby` — the screen that mounts the sheet and passes its state into
- * `businesses.list`. The sheet stays where its choices reach a query, and this screen's own
- * way to a narrowed list is that action plus the categories rail under the results, where each
- * chip opens the category page that owns its own filter. Same for a sort control:
+ * The sheet stays on `app/nearby`, where its choices reach `businesses.list`; a "View all"
+ * action beside a shop matched by this query would instead open an unrelated, unfiltered
+ * list and falsely suggest there are more matches. Categories in the results still open
+ * their own filtered pages. Same for a sort control:
  * `catalog.search` has no ordering input for one to move, so a visible sort here would be
  * furniture, and this file declines to draw it and reports the absence instead.
  *
- * ## Shops first, and the two counts
+ * ## Products first, and the two counts
  *
- * `docs/design-mobile.md`'s Rule 4, in its own words: "Search results group too: shops, then
- * products, each with its count." The count of a group is `businesses.length` /
- * `products.length` — what the response actually holds, which is also what the rows beneath it
+ * A product is the closest answer to a shopping query and its compact row fits above the
+ * keyboard; a full business card put even the first matching product below it. The count
+ * of a group is `businesses.length` / `products.length` — what the response holds and the rows beneath it
  * are — and every number on this screen is `tabular`, because proportional digits make a count
  * that goes 9 → 10 → 11 shuffle the words after it as the reader types. The switcher's
  * segments carry the same two numbers as badges, so a chosen segment still states its own size
@@ -168,7 +167,7 @@ import { radius, space, type } from "@/theme";
  * in hand, so nothing refetches and the reader's scroll position is the only thing that
  * moves.
  */
-type SearchMode = "all" | "businesses" | "products";
+type SearchMode = "all" | "products" | "businesses";
 
 export default function SearchScreen() {
 	const trpc = useTRPC();
@@ -324,24 +323,6 @@ export default function SearchScreen() {
 				: shown;
 
 	/*
-	 * The way out of the shops group, and this screen's honest answer to "where are the
-	 * filters". `docs/design-mobile.md`'s Rule 4 is titled "group, and let the group be
-	 * navigable", and the only screen a group of shops can navigate to that narrows anything is
-	 * `app/nearby` — the one that mounts `./filter-sheet` and draws the five sorts, none of
-	 * which `catalog.search` has an input for. `action.viewAll` is the same label the feed's
-	 * section headers carry for the same jump, so "Ver todo" here reads as the move it is.
-	 *
-	 * Only under "Todo", and only for shops: under a chosen segment there is no group header for
-	 * an action to sit on, and there is no "all products" screen for the products group to offer
-	 * (`app/featured` is featured products, which is a different set from anything a query
-	 * matched).
-	 */
-	const shopsAction =
-		mode === "all"
-			? { label: t("action.viewAll"), onPress: () => router.push("/nearby") }
-			: undefined;
-
-	/*
 	 * The pull on the results, which is the one list on this screen whose data can change
 	 * while it is on screen (`docs/design-mobile.md`'s Rule 6). It re-asks the settled word's
 	 * own query — the response is a snapshot of the catalogue, and "is there something new
@@ -365,8 +346,8 @@ export default function SearchScreen() {
 
 	return (
 		<Screen padded={false}>
-			{/* A pushed screen now, not a tab: the stack header stays off, so the
-			    way back is drawn here, the way every pushed list draws it. */}
+			{/* The stack header stays off, so the way back is drawn here whether
+			    search opened from Home or the tab bar. */}
 			<View style={styles.back}>
 				<BackButton to="/" />
 			</View>
@@ -374,6 +355,7 @@ export default function SearchScreen() {
 			    hidden glyphs and the clear button's hit slop are its contract, not this
 			    screen's. Only the outer margins are this screen's business. */}
 			<SearchInput
+				autoFocus
 				value={query}
 				onChangeText={setQuery}
 				placeholder={t("home.search.placeholder")}
@@ -430,8 +412,8 @@ export default function SearchScreen() {
 					    difference is the whole reason: those are the categories a *query*
 					    matched, and a "Ver todo" beside them would promise every one of them
 					    and deliver a different set — the taxonomy. A link whose count and
-					    whose destination disagree is worse than no link. `shopsAction`
-					    above is drawn under the same constraint and for the same reason. */}
+					    whose destination disagree is worse than no link. The matched-business
+					    group likewise offers no link to the unrelated nearby list. */}
 					{rail.length > 0 ? (
 						<Group
 							title={t("search.categories")}
@@ -540,49 +522,22 @@ export default function SearchScreen() {
 								options={[
 									{ value: "all", label: t("category.all") },
 									{
-										value: "businesses",
-										label: t("search.businesses"),
+										value: "products",
+										label: t("search.products"),
 										// The group's own count, which is the number of rows under it.
 										// `badge` is `./segmented`'s, rendered `tabular` — so the count
 										// rule holds under a chosen segment too, where the group
 										// heading and its count are gone.
-										badge: String(businesses.length),
+										badge: String(products.length),
 									},
 									{
-										value: "products",
-										label: t("search.products"),
-										badge: String(products.length),
+										value: "businesses",
+										label: t("search.businesses"),
+										badge: String(businesses.length),
 									},
 								]}
 							/>
 						</View>
-					) : null}
-
-					{mode !== "products" && businesses.length > 0 ? (
-						// The heading is the switcher's word, so a chosen segment would repeat it
-						// directly under itself. `Group` drops the header in that case rather than
-						// printing the same word twice.
-						<Group
-							title={mode === "all" ? t("search.businesses") : undefined}
-							count={businesses.length}
-							action={shopsAction}
-						>
-							<View style={styles.cards}>
-								{businesses.map((business, index) => (
-									<AnimateIn key={business.id} index={index}>
-										<BusinessCard
-											business={business}
-											onPress={() =>
-												router.push({
-													pathname: "/store/[slug]",
-													params: { slug: business.slug },
-												})
-											}
-										/>
-									</AnimateIn>
-								))}
-							</View>
-						</Group>
 					) : null}
 
 					{mode !== "businesses" && products.length > 0 ? (
@@ -600,6 +555,29 @@ export default function SearchScreen() {
 												router.push({
 													pathname: "/product/[id]",
 													params: { id: product.id },
+												})
+											}
+										/>
+									</AnimateIn>
+								))}
+							</View>
+						</Group>
+					) : null}
+
+					{mode !== "products" && businesses.length > 0 ? (
+						<Group
+							title={mode === "all" ? t("search.businesses") : undefined}
+							count={businesses.length}
+						>
+							<View style={styles.cards}>
+								{businesses.map((business, index) => (
+									<AnimateIn key={business.id} index={index}>
+										<BusinessCard
+											business={business}
+											onPress={() =>
+												router.push({
+													pathname: "/store/[slug]",
+													params: { slug: business.slug },
 												})
 											}
 										/>

@@ -37,7 +37,8 @@ import { Text } from "./text";
  * whether the customer will collect or have it brought — so the cart draws no delivery row
  * and the checkout draws one. That is the *only* difference the two are allowed, and the
  * cart's silence is honest rather than convenient: a fee shown there would be a fee for a
- * choice nobody has made.
+ * choice nobody has made. Until that choice, the cart calls its final line "Items total"
+ * rather than promising that the checkout's total cannot change.
  *
  * `showDelivery` therefore only ever *adds* a row. It adds one at zero as well, which is a
  * delivery order under a free-delivery promotion — a zero the customer should see, because
@@ -55,6 +56,7 @@ import { Text } from "./text";
 export function SummaryCard({
 	totals,
 	showDelivery = false,
+	beforeFulfilment = false,
 }: {
 	/**
 	 * The cart's totals or the checkout's quote — the API's own `CartTotals`, imported rather
@@ -71,6 +73,7 @@ export function SummaryCard({
 	totals?: CartTotals | null;
 	/** Draw the delivery row even at zero. See the note above. */
 	showDelivery?: boolean;
+	beforeFulfilment?: boolean;
 }) {
 	const { t } = useT();
 	const currency = totals?.currency;
@@ -123,11 +126,16 @@ export function SummaryCard({
 				) : null}
 
 				<MoneyLine
-					label={t("cart.total")}
+					label={t(beforeFulfilment ? "cart.itemsTotal" : "cart.total")}
 					amountMinor={totals?.totalMinor}
 					currency={currency}
 					strong
 				/>
+				{beforeFulfilment ? (
+					<Text variant="caption" tone="muted">
+						{t("cart.deliveryAtCheckout")}
+					</Text>
+				) : null}
 			</View>
 		</Card>
 	);

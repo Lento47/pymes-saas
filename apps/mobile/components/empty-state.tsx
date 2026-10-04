@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { radius, space, type, useTheme } from "@/theme";
 
-import { Button } from "./button";
+import { Button, type ButtonVariant } from "./button";
 import { MEASURE } from "./error-state";
 import { Text } from "./text";
 
@@ -48,12 +48,14 @@ export function EmptyState({
 	title,
 	body,
 	actionLabel,
+	actionVariant = "secondary",
 	onAction,
 }: {
 	icon?: React.ComponentProps<typeof Ionicons>["name"];
 	title: string;
 	body?: string;
 	actionLabel?: string;
+	actionVariant?: ButtonVariant;
 	onAction?: () => void;
 }) {
 	const { colors } = useTheme();
@@ -81,7 +83,7 @@ export function EmptyState({
 				<Button
 					label={actionLabel}
 					onPress={onAction}
-					variant="secondary"
+					variant={actionVariant}
 					style={styles.action}
 				/>
 			) : null}
@@ -106,11 +108,11 @@ const styles = StyleSheet.create({
 		// No margin of its own: `wrap`'s gap already spaces the circle from the heading, and
 		// a margin here compounded the two into an undocumented 16 — twice the stack's step.
 	},
-	title: { textAlign: "center", maxWidth: MEASURE },
+	title: { textAlign: "center", width: "100%", maxWidth: MEASURE },
 	// A measure, so a centred sentence does not run the full width of a tablet and turn the
 	// reader's head to follow the line. `./error-state`'s MEASURE, shared with the heading
 	// above — one cap for every centred line in the block, stated once rather than spelled
 	// a second time here.
-	body: { textAlign: "center", maxWidth: MEASURE },
+	body: { textAlign: "center", width: "100%", maxWidth: MEASURE },
 	action: { marginTop: space.md },
 });
