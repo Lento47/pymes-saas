@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { adminBusinessDetailSchema } from "@pymeshub/shared";
+import {
+	adminBusinessDetailSchema,
+	adminUserDetailSchema,
+} from "@pymeshub/shared";
 
 import { requireAuthed } from "../src/context";
 import * as admin from "../src/services/admin";
@@ -158,6 +161,34 @@ describe("platform console contracts", () => {
 		expect(detail.business.id).toBe(businessId);
 		// Both lists are `z.array(...)`, so an absent one would parse as `undefined` and
 		// fail here rather than as a blank panel in the sheet.
+		expect(Array.isArray(detail.recentOrders)).toBe(true);
+		expect(Array.isArray(detail.auditLog)).toBe(true);
+
+		w.close();
+	});
+
+	test("a person reads as the detail envelope, with a nullable courier profile", async () => {
+		const w = world();
+		const adminUser = await seedUser(w.db, {
+			id: "usr_detail_person",
+			isAdmin: true,
+		});
+		const ctx = requireAuthed(await contextFor(w, adminUser));
+		const customer = await seedUser(w.db, {
+			id: "usr_plain",
+			name: "Cliente Común",
+		});
+
+		const detail = adminUserDetailSchema.parse(
+			await admin.userDetail(ctx, { id: customer.id }),
+		);
+
+		expect(detail.user.id).toBe(customer.id);
+		/*
+		 * `null`, not absent — most customers never become couriers, so "not a courier" has
+		 * to be answerable, and the console draws a block only when this is truthy.
+		 */
+		expect(detail.courierProfile).toBeNull();
 		expect(Array.isArray(detail.recentOrders)).toBe(true);
 		expect(Array.isArray(detail.auditLog)).toBe(true);
 

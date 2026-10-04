@@ -12,6 +12,7 @@ import {
   type AdminSupportTicketDetail,
   type AdminSupportTicketListInput,
   type AdminSupportTicketRow,
+  type AdminUserDetail,
   type AdminUserRow,
   type AuditLogEntry,
   adminActionSchema,
@@ -30,6 +31,7 @@ import {
   adminSupportTicketDetailSchema,
   adminSupportTicketListInput,
   adminSupportTicketRowSchema,
+  adminUserDetailSchema,
   adminUserRowSchema,
   auditLogEntrySchema,
   BUSINESS_STATUSES,
@@ -288,6 +290,20 @@ export const adminApi = {
 
   users: async (input: Partial<AdminListInput> = {}): Promise<Page<AdminUserRow>> =>
     userList(await trpc.admin.users.query(page(input))),
+
+  /**
+   * One person in full: the row, their courier profile if they have one, their ten most
+   * recent orders, and the audit entries that touched either.
+   *
+   * This closes the last of the six procedures that existed on the router with no console
+   * surface. `admin.userDetail` has been built, audited and documented for as long as
+   * `admin.business` has, and the Personas tab had no way to open a person at all — a shop
+   * owner with a support thread had nothing to click.
+   *
+   * Parsed as the envelope, because the row schema is the `user` key of it.
+   */
+  user: async (id: string): Promise<AdminUserDetail> =>
+    adminUserDetailSchema.parse(await trpc.admin.user.query({ id })),
 
   // ── Orders ───────────────────────────────────────────────────────────────
 

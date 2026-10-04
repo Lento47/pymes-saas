@@ -253,6 +253,28 @@ export const adminBusinessDetailSchema = z.object({
 });
 export type AdminBusinessDetail = z.infer<typeof adminBusinessDetailSchema>;
 
+/**
+ * One person, with everything the console needs to answer "what is wrong with this account".
+ *
+ * The same envelope shape as `adminBusinessDetailSchema`, and for the same reason: the
+ * service returns `{ user, courierProfile, recentOrders, auditLog }`, so the row schema is
+ * the `user` key of this object and nothing else. Parsing it as a bare row throws.
+ *
+ * `courierProfile` is nullable and deliberately **not** optional: a person with no courier
+ * profile is a normal state — most customers never become one — so the answer is `null`
+ * rather than an absent key, and the console can tell "not a courier" from "the API forgot".
+ *
+ * A courier's audit trail is folded into `auditLog` rather than nested, because the console
+ * shows one list and the service already merges and sorts the two by `createdAt`.
+ */
+export const adminUserDetailSchema = z.object({
+	user: adminUserRowSchema,
+	courierProfile: adminCourierRowSchema.nullable(),
+	recentOrders: z.array(adminOrderRowSchema),
+	auditLog: z.array(auditLogEntrySchema),
+});
+export type AdminUserDetail = z.infer<typeof adminUserDetailSchema>;
+
 export const adminProductRowSchema = z.object({
 	id: z.string(),
 	businessId: z.string(),

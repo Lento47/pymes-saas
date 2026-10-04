@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import {
   type AdminAction,
@@ -524,6 +525,176 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
   );
 }
 
+/**
+ * One person, in full — the twin of `BusinessSheet`.
+ *
+ * The Personas tab had no way to open a person while `admin.userDetail` sat on the router,
+ * fully built and unaudited from the console's side. This is the drawer that uses it, and it
+ * is deliberately the same shape as the business one so an operator who learns one learns the
+ * other.
+ *
+ * The courier block is conditional because a courier profile is a *different persona wearing
+ * the same account*: a shop owner can also be a courier, and showing "repartidor: Verificado"
+ * unconditionally would be a lie for everyone else. `userDetail` returns `null` rather than
+ * omitting the key for exactly this reason.
+ */
+function UserSheet({ userId }: { userId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
+    queryKey: ["admin", "user", userId],
+    queryFn: () => adminApi.user(userId),
+    enabled: open,
+  });
+
+  const person = data?.user ?? null;
+  const courier = data?.courierProfile ?? null;
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="text-left font-medium underline-offset-2 hover:underline"
+        >
+          Ver ficha
+        </button>
+      </SheetTrigger>
+      <SheetContent side="right" className="overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{person?.name ?? "Persona"}</SheetTitle>
+          <SheetDescription>
+            {isError ? "No se pudo abrir la ficha." : person ? person.email : "Cargando…"}
+          </SheetDescription>
+        </SheetHeader>
+        {isError ? (
+          <QueryErrorState
+            error={error}
+            fallback="No se pudo cargar la ficha de la persona."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
+        ) : isPending || !data || !person ? (
+          <Skeleton className="mt-4 h-48 w-full" />
+        ) : (
+          <>
+            <dl className="mt-6 space-y-4 text-sm">
+              {[
+                ["Correo", person.email],
+                ["Teléfono", person.phone ?? "—"],
+                [
+                  "Plataforma",
+                  person.isAdmin ? (
+                    <Badge
+                      key="admin"
+                      variant="outline"
+                      className="border-amber-500/40 text-amber-600"
+                    >
+                      admin
+                    </Badge>
+                  ) : (
+                    "—"
+                  ),
+                ],
+                ["Suspendida", person.isSuspended ? "Sí" : "No"],
+                ["Órdenes", String(person.orderCount)],
+                [
+                  "Negocios",
+                  person.businessRoles.length === 0
+                    ? "—"
+                    : person.businessRoles.map((r) => `${r.businessName} (${r.role})`).join(", "),
+                ],
+                ["Alta", shortDate(person.createdAt)],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {courier ? (
+              <section className="mt-6">
+                <h3 className="text-sm font-semibold">Repartidor</h3>
+                <dl className="mt-2 space-y-3 text-sm">
+                  {[
+                    ["Zona de servicio", courier.serviceArea],
+                    ["Vehículo", courier.vehicleName ?? "—"],
+                    ["Placa", courier.vehiclePlate ?? "—"],
+                    [
+                      "Verificación",
+                      courier.verificationStatus === "VERIFIED"
+                        ? "Verificado"
+                        : courier.verificationStatus === "PENDING"
+                          ? "Pendiente"
+                          : "Rechazado",
+                    ],
+                    ["Bio", courier.bio ?? "—"],
+                  ].map(([label, value]) => (
+                    <div key={String(label)}>
+                      <dt className="text-xs text-muted-foreground">{label}</dt>
+                      <dd className="mt-0.5">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ) : null}
+
+            <section className="mt-6">
+              <h3 className="text-sm font-semibold">Últimas órdenes</h3>
+              {data.recentOrders.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Esta persona todavía no ha pedido nada.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {data.recentOrders.map((o) => (
+                    <li key={o.id} className="text-xs">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono">{o.reference}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {money(o.totalMinor, o.currency)}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {o.businessName} · {o.status} · {shortDate(o.placedAt)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="mt-6">
+              <h3 className="text-sm font-semibold">Auditoría</h3>
+              {data.auditLog.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Nadie ha tocado esta cuenta.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {data.auditLog.map((e) => (
+                    <li key={e.id} className="text-xs">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono">{e.action}</span>
+                        <span className="text-muted-foreground">
+                          {e.actorName ?? "—"} · {shortDate(e.createdAt)}
+                        </span>
+                      </div>
+                      {e.reason ? (
+                        <p className="mt-0.5 text-muted-foreground">{e.reason}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function UsersTab() {
   const [search, setSearch] = useState("");
   const [order, setOrder] = useState<SortState<AdminListSort>>({
@@ -605,6 +776,13 @@ function UsersTab() {
                   ) : null}
                 </div>
                 <div className="text-xs text-muted-foreground">{u.email}</div>
+                {/*
+                  The drawer, on the row itself rather than in the actions column. It reads
+                  as part of the person's name — "who is this" is a question about the name —
+                  and it is the same affordance `BusinessTable` uses, so the two tables that
+                  have a detail view open the same way.
+                */}
+                <UserSheet userId={u.id} />
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 {u.businessRoles.length === 0
@@ -1188,28 +1366,28 @@ function SupportTab() {
           label="tickets"
           showDirection={false}
         />
-        <div className="flex gap-1">
-          <Button
-            variant={status === "live" ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setStatus("live");
-              page.reset();
-            }}
-          >
+        {/*
+          The same two-way control, for the same reason. This one **is** paged, so changing
+          it has to reset the offset — a narrower queue makes the old page meaningless.
+        */}
+        <ToggleGroup
+          type="single"
+          value={status}
+          onValueChange={(next) => {
+            if (next === "") return;
+            setStatus(next as "live" | "all");
+            page.reset();
+          }}
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="live" className="text-xs">
             Sin resolver
-          </Button>
-          <Button
-            variant={status === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setStatus("all");
-              page.reset();
-            }}
-          >
+          </ToggleGroupItem>
+          <ToggleGroupItem value="all" className="text-xs">
             Todos
-          </Button>
-        </div>
+          </ToggleGroupItem>
+        </ToggleGroup>
         <p className="text-xs text-muted-foreground">{data?.total ?? 0} en total</p>
       </div>
 
@@ -1549,29 +1727,54 @@ function BillingTab() {
           className="max-w-xs"
           aria-label="Buscar suscripciones"
         />
-        <div className="flex flex-wrap gap-1">
-          {(["all", "ACTIVE", "GRACE", "PAST_DUE", "SUSPENDED"] as const).map((s) => (
-            <Button
-              key={s}
-              variant={status === s ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatus(s)}
-            >
-              {s === "all" ? "Todos" : (SUBSCRIPTION_STATUS_LABEL[s] ?? s)}
-            </Button>
+        {/*
+          Radix's own `ToggleGroup`, which is what this row of buttons was hand-rolling:
+          five `Button`s each computing `variant={status === s ? "default" : "outline"}`.
+
+          **The empty-string guard is load-bearing.** A single-select `ToggleGroup` emits `""`
+          when the selected item is clicked again, so writing `onValueChange={setStatus}`
+          straight through would let an operator deselect the filter by clicking it — and
+          `status` would become `""`, which is falsy, which silently means "no filter". The
+          filter would look chosen and not be. Ignoring `""` is what makes these two controls
+          and the three below behave like radio buttons rather than like toggles.
+        */}
+        <ToggleGroup
+          type="single"
+          value={status}
+          onValueChange={(next) => {
+            if (next === "") return;
+            setStatus(next as SubscriptionStatus);
+          }}
+          variant="outline"
+          size="sm"
+          className="flex-wrap justify-start"
+        >
+          <ToggleGroupItem value="all" className="text-xs">
+            Todos
+          </ToggleGroupItem>
+          {(["ACTIVE", "GRACE", "PAST_DUE", "SUSPENDED"] as const).map((s) => (
+            <ToggleGroupItem key={s} value={s} className="text-xs">
+              {SUBSCRIPTION_STATUS_LABEL[s] ?? s}
+            </ToggleGroupItem>
           ))}
-        </div>
-        <div className="ml-auto flex gap-1">
-          {(["arrears", "periodEnd", "businessName"] as const).map((s) => (
-            <Button
-              key={s}
-              variant={sort === s ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSort(s)}
-            >
-              {s === "arrears" ? "Deuda" : s === "periodEnd" ? "Vence" : "Nombre"}
-            </Button>
-          ))}
+        </ToggleGroup>
+        <div className="ml-auto">
+          <ToggleGroup
+            type="single"
+            value={sort}
+            onValueChange={(next) => {
+              if (next === "") return;
+              setSort(next as "arrears" | "periodEnd" | "businessName");
+            }}
+            variant="outline"
+            size="sm"
+          >
+            {(["arrears", "periodEnd", "businessName"] as const).map((s) => (
+              <ToggleGroupItem key={s} value={s} className="text-xs">
+                {s === "arrears" ? "Deuda" : s === "periodEnd" ? "Vence" : "Nombre"}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </div>
       </div>
 
