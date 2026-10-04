@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	type AdminListInput,
 	adminBusinessDetailSchema,
 	adminUserDetailSchema,
 } from "@pymeshub/shared";
@@ -366,6 +367,76 @@ describe("platform console contracts", () => {
 			expect(meta.before.arrearsMinor).toBe(6_000);
 			expect(meta.after.paidMinor).toBe(2_000);
 			expect(meta.after.writtenOffMinor).toBe(4_000);
+
+			w.close();
+		});
+	});
+
+	/**
+	 * The three list services, called the way only a test calls them.
+	 *
+	 * `businesses`, `users` and `orders` are typed `AdminListInput` — the schema's **output**
+	 * — where `sort`, `direction` and `limit` are non-optional, so TypeScript believes every
+	 * caller supplied them. The router does: it parses before calling. A direct caller does
+	 * not, and the runtime had no answer for it.
+	 */
+	describe("a list service called without a parsed input", () => {
+		test("defaults its own paging the way the schema does", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, { id: "usr_bare", isAdmin: true });
+			const ctx = requireAuthed(await contextFor(w, operator));
+			await seedBusiness(w.db, { id: "biz_bare_1" });
+			await seedBusiness(w.db, { id: "biz_bare_2" });
+
+			// `{}` is not a valid `AdminListInput` and does not pretend to be: the cast is
+			// the point, standing in for the untyped JS caller a script would be.
+			const bare = {} as AdminListInput;
+
+			// Before the fix each of these reached `order by  desc` — SQLite reads the empty
+			// expression as a column name and refuses with `no such column: desc`, an error
+			// about a column the request never mentioned.
+			const businesses = await admin.businesses(ctx, bare);
+			expect(businesses.rows.length).toBe(2);
+			expect(businesses.total).toBe(2);
+
+			// The operator themself is the only user, which is enough: the claim is that the
+			// call returns, not what it returns.
+			const users = await admin.users(ctx, bare);
+			expect(users.rows.length).toBeGreaterThan(0);
+
+			// No orders were seeded, so this is `0` — and **asserted as 0** rather than as
+			// "did not throw", because a spec that only checked for the absence of a crash
+			// would pass against a service that returned nothing for a reason of its own.
+			const orders = await admin.orders(ctx, bare);
+			expect(orders.rows).toEqual([]);
+			expect(orders.total).toBe(0);
+
+			w.close();
+		});
+
+		test("honours a sort that was actually asked for", async () => {
+			// The other half of the same fix: defaulting must not become ignoring. Without a
+			// sort the rows come back newest-first, and a spec that only checked the crash
+			// would pass with a service that silently ignored every sort it was given.
+			const w = world();
+			const operator = await seedUser(w.db, { id: "usr_sort", isAdmin: true });
+			const ctx = requireAuthed(await contextFor(w, operator));
+			await seedBusiness(w.db, { id: "biz_sort_a", name: "Alfa" });
+			await seedBusiness(w.db, { id: "biz_sort_b", name: "Zeta" });
+
+			const ascending = await admin.businesses(ctx, {
+				sort: "name",
+				direction: "asc",
+				limit: 25,
+			} as AdminListInput);
+			expect(ascending.rows[0]?.name).toBe("Alfa");
+
+			const descending = await admin.businesses(ctx, {
+				sort: "name",
+				direction: "desc",
+				limit: 25,
+			} as AdminListInput);
+			expect(descending.rows[0]?.name).toBe("Zeta");
 
 			w.close();
 		});

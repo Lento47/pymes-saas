@@ -112,6 +112,77 @@ function offsetOf(cursor: string | undefined): number {
 	return Number.isFinite(plain) && plain >= 0 ? Math.trunc(plain) : 0;
 }
 
+/**
+ * The three paging fields `adminListInput` fills, applied here too.
+ *
+ * ## Why a service that is already typed as having them needs to default them
+ *
+ * `businesses`, `users` and `orders` take `AdminListInput`, which is the schema's
+ * **output** — and `.default()` makes an output field non-optional, so `sort`, `direction`
+ * and `limit` are all required in the type. TypeScript is therefore certain every caller
+ * supplied them.
+ *
+ * The router agrees: it parses before calling, so `adminListInput.parse` fills all three.
+ * Nothing else does. A direct caller — a test, a script, the next service that wants a page
+ * of businesses — reached:
+ *
+ *     order by  desc
+ *
+ * which SQLite reads as `order by <column named desc>` and refuses with **`no such column:
+ * desc`**: an error naming a column the request never mentioned, on a query that looks
+ * perfectly well-formed in the log. `direction` already survived this by accident, because
+ * `input.direction === "asc" ? asc : desc` happens to default; `sort` did not, because a
+ * lookup miss is `undefined` and interpolating nothing leaves the gap.
+ *
+ * So the defaults live here as well, in one place. The alternative — retyping these
+ * parameters as the schema's *input* type, where every field is honestly optional — is the
+ * more truthful signature, but then each read becomes `input.x ?? …` scattered through three
+ * functions and the caller still gets no validation. Validating is the router's job; being
+ * total is the service's.
+ *
+ * The page size is a constant rather than three copies of `25` because five admin list
+ * schemas declare `.default(25)` and a pager in the browser labels its window with the number
+ * the service actually used. Those two numbers drifting apart is a footer that lies.
+ */
+const DEFAULT_LIST_LIMIT = 25;
+
+/**
+ * ## Which guard actually prevents the crash, and which are defence in depth
+ *
+ * Measured, not assumed: with `listPaging` returning `sort` undefined and the `??` fallback
+ * in place, the query is well-formed; with `listPaging` defaulting and the `??` removed, it is
+ * also well-formed. **Either guard alone is sufficient**, because they cover different
+ * failures — `listPaging` covers a *missing* sort, the `??` covers a sort key this map does
+ * not know (a schema widened without the map, say).
+ *
+ * Both are kept deliberately. One line each, and the second is the only one that survives
+ * somebody adding `"rating"` to `adminListInput.sort` and forgetting this file.
+ *
+ * `direction` and `limit` are different: those defaults are genuinely load-bearing on their
+ * own. `.limit(undefined)` is not "25 rows", it is **no limit** — every courier, business or
+ * audit entry on the platform in one response — and `direction` was surviving by accident,
+ * since `input.direction === "asc" ? asc : desc` happens to fall the right way.
+ */
+function listPaging(input: AdminListInput) {
+	return {
+		sort: input.sort ?? "newest",
+		direction: input.direction ?? "desc",
+		limit: input.limit ?? DEFAULT_LIST_LIMIT,
+	};
+}
+
+/**
+ * The page size alone, for the list inputs that carry no sort of their own.
+ *
+ * `adminCourierListInput` is the one: a courier queue has exactly one order (newest first),
+ * so `sort` and `direction` would be fields with a single legal value. It still needs the
+ * default, because `.limit(undefined)` is not "25 rows" — it is *no limit*, which returns
+ * every courier on the platform into one response.
+ */
+function listLimit(input: { limit: number }): number {
+	return input.limit ?? DEFAULT_LIST_LIMIT;
+}
+
 // ---------------------------------------------------------------------------
 // Metrics
 // ---------------------------------------------------------------------------
@@ -305,14 +376,19 @@ export async function businesses(
 	if (input.to) conditions.push(lte(businessTable.createdAt, input.to));
 
 	const where = conditions.length > 0 ? and(...conditions) : undefined;
-	const direction = input.direction === "asc" ? sql`asc` : sql`desc`;
+	const paging = listPaging(input);
+	const direction = paging.direction === "asc" ? sql`asc` : sql`desc`;
 
-	const sortExpression = {
+	const SORTS = {
 		newest: sql`${businessTable.createdAt}`,
 		name: sql`${businessTable.name}`,
 		orders: ORDER_COUNT_SQL,
 		revenue: GROSS_VOLUME_SQL,
-	}[input.sort];
+	};
+	// `?? SORTS.newest` rather than `SORTS[paging.sort]`: see `listPaging`. A lookup miss is
+	// `undefined`, and interpolating that into `order by` produces a query SQLite rejects by
+	// name rather than a default anyone chose.
+	const sortExpression = SORTS[paging.sort] ?? SORTS.newest;
 
 	const [rows, counted] = await Promise.all([
 		ctx.db
@@ -330,7 +406,7 @@ export async function businesses(
 			// By position or by expression, never by an interpolated identifier: the sort
 			// key is resolved through a fixed map above, so a caller cannot name a column.
 			.orderBy(sql`${sortExpression} ${direction}`, asc(businessTable.id))
-			.limit(input.limit)
+			.limit(paging.limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
@@ -521,15 +597,17 @@ export async function users(
 	if (input.to) conditions.push(lte(userTable.createdAt, input.to));
 
 	const where = conditions.length > 0 ? and(...conditions) : undefined;
-	const direction = input.direction === "asc" ? sql`asc` : sql`desc`;
-	const sortExpression = {
+	const paging = listPaging(input);
+	const direction = paging.direction === "asc" ? sql`asc` : sql`desc`;
+	const SORTS = {
 		// `status` has no meaning on a user row; falling back to the creation date keeps
 		// the table's own sort control from producing an arbitrary order.
 		newest: sql`${userTable.createdAt}`,
 		name: sql`${userTable.name}`,
 		orders: ORDER_COUNT_BY_CUSTOMER_SQL,
 		revenue: TOTAL_SPENT_BY_CUSTOMER_SQL,
-	}[input.sort];
+	};
+	const sortExpression = SORTS[paging.sort] ?? SORTS.newest;
 
 	const [rows, counted] = await Promise.all([
 		ctx.db
@@ -537,7 +615,7 @@ export async function users(
 			.from(userTable)
 			.where(where)
 			.orderBy(sql`${sortExpression} ${direction}`, asc(userTable.id))
-			.limit(input.limit)
+			.limit(paging.limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
@@ -829,6 +907,7 @@ export async function courierProfiles(
 	input: AdminCourierListInput,
 ): Promise<{ rows: AdminCourierRow[]; total: number }> {
 	const offset = offsetOf(input.cursor);
+	const limit = listLimit(input);
 	const conditions = [];
 	if (input.search) {
 		const pattern = likePattern(input.search);
@@ -856,7 +935,7 @@ export async function courierProfiles(
 			.innerJoin(userTable, eq(courierProfileTable.userId, userTable.id))
 			.where(where)
 			.orderBy(desc(courierProfileTable.createdAt), asc(courierProfileTable.id))
-			.limit(input.limit)
+			.limit(limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
@@ -1009,8 +1088,9 @@ export async function orders(
 	if (input.to) conditions.push(lte(orderTable.placedAt, input.to));
 
 	const where = conditions.length > 0 ? and(...conditions) : undefined;
-	const direction = input.direction === "asc" ? sql`asc` : sql`desc`;
-	const sortExpression = {
+	const paging = listPaging(input);
+	const direction = paging.direction === "asc" ? sql`asc` : sql`desc`;
+	const SORTS = {
 		// A `status` filter on an order table is a status *list* in this API, and
 		// `AdminListInput.status` carries business statuses — so it is not applied here
 		// rather than applied wrongly.
@@ -1018,7 +1098,8 @@ export async function orders(
 		name: sql`${orderTable.reference}`,
 		orders: sql`${orderTable.placedAt}`,
 		revenue: sql`${orderTable.totalMinor}`,
-	}[input.sort];
+	};
+	const sortExpression = SORTS[paging.sort] ?? SORTS.newest;
 
 	const [rows, counted] = await Promise.all([
 		ctx.db
@@ -1032,7 +1113,7 @@ export async function orders(
 			.innerJoin(userTable, eq(orderTable.customerId, userTable.id))
 			.where(where)
 			.orderBy(sql`${sortExpression} ${direction}`, asc(orderTable.id))
-			.limit(input.limit)
+			.limit(paging.limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
@@ -1181,6 +1262,7 @@ export async function subscriptions(
 ): Promise<{ rows: AdminSubscription[]; total: number }> {
 	const now = new Date();
 	const offset = offsetOf(input.cursor);
+	const limit = listLimit(input);
 	const conditions: SQL[] = [];
 
 	if (input.search) {
@@ -1233,7 +1315,7 @@ export async function subscriptions(
 			.leftJoin(ownerTable, eq(ownerTable.id, ownerUserIdSql))
 			.where(where)
 			.orderBy(sql`${arrearsSql} ${direction}`, asc(subscriptionTable.id))
-			.limit(input.limit)
+			.limit(limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
@@ -1748,6 +1830,9 @@ export async function auditLogEntries(
 	input: AdminListInput & { actorId?: string; targetId?: string },
 ): Promise<{ rows: AuditLogEntry[]; total: number }> {
 	const offset = offsetOf(input.cursor);
+	// The audit log takes no sort — it is newest-first by definition, and offering an order
+	// for it would be offering one nobody wants. It still needs the page size default.
+	const limit = listLimit(input);
 	const conditions = [];
 
 	if (input.actorId)
@@ -1775,7 +1860,7 @@ export async function auditLogEntries(
 				sql`${auditLogTable.createdAt} ${direction}`,
 				asc(auditLogTable.id),
 			)
-			.limit(input.limit)
+			.limit(limit)
 			.offset(offset),
 		ctx.db
 			.select({ total: sql<number>`count(*)` })
@@ -1789,7 +1874,14 @@ export async function auditLogEntries(
 	};
 }
 
-/** The audit history of one target, for the detail drawers. */
+/**
+ * The audit history of one target, for the detail drawers.
+ *
+ * Not defaulted, unlike the five list services: `limit` here is **required** in this
+ * function's own signature, not inherited from a schema whose output type merely claims it.
+ * Every caller is in this file and every one passes it, so there is no gap to close — and
+ * adding a default would imply the field was optional, which is the opposite of the truth.
+ */
 async function auditEntriesFor(
 	db: Db,
 	input: { targetId: string; limit: number },
