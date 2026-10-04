@@ -42,6 +42,7 @@ import {
   REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
+import { SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
 import { TablePager } from "./console-pager";
 import {
   type AdminListSort,
@@ -272,10 +273,17 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
     { label: "Negocios pendientes", value: metrics.businesses.pendingVerification, urgent: metrics.businesses.pendingVerification > 0 },
     { label: "Negocios activos", value: metrics.businesses.active },
     { label: "Negocios suspendidos", value: metrics.businesses.suspended },
+    // Three counts the service has always sent and this table never drew. `businesses.total`
+    // is the denominator for the three above it, so an operator reading "3 suspendidos" with
+    // no total cannot tell 3 of 40 from 3 of 400 — and `users.suspended` was the only signal
+    // that anybody had been cut off.
+    { label: "Negocios totales", value: metrics.businesses.total },
     { label: "Usuarios", value: metrics.users.total },
+    { label: "Usuarios suspendidos", value: metrics.users.suspended },
     { label: "Admins", value: metrics.users.admins },
     { label: "Órdenes hoy", value: metrics.orders.today },
     { label: "Órdenes activas", value: metrics.orders.active },
+    { label: "Órdenes totales", value: metrics.orders.total },
     { label: "Tasa de cancelación", value: `${Math.round(metrics.orders.cancelledRate * 100)}%` },
   ];
 
@@ -284,6 +292,12 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
       ? `${metrics.businesses.pendingVerification} por verificar`
       : null,
     `${metrics.orders.today} órdenes hoy`,
+    // The thirty-day signup head, on the line that is always visible — it is the only part
+    // of the trend worth a glance, and putting it here means the growth figure costs no
+    // space above the tab somebody is working in.
+    seriesTotal(metrics.signupsSeries) > 0
+      ? `${seriesTotal(metrics.signupsSeries)} negocios en 30 días`
+      : null,
   ].filter(Boolean).join(" · ");
 
   return (
@@ -325,18 +339,52 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
       <div
         id="admin-metrics-tiles"
         hidden={!open}
-        className="grid grid-cols-2 gap-3 md:grid-cols-4"
+        className="space-y-3"
       >
-        {tiles.map((t) => (
-          <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
-            <CardContent className="pt-6">
-              <p className="text-xs text-muted-foreground">{t.label}</p>
-              <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
-                {t.value}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        {/*
+          The two panels that were being fetched and discarded, drawn inside the region that
+          is already collapsed by default.
+
+          `volumeByCurrency` and `signupsSeries` have been in `adminMetricsSchema` from the
+          start and rendered by nothing, on a query that refetches every thirty seconds — so
+          every operator paid for them on every poll and saw nothing.
+
+          They are inside this `hidden` container rather than beside it, deliberately. The
+          file's own rule is that the tab somebody works in must not open with platform-wide
+          numbers above it; putting a chart outside this region would break that rule in the
+          name of closing the gap, and the always-visible summary line above already carries
+          the thirty-day total for anyone who wants the headline.
+        */}
+        <div className="grid gap-3 md:grid-cols-2">
+          <SignupsPanel series={metrics.signupsSeries} />
+          <VolumePanel volumes={metrics.volumeByCurrency} format={money} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {tiles.map((t) => (
+            <Card key={t.label} className={t.urgent ? "border-amber-500/50" : undefined}>
+              <CardContent className="pt-6">
+                <p className="text-xs text-muted-foreground">{t.label}</p>
+                <p className={`mt-1 text-2xl font-bold tabular-nums ${t.urgent ? "text-amber-600" : ""}`}>
+                  {t.value}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/*
+          When these numbers were taken. The query refetches every thirty seconds, so an
+          operator reading "12 órdenes hoy" deserves to know it is not a cached hour-old
+          figure — and it is the one field in the schema that has never been drawn.
+        */}
+        <p className="text-xs text-muted-foreground">
+          Actualizado a las{" "}
+          {metrics.generatedAt.toLocaleTimeString("es-CR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
       </div>
     </div>
   );
@@ -695,6 +743,50 @@ function UserSheet({ userId }: { userId: string }) {
   );
 }
 
+/**
+ * Granting the platform flag, with the feedback it never used to give.
+ *
+ * This was `onClick={() => adminApi.grantAdmin(u.id).catch(() => undefined)}` — a
+ * fire-and-forget call whose failure was discarded and whose success changed nothing on
+ * screen. Pressing it looked identical to pressing nothing: no toast, no refetch, and the
+ * `admin` badge appeared only if the operator happened to reload. A mutation an operator
+ * cannot tell worked is indistinguishable from one that did not happen.
+ *
+ * Now it is a real `useMutation`, so it reports its own outcome and invalidates the list —
+ * and, unlike the grant itself, **it is not reversible from this screen.** `grantAdmin` has
+ * no opposite by design (`api-surface.md` documents the grant and nothing against it), so
+ * this button should look like the one-way door it is.
+ */
+function GrantAdminButton({ userId, userName }: { userId: string; userName: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const grant = useMutation({
+    mutationFn: () => adminApi.grantAdmin(userId),
+    onSuccess: async () => {
+      toast({ title: "Admin otorgado", description: `${userName} ya es de plataforma.` });
+      await queryClient.invalidateQueries();
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "No se pudo otorgar",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={grant.isPending}
+      onClick={() => grant.mutate()}
+    >
+      {grant.isPending ? "Dando…" : "Dar admin"}
+    </Button>
+  );
+}
+
 function UsersTab() {
   const [search, setSearch] = useState("");
   const [order, setOrder] = useState<SortState<AdminListSort>>({
@@ -794,13 +886,7 @@ function UsersTab() {
               <TableCell>
                 <div className="flex justify-end gap-2">
                   {!u.isAdmin ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => adminApi.grantAdmin(u.id).catch(() => undefined)}
-                    >
-                      Dar admin
-                    </Button>
+                    <GrantAdminButton userId={u.id} userName={u.name} />
                   ) : null}
                   <ActionButton
                     label="Suspender"
@@ -2549,6 +2635,50 @@ function BusinessSheet({ businessId }: { businessId: string }) {
   );
 }
 
+/**
+ * Before and after, for the audit entries that carry them.
+ *
+ * A separate table rather than two more columns because the halves are variable-width JSON:
+ * a subscription payment's `after` has six keys and a category update's has seven, and a
+ * column sized for one of them is wrong for the other. A row that expands is also the only
+ * way to show them without a column per target type.
+ *
+ * Only entries where `after` is not `null` are listed. A `category.delete` writes
+ * `after: null` — the row is gone, and "after: null" *is* the information — so it is
+ * excluded here for a different reason and worth saying so: an operator reading this table is
+ * looking for what changed, and a deletion changed nothing because there is nothing left.
+ * It is still in the main table above, with the reason that explains it.
+ */
+function AuditDiffTable({ rows }: { rows: readonly AuditLogEntry[] }) {
+  const changed = rows.filter((entry) => entry.after !== null && entry.after !== undefined);
+  if (changed.length === 0) return null;
+
+  return (
+    <details className="rounded-md border">
+      <summary className="cursor-pointer px-4 py-2 text-sm font-medium">
+        Qué cambió ({changed.length} {changed.length === 1 ? "entrada" : "entradas"})
+      </summary>
+      <div className="border-t p-4">
+        <ul className="space-y-3">
+          {changed.map((entry) => (
+            <li key={entry.id}>
+              <p className="font-mono text-xs">{entry.action}</p>
+              <div className="mt-1 grid gap-2 md:grid-cols-2">
+                <pre className="overflow-x-auto rounded bg-muted p-2 text-[11px]">
+                  {JSON.stringify(entry.before ?? null, null, 2)}
+                </pre>
+                <pre className="overflow-x-auto rounded bg-amber-500/5 p-2 text-[11px]">
+                  {JSON.stringify(entry.after, null, 2)}
+                </pre>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </details>
+  );
+}
+
 function AuditTab() {
   const page = useAdminPage<AuditLogEntry>({
     /*
@@ -2590,19 +2720,55 @@ function AuditTab() {
           <TableRow>
             <TableHead>Cuándo</TableHead>
             <TableHead>Acción</TableHead>
+            {/*
+              `actorName` and `targetType` were being sent and not drawn.
+
+              An audit entry without an actor is not an audit entry — it is a timestamp with
+              a verb — and `auditLogEntrySchema` has carried `actorName`, `targetType` and
+              `targetId` from the start. The actor is rendered as a fallback pair rather than
+              a dash, because `auditLogEntries` left-joins `user` **deliberately**: an admin
+              whose account is gone keeps their name on the record only while the row
+              survives, so the id is the honest last resort and hiding it would lose the trail.
+            */}
+            <TableHead>Quién</TableHead>
+            <TableHead>Sobre</TableHead>
             <TableHead>Motivo</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.rows.map((e) => (
             <TableRow key={e.id}>
-              <TableCell className="text-muted-foreground">{shortDate(e.createdAt)}</TableCell>
+              <TableCell className="whitespace-nowrap text-muted-foreground">
+                {shortDate(e.createdAt)}
+              </TableCell>
               <TableCell className="font-mono text-xs">{e.action}</TableCell>
+              <TableCell className="text-xs">
+                {e.actorName ?? <span className="font-mono text-muted-foreground">{e.actorId}</span>}
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                {e.targetType}
+                <span className="block font-mono text-[11px] opacity-70">{e.targetId}</span>
+              </TableCell>
               <TableCell className="text-xs text-muted-foreground">{e.reason ?? "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      {/*
+        Before and after, for the entries that have both.
+
+        `auditLogEntrySchema` types these as `z.unknown()` because the targets differ — a
+        suspension has statuses, a category delete has a name and a slug, a payment has
+        amounts — so a column would have to guess at a shape. Rather than print `[object
+        Object]`, an entry that changed something gets a disclosure showing the two
+        JSON-serialised halves side by side.
+
+        This is the part of the log that answers "what did this actually do", and it was the
+        reason the tab existed, so rendering only the action name was the least useful half of
+        the row.
+      */}
+      <AuditDiffTable rows={data.rows} />
       <TablePager
         offset={page.offset}
         total={page.total}
