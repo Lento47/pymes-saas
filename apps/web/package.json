@@ -4,14 +4,15 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx server/index.ts",
-    "build": "tsx script/build.ts",
-    "start": "NODE_ENV=production node dist/index.cjs",
-    "check": "tsc --noEmit --incremental false",
-    "lint": "eslint \"{client/src,server}/**/*.{ts,tsx}\"",
-    "format": "prettier --write \"{client/src,server}/**/*.{ts,tsx}\"",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "_whyRunBin": "Every binary here goes through script/run-bin.mjs, which resolves it with Node instead of asking pnpm for a PATH entry. Under the root .npmrc's node-linker=hoisted, apps/web/node_modules holds 3 bin shims, so plain `vitest`/`tsc`/`eslint` were all 'not recognized' and every script in this file was dead. See the file's header.",
+    "dev": "node script/run-bin.mjs --env NODE_ENV=development tsx server/index.ts",
+    "build": "node script/run-bin.mjs tsx script/build.ts",
+    "start": "node script/run-bin.mjs --env NODE_ENV=production node dist/index.cjs",
+    "check": "node script/run-bin.mjs tsc --noEmit --incremental false",
+    "lint": "node script/run-bin.mjs eslint \"{client/src,server}/**/*.{ts,tsx}\"",
+    "format": "node script/run-bin.mjs prettier --write \"{client/src,server}/**/*.{ts,tsx}\"",
+    "test": "node script/run-bin.mjs vitest run",
+    "test:watch": "node script/run-bin.mjs vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
