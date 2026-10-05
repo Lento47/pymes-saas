@@ -96,6 +96,12 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	 */
 	"user.revoke_admin",
 	"order.cancel",
+	/**
+	 * Money is leaving a merchant, which is the same family as `subscription.record_payment`
+	 * on the other side of the ledger. With no settlement behind it, the audit entry is the only
+	 * place the amount, the reason and the operator exist — see `refundOrder`.
+	 */
+	"order.refund",
 	"product.unpublish",
 	"subscription.record_payment",
 	/**

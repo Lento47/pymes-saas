@@ -11,6 +11,7 @@ import {
 	priceBook as priceBookTable,
 	product as productTable,
 	subscription as subscriptionTable,
+	supportTicket as supportTicketTable,
 	user as userTable,
 } from "@pymeshub/db";
 import type {
@@ -518,6 +519,108 @@ export async function suspendBusiness(
 	]);
 
 	return readBusinessRow(ctx.db, input.targetId);
+}
+
+/**
+ * Erase a business that never happened.
+ *
+ * ## This is the most dangerous procedure in the console, and it is deliberately narrow
+ *
+ * `order.business_id` is `onDelete: "restrict"`, so a business with an order **cannot** be
+ * deleted — the database refuses. That sounds like a safety property, and it is one, but it
+ * covers only the fourth of the things attached to a shop. The schema's other references
+ * **cascade**: memberships, products, locations, carts, coupons, `subscription` and
+ * `support_ticket`. So the row that survives the restrict check takes the shop's subscription
+ * and its entire support history with it.
+ *
+ * Two of those are the records this platform exists to keep:
+ *
+ * - **`subscription`** is the money. Arrears are derived from `periodEnd` and `priceMinor` on
+ *   that row; deleting it makes a merchant who owes three periods look like a merchant with no
+ *   subscription, which is how debt disappears quietly.
+ * - **`support_ticket`** is what PymesHub told a merchant and when. `ADMIN_ACTIONS` justifies
+ *   auditing `support.reply` on exactly that ground, and then a delete would erase the
+ *   record the audit was for.
+ *
+ * So the guard is explicit and it counts, rather than letting the cascade decide: refuse when
+ * there is **any** order, subscription or ticket, and name which one blocked it.
+ *
+ * ## What is left is the useful case
+ *
+ * A business that never took an order, never subscribed and never opened a ticket is an
+ * abandoned signup — and cleaning those up is a real chore with no reversible alternative.
+ * That is the only deletion this permits, and it deletes memberships, products and locations
+ * with the cascade, because for a shop that never existed there is nothing in them to lose.
+ *
+ * The refusal names `suspendBusiness`, which is almost always what the operator actually
+ * wanted: it takes a shop out of circulation and can be undone.
+ */
+export async function deleteBusiness(
+	ctx: UserContext,
+	input: { targetId: string; reason?: string },
+): Promise<{ id: string }> {
+	const reason = requireReason("business.delete", input.reason);
+	const business = await readBusiness(ctx.db, input.targetId);
+	const now = new Date();
+
+	// Counted in one round trip rather than three, so the refusal can name every blocker in
+	// one sentence instead of making the operator fix them one message at a time.
+	const [[orders], [subscriptions], [tickets]] = await Promise.all([
+		ctx.db
+			.select({ n: sql<number>`count(*)` })
+			.from(orderTable)
+			.where(eq(orderTable.businessId, input.targetId)),
+		ctx.db
+			.select({ n: sql<number>`count(*)` })
+			.from(subscriptionTable)
+			.where(eq(subscriptionTable.businessId, input.targetId)),
+		ctx.db
+			.select({ n: sql<number>`count(*)` })
+			.from(supportTicketTable)
+			.where(eq(supportTicketTable.businessId, input.targetId)),
+	]);
+
+	const blockers = [
+		{ n: Number(orders?.n ?? 0), what: "pedidos" },
+		{ n: Number(subscriptions?.n ?? 0), what: "una suscripción" },
+		{ n: Number(tickets?.n ?? 0), what: "tickets de soporte" },
+	].filter((blocker) => blocker.n > 0);
+
+	if (blockers.length > 0) {
+		throw new ConflictError(
+			`No se puede eliminar: tiene ${blockers.map((b) => `${b.n} ${b.what}`).join(", ")}. ` +
+				`Suspender el negocio hace lo mismo y se puede deshacer.`,
+			{ blockers },
+		);
+	}
+
+	// The audit entry first, and in its own statement. `audit_log` holds `target_type` and
+	// `target_id` as plain text with no foreign key, so the record of this deletion survives
+	// the row it describes — which is the entire reason the platform keeps an audit log, and
+	// would not be true if the two shared a transaction whose rollback took it along.
+	await ctx.db.insert(auditLogTable).values({
+		id: newId("auditLog"),
+		actorUserId: ctx.user.id,
+		action: "business.delete",
+		targetType: "business",
+		targetId: input.targetId,
+		meta: {
+			before: {
+				name: business.name,
+				slug: business.slug,
+				status: business.status,
+			},
+			after: null,
+			reason,
+		},
+		createdAt: now,
+	});
+
+	await ctx.db
+		.delete(businessTable)
+		.where(eq(businessTable.id, input.targetId));
+
+	return { id: input.targetId };
 }
 
 export async function reactivateBusiness(
@@ -1214,6 +1317,108 @@ export async function cancelOrder(
 			cancelledAt: now,
 			cancelReason: reason,
 		},
+		businessName: row.businessName,
+		customerName: row.customerName,
+	});
+}
+
+/**
+ * Give a customer's money back.
+ *
+ * ## This moves no money, and saying so is the point
+ *
+ * There is no settlement in this platform. The consumer pays the merchant and the courier;
+ * the platform charges a flat subscription — which is why there is no `payout.*` action and
+ * why `ADMIN_ACTIONS` dropped `payout.mark_paid`. So a refund here is a **record**: it marks
+ * the order `REFUNDED`, writes an order event and an audit row naming the amount and the
+ * operator, and leaves the actual transfer to whoever held the money.
+ *
+ * Writing it any other way — flipping the flag and calling it a refund, with no record of who
+ * asked — is the mock-data antipattern this repository has a rule against, so the audit entry
+ * carries the amount and the reason precisely because the money cannot be traced from here.
+ *
+ * ## Why only from `PAID`
+ *
+ * `PAYMENT_STATUSES` has `REFUNDED` and the field is `notNull`, so there is somewhere for this
+ * to land. The guard is that the money has to have been captured: refunding an `UNPAID` order
+ * would produce a refund for a payment that never happened, and refunding a `REFUNDED` one is
+ * the double-refund that costs real money against a real provider.
+ *
+ * Unlike `cancelOrder` this does **not** go through `canTransition`, because `order_status` is
+ * about fulfilment and is untouched by a refund — a delivered order stays `COMPLETED`. A
+ * refund is a `payment_status` move, and conflating the two would make "delivered, then
+ * refunded" unrepresentable.
+ */
+export async function refundOrder(
+	ctx: UserContext,
+	input: { targetId: string; reason?: string },
+): Promise<AdminOrderRow> {
+	// A reason is required: money is leaving a merchant. See `REASON_REQUIRED_ACTIONS`.
+	const reason = requireReason("order.refund", input.reason);
+
+	const rows = await ctx.db
+		.select({
+			order: orderTable,
+			businessName: businessTable.name,
+			customerName: userTable.name,
+		})
+		.from(orderTable)
+		.innerJoin(businessTable, eq(orderTable.businessId, businessTable.id))
+		.innerJoin(userTable, eq(orderTable.customerId, userTable.id))
+		.where(eq(orderTable.id, input.targetId))
+		.limit(1);
+
+	const row = orNotFound(rows[0]);
+	const now = new Date();
+
+	if (row.order.paymentStatus !== "PAID") {
+		// Named per case, because the two are different mistakes and the operator has to fix
+		// them differently: there is nothing to give back, or there is already a claim on it.
+		throw new ConflictError(
+			row.order.paymentStatus === "REFUNDED"
+				? "Este pedido ya fue reembolsado"
+				: "Este pedido no tiene un pago capturado para reembolsar",
+			{ paymentStatus: row.order.paymentStatus },
+		);
+	}
+
+	await ctx.db.batch([
+		ctx.db
+			.update(orderTable)
+			.set({ paymentStatus: "REFUNDED", updatedAt: now })
+			.where(eq(orderTable.id, input.targetId)),
+		ctx.db.insert(orderEventTable).values({
+			id: newId("orderEvent"),
+			orderId: input.targetId,
+			fromStatus: row.order.status,
+			// Fulfilment is unchanged — the food still happened. There is no `toStatus` for a
+			// payment move, so the event carries the amount and the note instead, which is
+			// what a reader of the order timeline actually needs to see.
+			toStatus: row.order.status,
+			actor: "ADMIN",
+			actorUserId: ctx.user.id,
+			note: `Reembolso: ${reason}`,
+			createdAt: now,
+		}),
+		auditStatement(ctx, {
+			action: "order.refund",
+			targetType: "order",
+			targetId: input.targetId,
+			before: { paymentStatus: row.order.paymentStatus },
+			after: {
+				paymentStatus: "REFUNDED",
+				// The amount is not derivable from the audit entry otherwise, and it is the one
+				// number anybody will ask for. `totalMinor` is the order's own stored total.
+				refundedMinor: row.order.totalMinor,
+				currency: row.order.currency,
+			},
+			reason,
+			now,
+		}),
+	]);
+
+	return adminOrderRowOf({
+		order: { ...row.order, paymentStatus: "REFUNDED" },
 		businessName: row.businessName,
 		customerName: row.customerName,
 	});

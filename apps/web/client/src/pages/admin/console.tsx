@@ -484,6 +484,27 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
                     size="sm"
                   />
                 )}
+                {/*
+                  Delete is **not** a third button in that pair, and never was going to be.
+
+                  `business.delete` exists and is in `REASON_REQUIRED_ACTIONS`, but the service
+                  refuses outright for any business with an order, a subscription or a support
+                  ticket — which is every business that has ever done anything. So this only
+                  ever appears for a signup that never traded, and it is deliberately last in
+                  the row: it is irreversible, and the refusal that comes back names
+                  suspension as the alternative.
+
+                  Offered from the row rather than hidden behind a kebab menu, because
+                  "eliminar" is one word and burying it is how it gets clicked by accident.
+                */}
+                <ActionButton
+                  label="Eliminar"
+                  action="business.delete"
+                  targetName={b.name}
+                  onRun={(reason) => adminApi.deleteBusiness(b.id, reason ?? "")}
+                  variant="destructive"
+                  size="sm"
+                />
               </div>
             </TableCell>
           </TableRow>
@@ -1031,6 +1052,7 @@ function OrdersTab() {
             <TableHead>Negocio</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Estado</TableHead>
+            <TableHead>Pago</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead>Fecha</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
@@ -1043,12 +1065,29 @@ function OrdersTab() {
               <TableCell>{o.businessName}</TableCell>
               <TableCell>{o.customerName}</TableCell>
               <TableCell className="text-xs">{o.status}</TableCell>
+              {/*
+                The payment column is not decoration. `order.refund` only applies to a captured
+                payment, and the operator cannot know which orders have one without reading
+                `payment_status` — so a refund button on every row would be a button that is
+                wrong most of the time, and "wrong" on a money action means a refusal the
+                operator has to interpret.
+              */}
+              <TableCell className="text-xs">{o.paymentStatus}</TableCell>
               <TableCell className="text-right tabular-nums">
                 {money(o.totalMinor, o.currency)}
               </TableCell>
               <TableCell className="text-muted-foreground">{shortDate(o.placedAt)}</TableCell>
               <TableCell>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  {o.paymentStatus === "PAID" ? (
+                    <ActionButton
+                      label="Reembolsar"
+                      action="order.refund"
+                      targetName={o.reference}
+                      onRun={(reason) => adminApi.refundOrder(o.id, reason ?? "")}
+                      size="sm"
+                    />
+                  ) : null}
                   <ActionButton
                     label="Cancelar"
                     action="order.cancel"

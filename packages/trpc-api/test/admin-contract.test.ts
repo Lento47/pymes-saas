@@ -13,10 +13,30 @@ import {
 	contextFor,
 	refused,
 	seedBusiness,
+	seedOrder,
 	seedSubscription,
 	seedUser,
 	world,
 } from "./harness";
+
+/**
+ * Row counts read straight from SQLite, by id or by any column.
+ *
+ * Through the service's own mapper these would answer "what does the read model say", which is
+ * the wrong question for a deletion spec — the claim is about the table. And for a delete in
+ * particular the read model is the thing most likely to have been deleted along with it.
+ */
+function countRows(
+	w: TestWorld,
+	table: string,
+	value: string,
+	byColumn = "id",
+): number {
+	const row = w.sqlite
+		.query(`select count(*) as n from ${table} where ${byColumn} = ?`)
+		.get(value) as { n: number };
+	return row.n;
+}
 
 /**
  * What the platform console is allowed to do, asserted where it actually happens.
@@ -437,6 +457,264 @@ describe("platform console contracts", () => {
 				limit: 25,
 			} as AdminListInput);
 			expect(descending.rows[0]?.name).toBe("Zeta");
+
+			w.close();
+		});
+	});
+
+	/**
+	 * The two destructive procedures, and the guards that make them survivable.
+	 *
+	 * `business.delete` and `order.refund` were both in `ADMIN_ACTIONS` — and `business.delete`
+	 * in `REASON_REQUIRED_ACTIONS` — with no procedure behind either. A policy that names an
+	 * action nothing can perform is not a policy, and `REASON_REQUIRED_ACTIONS` had an entry
+	 * describing a reason that no form in the console collected.
+	 *
+	 * What these specs are really about is the **refusals**, because a delete is judged by what
+	 * it declines to delete.
+	 */
+	describe("the destructive procedures", () => {
+		test("a business with an order cannot be deleted", async () => {
+			// `order.business_id` is `onDelete: "restrict"`, so the database would refuse this
+			// anyway — but as a raw constraint failure, with no shop name and no advice. The
+			// service refuses first so the operator gets a sentence.
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_del_order",
+				isAdmin: true,
+			});
+			const customer = await seedUser(w.db, { id: "usr_del_order_cust" });
+			const businessId = await seedBusiness(w.db, { id: "biz_del_order" });
+			await seedOrder(w.db, { businessId, customerId: customer.id });
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const error = await refused(
+				admin.deleteBusiness(ctx, {
+					targetId: businessId,
+					reason: "Limpieza de pruebas",
+				}),
+			);
+			expect(error.code).toBe("CONFLICT");
+			// The advice is the point: an operator who wanted this shop gone almost always
+			// wanted it invisible, and suspension is reversible.
+			expect(error.message).toContain("Suspender");
+
+			expect(countRows(w, "business", businessId)).toBe(1);
+			w.close();
+		});
+
+		test("a business with a subscription cannot be deleted — its arrears would vanish", async () => {
+			// The one that the foreign keys do **not** protect. `subscription.business_id`
+			// cascades, so a delete takes `periodEnd` and `priceMinor` with it, and a merchant
+			// three periods into debt becomes a merchant with no subscription: which is how debt
+			// disappears without anything looking like an event.
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_del_sub",
+				isAdmin: true,
+			});
+			const businessId = await seedBusiness(w.db, { id: "biz_del_sub" });
+			await seedSubscription(w.db, {
+				businessId,
+				plan: "MONTHLY",
+				priceMinor: 10_000,
+				daysUntilDue: -60,
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			// Confirm the debt is real before trying to destroy it, so this cannot pass by
+			// accident against a fixture that owed nothing. Sixty days on a thirty-day plan is
+			// **two** periods, so ₡20,000 — and the number matters, because the whole argument
+			// is that two periods' worth of debt evaporates with the row.
+			const owed = await admin.subscriptions(ctx, {
+				search: undefined,
+				sort: "arrears",
+				direction: "desc",
+				limit: 25,
+			} as never);
+			expect(owed.rows[0]?.periodsOwed).toBe(2);
+			expect(owed.rows[0]?.arrearsMinor).toBe(20_000);
+
+			const error = await refused(
+				admin.deleteBusiness(ctx, {
+					targetId: businessId,
+					reason: "Limpieza de pruebas",
+				}),
+			);
+			expect(error.code).toBe("CONFLICT");
+			expect(countRows(w, "business", businessId)).toBe(1);
+			expect(countRows(w, "subscription", businessId, "business_id")).toBe(1);
+
+			w.close();
+		});
+
+		test("an abandoned business with none of those is deleted, and the record survives", async () => {
+			// The useful case: a signup that never traded, never paid and never asked anything.
+			// And the audit row is written **before** the delete, in its own statement, because
+			// `audit_log` holds no foreign key to `business` — which is the only reason the
+			// record of this deletion outlives the row it describes.
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_del_ok",
+				isAdmin: true,
+			});
+			const businessId = await seedBusiness(w.db, {
+				id: "biz_del_ok",
+				name: "Never Trades",
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const result = await admin.deleteBusiness(ctx, {
+				targetId: businessId,
+				reason: "Registro abandonado, nunca operó",
+			});
+			expect(result.id).toBe(businessId);
+			expect(countRows(w, "business", businessId)).toBe(0);
+
+			const entry = w.sqlite
+				.query("select action, meta as m from audit_log")
+				.get() as { action: string; m: string };
+			expect(entry.action).toBe("business.delete");
+			const meta = JSON.parse(entry.m) as {
+				before: { name: string };
+				after: unknown;
+				reason: string;
+			};
+			// The name and slug travel with the audit row, because after the delete there is
+			// nothing else on the platform that knows this shop ever existed.
+			expect(meta.before.name).toBe("Never Trades");
+			expect(meta.after).toBeNull();
+			expect(meta.reason).toBe("Registro abandonado, nunca operó");
+
+			w.close();
+		});
+
+		test("deleting a business without a reason is refused, and writes nothing", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_del_nr",
+				isAdmin: true,
+			});
+			const businessId = await seedBusiness(w.db, { id: "biz_del_nr" });
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const error = await refused(
+				admin.deleteBusiness(ctx, { targetId: businessId, reason: "  " }),
+			);
+			expect(error.code).toBe("BAD_REQUEST");
+			expect(countRows(w, "business", businessId)).toBe(1);
+			expect(
+				w.sqlite.query("select count(*) as n from audit_log").get() as {
+					n: number;
+				},
+			).toEqual({ n: 0 });
+
+			w.close();
+		});
+
+		test("a refund needs a reason, and records the amount", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_refund",
+				isAdmin: true,
+			});
+			const customer = await seedUser(w.db, { id: "usr_refund_cust" });
+			const businessId = await seedBusiness(w.db, { id: "biz_refund" });
+			const orderId = await seedOrder(w.db, {
+				businessId,
+				customerId: customer.id,
+				paymentStatus: "PAID",
+				totalMinor: 18_500,
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const error = await refused(
+				admin.refundOrder(ctx, { targetId: orderId, reason: "" }),
+			);
+			expect(error.code).toBe("BAD_REQUEST");
+
+			const row = await admin.refundOrder(ctx, {
+				targetId: orderId,
+				reason: "El cliente|reportó que nunca llegó",
+			});
+
+			// Fulfilment is untouched: the order still happened. A refund moves payment, not
+			// the food.
+			expect(row.status).toBe("COMPLETED");
+			expect(row.paymentStatus).toBe("REFUNDED");
+
+			const entry = w.sqlite
+				.query("select action, meta as m from audit_log")
+				.get() as { action: string; m: string };
+			expect(entry.action).toBe("order.refund");
+			const meta = JSON.parse(entry.m) as {
+				before: { paymentStatus: string };
+				after: { paymentStatus: string; refundedMinor: number };
+			};
+			expect(meta.before.paymentStatus).toBe("PAID");
+			expect(meta.after.paymentStatus).toBe("REFUNDED");
+			// The amount is here because nothing else in the system records it: there is no
+			// settlement, so the audit row is the only trace that money was meant to go back.
+			expect(meta.after.refundedMinor).toBe(18_500);
+
+			w.close();
+		});
+
+		test("an unpaid order cannot be refunded, and a paid one cannot be refunded twice", async () => {
+			// Both halves matter for real money. Refunding an `UNPAID` order invents a refund
+			// for a payment that never happened; refunding a `REFUNDED` one is the double claim
+			// that costs actual money against an actual provider.
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_refund_g",
+				isAdmin: true,
+			});
+			const customer = await seedUser(w.db, { id: "usr_refund_g_cust" });
+			const businessId = await seedBusiness(w.db, { id: "biz_refund_g" });
+			const unpaidId = await seedOrder(w.db, {
+				id: "ord_refund_unpaid",
+				businessId,
+				customerId: customer.id,
+				paymentStatus: "UNPAID",
+			});
+			const paidId = await seedOrder(w.db, {
+				id: "ord_refund_paid",
+				businessId,
+				customerId: customer.id,
+				paymentStatus: "PAID",
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			const unpaidError = await refused(
+				admin.refundOrder(ctx, {
+					targetId: unpaidId,
+					reason: "Prueba sin pago",
+				}),
+			);
+			expect(unpaidError.code).toBe("CONFLICT");
+			expect(unpaidError.message).toContain("no tiene un pago capturado");
+
+			await admin.refundOrder(ctx, {
+				targetId: paidId,
+				reason: "Primera devolución",
+			});
+			const twice = await refused(
+				admin.refundOrder(ctx, {
+					targetId: paidId,
+					reason: "Segunda devolución",
+				}),
+			);
+			expect(twice.code).toBe("CONFLICT");
+			expect(twice.message).toContain("ya fue reembolsado");
+
+			// One audit row, not two: the second attempt was refused, not performed.
+			expect(
+				w.sqlite
+					.query(
+						"select count(*) as n from audit_log where action = 'order.refund'",
+					)
+					.get() as { n: number },
+			).toEqual({ n: 1 });
 
 			w.close();
 		});

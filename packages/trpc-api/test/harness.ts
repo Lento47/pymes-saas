@@ -22,8 +22,9 @@ import {
 	subscription as subscriptionTable,
 	user as userTable,
 } from "@pymeshub/db";
-import type { CountablePlanLimit } from "@pymeshub/shared";
+import type { CountablePlanLimit, Currency } from "@pymeshub/shared";
 import { newOrderReference, PLAN_LIMITS } from "@pymeshub/shared";
+import type { OrderStatus, PaymentStatus } from "@pymeshub/shared/order-state";
 import {
 	effectivePlan,
 	STATUS_IS_LISTED,
@@ -596,6 +597,51 @@ export async function seedMembership(
 		role,
 		createdAt: new Date(),
 	});
+}
+
+/**
+ * An order row, inserted directly rather than placed through `orders.place`.
+ *
+ * Placing one properly needs a cart, a category, a product and a membership, and every spec
+ * that wants "an order exists so this admin procedure has something to act on" would carry
+ * four unrelated fixtures to get there. This writes the row the admin procedures read.
+ *
+ * It is deliberately **not** a shortcut past the order state machine: `status` and
+ * `paymentStatus` are both parameters, so a spec that needs a `PAID` order or a `REFUNDED` one
+ * says so. What it does bypass is placement, which is covered by `orders-place.test.ts`.
+ */
+export async function seedOrder(
+	db: Db,
+	overrides: {
+		id?: string;
+		businessId: string;
+		customerId: string;
+		status?: OrderStatus;
+		paymentStatus?: PaymentStatus;
+		totalMinor?: number;
+		currency?: Currency;
+	},
+): Promise<string> {
+	const id = overrides.id ?? `ord_test_${overrides.businessId}`;
+	const now = new Date();
+	const totalMinor = overrides.totalMinor ?? 10_000;
+	await db.insert(orderTable).values({
+		id,
+		reference: `CR-${id.toUpperCase()}`,
+		customerId: overrides.customerId,
+		businessId: overrides.businessId,
+		fulfilment: "PICKUP",
+		status: overrides.status ?? ("COMPLETED" as OrderStatus),
+		paymentMethod: "SINPE_MOVIL",
+		paymentStatus: overrides.paymentStatus ?? ("PAID" as PaymentStatus),
+		currency: overrides.currency ?? ("CRC" as Currency),
+		subtotalMinor: totalMinor,
+		totalMinor,
+		placedAt: now,
+		createdAt: now,
+		updatedAt: now,
+	});
+	return id;
 }
 
 export async function seedBusiness(

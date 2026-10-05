@@ -59,6 +59,17 @@ export const adminRouter = router({
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.suspendBusiness(ctx, input)),
 
+	/**
+	 * Answers `{ id }` rather than a row, because the row is gone.
+	 *
+	 * Every other mutation here returns the record it changed so the console can refresh from
+	 * the response. There is nothing to return, and returning `null` would be a shape the
+	 * client has to special-case for no benefit — the id is enough to invalidate against.
+	 */
+	deleteBusiness: adminProcedure
+		.input(adminActionInput)
+		.mutation(({ ctx, input }) => admin.deleteBusiness(ctx, input)),
+
 	reactivateBusiness: adminProcedure
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.reactivateBusiness(ctx, input)),
@@ -135,6 +146,15 @@ export const adminRouter = router({
 	cancelOrder: adminProcedure
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.cancelOrder(ctx, input)),
+
+	/**
+	 * Marks a captured payment as returned. A reason is required, and the service refuses
+	 * unless the payment was actually `PAID` — see `refundOrder`, which also explains why this
+	 * moves no money and is recorded rather than performed.
+	 */
+	refundOrder: adminProcedure
+		.input(adminActionInput)
+		.mutation(({ ctx, input }) => admin.refundOrder(ctx, input)),
 
 	/**
 	 * Every merchant's billing, arrears first. Replaces `payouts`.

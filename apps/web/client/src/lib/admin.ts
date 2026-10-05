@@ -509,6 +509,25 @@ export const adminApi = {
     trpc.admin.cancelOrder.mutate({ targetId, reason }),
 
   /**
+   * Marks a captured payment as returned.
+   *
+   * It moves no money: there is no settlement in this platform, so the transfer belongs to
+   * whoever held the funds and this is the record that it was asked for and by whom. The
+   * reason is mandatory server-side, which is why the parameter here is not optional.
+   */
+  refundOrder: (targetId: string, reason: string) =>
+    trpc.admin.refundOrder.mutate({ targetId, reason }),
+
+  /**
+   * Erases a business.
+   *
+   * Answers `{ id }` rather than a row — see `deleteBusiness`, which explains why, and also
+   * refuses outright when the business has an order, a subscription or a support ticket.
+   */
+  deleteBusiness: (targetId: string, reason: string) =>
+    trpc.admin.deleteBusiness.mutate({ targetId, reason }),
+
+  /**
    * `decision` is `"VERIFIED" | "REJECTED"` and the reason is required for one of them.
    *
    * That asymmetry is the service's, not this file's: a courier turned down deserves to be
