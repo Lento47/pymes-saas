@@ -3,11 +3,15 @@ import {
   type AdminApprovalCounts,
   type AdminBusinessDetail,
   type AdminBusinessRow,
+  type AdminCourierInviteRow,
   type AdminCourierListInput,
   type AdminCourierRow,
   type AdminListInput,
   type AdminMetrics,
   type AdminOrderRow,
+  type AdminProductRow,
+  type AdminPromotionRow,
+  type AdminReviewRow,
   type AdminSubscription,
   type AdminSupportTicketDetail,
   type AdminSupportTicketListInput,
@@ -20,12 +24,16 @@ import {
   adminBusinessDetailSchema,
   adminBusinessRowSchema,
   adminCategoryInput,
+  adminCourierInviteRowSchema,
   adminCourierListInput,
   adminCourierRowSchema,
   adminDeleteCategoryInput,
   adminListInput,
   adminMetricsSchema,
   adminOrderRowSchema,
+  adminProductRowSchema,
+  adminPromotionRowSchema,
+  adminReviewRowSchema,
   adminSubscriptionSchema,
   adminSubscriptionsInput,
   adminSupportTicketDetailSchema,
@@ -170,6 +178,10 @@ const auditList = pageOf(auditLogEntrySchema);
 const courierList = pageOf(adminCourierRowSchema);
 const ticketList = pageOf(adminSupportTicketRowSchema);
 const subscriptionList = pageOf(adminSubscriptionSchema);
+const productList = pageOf(adminProductRowSchema);
+const promotionList = pageOf(adminPromotionRowSchema);
+const reviewList = pageOf(adminReviewRowSchema);
+const courierInviteList = pageOf(adminCourierInviteRowSchema);
 
 /**
  * One price book, as `subscriptions.priceBooks` returns it: the row plus the two flags the
@@ -414,6 +426,37 @@ export const adminApi = {
   // `REASON_REQUIRED_ACTIONS`, and the minimum length is `REASON_MIN_LENGTH` so the field
   // cannot be looser here than the API is.
 
+  // ── The catalogue, and the four lists that had no surface ────────────────
+  //
+  // `admin.products`, `admin.promotions`, `admin.reviews` and `admin.courierInvites` were
+  // all working procedures with nothing calling them. Three of them are the moderation
+  // surfaces this console needs and never had — a product listed at the wrong price, a review
+  // that should not be public, a discount code that is quietly wrong — and `unpublishProduct`
+  // is the worst of the five: `product.unpublish` is in `ADMIN_ACTIONS` **and** in
+  // `REASON_REQUIRED_ACTIONS`, so the platform had a policy about taking a product down and no
+  // way to do it.
+  //
+  // All four take `adminListInput` like every other list, so they page and filter through
+  // `useAdminPage` without anything special.
+
+  products: async (input: Partial<AdminListInput> = {}): Promise<Page<AdminProductRow>> =>
+    productList(await trpc.admin.products.query(page(input))),
+
+  /** Takes a product off the marketplace. The reason is mandatory server-side. */
+  unpublishProduct: (targetId: string, reason: string) =>
+    trpc.admin.unpublishProduct.mutate({ targetId, reason }),
+
+  promotions: async (input: Partial<AdminListInput> = {}): Promise<Page<AdminPromotionRow>> =>
+    promotionList(await trpc.admin.promotions.query(page(input))),
+
+  reviews: async (input: Partial<AdminListInput> = {}): Promise<Page<AdminReviewRow>> =>
+    reviewList(await trpc.admin.reviews.query(page(input))),
+
+  courierInvites: async (
+    input: Partial<AdminListInput> = {},
+  ): Promise<Page<AdminCourierInviteRow>> =>
+    courierInviteList(await trpc.admin.courierInvites.query(page(input))),
+
   priceBooks: async (): Promise<PriceBookRow[]> =>
     priceBookList(await trpc.admin.priceBooks.query()),
 
@@ -563,10 +606,14 @@ export type {
   AdminAction,
   AdminBusinessDetail,
   AdminBusinessRow,
+  AdminCourierInviteRow,
   AdminCourierListInput,
   AdminCourierRow,
   AdminMetrics,
   AdminOrderRow,
+  AdminProductRow,
+  AdminPromotionRow,
+  AdminReviewRow,
   AdminSubscription,
   AdminSupportTicketDetail,
   AdminSupportTicketListInput,

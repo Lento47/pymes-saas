@@ -39,6 +39,7 @@ export const CONSOLE_TABS = [
   { value: "orders", label: "Órdenes" },
   { value: "billing", label: "Cobros" },
   { value: "support", label: "Soporte" },
+  { value: "catalogue", label: "Catálogo" },
   { value: "prices", label: "Planes" },
   { value: "categories", label: "Categorías" },
   { value: "audit", label: "Auditoría" },

@@ -43,6 +43,7 @@ import {
   REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
+import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
 import { TablePager } from "./console-pager";
@@ -3246,6 +3247,14 @@ function AdminConsole() {
             <Card>
               <CardContent className="pt-6">
                 <SupportTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="catalogue" className="mt-0">
+            <Card>
+              <CardContent className="pt-6">
+                <CatalogueTab />
               </CardContent>
             </Card>
           </TabsContent>
