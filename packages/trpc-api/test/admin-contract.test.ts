@@ -7,14 +7,17 @@ import {
 
 import { requireAuthed } from "../src/context";
 import * as admin from "../src/services/admin";
+import * as adminContent from "../src/services/admin-content";
 import * as subscriptions from "../src/services/subscription";
 import type { TestWorld } from "./harness";
 import {
 	contextFor,
 	refused,
 	seedBusiness,
+	seedMembership,
 	seedOrder,
 	seedSubscription,
+	seedSupportTicket,
 	seedUser,
 	world,
 } from "./harness";
@@ -585,6 +588,88 @@ describe("platform console contracts", () => {
 			expect(meta.before.name).toBe("Never Trades");
 			expect(meta.after).toBeNull();
 			expect(meta.reason).toBe("Registro abandonado, nunca operó");
+
+			w.close();
+		});
+
+		test("what support said outlives the shop it was said to", async () => {
+			// The reason `support.reply` and `support.resolve` are audited at all.
+			//
+			// `ADMIN_ACTIONS` justifies it as a record that "outlives the ticket row and is
+			// what makes a disputed answer checkable later" — and `support_ticket` is one of
+			// the tables that cascade from `business`. So the conversation is the thing that does
+			// *not* survive, and the audit entry is the only copy.
+			//
+			// Note the tension with the delete guard: this ticket **blocks** the delete. Both
+			// are deliberate — the guard is the primary protection, and the audit row is what
+			// remains for the conversations that predate the guard.
+			const w = world();
+			const operator = await seedUser(w.db, {
+				id: "usr_surv_admin",
+				isAdmin: true,
+			});
+			const merchant = await seedUser(w.db, { id: "usr_surv_merchant" });
+			const businessId = await seedBusiness(w.db, { id: "biz_surv" });
+			await seedMembership(w.db, merchant.id, businessId, "OWNER");
+			const ticketId = await seedSupportTicket(w.db, {
+				id: "tkt_surv",
+				businessId,
+				openedBy: merchant.id,
+				subject: "No me aparece el comprobante",
+			});
+			const ctx = requireAuthed(await contextFor(w, operator));
+
+			await adminContent.replyOnTicket(ctx, {
+				ticketId,
+				body: "Lo enviamos por WhatsApp, llega en minutos.",
+			});
+			await adminContent.resolveTicket(ctx, {
+				ticketId,
+				status: "RESOLVED",
+				note: "Comprobante reenviado y confirmado.",
+			});
+
+			expect(
+				w.sqlite
+					.query("select action, meta as m from audit_log order by created_at")
+					.all() as { action: string; m: string }[],
+			).toHaveLength(2);
+
+			// The **body** is in the audit entry, not just the fact of a reply. An entry saying
+			// "an operator replied at 14:02" without the text is not checkable, and checkability
+			// is the stated purpose.
+			const reply = w.sqlite
+				.query("select meta as m from audit_log where action = 'support.reply'")
+				.get() as { m: string };
+			expect(
+				(JSON.parse(reply.m) as { after: { body: string } }).after.body,
+			).toBe("Lo enviamos por WhatsApp, llega en minutos.");
+
+			const resolve = w.sqlite
+				.query(
+					"select meta as m from audit_log where action = 'support.resolve'",
+				)
+				.get() as { m: string };
+			const meta = JSON.parse(resolve.m) as {
+				before: { status: string };
+				after: { status: string };
+			};
+			// `before` is the ticket's previous status, so the entry says what it moved from as
+			// well as to.
+			expect(meta.before.status).toBe("OPEN");
+			expect(meta.after.status).toBe("RESOLVED");
+
+			// And the claim itself, checked rather than asserted: delete the business behind the
+			// guard's back — a cascade, so the conversation goes — and confirm the audit rows
+			// are still there afterwards. `deleteBusiness` refuses this exact case, so the
+			// service is the *primary* protection and these rows are what remains for the
+			// conversations that predate it.
+			w.sqlite.run("delete from business where id = ?", [businessId]);
+			expect(countRows(w, "support_ticket", ticketId)).toBe(0);
+			expect(
+				countRows(w, "support_ticket_message", ticketId, "ticket_id"),
+			).toBe(0);
+			expect(countRows(w, "audit_log", ticketId, "target_id")).toBe(2);
 
 			w.close();
 		});

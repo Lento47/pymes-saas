@@ -20,9 +20,14 @@ import {
 	review as reviewTable,
 	session as sessionTable,
 	subscription as subscriptionTable,
+	supportTicket as supportTicketTable,
 	user as userTable,
 } from "@pymeshub/db";
-import type { CountablePlanLimit, Currency } from "@pymeshub/shared";
+import type {
+	CountablePlanLimit,
+	Currency,
+	TicketStatus,
+} from "@pymeshub/shared";
 import { newOrderReference, PLAN_LIMITS } from "@pymeshub/shared";
 import type { OrderStatus, PaymentStatus } from "@pymeshub/shared/order-state";
 import {
@@ -638,6 +643,37 @@ export async function seedOrder(
 		subtotalMinor: totalMinor,
 		totalMinor,
 		placedAt: now,
+		createdAt: now,
+		updatedAt: now,
+	});
+	return id;
+}
+
+/**
+ * A support ticket, for specs about what support said to a merchant.
+ *
+ * `supportTicket.businessId` is one of the columns that **cascades**, so a ticket is also the
+ * cheapest way to prove a record outlives its business — see `admin-contract.test.ts`.
+ */
+export async function seedSupportTicket(
+	db: Db,
+	overrides: {
+		id?: string;
+		businessId: string;
+		openedBy: string;
+		subject?: string;
+		status?: TicketStatus;
+	},
+): Promise<string> {
+	const id = overrides.id ?? `tkt_test_${overrides.businessId}`;
+	const now = new Date();
+	await db.insert(supportTicketTable).values({
+		id,
+		businessId: overrides.businessId,
+		openedBy: overrides.openedBy,
+		category: "OTHER",
+		subject: overrides.subject ?? "Prueba de soporte",
+		status: overrides.status ?? ("OPEN" as TicketStatus),
 		createdAt: now,
 		updatedAt: now,
 	});

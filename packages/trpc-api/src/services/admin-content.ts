@@ -33,6 +33,7 @@ import {
 import { and, asc, eq, gte, inArray, like, lte, or, sql } from "drizzle-orm";
 
 import { NotFoundError } from "../errors";
+import { auditStatement } from "./audit";
 import type { UserContext } from "./helpers";
 import { likePattern } from "./helpers";
 
@@ -593,6 +594,18 @@ function messageOf(
  * question is a resolved ticket whose last word is the merchant's — which is what the
  * merchant's own `reply` treats as a reason to reopen. If this also moved the state, the
  * two ends of the same thread would disagree about what a reply means.
+ *
+ * ## Why it is audited at all, given it changes no state
+ *
+ * `ADMIN_ACTIONS` lists `support.reply` and says why: this row "is the record of what PymesHub
+ * told a shop and when, which outlives the ticket row and is what makes a disputed answer
+ * checkable later". That last clause is load-bearing rather than aspirational —
+ * `support_ticket` is one of the tables that **cascade** from `business`, so deleting a
+ * business takes the whole conversation with it.
+ *
+ * The body is copied into the audit entry on purpose. An audit row saying "an operator replied
+ * at 14:02" without the text is not checkable, and the point of the record is that somebody can
+ * read what was actually promised.
  */
 export async function replyOnTicket(
 	ctx: UserContext,
@@ -616,6 +629,16 @@ export async function replyOnTicket(
 			.update(supportTicketTable)
 			.set({ updatedAt: now })
 			.where(eq(supportTicketTable.id, input.ticketId)),
+		// In the same batch as the message, so an answer cannot exist without its record.
+		auditStatement(ctx, {
+			action: "support.reply",
+			targetType: "support_ticket",
+			targetId: input.ticketId,
+			before: null,
+			after: { messageId: id, body: input.body },
+			reason: null,
+			now,
+		}),
 	]);
 
 	return { id, createdAt: now };
@@ -669,6 +692,22 @@ export async function resolveTicket(
 				updatedAt: now,
 			})
 			.where(eq(supportTicketTable.id, input.ticketId)),
+		// The same batch as the note and the state change, for the same reason `resolveTicket`
+		// exists as one batch at all: a ticket cannot close without a record that it did, or the
+		// queue's own history cannot answer "when did support say this was handled".
+		//
+		// `before` is the ticket's **previous** status, so the entry says what it moved from as
+		// well as to. On a re-resolve that is `RESOLVED` again, which is the truthful reading:
+		// a second answer was added to an already-closed question.
+		auditStatement(ctx, {
+			action: "support.resolve",
+			targetType: "support_ticket",
+			targetId: input.ticketId,
+			before: { status: existing.status },
+			after: { status: input.status, messageId, note: input.note },
+			reason: input.note,
+			now,
+		}),
 	]);
 
 	return {
