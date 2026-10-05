@@ -266,11 +266,14 @@ describe("the Supabase exchange", () => {
 	});
 
 	test("an identity it already knows exchanges straight away", async () => {
-		const calls = installFetch(() => ok({ "set-auth-token": "pymeshub_market" }));
-
-		const result = await createMarketplaceAuthClient(BASE, memoryStorage()).exchangeSupabaseSession(
-			"supabase-token",
+		const calls = installFetch(() =>
+			ok({ "set-auth-token": "pymeshub_market" }),
 		);
+
+		const result = await createMarketplaceAuthClient(
+			BASE,
+			memoryStorage(),
+		).exchangeSupabaseSession("supabase-token");
 
 		expect(result).toBe("ok");
 		// A reader returning to an existing account is never asked for the terms again.
@@ -278,12 +281,17 @@ describe("the Supabase exchange", () => {
 	});
 
 	test("the assertions travel when the caller has them", async () => {
-		const calls = installFetch(() => ok({ "set-auth-token": "pymeshub_market" }));
-
-		await createMarketplaceAuthClient(BASE, memoryStorage()).exchangeSupabaseSession(
-			"supabase-token",
-			{ termsAccepted: true, ageConfirmed: true },
+		const calls = installFetch(() =>
+			ok({ "set-auth-token": "pymeshub_market" }),
 		);
+
+		await createMarketplaceAuthClient(
+			BASE,
+			memoryStorage(),
+		).exchangeSupabaseSession("supabase-token", {
+			termsAccepted: true,
+			ageConfirmed: true,
+		});
 
 		const sent = JSON.parse(String(calls[0]?.body)) as Record<string, unknown>;
 		expect(sent.termsAccepted).toBe(true);
@@ -297,18 +305,18 @@ describe("the Supabase exchange", () => {
 		installFetch(() => jsonFailure(400, { error: "invalid_request" }));
 		const client = createMarketplaceAuthClient(BASE, memoryStorage());
 
-		expect(rejectionMessage(client.exchangeSupabaseSession("supabase-token"))).resolves.toBe(
-			"auth.error.generic",
-		);
+		expect(
+			rejectionMessage(client.exchangeSupabaseSession("supabase-token")),
+		).resolves.toBe("auth.error.generic");
 	});
 
 	test("a non-JSON failure carries no code and still throws", async () => {
 		installFetch(() => failure(500));
 		const client = createMarketplaceAuthClient(BASE, memoryStorage());
 
-		expect(rejectionMessage(client.exchangeSupabaseSession("supabase-token"))).resolves.toBe(
-			"auth.error.generic",
-		);
+		expect(
+			rejectionMessage(client.exchangeSupabaseSession("supabase-token")),
+		).resolves.toBe("auth.error.generic");
 	});
 });
 

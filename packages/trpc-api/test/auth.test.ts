@@ -345,8 +345,14 @@ describe("identity is not configured", () => {
 		const denied = await createApp().fetch(
 			new Request("http://api.test/auth/sign-up/email", {
 				method: "POST",
-				headers: { origin: "https://evil.example", "content-type": "application/json" },
-				body: JSON.stringify({ email: "a@b.example", password: "x".repeat(12) }),
+				headers: {
+					origin: "https://evil.example",
+					"content-type": "application/json",
+				},
+				body: JSON.stringify({
+					email: "a@b.example",
+					password: "x".repeat(12),
+				}),
 			}),
 			test.env as never,
 		);

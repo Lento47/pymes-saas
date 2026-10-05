@@ -193,10 +193,14 @@ describe("response headers", () => {
 
 		expect(response.status).toBeLessThan(300);
 		// The allowed origin is echoed back, so the browser lets the real POST through.
-		expect(response.headers.get("access-control-allow-origin")).toBe(ALLOWED_ORIGIN);
+		expect(response.headers.get("access-control-allow-origin")).toBe(
+			ALLOWED_ORIGIN,
+		);
 		// And `credentials` is why: the session is an HttpOnly cookie, so a preflight that
 		// did not agree to credentials would still fail on the POST behind it.
-		expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+		expect(response.headers.get("access-control-allow-credentials")).toBe(
+			"true",
+		);
 
 		test.close();
 	});

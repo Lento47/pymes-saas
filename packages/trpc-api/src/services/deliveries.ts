@@ -1,6 +1,6 @@
 import {
-	business as businessTable,
 	boundingBox,
+	business as businessTable,
 	delivery as deliveryTable,
 	membership as membershipTable,
 	deliveryOffer as offerTable,

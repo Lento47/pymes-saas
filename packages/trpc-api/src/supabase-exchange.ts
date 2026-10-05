@@ -1,6 +1,6 @@
 import {
-	account as accountTable,
 	accountConsent,
+	account as accountTable,
 	type Db,
 	session as sessionTable,
 	user as userTable,
@@ -399,7 +399,10 @@ export async function exchangeSupabaseSession(
  * the gate stricter: both callers are told to consent, and whichever loses the insert
  * adopts the winner's row.
  */
-async function identityExists(db: Db, identity: SupabaseIdentity): Promise<boolean> {
+async function identityExists(
+	db: Db,
+	identity: SupabaseIdentity,
+): Promise<boolean> {
 	if (await linkedUser(db, identity.sub)) return true;
 	return (await userByEmail(db, identity.email)) !== null;
 }

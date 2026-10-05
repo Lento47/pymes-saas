@@ -475,10 +475,7 @@ describe("a courier the shop never added", () => {
 		// The customer's order carries the courier, which is what makes them a courier for
 		// every other read on this run — see `actorFor`.
 		const carried = (
-			await test.db
-				.select()
-				.from(orderTable)
-				.where(eq(orderTable.id, order.id))
+			await test.db.select().from(orderTable).where(eq(orderTable.id, order.id))
 		)[0];
 		expect(carried?.courierUserId).toBe(courier.user.id);
 		test.close();
@@ -704,9 +701,9 @@ describe("delivery offer authorization", () => {
 		const stillACourier = appRouter.createCaller(
 			await authed(test, courier.user),
 		) as Caller;
-		expect((await stillACourier.deliveries.offers()).map((row) => row.id)).toEqual([
-			offer.id,
-		]);
+		expect(
+			(await stillACourier.deliveries.offers()).map((row) => row.id),
+		).toEqual([offer.id]);
 
 		// Going unavailable is.
 		await test.db

@@ -444,7 +444,9 @@ describe("courier moves and pings", () => {
 		// the stale context would have answered as though the delete had never happened and
 		// this whole test would have asserted nothing. Every call below goes through
 		// `rider`.
-		const rider = appRouter.createCaller(await authed(test, first.rider)) as Caller;
+		const rider = appRouter.createCaller(
+			await authed(test, first.rider),
+		) as Caller;
 
 		const board = await rider.orders.list({
 			role: "BUSINESS",

@@ -10,8 +10,8 @@ import { createLogger } from "./logging";
 import { publishPending } from "./outbox";
 import { deliverPendingPushes, processPushReceipts } from "./push";
 import { handleQueue } from "./queue";
-import { sweepExpiredOffers } from "./services/delivery-dispatch";
 import { sweepAccountDeletions } from "./services/account-deletion";
+import { sweepExpiredOffers } from "./services/delivery-dispatch";
 import { sweepLapsed } from "./services/subscription";
 
 /**

@@ -23,7 +23,8 @@ export const auth = {
 	// agreement depend on. One checkbox would leave the second unprovable.
 	"auth.signUp.termsLabel": "I accept the Terms of Service.",
 	"auth.signUp.ageLabel": "I confirm I am 18 or older.",
-	"auth.signUp.consentRequired": "Accept the terms and confirm your age to continue.",
+	"auth.signUp.consentRequired":
+		"Accept the terms and confirm your age to continue.",
 	"auth.signUp.termsLink": "View Terms",
 
 	"auth.signUp.business.title": "Register your business",
