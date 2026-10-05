@@ -45,7 +45,7 @@ import {
 } from "@/lib/admin";
 import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
-import { SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
+import { ActivityPanel, SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
 import { TablePager } from "./console-pager";
 import {
   type AdminListSort,
@@ -371,7 +371,15 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
           name of closing the gap, and the always-visible summary line above already carries
           the thirty-day total for anyone who wants the headline.
         */}
-        <div className="grid gap-3 md:grid-cols-2">
+        {/*
+          Three panels, not two. `orderSeries` joins the two charts that were already here
+          because it answers a different question than either: `signupsSeries` is "is the
+          marketplace growing", `volumeByCurrency` is "how much money moved", and nothing on
+          this dashboard said "are people ordering" — which is the first question, and the one
+          every other number here is downstream of.
+        */}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ActivityPanel series={metrics.orderSeries} />
           <SignupsPanel series={metrics.signupsSeries} />
           <VolumePanel volumes={metrics.volumeByCurrency} format={money} />
         </div>

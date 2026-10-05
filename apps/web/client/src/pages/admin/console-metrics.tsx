@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
@@ -88,6 +90,193 @@ export function busiestDay(series: readonly { day: string; count: number }[]): {
 export function canSumAcrossCurrencies(_currencies: readonly string[]): boolean {
   return false;
 }
+/**
+ * A window of the order series, and the window immediately before it.
+ *
+ * ## Why the comparison is honest by construction
+ *
+ * `orderSeries` carries **60** days rather than 30, and this is what that buys: the previous
+ * period is read out of the same response instead of fetched, so "the last 30 days" really is
+ * compared against the 30 before it. A 30-day series could only ever compare 15 against 15.
+ *
+ * ## Three cases the arithmetic has to get right, and usually does not
+ *
+ * - **The series is sorted here, not trusted.** The service orders by the day expression, and
+ *   this sorts again anyway — because a chart drawn left-to-right from an unsorted array is
+ *   wrong in a way no assertion catches, and the failure looks like a data problem.
+ * - **A previous period of zero yields `null`, not `Infinity`.** Doubling from nothing is not
+ *   an infinite percentage; it is a first period, and rendering "∞%" or "+100%" teaches an
+ *   operator nothing. `null` is drawn as "sin periodo anterior".
+ * - **Days with no orders are absent from the series**, so the window is taken from the tail of
+ *   the array rather than by counting calendar days backwards from today. Otherwise a quiet
+ *   week reports the wrong period and the comparison silently compares two different spans.
+ */
+export function orderWindow(
+  series: readonly { day: string; count: number; cancelled: number }[],
+  days: number,
+): {
+  current: { count: number; cancelled: number; cancellationRate: number };
+  previous: { count: number; cancelled: number } | null;
+  changePercent: number | null;
+  bars: { day: string; count: number }[];
+} {
+  const ordered = [...series].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  const window = ordered.slice(-days);
+  const before = ordered.slice(-days * 2, -days);
+
+  const sum = (rows: typeof ordered) =>
+    rows.reduce(
+      (total, row) => ({
+        count: total.count + row.count,
+        cancelled: total.cancelled + row.cancelled,
+      }),
+      { count: 0, cancelled: 0 },
+    );
+
+  const currentRows = sum(window);
+  const previousRows = before.length > 0 ? sum(before) : null;
+
+  return {
+    current: {
+      ...currentRows,
+      cancellationRate:
+        currentRows.count === 0 ? 0 : currentRows.cancelled / currentRows.count,
+    },
+    previous: previousRows,
+    changePercent:
+      previousRows === null || previousRows.count === 0
+        ? null
+        : ((currentRows.count - previousRows.count) / previousRows.count) * 100,
+    bars: window.map((row) => ({ day: row.day, count: row.count })),
+  };
+}
+
+/**
+ * Order activity, with the period it is being compared against.
+ *
+ * The dashboard had no answer to the question an operator actually opens it for — "are orders
+ * trending up?" — because every order number on it was a single cumulative total. "42 today"
+ * could only be compared against a number in somebody's head.
+ *
+ * **The delta is the point, and it is drawn with its sign and its baseline.** A green "+18%"
+ * alone tells an operator nothing about scale; "+18% · 61 vs 52" does. And a first period
+ * prints "sin periodo anterior" rather than a number, because inventing one teaches them
+ * something false about their own marketplace.
+ */
+export function ActivityPanel({
+  series,
+  accent = "bg-amber-500/70",
+}: {
+  series: readonly { day: string; count: number; cancelled: number }[];
+  /** Injected so the same panel can draw volume later; amber is the console's accent. */
+  accent?: string;
+}) {
+  const [days, setDays] = useState<7 | 14 | 30>(7);
+  const window = orderWindow(series, days);
+  const { current, previous, changePercent, bars } = window;
+  const max = bars.reduce((peak, bar) => Math.max(peak, bar.count), 0);
+
+  const change =
+    changePercent === null
+      ? null
+      : {
+          // One decimal, and a floor of ±0.1 so a rounding artefact is never shown as a
+          // flat "0.0%" — which reads as "nothing happened" rather than "almost nothing".
+          text: `${changePercent > 0 ? "+" : ""}${Math.abs(changePercent) < 0.1 ? (changePercent > 0 ? "+0.1" : "-0.1") : changePercent.toFixed(1)}%`,
+          tone:
+            changePercent > 0
+              ? "text-success"
+              : changePercent < 0
+                ? "text-destructive"
+                : "text-muted-foreground",
+        };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Actividad · últimos {days} días</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/*
+          The window control is three buttons rather than a select: three fixed widths, all
+          visible at once, and an operator comparing 7 against 30 should see both options at
+          the moment they are thinking about it.
+        */}
+        {/*
+          A `<fieldset>`, not a `div` with `role="group"` — which is what biome's
+          `useSemanticElements` asks for, and it is right to: a fieldset is the element that
+          means "a set of related controls under one label", so the grouping is conveyed by the
+          tag rather than by an ARIA attribute bolted onto a generic box.
+        */}
+        <fieldset
+          aria-label="Periodo a comparar"
+          className="mb-3 inline-flex gap-1 rounded-lg border border-border p-0.5"
+        >
+          {([7, 14, 30] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={days === option}
+              onClick={() => setDays(option)}
+              className={`rounded-md px-2 py-0.5 text-xs tabular-nums transition-colors ${
+                days === option
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {option}d
+            </button>
+          ))}
+        </fieldset>
+
+        <p className="text-sm font-semibold tabular-nums">{current.count} pedidos</p>
+
+        {change === null ? (
+          <p className="text-xs text-muted-foreground">Sin periodo anterior con que comparar.</p>
+        ) : (
+          <p className={`text-xs tabular-nums ${change.tone}`}>
+            {change.text}
+            {previous ? (
+              <span className="text-muted-foreground">
+                {" "}
+                · {current.count} vs {previous.count}
+              </span>
+            ) : null}
+          </p>
+        )}
+
+        <div
+          className="mt-3 flex h-16 items-end gap-px"
+          role="img"
+          aria-label={`Pedidos por día durante los últimos ${days} días. ${current.count} en total${
+            previous ? `, frente a ${previous.count} en el periodo anterior` : ""
+          }.`}
+        >
+          {bars.map((bar) => (
+            <div
+              key={bar.day}
+              className={`min-w-0 flex-1 rounded-t-sm ${accent}`}
+              style={{ height: `${max === 0 ? 2 : Math.max((bar.count / max) * 100, 2)}%` }}
+              title={`${bar.day}: ${bar.count}`}
+            />
+          ))}
+        </div>
+
+        {/*
+          The cancellation rate is drawn even when it is zero, because "0% cancel" and "we do
+          not track cancellations" look identical otherwise — and the dashboard already warns
+          above 20% elsewhere, so a rate that quietly stopped being reported here would look
+          like an improvement.
+        */}
+        <p className="mt-2 text-xs text-muted-foreground">
+          {current.cancelled} cancelados ·{" "}
+          {(current.cancellationRate * 100).toFixed(1)}% del total
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SignupsPanel({
   series,
 }: {

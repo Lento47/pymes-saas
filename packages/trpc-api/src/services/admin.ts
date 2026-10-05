@@ -246,51 +246,112 @@ export async function metrics(ctx: UserContext): Promise<AdminMetrics> {
 		Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
 	);
 	const signupsFrom = new Date(todayStart.getTime() - 29 * 86_400_000);
+	/**
+	 * Sixty days, so the dashboard can compare a window against the one before it.
+	 *
+	 * `signupsFrom` is the 30-day window the growth line has always used, and it stays 30 —
+	 * that panel's title literally says "30 días" and changing it would silently alter a
+	 * number an operator has been reading. `orderActivityFrom` is separate and longer, because
+	 * a period comparison needs *two* windows in one response: showing 30 days can only ever
+	 * compare 15 against 15, which is not a comparison anybody makes.
+	 */
+	const orderActivityFrom = new Date(todayStart.getTime() - 59 * 86_400_000);
 
-	const [businessCounts, userCounts, orderCounts, volume, signups] =
-		await Promise.all([
-			ctx.db
-				.select({
-					total: sql<number>`count(*)`,
-					active: sql<number>`coalesce(sum(case when ${businessTable.status} = 'ACTIVE' then 1 else 0 end), 0)`,
-					suspended: sql<number>`coalesce(sum(case when ${businessTable.status} = 'SUSPENDED' then 1 else 0 end), 0)`,
-					pendingVerification: sql<number>`coalesce(sum(case when ${businessTable.isVerified} = 0 and ${businessTable.status} <> 'SUSPENDED' then 1 else 0 end), 0)`,
-				})
-				.from(businessTable),
-			ctx.db
-				.select({
-					total: sql<number>`count(*)`,
-					admins: sql<number>`coalesce(sum(case when ${userTable.isAdmin} = 1 then 1 else 0 end), 0)`,
-					suspended: sql<number>`coalesce(sum(case when ${userTable.suspendedAt} is not null then 1 else 0 end), 0)`,
-				})
-				.from(userTable),
-			ctx.db
-				.select({
-					total: sql<number>`count(*)`,
-					today: sql<number>`coalesce(sum(case when ${orderTable.placedAt} >= ${todayStart.getTime()} then 1 else 0 end), 0)`,
-					active: sql<number>`coalesce(sum(case when ${orderTable.status} in ('PENDING','ACCEPTED','PREPARING','READY','OUT_FOR_DELIVERY') then 1 else 0 end), 0)`,
-					cancelled: sql<number>`coalesce(sum(case when ${orderTable.status} in ('CANCELLED','REJECTED') then 1 else 0 end), 0)`,
-				})
-				.from(orderTable),
-			ctx.db
-				.select({
-					currency: orderTable.currency,
-					grossMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
-					orderCount: sql<number>`count(*)`,
-				})
-				.from(orderTable)
-				.where(notInArray(orderTable.status, ["CANCELLED", "REJECTED"]))
-				.groupBy(orderTable.currency),
-			ctx.db
-				.select({
-					day: sql<string>`strftime('%Y-%m-%d', ${businessTable.createdAt} / 1000, 'unixepoch')`,
-					count: sql<number>`count(*)`,
-				})
-				.from(businessTable)
-				.where(gte(businessTable.createdAt, signupsFrom))
-				.groupBy(sql`1`)
-				.orderBy(sql`1 asc`),
-		]);
+	const [
+		businessCounts,
+		userCounts,
+		orderCounts,
+		volume,
+		signups,
+		orderActivity,
+	] = await Promise.all([
+		ctx.db
+			.select({
+				total: sql<number>`count(*)`,
+				active: sql<number>`coalesce(sum(case when ${businessTable.status} = 'ACTIVE' then 1 else 0 end), 0)`,
+				suspended: sql<number>`coalesce(sum(case when ${businessTable.status} = 'SUSPENDED' then 1 else 0 end), 0)`,
+				pendingVerification: sql<number>`coalesce(sum(case when ${businessTable.isVerified} = 0 and ${businessTable.status} <> 'SUSPENDED' then 1 else 0 end), 0)`,
+			})
+			.from(businessTable),
+		ctx.db
+			.select({
+				total: sql<number>`count(*)`,
+				admins: sql<number>`coalesce(sum(case when ${userTable.isAdmin} = 1 then 1 else 0 end), 0)`,
+				suspended: sql<number>`coalesce(sum(case when ${userTable.suspendedAt} is not null then 1 else 0 end), 0)`,
+			})
+			.from(userTable),
+		ctx.db
+			.select({
+				total: sql<number>`count(*)`,
+				today: sql<number>`coalesce(sum(case when ${orderTable.placedAt} >= ${todayStart.getTime()} then 1 else 0 end), 0)`,
+				active: sql<number>`coalesce(sum(case when ${orderTable.status} in ('PENDING','ACCEPTED','PREPARING','READY','OUT_FOR_DELIVERY') then 1 else 0 end), 0)`,
+				cancelled: sql<number>`coalesce(sum(case when ${orderTable.status} in ('CANCELLED','REJECTED') then 1 else 0 end), 0)`,
+			})
+			.from(orderTable),
+		ctx.db
+			.select({
+				currency: orderTable.currency,
+				grossMinor: sql<number>`coalesce(sum(${orderTable.totalMinor}), 0)`,
+				orderCount: sql<number>`count(*)`,
+			})
+			.from(orderTable)
+			.where(notInArray(orderTable.status, ["CANCELLED", "REJECTED"]))
+			.groupBy(orderTable.currency),
+		ctx.db
+			.select({
+				day: sql<string>`strftime('%Y-%m-%d', ${businessTable.createdAt} / 1000, 'unixepoch')`,
+				count: sql<number>`count(*)`,
+			})
+			.from(businessTable)
+			.where(gte(businessTable.createdAt, signupsFrom))
+			.groupBy(sql`1`)
+			// Ordering by the **day**, not by `1`.
+			//
+			// `orderBy(sql`1 asc`)` orders by the integer literal 1 — every row ties, so
+			// SQLite returns them in whatever order the grouping produced. That is not a
+			// cosmetic detail: the console draws these rows left to right as a bar chart, so
+			// an unordered series renders a chart with its days shuffled. It happened to look
+			// right locally because a small table groups in insertion order, which is exactly
+			// the kind of bug that survives to production and then looks different on the
+			// day the table is large enough to reorder.
+			.orderBy(
+				sql`strftime('%Y-%m-%d', ${businessTable.createdAt} / 1000, 'unixepoch') asc`,
+			),
+		/*
+		 * Order activity per day, which is what an operator actually watches.
+		 *
+		 * `signupsSeries` above answers "is the marketplace growing". This answers "are
+		 * people ordering", and there was nothing on the dashboard that did — the orders
+		 * KPI tiles were single cumulative numbers with no trend behind them, so "42 today"
+		 * could only be compared against a number in the operator's head.
+		 *
+		 * Two decisions worth stating:
+		 *
+		 * - **`placedAt`, not `createdAt`**, matching what `admin.orders` filters on. An
+		 *   order placed yesterday and written today belongs to yesterday.
+		 * - **60 days, not 30.** The series exists so the console can compare the selected
+		 *   window against the one before it, and that needs *two* windows to be present in
+		 *   a single response. A 30-day fetch can only ever compare 15 against 15.
+		 *
+		 * Cancelled and rejected are counted as *orders placed* — they are activity — while
+		 * `volumeByCurrency` excludes them, because completed volume and order count are
+		 * different questions and averaging them together hides both.
+		 */
+		ctx.db
+			.select({
+				day: sql<string>`strftime('%Y-%m-%d', ${orderTable.placedAt} / 1000, 'unixepoch')`,
+				count: sql<number>`count(*)`,
+				cancelled: sql<number>`coalesce(sum(case when ${orderTable.status} = 'CANCELLED' then 1 else 0 end), 0)`,
+			})
+			.from(orderTable)
+			.where(gte(orderTable.placedAt, orderActivityFrom))
+			.groupBy(sql`1`)
+			// Same correction as `signupsSeries` above: `order by 1 asc` is a no-op, and
+			// this series is drawn as a left-to-right chart.
+			.orderBy(
+				sql`strftime('%Y-%m-%d', ${orderTable.placedAt} / 1000, 'unixepoch') asc`,
+			),
+	]);
 
 	const businesses = businessCounts[0] ?? {
 		total: 0,
@@ -337,6 +398,14 @@ export async function metrics(ctx: UserContext): Promise<AdminMetrics> {
 		signupsSeries: signups.map((row) => ({
 			day: row.day,
 			count: Number(row.count),
+		})),
+		// Days with no orders are absent rather than zero-filled, the same as
+		// `signupsSeries`. The console's `toBars` interpolates the gaps, and doing it here
+		// would mean shipping 60 rows to describe a fortnight.
+		orderSeries: orderActivity.map((row) => ({
+			day: row.day,
+			count: Number(row.count),
+			cancelled: Number(row.cancelled),
 		})),
 		generatedAt: now,
 	};

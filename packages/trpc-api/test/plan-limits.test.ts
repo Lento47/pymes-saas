@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 
 import { requireAuthed } from "../src/context";
 import { appRouter } from "../src/routers";
+import * as adminService from "../src/services/admin";
 import * as subscriptions from "../src/services/subscription";
 import {
 	authed,
@@ -21,6 +22,7 @@ import {
 	seedBusiness,
 	seedCategory,
 	seedMembership,
+	seedOrder,
 	seedPriceBook,
 	seedProduct,
 	seedSubscription,
@@ -736,6 +738,91 @@ describe("the admin's view of money owed", () => {
 		expect(rows[0]?.arrearsMinor).toBeGreaterThanOrEqual(
 			rows[rows.length - 1]?.arrearsMinor ?? 0,
 		);
+
+		w.close();
+	});
+
+	test("the dashboard's order series spans 60 days, so a window can be compared", async () => {
+		// The series exists to be compared against the period before it, and that only works if
+		// both periods are in **one** response. A 30-day fetch can only compare 15 against 15.
+		//
+		// So the assertion is about the boundary, not the total: an order 45 days old is
+		// outside the old 30-day window and inside this one. If someone shortens it back to 30
+		// the dashboard silently loses its comparison and every total still looks plausible.
+		const w = world();
+		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		const businessId = await seedBusiness(w.db, { id: "biz_series_window" });
+		const customer = await seedUser(w.db, { id: "usr_series_window" });
+
+		// 20 days back is inside any window; 45 days back is only inside a 60-day one.
+		await seedOrder(w.db, {
+			id: "ord_series_recent",
+			businessId,
+			customerId: customer.id,
+		});
+		const old = await seedOrder(w.db, {
+			id: "ord_series_old",
+			businessId,
+			customerId: customer.id,
+		});
+		w.sqlite.run("update `order` set placed_at = ? where id = ?", [
+			Date.now() - 45 * 86_400_000,
+			old,
+		]);
+
+		const admin = await seedUser(w.db, {
+			id: "usr_series_admin",
+			isAdmin: true,
+		});
+		const ctx = requireAuthed((await authed(w, admin)) as never);
+
+		const metrics = await adminService.metrics(ctx);
+		// Ascending, so the **first** day is the oldest. The ordering is itself part of the
+		// claim: a chart drawn left-to-right is wrong if the series is not sorted.
+		const days = metrics.orderSeries.map((row) => row.day);
+		const oldest = days[0] ?? "";
+
+		// 45 days back must still be present, which a 30-day window would have dropped.
+		const cutoff = new Date(Date.now() - 44 * 86_400_000)
+			.toISOString()
+			.slice(0, 10);
+		expect(oldest).not.toBe("");
+		expect(oldest <= cutoff).toBe(true);
+		expect(metrics.orderSeries.length).toBeGreaterThanOrEqual(2);
+	});
+
+	test("the order series counts cancellations without excluding them from the total", async () => {
+		// Two different questions, and averaging them hides both: "how much activity was
+		// there" includes a cancelled order, "how much completed volume" does not. The series
+		// answers the first and carries `cancelled` so the console can see the second's shadow.
+		const w = world();
+		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		const businessId = await seedBusiness(w.db, { id: "biz_series_cancel" });
+		const customer = await seedUser(w.db, { id: "usr_series_cancel" });
+		await seedOrder(w.db, {
+			id: "ord_series_ok",
+			businessId,
+			customerId: customer.id,
+		});
+		await seedOrder(w.db, {
+			id: "ord_series_cancelled",
+			businessId,
+			customerId: customer.id,
+			status: "CANCELLED",
+		});
+
+		const admin = await seedUser(w.db, {
+			id: "usr_series_cancel_admin",
+			isAdmin: true,
+		});
+		const ctx = requireAuthed((await authed(w, admin)) as never);
+
+		const metrics = await adminService.metrics(ctx);
+		const today = new Date().toISOString().slice(0, 10);
+		const row = metrics.orderSeries.find((entry) => entry.day === today);
+
+		expect(row?.count).toBe(2);
+		expect(row?.cancelled).toBe(1);
 
 		w.close();
 	});

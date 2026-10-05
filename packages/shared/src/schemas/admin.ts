@@ -414,6 +414,25 @@ export const adminMetricsSchema = z.object({
 	signupsSeries: z.array(
 		z.object({ day: z.string(), count: z.number().int() }),
 	),
+	/**
+	 * Orders **placed** per day, over 60 days.
+	 *
+	 * Sixty rather than thirty so the console can compare a chosen window against the one
+	 * immediately before it without a second request — see `metrics`' own docblock. Days with
+	 * no orders are **absent, not zero**, exactly like `signupsSeries`, and the client
+	 * interpolates.
+	 *
+	 * `cancelled` is carried alongside the count because a rising order count with a rising
+	 * cancel rate is not growth, and the console cannot tell one from the other if it only
+	 * receives the total.
+	 */
+	orderSeries: z.array(
+		z.object({
+			day: z.string(),
+			count: z.number().int(),
+			cancelled: z.number().int(),
+		}),
+	),
 	generatedAt: z.date(),
 });
 export type AdminMetrics = z.infer<typeof adminMetricsSchema>;
