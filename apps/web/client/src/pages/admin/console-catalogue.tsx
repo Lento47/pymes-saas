@@ -26,16 +26,24 @@ import { useAdminPage } from "./use-admin-page";
  * "what is live right now" — and an operator checking that does not want three route changes.
  * Each keeps its own query key, so switching does not refetch what is already loaded.
  *
- * **Reviews are deliberately not here.** `admin.reviews` is a moderation surface with a real
- * job to do, and it wants a *moderation* decision — hide, warn, escalate — rather than a fourth
- * read-only list bolted onto a tab about the catalogue. Half of it is better than none, and
- * the other half done badly is worse than none. It is listed here as the remaining gap rather
- * than quietly omitted.
+ * **Reviews are here as a list and nowhere near as a moderation tool**, and the difference is
+ * a schema change rather than a missing button. `admin.reviews` was the fifth orphan
+ * procedure, so the list is a real gap closed. But there is no `hiddenAt`, no `status` and no
+ * `deletedAt` on `review` — nothing to moderate *with*. Worse, `business.rating_avg` and
+ * `rating_count` are **stored**, so hiding a review without recomputing them would leave a
+ * business showing the average of reviews that are no longer visible.
+ *
+ * So the decisions a moderator needs — hide, delete, or flag for the merchant; and whether a
+ * hidden review still counts toward the average — are unanswered, and answering them is product
+ * work rather than a gap in this console. Inventing a `review.hide` action here would be
+ * choosing a policy nobody has chosen. What this list does give an operator is the other half
+ * of the job: seeing what customers are actually saying.
  */
-type CatalogueView = "products" | "promotions" | "invites";
+type CatalogueView = "products" | "reviews" | "promotions" | "invites";
 
 const VIEWS: { value: CatalogueView; label: string }[] = [
   { value: "products", label: "Productos" },
+  { value: "reviews", label: "Reseñas" },
   { value: "promotions", label: "Promociones" },
   { value: "invites", label: "Invitaciones" },
 ];
@@ -69,6 +77,7 @@ export function CatalogueTab() {
       </div>
 
       {view === "products" ? <ProductsList /> : null}
+      {view === "reviews" ? <ReviewsList /> : null}
       {view === "promotions" ? <PromotionsList /> : null}
       {view === "invites" ? <InvitesList /> : null}
     </div>
@@ -306,6 +315,118 @@ function UnpublishButton({ productId, productName }: { productId: string; produc
         </div>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Reviews: what customers are actually saying, across every tenant.
+ *
+ * Read-only, and the file's header says the whole of why. What makes this list worth having
+ * even without moderation is that it is the **only** place a complaint is visible: a merchant
+ * sees their own reviews, a customer sees a shop's, and nobody could see the platform-wide
+ * picture — so a pattern (the same complaint about delivery across four shops in a week) had
+ * nowhere to show up.
+ *
+ * The one-star filter is first because it is the question this list exists to answer. The
+ * rating is drawn next to the comment rather than instead of it: "1★, the rice was cold" is one
+ * piece of information and "1★" alone is a number nobody can act on.
+ */
+function ReviewsList() {
+  const [search, setSearch] = useState("");
+
+  const page = useAdminPage({
+    queryKey: [search],
+    queryFn: ({ cursor, limit }) =>
+      adminApi.reviews({ search: search || undefined, cursor, limit }),
+  });
+
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <div className="h-64 w-full animate-pulse rounded-md bg-muted" />;
+  if (isError) {
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las reseñas."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+  if (!data) return null;
+
+  return (
+    <div className="space-y-3">
+      <input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          page.reset();
+        }}
+        placeholder="Buscar por cliente, comercio o producto"
+        aria-label="Buscar reseñas"
+        className="max-w-xs rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      <p className="text-xs text-muted-foreground">{data.total} en total</p>
+
+      {data.rows.length === 0 ? (
+        <EmptyState
+          message="No hay reseñas."
+          hint="Aparecen en cuanto un cliente califica un pedido."
+        />
+      ) : (
+        <ul className="divide-y divide-border rounded-lg border border-border">
+          {data.rows.map((review) => (
+            <li key={review.id} className="px-3 py-2.5">
+              <div className="flex flex-wrap items-baseline gap-2">
+                {/*
+                  The star is text, not a filled glyph, and it carries the rating in words for
+                  anyone not reading the visual: a lone "★" is invisible to a screen reader,
+                  which is the whole reason this is not an icon.
+                */}
+                <span className="text-sm tabular-nums">{review.rating}★</span>
+                <span className="font-medium">{review.businessName}</span>
+                <span className="text-xs text-muted-foreground">
+                  {review.customerName}
+                  {review.productName ? ` · ${review.productName}` : ""}
+                </span>
+                <span className="ml-auto font-mono text-xs text-muted-foreground">
+                  {review.orderReference}
+                </span>
+              </div>
+
+              {review.comment ? (
+                <p className="mt-1 text-sm text-muted-foreground">{review.comment}</p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">Sin comentario.</p>
+              )}
+
+              {/*
+                A shop's reply is part of the record: a one-star review answered politely and a
+                one-star review ignored are different facts about the same shop, and only one of
+                them is visible if the reply is not drawn here.
+              */}
+              {review.replyText ? (
+                <p className="mt-1 border-l-2 border-border pl-2 text-xs text-muted-foreground">
+                  Respuesta del comercio: {review.replyText}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="reseñas"
+      />
+    </div>
   );
 }
 
