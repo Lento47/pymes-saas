@@ -7,7 +7,7 @@ import {
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	Linking,
 	ScrollView,
@@ -21,6 +21,7 @@ import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
+import { DeliveryCompletionOverlay } from "@/components/delivery-completion-overlay";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
@@ -44,11 +45,14 @@ import { formatClock, formatDay } from "@/lib/format";
 import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
+import { deliveryFluidColor } from "@/lib/purchase-colors";
+import { shouldPlayDeliveryCompletion } from "@/lib/purchase-state";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
 	media,
+	palette,
 	radius,
 	space,
 	TEXT_STACK_GAP,
@@ -211,7 +215,7 @@ function OrderDetail() {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 	const { t, intlLocale } = useT();
 	const query = useQuery(
 		trpc.orders.byId.queryOptions(
@@ -257,6 +261,23 @@ function OrderDetail() {
 	);
 	const waiting = useSkeletonHold(query.isPending);
 	const [cancelOpen, setCancelOpen] = useState(false);
+	const [completionActive, setCompletionActive] = useState(false);
+	const previousOrder = useRef<{
+		id: string;
+		status: OrderStatus;
+	} | null>(null);
+
+	useEffect(() => {
+		const current = query.data;
+		if (!current) return;
+		const previous = previousOrder.current;
+		if (previous?.id !== current.id) {
+			setCompletionActive(false);
+		} else if (shouldPlayDeliveryCompletion(previous, current)) {
+			setCompletionActive(true);
+		}
+		previousOrder.current = { id: current.id, status: current.status };
+	}, [query.data]);
 
 	// The pull. The busy flag is the control's own and not `query.isRefetching`: this screen
 	// polls every five seconds while the order is live, so that one flips on its own — see
@@ -532,8 +553,11 @@ function OrderDetail() {
 					reachedAt={reachedAt}
 				/>
 
-				{order.fulfilment === "DELIVERY" ? (
-					<CustomerDeliveryRating orderId={order.id} />
+				{order.fulfilment === "DELIVERY" && order.status === "COMPLETED" ? (
+					<DeliveredFeedbackCard
+						orderId={order.id}
+						wantsMerchantReview={wantsReview}
+					/>
 				) : null}
 
 				{/* The code, in the place the customer it belongs to reads the screen in: what is
@@ -928,7 +952,7 @@ function OrderDetail() {
 						)
 					}
 				/>
-			) : wantsReview ? (
+			) : wantsReview && order.fulfilment !== "DELIVERY" ? (
 				// The offer to write one. `app/(customer)/review/[orderId].tsx` is the form,
 				// and this is the only place in the app that reaches it -- which is why the
 				// label says what tapping starts rather than what the form does when it
@@ -995,14 +1019,28 @@ function OrderDetail() {
 				cancelLabel={t("action.back")}
 				onConfirm={confirmCancel}
 			/>
+			<DeliveryCompletionOverlay
+				active={completionActive}
+				color={deliveryFluidColor(colors.info, palette.light.primary, scheme)}
+				ink={colors.infoForeground}
+				title={t("order.status.COMPLETED")}
+				onComplete={() => setCompletionActive(false)}
+			/>
 		</View>
 	);
 }
 
-function CustomerDeliveryRating({ orderId }: { orderId: string }) {
+function DeliveredFeedbackCard({
+	orderId,
+	wantsMerchantReview,
+}: {
+	orderId: string;
+	wantsMerchantReview: boolean;
+}) {
 	const { t } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
+	const { colors } = useTheme();
 	const [rating, setRating] = useState<RatingValue>(0);
 	const [comment, setComment] = useState("");
 	const delivery = useQuery(
@@ -1024,62 +1062,107 @@ function CustomerDeliveryRating({ orderId }: { orderId: string }) {
 		}),
 	);
 
-	if (delivery.isError) return <ErrorState error={delivery.error} />;
-	if (delivery.data?.status !== "DELIVERED") return null;
-
-	const detail = delivery.data;
-	const rated = detail.ratings.customerToCourier ?? rate.data;
+	const detail = delivery.data?.status === "DELIVERED" ? delivery.data : null;
+	const rated = detail?.ratings.customerToCourier ?? rate.data;
 	return (
 		<AnimateIn index={4} reorder>
 			<Card>
-				<View style={styles.stack}>
+				<View style={styles.feedbackCard}>
 					<Text variant="heading" bold>
-						{t("delivery.rateCourier.title")}
+						{t("order.status.COMPLETED")}
 					</Text>
-					{rated ? (
-						<Text variant="body" tone="muted">
-							{t("delivery.rateCourier.thanks")}
+					<Text variant="body" tone="muted">
+						{t("delivery.completed.body")}
+					</Text>
+
+					<View style={styles.feedbackSection}>
+						<Text variant="label" bold>
+							{t("delivery.rateMerchant.title")}
 						</Text>
-					) : (
-						<>
+						<Text variant="body" tone="muted">
+							{t(wantsMerchantReview ? "review.subtitle" : "review.already")}
+						</Text>
+						{wantsMerchantReview ? (
+							<Button
+								label={t("review.cta")}
+								fullWidth
+								onPress={() =>
+									router.push({
+										pathname: "/review/[orderId]",
+										params: { orderId },
+									})
+								}
+							/>
+						) : null}
+					</View>
+
+					<View
+						style={[styles.feedbackSection, { borderTopColor: colors.border }]}
+					>
+						<Text variant="label" bold>
+							{t("delivery.rateCourier.title")}
+						</Text>
+						{delivery.isError ? (
+							<ErrorState
+								error={delivery.error}
+								onRetry={() => void delivery.refetch()}
+							/>
+						) : rated ? (
+							<Text variant="body" tone="muted">
+								{t("delivery.rateCourier.thanks")}
+							</Text>
+						) : detail ? (
+							<>
+								<Text variant="body" tone="muted">
+									{t("delivery.rateCourier.subtitle")}
+								</Text>
+								<RatingInput
+									value={rating}
+									onChange={setRating}
+									label={t("review.rating")}
+									optionLabel={(value) =>
+										t("review.stars", { count: value, stars: 5 })
+									}
+									disabled={rate.isPending}
+								/>
+								<Field
+									label={t("review.comment")}
+									placeholder={t("review.comment.placeholder")}
+									value={comment}
+									onChangeText={setComment}
+									multiline
+									maxLength={500}
+									editable={!rate.isPending}
+								/>
+								{rate.error ? <ErrorState error={rate.error} /> : null}
+								<Button
+									label={t("delivery.rateCourier.submit")}
+									fullWidth
+									loading={rate.isPending}
+									disabled={rating === 0 || rate.isPending}
+									onPress={() => {
+										if (rating === 0 || !detail) return;
+										rate.mutate({
+											deliveryId: detail.id,
+											rating,
+											comment: comment.trim() || undefined,
+										});
+									}}
+								/>
+							</>
+						) : (
 							<Text variant="body" tone="muted">
 								{t("delivery.rateCourier.subtitle")}
 							</Text>
-							<RatingInput
-								value={rating}
-								onChange={setRating}
-								label={t("review.rating")}
-								optionLabel={(value) =>
-									t("review.stars", { count: value, stars: 5 })
-								}
-								disabled={rate.isPending}
-							/>
-							<Field
-								label={t("review.comment")}
-								placeholder={t("review.comment.placeholder")}
-								value={comment}
-								onChangeText={setComment}
-								multiline
-								maxLength={500}
-								editable={!rate.isPending}
-							/>
-							{rate.error ? <ErrorState error={rate.error} /> : null}
-							<Button
-								label={t("delivery.rateCourier.submit")}
-								fullWidth
-								loading={rate.isPending}
-								disabled={rating === 0 || rate.isPending}
-								onPress={() => {
-									if (rating === 0) return;
-									rate.mutate({
-										deliveryId: detail.id,
-										rating,
-										comment: comment.trim() || undefined,
-									});
-								}}
-							/>
-						</>
-					)}
+						)}
+					</View>
+
+					<Button
+						label={t("delivery.feedback.done")}
+						variant="secondary"
+						fullWidth
+						onPress={() => leaveScreen("/orders")}
+					/>
 				</View>
 			</Card>
 		</AnimateIn>
@@ -1251,6 +1334,12 @@ const styles = StyleSheet.create({
 	// two blocks, not one statement: a map and its caption, a line and the control under it.
 	stack: { gap: TEXT_STACK_GAP },
 	group: { gap: space.xs },
+	feedbackCard: { gap: space.lg },
+	feedbackSection: {
+		gap: space.sm,
+		paddingTop: space.lg,
+		borderTopWidth: StyleSheet.hairlineWidth,
+	},
 	routeLegend: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
 	routeLegendItem: {
 		flexDirection: "row",

@@ -198,6 +198,7 @@ export default function Checkout() {
 
 	return (
 		<Screen
+			purchaseStage={placed ? "confirmed" : undefined}
 			// The peak carries its own words; a screen title over it would be the app talking
 			// over the moment it is trying to leave alone.
 			title={placed ? undefined : t("checkout.title")}

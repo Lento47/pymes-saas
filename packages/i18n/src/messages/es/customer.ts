@@ -740,11 +740,15 @@ export const customer = {
 	"review.onlyCompleted": "Solo puedes reseñar pedidos entregados",
 	/* Spoken label for one star in the rating radio group. */
 	"review.stars": "{count} de {stars} estrellas",
+	"delivery.completed.body":
+		"Tu pedido llegó. Comparte tu opinión cuando estés listo.",
+	"delivery.rateMerchant.title": "Califica tu pedido",
 	"delivery.rateCourier.title": "Califica la entrega",
 	"delivery.rateCourier.subtitle":
 		"Cuéntanos cómo fue el servicio del repartidor.",
 	"delivery.rateCourier.submit": "Enviar calificación",
 	"delivery.rateCourier.thanks": "Calificación guardada",
+	"delivery.feedback.done": "Listo",
 
 	"favorites.title": "Favoritos",
 	"favorites.businesses": "Negocios",

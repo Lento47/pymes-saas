@@ -7,6 +7,10 @@ const gradient = readFileSync(
 	join(root, "components", "home-gradient.tsx"),
 	"utf8",
 );
+const fluid = readFileSync(
+	join(root, "components", "top-fluid-gradient.tsx"),
+	"utf8",
+);
 const screen = readFileSync(join(root, "components", "screen.tsx"), "utf8");
 const home = readFileSync(join(root, "app", "(customer)", "index.tsx"), "utf8");
 const header = readFileSync(
@@ -41,12 +45,11 @@ describe("home gradient", () => {
 		// the other twelve dark palettes, which nobody asked for; `isLime &&` is what keeps
 		// this to the one combination that was wrong.
 		expect(gradient).toContain('const darkLime = isLime && scheme === "dark";');
-		expect(gradient).toContain(
-			"locations={darkLime ? DARK_LIME_LOCATIONS : LOCATIONS}",
-		);
-		expect(gradient).toContain(
-			"style={{ height: height * (darkLime ? DARK_LIME_BAND : BAND) }}",
-		);
+		expect(gradient).toContain("Boolean(journeyBand) || darkLime");
+		expect(gradient).toContain("const COMPACT_BAND = 0.16");
+		expect(gradient).toContain("const COMPACT_LOCATIONS = [0, 0.54, 0.72, 1]");
+		expect(gradient).toContain("DARK_LIME_BAND");
+		expect(gradient).toContain(": LOCATIONS");
 	});
 
 	test("dark opens on lime and ends on the theme's own background", () => {
@@ -88,21 +91,22 @@ describe("header ink on the lime band", () => {
 		expect(header).toMatch(
 			/const limeDarkInk =\s+onLimeGradient && scheme === "dark"/,
 		);
+		expect(header).toContain("const nestedInk = journeyInk ?? limeDarkInk");
 		expect(
-			header.match(/limeDarkInk \? \{ color: limeDarkInk \} : undefined/g),
+			header.match(/nestedInk \? \{ color: nestedInk \} : undefined/g),
 		).toHaveLength(2);
 	});
 
 	test("the pin keeps light on `foreground` and only dark moves", () => {
-		expect(header).toMatch(
-			/onLimeGradient\s+\? scheme === "light"\s+\? colors\.foreground\s+: colors\.primaryForeground\s+: colors\.primary/,
-		);
+		expect(header).toContain("journeyInk ??");
+		expect(header).toMatch(/onLimeGradient\s+\? scheme === "light"/);
 	});
 
 	test("the greeting is coloured from the band rather than left at the default", () => {
 		// It carried no colour at all and took `foreground` — white — which is 1.08:1 on lime.
+		expect(header).toContain("const activeInk = journeyInk ?? bandInk");
 		expect(header).toContain(
-			"style={[styles.title, bandInk ? { color: bandInk } : null]}",
+			"style={[styles.title, activeInk ? { color: activeInk } : null]}",
 		);
 	});
 });
@@ -115,11 +119,47 @@ describe("the feed's status bar", () => {
 		// Matched as a pattern, not a literal: the formatter wraps this assignment across two
 		// lines, and a test that pins the wrap fails on a formatting change while saying
 		// nothing about the value. The three terms are what matter.
-		expect(home).toMatch(
-			/limeBand\s*=\s*\n?\s*scheme === "dark" &&\s*\n?\s*colors\.primary\.toLowerCase\(\) === "#c8ff18"/,
-		);
-		expect(home).toContain('{limeBand ? <StatusBar style="dark" /> : null}');
-		expect(home).toContain('import { StatusBar } from "expo-status-bar";');
+		expect(screen).toContain("<StatusBar");
+		expect(screen).toContain("statusBarStyleForInk(band.ink)");
+		expect(home).not.toContain("<StatusBar");
+	});
+
+	test("journey bands dissolve gradually rather than ending at the title", () => {
+		expect(gradient).toContain("SMOOTH_LOCATIONS = [0, 0.28, 0.66, 1]");
+		expect(gradient).toContain('stage === "basket" ||');
+		expect(gradient).toContain("smoothBand ? withAlpha(journeyBand, 0.72)");
+		expect(gradient).toContain("smoothBand ? 0.18");
+	});
+
+	test("delivery is top-attached fluid, not a repeating wave", () => {
+		expect(gradient).toContain('stage === "delivery" && journeyBand');
+		expect(gradient).toContain("<TopFluidGradient");
+		expect(gradient).toContain("Math.min(height * 0.38, 380)");
+		expect(fluid).toContain("<LinearGradient");
+		expect(fluid).toContain("<SvgLinearGradient");
+		expect(fluid).toContain("stopOpacity={0.16}");
+		expect(fluid).not.toContain("strokeLinejoin");
+		expect(fluid).toContain("<AnimatedPath");
+		expect(fluid).toContain("useAnimatedProps<PathProps>");
+		expect(fluid).toContain('viewBox="0 0 1000 380"');
+		expect(fluid).toContain("L 1110 -24 Z");
+		expect(fluid).not.toContain("Animated.Image");
+		expect(fluid).not.toContain("delivery-wave");
+	});
+
+	test("five broad regions are neighbor-coupled and stop for reduced motion or hidden screens", () => {
+		expect(fluid.match(/\{ period: [\d_]+, phase:/g)).toHaveLength(5);
+		expect(fluid.match(/useRegionDriver\(REGIONS\[/g)).toHaveLength(5);
+		expect(fluid).toContain('motion === "normal" && !reduceMotion');
+		expect(fluid).toContain("spec.driftPeriod");
+		expect(fluid).toContain("spec.secondaryPeriod");
+		expect(fluid).toContain("previousMotion * 0.25");
+		expect(fluid).toContain("nextMotion * 0.25");
+		expect(fluid).toContain("cancelAnimation(primary)");
+		expect(fluid).toContain("cancelAnimation(secondary)");
+		expect(fluid).toContain("cancelAnimation(drift)");
+		expect(gradient).toContain('focused ? fluidMotion : "still"');
+		expect(fluid).toContain('pointerEvents="none"');
 	});
 });
 
@@ -128,9 +168,10 @@ describe("paints behind the safe area and home content", () => {
 		expect(screen).toContain(
 			'<View style={StyleSheet.absoluteFill} pointerEvents="none">',
 		);
-		expect(home).toContain(
-			"background={<HomeGradient scheme={scheme} color={colors.primary} />}",
+		expect(screen).toContain(
+			"const backdrop = background ?? ambientBackground",
 		);
+		expect(screen).toContain("<HomeGradient");
 		expect(home).not.toContain("PurchaseWash");
 	});
 });

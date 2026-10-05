@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { customerBarlessOptions } from "@/components/tab-bar";
 import { TabMark, useCapsuleScreenOptions } from "@/components/tab-capsule";
 import { useT } from "@/lib/i18n";
+import { PurchaseAccentProvider } from "@/lib/purchase-accent";
 
 /**
  * The customer tree. It is also the fallback: a device that cannot prove another role draws
@@ -34,6 +35,14 @@ import { useT } from "@/lib/i18n";
  * them out of the bar.
  */
 export default function CustomerLayout() {
+	return (
+		<PurchaseAccentProvider>
+			<CustomerTabs />
+		</PurchaseAccentProvider>
+	);
+}
+
+function CustomerTabs() {
 	const { t } = useT();
 
 	return (
@@ -110,6 +119,7 @@ export default function CustomerLayout() {
 			<Tabs.Screen name="nearby" options={{ href: null }} />
 			<Tabs.Screen name="product/[id]" options={{ href: null }} />
 			<Tabs.Screen name="store/[slug]" options={{ href: null }} />
+			<Tabs.Screen name="purchase-preview" options={{ href: null }} />
 		</Tabs>
 	);
 }

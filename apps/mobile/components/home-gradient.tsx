@@ -1,7 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useWindowDimensions } from "react-native";
+import { useIsFocused } from "expo-router";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { deliveryFluidColor } from "@/lib/purchase-colors";
+import type { PurchaseStage } from "@/lib/purchase-state";
+import { type ColorScheme, palette } from "@/theme";
 
-import type { ColorScheme } from "@/theme";
+import { type FluidMotion, TopFluidGradient } from "./top-fluid-gradient";
 
 /**
  * The four-stop lime ramp, per scheme, and why the dark one is the odd one out.
@@ -10,12 +14,10 @@ import type { ColorScheme } from "@/theme";
  * drawn, and `lib/home-gradient.test.ts` asserts it byte for byte so that "do not touch the
  * light theme" is a fact the suite enforces rather than a promise this file makes.
  *
- * **`LIME_DARK` is the only *opaque* ramp in the file.** Every other combination below ends
- * on `withAlpha(color, 0)` — alpha zero, a dissolve into whatever is behind, which is safe to
- * run long because there is no edge to see. This one ends on `#0F0F0F`, the dark theme's own
- * `background`, and an opaque ramp *has* an edge: run it long and the edge lands under a card,
- * which is what tinted every card on the feed green. So it is shorter, and it holds its
- * bright stop well past the header text before it starts falling.
+ * **`LIME_DARK` is the only browsing ramp that ends opaque.** The purchase-state ramps start
+ * opaque but dissolve to alpha zero. This one ends on `#0F0F0F`, the dark theme's own
+ * `background`, and that opaque edge must land above the first card. So it is shorter, and it
+ * holds its bright stop well past the header text before it starts falling.
  *
  * ## The stops, and where each one lands on a 914pt screen
  *
@@ -46,7 +48,7 @@ const LIME_LIGHT = ["#C8FF18", "#A9DE00", "#E2F4AC", "#FFFFFF"] as const;
 const LIME_DARK = ["#C8FF18", "#A9DE00", "#3A3A18", "#0F0F0F"] as const;
 
 /**
- * `[0, 18/52, 35/52, 1]` — every scheme but lime-dark. Unchanged.
+ * `[0, 18/52, 35/52, 1]` — the non-lime browsing ramp. Unchanged.
  *
  * `as const` is load-bearing, not decoration. `expo-linear-gradient` types `locations` as
  * `readonly [number, number, ...number[]]`, and a hoisted array literal widens to `number[]`,
@@ -58,21 +60,35 @@ const LOCATIONS = [0, 18 / 52, 35 / 52, 1] as const;
 
 /** Lime-dark's own locations: bright half held to 155pt, fall compressed after it. */
 const DARK_LIME_LOCATIONS = [0, 0.5, 0.72, 1] as const;
+const COMPACT_LOCATIONS = [0, 0.54, 0.72, 1] as const;
+const SMOOTH_LOCATIONS = [0, 0.28, 0.66, 1] as const;
 
-/** `0.52` of 914 is 475pt, which is what every other combination still draws. */
+/** `0.52` of 914 is 475pt, for the original browsing ramp. */
 const BAND = 0.52;
 
 /** `0.34` is 311pt — clears the header, ends above the first card. See the file docblock. */
 const DARK_LIME_BAND = 0.34;
+const COMPACT_BAND = 0.16;
 
 export function HomeGradient({
 	scheme,
 	color,
+	stage = "browsing",
+	bandColor,
+	backgroundColor,
+	fluidMotion = "normal",
+	compact = false,
 }: {
 	scheme: ColorScheme;
 	color: string;
+	stage?: PurchaseStage;
+	bandColor?: string;
+	backgroundColor: string;
+	fluidMotion?: FluidMotion;
+	compact?: boolean;
 }) {
 	const { height } = useWindowDimensions();
+	const focused = useIsFocused();
 	const isLime = color.toLowerCase() === "#c8ff18";
 	const strengths: readonly [number, number, number, number] =
 		scheme === "dark" ? [0.42, 0.24, 0.04, 0] : [0.8, 0.6, 0.16, 0];
@@ -84,8 +100,17 @@ export function HomeGradient({
 	 * other twelve dark palettes keep the band they have always drawn.
 	 */
 	const darkLime = isLime && scheme === "dark";
+	const journeyBand = stage !== "browsing" && bandColor ? bandColor : null;
+	const smoothBand =
+		compact &&
+		(stage === "basket" ||
+			stage === "inCart" ||
+			stage === "checkout" ||
+			stage === "confirmed" ||
+			stage === "paid" ||
+			stage === "delivery");
 
-	const colors = isLime
+	const browsingColors = isLime
 		? scheme === "dark"
 			? LIME_DARK
 			: LIME_LIGHT
@@ -95,15 +120,46 @@ export function HomeGradient({
 				withAlpha(color, strengths[2]),
 				withAlpha(color, strengths[3]),
 			] as const);
-
+	const colors = journeyBand
+		? ([
+				journeyBand,
+				smoothBand ? withAlpha(journeyBand, 0.72) : journeyBand,
+				withAlpha(journeyBand, smoothBand ? 0.18 : compact ? 0.05 : 0.3),
+				withAlpha(journeyBand, 0),
+			] as const)
+		: browsingColors;
+	const shortBand = Boolean(journeyBand) || darkLime;
+	const bandHeight =
+		height *
+		(compact && !smoothBand ? COMPACT_BAND : shortBand ? DARK_LIME_BAND : BAND);
+	const locations = smoothBand
+		? SMOOTH_LOCATIONS
+		: compact
+			? COMPACT_LOCATIONS
+			: journeyBand || darkLime
+				? DARK_LIME_LOCATIONS
+				: LOCATIONS;
+	if (stage === "delivery" && journeyBand) {
+		return (
+			<TopFluidGradient
+				height={Math.min(height * 0.38, 380)}
+				color={deliveryFluidColor(journeyBand, palette.light.primary, scheme)}
+				backgroundColor={backgroundColor}
+				scheme={scheme}
+				motion={focused ? fluidMotion : "still"}
+			/>
+		);
+	}
 	return (
-		<LinearGradient
-			colors={colors}
-			locations={darkLime ? DARK_LIME_LOCATIONS : LOCATIONS}
-			start={{ x: 0.5, y: 0 }}
-			end={{ x: 0.5, y: 1 }}
-			style={{ height: height * (darkLime ? DARK_LIME_BAND : BAND) }}
-		/>
+		<View style={{ height: bandHeight }} pointerEvents="none">
+			<LinearGradient
+				colors={colors}
+				locations={locations}
+				start={{ x: 0.5, y: 0 }}
+				end={{ x: 0.5, y: 1 }}
+				style={StyleSheet.absoluteFill}
+			/>
+		</View>
 	);
 }
 

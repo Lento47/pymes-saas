@@ -1,3 +1,5 @@
+import { usePathname } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
 import {
 	type AccessibilityProps,
@@ -9,11 +11,16 @@ import {
 } from "react-native";
 import { type Edge, SafeAreaView } from "react-native-safe-area-context";
 
+import { usePurchaseAccent } from "@/lib/purchase-accent";
+import { purchaseBand, statusBarStyleForInk } from "@/lib/purchase-colors";
+import type { PurchaseStage } from "@/lib/purchase-state";
 import { space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
+import { HomeGradient } from "./home-gradient";
 import { useRefreshControl } from "./pull-refresh";
 import { useTabBarClearance } from "./tab-bar";
 import { Text } from "./text";
+import type { FluidMotion } from "./top-fluid-gradient";
 
 /**
  * The frame every screen sits in.
@@ -110,6 +117,8 @@ type ScreenProps = AccessibilityProps & {
 	children?: React.ReactNode;
 	contentStyle?: ViewStyle;
 	background?: React.ReactNode;
+	purchaseStage?: PurchaseStage | null;
+	fluidMotion?: FluidMotion;
 };
 
 export function Screen({
@@ -124,9 +133,28 @@ export function Screen({
 	children,
 	contentStyle,
 	background,
+	purchaseStage,
+	fluidMotion,
 	...a11y
 }: ScreenProps) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
+	const pathname = usePathname();
+	const inheritedStage = usePurchaseAccent();
+	const activeStage =
+		purchaseStage === undefined ? inheritedStage : purchaseStage;
+	const band = activeStage ? purchaseBand(activeStage, colors, scheme) : null;
+	const ambientBackground = activeStage ? (
+		<HomeGradient
+			scheme={scheme}
+			color={colors.primary}
+			stage={activeStage}
+			bandColor={band?.color}
+			backgroundColor={colors.background}
+			fluidMotion={fluidMotion}
+			compact={pathname !== "/"}
+		/>
+	) : null;
+	const backdrop = background ?? ambientBackground;
 	const edges: Edge[] = bottomInset ? ["top", "bottom"] : ["top"];
 	// The pull: the control, both tints, its own busy flag, and `undefined` when
 	// this screen did not ask for one — all of it in `./pull-refresh`, which is
@@ -192,19 +220,28 @@ export function Screen({
 			style={[styles.root, { backgroundColor: colors.background }]}
 			{...a11y}
 		>
-			{background ? (
+			{backdrop ? (
 				<View style={StyleSheet.absoluteFill} pointerEvents="none">
-					{background}
+					{backdrop}
 				</View>
 			) : null}
+			{band ? <StatusBar style={statusBarStyleForInk(band.ink)} /> : null}
 			{title ? (
 				<View style={styles.header}>
 					{leading}
-					<Text variant="display" bold>
+					<Text
+						variant="display"
+						bold
+						style={band ? { color: band.ink } : undefined}
+					>
 						{title}
 					</Text>
 					{subtitle ? (
-						<Text variant="label" tone="muted" style={styles.subtitle}>
+						<Text
+							variant="label"
+							tone="muted"
+							style={[styles.subtitle, band ? { color: band.ink } : null]}
+						>
 							{subtitle}
 						</Text>
 					) : null}

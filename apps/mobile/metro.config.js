@@ -5,6 +5,10 @@ const projectRoot = process.cwd();
 const workspaceRoot = path.resolve(projectRoot, "../..");
 const config = getDefaultConfig(projectRoot);
 
+config.watchFolders = config.watchFolders.filter(
+	(folder) => folder !== path.resolve(workspaceRoot, "node_modules"),
+);
+
 config.resolver.extraNodeModules = {
 	...(config.resolver.extraNodeModules ?? {}),
 	"@pymeshub/auth": path.resolve(workspaceRoot, "packages/auth"),

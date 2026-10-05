@@ -40,6 +40,7 @@ export const duration = {
 	entering: 240,
 	dialog: 300,
 	sheet: 320,
+	breathHalf: 2000,
 } as const;
 
 /**

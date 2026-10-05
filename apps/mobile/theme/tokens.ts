@@ -98,6 +98,12 @@ const light = {
 	warningForeground: "#2b1c08",
 	info: "#1d60bc",
 	infoForeground: "#ffffff",
+	basket: "#A9DE00",
+	basketForeground: "#111111",
+	inCart: "#B8C900",
+	inCartForeground: "#111111",
+	checkout: "#A0B900",
+	checkoutForeground: "#111111",
 	// `border` is a decorative hairline and stays light. `input` is not: it is the boundary
 	// that tells a customer where a text field begins, which is the "visual information
 	// required to identify user interface components" of WCAG 1.4.11, so it owes 3:1 against
@@ -193,6 +199,12 @@ const dark = {
 	warningForeground: "#251803",
 	info: "#5ea8f9",
 	infoForeground: "#091521",
+	basket: "#A9DE00",
+	basketForeground: "#111111",
+	inCart: "#B8C900",
+	inCartForeground: "#111111",
+	checkout: "#A0B900",
+	checkoutForeground: "#111111",
 	// `border` and `input` are `oklch(1 0 0 / 11%)` and `/ 16%` in the web theme — white
 	// at low alpha. They are solid here because React Native cannot blend a border into
 	// an unknown parent: the value below is that white composited over `background`.
@@ -257,8 +269,9 @@ export const palette: Record<ColorScheme, ThemeColors> = { light, dark };
  *
  * ## Why two layers
  *
- * `ThemeColors` is 49 keys and they are not 49 decisions. **Twenty are semantic** — the
- * eight order-status pairs, `price`, `discount`, `discountForeground` and `rating` — and
+ * `ThemeColors` is 55 keys and they are not 55 decisions. **Twenty-six are semantic** — the
+ * eight order-status pairs, `price`, `discount`, `discountForeground`, `rating`, and the
+ * three purchase-stage colour pairs — and
  * hue carries meaning in an operational console: a merchant reads `statusOutForDelivery`
  * as orange without reading it. Those are held once per *scheme* below and every theme
  * spreads them, so a theme **cannot** recolour "out for delivery" because it never gets a
@@ -296,7 +309,7 @@ export const palette: Record<ColorScheme, ThemeColors> = { light, dark };
  * believed.
  */
 
-/** The twenty keys whose value is a meaning rather than a brand. */
+/** The twenty-six keys whose value is a meaning rather than a brand. */
 const SEMANTIC_KEYS = [
 	"statusPending",
 	"statusPendingForeground",
@@ -318,6 +331,12 @@ const SEMANTIC_KEYS = [
 	"discount",
 	"discountForeground",
 	"rating",
+	"basket",
+	"basketForeground",
+	"inCart",
+	"inCartForeground",
+	"checkout",
+	"checkoutForeground",
 ] as const;
 
 type SemanticColors = Pick<ThemeColors, (typeof SEMANTIC_KEYS)[number]>;
@@ -353,6 +372,12 @@ const semantic: Record<ColorScheme, SemanticColors> = {
 		discount: "#c50516",
 		discountForeground: "#fff9f8",
 		rating: "#A46A00",
+		basket: light.basket,
+		basketForeground: light.basketForeground,
+		inCart: light.inCart,
+		inCartForeground: light.inCartForeground,
+		checkout: light.checkout,
+		checkoutForeground: light.checkoutForeground,
 	},
 	dark: {
 		statusPending: "#392c07",
@@ -375,6 +400,12 @@ const semantic: Record<ColorScheme, SemanticColors> = {
 		discount: "#fb6f6b",
 		discountForeground: "#1b0a09",
 		rating: "#f5b845",
+		basket: dark.basket,
+		basketForeground: dark.basketForeground,
+		inCart: dark.inCart,
+		inCartForeground: dark.inCartForeground,
+		checkout: dark.checkout,
+		checkoutForeground: dark.checkoutForeground,
 	},
 };
 

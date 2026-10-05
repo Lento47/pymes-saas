@@ -3,6 +3,8 @@ import type { Href } from "expo-router";
 import { StyleSheet } from "react-native";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
+import { usePurchaseAccent } from "@/lib/purchase-accent";
+import { purchaseBand } from "@/lib/purchase-colors";
 import { icon, MIN_TOUCH_TARGET, radius, useTheme } from "@/theme";
 
 import { Pressable } from "./pressable";
@@ -65,7 +67,9 @@ export function BackButton({
 	 */
 	surface?: boolean;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
+	const stage = usePurchaseAccent();
+	const band = stage ? purchaseBand(stage, colors, scheme) : null;
 	const { t } = useT();
 
 	return (
@@ -82,7 +86,7 @@ export function BackButton({
 			<Ionicons
 				name="chevron-back"
 				size={icon.back}
-				color={colors.foreground}
+				color={surface ? colors.foreground : (band?.ink ?? colors.foreground)}
 				// The label is on the button and already says what this does; an icon announced
 				// beside it would read the same thing twice.
 				accessibilityElementsHidden

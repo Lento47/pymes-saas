@@ -2,6 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
+import { usePurchaseAccent } from "@/lib/purchase-accent";
+import { purchaseBand } from "@/lib/purchase-colors";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -114,6 +116,11 @@ export function HomeHeader({
 }) {
 	const { colors, scheme } = useTheme();
 	const { t } = useT();
+	const stage = usePurchaseAccent();
+	const journeyInk =
+		stage && stage !== "browsing"
+			? purchaseBand(stage, colors, scheme)?.ink
+			: undefined;
 	const onLimeGradient = colors.primary.toLowerCase() === "#c8ff18";
 	/**
 	 * The ink for **every** mark drawn on the lime band, and `undefined` off it.
@@ -137,6 +144,7 @@ export function HomeHeader({
 			? colors.primaryForeground
 			: colors.secondaryForeground
 		: undefined;
+	const activeInk = journeyInk ?? bandInk;
 
 	/**
 	 * The same ink, but for the two nested `tone` values — and `undefined` everywhere else.
@@ -152,6 +160,7 @@ export function HomeHeader({
 	 */
 	const limeDarkInk =
 		onLimeGradient && scheme === "dark" ? colors.primaryForeground : undefined;
+	const nestedInk = journeyInk ?? limeDarkInk;
 
 	// Two initials where the name has two parts, one where it has one. The avatar's box is
 	// `MIN_TOUCH_TARGET` square — a target drawn at its own floor, like `./business-card`'s
@@ -184,7 +193,7 @@ export function HomeHeader({
 					// took `foreground` by default — white, which on the dark theme's new lime
 					// band is unreadable. `bandInk` is `undefined` off the band, so every other
 					// theme keeps the default it had.
-					style={[styles.title, bandInk ? { color: bandInk } : null]}
+					style={[styles.title, activeInk ? { color: activeInk } : null]}
 				>
 					{name ? t("home.greeting", { name }) : t("home.greeting.anon")}
 				</Text>
@@ -206,11 +215,12 @@ export function HomeHeader({
 							// have always differed by a hair and folding them together would be a
 							// light-theme change dressed as a tidy-up.
 							color={
-								onLimeGradient
+								journeyInk ??
+								(onLimeGradient
 									? scheme === "light"
 										? colors.foreground
 										: colors.primaryForeground
-									: colors.primary
+									: colors.primary)
 							}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
@@ -220,7 +230,7 @@ export function HomeHeader({
 							tone="muted"
 							style={[
 								styles.coordinateText,
-								bandInk ? { color: bandInk } : null,
+								activeInk ? { color: activeInk } : null,
 							]}
 						>
 							{lead}
@@ -229,7 +239,7 @@ export function HomeHeader({
 							<Text
 								variant="label"
 								tone="default"
-								style={limeDarkInk ? { color: limeDarkInk } : undefined}
+								style={nestedInk ? { color: nestedInk } : undefined}
 							>
 								{t("discovery.hero.currentLocation")}
 							</Text>
@@ -250,7 +260,7 @@ export function HomeHeader({
 						<Ionicons
 							name="location-outline"
 							size={icon.inline}
-							color={bandInk ?? colors.mutedForeground}
+							color={activeInk ?? colors.mutedForeground}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
 						/>
@@ -259,14 +269,14 @@ export function HomeHeader({
 							tone="muted"
 							style={[
 								styles.coordinateText,
-								bandInk ? { color: bandInk } : null,
+								activeInk ? { color: activeInk } : null,
 							]}
 						>
 							{lead}
 							<Text
 								variant="label"
 								tone="action"
-								style={limeDarkInk ? { color: limeDarkInk } : undefined}
+								style={nestedInk ? { color: nestedInk } : undefined}
 							>
 								{t("location.use")}
 							</Text>
