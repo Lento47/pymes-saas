@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { useSession } from "@/lib/auth/session";
 import {
 	type AccountProfile,
+	ensureDevicePrefsLoaded,
 	getAccountProfile,
-	initDevicePrefs,
+	getPrefsLoaded,
 	setAccountProfile,
 	subscribeAccountProfile,
+	subscribePrefsLoaded,
 } from "@/lib/device-prefs";
 import { useTRPC } from "@/lib/trpc/context";
 
@@ -108,15 +110,33 @@ export function useResolvedRole(): ResolvedRole {
 		getAccountProfile,
 		getAccountProfile,
 	);
-	const [loaded, setLoaded] = useState(false);
+	/**
+	 * `loaded` is a **shared** fact, not a per-instance one, and that is the whole point.
+	 *
+	 * This used to be `useState` per call site with an unmemoised `initDevicePrefs()` in each
+	 * one, so the four call sites read AsyncStorage four times and each moved from
+	 * `state: "boot"` to `state: "ready"` on its own schedule. That put two copies of this
+	 * answer on two different clocks, and they answer a navigation question: `app/index.tsx`
+	 * chooses the destination tree from its copy, while `app/_layout.tsx`'s `ThemedStack`
+	 * chooses from its copy whether the root Stack has registered that destination yet. A copy
+	 * that is ready first dispatches a `REPLACE` the Stack cannot answer, React Navigation
+	 * reports it as unhandled and drops it, and the reader is left on a screen whose only
+	 * output is a redirect that never fired.
+	 *
+	 * Subscribing through `useSyncExternalStore` — the same shape as the `preference` line above,
+	 * and the reason that one was never a bug — makes all four call sites flip in a single
+	 * commit. `lib/device-prefs.ts` carries the reason at the store.
+	 */
+	const loaded = useSyncExternalStore(
+		subscribePrefsLoaded,
+		getPrefsLoaded,
+		getPrefsLoaded,
+	);
 
-	// AsyncStorage is the only async on the fast path, and `initDevicePrefs` is the same call
-	// `app/_layout.tsx` makes at start-up — idempotent, and it is what fills the cache
-	// `getAccountProfile()` reads synchronously from.
+	// AsyncStorage is the only async on the fast path, and the session read it starts is the
+	// one that fills the cache `getAccountProfile()` reads synchronously from.
 	useEffect(() => {
-		void initDevicePrefs().then(() => {
-			setLoaded(true);
-		});
+		ensureDevicePrefsLoaded();
 	}, []);
 
 	const wantsRole = preference !== "customer";

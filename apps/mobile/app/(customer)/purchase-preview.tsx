@@ -1,7 +1,7 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
-
+import { BusinessThemePicker } from "@/components/business-theme-picker";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { DeliveryCompletionOverlay } from "@/components/delivery-completion-overlay";
@@ -19,7 +19,7 @@ const STEPS = [
 	{
 		stage: "browsing",
 		label: "Discover",
-		detail: "Browse products on the lime home feed.",
+		detail: "Browse products on the home feed.",
 	},
 	{
 		stage: "basket",
@@ -30,7 +30,7 @@ const STEPS = [
 		stage: "inCart",
 		label: "Review cart",
 		detail:
-			"A brighter lime-olive band keeps the cart and its lime actions together.",
+			"A brighter band keeps the cart and its own actions visually together.",
 	},
 	{
 		stage: "checkout",
@@ -41,18 +41,18 @@ const STEPS = [
 	{
 		stage: "confirmed",
 		label: "Order placed",
-		detail: "The order is confirmed and the accent changes to blue.",
+		detail: "The order is confirmed and the accent changes hue.",
 	},
 	{
 		stage: "paid",
 		label: "Payment confirmed",
-		detail: "A green band marks a successful payment.",
+		detail: "A band drawn from the success colour marks a completed payment.",
 	},
 	{
 		stage: "delivery",
 		label: "Out for delivery",
 		detail:
-			"The blue is attached to the top; its soft plumes drift and breathe independently.",
+			"The band is pinned to the top and its ramp breathes in place, widening and narrowing the falloff rather than fading.",
 	},
 ] as const satisfies readonly {
 	stage: PurchaseStage;
@@ -103,6 +103,19 @@ function DevelopmentPreview() {
 				<Text variant="caption" tone="muted">
 					Visual preview only · no order or payment is created
 				</Text>
+				{/*
+				 * The theme control lives *here*, not behind a trip to Settings, because the
+				 * thing being previewed is a band that is drawn from the theme. Watching the band
+				 * change required leaving the screen that draws it, which meant judging a
+				 * transition from a settings list with no band in it — the one view where the
+				 * band cannot be seen changing.
+				 *
+				 * `theme/transition.tsx` interpolates the palette at the composition point, so
+				 * every colour on this card — the step chips, the band above, the card's own
+				 * surface — arrives together. That is what makes this the right place to look at
+				 * it: the band is the largest single area of themed colour on the screen.
+				 */}
+				<BusinessThemePicker />
 				<View style={styles.steps} accessibilityRole="radiogroup">
 					{STEPS.map((step, index) => {
 						const band = purchaseBand(step.stage, colors, scheme);
@@ -165,7 +178,7 @@ function DevelopmentPreview() {
 									{reduceMotion
 										? "System reduced motion is on; the fluid stays still."
 										: fluidMotion === "normal"
-											? "Independent plumes are moving above."
+											? "The ramp is breathing: the falloff widens and narrows."
 											: "The fluid keeps its shape without movement."}
 								</Text>
 							</>

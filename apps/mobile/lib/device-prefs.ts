@@ -103,6 +103,62 @@ export async function initDevicePrefs(): Promise<void> {
 	publishAccountProfile(profile);
 }
 
+/* ── The once-per-session read, shared ────────────────────────────────────────
+ *
+ * `initDevicePrefs()` above deliberately re-reads storage every time it is called, because
+ * "refresh the in-memory copy" is a contract other code relies on. That is the wrong contract
+ * for the *first* read, and `lib/role.ts` used to call it once per hook instance — four times
+ * across `app/_layout.tsx` (three) and `app/index.tsx` (one) — each one kicking off its own
+ * concurrent AsyncStorage read and flipping its own `loaded` flag when it happened to land.
+ *
+ * Four boot clocks is not merely wasteful. Two of those copies answer a question with
+ * navigation consequences: `app/index.tsx` picks the tree to send the reader to from its copy,
+ * and `app/_layout.tsx`'s `ThemedStack` decides from its copy whether the root Stack has
+ * registered the `(customer)` route yet. Copies that boot on separate schedules are how a
+ * `REPLACE` with payload `{"name":"(customer)"}` reaches a Stack that has not registered
+ * `(customer)` — React Navigation calls that unhandled, drops it, and leaves the reader on a
+ * screen whose whole job is to redirect.
+ *
+ * So the first read is made once, and every consumer learns about it from one store — the same
+ * `useSyncExternalStore` shape `subscribeAccountProfile` already uses four lines up, which is
+ * what makes all four call sites answer identically within a single commit.
+ */
+let prefsLoad: Promise<void> | null = null;
+let prefsLoaded = false;
+const prefsLoadedListeners = new Set<() => void>();
+
+/**
+ * Start the one session read, or join the one already running. Safe to call often.
+ *
+ * **The rejection path is deliberately left as it was** — no `catch`, so a storage failure
+ * keeps the app in `state: "boot"` exactly as the per-instance version did. Adding a `catch`
+ * here would be a silent behaviour change to the boot sequence, and the boot sequence is the
+ * last thing that should be changed by a fix to a navigation warning.
+ */
+export function ensureDevicePrefsLoaded(): void {
+	// An explicit guard rather than `??=`: the short-circuit form reads as a write to a linter
+	// and, more to the point, "already loading" and "already loaded" are different questions and
+	// this one only has to be asked once.
+	if (prefsLoad !== null) return;
+	prefsLoad = initDevicePrefs().then(() => {
+		prefsLoaded = true;
+		for (const listener of prefsLoadedListeners) listener();
+	});
+}
+
+/** Whether the session read above has landed. */
+export function getPrefsLoaded(): boolean {
+	return prefsLoaded;
+}
+
+/** Subscribe to that one read, for `useSyncExternalStore`. */
+export function subscribePrefsLoaded(listener: () => void): () => void {
+	prefsLoadedListeners.add(listener);
+	return () => {
+		prefsLoadedListeners.delete(listener);
+	};
+}
+
 /** What `lib/haptics.ts` gates every buzz on. */
 export function areHapticsEnabled(): boolean {
 	return hapticsEnabled;

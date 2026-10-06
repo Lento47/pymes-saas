@@ -435,6 +435,30 @@ export default function HomeScreen() {
 				)}
 			</View>
 
+			{/* The four doors into the catalogue, one row, under the field. `!searching`
+			    only: once the field is active the answers below it are search, and four
+			    shortcuts into a catalogue that is giving way to results would just be noise.
+			    Each is a full-`radius.md` chip on the same `input` boundary the field above
+			    draws (`./hero-search`'s own note), so the row reads as doors *around* the
+			    marketplace rather than as filters inside one screen. */}
+			{searching ? null : (
+				<View style={styles.shortcuts}>
+					<Shortcut
+						label={t("home.offers")}
+						onPress={() => router.push("/offers")}
+					/>
+					<Shortcut
+						label={t("home.shortcuts.nearby")}
+						onPress={() => router.push("/nearby")}
+					/>
+					<Shortcut
+						label={t("nav.favorites")}
+						onPress={() => router.push("/favorites")}
+					/>
+					<Shortcut label={t("home.shortcuts.recent")} onPress={openSearch} />
+				</View>
+			)}
+
 			{/* One scroll view for all three branches, and one `RefreshControl` (`Rule 6`). */}
 			<ScrollView
 				ref={scrollerRef}
@@ -648,6 +672,33 @@ function CartSummary({
 	);
 }
 
+/**
+ * One of the four catalogue doors under the search field: a rounded chip that names
+ * where it goes. Owned here rather than in a shared component because what the four
+ * chips point at is a property of *this* layout — offers, nearby, favorites and the
+ * recents search — and the only palette it borrows is the same `input` boundary the
+ * field above it draws.
+ */
+function Shortcut({ label, onPress }: { label: string; onPress: () => void }) {
+	const { colors } = useTheme();
+
+	return (
+		<Pressable
+			onPress={onPress}
+			accessibilityRole="button"
+			accessibilityLabel={label}
+			style={[
+				styles.shortcut,
+				{ backgroundColor: colors.card, borderColor: colors.input },
+			]}
+		>
+			<Text variant="label" bold numberOfLines={1}>
+				{label}
+			</Text>
+		</Pressable>
+	);
+}
+
 const styles = StyleSheet.create({
 	fill: { flex: 1 },
 	hero: { marginTop: space.md },
@@ -766,6 +817,20 @@ const styles = StyleSheet.create({
 	// input beside it is set on. `./back-button` and `./home-header` both centre for this
 	// reason, and the one screen that skipped it is why their comments exist.
 	iconButton: { alignItems: "center", justifyContent: "center" },
+	shortcuts: {
+		flexDirection: "row",
+		gap: space.sm,
+		marginHorizontal: space.lg,
+		marginTop: space.sm,
+	},
+	shortcut: {
+		flex: 1,
+		paddingVertical: space.sm,
+		borderRadius: radius.md,
+		borderWidth: 1,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 });
 
 /** `catalog.feed`'s five lists and its taxonomy, as `Feed` draws them. */

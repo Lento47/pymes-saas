@@ -12,15 +12,17 @@ import { SessionProvider, useSession } from "@/lib/auth/session";
 import { initDevicePrefs } from "@/lib/device-prefs";
 import { env } from "@/lib/env";
 import { I18nProvider } from "@/lib/i18n";
+import { PurchaseAccentProvider } from "@/lib/purchase-accent";
 import { PushNotificationsProvider } from "@/lib/push-notifications";
 import { useResolvedRole } from "@/lib/role";
 import { takeSignOutNavigation } from "@/lib/sign-out-intent";
 import { ApiProvider } from "@/lib/trpc/provider";
 import {
-	selectTree,
 	BusinessThemeProvider,
+	selectTree,
 	ThemeModeProvider,
 	ThemeScopeProvider,
+	ThemeTransitionProvider,
 	useTheme,
 	useThemeScope,
 } from "@/theme";
@@ -92,7 +94,7 @@ function RootLayout() {
 							    screen under them are the only things that read `useTheme()`,
 							    and `theme/scope.tsx` throws rather than guess when no
 							    provider is above it. */}
-														{/* Which merchant palette, and a sibling of `ThemeScopeProvider`
+							{/* Which merchant palette, and a sibling of `ThemeScopeProvider`
 							    rather than a child of it. Both answer a question `useTheme()` asks,
 							    both throw rather than guess when no provider is above them, and
 							    neither needs the other: this one reads `AsyncStorage` alone, so
@@ -105,25 +107,55 @@ function RootLayout() {
 							    palette it hands back. Mounted lower, those components would be
 							    drawing from a theme nothing above them could see. */}
 							<BusinessThemeProvider>
-	<ThemeScopeProvider>
-									<PushNotificationsProvider>
-										<SafeAreaProvider>
-											{/* A sibling of `ToastProvider`, and inside `SafeAreaProvider` for the top
-											    inset it offsets by. It draws a *refused* write (`components/rollback-surface`),
-											    which is the half `ToastProvider` deliberately cannot carry — a
-											    confirmation floats where the tap happened, a refusal is a correction
-											    that has to be noticed — so the two are separate surfaces rather than
-											    one with a severity, and they hold different corners of the screen. */}
-											<RollbackProvider>
-												<ToastProvider>
-													<SignOutGate />
-													<ThemedStack />
-													<WelcomeAnimation />
-												</ToastProvider>
-											</RollbackProvider>
-										</SafeAreaProvider>
-									</PushNotificationsProvider>
-								</ThemeScopeProvider>
+								{/* Between `BusinessThemeProvider` and everything that draws.
+										    It reads the theme through `useBusinessTheme()`, so it has to be
+										    inside the provider above; and `useTheme()` reads the colours *from*
+										    it, so it has to be outside every screen and every provider that
+										    draws. That is exactly the gap between the two.
+
+										    This is the whole colour transition: the palette is interpolated here,
+										    once, so the ~60 components that call `useTheme()` and the ~310
+										    reads of `colors.*` behind them all glide with no call site edited.
+										    See `theme/transition.tsx`. */}
+								<ThemeTransitionProvider>
+									<ThemeScopeProvider>
+										<PushNotificationsProvider>
+											<SafeAreaProvider>
+												{/* A sibling of `ToastProvider`, and inside `SafeAreaProvider` for the top
+												    inset it offsets by. It draws a *refused* write (`components/rollback-surface`),
+												    which is the half `ToastProvider` deliberately cannot carry — a
+												    confirmation floats where the tap happened, a refusal is a correction
+												    that has to be noticed — so the two are separate surfaces rather than
+												    one with a severity, and they hold different corners of the screen. */}
+												<PurchaseAccentProvider>
+													{/*
+													 * The purchase band follows the order across the whole app, so this sits at the
+													 * root rather than in `(customer)/_layout.tsx` where it was. A customer with a
+													 * parcel in transit reaches `/settings`, `/account`, `/profile` and `/inbox` as much
+													 * as the feed - and those are root routes, so under the group they resolved no
+													 * stage at all and drew no band.
+													 *
+													 * Inside `ApiProvider` (it reads `useTRPC()`) and `SessionProvider` (it reads
+													 * `useSession()` to decide whether to query at all), and inside `SafeAreaProvider`
+													 * rather than outside it because it draws nothing itself.
+													 *
+													 * Safe to mount over all four trees: `lib/purchase-state.ts`'s `isPurchaseRoute`
+													 * excludes the `(auth)`, `(business)` and `(delivery)` routes by name, so a
+													 * merchant console or a courier screen resolves to no stage and the provider costs
+													 * them a query cache entry and nothing else.
+													 */}
+													<RollbackProvider>
+														<ToastProvider>
+															<SignOutGate />
+															<ThemedStack />
+															<WelcomeAnimation />
+														</ToastProvider>
+													</RollbackProvider>
+												</PurchaseAccentProvider>
+											</SafeAreaProvider>
+										</PushNotificationsProvider>
+									</ThemeScopeProvider>
+								</ThemeTransitionProvider>
 							</BusinessThemeProvider>
 						</ApiProvider>
 					</SessionProvider>
