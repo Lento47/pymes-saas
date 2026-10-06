@@ -4,6 +4,13 @@
 .top span { color: var(--fg-2); font-size: 0.75rem; }
 .top small { display: inline-flex; flex: 0 0 auto; border: 1px solid hsl(var(--border)); border-radius: 9999px; padding: 3px 8px; color: var(--fg-2); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .card p { margin: var(--space-3) 0 0; color: var(--fg-2); font-size: 0.75rem; line-height: 1.5; }
+/*
+  The static tier's number. Deliberately the same size, weight and tabular figures as
+  `.counter` so the two tiers do not read as different kinds of value — a quiet tile that
+  looked smaller would look less true, which is the opposite of what "quiet" should mean.
+*/
+.static { display: block; color: var(--fg); font-family: var(--font-sans); font-size: 1.5rem; font-weight: 500; letter-spacing: -0.01em; line-height: 1; font-variant-numeric: tabular-nums; }
+.staticSuffix { margin-left: 0.1em; }
 @media (max-width: 380px) { .top { align-items: flex-start; flex-wrap: wrap; } }
 /* Text swaps: the outgoing copy is popped out of flow so the wrapper never holds both widths. */
 .swap, .swapBlock { position: relative; max-width: 100%; }

@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -59,6 +62,61 @@ describe("console groups", () => {
     expect(isConsoleTab("overview")).toBe(true);
     expect(isConsoleTab("overviews")).toBe(false);
     expect(isConsoleTab(undefined)).toBe(false);
+  });
+});
+
+/**
+ * Every destination says what it is.
+ *
+ * `TAB_PURPOSE` is typed `Record<ConsoleTab, …>`, so a **missing key is a compile error** —
+ * which is the guarantee worth having. What it cannot catch is a present key carrying an empty
+ * string, a whitespace label, or the generic "Consola de plataforma" that this replaced on
+ * eleven pages at once. That failure is invisible in review and obvious in use: every tab
+ * claims to be the platform console.
+ *
+ * So the table is read out of the file and checked as data, the same way
+ * `console-tabs.test.ts` reads its panels out of the page.
+ */
+describe("the page header copy", () => {
+  const source = readFileSync(
+    join(import.meta.dirname, "..", "pages", "admin", "console.tsx"),
+    "utf-8",
+  );
+  // Two-space indentation, because `biome.jsonc` disables biome's formatter for
+  // `apps/web/**` and Prettier owns this package's style. The first version of this pattern
+  // assumed tabs, matched nothing, and was caught by the anti-vacuity assertion below rather
+  // than passing silently as "0 entries, 0 expected, all good".
+  const purposes = [
+    ...source.matchAll(/^ {2}(\w+): \{\n {4}title: "([^"]*)",\n {4}description: "([^"]*)",/gm),
+  ].map((match) => ({
+    tab: match[1] as string,
+    title: match[2] as string,
+    description: match[3] as string,
+  }));
+
+  it("parses an entry per tab rather than matching nothing", () => {
+    // Two empty lists compare equal, and an anti-vacuity guard is the only thing that notices
+    // a reformat broke the pattern.
+    expect(purposes.length).toBe(CONSOLE_TABS.length);
+  });
+
+  it("gives every tab a title of its own", () => {
+    const titles = purposes.map((entry) => entry.title);
+    expect(new Set(titles).size).toBe(titles.length);
+    for (const entry of purposes) {
+      expect(entry.title.trim()).not.toBe("");
+      // The generic title this replaced. One tab may legitimately say "General"; none of
+      // them may say the same thing as the shell.
+      expect(entry.title).not.toBe("Consola de plataforma");
+    }
+  });
+
+  it("gives every tab a description that says something", () => {
+    for (const entry of purposes) {
+      // A sentence, not a word: the description's job is to say what the page decides.
+      expect(entry.description.length).toBeGreaterThan(20);
+      expect(entry.description.trim()).toBe(entry.description);
+    }
   });
 });
 

@@ -46,6 +46,7 @@ import {
 } from "@/lib/admin";
 import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
+import { ConsoleEnvBadge } from "./console-env-badge";
 import { ActivityPanel, OperatorPanel, SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
 import { ConsoleShell } from "./console-nav";
 import { TablePager } from "./console-pager";
@@ -60,7 +61,7 @@ import {
   type TicketSort,
 } from "./console-sort";
 import { EmptyState, QueryErrorState } from "./console-states";
-import { resolveConsoleTab } from "./console-tabs";
+import { type ConsoleTab, resolveConsoleTab } from "./console-tabs";
 import { useAdminPage } from "./use-admin-page";
 
 /**
@@ -317,25 +318,61 @@ function Metrics({
   }
   if (!metrics) return null;
 
-  const tiles = [
-    { label: "Negocios pendientes", value: metrics.businesses.pendingVerification, urgent: metrics.businesses.pendingVerification > 0, context: "Esperan verificación" },
+  /*
+    Three hero tiles and nine quiet ones.
+    
+    Every tile used to animate its digits in, twelve at once, on a four-column grid. Twelve
+    counters is not "restrained motion" — it is a page load that looks like it is performing,
+    and it means the numbers that decide the operator's next move are no louder than
+    "Usuarios totales", which decides nothing.
+    
+    So three carry the animation and a sparkline, and they are the three with a **deadline or a
+    trend**: businesses waiting on the operator, orders today, and the cancellation rate. The
+    other nine are context somebody looks up, not signals they act on, and they render as plain
+    tabular figures that are readable instantly.
+    
+    `hero` is data on the row rather than a position in the array, so reordering the grid cannot
+    silently promote the wrong tile.
+  */
+  const heroTiles = [
+    {
+      label: "Negocios pendientes",
+      value: metrics.businesses.pendingVerification,
+      urgent: metrics.businesses.pendingVerification > 0,
+      context: "Esperan verificación",
+      hint: "Esperan tu revisión",
+    },
+    {
+      label: "Órdenes hoy",
+      value: metrics.orders.today,
+      context: "Desde medianoche, UTC",
+      // The one tile with a trend already on screen: `orderSeries` is 60 days of orders, and
+      // the last bar of it is today.
+      spark: metrics.orderSeries.slice(-14).map((row) => row.count),
+    },
+    {
+      label: "Tasa de cancelación",
+      value: Math.round(metrics.orders.cancelledRate * 100),
+      suffix: "%",
+      context: "Canceladas sobre el total",
+      // Rising cancellations are a problem regardless of where the rate sits, so the trend is
+      // drawn even when the rate is low — "3% and falling" and "3% and climbing" are different
+      // situations wearing the same number.
+      spark: metrics.orderSeries.slice(-14).map((row) => row.cancelled),
+    },
+  ] as const;
+
+  const quietTiles = [
     { label: "Negocios activos", value: metrics.businesses.active, context: "Publicados en el mercado" },
     { label: "Negocios suspendidos", value: metrics.businesses.suspended, context: "Cerrados por la plataforma" },
-    // Three counts the service has always sent and this table never drew. `businesses.total`
-    // is the denominator for the three above it, so an operator reading "3 suspendidos" with
-    // no total cannot tell 3 of 40 from 3 of 400 — and `users.suspended` was the only signal
-    // that anybody had been cut off.
+    // `businesses.total` is the denominator for the two above it, so an operator reading
+    // "3 suspendidos" with no total cannot tell 3 of 40 from 3 of 400.
     { label: "Negocios totales", value: metrics.businesses.total, context: "Registrados en la plataforma" },
     { label: "Usuarios", value: metrics.users.total, context: "Cuentas de cliente y comercio" },
     { label: "Usuarios suspendidos", value: metrics.users.suspended, context: "Cuentas cortadas" },
     { label: "Admins", value: metrics.users.admins, context: "Con acceso a esta consola" },
-    { label: "Órdenes hoy", value: metrics.orders.today, context: "Desde medianoche, UTC" },
     { label: "Órdenes activas", value: metrics.orders.active, context: "En curso ahora" },
     { label: "Órdenes totales", value: metrics.orders.total, context: "Histórico completo" },
-    // The one rate on the screen, so it is the one tile that is not an integer. It gets the
-    // same treatment as a count and the same `suffix`, which is why `value` stayed a number
-    // and the string is built here rather than baked into the card's API.
-    { label: "Tasa de cancelación", value: Math.round(metrics.orders.cancelledRate * 100), suffix: "%", context: "Canceladas sobre el total" },
   ];
 
   const summary = [
@@ -387,12 +424,30 @@ function Metrics({
         accessibility tree *and* from the layout, which is what actually wants to happen when
         the tiles are collapsed, so one attribute does both jobs correctly.
       */}
+      {/*
+        The three hero tiles are **always visible** — they are the dashboard. Everything
+        else, including the charts, sits in the collapsible region below, because nine
+        reference counts and four panels of history are what somebody opens the dashboard to
+        look up rather than to read on arrival.
+      */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {heroTiles.map((tile) => (
+          <MetricCard
+            key={tile.label}
+            label={tile.label}
+            value={tile.value}
+            suffix={"suffix" in tile ? tile.suffix : undefined}
+            context={tile.context}
+            urgent={"urgent" in tile ? tile.urgent : undefined}
+          />
+        ))}
+      </div>
+
       <div
         id="admin-metrics-tiles"
         hidden={!open}
         className="space-y-3"
-      >
-        {/*
+      >        {/*
           The two panels that were being fetched and discarded, drawn inside the region that
           is already collapsed by default.
 
@@ -425,14 +480,15 @@ function Metrics({
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {tiles.map((t) => (
+          {quietTiles.map((t) => (
             <MetricCard
               key={t.label}
               label={t.label}
               value={t.value}
-              suffix={"suffix" in t ? t.suffix : undefined}
               context={t.context}
-              urgent={t.urgent}
+              // The whole point of this tier: no digit animation, no sparkline, nothing that
+              // moves. These are numbers somebody looks up.
+              animate={false}
             />
           ))}
         </div>
@@ -3073,6 +3129,71 @@ export default function AdminConsolePage() {
     </AdminGate>
   );
 }
+/**
+ * What each destination is *for*, in one line.
+ *
+ * The shell's title was "Consola de plataforma" on every tab, which is the same sentence
+ * eleven times and therefore says nothing about where you are. The breadcrumb answers that,
+ * but a breadcrumb is small and sits above the fold of a page whose whole job is a table
+ * somebody is about to read.
+ *
+ * These are the sentences an operator would use if asked, not marketing. Each one names what
+ * the page *decides* — which is the only thing a title can add over a breadcrumb.
+ *
+ * Keyed by `ConsoleTab`, so a new tab without an entry here is a type error rather than a
+ * page that falls back to saying nothing.
+ */
+const TAB_PURPOSE: Record<ConsoleTab, { title: string; description: string }> = {
+  overview: {
+    title: "Resumen",
+    description: "El estado de la plataforma: la cola que espera y la actividad reciente.",
+  },
+  approvals: {
+    title: "Aprobaciones",
+    description: "Negocios y repartidores esperando revisión. Lo que no se responde aquí no sale.",
+  },
+  orders: {
+    title: "Órdenes",
+    description: "Cada pedido de la plataforma, con su pago y su historial de estados.",
+  },
+  billing: {
+    title: "Cobros",
+    description: "Suscripciones y deuda. El orden es por monto adeudado, no por fecha.",
+  },
+  support: {
+    title: "Soporte",
+    description: "Preguntas de comercios y lo que se les respondió.",
+  },
+  businesses: {
+    title: "Negocios",
+    description: "Todos los comercios registrados, verificados y suspendidos.",
+  },
+  couriers: {
+    title: "Repartidores",
+    description: "Perfiles de reparto por revisar y el estado de cada uno.",
+  },
+  users: {
+    title: "Personas",
+    description: "Cuentas de la plataforma, con sus roles y su estado.",
+  },
+  catalogue: {
+    title: "Catálogo",
+    description: "Productos, reseñas, promociones e invitaciones, en una sola vista.",
+  },
+  prices: {
+    title: "Planes",
+    description: "Los precios y cuándo rigen. Un cambio nunca afecta a quien ya pagó.",
+  },
+  categories: {
+    title: "Categorías",
+    description: "La taxonomía del mercado. Aquí aparece en la navegación del cliente.",
+  },
+  audit: {
+    title: "Auditoría",
+    description: "Todo lo que se ha hecho aquí, con quién, cuándo y por qué.",
+  },
+};
+
 function AdminConsole() {
   const { tab: routeTab } = useParams<{ tab?: string }>();
   const [, navigate] = useLocation();
@@ -3172,8 +3293,9 @@ function AdminConsole() {
    */
   return (
     <ConsoleShell
-      title="Consola de plataforma"
-      description="Todo lo que hay aquí queda registrado con tu nombre."
+      title={TAB_PURPOSE[tab].title}
+      description={TAB_PURPOSE[tab].description}
+      badge={<ConsoleEnvBadge />}
       activeTab={tab}
       pending={approvalBadge}
       operatorName={viewerQuery.data?.name ?? "—"}

@@ -94,4 +94,50 @@ describe("MetricCard", () => {
 
     expect(announces(container, "0")).toBe(true);
   });
+
+  describe("the quiet tier (animate={false})", () => {
+    it("still announces the value", () => {
+      // The static branch is a *different DOM shape* from Arc's counter — one text node
+      // instead of a wheel of ten absolutely positioned glyphs per column — so "it renders"
+      // and "it is readable by a screen reader" are separate claims and both need saying.
+      const { container } = render(
+        <MetricCard
+          label="Negocios totales"
+          value={412}
+          context="Registrados en la plataforma"
+          animate={false}
+        />,
+      );
+
+      expect(announces(container, "412")).toBe(true);
+    });
+
+    it("puts the suffix in the announced value, exactly as the animated tier does", () => {
+      // Otherwise the two tiers describe different sentences for the same number, and which
+      // one you get depends on a prop.
+      const { container } = render(
+        <MetricCard
+          label="Tasa de cancelación"
+          value={21}
+          suffix="%"
+          context="Canceladas"
+          animate={false}
+        />,
+      );
+
+      expect(announces(container, "21%")).toBe(true);
+    });
+
+    it("renders no counter wheel at all", () => {
+      // The point of the tier. Each animated column is ten glyph spans; a tile that claims
+      // to be quiet while still mounting thirty of them has saved nothing.
+      const { container } = render(
+        <MetricCard label="Admins" value={2} context="Con acceso" animate={false} />,
+      );
+
+      // One element carries the number, and it is the article's own text rather than a
+      // hidden copy behind an aria-hidden wheel.
+      expect(container.querySelectorAll("span").length).toBeLessThan(8);
+    });
+  });
 });

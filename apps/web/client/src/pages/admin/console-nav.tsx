@@ -162,6 +162,7 @@ export function ConsoleNav({
 export function ConsoleShell({
   title,
   description,
+  badge,
   activeTab,
   pending,
   operatorName,
@@ -171,6 +172,13 @@ export function ConsoleShell({
 }: {
   title: string;
   description?: string;
+  /**
+   * Rendered immediately after the title — an environment badge, today.
+   *
+   * A prop rather than something the shell imports, because "what does this screen say about
+   * itself" belongs to the page. The shell's only opinion is where it goes.
+   */
+  badge?: React.ReactNode;
   activeTab: ConsoleTab;
   pending: number;
   operatorName: string;
@@ -210,7 +218,12 @@ export function ConsoleShell({
         <PageTemplate
           title={title}
           description={description}
-          headerExtra={<ConsoleBreadcrumb current={label} />}
+          headerExtra={
+            <div className="flex items-center gap-2">
+              <ConsoleBreadcrumb current={label} />
+              {badge}
+            </div>
+          }
           headerSlot={
             <div className="flex items-center gap-2">
               {/*

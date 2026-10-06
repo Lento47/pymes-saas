@@ -25,6 +25,18 @@ export interface MetricCardProps {
    * wrapping every tile to bolt a class on from outside.
    */
   urgent?: boolean;
+  /**
+   * Roll the digits up from zero on first view. On by default, because that is what the
+   * component is for.
+   *
+   * **Also not an Arc prop**, and it exists for the opposite reason to `urgent`: a dashboard
+   * of twelve tiles all animating at once is not motion, it is a page load that looks like it
+   * is performing, and it flattens the numbers that actually matter into the same visual noise
+   * as the nine that do not. Set `false` on the reference tiles and the number is rendered as
+   * static, tabular text — still announced identically to a screen reader, because the
+   * accessible copy never depended on the animation.
+   */
+  animate?: boolean;
 }
 
 /** Copy that holds a number enters from the side it moved toward: a larger value rises from below, a smaller one drops from above. */
@@ -60,11 +72,25 @@ function Swap({ text, morph = false, block = false }: { text: string; morph?: bo
   </motion.span>;
 }
 
-export function MetricCard({ label, value, suffix, context, change, urgent }: MetricCardProps) {
+export function MetricCard({ label, value, suffix, context, change, urgent, animate = true }: MetricCardProps) {
   const reduceMotion = !!useReducedMotion();
+
+  /**
+   * The static branch, and it is **not** a second rendering of the number — it is the same
+   * text Arc's counter would have announced, without the wheel of ten absolutely positioned
+   * glyphs per column behind it. Reading it costs one text node instead of thirty, and it is
+   * legible the instant it paints rather than after a stagger.
+   */
+  const staticValue = (
+    <span className={styles.static}>
+      {value}
+      {suffix ? <span className={styles.staticSuffix}>{suffix}</span> : null}
+    </span>
+  );
+
   return <article className={styles.card} data-urgent={urgent ? "true" : undefined}>
     <div className={styles.top}><span><Swap text={label} block /></span><AnimatePresence initial={false}>{change && <motion.small key="change" data-trend={/^[+]/.test(change) ? "up" : /^[-−]/.test(change) ? "down" : undefined} initial={{ opacity: 0, scale: reduceMotion ? 1 : .96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: reduceMotion ? 1 : .96, transition: { duration: motionTokens.duration.fast, ease: [...motionTokens.ease.standard] } }} transition={reduceMotion ? { duration: 0 } : motionTokens.spring.snappy}><Swap text={change} morph /></motion.small>}</AnimatePresence></div>
-    <AnimatedCounter value={value} suffix={suffix} animateOnView />
+    {animate ? <AnimatedCounter value={value} suffix={suffix} animateOnView /> : staticValue}
     <p><Swap text={context} block /></p>
   </article>;
 }
