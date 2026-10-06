@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { AuditLogEntry } from "@/lib/admin";
 
 /**
  * The two halves of `admin.metrics` that used to be fetched and thrown away, and the
@@ -272,6 +273,93 @@ export function ActivityPanel({
           {current.cancelled} cancelados ·{" "}
           {(current.cancellationRate * 100).toFixed(1)}% del total
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Who is operating this session, and what they have done.
+ *
+ * ## Why this is on the dashboard at all
+ *
+ * Every destructive action in this console writes an audit row naming its actor, and the
+ * Auditoría tab can find them — but only if you already know your own user id to filter by.
+ * The result is that "what have *I* done" needs a step of setup, while "what has anybody
+ * done" needs none. That asymmetry is backwards for the question an operator asks most often
+ * after making a mistake.
+ *
+ * `viewer()` and `auditLog({ actorId })` both already existed; nothing was missing from the
+ * API. What was missing was the surface.
+ *
+ * ## Why the actions are the content and not the avatar
+ *
+ * An operator does not open the console to look at a picture of themselves. They open it after
+ * having suspended a shop or written off a debt, and the first question is whether it landed.
+ * So this panel is the answer to that, with the identity as the label rather than the headline.
+ */
+export function OperatorPanel({
+  viewer,
+  entries,
+  isLoading,
+}: {
+  viewer: { name: string; email: string; createdAt: Date } | undefined;
+  entries: readonly AuditLogEntry[];
+  isLoading: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Tu actividad</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {viewer ? (
+          <div>
+            <p className="text-sm font-medium">{viewer.name}</p>
+            <p className="text-xs text-muted-foreground">{viewer.email}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Cargando…</p>
+        )}
+
+        {/*
+          "Acciones registradas", not "acciones". It counts rows in the audit log, and it
+          deliberately does not claim to be the total number of things this operator has done —
+          an action performed before the log existed, or one outside it, is not counted here.
+        */}
+        <p className="text-xs text-muted-foreground">
+          {entries.length === 0
+            ? isLoading
+              ? "Buscando acciones…"
+              : "Todavía no hay acciones registradas a tu nombre."
+            : `${entries.length} acción${entries.length === 1 ? "" : "es"} reciente${entries.length === 1 ? "" : "s"}`}
+        </p>
+
+        {entries.length > 0 ? (
+          <ul className="space-y-1.5">
+            {entries.map((entry) => (
+              <li key={entry.id} className="text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  {/*
+                    The action name is the load-bearing text and it is the raw string, not a
+                    translated label: the audit log is a record, and a record whose verbs change
+                    when the interface language does cannot be quoted in a dispute. The
+                    Auditoría tab renders labels for reading; this is a list of what you did.
+                  */}
+                  <span className="truncate font-mono">{entry.action}</span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {new Date(entry.createdAt).toLocaleDateString("es-CR")}
+                  </span>
+                </div>
+                {entry.targetType ? (
+                  <div className="truncate text-muted-foreground">
+                    {entry.targetType} · {entry.targetId}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </CardContent>
     </Card>
   );

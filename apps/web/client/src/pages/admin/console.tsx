@@ -45,7 +45,7 @@ import {
 } from "@/lib/admin";
 import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
-import { ActivityPanel, SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
+import { ActivityPanel, OperatorPanel, SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
 import { TablePager } from "./console-pager";
 import {
   type AdminListSort,
@@ -269,6 +269,26 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
   const { data: metrics, isPending, isError, isFetching, error, refetch } = query;
   const [open, setOpen] = useState(false);
 
+  /*
+    The operator's own identity and trail, as two queries rather than one endpoint.
+
+    Both existed already — `viewer()` and `admin.auditLog({ actorId })` — and combining them
+    server-side would mean a procedure whose only job is to join two things the client can
+    already join, plus a schema to describe the join. The cost here is one extra round trip on
+    a dashboard that is already fetching metrics; the benefit is that "my actions" stays
+    available to any other screen that wants it.
+  */
+  const viewerQuery = useQuery({ queryKey: ["admin", "viewer"], queryFn: adminApi.viewer });
+  const myActionsQuery = useQuery({
+    queryKey: ["admin", "auditLog", "actor", viewerQuery.data?.id],
+    // Not run until the id is known: filtering by `actorId: undefined` would ask for the
+    // **whole** audit log — every operator's actions on the platform — and then render the
+    // first five of them under the heading "Tu actividad".
+    enabled: !!viewerQuery.data?.id,
+    queryFn: () =>
+      adminApi.auditLog({ actorId: viewerQuery.data?.id, limit: 5, sort: "newest", direction: "desc" }),
+  });
+
   if (isPending) return <Skeleton className="h-9 w-full" />;
   if (isError) {
     return (
@@ -382,6 +402,11 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
           <ActivityPanel series={metrics.orderSeries} />
           <SignupsPanel series={metrics.signupsSeries} />
           <VolumePanel volumes={metrics.volumeByCurrency} format={money} />
+          <OperatorPanel
+            viewer={viewerQuery.data}
+            entries={myActionsQuery.data?.rows ?? []}
+            isLoading={viewerQuery.isPending || myActionsQuery.isPending}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
