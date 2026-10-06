@@ -43,7 +43,45 @@ function describeError(error: unknown, fallback: string): string {
   // Radix/console codes are upper-case with underscores and no spaces; a real sentence has
   // at least one of neither being true.
   if (/^[A-Z0-9_]+$/.test(message)) return fallback;
+  if (isSerializedPayload(message)) return fallback;
   return message;
+}
+
+/**
+ * A stringified structure is not a sentence, and this is the case the guard above misses.
+ *
+ * Every read in `lib/admin.ts` is `someSchema.parse(await trpc…)`, and a parse failure throws
+ * a `ZodError` whose `message` is `JSON.stringify(issues, null, 2)` — an array of
+ * `{ expected, code, path, message }` objects. That string has spaces and brackets, so the
+ * upper-case-code test lets it through, and the operator was shown this verbatim in red:
+ *
+ *     [{"expected":"array","code":"invalid_type","path":["orderSeries"],
+ *       "message":"Invalid input: expected array, received undefined"}]
+ *
+ * It is also the least useful thing that could be in that spot. It describes a disagreement
+ * between two *deployed bundles* — the console's schema against an API that is a different
+ * version — and there is nothing in it the operator can act on or send again. The panel's
+ * own sentence is both true and actionable, and the retry button beside it still applies: a
+ * half-finished API deploy genuinely does resolve on a retry.
+ *
+ * **JSON, rather than a check for Zod, on purpose.** The shape of Zod's issue array is not a
+ * contract, and neither is the only library that stringifies a structure into `message`. A
+ * guard written against one of them keeps passing while the other reaches the screen; "this
+ * parses as JSON" is the property that actually distinguishes a payload from a sentence, and
+ * it holds for whatever produces one next.
+ *
+ * The failure is deliberately one-directional. A `DomainError`'s `message` is a sentence the
+ * Worker wrote for a customer and is never valid JSON, so nothing that is meant to be read
+ * is being suppressed — and if some future message ever *were* valid JSON, the operator
+ * reading the fallback sentence is a far better outcome than the alternative.
+ */
+function isSerializedPayload(message: string): boolean {
+  try {
+    JSON.parse(message);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** A failed read, with the button that sends it again. */

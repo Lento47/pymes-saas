@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { render, screen } from "@testing-library/react";
+import { adminMetricsSchema } from "@pymeshub/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { EmptyState, QueryErrorState } from "../pages/admin/console-states";
@@ -50,6 +51,50 @@ describe("QueryErrorState", () => {
 
     expect(screen.getByText("No se pudieron cargar los negocios.")).toBeTruthy();
     expect(screen.queryByText("INTERNAL_SERVER_ERROR")).toBeNull();
+  });
+
+  it("falls back when the error is a schema mismatch rather than a sentence", () => {
+    // The production incident, reproduced rather than described. `admin.metrics` was
+    // answering with the payload it sent before `orderSeries` existed, while the console's
+    // copy of `adminMetricsSchema` already required it — two deployed bundles two days out of
+    // step with each other, and nothing else on the payload wrong.
+    //
+    // Built from the real schema and a real parse so this cannot drift away from Zod's
+    // message format: `ZodError.message` is `JSON.stringify(issues, null, 2)`, and a
+    // hand-written approximation of it would pass against a guard that only recognises the
+    // shape it was written for.
+    const stalePayload = {
+      businesses: { total: 1, active: 1, suspended: 0, pendingVerification: 0 },
+      users: { total: 2, admins: 1, suspended: 0 },
+      orders: { total: 3, today: 1, active: 1, cancelledRate: 0 },
+      volumeByCurrency: [],
+      signupsSeries: [],
+      generatedAt: new Date(),
+    };
+
+    // The premise, asserted: this payload really is the one that throws, and it throws for
+    // the field it is missing rather than for anything incidental.
+    expect(() => adminMetricsSchema.parse(stalePayload)).toThrow(/orderSeries/);
+
+    let thrown: unknown;
+    try {
+      adminMetricsSchema.parse(stalePayload);
+    } catch (error) {
+      thrown = error;
+    }
+
+    render(
+      <QueryErrorState
+        error={thrown as Error}
+        fallback="No se pudieron cargar las métricas."
+      />,
+    );
+
+    // The operator reads the panel's own sentence...
+    expect(screen.getByText("No se pudieron cargar las métricas.")).toBeTruthy();
+    // ...and never the serialized issue array that was on this screen in red.
+    expect(screen.queryByText(/orderSeries/)).toBeNull();
+    expect(screen.getByRole("alert").textContent).not.toContain("invalid_type");
   });
 
   it("falls back when there is no message, or no error at all", () => {

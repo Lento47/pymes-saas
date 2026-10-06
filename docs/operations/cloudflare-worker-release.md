@@ -29,6 +29,43 @@ curl "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/build
 
 Do not place that token in the repository. Compare the returned build metadata with the settings above before retrying.
 
+## Verify that a release reached production
+
+**A push to `master` does not mean the API deployed.** The web and the API are two
+independent Cloudflare Builds projects with two independent build queues, and only the web's
+is instant. Every push that touches `packages/shared/src/schemas/**` is a release in which
+the two can disagree: if the web finishes first, a client that requires a field the deployed
+API does not send is live, and it fails on a schema parse rather than on a request.
+
+Nothing about that failure points at the deploy. `lib/admin.ts` parses every admin read
+against its shared schema, so the console can render the raw Zod issue array —
+
+    [{"expected":"array","code":"invalid_type","path":["orderSeries"],
+      "message":"Invalid input: expected array, received undefined"}]
+
+— which describes a disagreement between two bundles and says nothing about which one is
+behind. `QueryErrorState` now substitutes the panel's own sentence for a serialized payload,
+so what reaches the operator is "no se pudieron cargar las métricas" and a retry button; treat
+that screen as **"the API Worker is older than the web bundle"** until the lists below say
+otherwise, and confirm with:
+
+```bash
+cd packages/trpc-api && npx wrangler deployments list --env production
+```
+
+Read the newest entry's `Created` against the commit being shipped. If the API's newest
+deployment predates a commit that changed a shared schema, the API build did not run or did
+not finish — and that is fixed by deploying, not by changing a client.
+
+Check the other side the same way when the web is the one in doubt:
+
+```bash
+npx wrangler versions list --name pymeshubsaas
+```
+
+Neither list explains *why* a build did not run. That is the Builds log, and it needs the
+token above. Do not infer the cause from a version list alone.
+
 ## Migration sequence
 
 1. Generate and review migrations: `pnpm --filter @pymeshub/db db:generate`.
