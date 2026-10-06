@@ -1,5 +1,7 @@
 import { useState } from "react";
-
+import { BarChart } from "@/components/arc/bar-chart/bar-chart";
+import type { LineChartDatum } from "@/components/arc/line-chart/line-chart";
+import { LineChart } from "@/components/arc/line-chart/line-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AuditLogEntry } from "@/lib/admin";
 
@@ -27,35 +29,6 @@ import type { AuditLogEntry } from "@/lib/admin";
  */
 
 /** One bar's height as a percentage of the tallest bar. Always 0–100. */
-export type Bar = { day: string; count: number; percent: number };
-
-/**
- * Scale a daily series to bar heights.
- *
- * Two decisions that are not obvious:
- *
- * **The tallest bar is 100, never less.** A series of `[3, 3, 3]` scaled by its own maximum
- * would draw three full-height bars, which reads as "a strong week" when it is three
- * signups. Scaling by the maximum says nothing about whether three is a lot.
- *
- * **A zero series is all zeros, not all full bars.** With no maximum there is nothing to
- * scale against, and dividing by it would produce `NaN` — which React renders as nothing at
- * all, leaving an empty strip that looks like a loading state.
- *
- * **A single day is full height.** It is the maximum. That is consistent with the first rule
- * and needs no special case beyond the zero guard.
- */
-export function toBars(series: readonly { day: string; count: number }[]): Bar[] {
-  const max = series.reduce((highest, point) => Math.max(highest, point.count), 0);
-  if (max <= 0) {
-    return series.map((point) => ({ ...point, percent: 0 }));
-  }
-  return series.map((point) => ({
-    ...point,
-    percent: Math.round((point.count / max) * 100),
-  }));
-}
-
 /** Total signups across the window. An operator wants the number, not only the shape. */
 export function seriesTotal(series: readonly { day: string; count: number }[]): number {
   return series.reduce((sum, point) => sum + point.count, 0);
@@ -164,18 +137,68 @@ export function orderWindow(
  * prints "sin periodo anterior" rather than a number, because inventing one teaches them
  * something false about their own marketplace.
  */
+/**
+ * The two windows as aligned chart data.
+ *
+ * Extracted from the panel so the alignment rule is testable arithmetic rather than something
+ * only visible by looking at the picture. See `console-metrics.test.ts`.
+ *
+ * ## Aligned by position, not by date
+ *
+ * The previous period's day *n* is drawn against the current period's day *n*, which is what
+ * "the same length of time ending now" means. Keying them by their own dates would place the
+ * two lines at their true calendar positions — a fortnight apart — and the vertical gap
+ * between the lines would then be a date gap rather than the difference the panel claims.
+ *
+ * ## Why the `previous` series is omitted entirely when there is none
+ *
+ * `LineChart` documents that **a missing value counts as zero**. So a partially-available
+ * previous period would be drawn as a collapse to zero — a cliff that did not happen, and the
+ * most alarming-looking shape a chart can have. When there is no previous period to draw, the
+ * series is not included, and the panel says so in words instead.
+ */
+export function buildComparisonSeries(
+  series: readonly { day: string; count: number }[],
+  days: number,
+): { data: LineChartDatum[]; hasPrevious: boolean } {
+  const ordered = [...series].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  const now = ordered.slice(-days);
+  const before = ordered.slice(-days * 2, -days);
+  // Only a *complete* earlier window is worth drawing. A partial one is the young-marketplace
+  // case, and `orderWindow` already reports it as "no previous period".
+  const hasPrevious = before.length === days;
+
+  return {
+    hasPrevious,
+    data: now.map((row, index) => ({
+      key: row.day,
+      label: row.day,
+      values: hasPrevious
+        ? { current: row.count, previous: before[index]?.count ?? 0 }
+        : { current: row.count },
+    })),
+  };
+}
+
 export function ActivityPanel({
   series,
-  accent = "bg-amber-500/70",
 }: {
   series: readonly { day: string; count: number; cancelled: number }[];
-  /** Injected so the same panel can draw volume later; amber is the console's accent. */
-  accent?: string;
 }) {
   const [days, setDays] = useState<7 | 14 | 30>(7);
   const window = orderWindow(series, days);
-  const { current, previous, changePercent, bars } = window;
-  const max = bars.reduce((peak, bar) => Math.max(peak, bar.count), 0);
+  const { current, previous, changePercent } = window;
+
+  /**
+   * The two windows drawn against a shared axis, so the comparison is geometric.
+   *
+   * Aligned **by position, not by date**: the previous period's day *n* is drawn against the
+   * current period's day *n*, which is what "the same length of time ending now" means. Keying
+   * them by their own dates instead would put the two lines at their true calendar positions —
+   * a fortnight apart — and the gap between the lines would then be a real date gap rather
+   * than the difference the panel is claiming.
+   */
+  const { data: comparisonSeries, hasPrevious } = buildComparisonSeries(series, days);
 
   const change =
     changePercent === null
@@ -246,22 +269,33 @@ export function ActivityPanel({
           </p>
         )}
 
-        <div
-          className="mt-3 flex h-16 items-end gap-px"
-          role="img"
-          aria-label={`Pedidos por día durante los últimos ${days} días. ${current.count} en total${
-            previous ? `, frente a ${previous.count} en el periodo anterior` : ""
-          }.`}
-        >
-          {bars.map((bar) => (
-            <div
-              key={bar.day}
-              className={`min-w-0 flex-1 rounded-t-sm ${accent}`}
-              style={{ height: `${max === 0 ? 2 : Math.max((bar.count / max) * 100, 2)}%` }}
-              title={`${bar.day}: ${bar.count}`}
-            />
-          ))}
-        </div>
+        {/*
+          A two-series line rather than bars, because the panel's whole claim is a
+          **comparison** — this window against the one before it — and two overlaid bars per
+          day is twice the ink for the same reading. `previous` is drawn in the quiet neutral
+          step and `current` in the accent, so which one is which is carried by weight as well
+          as hue and does not depend on telling two similar colours apart.
+
+          `LineChart` renders its own accessible description and a data table behind a
+          disclosure, which is strictly more than the old hand-rolled bar grid's single
+          aria-label — see the test beside `orderWindow` that pins the arithmetic both are
+          computed from.
+        */}
+        <LineChart
+          className="mt-3"
+          data={comparisonSeries}
+          series={[
+            { key: "current", label: "Este periodo" },
+            // Only a complete earlier window is worth drawing — a partial one would be
+            // zero-filled by `LineChart`'s "missing counts as zero", which reads as a cliff
+            // that did not happen. `orderWindow` already reports it as "no previous period".
+            ...(hasPrevious
+              ? [{ key: "previous", label: "Periodo anterior", dashed: true } as const]
+              : []),
+          ]}
+          label={`Pedidos por día, últimos ${days} días${hasPrevious ? `, comparados con los ${days} anteriores` : ""}`}
+          height={168}
+        />
 
         {/*
           The cancellation rate is drawn even when it is zero, because "0% cancel" and "we do
@@ -370,7 +404,6 @@ export function SignupsPanel({
 }: {
   series: readonly { day: string; count: number }[];
 }) {
-  const bars = toBars(series);
   const busiest = busiestDay(series);
   const total = seriesTotal(series);
 
@@ -382,24 +415,26 @@ export function SignupsPanel({
       <CardContent>
         <p className="text-sm font-semibold tabular-nums">{total} en total</p>
         {/*
-          The bars are a shape, not a chart: a reader gets "steady", "spiky" or "flat", and the
-          number above is what tells them whether the shape is good. `title` on each bar is
-          the hover detail, because thirty bars is more than fits in a legend.
+          Arc's `BarChart` replaces the hand-rolled div grid. It is not the same drawing: it
+          adds the daily-average line an operator reads the shape against, makes every bar
+          focusable with its value announced, and draws its own accessible description rather
+          than the single `role="img"` aria-label the divs carried. The arithmetic above is still computed by `busiestDay`/`seriesTotal`, which the test
+          beside this file pins — because a chart that renders is not a chart that is right.
         */}
-        <div
-          className="mt-3 flex h-16 items-end gap-px"
-          role="img"
-          aria-label={`Negocios nuevos por día durante ${series.length} días. ${total} en total.`}
-        >
-          {bars.map((bar) => (
-            <div
-              key={bar.day}
-              className="min-w-0 flex-1 rounded-t-sm bg-amber-500/70"
-              style={{ height: `${Math.max(bar.percent, 2)}%` }}
-              title={`${bar.day}: ${bar.count}`}
-            />
-          ))}
-        </div>
+        <BarChart
+          data={series.map((row) => ({
+            key: row.day,
+            label: row.day,
+            axisLabel: row.day.slice(8),
+            value: row.count,
+          }))}
+          // "Últimos 30 días" is the figure the panel already puts in its title, so the chart
+          // says the window out loud rather than leaving it implicit. Arc requires a period
+          // string and a headline, not a bare list of bars.
+          period={`${series.length} días`}
+          label={`Negocios nuevos por día durante ${series.length} días. ${total} en total.`}
+          height={144}
+        />
         <p className="mt-2 text-xs text-muted-foreground">
           {busiest && busiest.count > 0
             ? `El día más activo fue ${busiest.day}, con ${busiest.count}.`

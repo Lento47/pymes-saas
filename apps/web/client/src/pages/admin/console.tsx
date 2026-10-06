@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
+import { Sparkline } from "@/components/arc/sparkline/sparkline";
 import { PageTemplate } from "@/components/layout/page-template";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -432,14 +433,42 @@ function Metrics({
       */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {heroTiles.map((tile) => (
-          <MetricCard
-            key={tile.label}
-            label={tile.label}
-            value={tile.value}
-            suffix={"suffix" in tile ? tile.suffix : undefined}
-            context={tile.context}
-            urgent={"urgent" in tile ? tile.urgent : undefined}
-          />
+          <div key={tile.label} className="space-y-2">
+            <MetricCard
+              label={tile.label}
+              value={tile.value}
+              suffix={"suffix" in tile ? tile.suffix : undefined}
+              context={tile.context}
+              urgent={"urgent" in tile ? tile.urgent : undefined}
+            />
+            {/*
+              The sparkline sits **below** the card rather than inside it.
+
+              Arc's `MetricCard` takes a `change` string, not a chart, and the alternative —
+              wrapping the card and overlaying a plot on top of it — puts a second focusable,
+              scrubbable widget inside a region that is otherwise a static figure. Beside it,
+              each tile is one card and at most one control, and the trend is read after the
+              number rather than instead of it.
+
+              `interactive={false}` on the queue tile specifically: "how many are waiting" is a
+              count, not a time series, and a scrubbable plot over a constant line is a control
+              that does nothing.
+            */}
+            {"spark" in tile && tile.spark ? (
+              <Sparkline
+                data={tile.spark}
+                label={
+                  tile.label === "Órdenes hoy"
+                    ? "Órdenes por día, últimos 14"
+                    : "Cancelaciones por día, últimos 14"
+                }
+                labels={metrics.orderSeries.slice(-14).map((row) => row.day)}
+                width={220}
+                height={40}
+                tone={tile.label === "Tasa de cancelación" ? "warning" : "accent"}
+              />
+            ) : null}
+          </div>
         ))}
       </div>
 

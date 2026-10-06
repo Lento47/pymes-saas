@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { orderWindow, seriesTotal } from "./console-metrics";
+import { buildComparisonSeries, orderWindow, seriesTotal } from "./console-metrics";
 
 /**
  * The order-activity comparison.
@@ -102,6 +102,55 @@ describe("orderWindow", () => {
 		expect(result.previous).toBeNull();
 		expect(Number.isNaN(result.current.cancellationRate)).toBe(false);
 	});
+});
+
+describe("buildComparisonSeries", () => {
+  /**
+   * The comparison chart can be genuinely misleading from a correct-looking panel.
+   *
+   * An operator reads the vertical gap between the two lines as "how much did orders
+   * improve/worsen", and that only works if the two series are aligned the way the panel
+   * claims. Every case below is a reading of the *same* arithmetic that renders wrong.
+   */
+  it("aligns the previous period by position, so the gap is a difference and not a date offset", () => {
+    // 10/day for ten days, then 20/day for ten. If the previous period were placed on its
+    // calendar dates, the two lines would sit a fortnight apart and the "gap" would be two
+    // weeks of calendar, not double the orders.
+    const rising = [
+      ...Array.from({ length: 10 }, (_, i) => day(i + 1, 10)),
+      ...Array.from({ length: 10 }, (_, i) => day(i + 11, 20)),
+    ];
+
+    const { data, hasPrevious } = buildComparisonSeries(rising, 10);
+
+    expect(hasPrevious).toBe(true);
+    expect(data[0]?.values.current).toBe(20);
+    expect(data[0]?.values.previous).toBe(10);
+  });
+
+  it("omits the previous series entirely rather than zero-filling a partial window", () => {
+    // `LineChart` documents that a missing value counts as zero. A marketplace with only two
+    // days of history that renders `previous` zero-filled would draw a cliff down to zero that
+    // did not happen — the most alarming-looking shape a chart can have, and the least true.
+    const young = [day(1, 5), day(2, 7)];
+
+    const result = buildComparisonSeries(young, 7);
+
+    expect(result.hasPrevious).toBe(false);
+    expect(result.data.every((row) => "previous" in row.values === false)).toBe(true);
+  });
+
+  it("still draws the current series when there is no earlier window", () => {
+    // The window is longer than the history, and the current series is still the only honest
+    // thing on screen: a line of two real days, padded to zero nowhere.
+    const only = [day(1, 40)];
+
+    const result = buildComparisonSeries(only, 7);
+
+    expect(result.hasPrevious).toBe(false);
+    expect(result.data.length).toBe(1);
+    expect(result.data[0]?.values.current).toBe(40);
+  });
 });
 
 describe("seriesTotal", () => {
