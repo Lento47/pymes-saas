@@ -53,3 +53,34 @@ if (typeof globalThis.IntersectionObserver === "undefined") {
 
   globalThis.IntersectionObserver = TestIntersectionObserver;
 }
+
+/**
+ * `window.matchMedia`, which jsdom does not implement.
+ *
+ * shadcn's `SidebarProvider` calls it on mount — `useIsMobile()` reads
+ * `(max-width: 768px)` to decide whether to render a rail or a sheet — so **any** test that
+ * renders a sidebar, a navigation drawer, or anything built on that provider throws
+ * `TypeError: window.matchMedia is not a function`.
+ *
+ * Like the observer above, this is a jsdom gap rather than a runtime one, and it belongs here
+ * rather than in whichever test happens to render a responsive component first.
+ *
+ * The stub reports **no match** for everything, which makes `useIsMobile()` answer `false` —
+ * i.e. "desktop". That is the right default for this suite: the desktop layout is the one the
+ * vast majority of these assertions are about, and a stub that reported a phone viewport would
+ * make responsive branches render by default and hide desktop bugs. A test that needs the
+ * mobile branch can override `matchMedia` for itself.
+ */
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}

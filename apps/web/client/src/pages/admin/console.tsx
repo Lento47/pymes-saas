@@ -1,3 +1,4 @@
+import type { UserProfile } from "@pymeshub/shared";
 import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownNarrowWide,
@@ -23,9 +24,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import {
   type AdminAction,
@@ -46,6 +47,7 @@ import {
 import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { ActivityPanel, OperatorPanel, SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
+import { ConsoleShell } from "./console-nav";
 import { TablePager } from "./console-pager";
 import {
   type AdminListSort,
@@ -58,7 +60,7 @@ import {
   type TicketSort,
 } from "./console-sort";
 import { EmptyState, QueryErrorState } from "./console-states";
-import { CONSOLE_TABS, resolveConsoleTab } from "./console-tabs";
+import { resolveConsoleTab } from "./console-tabs";
 import { useAdminPage } from "./use-admin-page";
 
 /**
@@ -265,7 +267,21 @@ function useAdminMetrics() {
  * same idea and left `isPending`/`isError` needing their own `useQuery` call — which is
  * exactly the duplicate this hook exists to remove.
  */
-function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
+function Metrics({
+  query,
+  viewer,
+}: {
+  query: UseQueryResult<AdminMetrics>;
+  /**
+   * The operator, passed in rather than fetched.
+   *
+   * It used to be declared here as well as in the shell — the same key twice in one file,
+   * which React Query deduplicates into one request but leaves as two observers, and which
+   * this file's own comment about the metrics query complains about for exactly that
+   * reason. The shell needs it on every tab; the dashboard needs it once. One owner.
+   */
+  viewer?: UserProfile;
+}) {
   const { data: metrics, isPending, isError, isFetching, error, refetch } = query;
   const [open, setOpen] = useState(false);
 
@@ -278,15 +294,14 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
     a dashboard that is already fetching metrics; the benefit is that "my actions" stays
     available to any other screen that wants it.
   */
-  const viewerQuery = useQuery({ queryKey: ["admin", "viewer"], queryFn: adminApi.viewer });
   const myActionsQuery = useQuery({
-    queryKey: ["admin", "auditLog", "actor", viewerQuery.data?.id],
+    queryKey: ["admin", "auditLog", "actor", viewer?.id],
     // Not run until the id is known: filtering by `actorId: undefined` would ask for the
     // **whole** audit log — every operator's actions on the platform — and then render the
     // first five of them under the heading "Tu actividad".
-    enabled: !!viewerQuery.data?.id,
+    enabled: !!viewer?.id,
     queryFn: () =>
-      adminApi.auditLog({ actorId: viewerQuery.data?.id, limit: 5, sort: "newest", direction: "desc" }),
+      adminApi.auditLog({ actorId: viewer?.id, limit: 5, sort: "newest", direction: "desc" }),
   });
 
   if (isPending) return <Skeleton className="h-9 w-full" />;
@@ -403,9 +418,9 @@ function Metrics({ query }: { query: UseQueryResult<AdminMetrics> }) {
           <SignupsPanel series={metrics.signupsSeries} />
           <VolumePanel volumes={metrics.volumeByCurrency} format={money} />
           <OperatorPanel
-            viewer={viewerQuery.data}
+            viewer={viewer}
             entries={myActionsQuery.data?.rows ?? []}
-            isLoading={viewerQuery.isPending || myActionsQuery.isPending}
+            isLoading={myActionsQuery.isPending}
           />
         </div>
 
@@ -3061,6 +3076,18 @@ export default function AdminConsolePage() {
 function AdminConsole() {
   const { tab: routeTab } = useParams<{ tab?: string }>();
   const [, navigate] = useLocation();
+  const { logout } = useAuth();
+  /*
+    The operator's own identity, for the shell's account menu.
+
+    The console had **no** sign-out and no account chrome at all — it is a bare route outside
+    `AppSidebar`, so an operator had to navigate back through the merchant app to end a
+    session. This is the one that fixes it, and it doubles as the thing the account menu
+    displays. Declared here and **passed down** to `Metrics` rather than fetched in both
+    places, which is the same "declared twice under one key" shape the metrics query below
+    used to have.
+  */
+  const viewerQuery = useQuery({ queryKey: ["admin", "viewer"], queryFn: adminApi.viewer });
 
   // One metrics query, read by the tiles only. It used to be declared twice under the same
   // key - once here, once in `Metrics` - which React Query deduplicates into a single request
@@ -3132,56 +3159,44 @@ function AdminConsole() {
   }
 
   /*
-   * One `Tabs` root wrapping the whole page, not one around the strip and another around
-   * the panels.
+   * The shell owns `PageTemplate`; this function owns only which panel is in it.
    *
-   * They have to be the same root: Radix wires each trigger's `aria-controls` to a panel
-   * inside *its own* context, so a strip in one root and panels in another leaves every
-   * trigger announcing a panel that does not exist. `Tabs.Root` renders no DOM node of its
-   * own — it is context only — so wrapping `PageTemplate` costs nothing structurally, and
-   * it is what lets the strip sit in the sticky header while the panels sit in the body.
-   * That split is the reason `PageTemplate` grew a `headerExtra` slot.
+   * This used to be a Radix `<Tabs>` root with the triggers in `headerExtra` and the panels
+   * below, which meant two owners of "which destination is selected" — the route and Radix —
+   * and the strip was the thing being replaced. Radix is gone; the sidebar is a set of links
+   * and the route is the only thing that decides.
+   *
+   * `PageTemplate` grew a `headerSlot` for the account menu and the mobile trigger, rather
+   * than this wrapping it in a second sticky header. Two bars of chrome above the content is
+   * the flatness this change exists to remove.
    */
   return (
-    <Tabs value={tab} onValueChange={(next) => navigate(`/admin/console/${next}`)}>
-      <PageTemplate
-        title="Consola de plataforma"
-        description="Todo lo que hay aquí queda registrado con tu nombre."
-        headerExtra={
-          /*
-            Horizontally scrollable rather than wrapped or clipped. Ten labels do not fit a
-            768px viewport, and the three ways to deal with that are each worse than a
-            scroll: wrapping puts the second row's tabs at an unpredictable distance from the
-            first, clipping hides tabs with no affordance that more exist, and a "Más" menu
-            moves the tabs an operator uses daily one tap further away. A scrollbar keeps
-            every tab one click away and keeps Radix's roving arrow-key focus intact, which
-            a hand-built dropdown menu would not.
-          */
-          <TabsList className="w-full justify-start overflow-x-auto">
-            {CONSOLE_TABS.map((entry) => {
-              const badge =
-                entry.value === "approvals"
-                  ? approvalBadge
-                  : entry.value === "couriers"
-                    ? pendingCouriers
-                    : 0;
-              return (
-                <TabsTrigger key={entry.value} value={entry.value} className="shrink-0">
-                  {entry.label}
-                  {badge > 0 ? (
-                    <Badge className="ml-2 bg-amber-500 text-black">{badge}</Badge>
-                  ) : null}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        }
-      >
-        <div className="space-y-5">
-          <Metrics query={metricsQuery} />
+    <ConsoleShell
+      title="Consola de plataforma"
+      description="Todo lo que hay aquí queda registrado con tu nombre."
+      activeTab={tab}
+      pending={approvalBadge}
+      operatorName={viewerQuery.data?.name ?? "—"}
+      operatorEmail={viewerQuery.data?.email ?? ""}
+      onSignOut={() => void logout()}
+    >
+      <div className="space-y-5">
+        {/*
+          The metrics used to render above every panel, so twelve KPI tiles sat on top of the
+          coupon form, the category editor and the audit log alike. They are now the Overview
+          and nowhere else — which is what makes Overview worth having, and it is the single
+          biggest change in how this console reads: the numbers describe the platform, so
+          they belong on the page about the platform rather than above a page about something
+          else.
+        */}
+        <Panel when={tab === "overview"}>
+          <Metrics query={metricsQuery} viewer={viewerQuery.data} />
+        </Panel>
 
-          <TabsContent value="approvals" className="mt-0">
-            <div className="space-y-4">
+        {tab === "overview" ? null : (
+          <>
+            <Panel when={tab === "approvals"}>
+              <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -3218,87 +3233,87 @@ function AdminConsole() {
                 </Card>
               ) : null}
             </div>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="couriers" className="mt-0">
+          <Panel when={tab === "couriers"}>
             <Card>
               <CardContent className="pt-6">
                 <CouriersTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="businesses" className="mt-0">
+          <Panel when={tab === "businesses"}>
             <Card>
               <CardContent className="pt-6">
                 <BusinessTab onlyPending={false} />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="users" className="mt-0">
+          <Panel when={tab === "users"}>
             <Card>
               <CardContent className="pt-6">
                 <UsersTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="orders" className="mt-0">
+          <Panel when={tab === "orders"}>
             <Card>
               <CardContent className="pt-6">
                 <OrdersTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="billing" className="mt-0">
+          <Panel when={tab === "billing"}>
             <Card>
               <CardContent className="pt-6">
                 <BillingTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="prices" className="mt-0">
+          <Panel when={tab === "prices"}>
             <Card>
               <CardContent className="pt-6">
                 <PriceBooksTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="categories" className="mt-0">
+          <Panel when={tab === "categories"}>
             <Card>
               <CardContent className="pt-6">
                 <CategoriesTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="support" className="mt-0">
+          <Panel when={tab === "support"}>
             <Card>
               <CardContent className="pt-6">
                 <SupportTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="catalogue" className="mt-0">
+          <Panel when={tab === "catalogue"}>
             <Card>
               <CardContent className="pt-6">
                 <CatalogueTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
-          <TabsContent value="audit" className="mt-0">
+          <Panel when={tab === "audit"}>
             <Card>
               <CardContent className="pt-6">
                 <AuditTab />
               </CardContent>
             </Card>
-          </TabsContent>
+          </Panel>
 
           {metrics && metrics.orders.cancelledRate > 0.2 ? (
             <p className="flex items-center gap-2 text-xs text-amber-600">
@@ -3306,10 +3321,29 @@ function AdminConsole() {
               La tasa de cancelación está por encima del 20%. Vale la pena mirarla en Auditoría.
             </p>
           ) : null}
-        </div>
-      </PageTemplate>
-    </Tabs>
+          </>
+        )}
+      </div>
+    </ConsoleShell>
   );
+}
+
+/**
+ * One destination's content, shown only when the route names it.
+ *
+ * ## What replaced this
+ *
+ * These were Radix `<TabsContent value="…">` elements inside one `<Tabs>` root, with the
+ * triggers in a horizontal strip. The strip is now a sidebar, and Radix would have been kept
+ * alive as a second owner of "which destination is selected" — which is precisely the drift
+ * the tab registry exists to prevent, in a place a test does not reach.
+ *
+ * A three-line component rather than eleven `{cond ? <div>…</div> : null}` blocks, because the
+ * conditional form has to be retyped correctly eleven times and this cannot be typed wrong.
+ */
+function Panel({ when, children }: { when: boolean; children: React.ReactNode }) {
+  if (!when) return null;
+  return <div className="mt-0">{children}</div>;
 }
 
 export { BUSINESS_STATUSES };

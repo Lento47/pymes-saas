@@ -1,7 +1,7 @@
+import { ArrowRight, Plus } from "lucide-react";
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Plus, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 interface PageTemplateProps {
   title: string;
@@ -18,6 +18,15 @@ interface PageTemplateProps {
    * the description disappears.
    */
   headerExtra?: ReactNode;
+  /**
+   * Rendered at the right end of the title row, before `actions`.
+   *
+   * For chrome that belongs to the *shell* rather than the page — an account menu, a sidebar
+   * trigger, a status badge. It is a slot rather than something callers wrap themselves
+   * because the alternative is a second sticky bar above this one, and two headers is the
+   * layout complaint this component exists to prevent.
+   */
+  headerSlot?: ReactNode;
   actions?: Array<{
     label: string;
     href?: string;
@@ -32,6 +41,7 @@ export function PageTemplate({
   description,
   children,
   headerExtra,
+  headerSlot,
   actions,
 }: PageTemplateProps) {
   return (
@@ -45,6 +55,19 @@ export function PageTemplate({
                 <p className="mt-1 truncate text-xs text-muted-foreground">{description}</p>
               )}
             </div>
+
+            {/*
+              `headerSlot` sits to the LEFT of `actions` and is the one escape hatch in this
+              row, added for the admin console's shell: an account menu and a mobile
+              navigation trigger are neither a page action nor a button with a label, and
+              before this the only ways to place them were `headerExtra` (which renders on the
+              row *below* the title, so the avatar ended up under the page name) or wrapping
+              the template in a second header bar (two stacked bars of chrome above the
+              content — the exact flatness this slot exists to avoid).
+
+              Optional and additive: every existing caller is unaffected.
+            */}
+            {headerSlot}
 
             {actions && actions.length > 0 && (
               <div className="flex items-center gap-2 flex-shrink-0">

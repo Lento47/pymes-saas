@@ -23,31 +23,91 @@
  */
 
 /**
- * The console's ten tabs, in the order an operator meets them.
+ * The console's sections, in the order an operator meets them.
  *
- * `CONSOLE_TABS` is the single list: the strip is generated from it and the route validates
- * against it, so a renamed tab is one edit rather than three that have to agree.
+ * ## Why grouping is data and not markup
+ *
+ * The sidebar draws five labelled groups, and the obvious implementation is five hardcoded
+ * blocks in the nav component. That makes `CONSOLE_TABS` decorative — a list of routes with
+ * no opinion about where they sit — and the two drift the moment somebody adds a tab, which is
+ * exactly the "two lists have to agree" problem `console-tabs.test.ts` was written to kill.
+ *
+ * So the group is a **field on the tab**, and the nav groups by it. One list, one truth, and
+ * adding a section means adding one row here.
+ *
+ * The groups are not decoration either. Eleven equal-weight items across a horizontal strip
+ * gave every destination the same visual weight as every other, which is the "reads like a
+ * prototype" symptom: nothing says what matters. Grouping says it structurally — *Operaciones*
+ * is what you do, *Directorio* is what you look up, *Sistema* is what you check afterwards.
+ */
+export const CONSOLE_GROUPS = [
+  { value: "general", label: "General" },
+  { value: "operations", label: "Operaciones" },
+  { value: "directory", label: "Directorio" },
+  { value: "commerce", label: "Comercio" },
+  { value: "system", label: "Sistema" },
+] as const;
+
+export type ConsoleGroup = (typeof CONSOLE_GROUPS)[number]["value"];
+
+/**
+ * The console's twelve tabs, grouped.
+ *
+ * `CONSOLE_TABS` is the single list: the sidebar is generated from it, the route validates
+ * against it, and the tab test compares it to the rendered panels. So a renamed or moved tab
+ * is one edit rather than four that have to agree.
  *
  * `label` is Spanish because the console has always been Spanish, and an operator switching
  * to English mid-task is not the problem this file has.
+ *
+ * **`overview` is a nav destination, not the default.** `defaultTab` still opens on the queue
+ * when there is one, which is a decision this file already argues for and a test already
+ * pins. Adding a summary page is not a reason to overrule it — an operator who opens the
+ * console with two shops waiting is looking for the shops waiting, and making them click
+ * "Overview" first to find out is a worse product.
  */
 export const CONSOLE_TABS = [
-  { value: "approvals", label: "Aprobaciones" },
-  { value: "couriers", label: "Repartidores" },
-  { value: "businesses", label: "Negocios" },
-  { value: "users", label: "Personas" },
-  { value: "orders", label: "Órdenes" },
-  { value: "billing", label: "Cobros" },
-  { value: "support", label: "Soporte" },
-  { value: "catalogue", label: "Catálogo" },
-  { value: "prices", label: "Planes" },
-  { value: "categories", label: "Categorías" },
-  { value: "audit", label: "Auditoría" },
+  { value: "overview", label: "Resumen", group: "general" },
+  { value: "approvals", label: "Aprobaciones", group: "operations" },
+  { value: "orders", label: "Órdenes", group: "operations" },
+  { value: "billing", label: "Cobros", group: "operations" },
+  { value: "support", label: "Soporte", group: "operations" },
+  { value: "businesses", label: "Negocios", group: "directory" },
+  { value: "couriers", label: "Repartidores", group: "directory" },
+  { value: "users", label: "Personas", group: "directory" },
+  { value: "catalogue", label: "Catálogo", group: "commerce" },
+  { value: "prices", label: "Planes", group: "commerce" },
+  { value: "categories", label: "Categorías", group: "commerce" },
+  { value: "audit", label: "Auditoría", group: "system" },
 ] as const;
 
 export type ConsoleTab = (typeof CONSOLE_TABS)[number]["value"];
 
 const TAB_VALUES: readonly string[] = CONSOLE_TABS.map((tab) => tab.value);
+const GROUP_VALUES: readonly string[] = CONSOLE_GROUPS.map((group) => group.value);
+
+/**
+ * The tabs in one group, in list order.
+ *
+ * Derived rather than declared, so a tab cannot be added to `CONSOLE_TABS` with a group the
+ * sidebar does not draw and vanish from the navigation — which is the failure a sidebar has
+ * that a horizontal strip does not, because the strip rendered every entry unconditionally.
+ */
+export function tabsInGroup(group: ConsoleGroup): readonly ConsoleTab[] {
+  return CONSOLE_TABS.filter((tab) => tab.group === group).map((tab) => tab.value);
+}
+
+/**
+ * Whether every tab names a group the sidebar actually draws.
+ *
+ * Without this a typo in `group` typechecks fine — the field is inferred from the same
+ * `CONSOLE_GROUPS` union — and the tab is simply missing from the nav with nothing to say so.
+ */
+export function groupsAreComplete(): string[] {
+  return CONSOLE_TABS.filter((tab) => !GROUP_VALUES.includes(tab.group)).map(
+    (tab) => tab.value,
+  );
+}
 
 /**
  * Whether a `:tab` from the URL names a real tab.

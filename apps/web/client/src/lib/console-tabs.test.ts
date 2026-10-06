@@ -36,7 +36,19 @@ const consoleSource = readFileSync(CONSOLE_PATH, "utf-8");
 const appSource = readFileSync(APP_PATH, "utf-8");
 
 const tabValues = CONSOLE_TABS.map((tab) => tab.value);
-const panels = [...consoleSource.matchAll(/<TabsContent value="([^"]+)"/g)]
+/**
+ * The rendered panels, read out of the page.
+ *
+ * **The pattern changed when the tab strip became a sidebar.** These were
+ * `<TabsContent value="…">` elements; they are now `<Panel when={tab === "…"}>`, because Radix
+ * `Tabs` would have had to stay alive purely to own "which destination is selected" — a second
+ * source of truth for something the sidebar already owns, and one no test reaches.
+ *
+ * The three assertions that use this list are unchanged, and they are the point of the file: a
+ * tab with no panel, and a panel no tab names, are both invisible in review and both fatal in
+ * use. Only the syntax they are extracted from moved.
+ */
+const panels = [...consoleSource.matchAll(/<Panel when=\{tab === "([^"]+)"\}/g)]
   .map((match) => match[1])
   .filter((value): value is string => value !== undefined);
 
