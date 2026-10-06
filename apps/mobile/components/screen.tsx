@@ -15,6 +15,7 @@ import { usePurchaseAccent } from "@/lib/purchase-accent";
 import { purchaseBand, statusBarStyleForInk } from "@/lib/purchase-colors";
 import type { PurchaseStage } from "@/lib/purchase-state";
 import { space, TEXT_STACK_GAP, useTheme } from "@/theme";
+import { useTweenedBandColor } from "@/theme/band-transition";
 
 import { HomeGradient } from "./home-gradient";
 import { useRefreshControl } from "./pull-refresh";
@@ -143,12 +144,21 @@ export function Screen({
 	const activeStage =
 		purchaseStage === undefined ? inheritedStage : purchaseStage;
 	const band = activeStage ? purchaseBand(activeStage, colors, scheme) : null;
+	/**
+	 * The band's colour, mid-travel when the stage changes.
+	 *
+	 * `purchaseBand` above substitutes one token for another in a single render when
+	 * `activeStage` moves, and `<LinearGradient>` swaps colours rather than animating
+	 * them — so without this the band cuts where the palette glides. `theme/transition.tsx`
+	 * only animates `colors`, and knows nothing about a stage. See `theme/band-transition.ts`.
+	 */
+	const bandColor = useTweenedBandColor(band?.color);
 	const ambientBackground = activeStage ? (
 		<HomeGradient
 			scheme={scheme}
 			color={colors.primary}
 			stage={activeStage}
-			bandColor={band?.color}
+			bandColor={bandColor}
 			backgroundColor={colors.background}
 			fluidMotion={fluidMotion}
 			compact={pathname !== "/"}

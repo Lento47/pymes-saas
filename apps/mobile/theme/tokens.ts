@@ -1044,6 +1044,81 @@ const businessThemes: Record<
 			shimmer: "#49484A",
 		},
 	},
+	/**
+	 * `vine` — Family C, and the brand's own indigo.
+	 *
+	 * Built from the supplied palette **by the roles it assigns**, not by picking the nearest
+	 * hex that clears contrast. Every swatch in the reference carries a usage line and the dark
+	 * panel is an explicit token table; both are honoured here.
+	 * `scripts/map-brand-palette.ts` holds the mapping and all twenty measured ratios.
+	 *
+	 * The three that decide the family: `#4166F5` fills both schemes, `#243B9B` is the light
+	 * `action` ink, and `#8D72FF` is the light accent as a 12% tint.
+	 *
+	 * **`#4166F5` is the dark fill too.** An earlier draft of this docblock said it could not
+	 * be, on the grounds that it is 4.08:1 against `#090E1A` — which is the wrong pair. That
+	 * compares a fill to the *page behind it*; what governs a filled button is
+	 * `primaryForeground` on `primary`, and white on `#4166F5` is **4.73:1**. A fill against
+	 * its surround only needs 3:1, which 4.08 clears. The reference's own dark panel lists it
+	 * under "Brand".
+	 *
+	 * **`primaryForeground` is pure white, not ice white.** 4.73:1 against `#FFFFFF` and
+	 * 4.49:1 against `#F7F9FF`; ice white misses AA on the fill by 0.01 of a ratio.
+	 *
+	 * **`#9CA8C7 Steel Mist` is used on dark only.** The file names it "Secondary text,
+	 * metadata, disabled states" and it clears 6.17:1 on the dark tint — but it is **2.05:1**
+	 * on the light cloud tint. Light `mutedForeground` is therefore a solved `#676C7D`
+	 * (4.51:1): solving is the right technique for a colour that works in one scheme and fails
+	 * in the other, and the wrong one for a colour nobody had specified.
+	 *
+	 * Body text clears AAA in both schemes — 16.08:1 light, 18.31:1 dark.
+	 *
+	 * **Not placed here.** `#58E6C5 Signal Mint` is "positive activity, delivery/live signals",
+	 * and the four semantic accents — `#36D399`, `#FFBF5B`, `#FF7A68`, `#FF5D73` — have no slot
+	 * among the eighteen. All five are `base` material; see the docblock there.
+	 */
+	vine: {
+		light: {
+			background: "#F7F9FF",
+			foreground: "#171C2D",
+			card: "#FFFFFF",
+			cardForeground: "#171C2D",
+			popover: "#FFFFFF",
+			popoverForeground: "#171C2D",
+			primary: "#4166F5",
+			primaryForeground: "#FFFFFF",
+			secondary: "#E9EEFF",
+			secondaryForeground: "#171C2D",
+			muted: "#E9EEFF",
+			mutedForeground: "#676C7D",
+			accent: "#EAE9FF",
+			accentForeground: "#171C2D",
+			action: "#243B9B",
+			border: "#171C2D14",
+			ring: "#4166F5",
+			shimmer: "#84899A",
+		},
+		dark: {
+			background: "#090E1A",
+			foreground: "#F7F9FF",
+			card: "#10182B",
+			cardForeground: "#F7F9FF",
+			popover: "#15203F",
+			popoverForeground: "#F7F9FF",
+			primary: "#4166F5",
+			primaryForeground: "#FFFFFF",
+			secondary: "#19264F",
+			secondaryForeground: "#F7F9FF",
+			muted: "#19264F",
+			mutedForeground: "#9CA8C7",
+			accent: "#243B9B",
+			accentForeground: "#F7F9FF",
+			action: "#5AD7FF",
+			border: "#2A2F3A",
+			ring: "#5B7CFF",
+			shimmer: "#4C505A",
+		},
+	},
 };
 
 /**

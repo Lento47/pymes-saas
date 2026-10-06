@@ -33,6 +33,10 @@ export const BUSINESS_THEME_IDS = [
 	"berry",
 	"dune",
 	"harbor",
+	// Family C, and the brand's own indigo. Last in its family on purpose: `vine` fills
+	// with a deep indigo that takes **white** ink, which is the thing that separates a
+	// Quartet from a Duo, and it was added after the other three rather than beside them.
+	"vine",
 ] as const;
 
 export type BusinessThemeId = (typeof BUSINESS_THEME_IDS)[number];

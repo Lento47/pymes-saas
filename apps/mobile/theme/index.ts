@@ -1,10 +1,6 @@
-import { useBusinessTheme } from "./business-theme";
 import { useThemeMode } from "./mode";
-import {
-	businessThemeColors,
-	type ColorScheme,
-	type ThemeColors,
-} from "./tokens";
+import type { ColorScheme, ThemeColors } from "./tokens";
+import { useThemeColors } from "./transition";
 
 export * from "./business-theme";
 export * from "./business-theme-ids";
@@ -14,6 +10,7 @@ export * from "./mode";
 export * from "./scope";
 export * from "./select";
 export * from "./tokens";
+export * from "./transition";
 
 /**
  * The active palette.
@@ -81,8 +78,17 @@ export function useTheme(): { colors: ThemeColors; scheme: ColorScheme } {
 	// `palette` survives as an export because `components/hero.tsx` reads `palette.dark.*`
 	// and `palette.light.*` for a photograph scrim, which is deliberately theme-independent:
 	// the dim behind a photo is the same dim whatever the app is wearing.
-	const theme = useBusinessTheme();
-	return { colors: businessThemeColors(theme.id, scheme), scheme };
+	//
+	// **The colours now come from `<ThemeTransitionProvider>` rather than being composed here.**
+	// That is the whole colour transition: sixty components read this function and roughly 310
+	// separate reads of `colors.*` reach a style, so interpolating at the composition point makes
+	// every one of them glide with no call site edited. See `./transition.tsx` for why it is a
+	// `requestAnimationFrame` loop rather than Reanimated, and what it costs the caller.
+	//
+	// `scheme` is still read from `useThemeMode()` rather than taken from the transition: the
+	// scheme flips under a theme change only when the OS setting changes, and that is a different
+	// event with a different answer.
+	return { colors: useThemeColors(), scheme };
 }
 
 /*

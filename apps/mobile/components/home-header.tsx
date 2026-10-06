@@ -125,14 +125,21 @@ export function HomeHeader({
 	/**
 	 * The ink for **every** mark drawn on the lime band, and `undefined` off it.
 	 *
-	 * Named for the band rather than for the meta line because the band is what decides it,
-	 * and `./home-gradient` now draws lime at the top of the *dark* theme too — so dark needs
-	 * the same answer light has had since it existed: `primaryForeground`, `#111111`, which
-	 * measures **12.88:1** on the darkest colour any mark here sits on. It was
-	 * `foreground` (`#F5F5F3`) before, which is white on lime at **1.08:1**.
+	 * **Read from `purchaseBand`, not decided here.** It used to be `scheme === "dark" ?
+	 * primaryForeground : secondaryForeground`, which was safe only while the band opened on the
+	 * theme's primary verbatim — a light scheme's primary is lighter than its page, so light ink
+	 * never looked like the wrong answer.
 	 *
-	 * **The light branch is untouched**, down to the token: light keeps `secondaryForeground`,
-	 * and the light ramp in `./home-gradient` keeps every one of its own numbers.
+	 * `bandAnchor` breaks that on purpose. It deepens a light primary until the band clears 4.5:1
+	 * against the page, which puts lime's light band at `#638000` — mid-dark — and
+	 * `secondaryForeground` (`#2e2722`) on it measures **1.7:1**. So the old light branch is not
+	 * merely suboptimal here, it is unreadable. `purchaseBand("browsing")` returns the anchored
+	 * colour and an ink measured against it, which for light lime is now the page colour at
+	 * **4.55:1**.
+	 *
+	 * This is the same source the journey stages already read through `journeyInk`, so the
+	 * greeting and the pin cannot end up with a different answer from the status bar, which asks
+	 * `purchaseBand` too.
 	 *
 	 * Five marks read this, and the avatar deliberately does not — `./image` paints
 	 * `colors.muted`, so the initials sit on their own disc and never see the ramp. The list:
@@ -140,9 +147,7 @@ export function HomeHeader({
 	 * pin beside them.
 	 */
 	const bandInk = onLimeGradient
-		? scheme === "dark"
-			? colors.primaryForeground
-			: colors.secondaryForeground
+		? purchaseBand("browsing", colors, scheme)?.ink
 		: undefined;
 	const activeInk = journeyInk ?? bandInk;
 
@@ -152,8 +157,7 @@ export function HomeHeader({
 	 * **These two must not use `bandInk`.** The greeting and the pin can, because each is a
 	 * single element whose light value is already dark. These two carry a `tone` that light
 	 * resolves to `#111111` — `default` and `action` both do in `lime.light` — and pointing them
-	 * at `bandInk` would repaint them `#2e2722` on the light theme. Both are readable there
-	 * today, so that would be a light-theme edit wearing a tidy-up's clothes.
+	 * at `bandInk` would repaint them with the band ink rather than their own tone's.
 	 *
 	 * Dark-only by construction: in light this is `undefined`, no style is attached at all, and
 	 * the element is byte-identical to what it was.

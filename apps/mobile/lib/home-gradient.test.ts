@@ -12,6 +12,10 @@ const fluid = readFileSync(
 	"utf8",
 );
 const screen = readFileSync(join(root, "components", "screen.tsx"), "utf8");
+const purchaseColors = readFileSync(
+	join(root, "lib", "purchase-colors.ts"),
+	"utf8",
+);
 const home = readFileSync(join(root, "app", "(customer)", "index.tsx"), "utf8");
 const header = readFileSync(
 	join(root, "components", "home-header.tsx"),
@@ -76,17 +80,31 @@ describe("home gradient", () => {
 });
 
 describe("header ink on the lime band", () => {
-	test("dark takes the theme's own dark ink; light keeps `secondaryForeground`", () => {
+	test("the ink is read from `purchaseBand`, so the header cannot disagree with the band", () => {
+		// This was `scheme === "dark" ? primaryForeground : secondaryForeground`, which was safe
+		// only while the band opened on the theme's primary verbatim. `bandAnchor` deepens that
+		// until the band clears 4.5:1 against the page, so light lime's band is `#638000` and
+		// `secondaryForeground` on it measures **1.7:1** — unreadable, not merely suboptimal.
+		//
+		// Both the journey stages and the browsing band now come from one source, which is also
+		// what `screen.tsx`'s status bar reads, so the greeting, the pin and the status bar cannot
+		// end up with three different answers about the same surface.
 		expect(header).toContain('colors.primary.toLowerCase() === "#c8ff18"');
 		expect(header).toMatch(
-			/const bandInk = onLimeGradient\s+\? scheme === "dark"\s+\? colors\.primaryForeground\s+: colors\.secondaryForeground\s+: undefined;/,
+			/const bandInk = onLimeGradient\s+\? purchaseBand\("browsing", colors, scheme\)\?\.ink\s+: undefined;/,
+		);
+		expect(header).toContain("? purchaseBand(stage, colors, scheme)?.ink");
+		// The scheme-keyed branch is gone, and nothing may reintroduce it.
+		expect(header).not.toMatch(
+			/const bandInk = onLimeGradient\s*\?\s*scheme ===/,
 		);
 	});
 
 	test("the two nested tones take a dark-only ink, so light is untouched", () => {
-		// These cannot read `bandInk`: in light their `tone` already resolves to `#111111`,
-		// and `bandInk` would repaint them `#2e2722`. `limeDarkInk` is `undefined` in light,
-		// so no style is attached and the element is byte-identical to what it was.
+		// These cannot read `bandInk`: they carry a `tone` that light resolves to `#111111`, so
+		// `bandInk` would repaint them with the band's ink instead of their own. `limeDarkInk` is
+		// `undefined` in light, so no style is attached and the element is byte-identical to what
+		// it was.
 		expect(header).toContain("limeDarkInk");
 		expect(header).toMatch(
 			/const limeDarkInk =\s+onLimeGradient && scheme === "dark"/,
@@ -124,42 +142,191 @@ describe("the feed's status bar", () => {
 		expect(home).not.toContain("<StatusBar");
 	});
 
-	test("journey bands dissolve gradually rather than ending at the title", () => {
-		expect(gradient).toContain("SMOOTH_LOCATIONS = [0, 0.28, 0.66, 1]");
-		expect(gradient).toContain('stage === "basket" ||');
-		expect(gradient).toContain("smoothBand ? withAlpha(journeyBand, 0.72)");
-		expect(gradient).toContain("smoothBand ? 0.18");
+	/**
+	 * Every journey band shares one composition: the ten stops of the supplied gradient study.
+	 *
+	 * The shape is shared and the channel is not. On `delivery` the study's weights drive
+	 * **lightness**, through `mixOklab` in `./top-fluid-gradient`, and the band ends on the page
+	 * background. On the other journey stages the same weights drive **alpha**, and the band
+	 * dissolves to nothing. Both map the same numbers onto the same positions, which is what
+	 * makes the shapes match while the endpoints differ — `1` is the band's full colour and `0`
+	 * is the page showing through either way.
+	 *
+	 * Asserted against the constants rather than the derived `colors`, because `colors` is
+	 * assembled inline and a test that pins its formatting says nothing about the values.
+	 */
+	test("journey bands share the study's composition, driving alpha", () => {
+		expect(gradient).toContain("RAMP_WEIGHTS.map((weight) =>");
+		expect(gradient).toContain("withAlpha(journeyBand, weight)");
+		expect(gradient).toContain("locations={locations}");
+
+		// A journey band takes the study's positions; browsing keeps its own, because the lime
+		// ramps are hand-authored four-stop palettes whose geometry is load-bearing.
+		expect(gradient).toContain("const locations = journeyBand");
+		expect(gradient).toContain("? RAMP_LOCATIONS");
+
+		// Every non-browsing stage gets a band, not just the ones that used to be "smooth".
+		for (const stage of [
+			"browsing",
+			"basket",
+			"inCart",
+			"checkout",
+			"confirmed",
+			"paid",
+			"delivery",
+		]) {
+			expect(purchaseColors).toContain(`case "${stage}":`);
+		}
+
+		// The old per-stage alpha branches are gone; one expression serves them all.
+		expect(gradient).not.toContain("smoothBand ? withAlpha");
+		expect(gradient).not.toContain("smoothBand ? 0.18");
+		expect(gradient).not.toContain("compact ? 0.05");
 	});
 
-	test("delivery is top-attached fluid, not a repeating wave", () => {
+	/**
+	 * The delivery band is **the gradient study's ramp, breathing.**
+	 *
+	 * Three tests used to live here, describing a travelling Gaussian packet, a cubic spline
+	 * through twelve control points, fifteen oscillators, a stroke and a horizon rule. All of
+	 * that was removed rather than tuned further, so all three went with it.
+	 *
+	 * Two ramps are now stacked, not one: \`RAMP_WEIGHTS\` at rest and \`BREATH_WEIGHTS\` at the
+	 * top of an inhale, cross-faded. What animates is the ramp's **falloff shape** - the colour
+	 * lets go at 62% of the height at rest and at 100% at the top of the breath - rather than the
+	 * band's brightness, which is what a single animated gradient would have done.
+	 *
+	 * The docblock in \`top-fluid-gradient.tsx\` carries the record of everything tried and
+	 * measured against this: a grain tile, flat posterised bands, a 1D ordered dither in SVG,
+	 * and a 2D Bayer dither in a GL shader. Each was rejected on a device measurement. The
+	 * shader did work - 2x2 px against the gradient's 10 px - and was removed anyway, because a
+	 * native dependency and a GPU surface on the home screen is a price no header band earns.
+	 *
+	 * So the load-bearing claims are: the band is reached on \`delivery\` and top-attached; both
+	 * ramps are built by \`lib/color.ts\`'s Oklab mix; and the motion is gated on \`motion\`.
+	 *
+	 * The negative assertions are the point of the second half. They stop the shader, the
+	 * posterised bands and the dither *asset* being reintroduced quietly. A tiled \`Image\` cannot
+	 * dither here, because magnification fixes the pattern's scale: a tile stretched across the
+	 * band turns a 4x4 Bayer matrix into 135 px blocks.
+	 */
+	test("the delivery band is the study's ramp, breathing", () => {
+		// Reached on delivery, and attached to the top of the screen.
 		expect(gradient).toContain('stage === "delivery" && journeyBand');
 		expect(gradient).toContain("<TopFluidGradient");
 		expect(gradient).toContain("Math.min(height * 0.38, 380)");
+
+		// Two gradients at the study's positions, stacked, filling the band edge to edge.
 		expect(fluid).toContain("<LinearGradient");
-		expect(fluid).toContain("<SvgLinearGradient");
-		expect(fluid).toContain("stopOpacity={0.16}");
-		expect(fluid).not.toContain("strokeLinejoin");
-		expect(fluid).toContain("<AnimatedPath");
-		expect(fluid).toContain("useAnimatedProps<PathProps>");
-		expect(fluid).toContain('viewBox="0 0 1000 380"');
-		expect(fluid).toContain("L 1110 -24 Z");
-		expect(fluid).not.toContain("Animated.Image");
-		expect(fluid).not.toContain("delivery-wave");
+		expect(fluid).toContain("locations={RAMP_LOCATIONS}");
+		expect(fluid).toContain("style={StyleSheet.absoluteFill}");
+		expect(fluid).toContain("{ height }");
+
+		// Rest and inhale, both from the Oklab mix rather than by hand.
+		expect(fluid).toContain("asStops(RAMP_WEIGHTS, color, backgroundColor)");
+		expect(fluid).toContain("asStops(BREATH_WEIGHTS, color, backgroundColor)");
+		expect(fluid).toContain("mixOklab(from, to, weight)");
+
+		// The breath: a repeat, reversed so the turn has no hitch, on the overlay's opacity.
+		// Opacity is the *mechanism*; the ramp's shape is what the reader sees move.
+		expect(fluid).toContain("withRepeat(");
+		expect(fluid).toContain("duration: duration.breathHalf");
+		expect(fluid).toContain("Easing.bezier(");
+		expect(fluid).toContain("EASE_BREATH.x1");
+		expect(fluid).toContain("useSharedValue");
+		// Reversed rather than restarted: a breath that jumped back to empty would set off
+		// with the easing it is leaving with, which reads as a hitch on the turn.
+		expect(fluid).toMatch(/withRepeat\([\s\S]*?\n\t\t\ttrue,/);
+
+		// Gated on \`motion\`, and \`still\`/\`reduced\` mount no animation at all
+		// rather than a faster one - a band that is on screen has to have its shape either way.
+		expect(fluid).toContain('const breathing = motion === "normal"');
+		expect(fluid).toContain("if (!breathing) {");
+		expect(fluid).toContain("breath.value = 0;");
+		expect(fluid).toContain("{breathing ? (");
+		expect(fluid).not.toMatch(/requestAnimationFrame/);
+
+		// \`./home-gradient\` is what supplies \`still\` - the band stops when the route is
+		// not focused, so a backgrounded screen is not animating a surface nobody can see.
+		expect(gradient).toContain('motion={focused ? fluidMotion : "still"}');
+
+		// Nothing that could reintroduce the shader, the posterised bands, the SVG gradient
+		// or the dither asset. Every one was built, measured, and removed.
+		expect(fluid).not.toContain("expo-gl");
+		expect(fluid).not.toContain("GLView");
+		expect(fluid).not.toContain("BAND_COUNT");
+		// Named in the docblock's record of what was removed, so match the require, not the prose.
+		expect(fluid).not.toMatch(/require\(.*dither-grain/);
+		expect(fluid).not.toMatch(/^import .*\bImage\b.*from "react-native"/m);
+		expect(fluid).not.toMatch(/^import .*from "react-native-svg"/m);
+	});
+});
+
+describe("the band has a shape, not only a falloff", () => {
+	test("the forms are drawn, and clipped by the band rather than over it", () => {
+		// Everything the band drew before was one-dimensional. `./home-gradient` pinned its
+		// gradient to a vertical axis and `./top-fluid-gradient` passed no `start`/`end` at all, so
+		// both defaulted to top-to-bottom, and `expo-linear-gradient` has no radial mode — a curve
+		// was not expressible at any alpha or weighting.
+		//
+		// `overflow: "hidden"` on the band is the half that is easy to lose. Without it the circles
+		// escape into the page and the band stops reading as a band.
+		expect(gradient).toContain("<BandGeometry");
+		expect(gradient).toMatch(/band: \{ width: "100%", overflow: "hidden" \}/);
+		// Both render paths get them, so `delivery` is not the one stage with a bare ramp.
+		expect(gradient.match(/\{forms\}/g)).toHaveLength(2);
 	});
 
-	test("five broad regions are neighbor-coupled and stop for reduced motion or hidden screens", () => {
-		expect(fluid.match(/\{ period: [\d_]+, phase:/g)).toHaveLength(5);
-		expect(fluid.match(/useRegionDriver\(REGIONS\[/g)).toHaveLength(5);
-		expect(fluid).toContain('motion === "normal" && !reduceMotion');
-		expect(fluid).toContain("spec.driftPeriod");
-		expect(fluid).toContain("spec.secondaryPeriod");
-		expect(fluid).toContain("previousMotion * 0.25");
-		expect(fluid).toContain("nextMotion * 0.25");
-		expect(fluid).toContain("cancelAnimation(primary)");
-		expect(fluid).toContain("cancelAnimation(secondary)");
-		expect(fluid).toContain("cancelAnimation(drift)");
-		expect(gradient).toContain('focused ? fluidMotion : "still"');
-		expect(fluid).toContain('pointerEvents="none"');
+	test("drawn with plain Views, not SVG — no native surface on the scrolling home screen", () => {
+		// A deliberate departure from the obvious tool. `react-native-svg` is already a dependency,
+		// but a clipped filled disc needs no path, no stroke and no gradient definition, and
+		// `components/merchant-order-hero.tsx` already draws this exact form in this exact shape
+		// language with three `View`s and a `borderRadius`.
+		//
+		// Reusing that keeps the home screen free of an SVG surface, a native view and a GPU
+		// layer — the one genuinely performance-sensitive part of this work, on the screen that
+		// scrolls. `expect(fluid).not.toMatch(/react-native-svg/)` above keeps the delivery ramp
+		// clear of it too; this is the same rule for the file that owns the forms.
+		const geometry = readFileSync(
+			join(root, "components", "band-geometry.tsx"),
+			"utf8",
+		);
+		expect(geometry).not.toMatch(/^import .*from "react-native-svg"/m);
+		expect(geometry).not.toContain("<Svg");
+		expect(geometry).toContain("borderRadius: 9999");
+		expect(geometry).toContain('pointerEvents="none"');
+		// Hung from one anchor by half a diameter each, which is what keeps them concentric when
+		// the band's height changes. Three independent offsets only *look* concentric until then.
+		expect(geometry).toContain("marginLeft: -size / 2");
+		expect(geometry).toContain("marginTop: -size / 2");
+		expect(geometry.match(/marginLeft: -size \/ 2/g)).toHaveLength(1);
+	});
+
+	test("static, and tinted toward the page rather than toward white", () => {
+		// Static: the delivery band's breath already animates the ramp underneath, and two motions
+		// in one surface read as a wobble rather than as design. Nothing here mounts an animation,
+		// so `still` and `reduced` get the same shapes held — which is what those states promise
+		// everywhere else in the band, and needs no special case because there is nothing to gate.
+		const geometry = readFileSync(
+			join(root, "components", "band-geometry.tsx"),
+			"utf8",
+		);
+		expect(geometry).not.toMatch(
+			/withRepeat|withTiming|useSharedValue|Animated/,
+		);
+		expect(geometry).not.toMatch(/requestAnimationFrame/);
+		// Toward the page, not white: white at low alpha is invisible on the dark themes, where the
+		// band top is still a bright lime. Moving toward the page always deviates from the band in
+		// the direction the eye already reads as "not the band", in both schemes and on every hue.
+		expect(geometry).toContain("mixOklab(color, page, 0.22)");
+		expect(geometry).not.toContain('"#ffffff"');
+		expect(geometry).not.toContain('"#FFFFFF"');
+	});
+
+	test("the forms take the anchored colour, so they agree with the ramp", () => {
+		expect(gradient).toContain("const anchor = journeyBand ?? bandAnchor(");
+		expect(gradient).toContain("color={anchor}");
+		expect(gradient).toContain("page={backgroundColor}");
 	});
 });
 

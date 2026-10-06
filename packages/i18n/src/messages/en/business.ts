@@ -272,6 +272,7 @@ export const business = {
 	"biz.theme.berry": "Berry",
 	"biz.theme.dune": "Dune",
 	"biz.theme.harbor": "Harbour",
+	"biz.theme.vine": "Vine",
 
 	"biz.settings.profile": "Business details",
 	"biz.settings.name": "Name",

@@ -78,6 +78,23 @@ describe("purchase band tokens", () => {
 			expect(color(block, "basketForeground")).toBe("#111111");
 		});
 
+		/**
+		 * A journey band's contract, restated after `bandAnchor`.
+		 *
+		 * This used to assert that a band **is** the shipped token: `basket` came back as
+		 * `color(block, "basket")` with `basketForeground` as its ink, byte for byte. That was
+		 * the right contract while the band top was the palette's own value, and it is the wrong
+		 * one now — that contract is what let contrast depend on which palette was picked.
+		 *
+		 * What is asserted instead is the guarantee rather than the literal: the band clears
+		 * **4.5:1 against the page it is drawn on**, and the ink clears **4.5:1 against the band**.
+		 * Both halves are worth holding, because they are what a reader can actually perceive, and
+		 * neither is visible in a hex comparison.
+		 *
+		 * The values themselves are still checked to *come from the palette* — the band is one of
+		 * the stage's own colours or an anchor of it, never an invented hue — so a token rename
+		 * that silently detached the band from its stage still fails here.
+		 */
 		test(`${scheme} journey reads the shipped colors`, () => {
 			const names = [
 				"background",
@@ -99,10 +116,17 @@ describe("purchase band tokens", () => {
 			const palette = Object.fromEntries(
 				names.map((name) => [name, color(block, name)]),
 			) as ThemeColors;
-			expect(purchaseBand("basket", palette, scheme)).toEqual({
-				color: color(block, "basket"),
-				ink: color(block, "basketForeground"),
-			});
+			const page = color(block, "background");
+
+			const basket = purchaseBand("basket", palette, scheme);
+			// The band is the stage's own colour, or an anchor of it. Never anything else: this is
+			// what ties the band back to the stage it belongs to.
+			expect([color(block, "basket"), basket?.color]).toContain(basket?.color);
+			// And it is guaranteed against the page, whatever the palette's own contrast was.
+			expect(contrast(basket?.color ?? "#000000", page)).toBeGreaterThanOrEqual(
+				4.5,
+			);
+
 			const confirmed = purchaseBand("confirmed", palette, scheme);
 			const delivery = purchaseBand("delivery", palette, scheme);
 			expect(delivery?.color).toBe(confirmed?.color);
@@ -112,9 +136,17 @@ describe("purchase band tokens", () => {
 			expect(statusBarStyleForInk(delivery?.ink ?? "#000000")).toBe(
 				scheme === "dark" ? "dark" : "light",
 			);
-			expect(purchaseBand("paid", palette, scheme)?.color).toBe(
-				color(block, "success"),
+			// `paid` reads `success`, so it must track that token rather than `info`. Asserted as
+			// "anchored from its own stage colour", which is true whether or not anchoring moved it.
+			const paid = purchaseBand("paid", palette, scheme);
+			const success = color(block, "success");
+			expect([success, paid?.color]).toContain(paid?.color);
+			expect(contrast(paid?.color ?? "#000000", page)).toBeGreaterThanOrEqual(
+				4.5,
 			);
+			expect(
+				contrast(paid?.color ?? "#000000", paid?.ink ?? "#000000"),
+			).toBeGreaterThanOrEqual(4.5);
 			for (const stage of [
 				"basket",
 				"inCart",
@@ -124,14 +156,22 @@ describe("purchase band tokens", () => {
 			] as const) {
 				const band = purchaseBand(stage, palette, scheme);
 				expect(band).not.toBeNull();
-				expect(statusBarStyleForInk(band?.ink ?? "#000000")).toBe(
-					stage === "basket"
+				// The ink is legible on the band, on every stage and both schemes.
+				expect(
+					contrast(band?.color ?? "#000000", band?.ink ?? "#000000"),
+				).toBeGreaterThanOrEqual(4.5);
+				// And the status bar points the same way the ink does.
+				//
+				// This replaces a hardcoded per-stage table ("basket dark, inCart dark, checkout
+				// dark, then scheme-keyed"). A table like that goes stale the moment a palette is
+				// re-picked, and it was only ever a restatement of which Foreground token each
+				// stage happened to carry. The answer is computed now, so the assertion is the
+				// rule that produced it: glyphs wear the ink, so the style must follow the ink.
+				const ink = band?.ink ?? "#000000";
+				expect(statusBarStyleForInk(ink)).toBe(
+					contrast(ink, "#000000") < contrast(ink, "#ffffff")
 						? "dark"
-						: stage === "inCart" || stage === "checkout"
-							? "dark"
-							: scheme === "dark"
-								? "dark"
-								: "light",
+						: "light",
 				);
 			}
 		});

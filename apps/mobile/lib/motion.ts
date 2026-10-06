@@ -60,6 +60,21 @@ export const duration = {
 export const EASE_DIALOG = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 } as const;
 
 /**
+ * The curve a breath travels on: a symmetric ease that leaves and arrives without a rush.
+ *
+ * **Control points rather than an `EasingFunction`,** for the same reason as `EASE_DIALOG`
+ * above — this file does not import reanimated, so the numbers live here and
+ * `./top-fluid-gradient` hands them to `Easing.bezier` at the one place that owns a
+ * `withRepeat`.
+ *
+ * The ends are the whole point. A breath that starts or stops abruptly reads as a stutter
+ * rather than as breathing, so the slope is flat at both ends: `y1 = 0` and `y2 = 1` with the
+ * control points pushed out to roughly a third of the way each side, which is the cubic
+ * approximation of a sine. `duration.breathHalf` is the half-cycle; a full breath is twice it.
+ */
+export const EASE_BREATH = { x1: 0.37, y1: 0, x2: 0.63, y2: 1 } as const;
+
+/**
  * An exit is 0.7 of its entrance.
  *
  * Leaving slower than arriving is what makes an app feel sticky — the screen the reader

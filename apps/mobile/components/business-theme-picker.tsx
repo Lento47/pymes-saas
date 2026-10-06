@@ -176,6 +176,7 @@ const THEME_LABEL = {
 	berry: "biz.theme.berry",
 	dune: "biz.theme.dune",
 	harbor: "biz.theme.harbor",
+	vine: "biz.theme.vine",
 } as const satisfies Record<BusinessThemeId, MessageKey>;
 
 const styles = StyleSheet.create({
