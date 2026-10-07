@@ -109,29 +109,38 @@
 
     This app's `index.css` declares its palette as **raw HSL channels**, not colours:
 
-        --border: 258 15% 23%;
-        --bg-card: 258 20% 10%;
+        --border:   258 15% 23%;
+        --bg-card:  258 20% 10%;
 
-    so every consumer is required to supply the function itself — which is why shadcn writes
-    `hsl(var(--border))` everywhere. Arc never wraps: its modules ask for `var(--surface)` and
-    `var(--border)` as though those were already colours, because in Arc's own `foundation.css`
-    they are.
+    so every consumer must supply the function itself — which is why shadcn writes
+    `hsl(var(--border))` in every rule it owns. Arc never wraps: its modules ask for
+    `var(--surface)` and `var(--border)` as though those were already colours, because in Arc's
+    own `foundation.css` they are.
 
-    An earlier version of this file wrote the mappings bare:
+    An earlier version of this file wrote the mappings bare — `--surface: var(--bg-card)`,
+    `--text-muted: var(--fg-2)`. Those are not colours. They are the strings `258 20% 10%` and
+    `258 8% 66%`, so every declaration that consumed one was invalid at computed-value time and
+    silently **dropped**. The Arc components rendered with no fill, no border, and inherited text
+    colour instead of muted: a flat borderless table with no type hierarchy, which is precisely
+    the "reads like an internal prototype" symptom this exercise exists to remove. It survived
+    review because a dropped declaration still leaves a perfectly laid-out component.
 
-        --surface: var(--bg-card);        /* -> "258 20% 10%"  */
-        --text-muted: var(--fg-2);        /* -> "258 8% 66%"   */
+    So: `hsl(var(--…))` on every mapping, as this block already did correctly for
+    `--accent-subtle` and `--control-on`. `hsl(var(--x))` resolves lazily at use time, so these
+    still follow the light and dark blocks in `index.css` that redefine the channels.
 
-    Those are not colours. Every declaration that consumed one became invalid at computed-value
-    time and was dropped, so the Arc components rendered with **no border, no surface fill and
-    inherited text colour instead of muted** — a flat, borderless table with no type hierarchy,
-    which is precisely the "reads like an internal prototype" symptom this whole exercise exists
-    to remove. It was invisible in review because a dropped declaration still leaves a
-    perfectly laid-out component.
+    Two things follow for anyone editing below.
 
-    So: `hsl(var(--…))` on every mapping, matching what this same block already did correctly
-    for `--accent-subtle` and `--control-on`. `hsl(var(--x))` resolves lazily at use time, so
-    these still follow the light and dark blocks in `index.css` that redefine the channels.
+    **Font tokens are the exception.** `--font-display` and `--font-body` forward
+    `var(--font-sans)` unwrapped, because that one genuinely is a complete value.
+
+    **Never write a closing marker inside this comment, however it is quoted.** A CSS block
+    comment ends at the first closing marker it meets, whatever the author intended — so
+    backticking it inside prose, or showing commented-out code, ends the comment early and turns
+    the rest of the paragraph into declarations the parser will act on. This file did both, in
+    the very paragraph explaining the rule, and the symptom was a stray marker left in the
+    stylesheet and this file's own test reading its documentation as configuration. Describe the
+    marker in words; do not reproduce it.
 
     See `foundation-tokens.test.ts` for the guard that keeps this from regressing.
   */
@@ -164,11 +173,11 @@
   /* Selection controls. Kept so an Arc component's switch or checkbox resolves, using
      this app's accent as the "on" fill. */
   --control-on: hsl(var(--accent));
-  --control-glyph: var(--accent-fg);
+  --control-glyph: hsl(var(--accent-fg));
   --control-track: hsl(var(--border));
-  --control-track-hover: var(--bg-active);
+  --control-track-hover: hsl(var(--bg-active));
   --control-thumb: hsl(var(--bg-elevated));
-  --control-thumb-on: var(--accent-fg);
+  --control-thumb-on: hsl(var(--accent-fg));
   --control-thumb-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
   --control-on-subtle: var(--accent-subtle);
   --control-fill: hsl(var(--accent));

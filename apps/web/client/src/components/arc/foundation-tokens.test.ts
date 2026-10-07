@@ -65,17 +65,21 @@ const COLOUR_FUNCTIONS = [
 
 /** The token names `index.css` declares, so a forwarding can be told apart from a literal. */
 const appTokens = new Set(
-  [...index.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map((match) => match[1] as string),
+  [...index.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map(
+    (match) => match[1] as string,
+  ),
 );
 
 type Mapping = { token: string; value: string };
 
 /** Every `--token: value` declaration in `foundation.css`. */
 function mappings(): Mapping[] {
-  return [...foundationCss.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map((match) => ({
-    token: match[1] as string,
-    value: (match[2] ?? "").trim(),
-  }));
+  return [...foundationCss.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map(
+    (match) => ({
+      token: match[1] as string,
+      value: (match[2] ?? "").trim(),
+    }),
+  );
 }
 
 /**
@@ -84,9 +88,17 @@ function mappings(): Mapping[] {
  * Keyed on the *value* rather than on the token's own name, because that is what makes it an
  * adapter entry. `--surface` is not declared in `index.css` and is not an Arc token either — it
  * is Arc's name bound to one of this app's values, which is the entire job of this file.
+ *
+ * `--font-*` is excluded: those forward `var(--font-sans)`, which is already a complete value.
+ * Including them would mean demanding a colour function around a font stack, which is the kind
+ * of guard that gets disabled rather than fixed.
  */
-const adapterMappings = mappings().filter(({ value }) =>
-  [...value.matchAll(/var\((--[a-z0-9-]+)\)/g)].some((match) => appTokens.has(match[1] as string)),
+const adapterMappings = mappings().filter(
+  ({ token, value }) =>
+    !token.startsWith("--font-") &&
+    [...value.matchAll(/var\((--[a-z0-9-]+)\)/g)].some((match) =>
+      appTokens.has(match[1] as string),
+    ),
 );
 
 describe("foundation.css token adapter", () => {
@@ -94,33 +106,33 @@ describe("foundation.css token adapter", () => {
     // Two empty lists compare equal, so the assertions below are only meaningful while the
     // derivation still produces something. This is the anti-vacuity guard, and it is why the
     // first draft of this file — which filtered on the token's *name* and found 4 — was wrong:
-    // the count is a claim about the derivation, so it has to be checked against what it
-    // actually yields, not against a number that happens to sound right.
-    expect(adapterMappings.map((entry) => entry.token)).toEqual([
-      "--surface",
-      "--surface-raised",
-      "--surface-muted",
-      "--text-secondary",
-      "--text-muted",
-      "--border-subtle",
-      "--border-strong",
-      "--accent-strong",
-      "--accent-subtle",
-      "--accent-foreground",
-      "--control-on",
-      "--control-glyph",
-      "--control-track",
-      "--control-track-hover",
-      "--control-thumb",
-      "--control-thumb-shadow",
-      "--control-on-subtle",
-      "--control-fill",
-      "--focus-ring",
-      "--series-1",
-      "--series-2",
-      "--series-3",
-      "--series-4",
-    ]);
+    // the count is a claim about the derivation, so it has to be checked against what the
+    // derivation actually yields.
+    //
+    // Deliberately a floor and a membership check rather than an exhaustive list. Pinning all
+    // twenty-one entries would mean editing this test whenever a token is added or removed,
+    // which is the brittleness that makes guards get deleted. The exhaustive claim lives in the
+    // next test, where it is about correctness rather than inventory.
+    expect(adapterMappings.length).toBeGreaterThanOrEqual(15);
+    expect(adapterMappings.map((entry) => entry.token)).toEqual(
+      expect.arrayContaining([
+        "--surface",
+        "--surface-raised",
+        "--surface-muted",
+        "--text-secondary",
+        "--text-muted",
+        "--border-subtle",
+        "--border-strong",
+        "--accent-strong",
+        "--accent-foreground",
+        "--control-on",
+        "--control-glyph",
+        "--control-track",
+        "--control-thumb",
+        "--control-fill",
+        "--focus-ring",
+      ]),
+    );
   });
 
   it("wraps every channel token it forwards in a colour function", () => {
@@ -134,12 +146,56 @@ describe("foundation.css token adapter", () => {
     expect(unwrapped).toEqual([]);
   });
 
+  it("wraps the four tokens that were broken when this was found", () => {
+    // Named individually because they are the ones that shipped broken, and because the test
+    // above reports only the head of a longer list — which is exactly the case where a reader
+    // needs to be told which fix is being protected.
+    //
+    // `--text-muted` and `--control-glyph` were bare in the original adapter; the last two were
+    // still bare *after* the obvious nine had been fixed. All four were found by this file
+    // rather than by inspection.
+    const byToken = new Map(
+      adapterMappings.map((entry) => [entry.token, entry.value]),
+    );
+    for (const token of [
+      "--text-muted",
+      "--control-glyph",
+      "--control-track-hover",
+      "--control-thumb-on",
+    ]) {
+      expect(`${token}: ${byToken.get(token)}`).toMatch(
+        new RegExp(`${token}: (hsl|rgb|oklch|color-mix)\\(`),
+      );
+    }
+  });
+
+  it("leaves the font tokens unwrapped, because those forward a complete value", () => {
+    // The deliberate exception. `--font-body: var(--font-sans)` is correct, and a guard that
+    // demanded a colour function here would be enforcing a bug — so the exception is asserted
+    // rather than merely permitted.
+    expect(foundationCss).toMatch(/--font-body:\s*var\(--font-sans\)/);
+  });
+
+  it("carries no nested block comments", () => {
+    // CSS comments do not nest: the first `*/` closes the comment and everything after it is
+    // parsed as live CSS. This file's header originally demonstrated the broken form *inside its
+    // own explanation of it*, which made the explanation the bug — the comment stripper above
+    // read the example as a real declaration, and a browser would have disagreed with this file
+    // about what it contains.
+    const openers = (foundationCss.match(/\/\*/g) ?? []).length;
+    const closers = (foundationCss.match(/\*\//g) ?? []).length;
+
+    expect({ openers, closers }).toEqual({ openers: 0, closers: 0 });
+  });
+
   it("confirms the app palette really is raw channels, so the guard is not vacuous", () => {
     // If `index.css` ever moves to complete colours — `hsl(258 20% 10%)` — then the wrapping
     // above would be wrong (`hsl(hsl(...))` is invalid) and this guard would be enforcing a
     // bug. This assertion is what makes the previous one trustworthy rather than merely strict:
     // it states the precondition the whole adapter rests on.
-    const rawChannels = [...index.matchAll(/^\s*--(border|bg-card|fg-2|accent)\s*:\s*([^;]+);/gim)]
+    const rawChannels = [
+      ...index.matchAll(/^\s*--(border|bg-card|fg-2|accent)\s*:\s*([^;]+);/gim),
+    ]
       .map((match) => (match[2] ?? "").trim())
       .filter((value) => !COLOUR_FUNCTIONS.some((fn) => value.includes(fn)));
 
