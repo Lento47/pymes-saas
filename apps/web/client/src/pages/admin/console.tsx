@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
 import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { Sparkline } from "@/components/arc/sparkline/sparkline";
@@ -169,6 +170,77 @@ function shortDate(value: Date | string) {
 }
 
 /**
+ * The reason dialog, as its own component.
+ *
+ * It used to live inside `ActionButton`, which made "the action that needs a reason" and "the
+ * button that starts it" the same thing. That is true while every action is a visible button and
+ * stops being true the moment a row's actions collapse into a menu: there the dialog has to
+ * outlive the control that opened it, because the menu item is gone by the time the operator
+ * reads what they are about to do.
+ *
+ * So the dialog is lifted out and both callers render it. One implementation, not two — the
+ * alternative was a menu variant that quietly drifted from the button one, and the drift would
+ * have shown up as a destructive dialog that stopped asking why.
+ */
+function ActionDialog({
+  open,
+  onOpenChange,
+  label,
+  targetName,
+  reason,
+  onReasonChange,
+  onConfirm,
+  pending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  label: string;
+  targetName: string;
+  reason: string;
+  onReasonChange: (reason: string) => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {label}: {targetName}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {/*
+              Was "No se puede deshacer desde aquí." — a claim about every action in this
+              console, including the ones it had just made reversible: `user.suspend` and
+              `user.revoke_admin` both have their counterpart on this same row now. A
+              destructive dialog that lies about being irreversible is worse than one that
+              says nothing, because the operator stops reading it.
+
+              What replaces it is the part that is true of *all* of them: the act is
+              recorded, with a name and a reason, and it outlives the screen.
+            */}
+            Esta acción queda en el registro de auditoría con tu nombre, y el motivo va con
+            ella.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <Input
+          value={reason}
+          onChange={(e) => onReasonChange(e.target.value)}
+          placeholder="Motivo (obligatorio)"
+          aria-label="Motivo"
+        />
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction disabled={reason.trim().length === 0 || pending} onClick={onConfirm}>
+            {label}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/**
  * One action, and the reason dialog when the action needs one.
  *
  * The dialog is a child of the row rather than of the page so it carries the row's own
@@ -243,45 +315,149 @@ function ActionButton({
       >
         {label}
       </Button>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {label}: {targetName}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {/*
-                Was "No se puede deshacer desde aquí." — a claim about every action in this
-                console, including the ones it had just made reversible: `user.suspend` and
-                `user.revoke_admin` both have their counterpart on this same row now. A
-                destructive dialog that lies about being irreversible is worse than one that
-                says nothing, because the operator stops reading it.
-
-                What replaces it is the part that is true of *all* of them: the act is
-                recorded, with a name and a reason, and it outlives the screen.
-              */}
-              Esta acción queda en el registro de auditoría con tu nombre, y el
-              motivo va con ella.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Motivo (obligatorio)"
-            aria-label="Motivo"
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={reason.trim().length === 0 || run.isPending}
-              onClick={() => run.mutate()}
-            >
-              {label}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ActionDialog
+        open={open}
+        onOpenChange={setOpen}
+        label={label}
+        targetName={targetName}
+        reason={reason}
+        onReasonChange={setReason}
+        onConfirm={() => run.mutate()}
+        pending={run.isPending}
+      />
     </>
+  );
+}
+
+/**
+ * One action on a row, described rather than drawn.
+ *
+ * `ActionButton` renders itself, which is the wrong shape for a list: a table builds its action
+ * column from data, and a row's actions depend on its state — a draft business can verify,
+ * a suspended one can reactivate, and a row that has done nothing can be deleted. So the
+ * actions are described here and drawn either by `ActionButton` or by a menu, chosen below.
+ */
+type RowAction = {
+  label: string;
+  action: AdminAction;
+  targetName: string;
+  onRun: (reason?: string) => Promise<unknown>;
+  destructive?: boolean;
+  /** Draw a rule above this item, so an irreversible act is not adjacent to a reversible one. */
+  separatorBefore?: boolean;
+};
+
+/**
+ * At how many actions a row stops showing buttons.
+ *
+ * Three, and not two. Two buttons side by side is a control the eye lands on and reads; three
+ * is where the row stops being scannable, because the widest action cell in the table is set by
+ * its noisiest row and every quieter row inherits that width.
+ *
+ * It is a per-row count rather than a per-table one, which means a table whose actions depend on
+ * state shows both forms. `BusinessTable` is the case that forced the question: a draft business
+ * offers Verificar, Suspender and Eliminar, while a healthy one offers only Suspender and
+ * Eliminar. The alternative — picking the busiest row and giving the whole table a menu — was
+ * rejected because it hides two plainly-labelled buttons from the rows where they fit, and
+ * "Eliminar" is one word that should not be the thing that got harder to reach.
+ */
+const MENU_AT = 3;
+
+/**
+ * A row's actions: inline buttons, or a menu once there are too many.
+ *
+ * **One dialog for the row, not one per action.** Rendering `ActionButton`'s dialog inside every
+ * menu item would put three dialogs in the DOM per row and three `open` states to keep in step;
+ * instead the row remembers which action is waiting for a reason and renders the dialog once.
+ * That is why the dialog was lifted out of `ActionButton` rather than the menu reimplementing it.
+ */
+function RowActions({ actions }: { actions: RowAction[] }) {
+  const [awaiting, setAwaiting] = useState<RowAction | null>(null);
+  const [reason, setReason] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const run = useMutation({
+    // The action and the reason travel as the mutation's variables rather than being read from
+    // state here. Reading them from state would capture whatever the render that created this
+    // mutation saw, so confirming a dialog for one action could run a different one.
+    mutationFn: async ({ action, reason: given }: { action: RowAction; reason: string }) => {
+      if (!needsReason(action.action) || given.trim().length > 0) {
+        return action.onRun(given.trim() || undefined);
+      }
+      throw new Error("Falta el motivo.");
+    },
+    onSuccess: async (_data, variables) => {
+      setAwaiting(null);
+      setReason("");
+      toast({ title: "Listo", description: `${variables.action.label} aplicado.` });
+      await queryClient.invalidateQueries();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "No se pudo completar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  function invoke(action: RowAction) {
+    if (needsReason(action.action)) {
+      setReason("");
+      setAwaiting(action);
+      return;
+    }
+    run.mutate({ action, reason: "" });
+  }
+
+  if (actions.length < MENU_AT) {
+    return (
+      <div className="flex justify-end gap-2">
+        {actions.map((action) => (
+          <ActionButton
+            key={action.label}
+            label={action.label}
+            action={action.action}
+            targetName={action.targetName}
+            onRun={action.onRun}
+            variant={action.destructive ? "destructive" : "default"}
+            size="sm"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-end">
+      <DropdownMenu
+        label="Acciones"
+        items={actions.map((action) => ({
+          label: action.label,
+          destructive: action.destructive,
+          separatorBefore: action.separatorBefore,
+          onSelect: () => invoke(action),
+        }))}
+      />
+      {awaiting ? (
+        <ActionDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setAwaiting(null);
+              setReason("");
+            }
+          }}
+          label={awaiting.label}
+          targetName={awaiting.targetName}
+          reason={reason}
+          onReasonChange={setReason}
+          onConfirm={() => run.mutate({ action: awaiting, reason })}
+          pending={run.isPending}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -704,59 +880,65 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
           sortable: false,
           width: "260px",
           render: (_v, b) => (
-            <div className="flex justify-end gap-2">
-              {b.status === "DRAFT" || !b.isVerified ? (
-                <ActionButton
-                  label="Verificar"
-                  action="business.verify"
-                  targetName={b.name}
-                  onRun={(reason) => adminApi.verifyBusiness(b.id, reason)}
-                  size="sm"
-                />
-              ) : null}
-              {b.status === "SUSPENDED" ? (
-                <ActionButton
-                  label="Reactivar"
-                  action="business.reactivate"
-                  targetName={b.name}
-                  onRun={(reason) => adminApi.reactivateBusiness(b.id, reason)}
-                  variant="outline"
-                  size="sm"
-                />
-              ) : (
-                <ActionButton
-                  label="Suspender"
-                  action="business.suspend"
-                  targetName={b.name}
-                  onRun={(reason) =>
-                    adminApi.suspendBusiness(b.id, reason ?? "")
-                  }
-                  variant="destructive"
-                  size="sm"
-                />
-              )}
-              {/*
-                Delete is **not** a third button in that pair, and never was going to be.
+            <RowActions
+              actions={[
+                ...(b.status === "DRAFT" || !b.isVerified
+                  ? [
+                      {
+                        label: "Verificar",
+                        action: "business.verify" as const,
+                        targetName: b.name,
+                        onRun: (reason?: string) =>
+                          adminApi.verifyBusiness(b.id, reason ?? ""),
+                      },
+                    ]
+                  : []),
+                b.status === "SUSPENDED"
+                  ? {
+                      label: "Reactivar",
+                      action: "business.reactivate" as const,
+                      targetName: b.name,
+                      onRun: (reason?: string) =>
+                        adminApi.reactivateBusiness(b.id, reason ?? ""),
+                    }
+                  : {
+                      label: "Suspender",
+                      action: "business.suspend" as const,
+                      targetName: b.name,
+                      destructive: true,
+                      onRun: (reason?: string) =>
+                        adminApi.suspendBusiness(b.id, reason ?? ""),
+                    },
+                /*
+                  Delete is **last**, and it is the one that gets a rule above it.
 
-                `business.delete` exists and is in `REASON_REQUIRED_ACTIONS`, but the service
-                refuses outright for any business with an order, a subscription or a support
-                ticket — which is every business that has ever done anything. So this only
-                ever appears for a signup that never traded, and it is deliberately last in
-                the row: it is irreversible, and the refusal that comes back names
-                suspension as the alternative.
+                  `business.delete` exists and is in `REASON_REQUIRED_ACTIONS`, but the service
+                  refuses outright for any business with an order, a subscription or a support
+                  ticket — which is every business that has ever done anything. So this only
+                  ever appears for a signup that never traded, and it is deliberately last:
+                  it is irreversible, and the refusal that comes back names suspension as the
+                  alternative.
 
-                Offered from the row rather than hidden behind a kebab menu, because
-                "eliminar" is one word and burying it is how it gets clicked by accident.
-              */}
-              <ActionButton
-                label="Eliminar"
-                action="business.delete"
-                targetName={b.name}
-                onRun={(reason) => adminApi.deleteBusiness(b.id, reason ?? "")}
-                variant="destructive"
-                size="sm"
-              />
-            </div>
+                  `separatorBefore` rather than adjacency, because on the rows that reach three
+                  actions this is now inside a menu, where "last" and "visibly apart" are
+                  different claims. When it is a button in the open it needs no rule; inside a
+                  list it must not sit under "Suspender" with nothing between them.
+
+                  It stays reachable in one click either way. This is not a kebab that hides
+                  "eliminar" two levels down — "eliminar" is one word and burying it is how it
+                  gets clicked by accident.
+                */
+                {
+                  label: "Eliminar",
+                  action: "business.delete" as const,
+                  targetName: b.name,
+                  destructive: true,
+                  separatorBefore: true,
+                  onRun: (reason?: string) =>
+                    adminApi.deleteBusiness(b.id, reason ?? ""),
+                },
+              ]}
+            />
           ),
         },
       ]}
