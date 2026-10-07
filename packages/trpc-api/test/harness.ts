@@ -201,6 +201,62 @@ export function d1Over(sqlite: Database): D1Database {
  * A KV stand-in. Counters and cache keys only — nothing in the API treats a KV value as
  * the source of truth, so a `Map` is a faithful stand-in for this test's purposes.
  */
+/**
+ * A stand-in for `RateLimitRoom`, and the only one that behaves like the real thing in
+ * the respect that matters: it counts.
+ *
+ * `ORDER_ROOM` above is a recorder — it captures publishes and asserts on them. This one
+ * is different in kind, because `rateLimit`'s correctness *is* its count. A stub that
+ * answered `allowed: true` every time would let a spec pass against a limiter that never
+ * limits anything, which is the failure mode that let the KV counter ship: the previous
+ * `CACHE` stub accepted unlimited writes and never rejected, so nothing in the suite could
+ * have noticed the counter provoking a 429.
+ *
+ * `failNext` exists for the same reason. `rateLimit` swallows anything the object throws
+ * and answers "not limited", and that catch is invisible to a test whose storage always
+ * works — so the degradation path needs a way to be provoked on demand.
+ */
+function rateLimitRoom(): {
+	namespace: DurableObjectNamespace;
+	failNext(error?: Error): void;
+} {
+	/** Keyed by the DO name, exactly as the real namespace's `idFromName` would key it. */
+	const stores = new Map<string, { window: number; count: number }>();
+	let failure: Error | null = null;
+
+	return {
+		namespace: {
+			idFromName: (name: string) => name,
+			get: (id: unknown) => {
+				const key = String(id);
+				return {
+					hit: async (limit: number, windowSeconds: number) => {
+						if (failure) {
+							const error = failure;
+							failure = null;
+							throw error;
+						}
+						const window = Math.floor(Date.now() / 1000 / windowSeconds);
+						const state = stores.get(key);
+						if (!state || state.window !== window) {
+							stores.set(key, { window, count: 1 });
+							return { allowed: true, count: 1 };
+						}
+						if (state.count >= limit) {
+							return { allowed: false, count: state.count };
+						}
+						state.count += 1;
+						return { allowed: true, count: state.count };
+					},
+				};
+			},
+		} as unknown as DurableObjectNamespace,
+		failNext: (error?: Error) => {
+			failure = error ?? new Error("the rate limiter's storage is unavailable");
+		},
+	};
+}
+
 function kv(): KVNamespace {
 	const store = new Map<string, string>();
 	return {
@@ -311,6 +367,12 @@ export type TestWorld = {
 	sent: SentEvent[];
 	/** Every publish the API made to an order's Durable Object. */
 	published: unknown[];
+	/**
+	 * Make the **next** `rateLimit` call see its storage throw, so a spec can prove the
+	 * limiter degrades to "not limited" instead of refusing the request. The error is
+	 * consumed by that one call.
+	 */
+	failRateLimitOnce: (error?: Error) => void;
 	close: () => void;
 };
 
@@ -333,6 +395,7 @@ export function world(): TestWorld {
 	const sent: SentEvent[] = [];
 	const published: unknown[] = [];
 
+	const limiter = rateLimitRoom();
 	const env = {
 		DB: d1Over(sqlite),
 		CACHE: kv(),
@@ -360,12 +423,15 @@ export function world(): TestWorld {
 		},
 		ENVIRONMENT: "test",
 		API_VERSION: "test",
+		RATE_LIMIT_ROOM: limiter.namespace,
 	} as unknown as Env;
 
 	return {
 		sqlite,
 		db: createDb(env.DB),
 		env,
+		/** Make the next `rateLimit` call see its storage throw. See `rateLimitRoom`. */
+		failRateLimitOnce: limiter.failNext,
 		sent,
 		published,
 		close: () => sqlite.close(),
@@ -801,6 +867,10 @@ export async function seedProduct(
 		categoryId?: string | null;
 		status?: "ACTIVE" | "DRAFT" | "ARCHIVED";
 		prepTimeMinutes?: number | null;
+		/** A real discount needs the compare-at above the price — see the offer rule. */
+		compareAtPriceMinor?: number | null;
+		soldCount?: number;
+		isFeatured?: boolean;
 	} = { businessId: "biz_test_shop" },
 ): Promise<SeededProduct> {
 	const id = input.id ?? "prd_test_item";
@@ -815,7 +885,9 @@ export async function seedProduct(
 		currency: "CRC",
 		status: input.status ?? "ACTIVE",
 		categoryId: input.categoryId ?? null,
-		isFeatured: false,
+		isFeatured: input.isFeatured ?? false,
+		compareAtPriceMinor: input.compareAtPriceMinor ?? null,
+		soldCount: input.soldCount ?? 0,
 		trackInventory: input.trackInventory ?? false,
 		stockQuantity: input.stockQuantity ?? 0,
 		prepTimeMinutes:

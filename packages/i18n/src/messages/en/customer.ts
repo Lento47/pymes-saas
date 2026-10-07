@@ -39,6 +39,16 @@ export const customer = {
 	/* The two offer rails and the three promotion sentences — see the Spanish file's note,
 	   which covers why the headings are two and why there are exactly three sentences. */
 	"home.offers": "Deals",
+	/* The offers page with nothing in it — see the Spanish file's note. */
+	"home.offers.empty.title": "Nothing on sale yet",
+	"home.offers.empty.body":
+		"Marked-down products will show up here. In the meantime, browse the categories.",
+	"home.shortcuts.nearby": "Nearby",
+	"home.shortcuts.recent": "Recent",
+	/* Why the offers page shows an error for a *successful* response — see the Spanish
+	   note. The body is the server's problem, not the reader's. */
+	"home.offers.stale":
+		"The answer doesn't look like offers — nothing carries a real discount, so the server probably answered an older shape. Pull to retry.",
 	"home.promotions": "Coupons",
 	"home.orderAgain": "Order again",
 	"home.popular": "Popular right now",
@@ -403,6 +413,24 @@ export const customer = {
 
 	"location.title": "Your location",
 	"location.use": "Use my location",
+	"location.current": "Current location",
+	"location.pinned": "Pinned location",
+	"location.choose": "Choose a location",
+	"location.changeHelp":
+		"Choose your current location or move the pin on the map.",
+	"location.mapInstruction":
+		"Tap the map to place the pin where you want to browse from.",
+	"location.mapUnavailable":
+		"Map selection is unavailable right now. You can still use your current location.",
+	"location.needPosition":
+		"Allow location access to center the map, then move the pin wherever you need.",
+	"location.permissionDenied":
+		"Location permission is off. Enable it to center the map, then choose a pin.",
+	"location.providerUnavailable":
+		"Your device location is unavailable right now. Check location services and try again.",
+	"location.applyPin": "Use this location",
+	"location.saveAddress": "Save as delivery address",
+	"location.done": "Done",
 	"location.denied":
 		"We couldn't get your location. Type your address instead.",
 	"location.manual": "Type address",

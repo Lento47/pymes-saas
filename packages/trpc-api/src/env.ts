@@ -54,6 +54,18 @@ export type Env = {
 	 * Addressed through `orderRoomFor` so the naming rule lives in one place.
 	 */
 	ORDER_ROOM: DurableObjectNamespace;
+	/**
+	 * One request counter per (bucket, identity), for `context.ts`'s `rateLimit`.
+	 *
+	 * A Durable Object and not the `CACHE` KV namespace this replaced: a DO instance is
+	 * single-threaded, so the compare and the increment happen together. KV allows one
+	 * write per second per key and **throws** past it, and the limiter's key was fixed
+	 * per window — so the counter provoked the limit it existed to enforce, and the
+	 * rejection escaped as a 500 on `orders.place`.
+	 *
+	 * Addressed through `rateLimitRoomFor` so the naming rule lives in one place.
+	 */
+	RATE_LIMIT_ROOM: DurableObjectNamespace;
 	/** `production`, `staging`, `development`. Decides log format and error detail. */
 	ENVIRONMENT: string;
 	/** Reported by `health.check` and on every log line, so a deploy is identifiable. */
@@ -94,4 +106,24 @@ export function corsOrigins(env: Env): string[] {
 /** One Durable Object per order, named so two requests for one order meet. */
 export function orderRoomFor(env: Env, orderId: string): DurableObjectStub {
 	return env.ORDER_ROOM.get(env.ORDER_ROOM.idFromName(`order:${orderId}`));
+}
+
+/**
+ * One Durable Object per (bucket, identity), named so two attempts on the same counter
+ * meet — and no two different counters share one.
+ *
+ * The `rl:` prefix is kept from the KV key this replaced, so an operator reading a
+ * Durable Object id has the same word in front of them that they had in a KV key list.
+ * The window is deliberately *not* in the name: the window rolls over inside the object
+ * (see `durable/rate-limit-room.ts`), so a per-window name would mint a new object every
+ * minute and leave the old ones to expire unvisited.
+ */
+export function rateLimitRoomFor(
+	env: Env,
+	bucket: string,
+	identity: string,
+): DurableObjectStub {
+	return env.RATE_LIMIT_ROOM.get(
+		env.RATE_LIMIT_ROOM.idFromName(`rl:${bucket}:${identity}`),
+	);
 }

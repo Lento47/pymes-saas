@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { HeroSearch } from "@/components/hero-search";
 import { HomeHeader } from "@/components/home-header";
+import { HomeLocationPicker } from "@/components/home-location-picker";
 import { hitSlopFor, Pressable } from "@/components/pressable";
 import { ProductRail } from "@/components/product-rail";
 import { ProductRow } from "@/components/product-row";
@@ -48,6 +49,7 @@ import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useSession } from "@/lib/auth/session";
+import { useBrowseLocation } from "@/lib/browse-location";
 import { useQuickAdd } from "@/lib/cart-mutations";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
@@ -144,7 +146,10 @@ export default function HomeScreen() {
 	const { t, intlLocale } = useT();
 	const { colors } = useTheme();
 	const { session } = useSession();
-	const { coords, request } = useDeviceLocation();
+	const { coords, request, status: locationStatus } = useDeviceLocation();
+	const browseLocation = useBrowseLocation();
+	const activeCoords = browseLocation.pinned ?? coords;
+	const [locationPickerOpen, setLocationPickerOpen] = useState(false);
 	const toast = useToast();
 	/**
 	 * The one notice about having been downgraded to the customer stack, read once from the
@@ -171,14 +176,14 @@ export default function HomeScreen() {
 
 	const feed = useQuery(
 		trpc.catalog.feed.queryOptions(
-			{ lat: coords?.lat, lng: coords?.lng, limit: 20 },
+			{ lat: activeCoords?.lat, lng: activeCoords?.lng, limit: 20 },
 			// The first fix arrives a beat after the screen does — it is a permission dialog
 			// and a GPS read — and it changes the query key, so without this the list the
 			// customer is already reading is torn out and replaced by grey the moment the
 			// distance sort lands. Keeping the previous answer on screen until the sorted one
 			// is here is the same move the storefront's docblock makes when it calls a
 			// skeleton over real content "a step backwards the reader can see".
-			{ placeholderData: keepPreviousData },
+			{ placeholderData: keepPreviousData, enabled: browseLocation.ready },
 		),
 	);
 	const needsLegacyDiscover =
@@ -296,8 +301,8 @@ export default function HomeScreen() {
 	const settled = useDebouncedValue(trimmed, 300);
 	const searchResults = useQuery(
 		trpc.catalog.search.queryOptions(
-			{ q: settled, lat: coords?.lat, lng: coords?.lng },
-			{ enabled: searching && settled.length >= 2 },
+			{ q: settled, lat: activeCoords?.lat, lng: activeCoords?.lng },
+			{ enabled: searching && settled.length >= 2 && browseLocation.ready },
 		),
 	);
 	const searchingWait = useSkeletonHold(searching && searchResults.isPending);
@@ -344,243 +349,277 @@ export default function HomeScreen() {
 	);
 
 	return (
-		<Screen padded={false} contentStyle={styles.fill}>
-			{/* Outside the branch below on purpose. The header is the session's and the field
+		<View style={styles.fill}>
+			<Screen padded={false} contentStyle={styles.fill}>
+				{/* Outside the branch below on purpose. The header is the session's and the field
 			    is static, so neither has any reason to disappear while the feed loads — and a
 			    screen whose top third is stable reads as faster than one that rebuilds itself
 			    from nothing. */}
-			<HomeHeader
-				hasLocation={coords !== null}
-				onRequestLocation={request}
-				name={name}
-				avatarUrl={me.data?.image ?? null}
-				onAvatarPress={() => router.push("/account")}
-			/>
+				<HomeHeader
+					locationLabel={
+						browseLocation.pinned
+							? t("location.pinned")
+							: activeCoords
+								? t("location.current")
+								: t("location.choose")
+					}
+					onLocationPress={() => setLocationPickerOpen(true)}
+					name={name}
+					avatarUrl={me.data?.image ?? null}
+					onAvatarPress={() => router.push("/account")}
+				/>
 
-			{degradation ? (
-				<View style={styles.degraded}>
-					<Text variant="body" tone="muted">
-						{t(
-							degradation === "ended"
-								? "account.profile.degraded.ended"
-								: "account.profile.degraded.unreachable",
-						)}
-					</Text>
-				</View>
-			) : null}
+				{degradation ? (
+					<View style={styles.degraded}>
+						<Text variant="body" tone="muted">
+							{t(
+								degradation === "ended"
+									? "account.profile.degraded.ended"
+									: "account.profile.degraded.unreachable",
+							)}
+						</Text>
+					</View>
+				) : null}
 
-			<View style={styles.hero}>
-				{searching ? (
-					// The field itself, where the hero link stood: same box, same tokens, now
-					// editable. The arrow stands the feed back up; the X only clears the typing.
-					<View
-						style={[
-							styles.searchField,
-							{ backgroundColor: colors.card, borderColor: colors.input },
-						]}
-					>
-						<Pressable
-							onPress={closeSearch}
-							// `hitSlopFor`'s answer for a control that is already the floor across,
-							// which is what `./pressable`'s base style lays this out at — anything
-							// more would reach into the field beside it and steal its presses.
-							hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-							accessibilityRole="button"
-							accessibilityLabel={t("action.back")}
-							style={styles.iconButton}
+				<View style={styles.hero}>
+					{searching ? (
+						// The field itself, where the hero link stood: same box, same tokens, now
+						// editable. The arrow stands the feed back up; the X only clears the typing.
+						<View
+							style={[
+								styles.searchField,
+								{ backgroundColor: colors.card, borderColor: colors.input },
+							]}
 						>
-							<Ionicons
-								name="arrow-back"
-								size={icon.control}
-								color={colors.mutedForeground}
-								accessibilityElementsHidden
-								importantForAccessibility="no"
-							/>
-						</Pressable>
-						<TextInput
-							value={query}
-							onChangeText={setQuery}
-							placeholder={t("home.search.placeholder")}
-							placeholderTextColor={colors.mutedForeground}
-							style={[styles.searchInput, { color: colors.foreground }]}
-							accessibilityLabel={t("search.title")}
-							returnKeyType="search"
-							autoCorrect={false}
-							autoCapitalize="none"
-							clearButtonMode="while-editing"
-							autoFocus
-							onSubmitEditing={submitSearch}
-						/>
-						{query.length > 0 ? (
 							<Pressable
-								onPress={() => setQuery("")}
+								onPress={closeSearch}
+								// `hitSlopFor`'s answer for a control that is already the floor across,
+								// which is what `./pressable`'s base style lays this out at — anything
+								// more would reach into the field beside it and steal its presses.
 								hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-								ripple={false}
 								accessibilityRole="button"
-								accessibilityLabel={t("search.clear")}
+								accessibilityLabel={t("action.back")}
 								style={styles.iconButton}
 							>
 								<Ionicons
-									name="close-circle"
+									name="arrow-back"
 									size={icon.control}
 									color={colors.mutedForeground}
 									accessibilityElementsHidden
 									importantForAccessibility="no"
 								/>
 							</Pressable>
-						) : null}
-					</View>
-				) : (
-					<HeroSearch onPress={openSearch} />
-				)}
-			</View>
+							<TextInput
+								value={query}
+								onChangeText={setQuery}
+								placeholder={t("home.search.placeholder")}
+								placeholderTextColor={colors.mutedForeground}
+								style={[styles.searchInput, { color: colors.foreground }]}
+								accessibilityLabel={t("search.title")}
+								returnKeyType="search"
+								autoCorrect={false}
+								autoCapitalize="none"
+								clearButtonMode="while-editing"
+								autoFocus
+								onSubmitEditing={submitSearch}
+							/>
+							{query.length > 0 ? (
+								<Pressable
+									onPress={() => setQuery("")}
+									hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
+									ripple={false}
+									accessibilityRole="button"
+									accessibilityLabel={t("search.clear")}
+									style={styles.iconButton}
+								>
+									<Ionicons
+										name="close-circle"
+										size={icon.control}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</Pressable>
+							) : null}
+						</View>
+					) : (
+						<HeroSearch onPress={openSearch} />
+					)}
+				</View>
 
-			{/* The four doors into the catalogue, one row, under the field. `!searching`
+				{/* The four doors into the catalogue, one row, under the field. `!searching`
 			    only: once the field is active the answers below it are search, and four
 			    shortcuts into a catalogue that is giving way to results would just be noise.
 			    Each is a full-`radius.md` chip on the same `input` boundary the field above
 			    draws (`./hero-search`'s own note), so the row reads as doors *around* the
 			    marketplace rather than as filters inside one screen. */}
-			{searching ? null : (
-				<View style={styles.shortcuts}>
-					<Shortcut
-						label={t("home.offers")}
-						onPress={() => router.push("/offers")}
-					/>
-					<Shortcut
-						label={t("home.shortcuts.nearby")}
-						onPress={() => router.push("/nearby")}
-					/>
-					<Shortcut
-						label={t("nav.favorites")}
-						onPress={() => router.push("/favorites")}
-					/>
-					<Shortcut label={t("home.shortcuts.recent")} onPress={openSearch} />
-				</View>
-			)}
+				{searching ? null : (
+					<View style={styles.shortcuts}>
+						<Shortcut
+							label={t("home.offers")}
+							onPress={() => router.push("/offers")}
+						/>
+						<Shortcut
+							label={t("home.shortcuts.nearby")}
+							onPress={() => router.push("/nearby")}
+						/>
+						<Shortcut
+							label={t("nav.favorites")}
+							onPress={() => router.push("/favorites")}
+						/>
+						<Shortcut label={t("home.shortcuts.recent")} onPress={openSearch} />
+					</View>
+				)}
 
-			{/* One scroll view for all three branches, and one `RefreshControl` (`Rule 6`). */}
-			<ScrollView
-				ref={scrollerRef}
-				style={styles.scroller}
-				contentContainerStyle={{
-					paddingBottom: clearanceOrSpace(clearance, units > 0, capsule),
-				}}
-				// The bar pays its own bottom inset (`./action-bar`'s docblock), so the scroll
-				// reserves the *bar* and nothing more.
-				scrollIndicatorInsets={{ bottom: 0 }}
-				// This screen brings its own scroller, so `Screen`'s keyboard props never reach
-				// it (`docs/design-mobile.md:124-133`) — and the search field above is
-				// `autoFocus`, with the results and the recent chips drawn *in here*. Without the
-				// first of these, RN's default `never` swallows the tap that would open a result
-				// and only dismisses the keyboard; the reader taps twice for one row.
-				keyboardShouldPersistTaps="handled"
-				keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-				// iOS only, and no value at all on Android — `components/screen.tsx` carries the
-				// platform reasoning. `app/search.tsx` is the same screen one door away and opts
-				// in the same three ways.
-				automaticallyAdjustKeyboardInsets={
-					Platform.OS === "ios" ? true : undefined
-				}
-				refreshControl={refreshControl}
-			>
-				{searching ? (
-					<SearchResults
-						results={searchResults.data}
-						waiting={searchingWait}
-						failed={searchResults.isError}
-						error={searchResults.error}
-						onRetry={() => void searchResults.refetch()}
-						hasQuery={settled.length >= 2}
-						recents={recents}
-						onRecent={(term) => setQuery(term)}
-						onClearRecents={() => void clearRecentSearches().then(setRecents)}
-					/>
-				) : (
-					<>
-						{feed.isError ? (
-							// `padded` is off for this screen, because the rows are edge-to-edge;
-							// the error is not a row, so it pays the horizontal padding itself.
-							<View style={styles.stateWrap}>
-								<ErrorState
-									error={feed.error}
-									onRetry={() => void feed.refetch()}
+				{/* One scroll view for all three branches, and one `RefreshControl` (`Rule 6`). */}
+				<ScrollView
+					ref={scrollerRef}
+					style={styles.scroller}
+					contentContainerStyle={{
+						paddingBottom: clearanceOrSpace(clearance, units > 0, capsule),
+					}}
+					// The bar pays its own bottom inset (`./action-bar`'s docblock), so the scroll
+					// reserves the *bar* and nothing more.
+					scrollIndicatorInsets={{ bottom: 0 }}
+					// This screen brings its own scroller, so `Screen`'s keyboard props never reach
+					// it (`docs/design-mobile.md:124-133`) — and the search field above is
+					// `autoFocus`, with the results and the recent chips drawn *in here*. Without the
+					// first of these, RN's default `never` swallows the tap that would open a result
+					// and only dismisses the keyboard; the reader taps twice for one row.
+					keyboardShouldPersistTaps="handled"
+					keyboardDismissMode={
+						Platform.OS === "ios" ? "interactive" : "on-drag"
+					}
+					// iOS only, and no value at all on Android — `components/screen.tsx` carries the
+					// platform reasoning. `app/search.tsx` is the same screen one door away and opts
+					// in the same three ways.
+					automaticallyAdjustKeyboardInsets={
+						Platform.OS === "ios" ? true : undefined
+					}
+					refreshControl={refreshControl}
+				>
+					{searching ? (
+						<SearchResults
+							results={searchResults.data}
+							waiting={searchingWait}
+							failed={searchResults.isError}
+							error={searchResults.error}
+							onRetry={() => void searchResults.refetch()}
+							hasQuery={settled.length >= 2}
+							recents={recents}
+							onRecent={(term) => setQuery(term)}
+							onClearRecents={() => void clearRecentSearches().then(setRecents)}
+						/>
+					) : (
+						<>
+							{feed.isError ? (
+								// `padded` is off for this screen, because the rows are edge-to-edge;
+								// the error is not a row, so it pays the horizontal padding itself.
+								<View style={styles.stateWrap}>
+									<ErrorState
+										error={feed.error}
+										onRetry={() => void feed.refetch()}
+									/>
+								</View>
+							) : waiting || !feed.data ? (
+								<FeedSkeleton />
+							) : (
+								<Feed
+									data={feed.data}
+									fallbackDiscover={fallbackDiscover}
+									discoveryLoading={
+										needsLegacyDiscover && legacyDiscover.isLoading
+									}
+									hasCoords={activeCoords !== null}
+									again={pastItems}
+									onQuickAdd={(product: ProductCard) => {
+										setQuickAddError(null);
+										quickAdd(product);
+									}}
+									quickAddError={quickAddError}
+									seeAllAgain={seeAllAgain}
+									seeAllNearby={seeAllNearby}
+									seeAllFeatured={seeAllFeatured}
 								/>
-							</View>
-						) : waiting || !feed.data ? (
-							<FeedSkeleton />
-						) : (
-							<Feed
-								data={feed.data}
-								fallbackDiscover={fallbackDiscover}
-								discoveryLoading={
-									needsLegacyDiscover && legacyDiscover.isLoading
-								}
-								hasCoords={coords !== null}
-								again={pastItems}
-								onQuickAdd={(product: ProductCard) => {
-									setQuickAddError(null);
-									quickAdd(product);
-								}}
-								quickAddError={quickAddError}
-								seeAllAgain={seeAllAgain}
-								seeAllNearby={seeAllNearby}
-								seeAllFeatured={seeAllFeatured}
-							/>
-						)}
+							)}
 
-						{/* The basket's own facts sit outside the catalogue's branch because
+							{/* The basket's own facts sit outside the catalogue's branch because
 						    they are not catalogue data and they do not
 						    wait for it. A strip above the bar is the place the design for this
 						    screen gives it. Without a started cart and its shop, or after the
 						    minimum is reached, this block is absent. */}
-						{shortfall > 0 && cartBusinessName && cartBusinessSlug ? (
-							<View style={styles.strip}>
-								<CouponStrip
-									amountMinor={shortfall}
-									currency={currency}
-									businessName={cartBusinessName}
-									onPress={() =>
-										router.push({
-											pathname: "/store/[slug]",
-											params: { slug: cartBusinessSlug },
-										})
-									}
-								/>
-							</View>
-						) : null}
-					</>
-				)}
-			</ScrollView>
+							{shortfall > 0 && cartBusinessName && cartBusinessSlug ? (
+								<View style={styles.strip}>
+									<CouponStrip
+										amountMinor={shortfall}
+										currency={currency}
+										businessName={cartBusinessName}
+										onPress={() =>
+											router.push({
+												pathname: "/store/[slug]",
+												params: { slug: cartBusinessSlug },
+											})
+										}
+									/>
+								</View>
+							) : null}
+						</>
+					)}
+				</ScrollView>
 
-			{units > 0 ? (
-				<ActionBar
-					summary={
-						<CartSummary
-							units={units}
-							totalMinor={cart.data?.totals.totalMinor ?? 0}
-							currency={currency}
-							onPress={() => router.push("/cart")}
-						/>
-					}
-					primary={{
-						label: t(
-							needsMoreItems ? "cart.bar.addItems" : "cart.bar.checkout",
-						),
-						onPress: () => {
-							if (!needsMoreItems) return router.push("/checkout");
-							if (!cartBusinessSlug) return router.push("/cart");
-							router.push({
-								pathname: "/store/[slug]",
-								params: { slug: cartBusinessSlug },
-							});
+				{units > 0 ? (
+					<ActionBar
+						summary={
+							<CartSummary
+								units={units}
+								totalMinor={cart.data?.totals.totalMinor ?? 0}
+								currency={currency}
+								onPress={() => router.push("/cart")}
+							/>
+						}
+						primary={{
+							label: t(
+								needsMoreItems ? "cart.bar.addItems" : "cart.bar.checkout",
+							),
+							onPress: () => {
+								if (!needsMoreItems) return router.push("/checkout");
+								if (!cartBusinessSlug) return router.push("/cart");
+								router.push({
+									pathname: "/store/[slug]",
+									params: { slug: cartBusinessSlug },
+								});
+							},
+							accessibilityHint: shortfallHint,
+						}}
+						onHeightChange={onHeightChange}
+					/>
+				) : null}
+			</Screen>
+			<HomeLocationPicker
+				open={locationPickerOpen}
+				current={coords}
+				locationStatus={locationStatus}
+				pinned={browseLocation.pinned}
+				onClose={() => setLocationPickerOpen(false)}
+				onRequestCurrent={request}
+				onUseCurrent={() => {
+					browseLocation.chooseCurrent();
+					setLocationPickerOpen(false);
+				}}
+				onApplyPin={(selected) => browseLocation.choosePin(selected)}
+				onSaveAddress={(selected) => {
+					setLocationPickerOpen(false);
+					router.push({
+						pathname: "/addresses",
+						params: {
+							create: "1",
+							lat: String(selected.lat),
+							lng: String(selected.lng),
 						},
-						accessibilityHint: shortfallHint,
-					}}
-					onHeightChange={onHeightChange}
-				/>
-			) : null}
-		</Screen>
+					});
+				}}
+			/>
+		</View>
 	);
 }
 

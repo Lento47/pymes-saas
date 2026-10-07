@@ -29,6 +29,7 @@ import { sweepLapsed } from "./services/subscription";
  */
 
 export { OrderRoom } from "./durable/order-room";
+export { RateLimitRoom } from "./durable/rate-limit-room";
 
 const app = createApp();
 

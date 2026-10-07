@@ -26,6 +26,7 @@ import {
 	gt,
 	gte,
 	inArray,
+	isNotNull,
 	isNull,
 	like,
 	lte,
@@ -183,6 +184,17 @@ export async function list(
 	if (input.categoryId)
 		conditions.push(inCategory(productTable.categoryId, input.categoryId));
 	if (input.featuredOnly) conditions.push(eq(productTable.isFeatured, true));
+	// The two halves of "marked down", and they are the same two the home feed's offers
+	// list filters with — see `catalog.ts`'s offer query and `productListInput`'s docblock.
+	// Restated here rather than shared, because the feed reads the rows it already has and
+	// this reads a table it has to query; a helper both import would be one function whose
+	// only job is to be a place for the two to drift apart from.
+	if (input.onSaleOnly) {
+		conditions.push(
+			isNotNull(productTable.compareAtPriceMinor),
+			gt(productTable.compareAtPriceMinor, productTable.priceMinor),
+		);
+	}
 	if (input.inStockOnly) {
 		const hasStock = or(
 			eq(productTable.trackInventory, false),

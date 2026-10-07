@@ -67,6 +67,7 @@ const LOCATIONS = [0, 18 / 52, 35 / 52, 1] as const;
 const DARK_LIME_LOCATIONS = [0, 0.5, 0.72, 1] as const;
 const COMPACT_LOCATIONS = [0, 0.54, 0.72, 1] as const;
 const SMOOTH_LOCATIONS = [0, 0.28, 0.66, 1] as const;
+const GEOMETRY_FADE_LOCATIONS = [0, 0.65, 1] as const;
 
 /** `0.52` of 914 is 475pt, for the original browsing ramp. */
 const BAND = 0.52;
@@ -200,15 +201,6 @@ export function HomeGradient({
 	 * same shape language. Without it the circles escape into the page and the band stops being a
 	 * band.
 	 */
-	const forms = (
-		<BandGeometry
-			color={anchor}
-			page={backgroundColor}
-			height={bandHeight}
-			width={width}
-		/>
-	);
-
 	if (stage === "delivery" && journeyBand) {
 		const fluidHeight = Math.min(height * 0.38, 380);
 		return (
@@ -220,7 +212,12 @@ export function HomeGradient({
 					scheme={scheme}
 					motion={focused ? fluidMotion : "still"}
 				/>
-				{forms}
+				<BandGeometryWithFade
+					color={anchor}
+					page={backgroundColor}
+					height={fluidHeight}
+					width={width}
+				/>
 			</View>
 		);
 	}
@@ -233,8 +230,38 @@ export function HomeGradient({
 				end={{ x: 0.5, y: 1 }}
 				style={StyleSheet.absoluteFill}
 			/>
-			{forms}
+			<BandGeometryWithFade
+				color={anchor}
+				page={backgroundColor}
+				height={bandHeight}
+				width={width}
+			/>
 		</View>
+	);
+}
+
+function BandGeometryWithFade({
+	color,
+	page,
+	height,
+	width,
+}: {
+	color: string;
+	page: string;
+	height: number;
+	width: number;
+}) {
+	return (
+		<>
+			<BandGeometry color={color} page={page} height={height} width={width} />
+			<LinearGradient
+				colors={[withAlpha(page, 0), withAlpha(page, 0), page]}
+				locations={GEOMETRY_FADE_LOCATIONS}
+				start={{ x: 0.5, y: 0 }}
+				end={{ x: 0.5, y: 1 }}
+				style={StyleSheet.absoluteFill}
+			/>
+		</>
 	);
 }
 

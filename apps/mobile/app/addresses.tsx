@@ -1,7 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { Address } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -113,7 +114,17 @@ function AddressBook() {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const [editing, setEditing] = useState<Address | null>(null);
+	const [draftCoordinates, setDraftCoordinates] = useState<{
+		lat: number;
+		lng: number;
+	} | null>(null);
 	const [show, setShow] = useState(false);
+	const params = useLocalSearchParams<{
+		create?: string;
+		lat?: string;
+		lng?: string;
+	}>();
+	const handledHandoff = useRef(false);
 	// The address the question is about, or `null` while none is being asked about: the panel's
 	// body is that address's first line, so the state has to hold the row and not just a boolean.
 	const [removing, setRemoving] = useState<Address | null>(null);
@@ -143,8 +154,30 @@ function AddressBook() {
 
 	function openForm(address: Address | null) {
 		setEditing(address);
+		setDraftCoordinates(null);
 		setShow(true);
 	}
+
+	useEffect(() => {
+		if (handledHandoff.current || params.create !== "1") return;
+		const lat = Number(params.lat);
+		const lng = Number(params.lng);
+		if (
+			!Number.isFinite(lat) ||
+			!Number.isFinite(lng) ||
+			lat < -90 ||
+			lat > 90 ||
+			lng < -180 ||
+			lng > 180
+		) {
+			return;
+		}
+		handledHandoff.current = true;
+		setEditing(null);
+		setDraftCoordinates({ lat, lng });
+		setShow(true);
+		router.setParams({ create: undefined, lat: undefined, lng: undefined });
+	}, [params.create, params.lat, params.lng]);
 
 	/**
 	 * The row asks through `./confirm-sheet` and names itself in the panel's body, because
@@ -339,6 +372,7 @@ function AddressBook() {
 				<AddressForm
 					key={editing?.id ?? "new"}
 					address={editing}
+					coordinates={draftCoordinates}
 					onDone={() => setShow(false)}
 				/>
 			</Sheet>
@@ -359,9 +393,11 @@ function AddressBook() {
 
 function AddressForm({
 	address,
+	coordinates,
 	onDone,
 }: {
 	address: Address | null;
+	coordinates: { lat: number; lng: number } | null;
 	onDone: () => void;
 }) {
 	const { t } = useT();
@@ -472,6 +508,8 @@ function AddressForm({
 						city: city.trim(),
 						region: region.trim(),
 						country: address?.country ?? "CR",
+						lat: coordinates?.lat ?? address?.lat,
+						lng: coordinates?.lng ?? address?.lng,
 						// The `||` restates the seed above rather than replacing it: the address
 						// that is already the default stays the default, written at the point that
 						// decides. It is what keeps an edit that never touched the control from

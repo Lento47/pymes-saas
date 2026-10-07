@@ -35,12 +35,19 @@ import type { StyleProp, ViewStyle } from "react-native";
  */
 export function MapView(_props: {
 	coords: { lat: number; lng: number } | null;
+	zoom?: number;
+	showUserLocation?: boolean;
 	marker?: { lat: number; lng: number } | null;
 	route?: {
 		pickup: { lat: number; lng: number };
 		destination: { lat: number; lng: number };
 	} | null;
 	style?: StyleProp<ViewStyle>;
+	onPick?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
 	return null;
+}
+
+export function isMapAvailable() {
+	return false;
 }

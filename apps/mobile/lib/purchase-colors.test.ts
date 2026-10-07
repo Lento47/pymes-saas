@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { ThemeColors } from "@/theme";
+import { BUSINESS_THEME_IDS } from "@/theme/business-theme-ids";
 
 import {
 	deliveryFluidColor,
@@ -25,6 +26,17 @@ function color(block: string, name: string): string {
 	return value;
 }
 
+function businessColor(
+	id: (typeof BUSINESS_THEME_IDS)[number],
+	scheme: "light" | "dark",
+	name: string,
+): string {
+	const theme = tokens.split(`\n\t${id}: {`)[1];
+	const block = theme?.split(`\n\t\t${scheme}: {`)[1]?.split("\n\t\t},")[0];
+	if (!block) throw new Error(`Missing ${id}.${scheme} theme block`);
+	return color(block, name);
+}
+
 function luminance(hex: string): number {
 	const channels = [1, 3, 5].map(
 		(index) => Number.parseInt(hex.slice(index, index + 2), 16) / 255,
@@ -45,7 +57,7 @@ function contrast(first: string, second: string): number {
 describe("purchase band tokens", () => {
 	test("delivery fluid keeps dark tokens and blends the light brand blues", () => {
 		expect(deliveryFluidColor("#123456", "#abcdef", "dark")).toBe("#123456");
-		expect(deliveryFluidColor("#1d60bc", "#3538f2", "light")).toBe("#2552cf");
+		expect(deliveryFluidColor("#1d60bc", "#3538f2", "light")).toBe("#2556cf");
 	});
 
 	for (const [scheme, block] of [
@@ -95,7 +107,7 @@ describe("purchase band tokens", () => {
 		 * the stage's own colours or an anchor of it, never an invented hue — so a token rename
 		 * that silently detached the band from its stage still fails here.
 		 */
-		test(`${scheme} journey reads the shipped colors`, () => {
+		test(`${scheme} journey keeps readable state colors`, () => {
 			const names = [
 				"background",
 				"foreground",
@@ -119,28 +131,20 @@ describe("purchase band tokens", () => {
 			const page = color(block, "background");
 
 			const basket = purchaseBand("basket", palette, scheme);
-			// The band is the stage's own colour, or an anchor of it. Never anything else: this is
-			// what ties the band back to the stage it belongs to.
-			expect([color(block, "basket"), basket?.color]).toContain(basket?.color);
-			// And it is guaranteed against the page, whatever the palette's own contrast was.
+			// The selected primary and stage token are blended before anchoring, then the visible
+			// result is guaranteed against the page whatever either source's contrast was.
 			expect(contrast(basket?.color ?? "#000000", page)).toBeGreaterThanOrEqual(
 				4.5,
 			);
 
 			const confirmed = purchaseBand("confirmed", palette, scheme);
 			const delivery = purchaseBand("delivery", palette, scheme);
-			expect(delivery?.color).toBe(confirmed?.color);
+			expect(delivery?.color).not.toBe(confirmed?.color);
 			expect(
 				contrast(delivery?.color ?? "#000000", delivery?.ink ?? "#000000"),
 			).toBeGreaterThanOrEqual(4.5);
-			expect(statusBarStyleForInk(delivery?.ink ?? "#000000")).toBe(
-				scheme === "dark" ? "dark" : "light",
-			);
-			// `paid` reads `success`, so it must track that token rather than `info`. Asserted as
-			// "anchored from its own stage colour", which is true whether or not anchoring moved it.
+			// Paid keeps a success influence without abandoning the selected palette.
 			const paid = purchaseBand("paid", palette, scheme);
-			const success = color(block, "success");
-			expect([success, paid?.color]).toContain(paid?.color);
 			expect(contrast(paid?.color ?? "#000000", page)).toBeGreaterThanOrEqual(
 				4.5,
 			);
@@ -173,6 +177,73 @@ describe("purchase band tokens", () => {
 						? "dark"
 						: "light",
 				);
+			}
+		});
+
+		test(`${scheme} purchase states follow every selected palette`, () => {
+			const stages = [
+				"basket",
+				"inCart",
+				"checkout",
+				"confirmed",
+				"paid",
+				"delivery",
+			] as const;
+			const names = [
+				"background",
+				"foreground",
+				"primary",
+				"secondaryForeground",
+				"primaryForeground",
+				"basket",
+				"basketForeground",
+				"inCart",
+				"inCartForeground",
+				"checkout",
+				"checkoutForeground",
+				"info",
+				"infoForeground",
+				"success",
+				"successForeground",
+			];
+			const selectedPalette = (id: (typeof BUSINESS_THEME_IDS)[number]) => {
+				const palette = Object.fromEntries(
+					names.map((name) => [name, color(block, name)]),
+				) as unknown as Record<string, string>;
+				for (const name of [
+					"background",
+					"foreground",
+					"primary",
+					"primaryForeground",
+					"secondaryForeground",
+				]) {
+					palette[name] = businessColor(id, scheme, name);
+				}
+				return palette as unknown as ThemeColors;
+			};
+
+			for (const stage of stages) {
+				const bands = BUSINESS_THEME_IDS.map((id) => {
+					const colors = selectedPalette(id);
+					const result = purchaseBand(stage, colors, scheme);
+					expect(result).not.toBeNull();
+					expect(
+						contrast(result?.color ?? "#000000", colors.background),
+					).toBeGreaterThanOrEqual(4.5);
+					expect(
+						contrast(result?.color ?? "#000000", result?.ink ?? "#000000"),
+					).toBeGreaterThanOrEqual(4.5);
+					return result?.color;
+				});
+				expect(new Set(bands).size).toBe(BUSINESS_THEME_IDS.length);
+			}
+
+			for (const id of BUSINESS_THEME_IDS) {
+				const colors = selectedPalette(id);
+				const bands = stages.map(
+					(stage) => purchaseBand(stage, colors, scheme)?.color,
+				);
+				expect(new Set(bands).size).toBe(stages.length);
 			}
 		});
 	}

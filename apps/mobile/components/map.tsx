@@ -1,5 +1,6 @@
 import { useIsFocused } from "expo-router";
 import {
+	Platform,
 	type StyleProp,
 	StyleSheet,
 	TurboModuleRegistry,
@@ -66,7 +67,7 @@ type MapLibreModule = typeof import("@maplibre/maplibre-react-native");
 const NATIVE_MODULES = [
 	"MLRNCameraModule",
 	"MLRNGeoJSONSourceModule",
-	"MLRNImagesModule",
+	...(Platform.OS === "ios" ? ["MLRNImagesModule"] : []),
 	"MLRNLocationModule",
 	"MLRNLogModule",
 	"MLRNMapViewModule",
@@ -117,6 +118,10 @@ function loadMapLibre(): MapLibreModule | null {
 		cache[CACHE_KEY] = null;
 	}
 	return cache[CACHE_KEY] ?? null;
+}
+
+export function isMapAvailable(): boolean {
+	return Boolean(env.mapStyleUrl && loadMapLibre());
 }
 
 /**
@@ -181,6 +186,8 @@ export type MapViewProps = {
 	 * the position it actually knows.
 	 */
 	coords: { lat: number; lng: number } | null;
+	zoom?: number;
+	showUserLocation?: boolean;
 	/**
 	 * A second position to drop a pin on, or `null` for none.
 	 *
@@ -295,6 +302,8 @@ export function MapView({
 	route,
 	style,
 	onPick,
+	zoom,
+	showUserLocation = true,
 }: MapViewProps) {
 	const { colors } = useTheme();
 	const { t } = useT();
@@ -377,7 +386,7 @@ export function MapView({
 			>
 				<Camera
 					center={[mapCenter.lng, mapCenter.lat]}
-					zoom={route ? ROUTE_ZOOM : STREET_ZOOM}
+					zoom={zoom ?? (route ? ROUTE_ZOOM : STREET_ZOOM)}
 				/>
 
 				{radius ? (
@@ -458,7 +467,7 @@ export function MapView({
 				    is a native view; unmounting and remounting it per tab switch would rebuild
 				    the render surface and re-request tiles, which costs more than the view it
 				    saves. What is not left running is the thing that never stops on its own. */}
-				{focused ? <UserLocation /> : null}
+				{focused && showUserLocation ? <UserLocation /> : null}
 
 				{/* The courier, when there is one to draw. A `Marker` and not the SDK's location
 				    manager: this position arrives over the API from somebody else's phone, so the

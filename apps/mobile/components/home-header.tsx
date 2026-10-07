@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
 import { usePurchaseAccent } from "@/lib/purchase-accent";
-import { purchaseBand } from "@/lib/purchase-colors";
+import { inkOnBand, purchaseBand } from "@/lib/purchase-colors";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -98,16 +98,16 @@ import { Text } from "./text";
  * first.
  */
 export function HomeHeader({
-	hasLocation,
-	onRequestLocation,
+	locationLabel,
+	onLocationPress,
 	name,
 	avatarUrl,
 	onAvatarPress,
 }: {
-	/** Whether `useDeviceLocation()` has a fix. The header states two words, not numbers. */
-	hasLocation: boolean;
-	/** The location hook's explicit `request()` action. */
-	onRequestLocation: () => void;
+	/** Current device location, saved map pin, or a prompt to choose one. */
+	locationLabel: string;
+	/** Opens the location chooser even when a location is already active. */
+	onLocationPress: () => void;
 	/** The given name, or `null` when the profile has none and the email prefix is all there is. */
 	name: string | null;
 	/** `users.me.image`. Null draws the initials; a URL draws the photo over them. */
@@ -125,21 +125,23 @@ export function HomeHeader({
 	/**
 	 * The ink for **every** mark drawn on the lime band, and `undefined` off it.
 	 *
-	 * **Read from `purchaseBand`, not decided here.** It used to be `scheme === "dark" ?
-	 * primaryForeground : secondaryForeground`, which was safe only while the band opened on the
-	 * theme's primary verbatim — a light scheme's primary is lighter than its page, so light ink
-	 * never looked like the wrong answer.
+	 * **Measured against `colors.primary`, which is the colour the band actually draws.**
 	 *
-	 * `bandAnchor` breaks that on purpose. It deepens a light primary until the band clears 4.5:1
-	 * against the page, which puts lime's light band at `#638000` — mid-dark — and
-	 * `secondaryForeground` (`#2e2722`) on it measures **1.7:1**. So the old light branch is not
-	 * merely suboptimal here, it is unreadable. `purchaseBand("browsing")` returns the anchored
-	 * colour and an ink measured against it, which for light lime is now the page colour at
-	 * **4.55:1**.
+	 * It used to be `scheme === "dark" ? primaryForeground : secondaryForeground`. It then became
+	 * `purchaseBand("browsing", …).ink`, which was wrong in a way worth recording: `purchaseBand`
+	 * *anchors* its colour with `bandAnchor` before choosing ink, but the lime browsing ramps in
+	 * `./home-gradient` are hand-authored and draw `#C8FF18` at the top either way. So the ink was
+	 * chosen against `#638000` — an olive that clears 4.5:1 — and then painted onto `#C8FF18`,
+	 * which is **1.18:1**. White on bright lime: invisible. Measured, not guessed.
 	 *
-	 * This is the same source the journey stages already read through `journeyInk`, so the
-	 * greeting and the pin cannot end up with a different answer from the status bar, which asks
-	 * `purchaseBand` too.
+	 * So browsing measures against the colour that reaches the screen, and the journey stages keep
+	 * reading `purchaseBand`, which anchors both together. The invariant is one rule: **ink is
+	 * measured against the colour under it**, whichever function owns that colour. That is also
+	 * why the status bar, which asks `purchaseBand`, cannot disagree with the greeting.
+	 *
+	 * Both results are dark, and both are correct: `#111111` on `#C8FF18` is 15.43:1 in light and
+	 * 16.22:1 in dark. Dark letters on a lime band are the design, not a defect — worth saying
+	 * because "dark mode, dark letters" reads like a bug and is not one.
 	 *
 	 * Five marks read this, and the avatar deliberately does not — `./image` paints
 	 * `colors.muted`, so the initials sit on their own disc and never see the ramp. The list:
@@ -147,7 +149,13 @@ export function HomeHeader({
 	 * pin beside them.
 	 */
 	const bandInk = onLimeGradient
-		? purchaseBand("browsing", colors, scheme)?.ink
+		? inkOnBand(
+				colors.primary,
+				scheme === "dark"
+					? colors.primaryForeground
+					: colors.secondaryForeground,
+				colors,
+			)
 		: undefined;
 	const activeInk = journeyInk ?? bandInk;
 
@@ -202,91 +210,63 @@ export function HomeHeader({
 					{name ? t("home.greeting", { name }) : t("home.greeting.anon")}
 				</Text>
 
-				{hasLocation ? (
-					// The fact. Inert on purpose — see the docblock: a tap that only re-asks
-					// an answered question is a nag this app does not do.
-					<View style={styles.coordinate}>
-						{/* The pin changes shape and ink between the two states (filled at
+				<Pressable
+					onPress={onLocationPress}
+					accessibilityRole="button"
+					accessibilityLabel={`${t("discovery.hero.deliverTo")} · ${locationLabel}`}
+					accessibilityHint={t("location.changeHelp")}
+					style={[styles.coordinate, styles.coordinateAction]}
+				>
+					{/* The pin changes shape and ink between the two states (filled at
 						    `primary`, outlined at `mutedForeground`), so the state is never
 						    carried by colour alone. */}
-						<Ionicons
-							name="location"
-							size={icon.inline}
-							// Three cases, and **light is deliberately untouched**: it keeps
-							// `colors.foreground`, which is what it has always drawn here. Dark
-							// needed a third branch rather than `bandInk`, because light's pin is
-							// `foreground` while its meta line is `secondaryForeground` — the two
-							// have always differed by a hair and folding them together would be a
-							// light-theme change dressed as a tidy-up.
-							color={
-								journeyInk ??
-								(onLimeGradient
-									? scheme === "light"
-										? colors.foreground
-										: colors.primaryForeground
-									: colors.primary)
-							}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
-						<Text
-							variant="label"
-							tone="muted"
-							style={[
-								styles.coordinateText,
-								activeInk ? { color: activeInk } : null,
-							]}
-						>
-							{lead}
-							{/* Re-declares `variant="label"`: `./text` defaults a nested node to
-							    `body` and would draw the value at 15/21 inside this 13/18 line. */}
-							<Text
-								variant="label"
-								tone="default"
-								style={nestedInk ? { color: nestedInk } : undefined}
-							>
-								{t("discovery.hero.currentLocation")}
-							</Text>
-						</Text>
-					</View>
-				) : (
-					// The action. The whole meta row is the target — pin included — so the
-					// line's shape never changes between states, only its words, its ink and
-					// its role. `./pressable`'s base already floors the box at
-					// `MIN_TOUCH_TARGET`; there is no `hitSlop`, because nothing here is drawn
-					// small enough to inflate and a horizontal one would reach the avatar.
-					<Pressable
-						onPress={onRequestLocation}
-						accessibilityRole="button"
-						accessibilityLabel={`${t("discovery.hero.deliverTo")} · ${t("location.use")}`}
-						style={[styles.coordinate, styles.coordinateAction]}
+					<Ionicons
+						name="location"
+						size={icon.inline}
+						// Three cases, and **light is deliberately untouched**: it keeps
+						// `colors.foreground`, which is what it has always drawn here. Dark
+						// needed a third branch rather than `bandInk`, because light's pin is
+						// `foreground` while its meta line is `secondaryForeground` — the two
+						// have always differed by a hair and folding them together would be a
+						// light-theme change dressed as a tidy-up.
+						color={
+							journeyInk ??
+							(onLimeGradient
+								? scheme === "light"
+									? colors.foreground
+									: colors.primaryForeground
+								: colors.primary)
+						}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+					<Text
+						variant="label"
+						tone="muted"
+						style={[
+							styles.coordinateText,
+							activeInk ? { color: activeInk } : null,
+						]}
 					>
-						<Ionicons
-							name="location-outline"
-							size={icon.inline}
-							color={activeInk ?? colors.mutedForeground}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
+						{lead}
+						{/* Re-declares `variant="label"`: `./text` defaults a nested node to
+							    `body` and would draw the value at 15/21 inside this 13/18 line. */}
 						<Text
 							variant="label"
-							tone="muted"
-							style={[
-								styles.coordinateText,
-								activeInk ? { color: activeInk } : null,
-							]}
+							tone="default"
+							style={nestedInk ? { color: nestedInk } : undefined}
 						>
-							{lead}
-							<Text
-								variant="label"
-								tone="action"
-								style={nestedInk ? { color: nestedInk } : undefined}
-							>
-								{t("location.use")}
-							</Text>
+							{locationLabel}
 						</Text>
-					</Pressable>
-				)}
+					</Text>
+					<Ionicons
+						name="chevron-down"
+						size={icon.inline}
+						color={activeInk ?? colors.mutedForeground}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+				</Pressable>
 			</View>
 
 			<Pressable

@@ -185,6 +185,20 @@ export const productListInput = z.object({
 	maxPriceMinor: moneyMinorSchema.optional(),
 	inStockOnly: z.boolean().default(false),
 	featuredOnly: z.boolean().default(false),
+	/**
+	 * Only the products a shop has actually marked down.
+	 *
+	 * "Marked down" is the row carrying the comparison itself, not a flag anybody sets:
+	 * `compareAtPriceMinor` is present and strictly above `priceMinor`. A product with no
+	 * compare-at is not on sale at its normal price, and one whose compare-at has fallen to
+	 * or below the price is not discounted at all — both are excluded.
+	 *
+	 * It is the same pair the home feed filters its own offers list with
+	 * (`packages/trpc-api/src/services/catalog.ts`), stated here rather than in only one of
+	 * the two places, because "on sale" with two definitions is a feed whose rail and an
+	 * offers page disagree about the same product with nothing to show it.
+	 */
+	onSaleOnly: z.boolean().default(false),
 	sort: z
 		.enum(["relevance", "price", "rating", "newest", "popular"])
 		.default("relevance"),

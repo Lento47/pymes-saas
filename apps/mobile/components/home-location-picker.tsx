@@ -1,0 +1,126 @@
+import { useEffect, useState } from "react";
+import { useWindowDimensions, View } from "react-native";
+
+import { Button } from "@/components/button";
+import { isMapAvailable, MapView } from "@/components/map";
+import { Sheet } from "@/components/sheet";
+import { useTabBarClearance } from "@/components/tab-bar";
+import { Text } from "@/components/text";
+import { useT } from "@/lib/i18n";
+import type { DeviceLocation, LocationStatus } from "@/lib/location";
+import { space } from "@/theme";
+
+const OVERVIEW_CENTER = { lat: 9.9281, lng: -84.0907 };
+
+export function HomeLocationPicker({
+	open,
+	current,
+	locationStatus,
+	pinned,
+	onClose,
+	onRequestCurrent,
+	onUseCurrent,
+	onApplyPin,
+	onSaveAddress,
+}: {
+	open: boolean;
+	current: DeviceLocation;
+	locationStatus: LocationStatus;
+	pinned: DeviceLocation;
+	onClose: () => void;
+	onRequestCurrent: () => void;
+	onUseCurrent: () => void;
+	onApplyPin: (coords: NonNullable<DeviceLocation>) => void;
+	onSaveAddress: (coords: NonNullable<DeviceLocation>) => void;
+}) {
+	const { t } = useT();
+	const { height } = useWindowDimensions();
+	const tabBarClearance = useTabBarClearance();
+	const [draft, setDraft] = useState<DeviceLocation>(null);
+	const [applied, setApplied] = useState<DeviceLocation>(null);
+	const knownPosition = pinned ?? current;
+	const center = knownPosition ?? OVERVIEW_CENTER;
+	const mapAvailable = isMapAvailable();
+	const pick = (coords: NonNullable<DeviceLocation>) => {
+		setDraft(coords);
+		setApplied(null);
+	};
+
+	useEffect(() => {
+		if (open) {
+			setDraft(null);
+			setApplied(null);
+		}
+	}, [open]);
+
+	return (
+		<Sheet
+			open={open}
+			onClose={onClose}
+			title={t("location.title")}
+			closeLabel={t("action.close")}
+			snapPoints={[1]}
+			footer={<View style={{ height: tabBarClearance + space.md }} />}
+		>
+			<View style={{ gap: space.md }}>
+				{mapAvailable ? (
+					<>
+						<Text variant="caption" tone="muted">
+							{t("location.mapInstruction")}
+						</Text>
+						<MapView
+							coords={center}
+							marker={draft ?? pinned}
+							zoom={knownPosition ? 14 : 7}
+							showUserLocation={
+								locationStatus === "granted" && current !== null
+							}
+							style={{ height: Math.min(480, height * 0.48) }}
+							onPick={pick}
+						/>
+					</>
+				) : (
+					<Text variant="body" tone="muted">
+						{t("location.mapUnavailable")}
+					</Text>
+				)}
+
+				<Button
+					label={t("location.use")}
+					variant="secondary"
+					fullWidth
+					onPress={() => {
+						if (!current) {
+							onRequestCurrent();
+							return;
+						}
+						onUseCurrent();
+					}}
+				/>
+
+				{draft ? (
+					applied ? (
+						<>
+							<Button
+								label={t("location.saveAddress")}
+								variant="secondary"
+								fullWidth
+								onPress={() => onSaveAddress(applied)}
+							/>
+							<Button label={t("location.done")} fullWidth onPress={onClose} />
+						</>
+					) : (
+						<Button
+							label={t("location.applyPin")}
+							fullWidth
+							onPress={() => {
+								onApplyPin(draft);
+								setApplied(draft);
+							}}
+						/>
+					)
+				) : null}
+			</View>
+		</Sheet>
+	);
+}

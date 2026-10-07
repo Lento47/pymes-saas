@@ -215,6 +215,15 @@ crons = ["* * * * *"]
 [[durable_objects.bindings]]
 name = "ORDER_ROOM"
 class_name = "OrderRoom"
+# The request counter behind `context.ts`'s `rateLimit`, one object per (bucket, identity).
+# It was KV under `CACHE`, which cannot work: KV allows one write per second per key and
+# throws past it, and the counter's key was fixed for the whole window - so it wrote the
+# key it had just read, provoked the 429 itself, and the rejection surfaced as a 500 on
+# `orders.place`. An object's instance is single-threaded, so the compare and the
+# increment cannot be interleaved. See `src/durable/rate-limit-room.ts`.
+[[durable_objects.bindings]]
+name = "RATE_LIMIT_ROOM"
+class_name = "RateLimitRoom"
 
 # `new_sqlite_classes` rather than `new_classes`: a DO on the SQLite backend is the
 # one Cloudflare offers on the free plan, and the migration tag is permanent — moving
@@ -229,6 +238,17 @@ class_name = "OrderRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["OrderRoom"]
+
+# A **second tag**, not an edit to `v1`. A migration tag is permanent: `v1` has already
+# been applied to staging and to production, and Cloudflare will not re-run a tag or add
+# a class to one that is behind it. Adding `RateLimitRoom` to `v1` would leave both
+# deployed environments with the class declared and never created - which fails on the
+# first call, not on deploy, and in production that first call is somebody's order.
+# This is the same shape as `bb1c4ae6`, where a migration the journal and the directory
+# disagreed about was the whole defect.
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RateLimitRoom"]
 
 [observability]
 enabled = true
@@ -310,6 +330,12 @@ dead_letter_queue = "pymeshub-order-events-staging-dlq"
 [[env.staging.durable_objects.bindings]]
 name = "ORDER_ROOM"
 class_name = "OrderRoom"
+# Repeated, not inherited: `durable_objects.bindings` is *not* an inheritable field, so an
+# environment that omits this one binds `ORDER_ROOM` and nothing else and calls a method
+# on a namespace that is not there. The comment above says so, and says what it cost.
+[[env.staging.durable_objects.bindings]]
+name = "RATE_LIMIT_ROOM"
+class_name = "RateLimitRoom"
 
 [env.production]
 name = "pymeshub-api"
@@ -357,3 +383,9 @@ dead_letter_queue = "pymeshub-order-events-dlq"
 [[env.production.durable_objects.bindings]]
 name = "ORDER_ROOM"
 class_name = "OrderRoom"
+# The third copy of this binding, for the same reason as the second: the field is not
+# inheritable, and production is the environment where its absence turns a rate limit
+# into a failed order.
+[[env.production.durable_objects.bindings]]
+name = "RATE_LIMIT_ROOM"
+class_name = "RateLimitRoom"

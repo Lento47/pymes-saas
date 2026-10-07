@@ -261,25 +261,30 @@ export async function feed(
 					publicBusiness(),
 				),
 			)
-			// Deepest cut first. The depth is a *ratio* and not the difference in minor
-			// units, because a ₡500 cut on a ₡2 000 item and a ₡500 cut on a ₡20 000 one
-			// are the same number and not the same offer — sorting by the subtrahend
-			// would put the expensive product first for being expensive.
+			// Most-sold first, then best rated — the same ordering `discover` above uses, and
+			// the same one `catalog.search` uses for the same kind of answer. It was deepest
+			// cut first, which is a *ratio* rather than a column, and that is the whole
+			// reason it could not stay: this rail and the offers page behind `products.list`
+			// are the same fact drawn twice, and a page that can only be ordered by a column
+			// cannot agree with a rail ordered by an expression.
 			//
-			// The division is by the compare-at price, which the `where` above has already
-			// established is non-null and above a non-null price, so nothing here divides
-			// by zero or by a null. SQLite's `/` on two integers is integer division, hence
-			// the `1.0`: without it every ratio below 1 truncates to 0 and the whole rail
-			// sorts by the tiebreak.
+			// The ratio was also never pageable, which is why it was safe here and nowhere
+			// else. `products.list` pages on one sortable column and re-derives the boundary
+			// as `column < v OR (column = v AND id > id)`, and the cursor's `v` has to be a
+			// value read off a row. A discount depth is neither: it is computed, and two
+			// offers cut by the same percentage can differ in the last bit of a float, so a
+			// cursor on one would drop or repeat a product at a page boundary. This rail
+			// never pages — it takes twelve — so it never had to find out.
+			//
+			// `soldCount` is what `relevance` already means, so the offers page can sort by
+			// it and land on exactly this order. Its own tiebreak is the id alone where this
+			// rail adds `createdAt`: both are total and deterministic and the primary order
+			// is identical, so the difference is only visible between two products that sold
+			// the same number of times and are otherwise indistinguishable.
 			.orderBy(
-				desc(
-					sql`((${productTable.compareAtPriceMinor} - ${productTable.priceMinor}) * 1.0
-							/ ${productTable.compareAtPriceMinor})`,
-				),
-				// Deterministic to the end: two products cut by the same percentage, or by
-				// the same percentage to the rounding SQLite does, must not swap places
-				// between two loads of the same data.
+				desc(productTable.soldCount),
 				desc(productTable.ratingAvg),
+				desc(productTable.createdAt),
 				asc(productTable.id),
 			)
 			.limit(FEED_OFFER_LIMIT),

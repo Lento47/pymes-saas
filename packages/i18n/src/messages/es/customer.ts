@@ -103,6 +103,19 @@ export const customer = {
 	 * would be a second implementation of that.
 	 */
 	"home.offers": "Ofertas",
+	/* The offers page with nothing in it — no search happened, so this is not the
+	   search-empty copy; `home.featured.empty.*`'s note states the same split. */
+	"home.offers.empty.title": "Todavía no hay ofertas",
+	"home.offers.empty.body":
+		"Cuando algún negocio baje el precio de un producto va a aparecer acá. Mientras tanto, mirá las categorías.",
+	"home.shortcuts.nearby": "Cercanos",
+	"home.shortcuts.recent": "Recientes",
+	/* Why the offers page shows an error for a *successful* response: the phone was
+	   handed a list `productListInput` is documented to strip to unfiltered, because the
+	   API predates `onSaleOnly`. Nothing errored — a wrong list succeeded. That is the
+	   version that refused to be true, so the body is the server's, not the reader's. */
+	"home.offers.stale":
+		"La lista no parece de ofertas: ningún producto tiene un descuento real. Probablemente el servidor va un paso atrás — probá de nuevo.",
 	"home.promotions": "Cupones",
 	/* Rails the feed does not name: repeat orders, the popular sort, and the
 	   free-delivery cut of nearby — all reads the API already answers. */
@@ -761,6 +774,24 @@ export const customer = {
 
 	"location.title": "Tu ubicación",
 	"location.use": "Usar mi ubicación",
+	"location.current": "Ubicación actual",
+	"location.pinned": "Ubicación marcada",
+	"location.choose": "Elige una ubicación",
+	"location.changeHelp":
+		"Elige tu ubicación actual o mueve el marcador en el mapa.",
+	"location.mapInstruction":
+		"Toca el mapa para marcar desde dónde quieres explorar.",
+	"location.mapUnavailable":
+		"La selección en el mapa no está disponible. Puedes usar tu ubicación actual.",
+	"location.needPosition":
+		"Permite el acceso a tu ubicación para centrar el mapa y luego mueve el marcador.",
+	"location.permissionDenied":
+		"El permiso de ubicación está desactivado. Actívalo para centrar el mapa y elegir un punto.",
+	"location.providerUnavailable":
+		"La ubicación del dispositivo no está disponible. Revisa los servicios de ubicación e inténtalo de nuevo.",
+	"location.applyPin": "Usar esta ubicación",
+	"location.saveAddress": "Guardar como dirección de entrega",
+	"location.done": "Listo",
 	"location.denied": "No pudimos obtener tu ubicación. Escribe tu dirección.",
 	"location.manual": "Escribir dirección",
 } as const;

@@ -274,6 +274,53 @@ describe("bandAnchor changes as little as it has to", () => {
 	});
 });
 
+describe("the header's ink is legible on the band it is drawn on", () => {
+	/**
+	 * The regression this pins, and it is worth being precise about how it happened.
+	 *
+	 * `purchaseBand("browsing")` anchors lime's band with `bandAnchor` and then picks ink against
+	 * the anchor — `#638000`, which clears 4.5:1, so white ink. But `./home-gradient` draws the
+	 * hand-authored lime ramps, whose top stop is `#C8FF18` either way. Ink chosen for `#638000`
+	 * landed on `#C8FF18` at **1.18:1**: white on bright lime, invisible.
+	 *
+	 * Both numbers were correct and the pair was nonsense, which is why neither a contrast
+	 * assertion on the ink nor one on the band caught it. The only thing that catches it is
+	 * asserting **ink against the colour that reaches the screen**.
+	 */
+	test("dark letters on the lime band, in both schemes, are the design and are legible", () => {
+		const lime = THEMES.find((theme) => theme.label === "lime-light");
+		const limeDark = THEMES.find((theme) => theme.label === "lime-dark");
+		if (!lime || !limeDark)
+			throw new Error("lime is missing from the parsed themes");
+
+		// `./home-gradient`'s top stop for lime, which is `colors.primary` verbatim.
+		expect(lime.primary.toLowerCase()).toBe("#c8ff18");
+		expect(limeDark.primary.toLowerCase()).toBe("#c8ff18");
+
+		// `#111111` is what both resolve to, and it clears by a wide margin on the drawn band.
+		const ink = "#111111";
+		expect(contrastRatio(ink, lime.primary)).toBeGreaterThan(4.5);
+		expect(contrastRatio(ink, limeDark.primary)).toBeGreaterThan(4.5);
+
+		// The failure mode, stated as a number so it cannot come back unnoticed: had the ink been
+		// chosen against the anchor instead of the drawn colour, this is what it would measure.
+		const anchor = bandAnchor(lime.primary, lime.background);
+		expect(contrastRatio("#FFFFFF", anchor)).toBeGreaterThanOrEqual(4.5);
+		expect(contrastRatio("#FFFFFF", lime.primary)).toBeLessThan(4.5);
+	});
+
+	test("dark letters on a lime band are not the same thing as dark letters on a dark page", () => {
+		// "Dark mode, dark letters" reads like a bug and is not one, so this records why. The band
+		// is what makes dark ink correct: `#C8FF18` at 16.22:1 against its own dark page, and
+		// 15.43:1 against `#111111`. Take the band away and the same ink is 1.05:1 — invisible.
+		const limeDark = THEMES.find((theme) => theme.label === "lime-dark");
+		if (!limeDark)
+			throw new Error("lime-dark is missing from the parsed themes");
+		expect(contrastRatio("#111111", limeDark.background)).toBeLessThan(1.5);
+		expect(contrastRatio("#111111", limeDark.primary)).toBeGreaterThan(4.5);
+	});
+});
+
 describe("the ramp holds the colour through the header", () => {
 	test("chroma retained at 24% of the height is far above the old curve", () => {
 		// The reader's complaint was "the colour is not strong enough", and the old curve lost

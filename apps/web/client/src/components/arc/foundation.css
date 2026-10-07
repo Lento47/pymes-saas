@@ -103,25 +103,58 @@
 
   /* ── The adapter. Every Arc token name resolved against this app. ────── */
 
+  /*
+    Every `hsl()` below is load-bearing, and it is the whole reason this block reads the way
+    it does.
+
+    This app's `index.css` declares its palette as **raw HSL channels**, not colours:
+
+        --border: 258 15% 23%;
+        --bg-card: 258 20% 10%;
+
+    so every consumer is required to supply the function itself — which is why shadcn writes
+    `hsl(var(--border))` everywhere. Arc never wraps: its modules ask for `var(--surface)` and
+    `var(--border)` as though those were already colours, because in Arc's own `foundation.css`
+    they are.
+
+    An earlier version of this file wrote the mappings bare:
+
+        --surface: var(--bg-card);        /* -> "258 20% 10%"  */
+        --text-muted: var(--fg-2);        /* -> "258 8% 66%"   */
+
+    Those are not colours. Every declaration that consumed one became invalid at computed-value
+    time and was dropped, so the Arc components rendered with **no border, no surface fill and
+    inherited text colour instead of muted** — a flat, borderless table with no type hierarchy,
+    which is precisely the "reads like an internal prototype" symptom this whole exercise exists
+    to remove. It was invisible in review because a dropped declaration still leaves a
+    perfectly laid-out component.
+
+    So: `hsl(var(--…))` on every mapping, matching what this same block already did correctly
+    for `--accent-subtle` and `--control-on`. `hsl(var(--x))` resolves lazily at use time, so
+    these still follow the light and dark blocks in `index.css` that redefine the channels.
+
+    See `foundation-tokens.test.ts` for the guard that keeps this from regressing.
+  */
+
   /* Surfaces map to the app's own surface ramp: card, elevated, hover. */
-  --surface: var(--bg-card);
-  --surface-raised: var(--bg-elevated);
-  --surface-muted: var(--bg-hover);
+  --surface: hsl(var(--bg-card));
+  --surface-raised: hsl(var(--bg-elevated));
+  --surface-muted: hsl(var(--bg-hover));
 
   /* Text. `--fg-2` is the app's secondary text, used for every muted string. */
-  --text-secondary: var(--fg-2);
-  --text-muted: var(--fg-2);
+  --text-secondary: hsl(var(--fg-2));
+  --text-muted: hsl(var(--fg-2));
 
   /* Borders: one border colour, three weights of emphasis. */
-  --border-subtle: var(--border);
-  --border-strong: var(--fg-3);
+  --border-subtle: hsl(var(--border));
+  --border-strong: hsl(var(--fg-3));
 
   /* Accent, and its tints, from the app's accent rather than Arc's eight-accent
      picker. This app has one accent by decision (AGENTS.md), so the eight-way system is
      not installed at all — there is nothing to select between. */
-  --accent-strong: var(--accent);
+  --accent-strong: hsl(var(--accent));
   --accent-subtle: color-mix(in srgb, hsl(var(--accent)) 13%, transparent);
-  --accent-foreground: var(--accent-fg);
+  --accent-foreground: hsl(var(--accent-fg));
 
   /* Shadows, matched to the depths the console already uses. */
   --shadow-resting: 0 1px 2px 0 rgb(0 0 0 / 0.08);

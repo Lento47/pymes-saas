@@ -80,27 +80,41 @@ describe("home gradient", () => {
 });
 
 describe("header ink on the lime band", () => {
-	test("the ink is read from `purchaseBand`, so the header cannot disagree with the band", () => {
-		// This was `scheme === "dark" ? primaryForeground : secondaryForeground`, which was safe
-		// only while the band opened on the theme's primary verbatim. `bandAnchor` deepens that
-		// until the band clears 4.5:1 against the page, so light lime's band is `#638000` and
-		// `secondaryForeground` on it measures **1.7:1** — unreadable, not merely suboptimal.
+	test("ink is measured against the colour actually drawn under it", () => {
+		// This spec used to require the opposite, and was wrong. It asserted that browsing ink
+		// came from `purchaseBand("browsing", …)`, on the reasoning that one source could not
+		// disagree with itself.
 		//
-		// Both the journey stages and the browsing band now come from one source, which is also
-		// what `screen.tsx`'s status bar reads, so the greeting, the pin and the status bar cannot
-		// end up with three different answers about the same surface.
+		// It could — and did, invisibly. `purchaseBand` *anchors* its colour with `bandAnchor`
+		// before choosing ink, but the lime browsing ramps in `./home-gradient` are hand-authored
+		// and draw `#C8FF18` at the top regardless. So the ink was chosen against the anchor's
+		// `#638000` and painted onto `#C8FF18`: **1.18:1**, white on bright lime. The band and the
+		// ink came from one function and still described two different colours.
+		//
+		// The rule that holds is per-owner: whichever function owns the colour measures the ink
+		// against it. Browsing owns `#C8FF18` (`LIME_LIGHT`/`LIME_DARK`), so it measures against
+		// `colors.primary`. The journey stages get their colour *and* their ink from
+		// `purchaseBand`, which anchors both together.
 		expect(header).toContain('colors.primary.toLowerCase() === "#c8ff18"');
 		expect(header).toMatch(
-			/const bandInk = onLimeGradient\s+\? purchaseBand\("browsing", colors, scheme\)\?\.ink\s+: undefined;/,
+			/const bandInk = onLimeGradient\s+\? inkOnBand\(\s+colors\.primary,/,
 		);
+		// The journey stages keep the anchored source, which is where anchoring applies.
 		expect(header).toContain("? purchaseBand(stage, colors, scheme)?.ink");
-		// The scheme-keyed branch is gone, and nothing may reintroduce it.
+		// Neither the scheme-keyed branch nor the anchored-browsing mistake may come back.
 		expect(header).not.toMatch(
 			/const bandInk = onLimeGradient\s*\?\s*scheme ===/,
 		);
+		expect(header).not.toContain(
+			'purchaseBand("browsing", colors, scheme)?.ink',
+		);
+		// And the band it is measured against is the one `./home-gradient` draws, so the two files
+		// cannot drift apart silently again.
+		expect(gradient).toContain('LIME_LIGHT = ["#C8FF18"');
+		expect(gradient).toContain('LIME_DARK = ["#C8FF18"');
 	});
 
-	test("the two nested tones take a dark-only ink, so light is untouched", () => {
+	test("the nested location label takes dark-only ink, so light is untouched", () => {
 		// These cannot read `bandInk`: they carry a `tone` that light resolves to `#111111`, so
 		// `bandInk` would repaint them with the band's ink instead of their own. `limeDarkInk` is
 		// `undefined` in light, so no style is attached and the element is byte-identical to what
@@ -112,7 +126,7 @@ describe("header ink on the lime band", () => {
 		expect(header).toContain("const nestedInk = journeyInk ?? limeDarkInk");
 		expect(
 			header.match(/nestedInk \? \{ color: nestedInk \} : undefined/g),
-		).toHaveLength(2);
+		).toHaveLength(1);
 	});
 
 	test("the pin keeps light on `foreground` and only dark moves", () => {
@@ -274,7 +288,31 @@ describe("the band has a shape, not only a falloff", () => {
 		expect(gradient).toContain("<BandGeometry");
 		expect(gradient).toMatch(/band: \{ width: "100%", overflow: "hidden" \}/);
 		// Both render paths get them, so `delivery` is not the one stage with a bare ramp.
-		expect(gradient.match(/\{forms\}/g)).toHaveLength(2);
+		expect(gradient.match(/<BandGeometryWithFade/g)).toHaveLength(2);
+	});
+
+	test("the geometry dissolves into the exact page colour over the lower third", () => {
+		// The base ramps already reach the page. This final veil exists for the solid geometry
+		// painted above them, which would otherwise be clipped into a visible horizontal edge.
+		expect(gradient).toContain(
+			"const GEOMETRY_FADE_LOCATIONS = [0, 0.65, 1] as const",
+		);
+		expect(gradient).toContain(
+			"colors={[withAlpha(page, 0), withAlpha(page, 0), page]}",
+		);
+		expect(gradient).toContain("locations={GEOMETRY_FADE_LOCATIONS}");
+		expect(gradient).toMatch(
+			/<BandGeometry[\s\S]*?<LinearGradient[\s\S]*?locations=\{GEOMETRY_FADE_LOCATIONS\}/,
+		);
+
+		// Geometry is measured against the container that actually clips it. Delivery has a
+		// taller fluid band than the other journey states and must not reuse `bandHeight`.
+		expect(gradient).toMatch(
+			/<BandGeometryWithFade[\s\S]*?height=\{fluidHeight\}/,
+		);
+		expect(gradient).toMatch(
+			/<BandGeometryWithFade[\s\S]*?height=\{bandHeight\}/,
+		);
 	});
 
 	test("drawn with plain Views, not SVG — no native surface on the scrolling home screen", () => {

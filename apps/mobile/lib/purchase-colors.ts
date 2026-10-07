@@ -1,6 +1,6 @@
 import type { ColorScheme, ThemeColors } from "@/theme";
 
-import { bandAnchor, contrastRatio, mixHex } from "./color";
+import { bandAnchor, contrastRatio, mixOklab } from "./color";
 
 import type { PurchaseStage } from "./purchase-state";
 
@@ -26,7 +26,7 @@ import type { PurchaseStage } from "./purchase-state";
  * is also why this lives next to `purchaseBand` rather than in the header: the header draws
  * marks, this decides what colour they are, and the two must not be able to disagree.
  */
-function inkOnBand(
+export function inkOnBand(
 	band: string,
 	preferred: string,
 	colors: ThemeColors,
@@ -61,6 +61,17 @@ export function purchaseBand(
 		const anchored = bandAnchor(color, colors.background);
 		return { color: anchored, ink: inkOnBand(anchored, preferredInk, colors) };
 	};
+	/**
+	 * Purchase states belong to the selected palette first and to their semantic cue second.
+	 *
+	 * The old branch returned the global lime, olive, blue and green tokens directly. That made
+	 * every palette stop affecting the largest coloured surface as soon as an item entered the
+	 * basket; Vine only looked correct by coincidence because its indigo sits near the global info
+	 * blue. These Oklab blends keep the selected primary dominant while retaining enough of each
+	 * state token to make the journey change visibly without producing muddy sRGB midpoints.
+	 */
+	const themed = (semantic: string, primaryWeight: number) =>
+		mixOklab(colors.primary, semantic, primaryWeight);
 
 	switch (stage) {
 		case "browsing":
@@ -73,17 +84,17 @@ export function purchaseBand(
 					)
 				: null;
 		case "basket":
-			return band(colors.basket, colors.basketForeground);
+			return band(themed(colors.basket, 0.78), colors.basketForeground);
 		case "inCart":
-			return band(colors.inCart, colors.inCartForeground);
+			return band(themed(colors.inCart, 0.84), colors.inCartForeground);
 		case "checkout":
-			return band(colors.checkout, colors.checkoutForeground);
+			return band(themed(colors.checkout, 0.9), colors.checkoutForeground);
 		case "confirmed":
-			return band(colors.info, colors.infoForeground);
+			return band(themed(colors.info, 0.82), colors.infoForeground);
 		case "delivery":
-			return band(colors.info, colors.infoForeground);
+			return band(themed(colors.info, 0.9), colors.infoForeground);
 		case "paid":
-			return band(colors.success, colors.successForeground);
+			return band(themed(colors.success, 0.82), colors.successForeground);
 	}
 }
 
@@ -109,5 +120,7 @@ export function deliveryFluidColor(
 	primaryColor: string,
 	scheme: ColorScheme,
 ): string {
-	return scheme === "dark" ? bandColor : mixHex(bandColor, primaryColor, 0.65);
+	return scheme === "dark"
+		? bandColor
+		: mixOklab(bandColor, primaryColor, 0.65);
 }

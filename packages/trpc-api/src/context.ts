@@ -14,8 +14,10 @@ import {
 } from "@pymeshub/shared/plans";
 import { eq } from "drizzle-orm";
 import { createAuth } from "./auth";
+import type { RateLimitRoom } from "./durable/rate-limit-room";
 
 import type { Env } from "./env";
+import { rateLimitRoomFor } from "./env";
 import { ForbiddenError, RateLimitError, UnauthorizedError } from "./errors";
 import { createLogger, type Logger } from "./logging";
 
@@ -321,14 +323,27 @@ export async function invalidate(env: Env, ...keys: string[]): Promise<void> {
 }
 
 /**
- * A KV-backed counter, for the endpoints where a retry loop is the threat —
- * placing an order, sending an invitation, signing in.
+ * A counter for the endpoints where a retry loop is the threat — placing an order,
+ * sending an invitation, signing in.
  *
- * Counted per window *bucket* rather than with a sliding window, so the worst case
- * is two windows' worth of requests at a boundary. That is a real looseness and it is
- * the right trade: a sliding window needs a sorted set, and the alternative on
- * Workers is a Durable Object per key, which is more machinery than "stop the
- * hundredth retry" deserves.
+ * Counted per window *bucket* rather than with a sliding window, so the worst case is
+ * two windows' worth of requests at a boundary. That is a real looseness and it is the
+ * right trade: a sliding window needs a sorted set.
+ *
+ * The counting lives in `durable/rate-limit-room.ts`, one Durable Object per (bucket,
+ * identity). It used to be a KV counter under `CACHE`, and that could not work: KV allows
+ * one write per second per key and **throws** past it, and the key was fixed for the whole
+ * window — so the counter wrote the key it had just read, provoked the 429 itself, and the
+ * rejection escaped as an `INTERNAL_SERVER_ERROR` on `orders.place`. A DO is
+ * single-threaded per instance, so the compare and the increment cannot be interleaved.
+ *
+ * **A storage failure does not refuse the request.** This has two failure modes and only
+ * one is a decision: a `RateLimitError` is the limiter working, and anything the Durable
+ * Object throws is an accident. A limiter that refuses a purchase because its own storage
+ * hiccuped turns a degraded counter into a shop that cannot sell — and the threat it
+ * guards, a retry loop, is already covered by `orders.place` being idempotent on
+ * `clientRequestId`. A duplicate retry this limiter failed to stop is still one order; a
+ * refused order is a customer who cannot buy.
  */
 export async function rateLimit(
 	env: Env,
@@ -337,11 +352,24 @@ export async function rateLimit(
 	limit: number,
 	windowSeconds: number,
 ): Promise<void> {
-	const window = Math.floor(Date.now() / 1000 / windowSeconds);
-	const key = `rl:${bucket}:${identity}:${window}`;
-	const used = Number.parseInt((await env.CACHE.get(key)) ?? "0", 10);
-	if (used >= limit) throw new RateLimitError();
-	await env.CACHE.put(key, String(used + 1), {
-		expirationTtl: windowSeconds * 2,
-	});
+	let allowed: boolean;
+	try {
+		// `RATE_LIMIT_ROOM` is declared as the unparameterised namespace, so the stub arrives
+		// without its RPC surface; the cast names the class the binding actually points at.
+		// Same shape as `services/orders.ts` casting `orderRoomFor`.
+		const room = rateLimitRoomFor(
+			env,
+			bucket,
+			identity,
+		) as DurableObjectStub<RateLimitRoom>;
+		allowed = (await room.hit(limit, windowSeconds)).allowed;
+	} catch {
+		// The object unreachable, evicted mid-call, or absent from a deploy that bound it.
+		// "Not limited right now" is the honest reading: we do not know, and refusing is the
+		// worse of the two mistakes.
+		return;
+	}
+	// Outside the `try`, so the limiter's own answer is never mistaken for a failure of
+	// the thing it asked.
+	if (!allowed) throw new RateLimitError();
 }
