@@ -165,6 +165,36 @@
   --accent-subtle: color-mix(in srgb, hsl(var(--accent)) 13%, transparent);
   --accent-foreground: hsl(var(--accent-fg));
 
+  /*
+    The six names that collide with shadcn's, resolved once.
+
+    Arc's own foundation defines `--border`, `--foreground`, `--accent`, `--success`,
+    `--warning` and `--danger` as complete colours. This app already owns all six names, with
+    the opposite meaning: `index.css` declares them as raw HSL channels, because shadcn's four
+    hundred rules write `hsl(var(--border))` and expect to supply the function themselves.
+
+    So the two systems cannot share the names, and neither can simply win — redefining
+    `--border` here as a colour would turn every shadcn border in the app into
+    `hsl(hsl(258 15% 23%))`, which is invalid and drops the declaration.
+
+    The resolution is that the vendored component CSS asks for a `-base` name instead, and each
+    one below is Arc's token bound to this app's value. The rename touches the vendored modules
+    only; `index.css` and every shadcn component are untouched, which is what keeps this
+    reversible and what stops a third design system inheriting the argument.
+
+    Each is a distinct name rather than a reuse of `--accent-strong` and friends, so that
+    reading a vendored rule says plainly which side of the boundary it is on.
+
+    `--foreground` doubles as Arc's high-contrast fill on some components, so this value is a
+    colour first and a text colour second; `--fg` is the app's primary ink either way.
+  */
+  --foreground-base: hsl(var(--fg));
+  --border-base: hsl(var(--border));
+  --accent-base: hsl(var(--accent));
+  --success-base: hsl(var(--success));
+  --warning-base: hsl(var(--warning));
+  --danger-base: hsl(var(--danger));
+
   /* Shadows, matched to the depths the console already uses. */
   --shadow-resting: 0 1px 2px 0 rgb(0 0 0 / 0.08);
   --shadow-raised: 0 8px 22px rgba(0, 0, 0, 0.22);

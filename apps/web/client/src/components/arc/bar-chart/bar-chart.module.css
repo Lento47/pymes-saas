@@ -1,4 +1,4 @@
-.figure { display: grid; min-width: 0; gap: var(--space-5); margin: 0; color: var(--foreground); }
+.figure { display: grid; min-width: 0; gap: var(--space-5); margin: 0; color: var(--foreground-base); }
 
 /* The headline is the readout: the average at rest, the scrubbed bar while exploring. Each line keeps its height, so swaps never move the plot. */
 .header { display: grid; min-width: 0; gap: 2px; }
@@ -19,23 +19,23 @@
 .chart { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 52px; grid-template-rows: auto 26px; min-width: 0; }
 .plot { position: relative; grid-area: 1 / 1; min-width: 0; }
 .svg { display: block; overflow: hidden; }
-.grid { stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; }
+.grid { stroke: var(--border-base); stroke-width: 1; shape-rendering: crispEdges; }
 .baseline { stroke: var(--border-strong); stroke-width: 1; shape-rendering: crispEdges; }
 .cursor { stroke: var(--border-strong); stroke-width: 1; shape-rendering: crispEdges; }
 .mean { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 3 3; shape-rendering: crispEdges; }
 /* The series is drawn in a soft step of the accent; the scrubbed bar takes the full accent while its neighbours step back. */
-.bar { fill: color-mix(in oklab, var(--accent) 62%, var(--surface)); transition: fill var(--duration-fast) var(--ease-standard); }
-.chart[data-scrubbing] .bar { fill: color-mix(in oklab, var(--accent) 24%, var(--surface)); }
+.bar { fill: color-mix(in oklab, var(--accent-base) 62%, var(--surface)); transition: fill var(--duration-fast) var(--ease-standard); }
+.chart[data-scrubbing] .bar { fill: color-mix(in oklab, var(--accent-base) 24%, var(--surface)); }
 /* On a dark surface a lighter mix keeps the hue clear instead of turning muddy. */
-:global([data-theme="dark"]) .bar { fill: color-mix(in oklab, var(--accent) 76%, var(--surface)); }
-:global([data-theme="dark"]) .chart[data-scrubbing] .bar { fill: color-mix(in oklab, var(--accent) 34%, var(--surface)); }
-:global([data-theme="dark"]) .chart .bar[data-active] { fill: var(--accent); }
-.chart .bar[data-active] { fill: var(--accent); }
+:global([data-theme="dark"]) .bar { fill: color-mix(in oklab, var(--accent-base) 76%, var(--surface)); }
+:global([data-theme="dark"]) .chart[data-scrubbing] .bar { fill: color-mix(in oklab, var(--accent-base) 34%, var(--surface)); }
+:global([data-theme="dark"]) .chart .bar[data-active] { fill: var(--accent-base); }
+.chart .bar[data-active] { fill: var(--accent-base); }
 
 .gutter { position: relative; grid-area: 1 / 2; min-width: 0; }
 .tick, .meanLabel { position: absolute; top: 0; left: 10px; display: block; height: 0; white-space: nowrap; pointer-events: none; }
 .tickText { display: block; transform: translateY(-50%); color: var(--text-muted); font-size: var(--text-xs); line-height: 1; font-variant-numeric: tabular-nums; }
-.meanLabel .tickText { color: var(--foreground); font-weight: 500; }
+.meanLabel .tickText { color: var(--foreground-base); font-weight: 500; }
 
 .axis { position: relative; grid-area: 2 / 1; min-width: 0; overflow: hidden; }
 .axisLabel { position: absolute; top: 8px; left: 0; color: var(--text-muted); font-size: var(--text-xs); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }

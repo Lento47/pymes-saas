@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -176,12 +176,13 @@ describe("foundation.css token adapter", () => {
     expect(foundationCss).toMatch(/--font-body:\s*var\(--font-sans\)/);
   });
 
-  it("carries no nested block comments", () => {
-    // CSS comments do not nest: the first `*/` closes the comment and everything after it is
-    // parsed as live CSS. This file's header originally demonstrated the broken form *inside its
-    // own explanation of it*, which made the explanation the bug — the comment stripper above
-    // read the example as a real declaration, and a browser would have disagreed with this file
-    // about what it contains.
+  it("carries no stray comment markers", () => {
+    // A CSS comment ends at the first closing marker it meets, whatever the author intended — so
+    // backticking one inside prose, or showing commented-out code, ends the comment early and
+    // turns the rest of the paragraph into declarations the parser will act on. This file's
+    // header did both, in the very paragraph explaining the rule, and the symptom was a stray
+    // marker left in the stylesheet and this test reading its own documentation as
+    // configuration. Described in words here; never reproduced.
     const openers = (foundationCss.match(/\/\*/g) ?? []).length;
     const closers = (foundationCss.match(/\*\//g) ?? []).length;
 
@@ -210,5 +211,109 @@ describe("foundation.css token adapter", () => {
     // Read from the comment-stripped source: the raw file quotes that rule in its header, and
     // asserting against the raw text fails on the explanation rather than on a regression.
     expect(foundationCss).not.toMatch(/outline:\s*none\s*!important/);
+  });
+});
+
+/**
+ * The vendored modules must not ask for shadcn's token names.
+ *
+ * Six names are shared between Arc and this app's `index.css` — `--border`, `--foreground`,
+ * `--accent`, `--success`, `--warning`, `--danger` — and they mean opposite things on the two
+ * sides. Arc's are complete colours; shadcn's are raw HSL channels that every consumer must
+ * wrap in `hsl()` itself. A vendored module asking for `var(--border)` therefore receives the
+ * string `258 15% 23%`, and every declaration reading it is invalid at computed-value time and
+ * **dropped** — no border, no fill, no type hierarchy, on a component that still lays out
+ * perfectly, so nothing in review or in a screenshot reveals it.
+ *
+ * Seventy-five such references shipped across eight modules before this was found. The vendored
+ * CSS now asks for `-base` names, which `foundation.css` defines as colours.
+ *
+ * ## Why this scans the directory rather than a fixed list of files
+ *
+ * Because new components arrive using Arc's original names. `vendor-arc.mjs` writes upstream
+ * source verbatim, so every component added from here on contains `var(--border)` and its
+ * siblings until somebody renames them. A guard scoped to the eight modules that happen to be
+ * vendored today would keep passing and then fail on the eleventh component — which is exactly
+ * when it is needed, and exactly when nobody is looking.
+ *
+ * `ACCEPTED` is the narrow escape hatch: a module may be listed there once a human has looked
+ * at a specific rule and decided the collision is harmless there.
+ */
+const ARC_DIR = import.meta.dirname;
+
+/** The shadcn-owned names an Arc module must not consume bare. */
+const COLLIDING = [
+  "--border",
+  "--foreground",
+  "--accent",
+  "--success",
+  "--warning",
+  "--danger",
+];
+
+/** Modules whose collisions were reviewed and accepted, one path per line, each with a reason. */
+const ACCEPTED: string[] = [];
+
+/** Every vendored CSS module. `foundation.css` is excluded: it is the adapter, not a consumer. */
+function vendoredModules(): { file: string; source: string }[] {
+  return readdirSync(ARC_DIR, { recursive: true, encoding: "utf8" })
+    .filter((name) => name.endsWith(".module.css"))
+    .map((name) => name.replace(/\\/g, "/"))
+    .filter((name) => !ACCEPTED.includes(name))
+    .map((name) => ({
+      file: name,
+      source: readFileSync(join(ARC_DIR, name), "utf8"),
+    }));
+}
+
+describe("vendored Arc modules", () => {
+  it("finds the modules rather than matching nothing", () => {
+    // A directory scan that returned zero files would make the assertion below pass without
+    // having looked at anything.
+    expect(vendoredModules().length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("never asks for a shadcn-owned token name", () => {
+    const offenders: string[] = [];
+    for (const { file, source } of vendoredModules()) {
+      for (const name of COLLIDING) {
+        // The closing paren is part of the pattern, so `var(--border)` cannot match inside
+        // `var(--border-subtle)` or `var(--border-base)`.
+        const hits = source.split(`var(${name})`).length - 1;
+        if (hits > 0) offenders.push(`${file}: var(${name}) x${hits}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("defines every -base token the modules actually ask for", () => {
+    // The rename is only safe if the adapter defines what the modules now reference. A typo
+    // here would resolve to nothing and reproduce the original bug in a new place, with no
+    // error and no warning — so the set is read from the modules rather than restated.
+    const asked = new Set<string>();
+    for (const { source } of vendoredModules()) {
+      for (const match of source.matchAll(
+        /var\((--(?:foreground|border|accent|success|warning|danger)-base)\)/g,
+      )) {
+        asked.add(match[1] as string);
+      }
+    }
+
+    expect([...asked].sort()).toEqual([
+      "--accent-base",
+      "--border-base",
+      "--danger-base",
+      "--foreground-base",
+      "--success-base",
+      "--warning-base",
+    ]);
+    for (const token of asked) {
+      // Asserted against the stylesheet, not against a label: an earlier draft passed the label
+      // to `toMatch`, which passes or fails for reasons that have nothing to do with the CSS.
+      expect(foundationCss).toMatch(
+        new RegExp(`${token}:\\s*(hsl|rgb|oklch|color-mix)\\(`),
+      );
+    }
   });
 });

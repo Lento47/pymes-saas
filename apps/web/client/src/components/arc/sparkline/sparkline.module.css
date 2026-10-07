@@ -1,5 +1,5 @@
-.figure { display: grid; min-width: 0; gap: var(--space-3); margin: 0; color: var(--foreground); }.caption { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; color: var(--text-secondary); font-size: var(--text-sm); }.label { min-width: 0; overflow: hidden; white-space: nowrap; }.caption strong { margin-left: auto; color: var(--foreground); font-size: var(--text-lg); font-weight: 500; letter-spacing: var(--tracking-body); font-variant-numeric: tabular-nums; }.caption small { flex: none; font-size: var(--text-xs); font-weight: 500; font-variant-numeric: tabular-nums; transition: color var(--duration-standard) var(--ease-standard); }
-.accent { color: var(--accent-strong); stroke: var(--accent); }.success { color: var(--success); stroke: var(--success); }.warning { color: var(--warning); stroke: var(--warning); }.danger { color: var(--danger); stroke: var(--danger); }
+.figure { display: grid; min-width: 0; gap: var(--space-3); margin: 0; color: var(--foreground-base); }.caption { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; color: var(--text-secondary); font-size: var(--text-sm); }.label { min-width: 0; overflow: hidden; white-space: nowrap; }.caption strong { margin-left: auto; color: var(--foreground-base); font-size: var(--text-lg); font-weight: 500; letter-spacing: var(--tracking-body); font-variant-numeric: tabular-nums; }.caption small { flex: none; font-size: var(--text-xs); font-weight: 500; font-variant-numeric: tabular-nums; transition: color var(--duration-standard) var(--ease-standard); }
+.accent { color: var(--accent-strong); stroke: var(--accent-base); }.success { color: var(--success-base); stroke: var(--success-base); }.warning { color: var(--warning-base); stroke: var(--warning-base); }.danger { color: var(--danger-base); stroke: var(--danger-base); }
 /* The scrubbed date is context, not a change, so it stays neutral whatever the tone. */
 .point { color: var(--text-secondary); }
 
@@ -15,7 +15,7 @@
 .plot[data-interactive] { touch-action: pan-y; cursor: default; user-select: none; }
 .plot:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 8px; }
 .chart { display: block; width: 100%; height: auto; overflow: visible; }
-.baseline { stroke: var(--border); stroke-width: 1; }
+.baseline { stroke: var(--border-base); stroke-width: 1; }
 /* The area under the line carries a faint wash of the line tone. */
 .area.area { fill: color-mix(in oklab, currentColor 9%, transparent); stroke: none; }
 .line, .trail { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }

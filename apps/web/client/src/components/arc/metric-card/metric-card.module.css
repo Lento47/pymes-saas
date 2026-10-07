@@ -1,8 +1,8 @@
-.card { min-width: 0; border: 1px solid hsl(var(--border)); border-radius: 1rem; padding: var(--space-4); background: hsl(var(--bg-card)); transition: border-color var(--duration-fast) var(--ease-standard); }
-.card[data-urgent="true"] { border-color: hsl(var(--warning)); }
+.card { min-width: 0; border: 1px solid hsl(var(--border-base)); border-radius: 1rem; padding: var(--space-4); background: hsl(var(--bg-card)); transition: border-color var(--duration-fast) var(--ease-standard); }
+.card[data-urgent="true"] { border-color: hsl(var(--warning-base)); }
 .top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-4); }
 .top span { color: var(--fg-2); font-size: 0.75rem; }
-.top small { display: inline-flex; flex: 0 0 auto; border: 1px solid hsl(var(--border)); border-radius: 9999px; padding: 3px 8px; color: var(--fg-2); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.top small { display: inline-flex; flex: 0 0 auto; border: 1px solid hsl(var(--border-base)); border-radius: 9999px; padding: 3px 8px; color: var(--fg-2); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .card p { margin: var(--space-3) 0 0; color: var(--fg-2); font-size: 0.75rem; line-height: 1.5; }
 /*
   The static tier's number. Deliberately the same size, weight and tabular figures as
@@ -22,5 +22,5 @@
 /* A signed change reads its direction in color as well as sign: a faint tint behind, the color on the text. */
 .top small[data-trend] span { color: inherit; }
 .top small[data-trend] { border-color: transparent; transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
-.top small[data-trend="up"] { background: color-mix(in srgb, hsl(var(--success)) 11%, transparent); color: hsl(var(--success)); }
-.top small[data-trend="down"] { background: color-mix(in srgb, hsl(var(--danger)) 11%, transparent); color: hsl(var(--danger)); }
+.top small[data-trend="up"] { background: color-mix(in srgb, hsl(var(--success-base)) 11%, transparent); color: hsl(var(--success-base)); }
+.top small[data-trend="down"] { background: color-mix(in srgb, hsl(var(--danger-base)) 11%, transparent); color: hsl(var(--danger-base)); }
