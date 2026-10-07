@@ -83,8 +83,98 @@ export const CONSOLE_TABS = [
 
 export type ConsoleTab = (typeof CONSOLE_TABS)[number]["value"];
 
+/**
+ * What each destination is *for*, in one line.
+ *
+ * The shell's title was "Consola de plataforma" on every tab, which is the same sentence
+ * twelve times and therefore says nothing about where you are. The breadcrumb answers that,
+ * but a breadcrumb is small and sits above the fold of a page whose whole job is a table
+ * somebody is about to read.
+ *
+ * These are the sentences an operator would use if asked, not marketing. Each one names what
+ * the page *decides* — which is the only thing a title can add over a breadcrumb.
+ *
+ * ## Why it lives here rather than in `console.tsx`
+ *
+ * It is registry data keyed by `ConsoleTab`, so it belongs beside the registry — and it was
+ * read out of the page with a regex by `console-nav.test.tsx`, which broke twice for reasons
+ * that had nothing to do with the copy. The first pattern assumed tab indentation in a
+ * two-space file; the second assumed each `description:` stayed on one line, which Prettier
+ * stops doing the moment a sentence gets long, and then again when Prettier moved the whole
+ * literal onto its own line and shifted every entry by two spaces.
+ *
+ * Both were caught by the anti-vacuity assertion rather than passing silently, which is the
+ * only reason this was found at all — but a guard that fires on a reformat is a guard that
+ * trains people to ignore it. Importing the real value makes that failure mode impossible.
+ *
+ * Keyed by `ConsoleTab`, so a new tab without an entry here is a type error rather than a
+ * page that falls back to saying nothing.
+ */
+export const TAB_PURPOSE: Record<
+  ConsoleTab,
+  { title: string; description: string }
+> = {
+  overview: {
+    title: "Resumen",
+    description:
+      "El estado de la plataforma: la cola que espera y la actividad reciente.",
+  },
+  approvals: {
+    title: "Aprobaciones",
+    description:
+      "Negocios y repartidores esperando revisión. Lo que no se responde aquí no sale.",
+  },
+  orders: {
+    title: "Órdenes",
+    description:
+      "Cada pedido de la plataforma, con su pago y su historial de estados.",
+  },
+  billing: {
+    title: "Cobros",
+    description:
+      "Suscripciones y deuda. El orden es por monto adeudado, no por fecha.",
+  },
+  support: {
+    title: "Soporte",
+    description: "Preguntas de comercios y lo que se les respondió.",
+  },
+  businesses: {
+    title: "Negocios",
+    description: "Todos los comercios registrados, verificados y suspendidos.",
+  },
+  couriers: {
+    title: "Repartidores",
+    description: "Perfiles de reparto por revisar y el estado de cada uno.",
+  },
+  users: {
+    title: "Personas",
+    description: "Cuentas de la plataforma, con sus roles y su estado.",
+  },
+  catalogue: {
+    title: "Catálogo",
+    description:
+      "Productos, reseñas, promociones e invitaciones, en una sola vista.",
+  },
+  prices: {
+    title: "Planes",
+    description:
+      "Los precios y cuándo rigen. Un cambio nunca afecta a quien ya pagó.",
+  },
+  categories: {
+    title: "Categorías",
+    description:
+      "La taxonomía del mercado. Aquí aparece en la navegación del cliente.",
+  },
+  audit: {
+    title: "Auditoría",
+    description: "Todo lo que se ha hecho aquí, con quién, cuándo y por qué.",
+  },
+};
+
 const TAB_VALUES: readonly string[] = CONSOLE_TABS.map((tab) => tab.value);
-const GROUP_VALUES: readonly string[] = CONSOLE_GROUPS.map((group) => group.value);
+const GROUP_VALUES: readonly string[] = CONSOLE_GROUPS.map(
+  (group) => group.value,
+);
 
 /**
  * The tabs in one group, in list order.
@@ -94,7 +184,9 @@ const GROUP_VALUES: readonly string[] = CONSOLE_GROUPS.map((group) => group.valu
  * that a horizontal strip does not, because the strip rendered every entry unconditionally.
  */
 export function tabsInGroup(group: ConsoleGroup): readonly ConsoleTab[] {
-  return CONSOLE_TABS.filter((tab) => tab.group === group).map((tab) => tab.value);
+  return CONSOLE_TABS.filter((tab) => tab.group === group).map(
+    (tab) => tab.value,
+  );
 }
 
 /**

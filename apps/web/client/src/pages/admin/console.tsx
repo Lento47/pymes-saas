@@ -1,5 +1,10 @@
 import type { Category, UserProfile } from "@pymeshub/shared";
-import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type UseQueryResult,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   ArrowDownNarrowWide,
   ArrowUpNarrowWide,
@@ -17,15 +22,36 @@ import { MetricCard } from "@/components/arc/metric-card/metric-card";
 import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { Sparkline } from "@/components/arc/sparkline/sparkline";
 import { PageTemplate } from "@/components/layout/page-template";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,13 +69,20 @@ import {
   adminApi,
   BUSINESS_STATUSES,
   needsReason,
+  type PriceBookRow,
   REASON_MIN_LENGTH,
   type SubscriptionStatus,
 } from "@/lib/admin";
 import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { ConsoleEnvBadge } from "./console-env-badge";
-import { ActivityPanel, OperatorPanel, SignupsPanel, seriesTotal, VolumePanel } from "./console-metrics";
+import {
+  ActivityPanel,
+  OperatorPanel,
+  SignupsPanel,
+  seriesTotal,
+  VolumePanel,
+} from "./console-metrics";
 import { ConsoleShell } from "./console-nav";
 import { TablePager } from "./console-pager";
 import {
@@ -63,7 +96,7 @@ import {
   type TicketSort,
 } from "./console-sort";
 import { EmptyState, QueryErrorState } from "./console-states";
-import { type ConsoleTab, resolveConsoleTab } from "./console-tabs";
+import { resolveConsoleTab, TAB_PURPOSE } from "./console-tabs";
 import { useAdminPage } from "./use-admin-page";
 
 /**
@@ -109,7 +142,10 @@ const STATUS_CLASS: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant="outline" className={STATUS_CLASS[status] ?? STATUS_CLASS.CLOSED}>
+    <Badge
+      variant="outline"
+      className={STATUS_CLASS[status] ?? STATUS_CLASS.CLOSED}
+    >
       {STATUS_LABEL[status] ?? status}
     </Badge>
   );
@@ -120,7 +156,7 @@ function money(minor: number, currency: string) {
     return new Intl.NumberFormat("es-CR", {
       style: "currency",
       currency,
-maximumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(minor / 100);
   } catch {
     return `${minor} ${currency}`;
@@ -173,7 +209,11 @@ function ActionButton({
       await queryClient.invalidateQueries();
     },
     onError: (error: Error) => {
-      toast({ title: "No se pudo completar", description: error.message, variant: "destructive" });
+      toast({
+        title: "No se pudo completar",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -195,7 +235,12 @@ function ActionButton({
 
   return (
     <>
-      <Button variant={variant} size={size} aria-label={`${label}: ${targetName}`} onClick={() => setOpen(true)}>
+      <Button
+        variant={variant}
+        size={size}
+        aria-label={`${label}: ${targetName}`}
+        onClick={() => setOpen(true)}
+      >
         {label}
       </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
@@ -215,8 +260,8 @@ function ActionButton({
                 What replaces it is the part that is true of *all* of them: the act is
                 recorded, with a name and a reason, and it outlives the screen.
               */}
-              Esta acción queda en el registro de auditoría con tu nombre, y el motivo va
-              con ella.
+              Esta acción queda en el registro de auditoría con tu nombre, y el
+              motivo va con ella.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
@@ -285,7 +330,14 @@ function Metrics({
    */
   viewer?: UserProfile;
 }) {
-  const { data: metrics, isPending, isError, isFetching, error, refetch } = query;
+  const {
+    data: metrics,
+    isPending,
+    isError,
+    isFetching,
+    error,
+    refetch,
+  } = query;
   const [open, setOpen] = useState(false);
 
   /*
@@ -304,7 +356,12 @@ function Metrics({
     // first five of them under the heading "Tu actividad".
     enabled: !!viewer?.id,
     queryFn: () =>
-      adminApi.auditLog({ actorId: viewer?.id, limit: 5, sort: "newest", direction: "desc" }),
+      adminApi.auditLog({
+        actorId: viewer?.id,
+        limit: 5,
+        sort: "newest",
+        direction: "desc",
+      }),
   });
 
   if (isPending) return <Skeleton className="h-9 w-full" />;
@@ -365,16 +422,48 @@ function Metrics({
   ] as const;
 
   const quietTiles = [
-    { label: "Negocios activos", value: metrics.businesses.active, context: "Publicados en el mercado" },
-    { label: "Negocios suspendidos", value: metrics.businesses.suspended, context: "Cerrados por la plataforma" },
+    {
+      label: "Negocios activos",
+      value: metrics.businesses.active,
+      context: "Publicados en el mercado",
+    },
+    {
+      label: "Negocios suspendidos",
+      value: metrics.businesses.suspended,
+      context: "Cerrados por la plataforma",
+    },
     // `businesses.total` is the denominator for the two above it, so an operator reading
     // "3 suspendidos" with no total cannot tell 3 of 40 from 3 of 400.
-    { label: "Negocios totales", value: metrics.businesses.total, context: "Registrados en la plataforma" },
-    { label: "Usuarios", value: metrics.users.total, context: "Cuentas de cliente y comercio" },
-    { label: "Usuarios suspendidos", value: metrics.users.suspended, context: "Cuentas cortadas" },
-    { label: "Admins", value: metrics.users.admins, context: "Con acceso a esta consola" },
-    { label: "Órdenes activas", value: metrics.orders.active, context: "En curso ahora" },
-    { label: "Órdenes totales", value: metrics.orders.total, context: "Histórico completo" },
+    {
+      label: "Negocios totales",
+      value: metrics.businesses.total,
+      context: "Registrados en la plataforma",
+    },
+    {
+      label: "Usuarios",
+      value: metrics.users.total,
+      context: "Cuentas de cliente y comercio",
+    },
+    {
+      label: "Usuarios suspendidos",
+      value: metrics.users.suspended,
+      context: "Cuentas cortadas",
+    },
+    {
+      label: "Admins",
+      value: metrics.users.admins,
+      context: "Con acceso a esta consola",
+    },
+    {
+      label: "Órdenes activas",
+      value: metrics.orders.active,
+      context: "En curso ahora",
+    },
+    {
+      label: "Órdenes totales",
+      value: metrics.orders.total,
+      context: "Histórico completo",
+    },
   ];
 
   const summary = [
@@ -388,7 +477,9 @@ function Metrics({
     seriesTotal(metrics.signupsSeries) > 0
       ? `${seriesTotal(metrics.signupsSeries)} negocios en 30 días`
       : null,
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="space-y-3">
@@ -466,18 +557,18 @@ function Metrics({
                 labels={metrics.orderSeries.slice(-14).map((row) => row.day)}
                 width={220}
                 height={40}
-                tone={tile.label === "Tasa de cancelación" ? "warning" : "accent"}
+                tone={
+                  tile.label === "Tasa de cancelación" ? "warning" : "accent"
+                }
               />
             ) : null}
           </div>
         ))}
       </div>
 
-      <div
-        id="admin-metrics-tiles"
-        hidden={!open}
-        className="space-y-3"
-      >        {/*
+      <div id="admin-metrics-tiles" hidden={!open} className="space-y-3">
+        {" "}
+        {/*
           The two panels that were being fetched and discarded, drawn inside the region that
           is already collapsed by default.
 
@@ -508,7 +599,6 @@ function Metrics({
             isLoading={myActionsQuery.isPending}
           />
         </div>
-
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {quietTiles.map((t) => (
             <MetricCard
@@ -522,7 +612,6 @@ function Metrics({
             />
           ))}
         </div>
-
         {/*
           When these numbers were taken. The query refetches every thirty seconds, so an
           operator reading "12 órdenes hoy" deserves to know it is not a cached hour-old
@@ -554,98 +643,124 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
     );
   }
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Negocio</TableHead>
-          <TableHead>Ciudad</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead className="text-right">Productos</TableHead>
-          <TableHead className="text-right">Órdenes</TableHead>
-          <TableHead className="text-right">Volumen</TableHead>
-          <TableHead>Alta</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((b) => (
-          <TableRow key={b.id}>
-            <TableCell>
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="font-medium">{b.name}</div>
-                  <div className="text-xs text-muted-foreground">{b.ownerEmail ?? "—"}</div>
+    <SortableDataTable<AdminBusinessRow>
+      rows={rows}
+      rowKey="id"
+      caption="Negocios"
+      emptyMessage="No hay negocios en esta lista."
+      columns={[
+        {
+          key: "name",
+          label: "Negocio",
+          sortable: true,
+          render: (_v, b) => (
+            <div className="flex items-center gap-3">
+              <div>
+                <div className="font-medium">{b.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {b.ownerEmail ?? "—"}
                 </div>
-                <BusinessSheet businessId={b.id} />
               </div>
-            </TableCell>
-            <TableCell>{b.city}</TableCell>
-            <TableCell>
-              <StatusBadge status={b.status} />
-            </TableCell>
-            <TableCell className="text-right tabular-nums">{b.productCount}</TableCell>
-            <TableCell className="text-right tabular-nums">{b.orderCount}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {money(b.grossVolumeMinor, b.currency)}
-            </TableCell>
-            <TableCell className="text-muted-foreground">{shortDate(b.createdAt)}</TableCell>
-            <TableCell>
-              <div className="flex justify-end gap-2">
-                {b.status === "DRAFT" || !b.isVerified ? (
-                  <ActionButton
-                    label="Verificar"
-                    action="business.verify"
-                    targetName={b.name}
-                    onRun={(reason) => adminApi.verifyBusiness(b.id, reason)}
-                    size="sm"
-                  />
-                ) : null}
-                {b.status === "SUSPENDED" ? (
-                  <ActionButton
-                    label="Reactivar"
-                    action="business.reactivate"
-                    targetName={b.name}
-                    onRun={(reason) => adminApi.reactivateBusiness(b.id, reason)}
-                    variant="outline"
-                    size="sm"
-                  />
-                ) : (
-                  <ActionButton
-                    label="Suspender"
-                    action="business.suspend"
-                    targetName={b.name}
-                    onRun={(reason) => adminApi.suspendBusiness(b.id, reason ?? "")}
-                    variant="destructive"
-                    size="sm"
-                  />
-                )}
-                {/*
-                  Delete is **not** a third button in that pair, and never was going to be.
-
-                  `business.delete` exists and is in `REASON_REQUIRED_ACTIONS`, but the service
-                  refuses outright for any business with an order, a subscription or a support
-                  ticket — which is every business that has ever done anything. So this only
-                  ever appears for a signup that never traded, and it is deliberately last in
-                  the row: it is irreversible, and the refusal that comes back names
-                  suspension as the alternative.
-
-                  Offered from the row rather than hidden behind a kebab menu, because
-                  "eliminar" is one word and burying it is how it gets clicked by accident.
-                */}
+              <BusinessSheet businessId={b.id} />
+            </div>
+          ),
+        },
+        {
+          key: "city",
+          label: "Ciudad",
+          sortable: true,
+          render: (_v, b) => b.city,
+        },
+        {
+          key: "status",
+          label: "Estado",
+          render: (_v, b) => <StatusBadge status={b.status} />,
+        },
+        {
+          key: "productCount",
+          label: "Productos",
+          numeric: true,
+          sortable: true,
+        },
+        { key: "orderCount", label: "Órdenes", numeric: true, sortable: true },
+        {
+          key: "grossVolumeMinor",
+          label: "Volumen",
+          numeric: true,
+          render: (_v, b) => money(b.grossVolumeMinor, b.currency),
+        },
+        {
+          key: "createdAt",
+          label: "Alta",
+          render: (_v, b) => (
+            <span className="text-muted-foreground">
+              {shortDate(b.createdAt)}
+            </span>
+          ),
+        },
+        {
+          key: "actions",
+          label: "Acciones",
+          sortable: false,
+          width: "260px",
+          render: (_v, b) => (
+            <div className="flex justify-end gap-2">
+              {b.status === "DRAFT" || !b.isVerified ? (
                 <ActionButton
-                  label="Eliminar"
-                  action="business.delete"
+                  label="Verificar"
+                  action="business.verify"
                   targetName={b.name}
-                  onRun={(reason) => adminApi.deleteBusiness(b.id, reason ?? "")}
+                  onRun={(reason) => adminApi.verifyBusiness(b.id, reason)}
+                  size="sm"
+                />
+              ) : null}
+              {b.status === "SUSPENDED" ? (
+                <ActionButton
+                  label="Reactivar"
+                  action="business.reactivate"
+                  targetName={b.name}
+                  onRun={(reason) => adminApi.reactivateBusiness(b.id, reason)}
+                  variant="outline"
+                  size="sm"
+                />
+              ) : (
+                <ActionButton
+                  label="Suspender"
+                  action="business.suspend"
+                  targetName={b.name}
+                  onRun={(reason) =>
+                    adminApi.suspendBusiness(b.id, reason ?? "")
+                  }
                   variant="destructive"
                   size="sm"
                 />
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+              )}
+              {/*
+                Delete is **not** a third button in that pair, and never was going to be.
+
+                `business.delete` exists and is in `REASON_REQUIRED_ACTIONS`, but the service
+                refuses outright for any business with an order, a subscription or a support
+                ticket — which is every business that has ever done anything. So this only
+                ever appears for a signup that never traded, and it is deliberately last in
+                the row: it is irreversible, and the refusal that comes back names
+                suspension as the alternative.
+
+                Offered from the row rather than hidden behind a kebab menu, because
+                "eliminar" is one word and burying it is how it gets clicked by accident.
+              */}
+              <ActionButton
+                label="Eliminar"
+                action="business.delete"
+                targetName={b.name}
+                onRun={(reason) => adminApi.deleteBusiness(b.id, reason ?? "")}
+                variant="destructive"
+                size="sm"
+              />
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -683,7 +798,12 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
     queryKey: [onlyPending, search, order, dates.from, dates.to],
     queryFn: ({ cursor, limit }) =>
       onlyPending
-        ? adminApi.pendingVerifications({ sort: order.sort, direction: order.direction, cursor, limit })
+        ? adminApi.pendingVerifications({
+            sort: order.sort,
+            direction: order.direction,
+            cursor,
+            limit,
+          })
         : adminApi.businesses({
             search: search || undefined,
             sort: order.sort,
@@ -695,7 +815,8 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
           }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -792,7 +913,11 @@ function UserSheet({ userId }: { userId: string }) {
         <SheetHeader>
           <SheetTitle>{person?.name ?? "Persona"}</SheetTitle>
           <SheetDescription>
-            {isError ? "No se pudo abrir la ficha." : person ? person.email : "Cargando…"}
+            {isError
+              ? "No se pudo abrir la ficha."
+              : person
+                ? person.email
+                : "Cargando…"}
           </SheetDescription>
         </SheetHeader>
         {isError ? (
@@ -830,7 +955,9 @@ function UserSheet({ userId }: { userId: string }) {
                   "Negocios",
                   person.businessRoles.length === 0
                     ? "—"
-                    : person.businessRoles.map((r) => `${r.businessName} (${r.role})`).join(", "),
+                    : person.businessRoles
+                        .map((r) => `${r.businessName} (${r.role})`)
+                        .join(", "),
                 ],
                 ["Alta", shortDate(person.createdAt)],
               ].map(([label, value]) => (
@@ -910,7 +1037,9 @@ function UserSheet({ userId }: { userId: string }) {
                         </span>
                       </div>
                       {e.reason ? (
-                        <p className="mt-0.5 text-muted-foreground">{e.reason}</p>
+                        <p className="mt-0.5 text-muted-foreground">
+                          {e.reason}
+                        </p>
                       ) : null}
                     </li>
                   ))}
@@ -940,14 +1069,23 @@ function UserSheet({ userId }: { userId: string }) {
  * `revokeAdmin` is on the same row, and the reverse of it *does* demand a reason, because
  * taking the flag back is a removal and handing it out is not.
  */
-function GrantAdminButton({ userId, userName }: { userId: string; userName: string }) {
+function GrantAdminButton({
+  userId,
+  userName,
+}: {
+  userId: string;
+  userName: string;
+}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const grant = useMutation({
     mutationFn: () => adminApi.grantAdmin(userId),
     onSuccess: async () => {
-      toast({ title: "Admin otorgado", description: `${userName} ya es de plataforma.` });
+      toast({
+        title: "Admin otorgado",
+        description: `${userName} ya es de plataforma.`,
+      });
       await queryClient.invalidateQueries();
     },
     onError: (e: Error) =>
@@ -992,7 +1130,8 @@ function UsersTab() {
       }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -1032,24 +1171,25 @@ function UsersTab() {
         />
       </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Persona</TableHead>
-            <TableHead>Negocios</TableHead>
-            <TableHead className="text-right">Órdenes</TableHead>
-            <TableHead>Alta</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.rows.map((u: AdminUserRow) => (
-            <TableRow key={u.id}>
-              <TableCell>
+      <SortableDataTable<AdminUserRow>
+        rows={data.rows}
+        rowKey="id"
+        caption="Personas"
+        emptyMessage="No hay personas."
+        columns={[
+          {
+            key: "name",
+            label: "Persona",
+            sortable: true,
+            render: (_v, u) => (
+              <div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{u.name}</span>
                   {u.isAdmin ? (
-                    <Badge variant="outline" className="border-amber-500/40 text-amber-600">
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/40 text-amber-600"
+                    >
                       <ShieldCheck className="mr-1 h-3 w-3" /> admin
                     </Badge>
                   ) : null}
@@ -1062,61 +1202,89 @@ function UsersTab() {
                   have a detail view open the same way.
                 */}
                 <UserSheet userId={u.id} />
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
+              </div>
+            ),
+          },
+          {
+            key: "businessRoles",
+            label: "Negocios",
+            sortable: false,
+            render: (_v, u) => (
+              <span className="text-xs text-muted-foreground">
                 {u.businessRoles.length === 0
                   ? "—"
-                  : u.businessRoles.map((r) => `${r.businessName} (${r.role})`).join(", ")}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{u.orderCount}</TableCell>
-              <TableCell className="text-muted-foreground">{shortDate(u.createdAt)}</TableCell>
-              <TableCell>
-                <div className="flex justify-end gap-2">
-                  {/*
-                    Both pairs are **exclusive on state**, not merely hidden when idle.
-                    Offering "Suspender" to somebody already suspended, and "Dar admin" to
-                    somebody already an admin, meant two of the three buttons on this row
-                    were no-ops that still wrote an audit entry claiming something had been
-                    done. `grantAdmin` was already idempotent server-side and that is why the
-                    old UI got away with it; the fix is to not offer the act at all, so the
-                    row says what can actually happen to this person right now.
-                  */}
-                  {u.isAdmin ? (
-                    <ActionButton
-                      label="Quitar admin"
-                      action="user.revoke_admin"
-                      targetName={u.name}
-                      onRun={(reason) => adminApi.revokeAdmin(u.id, reason ?? "")}
-                      variant="outline"
-                      size="sm"
-                    />
-                  ) : (
-                    <GrantAdminButton userId={u.id} userName={u.name} />
-                  )}
-                  {u.isSuspended ? (
-                    <ActionButton
-                      label="Reactivar"
-                      action="user.reactivate"
-                      targetName={u.name}
-                      onRun={(reason) => adminApi.reactivateUser(u.id, reason)}
-                      size="sm"
-                    />
-                  ) : (
-                    <ActionButton
-                      label="Suspender"
-                      action="user.suspend"
-                      targetName={u.name}
-                      onRun={(reason) => adminApi.suspendUser(u.id, reason ?? "")}
-                      variant="destructive"
-                      size="sm"
-                    />
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                  : u.businessRoles
+                      .map((r) => `${r.businessName} (${r.role})`)
+                      .join(", ")}
+              </span>
+            ),
+          },
+          {
+            key: "orderCount",
+            label: "Órdenes",
+            numeric: true,
+            sortable: true,
+          },
+          {
+            key: "createdAt",
+            label: "Alta",
+            render: (_v, u) => (
+              <span className="text-muted-foreground">
+                {shortDate(u.createdAt)}
+              </span>
+            ),
+          },
+          {
+            key: "actions",
+            label: "Acciones",
+            sortable: false,
+            width: "240px",
+            render: (_v, u) => (
+              <div className="flex justify-end gap-2">
+                {/*
+                  Both pairs are **exclusive on state**, not merely hidden when idle.
+                  Offering "Suspender" to somebody already suspended, and "Dar admin" to
+                  somebody already an admin, meant two of the three buttons on this row
+                  were no-ops that still wrote an audit entry claiming something had been
+                  done. `grantAdmin` was already idempotent server-side and that is why the
+                  old UI got away with it; the fix is to not offer the act at all, so the
+                  row says what can actually happen to this person right now.
+                */}
+                {u.isAdmin ? (
+                  <ActionButton
+                    label="Quitar admin"
+                    action="user.revoke_admin"
+                    targetName={u.name}
+                    onRun={(reason) => adminApi.revokeAdmin(u.id, reason ?? "")}
+                    variant="outline"
+                    size="sm"
+                  />
+                ) : (
+                  <GrantAdminButton userId={u.id} userName={u.name} />
+                )}
+                {u.isSuspended ? (
+                  <ActionButton
+                    label="Reactivar"
+                    action="user.reactivate"
+                    targetName={u.name}
+                    onRun={(reason) => adminApi.reactivateUser(u.id, reason)}
+                    size="sm"
+                  />
+                ) : (
+                  <ActionButton
+                    label="Suspender"
+                    action="user.suspend"
+                    targetName={u.name}
+                    onRun={(reason) => adminApi.suspendUser(u.id, reason ?? "")}
+                    variant="destructive"
+                    size="sm"
+                  />
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -1143,7 +1311,8 @@ function OrdersTab() {
       }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -1180,63 +1349,85 @@ function OrdersTab() {
         <DateRangeFilter range={dates} onChange={page.reset} column="fecha" />
       </div>
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Referencia</TableHead>
-            <TableHead>Negocio</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead>Pago</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.rows.map((o) => (
-            <TableRow key={o.id}>
-              <TableCell className="font-mono text-xs">{o.reference}</TableCell>
-              <TableCell>{o.businessName}</TableCell>
-              <TableCell>{o.customerName}</TableCell>
-              <TableCell className="text-xs">{o.status}</TableCell>
-              {/*
-                The payment column is not decoration. `order.refund` only applies to a captured
-                payment, and the operator cannot know which orders have one without reading
-                `payment_status` — so a refund button on every row would be a button that is
-                wrong most of the time, and "wrong" on a money action means a refusal the
-                operator has to interpret.
-              */}
-              <TableCell className="text-xs">{o.paymentStatus}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {money(o.totalMinor, o.currency)}
-              </TableCell>
-              <TableCell className="text-muted-foreground">{shortDate(o.placedAt)}</TableCell>
-              <TableCell>
-                <div className="flex justify-end gap-2">
-                  {o.paymentStatus === "PAID" ? (
-                    <ActionButton
-                      label="Reembolsar"
-                      action="order.refund"
-                      targetName={o.reference}
-                      onRun={(reason) => adminApi.refundOrder(o.id, reason ?? "")}
-                      size="sm"
-                    />
-                  ) : null}
+      <SortableDataTable<AdminOrderRow>
+        rows={data.rows}
+        rowKey="id"
+        caption="Órdenes"
+        emptyMessage="No hay órdenes."
+        columns={[
+          {
+            key: "reference",
+            label: "Referencia",
+            render: (_v, o) => (
+              <span className="font-mono text-xs">{o.reference}</span>
+            ),
+          },
+          { key: "businessName", label: "Negocio" },
+          { key: "customerName", label: "Cliente" },
+          {
+            key: "status",
+            label: "Estado",
+            render: (_v, o) => <span className="text-xs">{o.status}</span>,
+          },
+          {
+            key: "paymentStatus",
+            label: "Pago",
+            sortable: true,
+            /*
+              The payment column is not decoration. `order.refund` only applies to a captured
+              payment, and the operator cannot know which orders have one without reading
+              `payment_status` — so a refund button on every row would be a button that is
+              wrong most of the time, and "wrong" on a money action means a refusal the
+              operator has to interpret.
+            */
+            render: (_v, o) => (
+              <span className="text-xs">{o.paymentStatus}</span>
+            ),
+          },
+          {
+            key: "totalMinor",
+            label: "Total",
+            numeric: true,
+            render: (_v, o) => money(o.totalMinor, o.currency),
+          },
+          {
+            key: "placedAt",
+            label: "Fecha",
+            render: (_v, o) => (
+              <span className="text-muted-foreground">
+                {shortDate(o.placedAt)}
+              </span>
+            ),
+          },
+          {
+            key: "actions",
+            label: "Acciones",
+            sortable: false,
+            width: "200px",
+            render: (_v, o) => (
+              <div className="flex justify-end gap-2">
+                {o.paymentStatus === "PAID" ? (
                   <ActionButton
-                    label="Cancelar"
-                    action="order.cancel"
+                    label="Reembolsar"
+                    action="order.refund"
                     targetName={o.reference}
-                    onRun={(reason) => adminApi.cancelOrder(o.id, reason ?? "")}
-                    variant="destructive"
+                    onRun={(reason) => adminApi.refundOrder(o.id, reason ?? "")}
                     size="sm"
                   />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                ) : null}
+                <ActionButton
+                  label="Cancelar"
+                  action="order.cancel"
+                  targetName={o.reference}
+                  onRun={(reason) => adminApi.cancelOrder(o.id, reason ?? "")}
+                  variant="destructive"
+                  size="sm"
+                />
+              </div>
+            ),
+          },
+        ]}
+      />
       <TablePager
         offset={page.offset}
         total={page.total}
@@ -1286,7 +1477,8 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
       }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -1316,25 +1508,26 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
         />
       ) : null}
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Repartidor</TableHead>
-            <TableHead>Zona</TableHead>
-            <TableHead>Vehículo</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead>Alta</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.rows.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell>
+      <SortableDataTable<AdminCourierRow>
+        rows={data.rows}
+        rowKey="id"
+        caption="Repartidores"
+        emptyMessage="No hay repartidores."
+        columns={[
+          {
+            key: "displayName",
+            label: "Repartidor",
+            sortable: true,
+            render: (_v, c) => (
+              <div>
                 <div className="font-medium">{c.displayName}</div>
-                <div className="text-xs text-muted-foreground">{c.userEmail}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.userEmail}
+                </div>
                 {c.bio ? (
-                  <p className="mt-1 max-w-md text-xs text-muted-foreground">{c.bio}</p>
+                  <p className="mt-1 max-w-md text-xs text-muted-foreground">
+                    {c.bio}
+                  </p>
                 ) : null}
                 {c.vehiclePhotoUrl ? (
                   <a
@@ -1346,62 +1539,94 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
                     Ver foto del vehículo
                   </a>
                 ) : null}
-              </TableCell>
-              <TableCell className="text-sm">{c.serviceArea}</TableCell>
-              <TableCell className="text-sm">
+              </div>
+            ),
+          },
+          {
+            key: "serviceArea",
+            label: "Zona",
+            render: (_v, c) => <span className="text-sm">{c.serviceArea}</span>,
+          },
+          {
+            key: "vehicleName",
+            label: "Vehículo",
+            render: (_v, c) => (
+              <span className="text-sm">
                 {c.vehicleName ?? "—"}
                 {c.vehiclePlate ? (
                   <div className="font-mono text-xs text-muted-foreground">
                     {c.vehiclePlate}
                   </div>
                 ) : null}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={
-                    c.verificationStatus === "VERIFIED"
-                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                      : c.verificationStatus === "PENDING"
-                        ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
-                        : "bg-muted text-muted-foreground border-border"
-                  }
-                >
-                  {c.verificationStatus === "VERIFIED"
-                    ? "Verificado"
+              </span>
+            ),
+          },
+          {
+            key: "verificationStatus",
+            label: "Estado",
+            render: (_v, c) => (
+              <Badge
+                variant="outline"
+                className={
+                  c.verificationStatus === "VERIFIED"
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
                     : c.verificationStatus === "PENDING"
-                      ? "Pendiente"
-                      : "Rechazado"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-muted-foreground">{shortDate(c.createdAt)}</TableCell>
-              <TableCell>
-                <div className="flex justify-end gap-2">
-                  {c.verificationStatus !== "VERIFIED" ? (
-                    <ActionButton
-                      label="Verificar"
-                      action="courier.verify"
-                      targetName={c.displayName}
-                      onRun={(reason) => adminApi.reviewCourier(c.id, "VERIFIED", reason)}
-                      size="sm"
-                    />
-                  ) : null}
-                  {c.verificationStatus !== "REJECTED" ? (
-                    <ActionButton
-                      label="Rechazar"
-                      action="courier.reject"
-                      targetName={c.displayName}
-                      onRun={(reason) => adminApi.reviewCourier(c.id, "REJECTED", reason ?? "")}
-                      variant="destructive"
-                      size="sm"
-                    />
-                  ) : null}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                      ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                      : "bg-muted text-muted-foreground border-border"
+                }
+              >
+                {c.verificationStatus === "VERIFIED"
+                  ? "Verificado"
+                  : c.verificationStatus === "PENDING"
+                    ? "Pendiente"
+                    : "Rechazado"}
+              </Badge>
+            ),
+          },
+          {
+            key: "createdAt",
+            label: "Alta",
+            render: (_v, c) => (
+              <span className="text-muted-foreground">
+                {shortDate(c.createdAt)}
+              </span>
+            ),
+          },
+          {
+            key: "actions",
+            label: "Acciones",
+            sortable: false,
+            width: "200px",
+            render: (_v, c) => (
+              <div className="flex justify-end gap-2">
+                {c.verificationStatus !== "VERIFIED" ? (
+                  <ActionButton
+                    label="Verificar"
+                    action="courier.verify"
+                    targetName={c.displayName}
+                    onRun={(reason) =>
+                      adminApi.reviewCourier(c.id, "VERIFIED", reason)
+                    }
+                    size="sm"
+                  />
+                ) : null}
+                {c.verificationStatus !== "REJECTED" ? (
+                  <ActionButton
+                    label="Rechazar"
+                    action="courier.reject"
+                    targetName={c.displayName}
+                    onRun={(reason) =>
+                      adminApi.reviewCourier(c.id, "REJECTED", reason ?? "")
+                    }
+                    variant="destructive"
+                    size="sm"
+                  />
+                ) : null}
+              </div>
+            ),
+          },
+        ]}
+      />
       <TablePager
         offset={page.offset}
         total={page.total}
@@ -1470,7 +1695,9 @@ function TicketThread({ ticketId }: { ticketId: string }) {
 
   const refresh = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["admin", "ticket", ticketId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "ticket", ticketId],
+      }),
       queryClient.invalidateQueries({ queryKey: ["admin", "tickets"] }),
     ]);
   };
@@ -1483,7 +1710,11 @@ function TicketThread({ ticketId }: { ticketId: string }) {
       await refresh();
     },
     onError: (e: Error) =>
-      toast({ title: "No se pudo enviar", description: e.message, variant: "destructive" }),
+      toast({
+        title: "No se pudo enviar",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const resolve = useMutation({
@@ -1496,7 +1727,11 @@ function TicketThread({ ticketId }: { ticketId: string }) {
       await refresh();
     },
     onError: (e: Error) =>
-      toast({ title: "No se pudo cerrar", description: e.message, variant: "destructive" }),
+      toast({
+        title: "No se pudo cerrar",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   if (isPending) return <Skeleton className="h-72 w-full" />;
@@ -1524,7 +1759,11 @@ function TicketThread({ ticketId }: { ticketId: string }) {
         <h3 className="mt-0.5 font-semibold">{data.subject}</h3>
         <Badge
           variant="outline"
-          className={done ? "mt-2" : "mt-2 bg-amber-500/10 text-amber-600 border-amber-500/30"}
+          className={
+            done
+              ? "mt-2"
+              : "mt-2 bg-amber-500/10 text-amber-600 border-amber-500/30"
+          }
         >
           {TICKET_STATUS_LABEL[data.status] ?? data.status}
         </Badge>
@@ -1534,7 +1773,11 @@ function TicketThread({ ticketId }: { ticketId: string }) {
         {data.messages.map((m) => (
           <li
             key={m.id}
-            className={m.fromSupport ? "ml-6 border-l-2 border-amber-500/40 pl-3" : "mr-6 pl-3"}
+            className={
+              m.fromSupport
+                ? "ml-6 border-l-2 border-amber-500/40 pl-3"
+                : "mr-6 pl-3"
+            }
           >
             <p className="text-xs text-muted-foreground">
               {m.fromSupport ? "PymesHub" : data.openedByName} ·{" "}
@@ -1547,8 +1790,8 @@ function TicketThread({ ticketId }: { ticketId: string }) {
 
       {done ? (
         <p className="border-t pt-3 text-xs text-muted-foreground">
-          Cerrado el {data.resolvedAt ? shortDate(data.resolvedAt) : ""}. Un ticket cerrado se
-          puede reabrir desde el comercio.
+          Cerrado el {data.resolvedAt ? shortDate(data.resolvedAt) : ""}. Un
+          ticket cerrado se puede reabrir desde el comercio.
         </p>
       ) : (
         <div className="space-y-3 border-t pt-3">
@@ -1585,15 +1828,18 @@ function TicketThread({ ticketId }: { ticketId: string }) {
         </div>
       )}
 
-      <AlertDialog open={closing !== null} onOpenChange={(o) => !o && setClosing(null)}>
+      <AlertDialog
+        open={closing !== null}
+        onOpenChange={(o) => !o && setClosing(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {closing === "RESOLVED" ? "Resolver" : "Cerrar"}: {data.subject}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              La nota es obligatoria y queda publicada como el último mensaje del ticket, así
-              que el comercio ve exactamente por qué se cerró.
+              La nota es obligatoria y queda publicada como el último mensaje
+              del ticket, así que el comercio ve exactamente por qué se cerró.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Textarea
@@ -1653,7 +1899,8 @@ function SupportTab() {
       }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-72 w-full" />;
   if (isError) {
@@ -1718,7 +1965,9 @@ function SupportTab() {
             Todos
           </ToggleGroupItem>
         </ToggleGroup>
-        <p className="text-xs text-muted-foreground">{data?.total ?? 0} en total</p>
+        <p className="text-xs text-muted-foreground">
+          {data?.total ?? 0} en total
+        </p>
       </div>
 
       {/*
@@ -1759,11 +2008,12 @@ function SupportTab() {
             >
               <p className="truncate text-sm font-medium">{t.subject}</p>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {t.businessName} · {TICKET_CATEGORY_LABEL[t.category] ?? t.category}
+                {t.businessName} ·{" "}
+                {TICKET_CATEGORY_LABEL[t.category] ?? t.category}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {t.messageCount} {t.messageCount === 1 ? "mensaje" : "mensajes"} ·{" "}
-                {shortDate(t.lastMessageAt ?? t.createdAt)}
+                {t.messageCount} {t.messageCount === 1 ? "mensaje" : "mensajes"}{" "}
+                · {shortDate(t.lastMessageAt ?? t.createdAt)}
               </p>
             </button>
           ))}
@@ -1885,7 +2135,11 @@ function RecordPaymentDialog({
       onDone();
     },
     onError: (e: Error) =>
-      toast({ title: "No se pudo registrar", description: e.message, variant: "destructive" }),
+      toast({
+        title: "No se pudo registrar",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   return (
@@ -1899,13 +2153,17 @@ function RecordPaymentDialog({
             <AlertDialogTitle>Pago de {businessName}</AlertDialogTitle>
             <AlertDialogDescription>
               Debe {money(arrearsMinor, currency)} en {periodsOwed}{" "}
-              {periodsOwed === 1 ? "periodo" : "periodos"}. La referencia del banco o de
-              SINPE es obligatoria: es lo único que hace el pago conciliable después.
+              {periodsOwed === 1 ? "periodo" : "periodos"}. La referencia del
+              banco o de SINPE es obligatoria: es lo único que hace el pago
+              conciliable después.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
             <div>
-              <label htmlFor="pay-amount" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pay-amount"
+                className="text-xs text-muted-foreground"
+              >
                 Monto recibido
               </label>
               <Input
@@ -1933,7 +2191,10 @@ function RecordPaymentDialog({
               ) : null}
             </div>
             <div>
-              <label htmlFor="pay-ref" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pay-ref"
+                className="text-xs text-muted-foreground"
+              >
                 Referencia
               </label>
               <Input
@@ -1952,14 +2213,19 @@ function RecordPaymentDialog({
             */}
             {writtenOffMinor > 0 ? (
               <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs">
-                Con este pago quedan saldados {money(arrearsMinor, currency)}. Se perdona{" "}
-                {money(writtenOffMinor, currency)}{" "}
-                {periodsForgiven === 1 ? "de 1 periodo" : `de ${periodsForgiven} periodos`}{" "}
+                Con este pago quedan saldados {money(arrearsMinor, currency)}.
+                Se perdona {money(writtenOffMinor, currency)}{" "}
+                {periodsForgiven === 1
+                  ? "de 1 periodo"
+                  : `de ${periodsForgiven} periodos`}{" "}
                 que nadie pagó, y queda anotado en la auditoría con tu nombre.
               </p>
             ) : null}
             <div>
-              <label htmlFor="pay-reason" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pay-reason"
+                className="text-xs text-muted-foreground"
+              >
                 Motivo (obligatorio)
               </label>
               <Textarea
@@ -1973,7 +2239,10 @@ function RecordPaymentDialog({
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={!canSubmit || save.isPending} onClick={() => save.mutate()}>
+            <AlertDialogAction
+              disabled={!canSubmit || save.isPending}
+              onClick={() => save.mutate()}
+            >
               Registrar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2018,7 +2287,9 @@ function RecordPaymentDialog({
   */
 function BillingTab() {
   const [status, setStatus] = useState<"all" | SubscriptionStatus>("all");
-  const [sort, setSort] = useState<"arrears" | "periodEnd" | "businessName">("arrears");
+  const [sort, setSort] = useState<"arrears" | "periodEnd" | "businessName">(
+    "arrears",
+  );
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
@@ -2039,7 +2310,8 @@ function BillingTab() {
       }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -2117,7 +2389,11 @@ function BillingTab() {
           >
             {(["arrears", "periodEnd", "businessName"] as const).map((s) => (
               <ToggleGroupItem key={s} value={s} className="text-xs">
-                {s === "arrears" ? "Deuda" : s === "periodEnd" ? "Vence" : "Nombre"}
+                {s === "arrears"
+                  ? "Deuda"
+                  : s === "periodEnd"
+                    ? "Vence"
+                    : "Nombre"}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -2143,72 +2419,124 @@ function BillingTab() {
           hint="Un negocio aparece aquí en cuanto se registra; sus facturas pendientes se cobran desde aquí."
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Negocio</TableHead>
-              <TableHead>Plan</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-right">Debe</TableHead>
-              <TableHead className="text-right">Períodos</TableHead>
-              <TableHead>Vence</TableHead>
-              <TableHead>Último pago</TableHead>
-              <TableHead className="text-right">Acción</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.rows.map((s) => (
-              <TableRow key={s.id} className={s.arrearsMinor > 0 ? "bg-red-500/[0.03]" : undefined}>
-                <TableCell>
+        <SortableDataTable<AdminSubscription>
+          rows={data.rows}
+          rowKey="id"
+          caption="Suscripciones"
+          emptyMessage="No hay suscripciones."
+          columns={[
+            {
+              key: "businessName",
+              label: "Negocio",
+              sortable: true,
+              render: (_v, s) => (
+                <div>
                   <div className="font-medium">{s.businessName}</div>
-                  <div className="text-xs text-muted-foreground">{s.ownerEmail ?? "—"}</div>
-                </TableCell>
-                <TableCell className="text-sm">{s.plan}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={SUBSCRIPTION_STATUS_CLASS[s.status] ?? SUBSCRIPTION_STATUS_CLASS.SUSPENDED}
-                  >
-                    {SUBSCRIPTION_STATUS_LABEL[s.status] ?? s.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {s.priceMinor === null ? "—" : money(s.priceMinor, s.currency)}
-                </TableCell>
-                <TableCell
-                  className={`text-right tabular-nums ${s.arrearsMinor > 0 ? "font-semibold text-red-600" : "text-muted-foreground"}`}
+                  <div className="text-xs text-muted-foreground">
+                    {s.ownerEmail ?? "—"}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "plan",
+              label: "Plan",
+              sortable: true,
+              render: (_v, s) => <span className="text-sm">{s.plan}</span>,
+            },
+            {
+              key: "status",
+              label: "Estado",
+              sortable: true,
+              render: (_v, s) => (
+                <Badge
+                  variant="outline"
+                  className={
+                    SUBSCRIPTION_STATUS_CLASS[s.status] ??
+                    SUBSCRIPTION_STATUS_CLASS.SUSPENDED
+                  }
+                >
+                  {SUBSCRIPTION_STATUS_LABEL[s.status] ?? s.status}
+                </Badge>
+              ),
+            },
+            {
+              key: "priceMinor",
+              label: "Precio",
+              numeric: true,
+              sortable: true,
+              render: (_v, s) =>
+                s.priceMinor === null ? "—" : money(s.priceMinor, s.currency),
+            },
+            {
+              key: "arrearsMinor",
+              label: "Debe",
+              numeric: true,
+              sortable: true,
+              render: (_v, s) => (
+                <span
+                  className={
+                    s.arrearsMinor > 0
+                      ? "font-semibold text-red-600"
+                      : "text-muted-foreground"
+                  }
                 >
                   {money(s.arrearsMinor, s.currency)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{s.periodsOwed || "—"}</TableCell>
-                <TableCell className="text-muted-foreground">
+                </span>
+              ),
+            },
+            {
+              key: "periodsOwed",
+              label: "Períodos",
+              numeric: true,
+              sortable: true,
+              render: (_v, s) => s.periodsOwed || "—",
+            },
+            {
+              key: "periodEnd",
+              label: "Vence",
+              sortable: true,
+              render: (_v, s) => (
+                <span className="text-muted-foreground">
                   {s.periodEnd ? shortDate(s.periodEnd) : "—"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
+                </span>
+              ),
+            },
+            {
+              key: "lastPaidAt",
+              label: "Último pago",
+              sortable: true,
+              render: (_v, s) => (
+                <span className="text-muted-foreground">
                   {s.lastPaidAt ? shortDate(s.lastPaidAt) : "Nunca"}
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-end">
-                    {s.arrearsMinor > 0 ? (
-                      <RecordPaymentDialog
-                        subscriptionId={s.id}
-                        businessName={s.businessName}
-                        arrearsMinor={s.arrearsMinor}
-                        periodsOwed={s.periodsOwed}
-                        priceMinor={s.priceMinor}
-                        currency={s.currency}
-                        onDone={() => queryClient.invalidateQueries()}
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </span>
+              ),
+            },
+            {
+              key: "actions",
+              label: "Acción",
+              sortable: false,
+              width: "120px",
+              render: (_v, s) => (
+                <div className="flex justify-end">
+                  {s.arrearsMinor > 0 ? (
+                    <RecordPaymentDialog
+                      subscriptionId={s.id}
+                      businessName={s.businessName}
+                      arrearsMinor={s.arrearsMinor}
+                      periodsOwed={s.periodsOwed}
+                      priceMinor={s.priceMinor}
+                      currency={s.currency}
+                      onDone={() => queryClient.invalidateQueries()}
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       )}
 
       <TablePager
@@ -2283,7 +2611,11 @@ function PriceBooksTab() {
       queryClient.invalidateQueries();
     },
     onError: (e: Error) =>
-      toast({ title: "No se pudo crear", description: e.message, variant: "destructive" }),
+      toast({
+        title: "No se pudo crear",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
@@ -2300,47 +2632,69 @@ function PriceBooksTab() {
 
   return (
     <div className="space-y-6">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Libro</TableHead>
-            <TableHead className="text-right">Semanal</TableHead>
-            <TableHead className="text-right">Mensual</TableHead>
-            <TableHead>Vigente desde</TableHead>
-            <TableHead>Estado</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                No hay libros de precio todavía.
-              </TableCell>
-            </TableRow>
-          ) : null}
-          {data.map((book) => (
-            <TableRow key={book.id}>
-              <TableCell className="font-medium">{book.label}</TableCell>
-              <TableCell className="text-right tabular-nums">{money(book.weeklyMinor, "CRC")}</TableCell>
-              <TableCell className="text-right tabular-nums">{money(book.monthlyMinor, "CRC")}</TableCell>
-              <TableCell className="text-muted-foreground">{shortDate(book.effectiveFrom)}</TableCell>
-              <TableCell>
-                {book.isStaged ? (
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                    Programado
-                  </Badge>
-                ) : book.isCurrent ? (
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-                    Vigente
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">Reemplazado</Badge>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <SortableDataTable<PriceBookRow>
+        rows={data}
+        rowKey="id"
+        caption="Libros de precio"
+        emptyMessage="No hay libros de precio todavía."
+        columns={[
+          {
+            key: "label",
+            label: "Libro",
+            sortable: true,
+            render: (_v, book) => (
+              <span className="font-medium">{book.label}</span>
+            ),
+          },
+          {
+            key: "weeklyMinor",
+            label: "Semanal",
+            numeric: true,
+            sortable: true,
+            render: (_v, book) => money(book.weeklyMinor, "CRC"),
+          },
+          {
+            key: "monthlyMinor",
+            label: "Mensual",
+            numeric: true,
+            sortable: true,
+            render: (_v, book) => money(book.monthlyMinor, "CRC"),
+          },
+          {
+            key: "effectiveFrom",
+            label: "Vigente desde",
+            sortable: true,
+            render: (_v, book) => (
+              <span className="text-muted-foreground">
+                {shortDate(book.effectiveFrom)}
+              </span>
+            ),
+          },
+          {
+            key: "isCurrent",
+            label: "Estado",
+            sortable: false,
+            render: (_v, book) => (
+              <Badge
+                variant="outline"
+                className={
+                  book.isStaged
+                    ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                    : book.isCurrent
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                      : undefined
+                }
+              >
+                {book.isStaged
+                  ? "Programado"
+                  : book.isCurrent
+                    ? "Vigente"
+                    : "Reemplazado"}
+              </Badge>
+            ),
+          },
+        ]}
+      />
 
       <Card>
         <CardHeader>
@@ -2349,7 +2703,10 @@ function PriceBooksTab() {
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label htmlFor="pb-label" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pb-label"
+                className="text-xs text-muted-foreground"
+              >
                 Etiqueta
               </label>
               <Input
@@ -2361,7 +2718,10 @@ function PriceBooksTab() {
               />
             </div>
             <div>
-              <label htmlFor="pb-weekly" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pb-weekly"
+                className="text-xs text-muted-foreground"
+              >
                 Semanal (₡)
               </label>
               <Input
@@ -2373,7 +2733,10 @@ function PriceBooksTab() {
               />
             </div>
             <div>
-              <label htmlFor="pb-monthly" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pb-monthly"
+                className="text-xs text-muted-foreground"
+              >
                 Mensual (₡)
               </label>
               <Input
@@ -2385,7 +2748,10 @@ function PriceBooksTab() {
               />
             </div>
             <div>
-              <label htmlFor="pb-from" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="pb-from"
+                className="text-xs text-muted-foreground"
+              >
                 Vigente desde
               </label>
               <Input
@@ -2409,7 +2775,10 @@ function PriceBooksTab() {
             the reason-required list drifted in the first place.
           */}
           <div className="mt-3">
-            <label htmlFor="pb-reason" className="text-xs text-muted-foreground">
+            <label
+              htmlFor="pb-reason"
+              className="text-xs text-muted-foreground"
+            >
               Motivo (obligatorio)
             </label>
             <Textarea
@@ -2422,7 +2791,11 @@ function PriceBooksTab() {
             />
           </div>
           <div className="mt-3 flex justify-end">
-            <Button size="sm" disabled={!canSubmit || create.isPending} onClick={() => create.mutate()}>
+            <Button
+              size="sm"
+              disabled={!canSubmit || create.isPending}
+              onClick={() => create.mutate()}
+            >
               {create.isPending ? "Guardando…" : "Programar"}
             </Button>
           </div>
@@ -2477,26 +2850,39 @@ function CategoryDialog({
       onDone();
     },
     onError: (e: Error) =>
-      toast({ title: "No se pudo guardar", description: e.message, variant: "destructive" }),
+      toast({
+        title: "No se pudo guardar",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   return (
     <>
-      <Button size="sm" variant={category ? "outline" : "default"} onClick={() => setOpen(true)}>
+      <Button
+        size="sm"
+        variant={category ? "outline" : "default"}
+        onClick={() => setOpen(true)}
+      >
         {category ? "Editar" : "Nueva categoría"}
       </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{category ? "Editar categoría" : "Nueva categoría"}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {category ? "Editar categoría" : "Nueva categoría"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              El nombre en español es el que ve el mercado. El inglés es opcional; dejarlo vacío
-              lo borra.
+              El nombre en español es el que ve el mercado. El inglés es
+              opcional; dejarlo vacío lo borra.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
             <div>
-              <label htmlFor="cat-name" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="cat-name"
+                className="text-xs text-muted-foreground"
+              >
                 Nombre (es)
               </label>
               <Input
@@ -2507,7 +2893,10 @@ function CategoryDialog({
               />
             </div>
             <div>
-              <label htmlFor="cat-name-en" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="cat-name-en"
+                className="text-xs text-muted-foreground"
+              >
                 Nombre (en)
               </label>
               <Input
@@ -2518,7 +2907,10 @@ function CategoryDialog({
               />
             </div>
             <div>
-              <label htmlFor="cat-image" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="cat-image"
+                className="text-xs text-muted-foreground"
+              >
                 Foto
               </label>
               <Input
@@ -2529,8 +2921,9 @@ function CategoryDialog({
                 className="mt-1"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Cuadrada, sin texto ni logotipos. Es lo que ve el cliente en la tira de
-                categorías; vacío vuelve al ícono. Vaciar el campo borra la foto.
+                Cuadrada, sin texto ni logotipos. Es lo que ve el cliente en la
+                tira de categorías; vacío vuelve al ícono. Vaciar el campo borra
+                la foto.
               </p>
               {imageUrl.trim() === "" ? null : (
                 <img
@@ -2541,7 +2934,10 @@ function CategoryDialog({
               )}
             </div>
             <div>
-              <label htmlFor="cat-sort" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="cat-sort"
+                className="text-xs text-muted-foreground"
+              >
                 Orden
               </label>
               <Input
@@ -2598,7 +2994,9 @@ function CategoriesTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">{data.length} categorías</p>
+        <p className="text-xs text-muted-foreground">
+          {data.length} categorías
+        </p>
         <CategoryDialog onDone={() => queryClient.invalidateQueries()} />
       </div>
       <SortableDataTable<Category>
@@ -2617,12 +3015,15 @@ function CategoriesTab() {
             key: "nameEn",
             label: "English",
             render: (_v, c) => (
-              <span className="text-sm text-muted-foreground">{c.nameEn ?? "—"}</span>
+              <span className="text-sm text-muted-foreground">
+                {c.nameEn ?? "—"}
+              </span>
             ),
           },
           {
             key: "imageUrl",
             label: "Foto",
+            sortable: false,
             render: (_v, c) =>
               c.imageUrl ? (
                 <img
@@ -2638,24 +3039,33 @@ function CategoriesTab() {
             key: "slug",
             label: "Slug",
             render: (_v, c) => (
-              <span className="font-mono text-xs text-muted-foreground">{c.slug}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {c.slug}
+              </span>
             ),
           },
           {
             key: "productCount",
             label: "Productos",
             numeric: true,
-            render: (_v, c) => <span className="text-right tabular-nums">{c.productCount ?? 0}</span>,
+            render: (_v, c) => (
+              <span className="text-right tabular-nums">
+                {c.productCount ?? 0}
+              </span>
+            ),
           },
           {
             key: "sortOrder",
             label: "Orden",
             numeric: true,
-            render: (_v, c) => <span className="text-right tabular-nums">{c.sortOrder}</span>,
+            render: (_v, c) => (
+              <span className="text-right tabular-nums">{c.sortOrder}</span>
+            ),
           },
           {
             key: "actions",
             label: "Acciones",
+            sortable: false,
             width: "140px",
             render: (_v, c) => (
               <div className="flex justify-end gap-2">
@@ -2673,7 +3083,9 @@ function CategoriesTab() {
                   label="Eliminar"
                   action="category.delete"
                   targetName={c.name}
-                  onRun={(reason) => adminApi.deleteCategory(c.id, reason ?? "")}
+                  onRun={(reason) =>
+                    adminApi.deleteCategory(c.id, reason ?? "")
+                  }
                   variant="destructive"
                   size="sm"
                 />
@@ -2738,7 +3150,11 @@ function TableSort<T extends string>({
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="text-xs">
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="text-xs"
+            >
               {option.label}
             </SelectItem>
           ))}
@@ -2757,7 +3173,9 @@ function TableSort<T extends string>({
           ) : (
             <ArrowDownNarrowWide className="h-3.5 w-3.5" />
           )}
-          <span className="ml-1.5 text-xs">{directionLabel(value.direction)}</span>
+          <span className="ml-1.5 text-xs">
+            {directionLabel(value.direction)}
+          </span>
         </Button>
       ) : null}
       {chosen ? (
@@ -2855,7 +3273,10 @@ function BusinessSheet({ businessId }: { businessId: string }) {
                 ["Correo", business.ownerEmail ?? "—"],
                 ["Productos", String(business.productCount)],
                 ["Órdenes", String(business.orderCount)],
-                ["Volumen", money(business.grossVolumeMinor, business.currency)],
+                [
+                  "Volumen",
+                  money(business.grossVolumeMinor, business.currency),
+                ],
                 ["Alta", shortDate(business.createdAt)],
                 ["Motivo de suspensión", business.suspendedReason ?? "—"],
               ].map(([label, value]) => (
@@ -2921,7 +3342,9 @@ function BusinessSheet({ businessId }: { businessId: string }) {
                         </span>
                       </div>
                       {e.reason ? (
-                        <p className="mt-0.5 text-muted-foreground">{e.reason}</p>
+                        <p className="mt-0.5 text-muted-foreground">
+                          {e.reason}
+                        </p>
                       ) : null}
                     </li>
                   ))}
@@ -2950,13 +3373,16 @@ function BusinessSheet({ businessId }: { businessId: string }) {
  * It is still in the main table above, with the reason that explains it.
  */
 function AuditDiffTable({ rows }: { rows: readonly AuditLogEntry[] }) {
-  const changed = rows.filter((entry) => entry.after !== null && entry.after !== undefined);
+  const changed = rows.filter(
+    (entry) => entry.after !== null && entry.after !== undefined,
+  );
   if (changed.length === 0) return null;
 
   return (
     <details className="rounded-md border">
       <summary className="cursor-pointer px-4 py-2 text-sm font-medium">
-        Qué cambió ({changed.length} {changed.length === 1 ? "entrada" : "entradas"})
+        Qué cambió ({changed.length}{" "}
+        {changed.length === 1 ? "entrada" : "entradas"})
       </summary>
       <div className="border-t p-4">
         <ul className="space-y-3">
@@ -3004,7 +3430,8 @@ function AuditTab() {
       }),
   });
 
-  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } =
+    page;
 
   if (isPending || isSettling) return <Skeleton className="h-64 w-full" />;
   if (isError) {
@@ -3023,45 +3450,79 @@ function AuditTab() {
     <div className="space-y-4">
       <DateRangeFilter range={dates} onChange={page.reset} column="cuándo" />
       <p className="text-xs text-muted-foreground">{data.total} en total</p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Cuándo</TableHead>
-            <TableHead>Acción</TableHead>
-            {/*
-              `actorName` and `targetType` were being sent and not drawn.
-
-              An audit entry without an actor is not an audit entry — it is a timestamp with
-              a verb — and `auditLogEntrySchema` has carried `actorName`, `targetType` and
-              `targetId` from the start. The actor is rendered as a fallback pair rather than
-              a dash, because `auditLogEntries` left-joins `user` **deliberately**: an admin
-              whose account is gone keeps their name on the record only while the row
-              survives, so the id is the honest last resort and hiding it would lose the trail.
-            */}
-            <TableHead>Quién</TableHead>
-            <TableHead>Sobre</TableHead>
-            <TableHead>Motivo</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.rows.map((e) => (
-            <TableRow key={e.id}>
-              <TableCell className="whitespace-nowrap text-muted-foreground">
+      <SortableDataTable<AuditLogEntry>
+        rows={data.rows}
+        rowKey="id"
+        caption="Bitácora"
+        emptyMessage="No hay entradas en este rango."
+        columns={[
+          {
+            key: "createdAt",
+            label: "Cuándo",
+            sortable: true,
+            render: (_v, e) => (
+              <span className="whitespace-nowrap text-muted-foreground">
                 {shortDate(e.createdAt)}
-              </TableCell>
-              <TableCell className="font-mono text-xs">{e.action}</TableCell>
-              <TableCell className="text-xs">
-                {e.actorName ?? <span className="font-mono text-muted-foreground">{e.actorId}</span>}
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
+              </span>
+            ),
+          },
+          {
+            key: "action",
+            label: "Acción",
+            sortable: true,
+            render: (_v, e) => (
+              <span className="font-mono text-xs">{e.action}</span>
+            ),
+          },
+          /*
+            `actorName` and `targetType` were being sent and not drawn.
+
+            An audit entry without an actor is not an audit entry — it is a timestamp with
+            a verb — and `auditLogEntrySchema` has carried `actorName`, `targetType` and
+            `targetId` from the start. The actor is rendered as a fallback pair rather than
+            a dash, because `auditLogEntries` left-joins `user` **deliberately**: an admin
+            whose account is gone keeps their name on the record only while the row
+            survives, so the id is the honest last resort and hiding it would lose the trail.
+          */
+          {
+            key: "actorName",
+            label: "Quién",
+            sortable: true,
+            render: (_v, e) => (
+              <span className="text-xs">
+                {e.actorName ?? (
+                  <span className="font-mono text-muted-foreground">
+                    {e.actorId}
+                  </span>
+                )}
+              </span>
+            ),
+          },
+          {
+            key: "targetType",
+            label: "Sobre",
+            sortable: false,
+            render: (_v, e) => (
+              <span className="text-xs text-muted-foreground">
                 {e.targetType}
-                <span className="block font-mono text-[11px] opacity-70">{e.targetId}</span>
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">{e.reason ?? "—"}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                <span className="block font-mono text-[11px] opacity-70">
+                  {e.targetId}
+                </span>
+              </span>
+            ),
+          },
+          {
+            key: "reason",
+            label: "Motivo",
+            sortable: false,
+            render: (_v, e) => (
+              <span className="text-xs text-muted-foreground">
+                {e.reason ?? "—"}
+              </span>
+            ),
+          },
+        ]}
+      />
 
       {/*
         Before and after, for the entries that have both.
@@ -3128,13 +3589,16 @@ function AdminGate({ children }: { children: React.ReactNode }) {
   // session expired to try again is pointless; showing them a button on a genuine server
   // fault is the whole point.
   if (isError) {
-    const status = (error as { data?: { code?: string } } | undefined)?.data?.code;
+    const status = (error as { data?: { code?: string } } | undefined)?.data
+      ?.code;
     if (status === "UNAUTHORIZED") {
       return (
         <div className="p-6">
           <Card className="mx-auto max-w-md">
             <CardContent className="pt-6 text-center">
-              <h1 className="text-lg font-semibold">No pudimos verificar tu sesión</h1>
+              <h1 className="text-lg font-semibold">
+                No pudimos verificar tu sesión
+              </h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 Inicia sesión en PymesHub y vuelve a abrir la consola.
               </p>
@@ -3159,10 +3623,12 @@ function AdminGate({ children }: { children: React.ReactNode }) {
         <Card className="mx-auto max-w-md">
           <CardContent className="pt-6 text-center">
             <ShieldAlert className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <h1 className="text-lg font-semibold">Esta consola es para el equipo</h1>
+            <h1 className="text-lg font-semibold">
+              Esta consola es para el equipo
+            </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Tu cuenta está iniciada pero no es de plataforma. Si debería serlo, pídele a
-              alguien con acceso que te la otorgue.
+              Tu cuenta está iniciada pero no es de plataforma. Si debería
+              serlo, pídele a alguien con acceso que te la otorgue.
             </p>
           </CardContent>
         </Card>
@@ -3180,70 +3646,6 @@ export default function AdminConsolePage() {
     </AdminGate>
   );
 }
-/**
- * What each destination is *for*, in one line.
- *
- * The shell's title was "Consola de plataforma" on every tab, which is the same sentence
- * eleven times and therefore says nothing about where you are. The breadcrumb answers that,
- * but a breadcrumb is small and sits above the fold of a page whose whole job is a table
- * somebody is about to read.
- *
- * These are the sentences an operator would use if asked, not marketing. Each one names what
- * the page *decides* — which is the only thing a title can add over a breadcrumb.
- *
- * Keyed by `ConsoleTab`, so a new tab without an entry here is a type error rather than a
- * page that falls back to saying nothing.
- */
-const TAB_PURPOSE: Record<ConsoleTab, { title: string; description: string }> = {
-  overview: {
-    title: "Resumen",
-    description: "El estado de la plataforma: la cola que espera y la actividad reciente.",
-  },
-  approvals: {
-    title: "Aprobaciones",
-    description: "Negocios y repartidores esperando revisión. Lo que no se responde aquí no sale.",
-  },
-  orders: {
-    title: "Órdenes",
-    description: "Cada pedido de la plataforma, con su pago y su historial de estados.",
-  },
-  billing: {
-    title: "Cobros",
-    description: "Suscripciones y deuda. El orden es por monto adeudado, no por fecha.",
-  },
-  support: {
-    title: "Soporte",
-    description: "Preguntas de comercios y lo que se les respondió.",
-  },
-  businesses: {
-    title: "Negocios",
-    description: "Todos los comercios registrados, verificados y suspendidos.",
-  },
-  couriers: {
-    title: "Repartidores",
-    description: "Perfiles de reparto por revisar y el estado de cada uno.",
-  },
-  users: {
-    title: "Personas",
-    description: "Cuentas de la plataforma, con sus roles y su estado.",
-  },
-  catalogue: {
-    title: "Catálogo",
-    description: "Productos, reseñas, promociones e invitaciones, en una sola vista.",
-  },
-  prices: {
-    title: "Planes",
-    description: "Los precios y cuándo rigen. Un cambio nunca afecta a quien ya pagó.",
-  },
-  categories: {
-    title: "Categorías",
-    description: "La taxonomía del mercado. Aquí aparece en la navegación del cliente.",
-  },
-  audit: {
-    title: "Auditoría",
-    description: "Todo lo que se ha hecho aquí, con quién, cuándo y por qué.",
-  },
-};
 
 function AdminConsole() {
   const { tab: routeTab } = useParams<{ tab?: string }>();
@@ -3259,7 +3661,10 @@ function AdminConsole() {
     places, which is the same "declared twice under one key" shape the metrics query below
     used to have.
   */
-  const viewerQuery = useQuery({ queryKey: ["admin", "viewer"], queryFn: adminApi.viewer });
+  const viewerQuery = useQuery({
+    queryKey: ["admin", "viewer"],
+    queryFn: adminApi.viewer,
+  });
 
   // One metrics query, read by the tiles only. It used to be declared twice under the same
   // key - once here, once in `Metrics` - which React Query deduplicates into a single request
@@ -3304,7 +3709,8 @@ function AdminConsole() {
     queueKnown,
   );
   useEffect(() => {
-    if (needsRedirect && tab) navigate(`/admin/console/${tab}`, { replace: true });
+    if (needsRedirect && tab)
+      navigate(`/admin/console/${tab}`, { replace: true });
   }, [needsRedirect, tab, navigate]);
 
   const approvalBadge = pending + pendingCouriers;
@@ -3370,130 +3776,135 @@ function AdminConsole() {
           <>
             <Panel when={tab === "approvals"}>
               <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <CheckCircle2 className="h-4 w-4 text-amber-600" />
-                    Esperan verificación
-                    {pending > 0 ? (
-                      <Badge className="bg-amber-500 text-black">{pending}</Badge>
-                    ) : null}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BusinessTab onlyPending />
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CheckCircle2 className="h-4 w-4 text-amber-600" />
+                      Esperan verificación
+                      {pending > 0 ? (
+                        <Badge className="bg-amber-500 text-black">
+                          {pending}
+                        </Badge>
+                      ) : null}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <BusinessTab onlyPending />
+                  </CardContent>
+                </Card>
 
-              {/*
+                {/*
                 The second queue, on the same screen, because "Aprobaciones" is the tab someone
                 opens when they are told someone is waiting. Splitting the courier queue onto
                 its own tab meant the tab with the amber badge hid half of what the badge counts,
                 and a badge that does not add up is worse than no badge.
               */}
-              {pendingCouriers > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Bike className="h-4 w-4 text-amber-600" />
-                      Repartidores por revisar
-                      <Badge className="bg-amber-500 text-black">{pendingCouriers}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CouriersTab onlyPending />
-                  </CardContent>
-                </Card>
-              ) : null}
-            </div>
-          </Panel>
+                {pendingCouriers > 0 ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Bike className="h-4 w-4 text-amber-600" />
+                        Repartidores por revisar
+                        <Badge className="bg-amber-500 text-black">
+                          {pendingCouriers}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CouriersTab onlyPending />
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </div>
+            </Panel>
 
-          <Panel when={tab === "couriers"}>
-            <Card>
-              <CardContent className="pt-6">
-                <CouriersTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "couriers"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <CouriersTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "businesses"}>
-            <Card>
-              <CardContent className="pt-6">
-                <BusinessTab onlyPending={false} />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "businesses"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <BusinessTab onlyPending={false} />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "users"}>
-            <Card>
-              <CardContent className="pt-6">
-                <UsersTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "users"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <UsersTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "orders"}>
-            <Card>
-              <CardContent className="pt-6">
-                <OrdersTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "orders"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <OrdersTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "billing"}>
-            <Card>
-              <CardContent className="pt-6">
-                <BillingTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "billing"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <BillingTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "prices"}>
-            <Card>
-              <CardContent className="pt-6">
-                <PriceBooksTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "prices"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <PriceBooksTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "categories"}>
-            <Card>
-              <CardContent className="pt-6">
-                <CategoriesTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "categories"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <CategoriesTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "support"}>
-            <Card>
-              <CardContent className="pt-6">
-                <SupportTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "support"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <SupportTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "catalogue"}>
-            <Card>
-              <CardContent className="pt-6">
-                <CatalogueTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "catalogue"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <CatalogueTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          <Panel when={tab === "audit"}>
-            <Card>
-              <CardContent className="pt-6">
-                <AuditTab />
-              </CardContent>
-            </Card>
-          </Panel>
+            <Panel when={tab === "audit"}>
+              <Card>
+                <CardContent className="pt-6">
+                  <AuditTab />
+                </CardContent>
+              </Card>
+            </Panel>
 
-          {metrics && metrics.orders.cancelledRate > 0.2 ? (
-            <p className="flex items-center gap-2 text-xs text-amber-600">
-              <XCircle className="h-3 w-3" />
-              La tasa de cancelación está por encima del 20%. Vale la pena mirarla en Auditoría.
-            </p>
-          ) : null}
+            {metrics && metrics.orders.cancelledRate > 0.2 ? (
+              <p className="flex items-center gap-2 text-xs text-amber-600">
+                <XCircle className="h-3 w-3" />
+                La tasa de cancelación está por encima del 20%. Vale la pena
+                mirarla en Auditoría.
+              </p>
+            ) : null}
           </>
         )}
       </div>
@@ -3514,7 +3925,13 @@ function AdminConsole() {
  * A three-line component rather than eleven `{cond ? <div>…</div> : null}` blocks, because the
  * conditional form has to be retyped correctly eleven times and this cannot be typed wrong.
  */
-function Panel({ when, children }: { when: boolean; children: React.ReactNode }) {
+function Panel({
+  when,
+  children,
+}: {
+  when: boolean;
+  children: React.ReactNode;
+}) {
   if (!when) return null;
   return <div className="mt-0">{children}</div>;
 }

@@ -84,3 +84,30 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
       dispatchEvent: () => false,
     }) as MediaQueryList;
 }
+
+/**
+ * `ResizeObserver`, which jsdom does not implement either.
+ *
+ * Arc's `SortableDataTable` constructs **three** of them at mount — one to measure each column
+ * before locking its width, one to keep the sorted-column band aligned while rows move, and
+ * one per `Swap` label to animate the count line's width — so rendering it without this stub
+ * throws `ReferenceError: ResizeObserver is not defined`.
+ *
+ * Same reasoning as the two above: a real browser has had it for years, so this is a jsdom gap
+ * rather than a runtime one, and it belongs in the shared setup.
+ *
+ * The stub never fires. That is deliberate and it is what makes the assertions meaningful: the
+ * column-width lock is an *optimisation* that stops the layout reflowing during a sort, and the
+ * band is decoration. Neither is behaviour under test here, so a silent observer leaves the
+ * table in its fully functional first-paint state and the tests can assert what the component
+ * actually promises — the rows, the headers and the order they come back in.
+ */
+if (typeof globalThis.ResizeObserver === "undefined") {
+  class TestResizeObserver implements ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
+  globalThis.ResizeObserver = TestResizeObserver;
+}

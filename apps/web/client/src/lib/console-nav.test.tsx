@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -11,6 +8,7 @@ import {
   CONSOLE_TABS,
   groupsAreComplete,
   isConsoleTab,
+  TAB_PURPOSE,
   tabsInGroup,
 } from "../pages/admin/console-tabs";
 
@@ -36,8 +34,12 @@ describe("console groups", () => {
   });
 
   it("puts every tab in exactly one group, and loses none", () => {
-    const collected = CONSOLE_GROUPS.flatMap((group) => tabsInGroup(group.value));
-    expect([...collected].sort()).toEqual([...CONSOLE_TABS.map((t) => t.value)].sort());
+    const collected = CONSOLE_GROUPS.flatMap((group) =>
+      tabsInGroup(group.value),
+    );
+    expect([...collected].sort()).toEqual(
+      [...CONSOLE_TABS.map((t) => t.value)].sort(),
+    );
   });
 
   it("never leaves a group empty", () => {
@@ -55,7 +57,12 @@ describe("console groups", () => {
   });
 
   it("puts the two queues where an operator looks for them", () => {
-    expect(tabsInGroup("operations")).toEqual(["approvals", "orders", "billing", "support"]);
+    expect(tabsInGroup("operations")).toEqual([
+      "approvals",
+      "orders",
+      "billing",
+      "support",
+    ]);
   });
 
   it("recognises the new route and still rejects nonsense", () => {
@@ -71,32 +78,38 @@ describe("console groups", () => {
  * `TAB_PURPOSE` is typed `Record<ConsoleTab, …>`, so a **missing key is a compile error** —
  * which is the guarantee worth having. What it cannot catch is a present key carrying an empty
  * string, a whitespace label, or the generic "Consola de plataforma" that this replaced on
- * eleven pages at once. That failure is invisible in review and obvious in use: every tab
+ * twelve pages at once. That failure is invisible in review and obvious in use: every tab
  * claims to be the platform console.
  *
- * So the table is read out of the file and checked as data, the same way
- * `console-tabs.test.ts` reads its panels out of the page.
+ * ## Why it imports now
+ *
+ * This used to parse the copy out of `console.tsx` with a regex, on the argument that the page
+ * header text is markup and there is nothing to import. It was wrong twice, both times on
+ * formatting rather than on content: the pattern assumed tab indentation in a two-space file,
+ * and its successor assumed every `description:` stayed on one line, which Prettier stops doing
+ * once a sentence gets long — and then again when Prettier moved the whole literal onto its own
+ * line and shifted every entry by two spaces.
+ *
+ * Both were caught by the anti-vacuity assertion below rather than passing silently, which is
+ * the only reason this was found at all. But a guard that fires on a reformat is a guard that
+ * teaches people to re-run without reading, and `TAB_PURPOSE` was never really markup: it is
+ * registry copy keyed by `ConsoleTab`, so it now lives in `console-tabs.ts` beside the registry
+ * and is imported here like everything else in this file.
+ *
+ * The count assertion stays. It is no longer about a regex failing to match — importing cannot
+ * silently return nothing — but it is the check that the registry and its copy are the same
+ * length, which is the thing a future tab could otherwise break by being added in one file and
+ * not the other.
  */
 describe("the page header copy", () => {
-  const source = readFileSync(
-    join(import.meta.dirname, "..", "pages", "admin", "console.tsx"),
-    "utf-8",
-  );
-  // Two-space indentation, because `biome.jsonc` disables biome's formatter for
-  // `apps/web/**` and Prettier owns this package's style. The first version of this pattern
-  // assumed tabs, matched nothing, and was caught by the anti-vacuity assertion below rather
-  // than passing silently as "0 entries, 0 expected, all good".
-  const purposes = [
-    ...source.matchAll(/^ {2}(\w+): \{\n {4}title: "([^"]*)",\n {4}description: "([^"]*)",/gm),
-  ].map((match) => ({
-    tab: match[1] as string,
-    title: match[2] as string,
-    description: match[3] as string,
+  const purposes = CONSOLE_TABS.map((tab) => ({
+    tab: tab.value,
+    ...TAB_PURPOSE[tab.value],
   }));
 
   it("parses an entry per tab rather than matching nothing", () => {
-    // Two empty lists compare equal, and an anti-vacuity guard is the only thing that notices
-    // a reformat broke the pattern.
+    // Now a length check between two imports rather than a regex check: the registry and its
+    // copy are the same size.
     expect(purposes.length).toBe(CONSOLE_TABS.length);
   });
 
@@ -142,7 +155,9 @@ describe("ConsoleNav", () => {
     renderNav(3);
 
     for (const tab of CONSOLE_TABS) {
-      const link = screen.getByRole("link", { name: new RegExp(tab.label, "i") });
+      const link = screen.getByRole("link", {
+        name: new RegExp(tab.label, "i"),
+      });
       expect(link.getAttribute("href")).toBe(`/admin/console/${tab.value}`);
     }
   });
