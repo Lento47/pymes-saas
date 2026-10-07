@@ -35,7 +35,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DEST = join(ROOT, "client", "src", "components", "arc");
+/**
+ * `components/`, not `components/arc/`.
+ *
+ * The registry target is `@components/arc/<item>/<file>`, so it already carries the `arc/`
+ * segment. Joining that to a destination that ends in `arc` produced `arc/arc/<item>` — a nested
+ * copy that still rendered, still typechecked, and was only caught because the token guard
+ * scans the tree recursively rather than a fixed list of directories.
+ */
+const DEST = join(ROOT, "client", "src", "components");
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
