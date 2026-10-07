@@ -12,6 +12,53 @@
 # inherit R2 config, and a bucket named only at the top level is a deploy that
 # fails naming it. See `docs/environment.md`.
 
+# ---------------------------------------------------------------------------
+# Cloudflare Workers Builds — what this file owes the dashboard, and what it must not lose.
+#
+# With Builds connected to a Git repository, Cloudflare owns a short list of settings on the
+# Worker itself — the Worker **name** above all — and keeps them in its dashboard. Wrangler
+# 3.109.0+ compares the two after a build and will open a pull request reconciling this file
+# with what the dashboard holds. This package is on Wrangler 4, so that is live.
+#
+# **Review any such pull request. Do not merge it unread.**
+#
+# The dashboard manages a Worker's name; it does not manage its bindings. A reconciliation that
+# *replaces* this file with the two lines Cloudflare quotes —
+#
+#     # wrangler.toml
+#     name = 'pymeshub-api'
+#
+# — publishes a Worker that answers on the right name and nothing else. Concretely it drops:
+#
+#   - `routes` in `[env.production]`, so the Worker stops answering `api.pymeshub.lat/*` and
+#     the live site loses its API;
+#   - the `DB` D1 binding, the `MEDIA` R2 bucket and the `CACHE` KV namespace;
+#   - both queue producer/consumer pairs and the `ORDER_EVENTS` dead-letter queue;
+#   - the `ORDER_ROOM` and `RATE_LIMIT_ROOM` Durable Object bindings, whose `[migrations]`
+#     tags `v1` and `v2` are permanent — Cloudflare will not re-run a tag, nor add a class
+#     behind one;
+#   - production's `CORS_ORIGINS`, `AUTH_URL` and `ENVIRONMENT`.
+#
+# The failure is not a build error. It is a deploy that succeeds, hands `pymeshub.lat` a Worker
+# with no database and no route, and takes every storefront request down.
+#
+# ## `--env production` is not optional
+#
+# The block below is the **local development** configuration: `ENVIRONMENT = "development"`,
+# `CORS_ORIGINS` naming two dev servers, `AUTH_URL` on `localhost`. It carries the production
+# Worker *name* only because `[env.production]` deliberately repeats that name — so a deploy
+# without `--env` publishes development configuration to the production Worker, and with no
+# `routes`, because the route lives in `[env.production]` alone.
+#
+# So the Builds deploy command must be one of:
+#
+#     npx wrangler deploy --env production --config packages/trpc-api/wrangler.toml
+#     pnpm --filter api run deploy        # which is `wrangler deploy --env production`
+#
+# Every other script in this package passes `--env`. A bare `wrangler deploy` is the one
+# command that does not, and it is the one that takes the site down.
+# ---------------------------------------------------------------------------
+
 name = "pymeshub-api"
 main = "src/index.ts"
 compatibility_date = "2025-09-20"
