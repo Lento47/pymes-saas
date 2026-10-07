@@ -1,6 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { EmptyState as ArcEmptyState } from "@/components/arc/empty-state/empty-state";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -121,13 +122,21 @@ export function QueryErrorState({
  * table is *for* tells them whether the absence is expected. It is optional because some
  * tables genuinely need no explanation.
  */
-export function EmptyState({ message, hint }: { message: string; hint?: ReactNode }) {
-  return (
-    <div className="px-4 py-10 text-center">
-      <p className="text-sm text-muted-foreground">{message}</p>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground/70">{hint}</p> : null}
-    </div>
-  );
+/**
+ * A read that succeeded and found nothing.
+ *
+ * `hint` is what makes an empty state useful rather than decorative. "No hay tickets aquí" on
+ * its own leaves the reader deciding whether they have done something wrong; adding what the
+ * table is *for* tells them whether the absence is expected. It is optional because some
+ * tables genuinely need no explanation.
+ *
+ * **`hint` is a string, not a ReactNode.** The empty-state component it delegates to renders
+ * a single description line. Widening the type to `ReactNode` would let a caller pass JSX that
+ * Arc then either renders as "[object Object]" or silently drops — both worse than a compile
+ * error at the call site.
+ */
+export function EmptyState({ message, hint }: { message: string; hint?: string }) {
+  return <ArcEmptyState title={message} description={hint ?? ""} />;
 }
 
 /**

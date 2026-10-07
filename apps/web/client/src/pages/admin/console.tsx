@@ -1,4 +1,4 @@
-import type { UserProfile } from "@pymeshub/shared";
+import type { Category, UserProfile } from "@pymeshub/shared";
 import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownNarrowWide,
@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
+import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { Sparkline } from "@/components/arc/sparkline/sparkline";
 import { PageTemplate } from "@/components/layout/page-template";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -2600,66 +2601,87 @@ function CategoriesTab() {
         <p className="text-xs text-muted-foreground">{data.length} categorías</p>
         <CategoryDialog onDone={() => queryClient.invalidateQueries()} />
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>English</TableHead>
-            <TableHead>Foto</TableHead>
-            <TableHead>Slug</TableHead>
-            <TableHead className="text-right">Productos</TableHead>
-            <TableHead className="text-right">Orden</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell className="font-medium">{c.name}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{c.nameEn ?? "—"}</TableCell>
-              <TableCell>
-                {c.imageUrl ? (
-                  <img
-                    src={c.imageUrl}
-                    alt=""
-                    className="size-9 rounded border object-cover"
-                  />
-                ) : (
-                  // The glyph, not a dash. A category with no photograph draws its icon in
-                  // the app, so the table showing "—" where the tile shows a fork would
-                  // make the operator hunt for a photo that is legitimately absent.
-                  <span className="text-xs text-muted-foreground">ícono</span>
-                )}
-              </TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">{c.slug}</TableCell>
-              <TableCell className="text-right tabular-nums">{c.productCount ?? 0}</TableCell>
-              <TableCell className="text-right tabular-nums">{c.sortOrder}</TableCell>
-              <TableCell>
-                <div className="flex justify-end gap-2">
-                  <CategoryDialog
-                    category={{
-                      id: c.id,
-                      name: c.name,
-                      nameEn: c.nameEn,
-                      imageUrl: c.imageUrl,
-                      sortOrder: c.sortOrder,
-                    }}
-                    onDone={() => queryClient.invalidateQueries()}
-                  />
-                  <ActionButton
-                    label="Eliminar"
-                    action="category.delete"
-                    targetName={c.name}
-                    onRun={(reason) => adminApi.deleteCategory(c.id, reason ?? "")}
-                    variant="destructive"
-                    size="sm"
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <SortableDataTable<Category>
+        rows={data}
+        rowKey="id"
+        caption="Categorías del mercado"
+        emptyMessage="No hay categorías."
+        columns={[
+          {
+            key: "name",
+            label: "Nombre",
+            sortable: true,
+            render: (_v, c) => <span className="font-medium">{c.name}</span>,
+          },
+          {
+            key: "nameEn",
+            label: "English",
+            render: (_v, c) => (
+              <span className="text-sm text-muted-foreground">{c.nameEn ?? "—"}</span>
+            ),
+          },
+          {
+            key: "imageUrl",
+            label: "Foto",
+            render: (_v, c) =>
+              c.imageUrl ? (
+                <img
+                  src={c.imageUrl}
+                  alt=""
+                  className="size-9 rounded border object-cover"
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">ícono</span>
+              ),
+          },
+          {
+            key: "slug",
+            label: "Slug",
+            render: (_v, c) => (
+              <span className="font-mono text-xs text-muted-foreground">{c.slug}</span>
+            ),
+          },
+          {
+            key: "productCount",
+            label: "Productos",
+            numeric: true,
+            render: (_v, c) => <span className="text-right tabular-nums">{c.productCount ?? 0}</span>,
+          },
+          {
+            key: "sortOrder",
+            label: "Orden",
+            numeric: true,
+            render: (_v, c) => <span className="text-right tabular-nums">{c.sortOrder}</span>,
+          },
+          {
+            key: "actions",
+            label: "Acciones",
+            width: "140px",
+            render: (_v, c) => (
+              <div className="flex justify-end gap-2">
+                <CategoryDialog
+                  category={{
+                    id: c.id,
+                    name: c.name,
+                    nameEn: c.nameEn,
+                    imageUrl: c.imageUrl,
+                    sortOrder: c.sortOrder,
+                  }}
+                  onDone={() => queryClient.invalidateQueries()}
+                />
+                <ActionButton
+                  label="Eliminar"
+                  action="category.delete"
+                  targetName={c.name}
+                  onRun={(reason) => adminApi.deleteCategory(c.id, reason ?? "")}
+                  variant="destructive"
+                  size="sm"
+                />
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
