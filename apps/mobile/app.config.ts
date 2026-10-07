@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { loadRootEnv } from "@pymeshub/env";
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
@@ -50,8 +51,42 @@ process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY = supabasePublishableKey;
 // makes local release builds deterministic and gives push-token registration the
 // stable project identity Expo requires.
 const easProjectId = process.env.EAS_PROJECT_ID || undefined;
+
+/**
+ * `android.googleServicesFile`, but only for a path that is really there.
+ *
+ * EAS warns that this field names a file "not checked in to your repository" whenever it is
+ * set, and that warning is misleading here for a reason worth writing down. `GOOGLE_SERVICES_JSON`
+ * is a **file** environment variable on EAS — the platform writes it to disk on the builder and
+ * points the variable at that path — so on the builder this resolves to a real file and FCM is
+ * configured correctly. Verified in the built APK: `google_app_id` and `gcm_defaultSenderId`
+ * are present and match the local credential file.
+ *
+ * The warning comes from `eas build` evaluating this config **locally**, before upload, where
+ * the variable is a developer-machine path outside the repo — so the file genuinely is not in the
+ * archive, and the build genuinely does not need it to be, because the builder supplies its own
+ * copy. The evaluation local and the build remote are the two different places one variable is
+ * read, and the warning only describes the first.
+ *
+ * So the honest shape is: resolve the variable, keep the value **only if it exists**, and say so
+ * here rather than letting a warning that describes local evaluation stand as the only account of
+ * whether push notifications work. A path that does not exist is dropped rather than passed
+ * through, because `expo prebuild` on a machine without the credential should produce a project
+ * that compiles, not one that fails on a missing file — and the absence is visible in the debug
+ * output below instead of being silent.
+ */
+const googleServicesJsonPath = process.env.GOOGLE_SERVICES_JSON?.trim();
 const googleServicesFile =
-	process.env.GOOGLE_SERVICES_JSON?.trim() || undefined;
+	googleServicesJsonPath && existsSync(googleServicesJsonPath)
+		? googleServicesJsonPath
+		: undefined;
+if (!googleServicesFile && googleServicesJsonPath) {
+	console.warn(
+		`[mobile] GOOGLE_SERVICES_JSON points at "${googleServicesJsonPath}", which does not exist here. ` +
+			"Skipping android.googleServicesFile. On EAS this variable is a file variable and the " +
+			"builder writes it to disk, so a real build is unaffected.",
+	);
+}
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN || "";
 process.env.EXPO_PUBLIC_SENTRY_DSN = sentryDsn;
 
