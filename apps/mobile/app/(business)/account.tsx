@@ -156,12 +156,18 @@ export default function BusinessAccountScreen() {
 									chevron
 									onPress={() => router.push("/settings")}
 								/>
+								{/* The support desk, not the FAQ. This row and the one in `menu.tsx`
+								    carry the same title and the same subtitle, and they used to go to
+								    different places — this one to `/help`, which is the customer's
+								    four-question FAQ and has nothing to do with a merchant's own
+								    tickets. Two rows that read identically and open different screens
+								    is the kind of thing that gets reported as "the app is broken". */}
 								<ListRow
 									title={t("biz.more.support")}
 									subtitle={t("biz.more.supportSubtitle")}
 									divider={false}
 									chevron
-									onPress={() => router.push("/help")}
+									onPress={() => router.push("/(business)/support")}
 								/>
 							</Card>
 						</ScreenSection>

@@ -454,32 +454,89 @@ function promotionValue(
 	return t("biz.settings.delivery");
 }
 
+/**
+ * The merchant's support desk: the questions this shop still has open.
+ *
+ * ## Why this queries at all
+ *
+ * It used to not. `biz.manage.noTickets` was written into a `KeyValue` as a **fixed value**,
+ * so a shop with five open tickets was told it had none, and the row beside it padded the
+ * gap with `biz.manage.responseChannel` — a label reading "App guidance" whose value was the
+ * word "Support", which states nothing about anything. The surface had everything it needed:
+ * `support.list` exists, is mounted at `routers/index.ts`, and is one `businessId` away.
+ *
+ * ## Why `enabled` on a `businessId` that is normally set
+ *
+ * `MerchantManagementFrame` resolves the shop as `find(...) ?? shopList[0]` and falls back to
+ * `""` when the operator belongs to none (`merchant-management-frame.tsx:42`). A merchant in
+ * that state gets an empty string, `businessProcedure("orders:read")` refuses it at the
+ * middleware, and the query becomes a guaranteed error rather than an empty desk. So the gate
+ * is on the id being a real one. `ReviewsSurface` below does not do this and inherits the
+ * failure; it is left alone rather than fixed here, because a second change to a surface this
+ * commit does not otherwise touch is a diff nobody can review.
+ *
+ * ## Why only the live ones, and why `WAITING` is one of them
+ *
+ * No `status` is passed, and `supportTicketListInput` documents what that means: the list reads
+ * the open tickets, which the service resolves as `OPEN` and `WAITING`
+ * (`services/support.ts:66`). A resolved ticket is history. `WAITING` is included on purpose —
+ * it is the state where PymesHub asked the merchant something and has not heard back, and a
+ * queue that hides it is how a desk looks empty while it is not.
+ */
 function SupportSurface({ scope }: { scope: ManagementScope }) {
-	const { t } = useT();
+	const trpc = useTRPC();
+	const { t, tp } = useT();
+	const tickets = useQuery(
+		trpc.support.list.queryOptions(
+			{ businessId: scope.businessId },
+			{ enabled: !!scope.businessId },
+		),
+	);
+
+	if (tickets.error) return <ManagementError error={tickets.error} />;
+	if (tickets.isPending) {
+		return (
+			<ManagementEmpty
+				title={t("biz.manage.loading")}
+				body={t("biz.manage.loadingScope")}
+			/>
+		);
+	}
+
+	const rows = tickets.data ?? [];
 	return (
-		<ManagementSection title={t("biz.manage.supportDesk")}>
-			<KeyValue
-				label={t("biz.manage.supportQueue")}
-				value={t("biz.manage.noTickets")}
-			/>
-			<KeyValue
-				label={t("biz.manage.locationContext")}
-				value={`${scope.locationName} · ${
-					scope.locationStatus
-						? t(`biz.locations.status.${scope.locationStatus}`)
-						: t("biz.manage.unavailable")
-				}`}
-			/>
-			<KeyValue
-				label={t("biz.manage.responseChannel")}
-				value={t("biz.more.support")}
-			/>
-			<Button
-				label={t("biz.manage.openHelp")}
-				variant="secondary"
-				fullWidth
-				onPress={() => router.push("/help")}
-			/>
+		<ManagementSection
+			title={t("biz.support.queue")}
+			action={
+				<Button
+					label={t("biz.support.newTicket")}
+					size="sm"
+					onPress={() => router.push("/(business)/support/new")}
+				/>
+			}
+		>
+			{rows.map((ticket, index) => (
+				<ListRow
+					key={ticket.id}
+					title={ticket.subject}
+					subtitle={`${t(`biz.support.category.${ticket.category}`)} · ${tp("biz.support.messages", ticket.messageCount)}`}
+					// A word rather than a chip: `ListRow.state` exists because colour must
+					// never be the only signal, and the status is the one fact about a ticket
+					// that decides whether it wants an answer.
+					state={t(`biz.support.status.${ticket.status}`)}
+					chevron
+					// Univided last, as everywhere else: a hairline under the final row
+					// delimits nothing.
+					divider={index < rows.length - 1}
+					onPress={() => router.push(`/(business)/support/${ticket.id}`)}
+				/>
+			))}
+			{rows.length === 0 ? (
+				<ManagementEmpty
+					title={t("biz.support.emptyTitle")}
+					body={t("biz.support.emptyBody")}
+				/>
+			) : null}
 		</ManagementSection>
 	);
 }

@@ -27,6 +27,18 @@
  * `flex: 1`, so it takes the full window height and the capsule simply overlays the last
  * stretch of every page in the tree. That is by design — a bar that floats is a bar that
  * floats over something — and it makes the reservation the screen's job.
+ *
+ * The two lists below name the screens that took that job. `MERCHANT_BARLESS_ROUTES` has one
+ * answer and `CUSTOMER_*` has two; `lib/tab-bar-coverage.test.ts` is what asks whether every
+ * screen with an `ActionBar` is on one of them.
+ *
+ * **`support/new` and `support/[ticketId]`** are the support desk's two screens. Both commit
+ * with an `ActionBar` — one sends the ticket, one sends the reply — and the capsule would
+ * otherwise sit over whichever of those two the reader most needs to press.
+ *
+ * **Keep prose out of the literals themselves.** That test reads these lists out of the
+ * source rather than importing them, so a comment inside a literal that reads like a string
+ * is parsed as one, and one sentence is enough to fail three tests.
  */
 import { useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,6 +58,8 @@ export const MERCHANT_BARLESS_ROUTES = [
 	"shop-settings",
 	"shop-location",
 	"merchant-settings",
+	"support/new",
+	"support/[ticketId]",
 ] as const;
 
 /**

@@ -906,6 +906,68 @@ export const business = {
 	"biz.manage.locationContext": "Contexto de la sucursal",
 	"biz.manage.responseChannel": "Guía de la app",
 	"biz.manage.openHelp": "Abrir la ayuda",
+	/* The support desk itself — a merchant's own questions and PymesHub's answers.
+	 *
+	 * `biz.more.support` is a *menu row* and says "Help, safety and common questions",
+	 * which is honest about the FAQ and wrong for a queue of tickets. These are the desk's
+	 * own words: a merchant who came here to ask something has asked, and the screen has to
+	 * sound like somewhere the answer will come back to rather than a list of reading.
+	 *
+	 * `biz.manage.supportQueue` was "Preguntas frecuentes" on this same surface — FAQ copy on
+	 * a ticket queue — which is why this group exists instead of a few more `biz.manage.*`
+	 * keys sitting under the ones they contradict. */
+	"biz.support.queue": "Solicitudes abiertas",
+	"biz.support.queueCount": "{count} abierta",
+	"biz.support.queueCount_plural": "{count} abiertas",
+	"biz.support.newTicket": "Abrir solicitud",
+	"biz.support.emptyTitle": "No tenés solicitudes abiertas",
+	"biz.support.emptyBody":
+		"Cuando abras una, la respuesta de PymesHub aparece acá.",
+	"biz.support.category": "Categoría",
+	"biz.support.category.BILLING": "Cobros",
+	"biz.support.category.TECHNICAL": "Técnico",
+	"biz.support.category.ACCOUNT": "Cuenta",
+	"biz.support.category.PRODUCT": "Productos",
+	"biz.support.category.OTHER": "Otro",
+	"biz.support.newTitle": "Abrir solicitud",
+	"biz.support.subject": "Asunto",
+	"biz.support.subjectHelp": "Una línea. Hasta 120 caracteres.",
+	"biz.support.subjectRequired": "Escribí un asunto.",
+	"biz.support.subjectTooLong": "El asunto puede tener hasta 120 caracteres.",
+	"biz.support.body": "Descripción",
+	"biz.support.bodyHelp": "Contá qué pasa. Hasta 2000 caracteres.",
+	"biz.support.bodyRequired": "Contá qué necesitás.",
+	"biz.support.bodyTooLong": "La descripción puede tener hasta 2000 caracteres.",
+	"biz.support.submit": "Enviar solicitud",
+	"biz.support.submitFailed": "No pudimos enviar la solicitud.",
+	"biz.support.status.OPEN": "Abierta",
+	"biz.support.status.WAITING": "Esperando tu respuesta",
+	"biz.support.status.RESOLVED": "Resuelta",
+	"biz.support.status.CLOSED": "Cerrada",
+	"biz.support.thread": "Conversación",
+	"biz.support.messages": "{count} mensaje",
+	"biz.support.messages_plural": "{count} mensajes",
+	"biz.support.lastActivity": "Último mensaje",
+	"biz.support.neverActivity": "Sin actividad",
+	"biz.support.replyLabel": "Tu respuesta",
+	"biz.support.replySend": "Enviar respuesta",
+	"biz.support.replyRequired": "Escribí una respuesta.",
+	"biz.support.replyFailed": "No pudimos enviar tu respuesta.",
+	"biz.support.markWaiting": "Marcar como esperando",
+	"biz.support.markOpen": "Volver a abierta",
+	"biz.support.waitingExplain":
+		"Marcá esto cuando ya respondiste y falta que PymesHub conteste.",
+	/* `support.reply` reopens a resolved ticket (`services/support.ts` sets OPEN and clears
+	 * `resolvedAt` whenever the ticket was resolved). So answering is not a message on a
+	 * finished question — it puts the ticket back in the queue. Said here, on the screen
+	 * that carries the control, because otherwise the ticket disappears from the merchant's
+	 * list with nothing on the screen having said it would. */
+	"biz.support.reopenedNotice":
+		"Al responder, esta solicitud vuelve a la cola: se reabre y deja de estar resuelta.",
+	"biz.support.terminalNotice":
+		"Esta solicitud está {status}. Podés responder igual y vuelve a la cola.",
+	"biz.support.you": "Vos",
+	"biz.support.fromSupport": "PymesHub",
 	"biz.manage.activity": "Resumen de actividad",
 	"biz.manage.activityWindow": "Últimos {count} pedidos",
 	"biz.manage.activityWindow_plural": "Últimos {count} pedidos",

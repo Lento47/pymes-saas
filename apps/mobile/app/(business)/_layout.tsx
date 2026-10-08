@@ -140,6 +140,20 @@ export default function BusinessLayout() {
 					<Tabs.Screen name="store-profile" options={{ href: null }} />
 					<Tabs.Screen name="business-hours" options={{ href: null }} />
 					<Tabs.Screen name="support" options={{ href: null }} />
+					{/* The desk's own two screens, and the reason they take
+				    `merchantBarlessOptions` rather than a bare `href: null`: both draw an
+				    `ActionBar`, and the capsule is `position: "absolute"` — it would sit over
+				    whichever of those two the merchant most needs to press. The option object
+				    comes from the same list `lib/tab-bar-coverage.test.ts` reads, so declaring
+				    a screen here and listing it there cannot drift. See that file's docblock. */}
+					<Tabs.Screen
+						name="support/new"
+						options={merchantBarlessOptions("support/new")}
+					/>
+					<Tabs.Screen
+						name="support/[ticketId]"
+						options={merchantBarlessOptions("support/[ticketId]")}
+					/>
 					<Tabs.Screen
 						name="shop-settings"
 						options={merchantBarlessOptions("shop-settings")}
