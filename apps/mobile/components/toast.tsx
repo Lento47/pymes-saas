@@ -119,8 +119,9 @@ import { Text } from "./text";
  *
  * ## Where it sits
  *
- * Above the navigation capsule when present, otherwise above the bottom safe area.
- * The same clearance used by scrolling content keeps the toast off the tab targets.
+ * Above the measured action bar when present, otherwise above the navigation capsule or
+ * bottom safe area. Docked form actions count too: a toast over Save or Sign in confirms
+ * one action by hiding the next one.
  *
  * ## What a screen reader gets
  *

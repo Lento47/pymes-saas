@@ -260,14 +260,16 @@ export function ActionBar({
 	// would change how many hooks ran and React would tear the subtree down.
 	//
 	// Zero on every route that hides the capsule — `./tab-bar`'s barless lists — so the
-	// merchant forms and the checkout floor are byte-for-byte what they were before the
-	// customer tree grew a bar. `docked` is excluded for a second reason: a docked bar is a
-	// form's footer, sized to its content, with nothing scrolling under it to be covered.
+	// merchant forms and the checkout floor keep their original lift. A docked bar needs
+	// no *scroll* clearance, but it still occupies the screen's foot: notifications must
+	// sit above its measured height rather than cover its action.
 	const tabClearance = useTabBarClearance();
 	const lift = docked ? 0 : tabClearance;
 	const stacked = Boolean(summary) && fontScale >= STACKED_FONT_SCALE;
 	const [measuredHeight, setMeasuredHeight] = useState(0);
-	useBottomObstruction(docked ? 0 : measuredHeight + space.sm + lift);
+	useBottomObstruction(
+		docked ? measuredHeight : measuredHeight + space.sm + lift,
+	);
 	const onLayout = useCallback(
 		(event: LayoutChangeEvent) => {
 			const height = event.nativeEvent.layout.height;
