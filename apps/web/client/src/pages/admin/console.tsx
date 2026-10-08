@@ -19,7 +19,9 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
+import { JsonViewer } from "@/components/arc/json-viewer/json-viewer";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
+import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
 import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { Sparkline } from "@/components/arc/sparkline/sparkline";
 import { PageTemplate } from "@/components/layout/page-template";
@@ -54,7 +56,6 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -219,8 +220,8 @@ function ActionDialog({
               What replaces it is the part that is true of *all* of them: the act is
               recorded, with a name and a reason, and it outlives the screen.
             */}
-            Esta acción queda en el registro de auditoría con tu nombre, y el motivo va con
-            ella.
+            Esta acción queda en el registro de auditoría con tu nombre, y el
+            motivo va con ella.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <Input
@@ -231,7 +232,10 @@ function ActionDialog({
         />
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction disabled={reason.trim().length === 0 || pending} onClick={onConfirm}>
+          <AlertDialogAction
+            disabled={reason.trim().length === 0 || pending}
+            onClick={onConfirm}
+          >
             {label}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -381,7 +385,13 @@ function RowActions({ actions }: { actions: RowAction[] }) {
     // The action and the reason travel as the mutation's variables rather than being read from
     // state here. Reading them from state would capture whatever the render that created this
     // mutation saw, so confirming a dialog for one action could run a different one.
-    mutationFn: async ({ action, reason: given }: { action: RowAction; reason: string }) => {
+    mutationFn: async ({
+      action,
+      reason: given,
+    }: {
+      action: RowAction;
+      reason: string;
+    }) => {
       if (!needsReason(action.action) || given.trim().length > 0) {
         return action.onRun(given.trim() || undefined);
       }
@@ -390,7 +400,10 @@ function RowActions({ actions }: { actions: RowAction[] }) {
     onSuccess: async (_data, variables) => {
       setAwaiting(null);
       setReason("");
-      toast({ title: "Listo", description: `${variables.action.label} aplicado.` });
+      toast({
+        title: "Listo",
+        description: `${variables.action.label} aplicado.`,
+      });
       await queryClient.invalidateQueries();
     },
     onError: (error: Error) => {
@@ -2129,24 +2142,27 @@ function SupportTab() {
           The same two-way control, for the same reason. This one **is** paged, so changing
           it has to reset the offset — a narrower queue makes the old page meaningless.
         */}
-        <ToggleGroup
-          type="single"
+        <SegmentedControl
+          label="Estado del ticket"
           value={status}
           onValueChange={(next) => {
-            if (next === "") return;
+            /*
+              `ToggleGroup` needed `if (next === "") return`, because a single-select group
+              reports the empty string when its active item is clicked again. That guard was
+              really about not reacting to a *non-change*, and it is kept in that form: this
+              control is controlled and always holds a value, so the empty string should not
+              arrive, but resetting a pager because somebody clicked the filter they already
+              had is wrong either way.
+            */
+            if (next === status) return;
             setStatus(next as "live" | "all");
             page.reset();
           }}
-          variant="outline"
-          size="sm"
-        >
-          <ToggleGroupItem value="live" className="text-xs">
-            Sin resolver
-          </ToggleGroupItem>
-          <ToggleGroupItem value="all" className="text-xs">
-            Todos
-          </ToggleGroupItem>
-        </ToggleGroup>
+          options={[
+            { value: "live", label: "Sin resolver" },
+            { value: "all", label: "Todos" },
+          ]}
+        />
         <p className="text-xs text-muted-foreground">
           {data?.total ?? 0} en total
         </p>
@@ -2526,59 +2542,55 @@ function BillingTab() {
           aria-label="Buscar suscripciones"
         />
         {/*
-          Radix's own `ToggleGroup`, which is what this row of buttons was hand-rolling:
-          five `Button`s each computing `variant={status === s ? "default" : "outline"}`.
+          Two segmented controls, from Arc.
 
-          **The empty-string guard is load-bearing.** A single-select `ToggleGroup` emits `""`
-          when the selected item is clicked again, so writing `onValueChange={setStatus}`
-          straight through would let an operator deselect the filter by clicking it — and
-          `status` would become `""`, which is falsy, which silently means "no filter". The
-          filter would look chosen and not be. Ignoring `""` is what makes these two controls
-          and the three below behave like radio buttons rather than like toggles.
+          These were Radix `ToggleGroup`s, which are what this row of buttons was hand-rolling
+          before it: five `Button`s each computing `variant={status === s ? "default" : "outline"}`.
+
+          **The empty-string guard is load-bearing, and the control change is why it goes.**
+          A single-select `ToggleGroup` emits `""` when the selected item is clicked again, so
+          writing `onValueChange={setStatus}` straight through would let an operator deselect
+          the filter by clicking it — and `status` would become `""`, which is falsy, which
+          silently means "no filter". The filter would look chosen and not be.
+
+          `SegmentedControl` is controlled and cannot report an empty selection, so the `""`
+          case is gone rather than guarded. What replaces it is a no-change check, which is the
+          same intent stated positively: never reset a pager because the filter did not change.
         */}
-        <ToggleGroup
-          type="single"
+        <SegmentedControl
+          label="Estado de la suscripción"
           value={status}
           onValueChange={(next) => {
-            if (next === "") return;
+            if (next === status) return;
             setStatus(next as SubscriptionStatus);
             page.reset();
           }}
-          variant="outline"
-          size="sm"
-          className="flex-wrap justify-start"
-        >
-          <ToggleGroupItem value="all" className="text-xs">
-            Todos
-          </ToggleGroupItem>
-          {(["ACTIVE", "GRACE", "PAST_DUE", "SUSPENDED"] as const).map((s) => (
-            <ToggleGroupItem key={s} value={s} className="text-xs">
-              {SUBSCRIPTION_STATUS_LABEL[s] ?? s}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+          options={[
+            { value: "all", label: "Todos" },
+            ...(["ACTIVE", "GRACE", "PAST_DUE", "SUSPENDED"] as const).map(
+              (s) => ({
+                value: s,
+                label: SUBSCRIPTION_STATUS_LABEL[s] ?? s,
+              }),
+            ),
+          ]}
+          className="justify-start"
+        />
         <div className="ml-auto">
-          <ToggleGroup
-            type="single"
+          <SegmentedControl
+            label="Orden de la lista"
             value={sort}
             onValueChange={(next) => {
-              if (next === "") return;
+              if (next === sort) return;
               setSort(next as "arrears" | "periodEnd" | "businessName");
               page.reset();
             }}
-            variant="outline"
-            size="sm"
-          >
-            {(["arrears", "periodEnd", "businessName"] as const).map((s) => (
-              <ToggleGroupItem key={s} value={s} className="text-xs">
-                {s === "arrears"
-                  ? "Deuda"
-                  : s === "periodEnd"
-                    ? "Vence"
-                    : "Nombre"}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+            options={[
+              { value: "arrears", label: "Deuda" },
+              { value: "periodEnd", label: "Vence" },
+              { value: "businessName", label: "Nombre" },
+            ]}
+          />
         </div>
       </div>
 
@@ -3554,6 +3566,47 @@ function BusinessSheet({ businessId }: { businessId: string }) {
  * looking for what changed, and a deletion changed nothing because there is nothing left.
  * It is still in the main table above, with the reason that explains it.
  */
+/**
+ * One side of a change, labelled.
+ *
+ * The two panes were told apart by a background tint alone — `bg-muted` on the left, a faint
+ * amber on the right — which is a colour-only distinction and therefore invisible to anyone who
+ * cannot separate those two, and to a screen reader entirely. The word is now on the pane, and
+ * the tint is left as reinforcement rather than carrying the meaning by itself.
+ */
+function JsonPane({
+  label,
+  data,
+  rootName,
+  highlight,
+}: {
+  label: string;
+  data: unknown;
+  rootName: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`overflow-hidden rounded border ${
+        highlight ? "border-amber-500/30 bg-amber-500/5" : "bg-muted/40"
+      }`}
+    >
+      <p className="border-b px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <JsonViewer
+        data={data}
+        rootName={rootName}
+        // One level open. The point is comparing shapes, and a fully expanded suspension record
+        // is a wall of text with nothing beside it to compare against.
+        defaultExpandDepth={1}
+        maxHeight={260}
+        label={`${label} del registro de auditoría`}
+      />
+    </div>
+  );
+}
+
 function AuditDiffTable({ rows }: { rows: readonly AuditLogEntry[] }) {
   const changed = rows.filter(
     (entry) => entry.after !== null && entry.after !== undefined,
@@ -3566,22 +3619,39 @@ function AuditDiffTable({ rows }: { rows: readonly AuditLogEntry[] }) {
         Qué cambió ({changed.length}{" "}
         {changed.length === 1 ? "entrada" : "entradas"})
       </summary>
-      <div className="border-t p-4">
-        <ul className="space-y-3">
-          {changed.map((entry) => (
-            <li key={entry.id}>
-              <p className="font-mono text-xs">{entry.action}</p>
-              <div className="mt-1 grid gap-2 md:grid-cols-2">
-                <pre className="overflow-x-auto rounded bg-muted p-2 text-[11px]">
-                  {JSON.stringify(entry.before ?? null, null, 2)}
-                </pre>
-                <pre className="overflow-x-auto rounded bg-amber-500/5 p-2 text-[11px]">
-                  {JSON.stringify(entry.after, null, 2)}
-                </pre>
-              </div>
-            </li>
-          ))}
-        </ul>
+      <div className="space-y-4 border-t p-4">
+        {changed.map((entry) => (
+          <div key={entry.id}>
+            <p className="font-mono text-xs">{entry.action}</p>
+            {/*
+              A tree rather than two blocks of serialised JSON.
+
+              `auditLogEntrySchema` types `before` and `after` as `z.unknown()` because the
+              targets differ — a suspension carries statuses, a category delete a name and a
+              slug, a payment amounts — so a column would have to guess a shape. Printing both
+              halves raw was the honest way to avoid `[object Object]`, and it left the operator
+              scrolling a wall of braces to answer the only question that matters, which is what
+              one field became.
+
+              `JsonViewer` keeps the "no guessed shape" property and adds the two things printed
+              JSON could not do: collapse a branch to compare everything else, and search every
+              value in both halves to find the field that moved.
+            */}
+            <div className="mt-1 grid gap-2 md:grid-cols-2">
+              <JsonPane
+                label="Antes"
+                data={entry.before ?? null}
+                rootName="antes"
+              />
+              <JsonPane
+                label="Después"
+                data={entry.after}
+                rootName="despues"
+                highlight
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </details>
   );
