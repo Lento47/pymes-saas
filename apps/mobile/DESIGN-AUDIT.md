@@ -149,7 +149,19 @@ Mobile TypeScript, focused Biome, frozen lockfile validation, and
 unrelated failures: the known palette uniqueness assertion and business tab
 coverage while merchant support routes are being developed separately.
 
+## Follow-up: inbox signed-out state
+
+At 200% Spanish text on the small Android emulator, the signed-out inbox title,
+explanation, and sign-in action remained readable. Its list still supplied a
+pull-to-refresh control even though notifications cannot be read until sign-in;
+the gesture could issue a pointless unauthenticated request. The control is now
+absent while signed out and remains available to signed-in readers. Subsequent
+native interaction testing was interrupted by repeated emulator app-not-responding
+dialogs, so this interaction has code and type-check evidence rather than a
+completed post-change gesture check.
+
 ## Verification baseline
+
 
 - Mobile and API TypeScript passed before shared-control edits.
 - Location, gradient, navigation, and scroll coverage: 35 passing tests.

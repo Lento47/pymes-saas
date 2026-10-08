@@ -157,10 +157,9 @@ export default function Inbox() {
 				hasNextPage={notices.hasNextPage}
 				loadingMore={notices.isFetchingNextPage}
 				onLoadMore={() => void notices.fetchNextPage()}
-				// The pull, with its flag inside `./paginated-list`: a query also refetches when
-				// nobody pulled, and a spinner under a thumb that arrived without a gesture
-				// claims credit for a request the reader did not make.
-				onRefresh={() => notices.refetch()}
+				// Only a signed-in reader has a notification query to refresh. The pull's own
+				// busy flag lives inside `./paginated-list`, independent of query refetches.
+				onRefresh={signedIn ? () => notices.refetch() : undefined}
 			/>
 		</Screen>
 	);
