@@ -32,6 +32,23 @@ export type AdminListSort = "newest" | "name" | "orders" | "revenue";
 /** The four the support queue supports, which are not the same four. */
 export type TicketSort = "newest" | "oldest" | "activity" | "messages";
 
+/**
+ * The three the crash queue supports.
+ *
+ * **No `activity`, and that is the interesting absence.** The ticket queue's best ordering is
+ * the computed `lastMessageAt`, and it exists because somebody may still be waiting on the
+ * other end. A crash has no messages: the app writes `OPEN` and never touches the column
+ * again. Its activity ordering is `createdAt`, which `newest` already is — so offering
+ * `activity` here would be a control that looks like it does something.
+ *
+ * **`build` is the one that earns the list.** `crashReportListInput.sort` groups a release's
+ * crashes together, which is the question an operator asks when deciding whether the fix landed.
+ * A string `"13"` and a string `"9"` do not compare the way anybody expects, so the service
+ * orders by `created_at` *within* a build rather than by the build itself — see
+ * `services/crash-report.ts`.
+ */
+export type CrashSort = "newest" | "oldest" | "build";
+
 export type SortOption<T extends string> = { value: T; label: string };
 
 /**
@@ -60,6 +77,16 @@ export const TICKET_SORT_OPTIONS: readonly SortOption<TicketSort>[] = [
   { value: "newest", label: "Más recientes" },
   { value: "oldest", label: "Más antiguos" },
   { value: "messages", label: "Mensajes" },
+];
+
+/**
+ * "Por build", named rather than hidden behind "recientes", for the ticket list's reason: two
+ * options whose labels read the same hide the one that answers a different question.
+ */
+export const CRASH_SORT_OPTIONS: readonly SortOption<CrashSort>[] = [
+  { value: "newest", label: "Más recientes" },
+  { value: "oldest", label: "Más antiguos" },
+  { value: "build", label: "Por build" },
 ];
 
 /**

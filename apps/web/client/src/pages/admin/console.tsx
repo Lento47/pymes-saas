@@ -19,15 +19,16 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
+import { Button } from "@/components/arc/button/button";
 import { Card as ArcCard } from "@/components/arc/card/card";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { Input } from "@/components/arc/input/input";
 import { JsonViewer } from "@/components/arc/json-viewer/json-viewer";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
 import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
-import { Textarea } from "@/components/arc/textarea/textarea";
 import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { Sparkline } from "@/components/arc/sparkline/sparkline";
+import { Textarea } from "@/components/arc/textarea/textarea";
 import { PageTemplate } from "@/components/layout/page-template";
 import {
   AlertDialog,
@@ -39,7 +40,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/arc/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 /*
   Two inputs, deliberately.
@@ -57,7 +57,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
   of a visible label is a decision, rather than looking like the same control with a prop missing.
  */
 import { Input as SearchInput } from "@/components/ui/input";
-import { Textarea as SearchTextarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -74,6 +73,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea as SearchTextarea } from "@/components/ui/textarea";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +89,7 @@ import {
   type AuditLogEntry,
   adminApi,
   BUSINESS_STATUSES,
+  type CrashReportRow,
   needsReason,
   type PriceBookRow,
   REASON_MIN_LENGTH,
@@ -108,6 +109,8 @@ import { ConsoleShell } from "./console-nav";
 import { TablePager } from "./console-pager";
 import {
   type AdminListSort,
+  CRASH_SORT_OPTIONS,
+  type CrashSort,
   directionLabel,
   flipDirection,
   LIST_SORT_OPTIONS,
@@ -1908,6 +1911,42 @@ const TICKET_CATEGORY_LABEL: Record<string, string> = {
   OTHER: "Otro",
 };
 
+/**
+ * What produced a crash, in the operator's words rather than the enum's.
+ *
+ * `USER_REPORT` is "Reporte del usuario" and not "Reporte": a person saying *the total came out
+ * wrong* is reporting the same class of thing as a stack trace — both mean the app did not do
+ * its job — and they belong in one queue. Counting them separately is how unreadable stacks
+ * fill a queue while the readable ones go unread.
+ */
+const CRASH_CATEGORY_LABEL: Record<string, string> = {
+  UNHANDLED_ERROR: "Error no controlado",
+  UNHANDLED_REJECTION: "Promesa rechazada",
+  USER_REPORT: "Reporte del usuario",
+};
+
+/**
+ * Severity → tone. See `STATUS_TONE` for why this is a tone and not a class string.
+ *
+ * `CRITICAL` is `danger` and `ERROR` is `warning`, which is the one thing these four statuses
+ * cannot borrow: a ticket's status describes a conversation and this describes a build.
+ */
+const CRASH_SEVERITY_TONE: Record<string, BadgeTone> = {
+  CRITICAL: "danger",
+  ERROR: "warning",
+  WARNING: "neutral",
+};
+
+/**
+ * The same four words as `TICKET_STATUS_LABEL` — **the same object, not a copy.**
+ *
+ * An operator who works both queues should not learn a second vocabulary, and a second lookup
+ * table is a second thing to keep correct when a state is added. What is different is who moves
+ * them: a merchant may move a ticket between `OPEN` and `WAITING`, and nothing moves a crash
+ * except the operator. The app writes `OPEN` and never touches the column again.
+ */
+const CRASH_STATUS_LABEL: Record<string, string> = TICKET_STATUS_LABEL;
+
 function TicketThread({ ticketId }: { ticketId: string }) {
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
@@ -2084,7 +2123,14 @@ function TicketThread({ ticketId }: { ticketId: string }) {
   );
 }
 
-function SupportTab() {
+/**
+ * The merchant queue. `SupportTab` is the switcher above it; this is the half it renders when
+ * "Tickets" is chosen.
+ *
+ * Renamed rather than wrapped, so the switcher adds a level of nesting nowhere near the 150 lines
+ * of state, filters and panes below.
+ */
+function TicketQueue() {
   const [selected, setSelected] = useState<string | null>(null);
   const [status, setStatus] = useState<"live" | "all">("live");
   const [search, setSearch] = useState("");
@@ -2252,6 +2298,410 @@ function SupportTab() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One crash, whole — the pane an operator works in.
+ *
+ * ## The version is in the header, not at the bottom
+ *
+ * `appVersion` and `buildNumber` are the first two rows of this pane and not a footnote, because
+ * "which build is this" is the question that decides what you do next and the answer is in the
+ * report whether or not anybody looks. A stack trace with no version beside it cannot be
+ * matched to a release, and a crash that cannot be matched to a release does not get fixed.
+ *
+ * ## No composer, and that is the difference from `TicketThread`
+ *
+ * A ticket has a thread because a merchant is on the other end waiting for an answer. A crash
+ * has nobody on the other end: the app writes `OPEN` and never touches the column again, and
+ * there is no `crashReport.reply` because there is nothing to reply to. What there is instead
+ * is the closing note, which is **required** — there is no thread for the reasoning to live in,
+ * so the note and the `crash.resolve` audit entry are the only two places it can live.
+ *
+ * The button is disabled on an empty note rather than validated on submit, which is the same
+ * `resolveTicket` does and for the same stated reason: a control that takes a click and then
+ * refuses is worse than one that never offered.
+ */
+function CrashThread({ reportId }: { reportId: string }) {
+  const [note, setNote] = useState("");
+  const [closing, setClosing] = useState<"RESOLVED" | "CLOSED" | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
+    queryKey: ["admin", "crash", reportId],
+    queryFn: () => adminApi.crashReport(reportId),
+  });
+
+  const resolve = useMutation({
+    mutationFn: (status: "RESOLVED" | "CLOSED") =>
+      adminApi.resolveCrash({ id: reportId, status, note: note.trim() }),
+    onSuccess: async (_result, status) => {
+      setClosing(null);
+      setNote("");
+      toast({ title: status === "RESOLVED" ? "Resuelto" : "Cerrado" });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "crash", reportId] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "crashes"] }),
+      ]);
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "No se pudo cerrar",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+  if (isError) {
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudo cargar el reporte."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+  if (!data) return null;
+
+  const terminal = data.status === "RESOLVED" || data.status === "CLOSED";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={CRASH_SEVERITY_TONE[data.severity] ?? "warning"}>{data.severity}</Badge>
+        <Badge tone={STATUS_TONE[data.status] ?? STATUS_TONE.CLOSED}>
+          {CRASH_STATUS_LABEL[data.status] ?? data.status}
+        </Badge>
+        <Badge tone="neutral">
+          {CRASH_CATEGORY_LABEL[data.category] ?? data.category}
+        </Badge>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {shortDate(data.createdAt)}
+        </span>
+      </div>
+
+      {/*
+        A crash with no reporter and no shop is **normal**, not broken. `crash_report.user_id`
+        is `SET NULL` and `business_id` carries no foreign key at all, so the report outlives
+        both. Saying so here is the difference between a row an operator trusts and a row they
+        suspect was half-loaded.
+      */}
+      <p className="text-xs text-muted-foreground">
+        {data.businessName ?? "Sin comercio"} · {data.userName ?? "Sin cuenta"}
+      </p>
+
+      {/* The version, first. See the docblock: this is the question the whole queue exists to
+          answer and it is answerable only from these two fields. */}
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border p-3 text-xs">
+        <dt className="text-muted-foreground">Versión</dt>
+        <dd className="font-mono">{data.appVersion ?? "—"}</dd>
+        <dt className="text-muted-foreground">Build</dt>
+        <dd className="font-mono" data-testid="crash-build">
+          {data.buildNumber ?? "—"}
+        </dd>
+        <dt className="text-muted-foreground">Pantalla</dt>
+        <dd className="font-mono break-all">{data.route ?? "—"}</dd>
+        <dt className="text-muted-foreground">Origen</dt>
+        <dd>{data.source}</dd>
+      </dl>
+
+      {data.title ? <p className="text-sm font-medium">{data.title}</p> : null}
+      <p className="whitespace-pre-wrap text-sm">{data.message}</p>
+
+      {data.stack ? (
+        <details className="rounded-md border p-3" open>
+          <summary className="cursor-pointer text-xs font-medium">
+            Stack ({shortDate(data.createdAt)})
+          </summary>
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all text-xs">
+            {data.stack}
+          </pre>
+        </details>
+      ) : null}
+
+      {data.context && Object.keys(data.context).length > 0 ? (
+        <details className="rounded-md border p-3">
+          <summary className="cursor-pointer text-xs font-medium">Contexto</summary>
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all text-xs">
+            {JSON.stringify(data.context, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+
+      {terminal ? (
+        <p className="text-xs text-muted-foreground">
+          Cerrado. La nota del cierre quedó en la auditoría: es el único lugar donde se puede
+          leer por qué se consideró resuelto, y es lo que hace falta revisar cuando el build
+          siguiente falla igual.
+        </p>
+      ) : (
+        <div className="space-y-3 border-t pt-4">
+          {/*
+            Two buttons rather than a dropdown, for `resolveTicket`'s reason verbatim: an
+            operator reaching for the wrong one records a statement to a colleague that the
+            crash is fixed, and nobody undoes that. Resolved means fixed; closed means we are
+            not looking at it.
+          */}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setClosing("RESOLVED")}>
+              Resolver
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setClosing("CLOSED")}>
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog
+        open={closing !== null}
+        onOpenChange={(o) => !o && setClosing(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {closing === "RESOLVED" ? "Resolver" : "Cerrar"}:{" "}
+              {data.title ?? data.message.slice(0, 60)}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              La nota es obligatoria. No hay conversación en este reporte, así que la nota y la
+              entrada de auditoría son los únicos lugares donde queda por qué se cerró — que es
+              exactamente lo que falta cuando el build siguiente falla igual.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <SearchTextarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Por qué se cierra (obligatorio)"
+            rows={4}
+            aria-label="Nota de cierre"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={note.trim().length === 0 || resolve.isPending}
+              onClick={() => closing && resolve.mutate(closing)}
+            >
+              {closing === "RESOLVED" ? "Resolver" : "Cerrar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+/**
+ * The crash queue, beside the merchant one.
+ *
+ * ## Why a second queue in this tab and not a thirteenth tab
+ *
+ * The tab list has twelve entries and `routers/support.ts:39-45` already argues against a name
+ * that says nothing the existing set does not. "Crashes" says exactly what "Soporte" does not,
+ * but the *operator* is the same person opening the same console at the same moment: a merchant
+ * waiting and a crash on build 13 are two things to do in one sitting. A crash in a tab nobody
+ * thinks to open is a crash that does not get fixed.
+ *
+ * ## What is shared with the ticket queue and what is not
+ *
+ * The search, the pager and the two panes are `TicketQueue`'s, because they are the console's
+ * and reusing them is why a second queue costs two dozen lines rather than two hundred. The
+ * **filters** are not shared: a ticket queue filters on `OPEN`/`WAITING` and a crash queue has
+ * no "waiting" state at all — nothing but an operator moves one — so it filters on category,
+ * source and build instead. Sharing the filter row would mean one control meaning two things.
+ */
+function CrashQueue() {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [status, setStatus] = useState<"live" | "all">("live");
+  const [search, setSearch] = useState("");
+  /*
+    `build` rather than `activity`. The ticket queue's best ordering is the computed
+    `lastMessageAt`, and a crash has no messages — its activity ordering is `createdAt`, which
+    `newest` already is. What `build` adds is grouping a release's crashes together, which is
+    the question an operator asks when deciding whether to ship the fix.
+  */
+  const [order, setOrder] = useState<SortState<CrashSort>>({
+    sort: "newest",
+    direction: "desc",
+  });
+
+  const page = useAdminPage<CrashReportRow>({
+    queryKey: [status, search, order],
+    queryFn: ({ cursor, limit }) =>
+      adminApi.crashReports({
+        search: search || undefined,
+        // Same reasoning as the ticket queue's `live`: a queue is the work still to do, and
+        // "all" is one click away for auditing.
+        status: status === "live" ? ["OPEN", "WAITING"] : undefined,
+        sort: order.sort,
+        cursor,
+        limit,
+      }),
+  });
+
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-72 w-full" />;
+  if (isError) {
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar los reportes."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            page.reset();
+          }}
+          placeholder="Buscar por mensaje, título, pantalla o stack"
+          className="max-w-md"
+          aria-label="Buscar reportes"
+        />
+        {/* No direction button: `crashReportListInput.sort` is `newest | oldest | build`, and
+            `oldest` already says "the other way". A flip control here would promise an
+            ordering the service cannot produce — the same reasoning the ticket queue's own
+            comment gives for not having one. */}
+        <TableSort
+          options={CRASH_SORT_OPTIONS}
+          value={order}
+          onChange={(next) => {
+            setOrder(next);
+            page.reset();
+          }}
+          label="reportes"
+          showDirection={false}
+        />
+        <SegmentedControl
+          label="Estado del reporte"
+          value={status}
+          onValueChange={(next) => {
+            if (next === status) return;
+            setStatus(next as "live" | "all");
+            page.reset();
+          }}
+          options={[
+            { value: "live", label: "Abiertos" },
+            { value: "all", label: "Todos" },
+          ]}
+        />
+        <p className="text-xs text-muted-foreground">{data?.total ?? 0} en total</p>
+      </div>
+
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="reportes"
+      />
+
+      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <div className="space-y-2">
+          {data && data.rows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No hay reportes aquí.
+            </p>
+          ) : null}
+          {data?.rows.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setSelected(r.id)}
+              aria-pressed={selected === r.id}
+              className={`w-full rounded-md border p-3 text-left transition-colors ${
+                selected === r.id
+                  ? "border-amber-500/50 bg-amber-500/5"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              <p className="truncate text-sm font-medium">{r.title ?? r.message}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {CRASH_CATEGORY_LABEL[r.category] ?? r.category}
+                {r.buildNumber ? ` · build ${r.buildNumber}` : ""}
+              </p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {r.route ?? (r.businessName ?? "Sin comercio")} ·{" "}
+                {shortDate(r.createdAt)}
+              </p>
+            </button>
+          ))}
+        </div>
+
+        <div className="min-h-[24rem] rounded-md border p-4">
+          {selected ? (
+            <CrashThread key={selected} reportId={selected} />
+          ) : (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              Elegí un reporte para ver el stack y la versión.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The support tab: two queues, one operator.
+ *
+ * ## The grouping is the feature
+ *
+ * `routers/support.ts:39-45` refuses a fifth capability name *"because a fifth capability name
+ * would not say anything the existing set does not"*, and a thirteenth tab called "Crashes"
+ * would say exactly what the twelfth called "Soporte" does not — while putting the two things
+ * that need the same person in two places. An operator opening the console with a merchant
+ * waiting and a crash on build 13 is looking at one afternoon's work, and a crash that had to
+ * be found in a different tab is a crash that does not get fixed this week.
+ *
+ * ## Component state, not a sub-route, and deliberately
+ *
+ * `AGENTS.md` requires pathname routing and forbids `#` fragments, and the rest of the console
+ * follows it — every tab is a segment. **This is the exception, and the reason is what the two
+ * halves have in common: they are not destinations.** There is no page to link to, nothing to
+ * bookmark, and no URL worth having: an operator deep-linking to "the crash queue" would be
+ * deep-linking to a *view of a tab*, and the moment the queue they wanted was empty the link
+ * would carry a filter state nobody chose deliberately. The tabs stay addressable; the choice
+ * between two queues inside one of them does not have to be.
+ *
+ * `tickets` is the default because the tab was called "Soporte" and had one queue, and opening
+ * it on an empty crash queue to an operator who came to answer a merchant is the worse first
+ * impression of the two.
+ */
+function SupportTab() {
+  const [queue, setQueue] = useState<"tickets" | "crashes">("tickets");
+
+  return (
+    <div className="space-y-4">
+      <SegmentedControl
+        label="Cola"
+        value={queue}
+        onValueChange={(next) => {
+          if (next === queue) return;
+          setQueue(next as "tickets" | "crashes");
+        }}
+        options={[
+          { value: "tickets", label: "Tickets de comercios" },
+          { value: "crashes", label: "Reportes de la app" },
+        ]}
+      />
+      {queue === "tickets" ? <TicketQueue /> : <CrashQueue />}
     </div>
   );
 }

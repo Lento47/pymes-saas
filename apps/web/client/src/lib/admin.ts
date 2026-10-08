@@ -46,7 +46,13 @@ import {
   type BusinessStatus,
   COURIER_VERIFICATION_STATUSES,
   type CourierVerificationStatus,
+  type CrashReport,
+  type CrashReportListInput,
+  type CrashReportResolveInput,
+  type CrashReportRow,
   categorySchema,
+  crashReportListInput,
+  crashReportRowSchema,
   createPriceBookInput,
   PLANS,
   REASON_MIN_LENGTH,
@@ -177,6 +183,16 @@ const orderList = pageOf(adminOrderRowSchema);
 const auditList = pageOf(auditLogEntrySchema);
 const courierList = pageOf(adminCourierRowSchema);
 const ticketList = pageOf(adminSupportTicketRowSchema);
+/**
+ * The crash queue's rows, validated one at a time like every other list here.
+ *
+ * `crashReportRowSchema` extends `crashReportSchema` with two **nullable** names, and that is
+ * the schema doing the work: a report whose account or whose shop is gone is still a row an
+ * operator has to be able to read. The console's ticket list cannot hold that shape — it
+ * inner-joins both — which is why crashes are a separate table and a separate queue rather than
+ * a filter on this one.
+ */
+const crashList = pageOf(crashReportRowSchema);
 const subscriptionList = pageOf(adminSubscriptionSchema);
 const productList = pageOf(adminProductRowSchema);
 const promotionList = pageOf(adminPromotionRowSchema);
@@ -363,6 +379,52 @@ export const adminApi = {
     adminSupportTicketDetailSchema.parse(
       await trpc.admin.supportTicket.query({ ticketId }),
     ),
+
+  // ── The crash queue ──────────────────────────────────────────────────────
+  //
+  // A second queue **inside the support tab**, not a thirteenth tab. The tab list has twelve
+  // entries and `routers/support.ts:39-45` already argues against a name that says nothing
+  // the existing set does not; "Crashes" says exactly what "Soporte" does not. An operator who
+  // opens the console once should see a merchant waiting and a crash on build 13 in the same
+  // place, because a crash nobody had to go looking for is a crash that does not get fixed.
+
+  /**
+   * The crash queue, live crashes by default.
+   *
+   * **`trpc.crashReport.*` and not `trpc.admin.*`**, unlike every call above. The write side
+   * (`crashReport.report`) is `protectedProcedure` — user-level, no business — and the router
+   * deliberately is not mounted under `admin`. What the operator reads and writes is
+   * `adminProcedure`, so this is the console reading another router rather than the console
+   * being another client of `admin`.
+   */
+  crashReports: async (
+    input: Partial<CrashReportListInput> = {},
+  ): Promise<Page<CrashReportRow>> =>
+    crashList(await trpc.crashReport.list.query(crashReportListInput.parse(input))),
+
+  /**
+   * One crash, whatever state it is in.
+   *
+   * A direct `get` rather than filtering the list: the queue paginates, and a crash an operator
+   * bookmarked is routinely on page three. Paging to it would be a detail pane that depends on
+   * where the crash happens to sort.
+   */
+  crashReport: async (id: string): Promise<CrashReportRow> => crashReportRowSchema.parse(
+    await trpc.crashReport.get.query({ id }),
+  ),
+
+  /**
+   * Closing a crash, which is a note and a state change in one batch.
+   *
+   * The note is required by `crashReportResolveInput` and the button is disabled without one,
+   * for `resolveTicket`'s reason verbatim: a resolution nobody wrote is a ticket that closed
+   * itself. There is no thread on `crash_report`, so the note is the only place the reasoning
+   * lives besides the audit entry — which is exactly what an operator needs when build 15
+   * crashes the same way.
+   */
+  resolveCrash: async (input: CrashReportResolveInput): Promise<void> => {
+    await trpc.crashReport.resolve.mutate(input);
+  },
 
   // ── Billing ──────────────────────────────────────────────────────────────
   //
@@ -622,6 +684,10 @@ export type {
   AuditLogEntry,
   BusinessStatus,
   CourierVerificationStatus,
+  CrashReport,
+  CrashReportListInput,
+  CrashReportResolveInput,
+  CrashReportRow,
   SubscriptionStatus,
   TicketCategory,
   TicketStatus,
