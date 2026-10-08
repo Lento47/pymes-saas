@@ -16,6 +16,16 @@ export interface SelectProps extends Omit<ComponentPropsWithoutRef<typeof Select
   id?: string;
   className?: string;
   options: { value: string; label: string; disabled?: boolean }[];
+  /**
+   * Keep the label for assistive technology and drop it from the page. See `Input`'s `hideLabel`.
+   *
+   * This is the prop that unblocks every filter toolbar in the app. A sort control that shows
+   * the chosen column in its trigger has no use for a second visible word above it, and upstream
+   * renders `label` unconditionally — so all 68 `<Select>` sites were being kept on a second
+   * component for the sake of one line, and the sort dropdown in the console was going to be
+   * the test case. The label stays a real `<label htmlFor>`; only its rendering changes.
+   */
+  hideLabel?: boolean;
 }
 
 /** The shown value rolls in the direction of the list: a later option rises from below, an earlier one drops from above. */
@@ -28,7 +38,7 @@ const valueRoll: Variants = {
 const valueFade: Variants = { enter: { opacity: 0 }, center: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: motionTokens.duration.instant } }, exit: { opacity: 0, transition: { duration: motionTokens.duration.instant } } };
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select(
-  { label, description, placeholder = "Select an option", options, id, className, disabled, onValueChange, ...rootProps },
+  { label, description, placeholder = "Select an option", options, id, className, disabled, hideLabel, onValueChange, ...rootProps },
   ref,
 ) {
   const generatedId = useId();
@@ -45,7 +55,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
 
   return (
     <div className={styles.field}>
-      <label htmlFor={controlId}>{label}</label>
+      <label className={hideLabel ? styles.srOnly : undefined} htmlFor={controlId}>{label}</label>
       <SelectPrimitive.Root {...rootProps} disabled={disabled} onValueChange={(next) => { setUncontrolledValue(next); onValueChange?.(next); }}>
         <SelectPrimitive.Trigger
           ref={ref}

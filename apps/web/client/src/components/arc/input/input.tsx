@@ -10,6 +10,20 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   description?: string;
   error?: string;
+  /**
+   * Keep the label for assistive technology and drop it from the page.
+   *
+   * Upstream renders `label` in an unconditional `<label>`, which is right for a form and wrong
+   * for a filter toolbar: a search box whose placeholder already says "Buscar por comercio" ends
+   * up with the words twice, and six of them down the page. Those sites were stuck on a second
+   * input component for the life of the field, and the reason was a one-line prop.
+   *
+   * The label is not discarded — it stays a real `<label htmlFor>`, so the association, the
+   * accessible name and the click-to-focus all survive. Only its rendering changes, to the
+   * `srOnly` clip this stylesheet already ships. So the control is not left unlabelled; it is
+   * labelled the way a control with a placeholder and an icon is normally labelled.
+   */
+  hideLabel?: boolean;
 }
 
 /* Digits roll up when a number grows and down when it shrinks; `custom` hands the latest direction to digits already leaving. */
@@ -67,7 +81,7 @@ function MessageRow({ id, text, className, alert }: { id?: string; text: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, description, error, id, className, ...props }, ref,
+  { label, description, error, hideLabel, id, className, ...props }, ref,
 ) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
@@ -75,7 +89,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const errorId = error ? `${controlId}-error` : undefined;
   const describedBy = [props["aria-describedby"], hintId, errorId].filter(Boolean).join(" ") || undefined;
   return <div className={styles.field}>
-    <label className={styles.label} htmlFor={controlId}>{label}</label>
+    <label className={hideLabel ? styles.srOnly : styles.label} htmlFor={controlId}>{label}</label>
     <input {...props} id={controlId} ref={ref} className={[styles.input, className].filter(Boolean).join(" ")} aria-invalid={error ? true : props["aria-invalid"]} aria-describedby={describedBy}/>
     <FieldMessage id={hintId} text={description} className={styles.description} />
     <FieldMessage id={errorId} text={error} className={styles.error} alert />
