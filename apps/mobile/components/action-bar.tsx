@@ -8,7 +8,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { radius, shadow, space, type, useTheme } from "@/theme";
-
+import { useBottomObstruction } from "./bottom-obstruction";
 import { BUTTON_BORDER_WIDTH, Button, type ButtonVariant } from "./button";
 import { useTabBarClearance } from "./tab-bar";
 
@@ -266,18 +266,23 @@ export function ActionBar({
 	const tabClearance = useTabBarClearance();
 	const lift = docked ? 0 : tabClearance;
 	const stacked = Boolean(summary) && fontScale >= STACKED_FONT_SCALE;
+	const [measuredHeight, setMeasuredHeight] = useState(0);
+	useBottomObstruction(docked ? 0 : measuredHeight + space.sm + lift);
+	const onLayout = useCallback(
+		(event: LayoutChangeEvent) => {
+			const height = event.nativeEvent.layout.height;
+			setMeasuredHeight(height);
+			onHeightChange?.(height);
+		},
+		[onHeightChange],
+	);
 
 	return (
 		<View
 			// The bar's height, for the screen whose content scrolls under it. A `docked` bar is
 			// laid out too, and reporting its height costs nothing — the hook's caller is the one
 			// that knows whether anything scrolls beneath.
-			onLayout={
-				onHeightChange
-					? (event: LayoutChangeEvent) =>
-							onHeightChange(event.nativeEvent.layout.height)
-					: undefined
-			}
+			onLayout={onLayout}
 			style={[
 				styles.bar,
 				stacked && styles.stacked,

@@ -30,7 +30,10 @@ import {
 	space,
 	useTheme,
 } from "@/theme";
-
+import {
+	BottomObstructionProvider,
+	useBottomObstructionHeight,
+} from "./bottom-obstruction";
 import { MEASURE } from "./error-state";
 import { Pressable } from "./pressable";
 import { useTabBarClearance } from "./tab-bar";
@@ -179,10 +182,19 @@ const ToastContext = createContext<ToastApi | null>(null);
  * screen rather than inside one. `useToast()` resolves on every route, `(auth)` included.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
+	return (
+		<BottomObstructionProvider>
+			<ToastSurface>{children}</ToastSurface>
+		</BottomObstructionProvider>
+	);
+}
+
+function ToastSurface({ children }: { children: ReactNode }) {
 	const { colors } = useTheme();
 	const { t } = useT();
 	const insets = useSafeAreaInsets();
 	const tabClearance = useTabBarClearance({ bottomInsetPaid: true });
+	const obstruction = useBottomObstructionHeight();
 	const reduceMotion = useReducedMotion();
 
 	const [current, setCurrent] = useState<Toast | null>(null);
@@ -298,7 +310,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 				<Animated.View
 					style={[
 						styles.host,
-						{ bottom: insets.bottom + tabClearance + space.md },
+						{
+							bottom:
+								Math.max(insets.bottom + tabClearance, obstruction) + space.md,
+						},
 						animated,
 					]}
 				>

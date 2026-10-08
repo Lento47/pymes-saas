@@ -46,7 +46,8 @@ English and Spanish, gesture navigation and three-button navigation.
 - A selected pin survives an app force-stop and restart.
 - Save address opens Addresses; completing a save needs an authenticated session.
 - Denying the location permission leaves the picker usable and its current-location
-  action reachable. Current-location switching still needs an end-to-end check.
+  action reachable. On October 8, granting permission and choosing the current
+  location switched the header from the pinned location to the emulator GPS fix.
 - Map pin taps work. Tiles loaded at overview and street zoom, but intermittent
   tile timeouts prevent a clean map reliability sign-off. Pan/zoom need a recorded
   gesture review, not just still images.
@@ -84,6 +85,34 @@ The timeout follows the platform capability documented in
 [React Native AccessibilityInfo](https://reactnative.dev/docs/accessibilityinfo).
 Placement must also be checked against action bars, keyboards, and other overlays;
 clearing the capsule alone does not prove those combinations are clear.
+
+## Follow-up: floating action bars and location feedback
+
+Verified on October 8 against `0e4b917f` plus these local changes:
+
+- Floating action bars now register their measured bottom clearance while their
+  screen is focused. Toasts use the larger of that clearance and the capsule's.
+- On the 360 x 640 dp Android emulator at 200% text, a Spanish toast remained
+  12 dp above the bar. Expanding its summary increased the bar's height and moved
+  the visible toast with it. Navigating to Home removed the old reservation and
+  placed the toast 12 dp above the capsule again.
+- The picker now displays its existing denied/unavailable location explanations
+  and shows a loading button while requesting location. Permission copy describes
+  device location without implying permission is needed to pick a map pin.
+- With permission revoked, the complete Spanish explanation and current-location
+  action scrolled above the capsule at 200% text, retaining the 24 dp gap. Tapping
+  the action opened Android's permission prompt. Granting it and choosing current
+  location dismissed the picker and changed the Home header to current location.
+- The temporary overlap-verification screen and its navigation entry were deleted.
+
+This registration covers floating bars; docked bars, keyboards, and sheet overlay
+combinations still need rendered verification. Location loading was too brief to
+capture in this GPS run; the unavailable-provider message still needs a native check.
+
+Checks: mobile TypeScript and focused Biome passed. The full working-tree suite
+reported 279 passing tests and two failures: the known palette uniqueness assertion
+and business tab/layout coverage while a separate merchant-support change was in
+progress. Those unrelated files were not included in this increment.
 
 ## Verification baseline
 

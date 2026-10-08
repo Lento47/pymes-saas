@@ -85,8 +85,24 @@ export function HomeLocationPicker({
 					</Text>
 				)}
 
+				{!current &&
+				(locationStatus === "denied" || locationStatus === "unavailable") ? (
+					<Text variant="caption" tone="muted" accessibilityLiveRegion="polite">
+						{t(
+							locationStatus === "denied"
+								? "location.permissionDenied"
+								: "location.providerUnavailable",
+						)}
+					</Text>
+				) : null}
+
 				<Button
-					label={t("location.use")}
+					label={t(
+						locationStatus === "asking" && !current
+							? "state.loading"
+							: "location.use",
+					)}
+					loading={locationStatus === "asking" && !current}
 					variant="secondary"
 					fullWidth
 					onPress={() => {

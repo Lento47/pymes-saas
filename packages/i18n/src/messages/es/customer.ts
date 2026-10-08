@@ -786,7 +786,7 @@ export const customer = {
 	"location.needPosition":
 		"Permite el acceso a tu ubicación para centrar el mapa y luego mueve el marcador.",
 	"location.permissionDenied":
-		"El permiso de ubicación está desactivado. Actívalo para centrar el mapa y elegir un punto.",
+		"El acceso a la ubicación está desactivado. Permítelo para usar la ubicación del dispositivo.",
 	"location.providerUnavailable":
 		"La ubicación del dispositivo no está disponible. Revisa los servicios de ubicación e inténtalo de nuevo.",
 	"location.applyPin": "Usar esta ubicación",

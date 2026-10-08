@@ -425,7 +425,7 @@ export const customer = {
 	"location.needPosition":
 		"Allow location access to center the map, then move the pin wherever you need.",
 	"location.permissionDenied":
-		"Location permission is off. Enable it to center the map, then choose a pin.",
+		"Location access is off. Allow access to use your device's location.",
 	"location.providerUnavailable":
 		"Your device location is unavailable right now. Check location services and try again.",
 	"location.applyPin": "Use this location",
