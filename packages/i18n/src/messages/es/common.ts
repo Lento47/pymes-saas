@@ -134,6 +134,28 @@ export const common = {
 	"state.error.inline": "Algo salió mal de nuestro lado",
 	"state.error.requestId":
 		"Si vuelve a pasar, menciónale este código a soporte: {requestId}",
+
+	/*
+	 * `crash.*` — the screen after a render error, and the only screen in the app that
+	 * cannot use the theme or the dictionary provider.
+	 *
+	 * It is rendered by `Sentry.GlobalErrorBoundary` around `RootLayout` itself, so
+	 * `ThemeModeProvider`, `I18nProvider` and everything below them are *not* above it:
+	 * `useTheme()` throws rather than guess (`theme/scope.tsx`) and `useT()` does the same
+	 * (`lib/i18n.tsx`). The words therefore still come from here — through a translator built
+	 * from `deviceLocale()` instead of from context — because a hard-coded Spanish string on a
+	 * crash screen is the one string in the app a customer in English is guaranteed to meet.
+	 *
+	 * `crash.reported` is conditional and means what it says: the boundary only draws it when
+	 * `reportCrash` resolved. A reporter that fails open would otherwise put "we've got it"
+	 * in front of a person whose report went nowhere, which is worse than saying nothing.
+	 */
+	"crash.title": "Se nos rompe algo",
+	"crash.body":
+		"Volvé a intentarlo. Si sigue igual, ya lo registramos para arreglarlo.",
+	"crash.retry": "Intentar de nuevo",
+	"crash.reported": "Ya lo registramos. Gracias.",
+
 	"state.offline": "Sin conexión",
 	"state.offline.body": "Sigue intentando. Lo que ya viste sigue disponible.",
 	/* Where a paginated list ends. Six lists in this app stop the same way — the four browse

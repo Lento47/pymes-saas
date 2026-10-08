@@ -72,6 +72,15 @@ export const common = {
 	"state.error.inline": "Something went wrong on our end",
 	"state.error.requestId":
 		"If it happens again, mention this code to support: {requestId}",
+
+	/* See the Spanish file's note. The crash screen cannot use the theme or the dictionary
+	   provider — `Sentry.GlobalErrorBoundary` renders outside `RootLayout` — so these words
+	   come from a translator built off `deviceLocale()` rather than off context. */
+	"crash.title": "Something on our side broke",
+	"crash.body": "Try again. If it keeps happening, we have already logged it.",
+	"crash.retry": "Try again",
+	"crash.reported": "Logged. Thank you.",
+
 	"state.offline": "No connection",
 	"state.offline.body": "Still trying. What you already saw is still here.",
 	/* See the Spanish file's note. `Nothing more to show` and not `No more results`: the same

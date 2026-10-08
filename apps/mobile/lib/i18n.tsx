@@ -63,6 +63,31 @@ function deviceLocale(): Locale {
 	}
 }
 
+/**
+ * A translator for a surface that is **not inside `I18nProvider`**.
+ *
+ * ## The one caller, and why it cannot use the hook
+ *
+ * `Sentry.GlobalErrorBoundary` wraps `RootLayout` itself, so its fallback renders *outside*
+ * every provider the app has: `I18nProvider`, `ThemeModeProvider`, `SafeAreaProvider`. Calling
+ * `useT()` there throws — which is the right behaviour for a screen and fatal for a crash
+ * screen, since the crash screen's entire job is to render while something is already broken.
+ * `theme/scope.tsx` throws for the same reason.
+ *
+ * So this reads the device's language straight from `deviceLocale()` and builds the translator
+ * directly, and it deliberately does **not** honour a stored override: `I18nProvider` reads
+ * `LOCALE_COOKIE` in an effect, and there is no provider here to hold the result. A reader who
+ * chose English on a Spanish phone sees the crash screen in Spanish.
+ *
+ * That is an accepted, stated cost, not an oversight. The alternative is a hard-coded Spanish
+ * string in the source, which is the one sentence in the app a customer who reads English is
+ * *guaranteed* to meet. Reading the device's own language is right far more often, and when it
+ * is wrong it is wrong in Spanish, not in keys — a missing key renders as the key.
+ */
+export function createStandaloneTranslator(): Translator {
+	return createTranslator(deviceLocale());
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
 	const [locale, setLocaleState] = useState<Locale>(deviceLocale);
 

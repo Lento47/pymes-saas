@@ -6,10 +6,12 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { CrashBoundary } from "@/components/crash-screen";
 import { RollbackProvider } from "@/components/rollback-surface";
 import { ToastProvider } from "@/components/toast";
 import { WelcomeAnimation } from "@/components/welcome-animation";
 import { SessionProvider, useSession } from "@/lib/auth/session";
+import { crashRoutePath, setCrashRoute } from "@/lib/crash-payload";
 import { initDevicePrefs } from "@/lib/device-prefs";
 import { env } from "@/lib/env";
 import { I18nProvider } from "@/lib/i18n";
@@ -168,7 +170,33 @@ function RootLayout() {
 	);
 }
 
-export default Sentry.wrap(RootLayout);
+/**
+ * The crash boundary, and why it is **outside** `RootLayout` rather than inside it.
+ *
+ * `CrashBoundary` wraps this component rather than sitting somewhere in the provider tree,
+ * because the two failures it exists for are the ones the provider tree cannot contain: a throw
+ * in `ThemeModeProvider` or `I18nProvider` itself, and a fatal `ErrorUtils` error that never
+ * reaches React at all. A boundary mounted inside the tree catches neither.
+ *
+ * The cost is the reason `components/crash-screen.tsx` has its own colour scheme and its own
+ * translator: everything this wraps is above it. That trade is deliberate — a fallback that
+ * throws because `useTheme()` found no scope is a red box on top of the crash.
+ *
+ * Order with `Sentry.wrap` matters and is the other way round from how it reads: `Sentry.init`
+ * above installs the `ErrorUtils` handler and the Hermes rejection tracker that
+ * `CrashBoundary`'s flags subscribe to, so the boundary has to be *inside* `wrap` to be
+ * reached by them, and `wrap` has to be the outermost export so its error handler is installed
+ * before anything renders.
+ */
+function Root() {
+	return (
+		<CrashBoundary>
+			<RootLayout />
+		</CrashBoundary>
+	);
+}
+
+export default Sentry.wrap(Root);
 
 /**
  * Where a reader goes when they sign out, and the only place in the app that decides it.
@@ -235,6 +263,26 @@ function ThemedStack() {
 	// rather than this scope on purpose: they decide which tree may mount, and a preference is
 	// not an entitlement.
 	const segments = useSegments();
+
+	/**
+	 * The screen a crash happened on, remembered for `lib/error-reporting.ts`.
+	 *
+	 * Written from here rather than from a subscription of its own because `useSegments()` is
+	 * already called two lines up for the status bar — a second `useSegments` in a second
+	 * component would be a second answer to a question this one already has.
+	 *
+	 * The group is in front of the path, the way it is on disk under `app/`: `useSegments()`
+	 * yields `(customer)/cart/[id]`, and that is the name an operator reads when they go
+	 * looking for the screen a report came from.
+	 *
+	 * In an effect and not during render: the value is read by a rejection handler that can
+	 * fire at any moment, and a module written during a render that React may discard would be
+	 * a value nobody can reason about.
+	 */
+	useEffect(() => {
+		setCrashRoute(crashRoutePath(segments));
+	}, [segments]);
+
 	const onLightCanvas =
 		selectTree({ segments, role: useThemeScope() }) === "business" ||
 		scheme === "light";
