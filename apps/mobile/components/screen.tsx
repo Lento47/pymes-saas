@@ -9,6 +9,7 @@ import {
 	View,
 	type ViewStyle,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { type Edge, SafeAreaView } from "react-native-safe-area-context";
 
 import { usePurchaseAccent } from "@/lib/purchase-accent";
@@ -71,32 +72,9 @@ type ScreenProps = AccessibilityProps & {
 	/** Horizontal padding. Off for a screen that renders edge-to-edge rows. */
 	padded?: boolean;
 	/**
-	 * iOS: let the scroll view pay the keyboard's height as its own content inset, so the
-	 * field a customer is typing in stays above the keyboard instead of under it. Off by
-	 * default, and only meaningful with `scroll`.
-	 *
-	 * `automaticallyAdjustKeyboardInsets` is an iOS-only prop — RN 0.86 declares it on
-	 * `ScrollViewPropsIOS` and documents it `@platform ios`
-	 * (`types_generated/Libraries/Components/ScrollView/ScrollView.d.ts:60-65`), where it
-	 * defaults to false. Android has no counterpart and needs none: its window is resized
-	 * by the keyboard rather than covered by it, which this app inherits from
-	 * `android:windowSoftInputMode="adjustResize"` in the manifest prebuild writes
-	 * (`android/app/src/main/AndroidManifest.xml:21`), so the whole screen — this scroll
-	 * view included — is already shorter than the keyboard.
-	 *
-	 * The prop is therefore given a value only on iOS, and `undefined` elsewhere rather than
-	 * `false`: React drops an undefined prop, so the Android scroll view never receives the
-	 * key at all, which is what "this platform does not implement it" should look like.
-	 * A `false` would be a value the platform had to interpret for no reason.
-	 *
-	 * This is not the same path as `./sheet`'s `KeyboardAvoidingView`
-	 * (`sheet.tsx:548`, `behavior={Platform.OS === "ios" ? "padding" : undefined}`), and
-	 * the two do not contradict each other: a sheet's panel is not a scroll container and has
-	 * no content inset to adjust, so it has to be lifted. A screen that scrolls has one.
-	 *
-	 * Opt-in rather than always-on, because the inset is a keyboard-shaped change to a
-	 * layout that only a screen with a field in it can trigger — a screen that never opens a
-	 * keyboard should not carry the branch that assumes one will.
+	 * Keep a focused field visible while the keyboard is open. iOS uses the scroll view's
+	 * automatic keyboard inset; Android uses `KeyboardAwareScrollView` to scroll the focused
+	 * input into the resized window. Off by default, and only meaningful with `scroll`.
 	 */
 	keyboardInsets?: boolean;
 	/**
@@ -175,6 +153,10 @@ export function Screen({
 	// tokens rather than the navigator's reported height, and aware that `bottomInset`
 	// above has already spent the home-indicator inset on this screen's behalf.
 	const tabClearance = useTabBarClearance({ bottomInsetPaid: bottomInset });
+	const FormScrollView =
+		keyboardInsets && Platform.OS === "android"
+			? KeyboardAwareScrollView
+			: ScrollView;
 	/**
 	 * The scroll's own foot: `space.huge` of page, plus whatever the floating bar over
 	 * this screen is covering.
@@ -258,7 +240,7 @@ export function Screen({
 				</View>
 			) : null}
 			{scroll ? (
-				<ScrollView
+				<FormScrollView
 					contentContainerStyle={scrollPadding}
 					keyboardShouldPersistTaps="handled"
 					// Dragging the form away is how a thumb puts a keyboard down, and the value
@@ -293,7 +275,7 @@ export function Screen({
 					refreshControl={refreshControl}
 				>
 					{body}
-				</ScrollView>
+				</FormScrollView>
 			) : (
 				body
 			)}

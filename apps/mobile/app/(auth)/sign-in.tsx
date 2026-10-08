@@ -9,6 +9,7 @@ import {
 	type TextInput,
 	View,
 } from "react-native";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import { ActionBar } from "@/components/action-bar";
 import { AuthIdentity } from "@/components/auth-identity";
 import { BackButton } from "@/components/back-button";
@@ -185,10 +186,10 @@ import {
  *
  * ## The keyboard
  *
- * `keyboardInsets`, because this is a screen whose whole content is inputs: the iOS scroll
- * view pays the keyboard's height as its own content inset so the field being typed in
- * stays above it, and Android is handed no value because its window is resized by the
- * keyboard instead (`screen.tsx:40-68`). Nothing here measures a keyboard.
+ * `keyboardInsets` lets the scroller keep the focused input above the keyboard. The docked
+ * action bar yields that space while the keyboard is visible; otherwise it would cover the
+ * input even after the scroller moves it above the keyboard. The password IME action still
+ * submits the form, and dismissing the keyboard restores the persistent action.
  *
  * ## The failure is the API's sentence, in the one slot, and only while it is true
  *
@@ -269,6 +270,7 @@ export default function SignIn() {
 }
 
 export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
+	const keyboardVisible = useKeyboardState((state) => state.isVisible);
 	const { t } = useT();
 	const { colors } = useTheme();
 	const auth = useSession();
@@ -318,7 +320,9 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	 * cannot change while the app is open.
 	 */
 	const supabaseDoor = supabaseAvailable();
-	const [provider, setProvider] = useState<"marketplace" | "supabase">("marketplace");
+	const [provider, setProvider] = useState<"marketplace" | "supabase">(
+		"marketplace",
+	);
 	/**
 	 * The exchange refused to create a marketplace account for this identity without the
 	 * two assertions, so the consent controls are revealed and the call is made again.
@@ -381,7 +385,16 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 			found.age = t("auth.signUp.consentRequired");
 
 		return found;
-	}, [ageConfirmed, email, name, needsConsent, password, signingUp, t, termsAccepted]);
+	}, [
+		ageConfirmed,
+		email,
+		name,
+		needsConsent,
+		password,
+		signingUp,
+		t,
+		termsAccepted,
+	]);
 
 	/**
 	 * The sentence for `field`, but only once it is fair to show it.
@@ -648,9 +661,14 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 								label={t("auth.provider.label")}
 								value={provider}
 								disabled={waiting}
-								onChange={(next) => setProvider(next === "supabase" ? "supabase" : "marketplace")}
+								onChange={(next) =>
+									setProvider(next === "supabase" ? "supabase" : "marketplace")
+								}
 								options={[
-									{ value: "marketplace", label: t("auth.provider.marketplace") },
+									{
+										value: "marketplace",
+										label: t("auth.provider.marketplace"),
+									},
 									{ value: "supabase", label: t("auth.provider.supabase") },
 								]}
 							/>
@@ -710,7 +728,6 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 								autoComplete="name"
 								maxLength={120}
 								ref={nameRef}
-								autoFocus
 								returnKeyType="next"
 								blurOnSubmit={false}
 								onSubmitEditing={() => emailRef.current?.focus()}
@@ -727,7 +744,6 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 							keyboardType="email-address"
 							autoCorrect={false}
 							ref={emailRef}
-							autoFocus={!signingUp}
 							returnKeyType="next"
 							blurOnSubmit={false}
 							onSubmitEditing={() => passwordRef.current?.focus()}
@@ -848,20 +864,20 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				</Pressable>
 			</Screen>
 
-			{/* The screen's one action, on the floor rather than at the end of the form — the reasons
-		    are in the docblock. `waiting` and not `pending`, as it was inside the scroll: the
-		    action is not finished when the call is, it is finished when there is a session, so the
-		    control stays busy through the read that confirms it rather than inviting a second
-		    credential for one sign-in. */}
-			<ActionBar
-				docked
-				primary={{
-					label: t(signingUp ? "auth.signUp.submit" : "auth.signIn.submit"),
-					onPress: () => void submit(),
-					loading: waiting,
-					disabled: waiting,
-				}}
-			/>
+			{/* The action rests below the form until the keyboard needs that space for the focused
+		    field. `waiting` lasts through session confirmation so a second credential cannot be
+		    submitted while sign-in is still resolving. */}
+			{!keyboardVisible ? (
+				<ActionBar
+					docked
+					primary={{
+						label: t(signingUp ? "auth.signUp.submit" : "auth.signIn.submit"),
+						onPress: () => void submit(),
+						loading: waiting,
+						disabled: waiting,
+					}}
+				/>
+			) : null}
 		</View>
 	);
 }

@@ -131,6 +131,24 @@ the accessibility label still names products and businesses. Android rendered
 the full short placeholder. Entering a query showed live results, and pressing
 the keyboard's search action dismissed the keyboard to reveal them.
 
+## Follow-up: authentication at enlarged text
+
+On a 360 x 640 dp Android emulator with Spanish labels, three-button navigation,
+and 200% text, the sign-in role selector broke labels midword. Three-or-more
+segment groups now stack into full-width rows at this scale; the same selector
+remains horizontal at 100%. Sign-in and sign-up no longer open the keyboard on
+entry, so the page title and action remain visible until a field is chosen.
+
+The Android form scroller now follows focused inputs when the keyboard opens.
+The docked action yields that space while typing and returns when the keyboard
+closes. Native checks confirmed focused sign-in email/password and sign-up
+name/email remain visible above the keyboard at 200%, and the action returns
+after dismissal. iOS and physical-device keyboard behavior remain open checks.
+Mobile TypeScript, focused Biome, frozen lockfile validation, and
+`git diff --check` pass. The full mobile suite reports 279 pass and two
+unrelated failures: the known palette uniqueness assertion and business tab
+coverage while merchant support routes are being developed separately.
+
 ## Verification baseline
 
 - Mobile and API TypeScript passed before shared-control edits.

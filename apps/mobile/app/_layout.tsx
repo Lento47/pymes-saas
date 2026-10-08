@@ -4,6 +4,7 @@ import { router, Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RollbackProvider } from "@/components/rollback-surface";
 import { ToastProvider } from "@/components/toast";
@@ -144,13 +145,15 @@ function RootLayout() {
 													 * merchant console or a courier screen resolves to no stage and the provider costs
 													 * them a query cache entry and nothing else.
 													 */}
-													<RollbackProvider>
-														<ToastProvider>
-															<SignOutGate />
-															<ThemedStack />
-															<WelcomeAnimation />
-														</ToastProvider>
-													</RollbackProvider>
+													<KeyboardProvider>
+														<RollbackProvider>
+															<ToastProvider>
+																<SignOutGate />
+																<ThemedStack />
+																<WelcomeAnimation />
+															</ToastProvider>
+														</RollbackProvider>
+													</KeyboardProvider>
 												</PurchaseAccentProvider>
 											</SafeAreaProvider>
 										</PushNotificationsProvider>

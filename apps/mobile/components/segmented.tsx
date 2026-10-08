@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
@@ -14,7 +14,8 @@ import { Pressable } from "./pressable";
 import { Text } from "./text";
 
 /**
- * Two to five choices, side by side, where the set is small enough to show at once.
+ * Two to five choices in one radio group. On narrow screens at large text sizes,
+ * groups of three or more become full-width rows so labels stay whole words.
  *
  * This is the filter row a list needs (all / active / done), the fulfilment kind on checkout
  * (delivery / pickup) and the theme on account. It is *not* a `CategoryRail`: a rail scrolls
@@ -23,11 +24,10 @@ import { Text } from "./text";
  * difference that matters to a reader is that a rail's selection is a place and this one's is
  * a setting — which is why this one is a `radio` group and announces itself as one.
  *
- * Five is the ceiling and it was raised from four for `app/nearby.tsx`'s sort row, which is
- * the only group that reaches it. The reason four was the ceiling was width: at 200% Dynamic
- * Type, five long labels get about 44pt each and every one of them wraps. That is survivable
- * — this component grows the whole row rather than cutting a word (below) — but it is the
- * last segment that fits, and the sixth sort should be a picker rather than a sixth segment.
+ * Five is the ceiling and it was raised from four for `app/nearby.tsx`'s sort row.
+ * At 200% text on a phone, three or more narrow segments broke words in half.
+ * Full-width rows retain the closed set and its radio semantics; the surrounding
+ * screen can scroll to show the rest. A sixth sort should be a picker.
  *
  * ## The selection is not carried by the fill alone
  *
@@ -94,20 +94,25 @@ export function Segmented({
 	disabled = false,
 }: SegmentedProps) {
 	const { colors } = useTheme();
+	const { fontScale, width } = useWindowDimensions();
+	const stacked = fontScale >= 1.75 && width < 500 && options.length >= 3;
 
 	return (
 		<View
 			style={[
 				styles.group,
+				stacked && styles.groupStacked,
 				{ backgroundColor: colors.muted, borderColor: colors.border },
 			]}
 			accessibilityRole="radiogroup"
 			accessibilityLabel={label}
 		>
-			{options.map((option) => (
+			{options.map((option, index) => (
 				<Segment
 					key={option.value}
 					option={option}
+					stacked={stacked}
+					separator={stacked && index > 0}
 					selected={option.value === value}
 					disabled={disabled}
 					onSelect={() => {
@@ -125,11 +130,15 @@ export function Segmented({
 
 function Segment({
 	option,
+	stacked,
+	separator,
 	selected,
 	disabled,
 	onSelect,
 }: {
 	option: SegmentedOption;
+	stacked: boolean;
+	separator: boolean;
 	selected: boolean;
 	disabled: boolean;
 	onSelect: () => void;
@@ -155,7 +164,11 @@ function Segment({
 			// The segment's own spring is off: the whole group is one control and a segment
 			// that scales inside it looks like the group came apart. The fill is the feedback.
 			scaleTo={1}
-			style={styles.segment}
+			style={[
+				styles.segment,
+				stacked && styles.segmentStacked,
+				separator && { borderTopWidth: 1, borderTopColor: colors.border },
+			]}
 		>
 			{/* Absolute and `pointerEvents="none"` so it is a layer under the label rather than
 			    a sibling that shifts it — the label's position must not depend on selection. */}
@@ -193,6 +206,7 @@ const styles = StyleSheet.create({
 		// The selected fill would otherwise square off the group's corners.
 		overflow: "hidden",
 	},
+	groupStacked: { flexDirection: "column" },
 	segment: {
 		flex: 1,
 		flexDirection: "row",
@@ -203,4 +217,5 @@ const styles = StyleSheet.create({
 		paddingHorizontal: space.md,
 		paddingVertical: space.sm,
 	},
+	segmentStacked: { flex: 0, width: "100%" },
 });
