@@ -415,10 +415,14 @@ export default function HomeScreen() {
 							<TextInput
 								value={query}
 								onChangeText={setQuery}
-								placeholder={t("home.search.placeholder")}
+								placeholder={t(
+									expandedShortcuts
+										? "search.title"
+										: "home.search.placeholder",
+								)}
 								placeholderTextColor={colors.mutedForeground}
 								style={[styles.searchInput, { color: colors.foreground }]}
-								accessibilityLabel={t("search.title")}
+								accessibilityLabel={t("home.search.placeholder")}
 								returnKeyType="search"
 								autoCorrect={false}
 								autoCapitalize="none"

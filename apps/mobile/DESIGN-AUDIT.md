@@ -125,6 +125,12 @@ single row with complete labels at 100%. Mobile TypeScript, focused Biome, and
 27 Home/navigation/scroll tests passed. This is a Home-specific finding, not a
 sign-off on other browse or account screens.
 
+At 200%, the active Home search field's long one-line placeholder also ended
+mid-word. It now uses the existing short search title at enlarged text sizes;
+the accessibility label still names products and businesses. Android rendered
+the full short placeholder. Entering a query showed live results, and pressing
+the keyboard's search action dismissed the keyboard to reveal them.
+
 ## Verification baseline
 
 - Mobile and API TypeScript passed before shared-control edits.
