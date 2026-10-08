@@ -37,7 +37,13 @@ import { join } from "node:path";
  */
 
 const REPO = join(import.meta.dir, "..", "..", "..");
-const SHOWCASE = join(REPO, "apps", "mobile", "components", "category-showcase.tsx");
+const SHOWCASE = join(
+	REPO,
+	"apps",
+	"mobile",
+	"components",
+	"category-showcase.tsx",
+);
 const TAXONOMY = join(
 	REPO,
 	"packages",
@@ -54,11 +60,16 @@ const NAMES_ES = join(
 );
 
 const source = readFileSync(SHOWCASE, "utf-8");
-const tokens = readFileSync(join(REPO, "apps", "mobile", "theme", "tokens.ts"), "utf-8");
+const tokens = readFileSync(
+	join(REPO, "apps", "mobile", "theme", "tokens.ts"),
+	"utf-8",
+);
 
 /** A declared `const NAME = <number>;` out of the showcase. */
 function declared(name: string): number {
-	const found = source.match(new RegExp(`const ${name} = (\\d+(?:\\.\\d+)?);`))?.[1];
+	const found = source.match(
+		new RegExp(`const ${name} = (\\d+(?:\\.\\d+)?);`),
+	)?.[1];
 	if (found === undefined) {
 		throw new Error(`${name} not found in category-showcase.tsx`);
 	}
@@ -67,9 +78,13 @@ function declared(name: string): number {
 
 /** A value from one named scale in `theme/tokens.ts`. */
 function scale(name: "space" | "radius", key: string): number {
-	const block = tokens.match(new RegExp(`export const ${name} = \\{([^}]*)\\}`))?.[1];
+	const block = tokens.match(
+		new RegExp(`export const ${name} = \\{([^}]*)\\}`),
+	)?.[1];
 	if (block === undefined) throw new Error(`${name} scale not found`);
-	const found = block.match(new RegExp(`\\n\\s*${key}: (\\d+(?:\\.\\d+)?),`))?.[1];
+	const found = block.match(
+		new RegExp(`\\n\\s*${key}: (\\d+(?:\\.\\d+)?),`),
+	)?.[1];
 	if (found === undefined) throw new Error(`${name}.${key} not found`);
 	return Number(found);
 }
@@ -209,7 +224,9 @@ describe("the showcase's two cards", () => {
 		// A fresh install can hold fewer than three sectors, which is a real state. A card with an
 		// empty grid inside it is worse than no card, so each is conditional on having something.
 		expect(codeOnly()).toMatch(/gridSectors\.length > 0 \?/);
-		expect(codeOnly()).toMatch(/hasCount && featured && featuredChildren\.length > 0 \?/);
+		expect(codeOnly()).toMatch(
+			/hasCount && featured && featuredChildren\.length > 0 \?/,
+		);
 	});
 
 	test("the whole showcase renders nothing for no categories", () => {
@@ -257,7 +274,8 @@ describe("the showcase's columns", () => {
 		// Asserted with its consequence rather than as a bare number: at four across the column
 		// is 71.8 and at least one sector word does not fit.
 		expect(declared("GRID_PER_ROW")).toBe(3);
-		const atFour = (375 - scale("space", "lg") * 4 - scale("space", "sm") * 3) / 4;
+		const atFour =
+			(375 - scale("space", "lg") * 4 - scale("space", "sm") * 3) / 4;
 		expect(widestWordPtIn(true)).toBeGreaterThan(atFour);
 	});
 
@@ -311,7 +329,9 @@ describe("the showcase's sub-cards", () => {
 	test("every sub-card is a button that names its category", () => {
 		expect(codeOnly()).toMatch(/accessibilityRole="button"/);
 		expect(codeOnly()).toMatch(/accessibilityLabel=\{label\}/);
-		expect(codeOnly()).toMatch(/accessibilityState=\{selected \? \{ selected: true \}/);
+		expect(codeOnly()).toMatch(
+			/accessibilityState=\{selected \? \{ selected: true \}/,
+		);
 		// The picture is decoration; the name is the button.
 		expect(codeOnly()).toMatch(/accessibilityElementsHidden/);
 		expect(codeOnly()).toMatch(/importantForAccessibility="no"/);

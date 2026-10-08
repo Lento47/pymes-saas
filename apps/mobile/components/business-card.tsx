@@ -310,7 +310,7 @@ export function BusinessCard({
 								// rectangles and you cannot tell one from the next. A letter at
 								// least stands for *this* shop. `body` against the 56pt box is
 								// web's per-box scaling (see `./product-tile`).
-																// `action`, not `primary`. `tone="primary"` is `colors.primary`, which in
+								// `action`, not `primary`. `tone="primary"` is `colors.primary`, which in
 								// the merchant tree is the lime **fill**; this letter is drawn on the `muted`
 								// box `./image` puts children on, and lime `#C8FF18` on `#F6F5F1` is
 								// **1.08:1** — invisible. `action` is `#111111` at **17.31:1**. The consumer

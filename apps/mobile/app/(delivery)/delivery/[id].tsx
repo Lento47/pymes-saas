@@ -8,7 +8,13 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import {
+	Linking,
+	ScrollView,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
@@ -322,7 +328,10 @@ function DeliverySkeleton({ label }: { label: string }) {
 	});
 	return (
 		<View style={styles.scrollContent}>
-			<Skeleton label={label} style={[styles.skeletonStatus, line("heading")]} />
+			<Skeleton
+				label={label}
+				style={[styles.skeletonStatus, line("heading")]}
+			/>
 			<Skeleton style={[styles.skeletonCard, line("body")]} />
 			<Skeleton style={[styles.skeletonCard, line("body")]} />
 			<Skeleton style={[styles.skeletonAction, line("body")]} />

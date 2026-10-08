@@ -1,12 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-	AccessibilityInfo,
-	Platform,
-	StyleSheet,
-	View,
-} from "react-native";
+import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";

@@ -333,7 +333,7 @@ export default function ShopHours() {
 													<Text variant="body" bold>
 														{weekdayName(one.day, intlLocale)}
 													</Text>
-													/*
+													{/*
 														`action`, not `primary`: `tone="primary"` is `colors.primary`, and in the
 														merchant tree that is the lime **fill**, not ink. This caption sits on
 														the row's white card, so `primary` put lime `#C8FF18` on `#FFFFFF` —
@@ -341,7 +341,7 @@ export default function ShopHours() {
 														mistake as the shop initial in `shop-settings.tsx`, and the same reason it
 														survived: the consumer palette's `primary` is a dark ultramarine and reads
 														fine as ink, so only the merchant tree can get this wrong.
-													*/
+												*/}
 													{one.day === today ? (
 														<Text variant="caption" tone="action" bold>
 															{t("store.today")}

@@ -62,7 +62,9 @@ const tokens = readFileSync(
 
 /** A declared `const NAME = <number>;` out of the rail. */
 function declared(name: string): number {
-	const found = source.match(new RegExp(`const ${name} = (\\d+(?:\\.\\d+)?);`))?.[1];
+	const found = source.match(
+		new RegExp(`const ${name} = (\\d+(?:\\.\\d+)?);`),
+	)?.[1];
 	if (found === undefined) {
 		throw new Error(`${name} not found in category-rail.tsx`);
 	}
