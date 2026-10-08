@@ -30,7 +30,11 @@ import type {
 	TicketStatus,
 } from "@pymeshub/shared";
 import { newOrderReference, PLAN_LIMITS } from "@pymeshub/shared";
-import type { OrderStatus, PaymentStatus } from "@pymeshub/shared/order-state";
+import type {
+	DeliverySpeed,
+	OrderStatus,
+	PaymentStatus,
+} from "@pymeshub/shared/order-state";
 import {
 	CADENCES,
 	type Cadence,
@@ -308,11 +312,7 @@ function kv(): KVNamespace {
  * A leaked override would make a later spec pass for the wrong reason, so the docblock
  * on `seedBusiness`'s `raiseLimits` makes restoring the caller's job.
  */
-function raiseLimit(
-	plan: "WEEKLY" | "MONTHLY",
-	limit: CountablePlanLimit,
-	value: number,
-): void {
+function raiseLimit(plan: Plan, limit: CountablePlanLimit, value: number): void {
 	PLAN_LIMITS[plan][limit] = value;
 }
 
@@ -583,7 +583,16 @@ export async function seedSubscription(
 	},
 ): Promise<string> {
 	const id = input.id ?? `sub_test_${input.businessId}`;
-	const plan = input.plan ?? DEFAULT_PLAN;
+	/**
+	 * The tier, defaulting to `BUSINESS` rather than to the product's `FREE` floor.
+	 *
+	 * A fixture default is not a product default: `FREE` is the right floor for a business
+	 * and the wrong one for a billing spec, because a free subscription has **no dates at
+	 * all** and every spec about grace, arrears or listing would silently be testing a row
+	 * the deriver short-circuits before it reads a date. A spec that wants the free tier
+	 * says `plan: "FREE"`, and that is a sentence worth writing.
+	 */
+	const plan = input.plan ?? "BUSINESS";
 	// A free subscription has no period at all — see `PLAN_PERIOD_DAYS`, where it is
 	// `null` and not zero precisely so nothing can bill it.
 	const cadence = input.cadence === undefined && plan === "FREE" ? null : input.cadence ?? "MONTHLY";
@@ -648,8 +657,11 @@ export async function seedSubscription(
 	const status = subscriptionStatusAt(
 		{
 			plan,
+			// A free row has no dates at all, and the fixture has to match: passing a
+			// `periodEnd` here would test the deriver against a shape no free subscription
+			// can hold, which is the one thing the `plan` short-circuit makes moot.
 			periodEnd: cadence === null ? null : periodEnd,
-			gracedUntil: cadence === null ? null : gracedUntil,
+			gracedUntil: cadence === null ? null : row.gracedUntil,
 			createdAt: daysAgo(60),
 		},
 		new Date(),
@@ -743,6 +755,21 @@ export async function seedOrder(
 		paymentStatus?: PaymentStatus;
 		totalMinor?: number;
 		currency?: Currency;
+		/**
+		 * `EXPRESS` counts against the business's weekly quota; `STANDARD` does not.
+		 *
+		 * Defaults to `STANDARD`, matching the column, so an existing spec that does not care
+		 * about delivery speed is not silently seeding orders that consume a quota.
+		 */
+		deliverySpeed?: DeliverySpeed;
+		/**
+		 * When the shop took the order, which is **what the express quota's window reads**.
+		 *
+		 * `null` is an order still waiting to be accepted. A spec about the quota sets it
+		 * explicitly, because the window is anchored on acceptance rather than placement and
+		 * a `placedAt`-only fixture would spend a window the order never used.
+		 */
+		acceptedAt?: Date | null;
 	},
 ): Promise<string> {
 	const id = overrides.id ?? `ord_test_${overrides.businessId}`;
@@ -754,12 +781,19 @@ export async function seedOrder(
 		customerId: overrides.customerId,
 		businessId: overrides.businessId,
 		fulfilment: "PICKUP",
+		deliverySpeed: overrides.deliverySpeed ?? "STANDARD",
 		status: overrides.status ?? ("COMPLETED" as OrderStatus),
 		paymentMethod: "SINPE_MOVIL",
 		paymentStatus: overrides.paymentStatus ?? ("PAID" as PaymentStatus),
 		currency: overrides.currency ?? ("CRC" as Currency),
 		subtotalMinor: totalMinor,
 		totalMinor,
+		acceptedAt:
+			overrides.acceptedAt === undefined
+				? (overrides.status ?? "COMPLETED") === "PENDING"
+					? null
+					: now
+				: overrides.acceptedAt,
 		placedAt: now,
 		createdAt: now,
 		updatedAt: now,
@@ -812,34 +846,34 @@ export async function seedBusiness(
 		 */
 		status?: "DRAFT" | "ACTIVE" | "CLOSED" | "SUSPENDED";
 		/**
-		 * The plan, which decides what the shop may do.
+		 * The tier, which decides what the shop may do.
 		 *
-		 * Defaults to `MONTHLY`, **not** to the `WEEKLY` floor the schema defaults to, and
+		 * Defaults to `BUSINESS`, **not** to the `FREE` floor the schema defaults to, and
 		 * the reason is that most of this suite is about scoping and permissions rather
 		 * than limits: a spec that seeds two locations or two staff members to prove a
 		 * read is scoped correctly would otherwise fail on a quota it is not testing.
-		 * `MONTHLY` permits the widest set, so those specs say what they mean.
+		 * `BUSINESS` permits the widest set, so those specs say what they mean.
 		 *
-		 * A spec that *is* about limits passes `WEEKLY` explicitly, and `plan-limits`
-		 * has one for each capped limit.
+		 * A spec that *is* about limits passes `FREE` or a lower tier explicitly, and
+		 * `plan-limits` has one for each capped limit.
 		 */
-		plan?: "WEEKLY" | "MONTHLY";
+		plan?: Plan;
 		/**
-		 * Raise one plan limit for the duration of a spec, for the cases **no plan can
+		 * Raise one plan limit for the duration of a spec, for the cases **no tier can
 		 * express**.
 		 *
-		 * `locations` is one: both the weekly and the monthly plan allow exactly one
-		 * branch, so a spec that needs two to prove a read is scoped to a location has
-		 * nothing to seed. Three such specs exist — `business-home`, `business-analytics`
-		 * and `locations` — and all three are about tenant scoping, which is a property
-		 * worth testing regardless of how many branches a merchant may open.
+		 * `locations` is one: no tier below `GROWTH` allows a second branch, so a spec that
+		 * needs two to prove a read is scoped to a location has nothing to seed without
+		 * borrowing `GROWTH` — which would make a scoping spec quietly depend on a pricing
+		 * decision. Three such specs exist — `business-home`, `business-analytics` and
+		 * `locations` — and all three are about tenant scoping, which is a property worth
+		 * testing regardless of how many branches a merchant may open.
 		 *
 		 * The alternative would be weakening the product to suit the tests, and the third
 		 * option, deleting the specs, loses the coverage. So this raises the cap, names
 		 * itself after what it is, and returns a restore function the spec must call:
 		 *
-		 * ```ts
-		 * const restore = raiseLimit("MONTHLY", "locations", 3);
+		 * const restore = raiseLimit("BUSINESS", "locations", 3);
 		 * try { … } finally { restore(); }
 		 * ```
 		 *
@@ -852,14 +886,14 @@ export async function seedBusiness(
 ): Promise<string> {
 	const id = overrides.id ?? "biz_test_shop";
 	for (const [key, value] of Object.entries(overrides.raiseLimits ?? {})) {
-		raiseLimit(overrides.plan ?? "MONTHLY", key as CountablePlanLimit, value);
+		raiseLimit(overrides.plan ?? "BUSINESS", key as CountablePlanLimit, value);
 	}
 	await db.insert(businessTable).values({
 		id,
 		slug: overrides.slug ?? `tienda-${id}`,
 		name: overrides.name ?? "Tienda de Prueba",
 		currency: "CRC",
-		plan: overrides.plan ?? "MONTHLY",
+		plan: overrides.plan ?? "BUSINESS",
 		status: overrides.status ?? "ACTIVE",
 		deliveryEnabled: true,
 		pickupEnabled: true,

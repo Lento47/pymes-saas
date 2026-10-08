@@ -3301,19 +3301,30 @@ function PriceBooksTab() {
               <span className="font-medium">{book.label}</span>
             ),
           },
+          /*
+            **One column per (tier, cadence) pair, rendered from the book's own rows.**
+
+            It was two columns — "Semanal" and "Mensual" — reading columns on the book that no
+            longer exist, so a price-rise screen would have shown two blanks beside the figures
+            an operator had just set. The pairs are what a book is now, so they are what the
+            table shows.
+          */
           {
-            key: "weeklyMinor",
-            label: "Semanal",
-            numeric: true,
-            sortable: true,
-            render: (_v, book) => money(book.weeklyMinor, "CRC"),
-          },
-          {
-            key: "monthlyMinor",
-            label: "Mensual",
-            numeric: true,
-            sortable: true,
-            render: (_v, book) => money(book.monthlyMinor, "CRC"),
+            key: "prices",
+            label: "Precios",
+            sortable: false,
+            render: (_v, book) => (
+              <div className="flex flex-col gap-0.5 text-xs">
+                {book.prices.map((price) => (
+                  <span key={`${price.plan}:${price.cadence}`} className="tabular-nums">
+                    <span className="text-muted-foreground">
+                      {price.plan} · {price.cadence === "YEARLY" ? "anual" : "mensual"}
+                    </span>{" "}
+                    {money(price.minor, "CRC")}
+                  </span>
+                ))}
+              </div>
+            ),
           },
           {
             key: "effectiveFrom",

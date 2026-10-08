@@ -4,6 +4,7 @@ import { addToCartInput, productCreateInput } from "@pymeshub/shared";
 import {
 	GRACE_DAYS,
 	HIDDEN_AFTER_DAYS,
+	LAUNCH_PRICE_BOOK,
 	PLAN_LIMITS,
 	priceMinorFor,
 	subscriptionStatusAt,
@@ -83,7 +84,7 @@ function newLocation(businessId: string, name: string) {
 async function monthlyOwner(w: ReturnType<typeof world>) {
 	const businessId = await seedBusiness(w.db, {
 		id: "biz_limit_monthly",
-		plan: "MONTHLY",
+		plan: "STARTER",
 	});
 	const owner = await seedUser(w.db, { id: "usr_limit_owner" });
 	await seedMembership(w.db, owner.id, businessId, "OWNER");
@@ -98,7 +99,7 @@ describe("a plan's limits", () => {
 		const w = world();
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_limit_weekly",
-			plan: "WEEKLY",
+			plan: "EMPRENDE",
 		});
 		const owner = await seedUser(w.db, { id: "usr_limit_weekly_owner" });
 		await seedMembership(w.db, owner.id, businessId, "OWNER");
@@ -106,7 +107,7 @@ describe("a plan's limits", () => {
 
 		// Seed to exactly the cap. A refusal at the cap and a refusal *over* it are
 		// different bugs, and this pins the boundary from below.
-		for (let index = 0; index < PLAN_LIMITS.WEEKLY.products; index += 1) {
+		for (let index = 0; index < PLAN_LIMITS.EMPRENDE.products; index += 1) {
 			await caller.products.create(newProduct(businessId, `Producto ${index}`));
 		}
 
@@ -126,11 +127,11 @@ describe("a plan's limits", () => {
 		};
 		expect(details.error).toBe("QUOTA_EXCEEDED");
 		expect(details.limit).toBe("products");
-		expect(details.current).toBe(PLAN_LIMITS.WEEKLY.products);
-		expect(details.max).toBe(PLAN_LIMITS.WEEKLY.products);
-		expect(details.plan).toBe("WEEKLY");
+		expect(details.current).toBe(PLAN_LIMITS.EMPRENDE.products);
+		expect(details.max).toBe(PLAN_LIMITS.EMPRENDE.products);
+		expect(details.plan).toBe("EMPRENDE");
 		// The actionable half: what they would have to move to.
-		expect(details.upgradeTo).toBe("MONTHLY");
+		expect(details.upgradeTo).toBe("STARTER");
 
 		w.close();
 	});
@@ -139,7 +140,7 @@ describe("a plan's limits", () => {
 		const w = world();
 		const { businessId, caller } = await monthlyOwner(w);
 
-		for (let index = 0; index < PLAN_LIMITS.WEEKLY.products + 1; index += 1) {
+		for (let index = 0; index < PLAN_LIMITS.EMPRENDE.products + 1; index += 1) {
 			await caller.products.create(newProduct(businessId, `Producto ${index}`));
 		}
 
@@ -154,7 +155,7 @@ describe("a plan's limits", () => {
 				"select count(*) as n from product where business_id = ? and status = 'ACTIVE'",
 			)
 			.get(businessId) as { n: number };
-		expect(stored.n).toBe(PLAN_LIMITS.WEEKLY.products + 1);
+		expect(stored.n).toBe(PLAN_LIMITS.EMPRENDE.products + 1);
 
 		w.close();
 	});
@@ -163,14 +164,14 @@ describe("a plan's limits", () => {
 		const w = world();
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_limit_archived",
-			plan: "WEEKLY",
+			plan: "EMPRENDE",
 		});
 		const owner = await seedUser(w.db, { id: "usr_limit_archived" });
 		await seedMembership(w.db, owner.id, businessId, "OWNER");
 		const caller = appRouter.createCaller(await authed(w, owner)) as Caller;
 
 		const created: string[] = [];
-		for (let index = 0; index < PLAN_LIMITS.WEEKLY.products; index += 1) {
+		for (let index = 0; index < PLAN_LIMITS.EMPRENDE.products; index += 1) {
 			const row = await caller.products.create(
 				newProduct(businessId, `Producto ${index}`),
 			);
@@ -195,11 +196,15 @@ describe("a plan's limits", () => {
 		w.close();
 	});
 
-	test("a rider is not an employee, so the weekly cap does not refuse one", async () => {
+	test("a rider is not an employee, so the staff cap does not refuse one", async () => {
 		const w = world();
+		// **`FREE`, and the spec needs it to be.** The claim is that a rider does not count
+		// toward `staffAccounts`, and the sharpest form of that claim is a shop whose staff
+		// cap the owner alone already fills — one seat, one owner. On a tier with two seats
+		// the spec would pass whether or not riders were counted.
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_limit_rider",
-			plan: "WEEKLY",
+			plan: "FREE",
 		});
 		const owner = await seedUser(w.db, { id: "usr_rider_owner" });
 		// Both riders exist before either is invited: the invitee must already hold an
@@ -217,7 +222,7 @@ describe("a plan's limits", () => {
 		const caller = appRouter.createCaller(await authed(w, owner)) as Caller;
 
 		// The state that refused every rider in production, pinned before the fix is
-		// credited for anything: the owner alone already fills the weekly cap, so the
+		// credited for anything: the owner alone already fills the staff cap, so the
 		// number the check reads is at the limit before a single rider is invited.
 		const employees = w.sqlite
 			.prepare(
@@ -225,7 +230,7 @@ describe("a plan's limits", () => {
 			)
 			.get(businessId) as { n: number };
 		expect(employees.n).toBeGreaterThanOrEqual(
-			PLAN_LIMITS.WEEKLY.staffAccounts,
+			PLAN_LIMITS.FREE.staffAccounts,
 		);
 
 		// Two riders, not one. The second is the assertion that matters: a fix that merely
@@ -305,7 +310,7 @@ describe("a plan's limits", () => {
 
 		const weeklyId = await seedBusiness(w.db, {
 			id: "biz_limit_inv_weekly",
-			plan: "WEEKLY",
+			plan: "EMPRENDE",
 		});
 		const weeklyOwner = await seedUser(w.db, { id: "usr_inv_weekly" });
 		await seedMembership(w.db, weeklyOwner.id, weeklyId, "OWNER");
@@ -344,7 +349,7 @@ describe("lapsing", () => {
 		const w = world();
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_lapse_derived",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		const owner = await seedUser(w.db, { id: "usr_lapse_owner" });
 		await seedMembership(w.db, owner.id, businessId, "OWNER");
@@ -354,7 +359,7 @@ describe("lapsing", () => {
 		// not be what decides whether a shop keeps its tools.
 		await seedSubscription(w.db, {
 			businessId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			daysUntilDue: -45,
 			storedStatus: "ACTIVE",
 		});
@@ -365,13 +370,19 @@ describe("lapsing", () => {
 		// Still listed. A shop that stopped paying keeps its customers for another 45
 		// days; the punishment is the tools, not the storefront.
 		expect(current?.listed).toBe(true);
-		// And the price it was paying, not today's.
-		expect(current?.priceMinor).toBe(10_000);
+		// And the price it was paying, not today's. The fixture prices from the launch book
+		// for the tier and cadence it seeded — `STARTER` on `MONTHLY` — and this asserts the
+		// figure a merchant would see on their own invoice rather than a restated constant.
+		expect(current?.priceMinor).toBe(
+			priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK),
+		);
+		// The cadence travels with it, and it is what the next period's length follows.
+		expect(current?.cadence).toBe("MONTHLY");
 
 		w.close();
 	});
 
-	test("a shop past due is held to the weekly limits, and a current one is not", async () => {
+	test("a shop past due is held to the floor's limits, and a current one is not", async () => {
 		const w = world();
 
 		// Current, on the monthly plan, with the cap raised so a second branch is
@@ -379,14 +390,14 @@ describe("lapsing", () => {
 		// it raise the cap rather than seed something the pricing forbids.
 		const okId = await seedBusiness(w.db, {
 			id: "biz_lapse_ok",
-			plan: "MONTHLY",
+			plan: "STARTER",
 			raiseLimits: { locations: 2 },
 		});
 		const okOwner = await seedUser(w.db, { id: "usr_lapse_ok" });
 		await seedMembership(w.db, okOwner.id, okId, "OWNER");
 		await seedSubscription(w.db, {
 			businessId: okId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			daysUntilDue: 10,
 		});
 		const okCaller = appRouter.createCaller(await authed(w, okOwner)) as Caller;
@@ -397,13 +408,13 @@ describe("lapsing", () => {
 		// it was entitled to.
 		const lateId = await seedBusiness(w.db, {
 			id: "biz_lapse_late",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		const lateOwner = await seedUser(w.db, { id: "usr_lapse_late" });
 		await seedMembership(w.db, lateOwner.id, lateId, "OWNER");
 		await seedSubscription(w.db, {
 			businessId: lateId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			daysUntilDue: -45,
 		});
 		const lateCaller = appRouter.createCaller(
@@ -466,13 +477,12 @@ describe("price", () => {
 
 		await seedPriceBook(w.db, {
 			id: "pbk_launch",
-			weeklyMinor: 2_000,
-			monthlyMinor: 10_000,
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
 			effectiveFrom: daysAgo(90),
 		});
 		const earlyId = await seedBusiness(w.db, {
 			id: "biz_price_early",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		const earlyOwner = await seedUser(w.db, { id: "usr_price_early" });
 		await seedMembership(w.db, earlyOwner.id, earlyId, "OWNER");
@@ -480,9 +490,12 @@ describe("price", () => {
 			await authed(w, earlyOwner),
 		) as Caller;
 
+		// The pair is what is chosen: a tier alone cannot be priced, so the cadence is
+		// required and `null` would be the free tier.
 		await earlyCaller.subscription.changePlan({
 			businessId: earlyId,
-			plan: "MONTHLY",
+			plan: "STARTER",
+			cadence: "MONTHLY",
 		});
 		expect(
 			(await earlyCaller.subscription.current({ businessId: earlyId }))
@@ -504,8 +517,10 @@ describe("price", () => {
 			adminCtx,
 			{
 				label: "2027",
-				weeklyMinor: 2_500,
-				monthlyMinor: 14_000,
+				prices: [
+					{ plan: "EMPRENDE", cadence: "MONTHLY", minor: 2_500 },
+					{ plan: "STARTER", cadence: "MONTHLY", minor: 14_000 },
+				],
 				effectiveFrom: new Date(Date.now() + 30 * 86_400_000),
 				reason: "Subida de precio de julio 2027",
 			},
@@ -523,10 +538,14 @@ describe("price", () => {
 		// past `effectiveFrom` precisely so a rise cannot be retroactive, and a spec must
 		// not route around that guard to set one up.
 		const laterClock = new Date(Date.now() + 31 * 86_400_000);
-		const book = await subscriptions.activePriceBook(w.db, laterClock);
-		expect(book.monthlyMinor).toBe(14_000);
+		const book = await subscriptions.activePriceBookWithPrices(w.db, laterClock);
 		expect(book.label).toBe("2027");
-		expect(priceMinorFor("MONTHLY", book)).toBe(14_000);
+		expect(priceMinorFor("STARTER", "MONTHLY", book)).toBe(14_000);
+		// The pair the old book priced is still readable through the new one, which is the
+		// point of the child table: a rise is a new row, not a rewrite.
+		expect(priceMinorFor("EMPRENDE", "MONTHLY", book)).toBe(2_500);
+		// And a pair this book does not carry is **refused rather than priced at zero**.
+		expect(() => priceMinorFor("GROWTH", "YEARLY", book)).toThrow();
 
 		// The early shop is *still* on 10,000, at the later clock too. This is the
 		// assertion that fails if `priceMinor` were read through the book at charge time
@@ -553,8 +572,10 @@ describe("price", () => {
 				adminCtx,
 				{
 					label: "Backdated",
-					weeklyMinor: 3_000,
-					monthlyMinor: 18_000,
+					prices: [
+						{ plan: "EMPRENDE", cadence: "MONTHLY", minor: 3_000 },
+						{ plan: "STARTER", cadence: "MONTHLY", minor: 18_000 },
+					],
 					effectiveFrom: daysAgo(10),
 					reason: "Subida retroactiva, que debe rechazarse",
 				},
@@ -568,32 +589,62 @@ describe("price", () => {
 
 	test("the plan picker shows the effective plan and the IVA split", async () => {
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_picker",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		const owner = await seedUser(w.db, { id: "usr_picker" });
 		await seedMembership(w.db, owner.id, businessId, "OWNER");
+		// A subscription row, because **the cadence lives on it** and `isCurrent` is now a
+		// question about a pair. A shop with no row has no cadence, so no pair could be
+		// current and the assertion below would be vacuous rather than false.
+		await seedSubscription(w.db, {
+			businessId,
+			plan: "STARTER",
+			cadence: "MONTHLY",
+		});
 		const caller = appRouter.createCaller(await authed(w, owner)) as Caller;
 
 		const { options } = await caller.subscription.options({ businessId });
-		expect(options).toHaveLength(2);
-		const monthly = options.find((option) => option.plan === "MONTHLY");
-		const weekly = options.find((option) => option.plan === "WEEKLY");
-		expect(monthly?.priceMinor).toBe(10_000);
+
+		// **One entry per (tier, cadence) pair**, plus the free one — not one per tier. A
+		// picker keyed by tier alone cannot say which invoice it is quoting, and the pair is
+		// the unit a merchant actually chooses. The fixture seeds a complete book, so this is
+		// four tiers × two cadences + `FREE`.
+		expect(options).toHaveLength(9);
+		expect(options.filter((option) => option.cadence === "YEARLY")).toHaveLength(4);
+		const free = options.find((option) => option.isFree);
+		const emprende = options.find((option) => option.plan === "EMPRENDE");
+		const starter = options.find((option) => option.plan === "STARTER");
+
+		expect(starter?.priceMinor).toBe(10_000);
 		// IVA-inclusive: 10,000 / 1.13, and the two add back to what was quoted.
-		expect(monthly?.netMinor).toBe(8_850);
-		expect(monthly?.ivaMinor).toBe(1_150);
-		expect((monthly?.netMinor ?? 0) + (monthly?.ivaMinor ?? 0)).toBe(10_000);
-		expect(weekly?.priceMinor).toBe(2_000);
-		// `isCurrent` follows the *effective* plan, and a current monthly shop is
-		// current on monthly.
-		expect(monthly?.isCurrent).toBe(true);
-		expect(weekly?.isCurrent).toBe(false);
-		// The top plan has nothing above it, so the picker must not sell it as a step up.
-		expect(monthly?.isCeiling).toBe(true);
-		expect(weekly?.isCeiling).toBe(false);
+		expect(starter?.netMinor).toBe(8_850);
+		expect(starter?.ivaMinor).toBe(1_150);
+		expect((starter?.netMinor ?? 0) + (starter?.ivaMinor ?? 0)).toBe(10_000);
+		expect(emprende?.priceMinor).toBe(2_000);
+
+		// The free entry is priced at nothing **and carries no period**, which is what tells
+		// a client to render a subscribe button rather than a price with a checkout.
+		expect(free?.priceMinor).toBe(0);
+		expect(free?.cadence).toBeNull();
+		expect(free?.periodDays).toBeNull();
+
+		// `isCurrent` follows the *effective* plan **and** the cadence: this shop is on
+		// `STARTER` and monthly, so exactly one pair is current.
+		expect(starter?.isCurrent).toBe(true);
+		expect(starter?.cadence).toBe("MONTHLY");
+		expect(emprende?.isCurrent).toBe(false);
+		expect(free?.isCurrent).toBe(false);
+
+		// `STARTER` has tiers above it, so it is not a ceiling; `BUSINESS` is the top and
+		// must not be sold as a step up. **The ceiling is a property of the tier, not of the
+		// cadence** — both `BUSINESS` pairs carry it, because neither one buys more shop.
+		expect(starter?.isCeiling).toBe(false);
+		const ceilings = options.filter((option) => option.isCeiling);
+		expect(ceilings).toHaveLength(2);
+		expect(ceilings.every((option) => option.plan === "BUSINESS")).toBe(true);
 
 		w.close();
 	});
@@ -611,11 +662,11 @@ describe("the admin's view of money owed", () => {
 		// path nobody exercised. `adminSubscriptionsInput` has always allowed `search`; the
 		// console's `BillingTab` has always sent it.
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_search_arrears",
 			name: "Pulpería La Esquina",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		const owner = await seedUser(w.db, {
 			id: "usr_search_arrears",
@@ -624,7 +675,7 @@ describe("the admin's view of money owed", () => {
 		await seedMembership(w.db, owner.id, businessId, "OWNER");
 		await seedSubscription(w.db, {
 			businessId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			daysUntilDue: -5,
 		});
 		const admin = await seedUser(w.db, {
@@ -670,42 +721,59 @@ describe("the admin's view of money owed", () => {
 
 	test("arrears counts whole periods at the price the merchant joined under", async () => {
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 
 		// Current: nothing owed.
 		const currentId = await seedBusiness(w.db, {
 			id: "biz_arrears_current",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		await seedSubscription(w.db, {
 			businessId: currentId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			daysUntilDue: 10,
 		});
 
-		// Three weekly periods late. The divisor is the **weekly** period and the
-		// multiplier the **weekly** price, so three weeks is three times ₡2,000 and not
-		// three times ₡10,000 — using one plan's arithmetic for the other is how an
-		// operator ends up chasing a merchant for five times what they owe.
+		// Two whole periods late, on the cheap tier. The divisor is the merchant's **own**
+		// cadence and the multiplier their **own** price, so this is two times ₡2,000 and
+		// not two times ₡10,000 — using one shop's arithmetic for another is how an operator
+		// ends up chasing a merchant for five times what they owe.
 		const lateId = await seedBusiness(w.db, {
-			id: "biz_arrears_weekly",
-			plan: "WEEKLY",
+			id: "biz_arrears_late",
+			plan: "EMPRENDE",
 		});
 		await seedSubscription(w.db, {
 			businessId: lateId,
-			plan: "WEEKLY",
+			plan: "EMPRENDE",
+			cadence: "MONTHLY",
 			priceMinor: 2_000,
-			daysUntilDue: -22,
+			daysUntilDue: -61,
+		});
+
+		// The **same** 61 days, on the annual cadence, is one period and not two — which is
+		// the assertion that the divisor follows the cadence rather than being 30 days for
+		// everybody. Without this, a yearly merchant 300 days late would be chased for ten
+		// months of a bill they owe once.
+		const yearlyId = await seedBusiness(w.db, {
+			id: "biz_arrears_yearly",
+			plan: "EMPRENDE",
+		});
+		await seedSubscription(w.db, {
+			businessId: yearlyId,
+			plan: "EMPRENDE",
+			cadence: "YEARLY",
+			priceMinor: 69_000,
+			daysUntilDue: -61,
 		});
 
 		// One monthly period late: a single price, not a fraction of it.
 		const monthlyId = await seedBusiness(w.db, {
 			id: "biz_arrears_monthly",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		await seedSubscription(w.db, {
 			businessId: monthlyId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			priceMinor: 10_000,
 			daysUntilDue: -31,
 		});
@@ -727,10 +795,14 @@ describe("the admin's view of money owed", () => {
 
 		expect(byId.get(currentId)?.arrearsMinor).toBe(0);
 		expect(byId.get(currentId)?.periodsOwed).toBe(0);
-		// 22 days late on a 7-day plan: three whole periods.
-		expect(byId.get(lateId)?.periodsOwed).toBe(3);
-		expect(byId.get(lateId)?.arrearsMinor).toBe(6_000);
-		// One period late on a 30-day plan.
+		// 61 days late on a 30-day cadence: two whole periods, at ₡2,000 each.
+		expect(byId.get(lateId)?.periodsOwed).toBe(2);
+		expect(byId.get(lateId)?.arrearsMinor).toBe(4_000);
+		// The same 61 days on the annual cadence is **one** period — the divisor is the
+		// cadence, not a constant.
+		expect(byId.get(yearlyId)?.periodsOwed).toBe(1);
+		expect(byId.get(yearlyId)?.arrearsMinor).toBe(69_000);
+		// One period late on a 30-day cadence at the dearer tier.
 		expect(byId.get(monthlyId)?.periodsOwed).toBe(1);
 		expect(byId.get(monthlyId)?.arrearsMinor).toBe(10_000);
 
@@ -750,7 +822,7 @@ describe("the admin's view of money owed", () => {
 		// outside the old 30-day window and inside this one. If someone shortens it back to 30
 		// the dashboard silently loses its comparison and every total still looks plausible.
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 		const businessId = await seedBusiness(w.db, { id: "biz_series_window" });
 		const customer = await seedUser(w.db, { id: "usr_series_window" });
 
@@ -796,7 +868,7 @@ describe("the admin's view of money owed", () => {
 		// there" includes a cancelled order, "how much completed volume" does not. The series
 		// answers the first and carries `cancelled` so the console can see the second's shadow.
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 		const businessId = await seedBusiness(w.db, { id: "biz_series_cancel" });
 		const customer = await seedUser(w.db, { id: "usr_series_cancel" });
 		await seedOrder(w.db, {
@@ -836,7 +908,7 @@ describe("the admin's view of money owed", () => {
 		// If someone edits one branch and not the other, this fails — rather than the console
 		// quietly filtering on something the rest of the platform does not believe.
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 
 		// One subscription per status, dated so each branch is the deciding one:
 		// ACTIVE     periodEnd in the future
@@ -851,10 +923,10 @@ describe("the admin's view of money owed", () => {
 		] as const;
 
 		for (const entry of cases) {
-			await seedBusiness(w.db, { id: entry.id, plan: "MONTHLY" });
+			await seedBusiness(w.db, { id: entry.id, plan: "STARTER" });
 			await seedSubscription(w.db, {
 				businessId: entry.id,
-				plan: "MONTHLY",
+				plan: "STARTER",
 				priceMinor: 10_000,
 				daysUntilDue: entry.daysUntilDue,
 				// Deliberately disagreeing with the dates, so the assertion below cannot be
@@ -909,7 +981,7 @@ describe("the admin's view of money owed", () => {
 		// Four subscriptions, one per status. `total` must now answer "how many are in this
 		// filtered view", which for any single status is 1 — not 4.
 		const w = world();
-		await seedPriceBook(w.db, { monthlyMinor: 10_000, weeklyMinor: 2_000 });
+		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
 
 		for (const [id, daysUntilDue] of [
 			["biz_count_active", 10],
@@ -917,10 +989,10 @@ describe("the admin's view of money owed", () => {
 			["biz_count_past", -60],
 			["biz_count_suspended", -120],
 		] as const) {
-			await seedBusiness(w.db, { id, plan: "MONTHLY" });
+			await seedBusiness(w.db, { id, plan: "STARTER" });
 			await seedSubscription(w.db, {
 				businessId: id,
-				plan: "MONTHLY",
+				plan: "STARTER",
 				priceMinor: 10_000,
 				daysUntilDue,
 			});
@@ -972,13 +1044,13 @@ describe("the never-gated promise", () => {
 		const w = world();
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_never_gated",
-			plan: "MONTHLY",
+			plan: "STARTER",
 		});
 		const owner = await seedUser(w.db, { id: "usr_never_gated" });
 		await seedMembership(w.db, owner.id, businessId, "OWNER");
 		await seedSubscription(w.db, {
 			businessId,
-			plan: "MONTHLY",
+			plan: "STARTER",
 			daysUntilDue: -(HIDDEN_AFTER_DAYS + 30),
 		});
 		const caller = appRouter.createCaller(await authed(w, owner)) as Caller;
@@ -1008,7 +1080,7 @@ describe("the never-gated promise", () => {
 		const w = world();
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_orders_unmetered",
-			plan: "WEEKLY",
+			plan: "EMPRENDE",
 		});
 		const owner = await seedUser(w.db, { id: "usr_orders_unmetered" });
 		const customer = await seedUser(w.db, { id: "usr_orders_customer" });

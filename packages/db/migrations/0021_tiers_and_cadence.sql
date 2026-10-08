@@ -41,7 +41,7 @@ CREATE UNIQUE INDEX `price_book_price_unique` ON `price_book_price` (`price_book
 -- `business.plan` is denormalised and read on every product, location and staff write
 -- (`schema.ts`), so it is remapped here too rather than left to disagree with `subscription`.
 -- ─────────────────────────────────────────────────────────────────────────────
-UPDATE `subscription` SET `plan` = 'EMPRENDE' WHERE `plan` = 'WEEKLY`;
+UPDATE `subscription` SET `plan` = 'EMPRENDE' WHERE `plan` = 'WEEKLY';
 --> statement-breakpoint
 UPDATE `subscription` SET `plan` = 'STARTER' WHERE `plan` = 'MONTHLY';
 --> statement-breakpoint

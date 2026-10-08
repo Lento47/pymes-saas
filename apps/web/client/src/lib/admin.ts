@@ -200,8 +200,8 @@ const reviewList = pageOf(adminReviewRowSchema);
 const courierInviteList = pageOf(adminCourierInviteRowSchema);
 
 /**
- * One price book, as `subscriptions.priceBooks` returns it: the row plus the two flags the
- * service derives from `effectiveFrom` against the clock.
+ * One price book, as `subscriptions.priceBooks` returns it: the row, its pairs, and the two
+ * flags the service derives from `effectiveFrom` against the clock.
  *
  * **Declared here rather than imported, and this is the one exception to the rule above.**
  * The version split only bites when a schema built in `@pymeshub/shared` has to satisfy a
@@ -213,8 +213,21 @@ const courierInviteList = pageOf(adminCourierInviteRowSchema);
 const priceBookRowSchema = z.object({
   id: z.string(),
   label: z.string(),
-  weeklyMinor: z.number().int(),
-  monthlyMinor: z.number().int(),
+  /**
+   * One entry per (tier, cadence) pair the book prices.
+   *
+   * It replaced `weeklyMinor`/`monthlyMinor`, which were the book's own columns until the
+   * prices moved to a child table. Parsed as a list rather than flattened into fixed keys
+   * because a book is now free to price any subset — including one that omits an annual pair
+   * on a tier that has never been sold that way.
+   */
+  prices: z.array(
+    z.object({
+      plan: z.string(),
+      cadence: z.string(),
+      minor: z.number().int(),
+    }),
+  ),
   effectiveFrom: z.date(),
   createdAt: z.date(),
   /** True once the book's date has arrived. */

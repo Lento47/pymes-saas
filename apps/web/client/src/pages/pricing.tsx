@@ -34,7 +34,6 @@ import { ChamferedCta, ChamferedCtaGhost } from '@/components/marketing/cta-butt
  *   for — and one the reader waited on.
  */
 export default function PricingPage() {
-  const [weekly, monthly] = PRICING_TIERS;
 
   return (
     <div className="marketplace-theme relative min-h-screen">
@@ -90,10 +89,10 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* The two plans */}
+        {/* The tiers — one card each, because the cadence is a choice on the card. */}
         <section className="px-4 py-12 md:px-8 md:py-16">
-          <div className="mx-auto max-w-5xl">
-            <div className="grid gap-6 sm:grid-cols-2">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {PRICING_TIERS.map((tier) => (
                 <PricingCard key={tier.plan} tier={tier} />
               ))}
@@ -126,8 +125,8 @@ export default function PricingPage() {
                 Qué incluye cada plan
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-                Los mismos dos planes, con distinta duración y distinto techo. El mensual compra los límites
-                que un commerce con volumen necesita.
+                Cuatro niveles, con el techo y las funciones que cada uno incluye. Elegís el nivel y, aparte,
+                si te facturamos cada mes o cada año — el anual cuesta diez meses.
               </p>
             </div>
 
@@ -138,24 +137,28 @@ export default function PricingPage() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground md:px-6">
                       Función
                     </th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground md:px-6">
-                      {weekly.name}
-                    </th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground md:px-6">
-                      {monthly.name}
-                    </th>
+                    {PRICING_TIERS.map((tier) => (
+                      <th
+                        key={tier.plan}
+                        className="px-4 py-3 text-center text-sm font-semibold text-foreground md:px-6"
+                      >
+                        {tier.name}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {FEATURE_COMPARISON.map((row) => (
                     <tr key={row.feature} className="transition hover:bg-muted/25">
                       <td className="px-4 py-3 text-sm text-muted-foreground md:px-6">{row.feature}</td>
-                      <td className="px-4 py-3 text-center text-sm font-semibold text-foreground md:px-6">
-                        {row.weekly}
-                      </td>
-                      <td className="px-4 py-3 text-center text-sm font-semibold text-foreground md:px-6">
-                        {row.monthly}
-                      </td>
+                      {row.values.map((value, index) => (
+                        <td
+                          key={PRICING_TIERS[index]?.plan ?? index}
+                          className="px-4 py-3 text-center text-sm font-semibold text-foreground md:px-6"
+                        >
+                          {value}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -190,8 +193,8 @@ export default function PricingPage() {
                 Abrí tu tienda esta semana
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-                Registrás tu comercio, armás tu catálogo y empezás a recibir pedidos. La tarifa del plan
-                semanal es lo único que pagás hasta que tu negocio crezca.
+                Registrás tu comercio, armás tu catálogo y empezás a recibir pedidos. El plan gratis no vence
+                y no te pedimos tarjeta: pagás solo cuando tu negocio necesite más.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <ChamferedCta href="/register">

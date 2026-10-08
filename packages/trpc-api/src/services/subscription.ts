@@ -1,8 +1,8 @@
 import {
 	business as businessTable,
 	type Db,
-	priceBook as priceBookTable,
 	priceBookPrice as priceBookPriceTable,
+	priceBook as priceBookTable,
 	subscription as subscriptionTable,
 } from "@pymeshub/db";
 // `PlanOption` and `Subscription` are wire shapes, so they come from the barrel; the
@@ -12,18 +12,18 @@ import type { PlanOption, Subscription } from "@pymeshub/shared";
 import { newId } from "@pymeshub/shared/ids";
 import { CURRENCIES, type Currency } from "@pymeshub/shared/money";
 import {
-	cadencesFor,
 	type Cadence,
+	cadencesFor,
 	effectivePlan,
 	GRACE_DAYS,
 	HIDDEN_AFTER_DAYS,
 	ivaOn,
 	netOfIva,
-	periodDaysFor,
 	PLAN_LIMITS,
 	PLAN_ORDER,
 	type Plan,
 	type PriceBookPrices,
+	periodDaysFor,
 	priceMinorFor,
 	STATUS_IS_LISTED,
 	type SubscriptionStatus,
@@ -379,7 +379,8 @@ export async function changePlan(
 	 * `FREE` is not special-cased in five places — it is just a plan with no cadence, and
 	 * `periodDaysFor` already returns `null` for it.
 	 */
-	const price = plan === "FREE" ? null : priceMinorFor(plan, cadence ?? "MONTHLY", book);
+	const price =
+		plan === "FREE" ? null : priceMinorFor(plan, cadence ?? "MONTHLY", book);
 
 	/**
 	 * Rewrite the denormalised pair on `business`, from the status as of `now`.
@@ -639,8 +640,18 @@ export async function recordPayment(
 		);
 	}
 
-	const book = await activePriceBook(db, now);
-	const price = priceMinorFor(row.plan, book);
+	// The renewal is priced and dated on the **cadence**, not on the tier: a yearly shop
+	// renews for 365 days at the yearly figure, and `FREE` has no period to renew at all.
+	const cadence = row.cadence ?? "MONTHLY";
+	const periodDays = periodDaysFor(row.plan, cadence);
+	if (periodDays === null) {
+		throw new ValidationError(
+			"El plan gratuito no se cobra: no hay periodo que renovar.",
+			{ field: "subscriptionId" },
+		);
+	}
+	const book = await activePriceBookWithPrices(db, now);
+	const price = priceMinorFor(row.plan, cadence, book);
 
 	await db
 		.update(subscriptionTable)
@@ -649,7 +660,7 @@ export async function recordPayment(
 			priceMinor: price,
 			status: "ACTIVE",
 			periodStart: now,
-			periodEnd: new Date(now.getTime() + PLAN_PERIOD_DAYS[row.plan] * DAY_MS),
+			periodEnd: new Date(now.getTime() + periodDays * DAY_MS),
 			gracedUntil: null,
 			lastPaidAt: now,
 			updatedAt: now,
@@ -660,14 +671,34 @@ export async function recordPayment(
 	return shapeSubscription(orNotFound(after[0]), now);
 }
 
-/** The current price, and the next one staged — what an operator needs to see to raise it. */
+/**
+ * The current price, and the next one staged — what an operator needs to see to raise it.
+ *
+ * The prices come back as **pairs**, one row per (tier, cadence), because the book no longer
+ * has two columns to read. An operator looking at this table is deciding what every merchant
+ * will be charged, so a book whose figures were not rendered would be a pricing screen that
+ * could not be checked.
+ */
 export async function priceBooks(ctx: UserContext, now: Date) {
-	const rows = await ctx.db
-		.select()
-		.from(priceBookTable)
-		.orderBy(desc(priceBookTable.effectiveFrom));
-	return rows.map((book) => ({
+	const [books, prices] = await Promise.all([
+		ctx.db.select().from(priceBookTable).orderBy(desc(priceBookTable.effectiveFrom)),
+		ctx.db.select().from(priceBookPriceTable),
+	]);
+
+	const byBook = new Map<string, { plan: Plan; cadence: Cadence; minor: number }[]>();
+	for (const price of prices) {
+		const list = byBook.get(price.priceBookId) ?? [];
+		list.push({ plan: price.plan, cadence: price.cadence, minor: price.minor });
+		byBook.set(price.priceBookId, list);
+	}
+
+	return books.map((book) => ({
 		...book,
+		// Sorted so two books with the same pairs render their columns in the same order —
+		// an operator comparing them row by row should not have to re-read the labels.
+		prices: (byBook.get(book.id) ?? []).sort((a, b) =>
+			`${a.plan}:${a.cadence}`.localeCompare(`${b.plan}:${b.cadence}`),
+		),
 		isCurrent: book.effectiveFrom.getTime() <= now.getTime(),
 		/** True for a book dated in the future: staged, not yet charging anybody. */
 		isStaged: book.effectiveFrom.getTime() > now.getTime(),
@@ -693,8 +724,7 @@ export async function createPriceBook(
 	ctx: UserContext,
 	input: {
 		label: string;
-		weeklyMinor: number;
-		monthlyMinor: number;
+		prices: { plan: Plan; cadence: Cadence; minor: number }[];
 		effectiveFrom: Date;
 		reason: string;
 	},
@@ -709,15 +739,32 @@ export async function createPriceBook(
 		);
 	}
 	const id = newId("priceBook");
+	/**
+	 * The book's prices, as `price_book_price` rows rather than columns.
+	 *
+	 * **Every pair the book prices is written, and nothing is derived.** A book that carried
+	 * only the two legacy pairs left `GROWTH`, `BUSINESS` and both annual cadences unpriced,
+	 * and `priceMinorFor` *throws* on a missing pair — so the failure would be a merchant who
+	 * cannot check out on a plan the picker was still offering, discovered at the till.
+	 *
+	 * All rows go in one `batch` with the book and the audit entry, so a book can never be
+	 * half-priced: the table and its prices are one version or neither.
+	 */
 	await ctx.db.batch([
 		ctx.db.insert(priceBookTable).values({
 			id,
 			label: input.label,
-			weeklyMinor: input.weeklyMinor,
-			monthlyMinor: input.monthlyMinor,
 			effectiveFrom: input.effectiveFrom,
 			createdAt: now,
 		}),
+		...input.prices.map((pair) =>
+			ctx.db.insert(priceBookPriceTable).values({
+				priceBookId: id,
+				plan: pair.plan,
+				cadence: pair.cadence,
+				minor: pair.minor,
+			}),
+		),
 		auditStatement(ctx, {
 			action: "subscription.create_price_book",
 			targetType: "price_book",
@@ -725,8 +772,9 @@ export async function createPriceBook(
 			before: null,
 			after: {
 				label: input.label,
-				weeklyMinor: input.weeklyMinor,
-				monthlyMinor: input.monthlyMinor,
+				// The whole book, not a pair: this row is the record of a repricing, and a
+				// reader has to be able to see every figure that changed without joining.
+				prices: input.prices,
 				effectiveFrom: input.effectiveFrom.toISOString(),
 			},
 			reason,

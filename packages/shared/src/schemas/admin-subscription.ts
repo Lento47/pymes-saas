@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { adminListInput, REASON_MIN_LENGTH } from "./admin";
-import { planSchema, subscriptionStatusSchema } from "./common";
+import { cadenceSchema, planSchema, subscriptionStatusSchema } from "./common";
 
 /**
  * The platform's view of a subscription, which is not the merchant's.
@@ -114,8 +114,40 @@ export const adminSubscriptionsInput = adminListInput
  */
 export const createPriceBookInput = z.object({
 	label: z.string().trim().min(2).max(60),
-	weeklyMinor: z.number().int().min(100).max(10_000_000),
-	monthlyMinor: z.number().int().min(100).max(100_000_000),
+	/**
+	 * One entry per (tier, cadence) pair this book prices.
+	 *
+	 * A list rather than the two columns it replaced, because a book has to be able to price
+	 * **every** pair a merchant can choose: the old `weeklyMinor`/`monthlyMinor` pair could
+	 * only describe two of the eight, so a rise staged through it left `GROWTH`, `BUSINESS`
+	 * and every annual cadence unpriced — and `priceMinorFor` throws on a missing pair, which
+	 * turns a pricing decision into a refused checkout.
+	 *
+	 * `FREE` must not appear. It is never charged, and a row priced at zero would make
+	 * "a free shop is never charged" indistinguishable from "a free shop is charged nothing".
+	 */
+	prices: z
+		.array(
+			z.object({
+				plan: planSchema,
+				cadence: cadenceSchema,
+				minor: z.number().int().min(100).max(100_000_000),
+			}),
+		)
+		.min(1)
+		.refine((pairs) => pairs.every((pair) => pair.plan !== "FREE"), {
+			message: "El plan gratuito no lleva precio: nunca se cobra.",
+			path: ["prices"],
+		})
+		.refine(
+			(pairs) =>
+				new Set(pairs.map((pair) => `${pair.plan}:${pair.cadence}`)).size ===
+				pairs.length,
+			{
+				message: "Hay dos precios para el mismo plan y periodicidad.",
+				path: ["prices"],
+			},
+		),
 	effectiveFrom: z.date(),
 
 	/**

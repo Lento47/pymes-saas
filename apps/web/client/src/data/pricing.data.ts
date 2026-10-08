@@ -27,22 +27,29 @@ import {
 	LAUNCH_PRICE_BOOK,
 	PLAN_LIMITS,
 	PLAN_ORDER,
-	PLAN_PERIOD_DAYS,
 	priceMinorFor,
 	type Plan,
 } from "@pymeshub/shared";
 
-/** One way to pay. `PLAN_ORDER` already lists them cheapest first, which is the order. */
+/**
+ * One tier, and the two ways to be invoiced for it.
+ *
+ * **The tier is the row and the cadence is the two prices on it**, which is the shape the
+ * product now has: the plan decides what a merchant gets and the cadence decides when they
+ * pay. A page that rendered one card per (tier, cadence) pair would show eight cards for four
+ * shops and imply that paying yearly buys something — it does not, and the identical `limits`
+ * below both prices is the page saying so.
+ */
 export type PricingTier = {
 	plan: Plan;
-	/** `WEEKLY` / `MONTHLY` rendered the way the rest of the app names a plan. */
+	/** The tier's own name, which is the retired `apps/api` vocabulary. */
 	name: string;
-	/** What the merchant pays, in colones, IVA included. */
-	priceMinor: number;
-	/** "semana" / "mes" — the unit the price is quoted in. */
-	periodLabel: string;
-	/** `PLAN_PERIOD_DAYS`, in days, restated as a renewal. */
-	periodDays: number;
+	/** What the merchant pays per month, in colones, IVA included. `0` on `FREE`. */
+	monthlyMinor: number;
+	/** The annual price, or `null` on the tier that is never charged. */
+	yearlyMinor: number | null;
+	/** True only on the free tier, so the page renders it as a sign-up rather than a price. */
+	isFree: boolean;
 	description: string;
 	features: string[];
 	/** The countable limits, in the words the page shows rather than the column names. */
@@ -70,63 +77,118 @@ function gibibytes(bytes: number): string {
 	return `${Math.round((bytes / 1024 / 1024 / 1024) * 10) / 10} GB`;
 }
 
+/**
+ * The tiers, named the way the retired `apps/api` catalogue named them.
+ *
+ * `Emprende` is a Costa Rican verb before it is a plan: it is what somebody opening a soda
+ * says they are doing. `Starter` and `Growth` are the two rungs a shop climbs, and `Business`
+ * is where a merchant with more than one location lands. The vocabulary is inherited so a
+ * merchant who read the old price page has not met a new product here.
+ */
 const TIER_COPY: Record<
 	Plan,
-	{ name: string; periodLabel: string; description: string; cta: string; features: string[] }
+	{ name: string; description: string; cta: string; features: string[] }
 > = {
-	WEEKLY: {
-		name: "Semanal",
-		periodLabel: "semana",
-		description: "Para empezar a vender esta semana, sin comprometerte a un mes.",
-		cta: "Empezar con el plan semanal",
+	FREE: {
+		name: "Gratis",
+		description: "Para abrir la tienda y tomar los primeros pedidos, sin pagar nada.",
+		cta: "Abrir mi tienda gratis",
 		features: [
-			"Tu tienda con catálogo y delivery",
-			"Retiro en tienda y pago en efectivo contra entrega",
+			"Tu tienda con catálogo, delivery y retiro en tienda",
+			"Diez entregas express por semana",
 			"Una persona con acceso a tu negocio",
-			"Historial de 90 días",
+			"Historial de 30 días",
 		],
 	},
-	MONTHLY: {
-		name: "Mensual",
-		periodLabel: "mes",
-		description: "Para un negocio que ya tiene pedidos y los quiere todos en un panel.",
-		cta: "Empezar con el plan mensual",
+	EMPRENDE: {
+		name: "Emprende",
+		description: "Para un menú que ya no cabe en el plan gratis.",
+		cta: "Empezar con Emprende",
 		features: [
-			"Todo lo del plan semanal",
-			"Hasta 3 personas en tu equipo, con roles",
-			"Control de inventario",
+			"Todo lo del plan gratis",
+			"Hasta 60 productos y 600 MB de fotos",
+			"Treinta entregas express por semana",
+			"Dos personas en tu equipo e historial de 90 días",
+		],
+	},
+	STARTER: {
+		name: "Starter",
+		description: "Para un negocio con pedidos todos los días y catálogo grande.",
+		cta: "Empezar con Starter",
+		features: [
+			"Todo lo de Emprende",
+			"Hasta 250 productos y control de inventario",
+			"Noventa entregas express por semana",
 			"Promociones activas y dos años de historial",
+		],
+	},
+	GROWTH: {
+		name: "Growth",
+		description: "Para un negocio que abrió su segunda sucursal.",
+		cta: "Empezar con Growth",
+		features: [
+			"Todo lo de Starter",
+			"Hasta 600 productos y dos sucursales",
+			"Quince promociones activas y tres años de historial",
+			"Seis GB de fotos y cinco personas en tu equipo",
+		],
+	},
+	BUSINESS: {
+		name: "Business",
+		description: "Para una operación con varias sucursales y mucho volumen.",
+		cta: "Empezar con Business",
+		features: [
+			"Todo lo de Growth",
+			"Hasta 1 000 productos y cinco sucursales",
+			"Entregas express sin tope",
+			"Diez GB de fotos y quince personas en tu equipo",
 		],
 	},
 };
 
+/** Two years, three years — the page says a span, not a day count nobody converts. */
+function historyLabel(days: number): string {
+	if (days >= 1095) return "3 años";
+	if (days >= 730) return "2 años";
+	return `${days} días`;
+}
+
+/** `Infinity` is not a number a page can print, and "sin tope" is what it means. */
+function expressLabel(perWeek: number): string {
+	return perWeek === Infinity ? "Sin tope" : `${perWeek} por semana`;
+}
+
 export const PRICING_TIERS: PricingTier[] = PLAN_ORDER.map((plan) => {
 	const limits = PLAN_LIMITS[plan];
+	const isFree = plan === "FREE";
 	return {
 		plan,
 		name: TIER_COPY[plan].name,
-		priceMinor: priceMinorFor(plan, LAUNCH_PRICE_BOOK),
-		periodLabel: TIER_COPY[plan].periodLabel,
-		periodDays: PLAN_PERIOD_DAYS[plan],
+		// `0` on the free tier rather than a missing price: a page that showed no number for
+		// it would read as a tier whose price had not loaded.
+		monthlyMinor: isFree ? 0 : priceMinorFor(plan, "MONTHLY", LAUNCH_PRICE_BOOK),
+		yearlyMinor: isFree ? null : priceMinorFor(plan, "YEARLY", LAUNCH_PRICE_BOOK),
+		isFree,
 		description: TIER_COPY[plan].description,
 		features: TIER_COPY[plan].features,
 		limits: [
 			{ label: "Productos", value: String(limits.products) },
 			{ label: "Imágenes por producto", value: String(limits.imagesPerProduct) },
 			{ label: "Personas con acceso", value: String(limits.staffAccounts) },
-			{ label: "Ubicaciones", value: String(limits.locations) },
+			{ label: "Sucursales", value: String(limits.locations) },
 			{ label: "Promociones activas", value: String(limits.activePromotions) },
+			{ label: "Entregas express", value: expressLabel(limits.expressPerWeek) },
 			{ label: "Almacenamiento", value: gibibytes(limits.storageBytes) },
-			{
-				label: "Historial disponible",
-				value: limits.analyticsDays >= 365 ? "2 años" : `${limits.analyticsDays} días`,
-			},
+			{ label: "Historial disponible", value: historyLabel(limits.analyticsDays) },
 			{
 				label: "Control de inventario",
 				value: limits.inventoryTracking ? "Incluido" : "No incluido",
 			},
 		],
-		popular: plan === "MONTHLY",
+		// The third tier rather than the dearest: a shop that has outgrown `Emprende` is the
+		// reader this page is written for, and marking `Business` popular would be marking the
+		// one almost nobody buys.
+		popular: plan === "STARTER",
 		cta: TIER_COPY[plan].cta,
 	};
 });
@@ -164,12 +226,17 @@ export const FAQS: FAQ[] = [
 	{
 		question: "¿Qué pasa si dejo de pagar?",
 		answer:
-			`Tienes ${GRACE_DAYS} días de cortesía para pagar antes de que perdamos acceso. Pasados esos días tu tienda sigue apareciendo en el marketplace, pero con los límites del plan semanal, para que no pierdas a tus clientes. A los ${HIDDEN_AFTER_DAYS} días la tienda se pausa y deja de aparecer. En cualquier momento podés pagar antes y recuperás todo.`,
+			`Tienes ${GRACE_DAYS} días de cortesía para pagar antes de que perdamos acceso. Pasados esos días tu tienda sigue apareciendo en el marketplace, pero con los límites del plan gratis, para que no pierdas a tus clientes. A los ${HIDDEN_AFTER_DAYS} días la tienda se pausa y deja de aparecer. En cualquier momento podés pagar antes y recuperás todo.`,
 	},
 	{
 		question: "¿Puedo cambiar de plan?",
 		answer:
-			"Sí. El semanal y el mensual son los mismos servicios con distinta duración y límites: cambiás cuando querés y el siguiente período se cobra al precio del plan nuevo.",
+			"Sí, y son dos decisiones separadas. Podés subir de nivel cuando quieras — los límites nuevos aplican de inmediato — y podés elegir si te facturamos cada mes o cada año. El plan anual cuesta diez meses: los dos últimos meses del año no los pagás.",
+	},
+	{
+		question: "¿El plan gratis tiene fecha de vencimiento?",
+		answer:
+			"No. El plan gratis no vence y no te pedimos tarjeta para usarlo. Incluye diez entregas express por semana; cuando se te acaban, tus clientes pueden seguir pidiendo con entrega normal o retiro en tienda.",
 	},
 	{
 		question: "¿Suben los precios?",
@@ -201,15 +268,23 @@ export const FAQS: FAQ[] = [
  * here because the header carries the price and repeating it per column would
  * suggest the number could differ between the two.
  */
-export const FEATURE_COMPARISON: { feature: string; weekly: string; monthly: string }[] = [
+export const FEATURE_COMPARISON: { feature: string; values: string[] }[] = [
 	{
-		feature: "Precio (IVA incluido)",
-		weekly: `${formatColones(priceMinorFor("WEEKLY", LAUNCH_PRICE_BOOK))} por semana`,
-		monthly: `${formatColones(priceMinorFor("MONTHLY", LAUNCH_PRICE_BOOK))} por mes`,
+		feature: "Precio mensual (IVA incluido)",
+		values: PRICING_TIERS.map((tier) =>
+			tier.isFree ? "Gratis" : formatColones(tier.monthlyMinor),
+		),
+	},
+	{
+		// Stated as one rule rather than three discounts, which is what "ten months of the
+		// monthly price" is — see `plans.ts`'s `LAUNCH_PRICE_BOOK`.
+		feature: "Precio anual (IVA incluido)",
+		values: PRICING_TIERS.map((tier) =>
+			tier.yearlyMinor === null ? "—" : formatColones(tier.yearlyMinor),
+		),
 	},
 	...PRICING_TIERS[0].limits.map((limit, index) => ({
 		feature: limit.label,
-		weekly: PRICING_TIERS[0].limits[index].value,
-		monthly: PRICING_TIERS[1].limits[index].value,
+		values: PRICING_TIERS.map((tier) => tier.limits[index]?.value ?? "—"),
 	})),
 ];

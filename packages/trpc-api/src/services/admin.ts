@@ -31,11 +31,7 @@ import type {
 	SubscriptionStatus,
 } from "@pymeshub/shared";
 import { canTransition, decodeCursor, newId } from "@pymeshub/shared";
-import {
-	GRACE_DAYS,
-	HIDDEN_AFTER_DAYS,
-	PLAN_PERIOD_DAYS,
-} from "@pymeshub/shared/plans";
+import { GRACE_DAYS, HIDDEN_AFTER_DAYS } from "@pymeshub/shared/plans";
 import {
 	and,
 	asc,

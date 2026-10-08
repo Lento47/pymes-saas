@@ -16,6 +16,7 @@ import {
 	seedBusiness,
 	seedMembership,
 	seedOrder,
+	seedPriceBook,
 	seedSubscription,
 	seedSupportTicket,
 	seedUser,
@@ -82,8 +83,10 @@ describe("platform console contracts", () => {
 			ctx,
 			{
 				label: "2027-Q2",
-				weeklyMinor: 3_000,
-				monthlyMinor: 18_000,
+				prices: [
+					{ plan: "EMPRENDE", cadence: "MONTHLY", minor: 3_000 },
+					{ plan: "STARTER", cadence: "MONTHLY", minor: 18_000 },
+				],
 				effectiveFrom: new Date(Date.now() + 30 * 86_400_000),
 				reason: "Subida de precio acordada para el segundo trimestre",
 			},
@@ -107,7 +110,10 @@ describe("platform console contracts", () => {
 
 		const meta = JSON.parse(entry?.meta ?? "{}") as {
 			reason: string;
-			after: { label: string; monthlyMinor: number };
+			after: {
+				label: string;
+				prices: { plan: string; cadence: string; minor: number }[];
+			};
 		};
 		// The reason is the reason the operator typed, not a summary of it — it is the only
 		// place this decision is ever explained.
@@ -115,7 +121,15 @@ describe("platform console contracts", () => {
 			"Subida de precio acordada para el segundo trimestre",
 		);
 		expect(meta.after.label).toBe("2027-Q2");
-		expect(meta.after.monthlyMinor).toBe(18_000);
+		// **The whole book is recorded, every pair.** This used to assert two columns, and
+		// the shape is the point: a reader of this row has to be able to see every figure the
+		// operator set without joining a table that a later price book will have moved on
+		// from. A row naming only `monthlyMinor` would not say what an annual merchant was
+		// charged.
+		expect(meta.after.prices).toEqual([
+			{ plan: "EMPRENDE", cadence: "MONTHLY", minor: 3_000 },
+			{ plan: "STARTER", cadence: "MONTHLY", minor: 18_000 },
+		]);
 
 		w.close();
 	});
@@ -136,8 +150,10 @@ describe("platform console contracts", () => {
 				ctx,
 				{
 					label: "Sin motivo",
-					weeklyMinor: 3_000,
-					monthlyMinor: 18_000,
+					prices: [
+						{ plan: "EMPRENDE", cadence: "MONTHLY", minor: 3_000 },
+						{ plan: "STARTER", cadence: "MONTHLY", minor: 18_000 },
+					],
 					effectiveFrom: new Date(Date.now() + 30 * 86_400_000),
 					reason: "   ",
 				},
@@ -234,10 +250,23 @@ describe("platform console contracts", () => {
 				isAdmin: true,
 			});
 			await seedBusiness(w.db, { id: "biz_pay", name: "Arreteros SA" });
+			/**
+			 * The book agrees with the row, because in a real system it always does.
+			 *
+			 * A renewal is priced from the book in force (`recordPayment`), while the amount
+			 * being settled is the copy captured on the row — so a fixture that set the row
+			 * to a figure its own price book did not carry would be asserting the two agree
+			 * about a merchant that cannot exist.
+			 */
+			const priceBookId = await seedPriceBook(w.db, {
+				prices: { "EMPRENDE:MONTHLY": priceMinor },
+			});
 			const subscriptionId = await seedSubscription(w.db, {
 				businessId: "biz_pay",
-				plan: "WEEKLY",
+				plan: "EMPRENDE",
+				cadence: "MONTHLY",
 				priceMinor,
+				priceBookId,
 				daysUntilDue,
 			});
 			return {
@@ -354,12 +383,17 @@ describe("platform console contracts", () => {
 			w.close();
 		});
 
-		test("clearing three periods of debt records the two nobody paid", async () => {
-			// 21 days on a 7-day plan: `periodEnd` is three weeks old, so three periods are
-			// owed — ₡6,000. One payment resets `periodEnd`, arrears is derived from it, and
-			// the debt goes to zero. That is the intended rule, and `writtenOffMinor` is where
-			// it now says so.
-			const { w, ctx, subscriptionId } = await shop(-21);
+		test("clearing several periods of debt records the ones nobody paid", async () => {
+			// 61 days on a 30-day cadence: `periodEnd` is two whole periods old, so two
+			// periods are owed — ₡4,000. One payment resets `periodEnd`, arrears is derived
+			// from it, and the debt goes to zero. That is the intended rule (one period per
+			// payment, no instalments), and `writtenOffMinor` is where it now says so.
+			//
+			// **Two periods and not three, because the cadence is 30 days.** The fixture used
+			// to lean on a 7-day period that no longer exists; the claim it makes — that a
+			// single payment forgives the debt beyond what it settles — is unaffected by which
+			// cadence produces the arrears.
+			const { w, ctx, subscriptionId } = await shop(-61);
 
 			const before = await admin.subscriptions(ctx, {
 				search: undefined,
@@ -367,8 +401,8 @@ describe("platform console contracts", () => {
 				direction: "desc",
 				limit: 25,
 			});
-			expect(before.rows[0]?.arrearsMinor).toBe(6_000);
-			expect(before.rows[0]?.periodsOwed).toBe(3);
+			expect(before.rows[0]?.arrearsMinor).toBe(4_000);
+			expect(before.rows[0]?.periodsOwed).toBe(2);
 
 			await admin.recordSubscriptionPayment(ctx, {
 				subscriptionId,
@@ -387,9 +421,9 @@ describe("platform console contracts", () => {
 				after: { paidMinor: number; writtenOffMinor: number };
 			};
 
-			expect(meta.before.arrearsMinor).toBe(6_000);
+			expect(meta.before.arrearsMinor).toBe(4_000);
 			expect(meta.after.paidMinor).toBe(2_000);
-			expect(meta.after.writtenOffMinor).toBe(4_000);
+			expect(meta.after.writtenOffMinor).toBe(2_000);
 
 			w.close();
 		});
@@ -519,7 +553,7 @@ describe("platform console contracts", () => {
 			const businessId = await seedBusiness(w.db, { id: "biz_del_sub" });
 			await seedSubscription(w.db, {
 				businessId,
-				plan: "MONTHLY",
+				plan: "STARTER",
 				priceMinor: 10_000,
 				daysUntilDue: -60,
 			});

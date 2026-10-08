@@ -20,8 +20,10 @@ import { formatColones, type PricingTier } from '@/data/pricing.data';
  *   gross one — `LAUNCH_PRICE_BOOK` is what the merchant pays and we remit the IVA
  *   out of it. A reader who assumed the ₡10,000 was pre-tax has been quoted a
  *   different product.
- * - **That the period renews.** `PLAN_PERIOD_DAYS` is 7 or 30 and never a calendar
- *   month, so "cada 30 días" is literally true where "cada mes" would not be.
+ * - **That the period renews, and on which cadence.** A month is 30 days and a year is
+ *   365, neither a calendar unit, so "cada 30 días" and "cada 365 días" are literally true
+ *   where "cada mes" and "cada año" would not be. The free tier has no period at all and
+ *   says so instead — it is permanent, and printing a renewal on it would be a lie.
  * - **That nothing is charged automatically.** There is no gateway in this business:
  *   `services/subscription.ts:467` records a payment an operator entered against a
  *   bank reference. Saying "no cobramos automáticamente" is not a nicety — a reader
@@ -72,14 +74,34 @@ export function PricingCard({ tier }: PricingCardProps) {
       </div>
 
       <div className="mt-4 flex items-end gap-2">
-        <span className="text-3xl font-semibold tracking-[-0.05em] text-foreground tabular-nums">
-          {formatColones(tier.priceMinor)}
-        </span>
-        <span className="pb-1 text-xs font-semibold text-muted-foreground">
-          / {tier.periodLabel}
-        </span>
+        {tier.isFree ? (
+          <span className="text-3xl font-semibold tracking-[-0.05em] text-foreground">
+            Gratis
+          </span>
+        ) : (
+          <>
+            <span className="text-3xl font-semibold tracking-[-0.05em] text-foreground tabular-nums">
+              {formatColones(tier.monthlyMinor)}
+            </span>
+            <span className="pb-1 text-xs font-semibold text-muted-foreground">/ mes</span>
+          </>
+        )}
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">IVA incluido</p>
+      {/*
+        The annual figure sits **under** the monthly one rather than in a toggle. The tier is
+        what the reader is choosing and the cadence is how they pay for it; a toggle would
+        hide half the answer behind an interaction, and the page's own FAQ already states the
+        rule — the year costs ten months.
+      */}
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {tier.yearlyMinor === null ? (
+          "Sin costo, para siempre"
+        ) : (
+          <>
+            IVA incluido · {formatColones(tier.yearlyMinor)} al año
+          </>
+        )}
+      </p>
 
       <div className="mt-5 space-y-1.5">
         {tier.features.map((feature) => (
@@ -124,11 +146,23 @@ export function PricingCard({ tier }: PricingCardProps) {
       */}
       <div className="mt-4 rounded-md border border-border/60 bg-muted/25 px-3.5 py-3">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Renovación:</span> cada {tier.periodDays} días por{' '}
-          {formatColones(tier.priceMinor)}, IVA incluido. Emitimos la factura y la pagás por transferencia
-          bancaria: para estos planes <span className="font-semibold text-foreground">no guardamos tu tarjeta
-          ni hacemos cargos automáticos</span>. Si un precio sube, el nuevo aplica en tu siguiente
-          renovación, nunca en el período que ya pagaste.
+          {tier.isFree ? (
+            <>
+              <span className="font-semibold text-foreground">Sin vencimiento:</span> el plan gratis no
+              expira y no pedimos tarjeta para usarlo. Si algún día querés más, subís de nivel y el cambio
+              aplica de inmediato.
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-foreground">Renovación:</span> cada 30 días por{' '}
+              {formatColones(tier.monthlyMinor)}, o cada 365 días por{' '}
+              {formatColones(tier.yearlyMinor ?? 0)} — el año cuesta diez meses. IVA incluido. Emitimos la
+              factura y la pagás por transferencia bancaria: para estos planes{' '}
+              <span className="font-semibold text-foreground">no guardamos tu tarjeta ni hacemos cargos
+              automáticos</span>. Si un precio sube, el nuevo aplica en tu siguiente renovación, nunca en el
+              período que ya pagaste.
+            </>
+          )}
         </p>
       </div>
     </div>

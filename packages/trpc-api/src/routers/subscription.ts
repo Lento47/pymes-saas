@@ -1,3 +1,5 @@
+import { cadenceSchema } from "@pymeshub/shared";
+import { PLANS } from "@pymeshub/shared/plans";
 import { z } from "zod";
 
 import { loadBilling } from "../context";
@@ -78,15 +80,17 @@ export const subscriptionRouter = router({
 	 * merchant who upgrades on day 29 gets the bigger catalogue today and is not charged a
 	 * second time four weeks early.
 	 *
-	 * **Both axes are in the input and both are required to be consistent.** `cadence` is
-	 * nullable rather than optional because "absent" and "none" are different facts here, in
-	 * the same way they are on `nameEn` and `imageUrl` in `adminCategoryInput`: absent
-	 * leaves the cadence where it is, and `null` moves the shop to `FREE`, which is the only
-	 * tier with no cadence. Without that distinction a client that forgot the key would
-	 * silently unsubscribe a paying merchant.
+	 * **Both axes are in the input, and `cadence` is required — nullable, not optional.**
+	 * The distinction is the whole contract: `null` is "this shop is on `FREE`, the one tier
+	 * with no period", and a paid tier without a cadence is not a state that can be priced.
 	 *
-	 * The consistency is enforced rather than left to the service, because the pair is
-	 * checked here with the tier list already in hand and nowhere else has both.
+	 * It is required rather than defaulted so a client that forgets the key is refused
+	 * instead of silently inheriting whatever cadence the shop happens to hold. A merchant
+	 * with no subscription row holds `null`, and defaulting that to `MONTHLY` would be the
+	 * server choosing how somebody pays — the one decision a picker exists to collect.
+	 *
+	 * The pair is checked here rather than in the service because this is the only place
+	 * that has both the tier list and the cadence list in hand.
 	 */
 	changePlan: businessProcedure("business:settings")
 		.input(
@@ -94,13 +98,11 @@ export const subscriptionRouter = router({
 				.object({
 					businessId: z.string(),
 					plan: z.enum(PLANS),
-					cadence: cadenceSchema.nullable().optional(),
+					cadence: cadenceSchema.nullable(),
 				})
 				.refine(
 					(data) =>
-						data.plan === "FREE"
-							? data.cadence === undefined || data.cadence === null
-							: data.cadence !== null && data.cadence !== undefined,
+						data.plan === "FREE" ? data.cadence === null : data.cadence !== null,
 					{
 						message:
 							"El plan gratis no tiene periodicidad, y un plan pagado necesita una.",
@@ -109,11 +111,6 @@ export const subscriptionRouter = router({
 				),
 		)
 		.mutation(({ ctx, input }) =>
-			subscriptions.changePlan(
-				ctx,
-				input.plan,
-				input.cadence === undefined ? ctx.subscriptionCadence : input.cadence,
-				new Date(),
-			),
+			subscriptions.changePlan(ctx, input.plan, input.cadence, new Date()),
 		),
 });
