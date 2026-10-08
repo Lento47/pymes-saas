@@ -38,6 +38,7 @@ export function HomeLocationPicker({
 	const tabBarClearance = useTabBarClearance();
 	const [draft, setDraft] = useState<DeviceLocation>(null);
 	const [applied, setApplied] = useState<DeviceLocation>(null);
+	const [mapTouching, setMapTouching] = useState(false);
 	const knownPosition = pinned ?? current;
 	const center = knownPosition ?? OVERVIEW_CENTER;
 	const mapAvailable = isMapAvailable();
@@ -50,6 +51,7 @@ export function HomeLocationPicker({
 		if (open) {
 			setDraft(null);
 			setApplied(null);
+			setMapTouching(false);
 		}
 	}, [open]);
 
@@ -60,6 +62,7 @@ export function HomeLocationPicker({
 			title={t("location.title")}
 			closeLabel={t("action.close")}
 			snapPoints={[1]}
+			scrollEnabled={!mapTouching}
 			footer={<View style={{ height: tabBarClearance + space.md }} />}
 		>
 			<View style={{ gap: space.md }}>
@@ -68,16 +71,25 @@ export function HomeLocationPicker({
 						<Text variant="caption" tone="muted">
 							{t("location.mapInstruction")}
 						</Text>
-						<MapView
-							coords={center}
-							marker={draft ?? pinned}
-							zoom={knownPosition ? 14 : 7}
-							showUserLocation={
-								locationStatus === "granted" && current !== null
-							}
-							style={{ height: Math.min(480, height * 0.48) }}
-							onPick={pick}
-						/>
+						<View
+							onTouchStart={() => setMapTouching(true)}
+							onTouchEnd={(event) => {
+								if (event.nativeEvent.touches.length === 0)
+									setMapTouching(false);
+							}}
+							onTouchCancel={() => setMapTouching(false)}
+						>
+							<MapView
+								coords={center}
+								marker={draft ?? pinned}
+								zoom={knownPosition ? 14 : 7}
+								showUserLocation={
+									locationStatus === "granted" && current !== null
+								}
+								style={{ height: Math.min(480, height * 0.48) }}
+								onPick={pick}
+							/>
+						</View>
 					</>
 				) : (
 					<Text variant="body" tone="muted">

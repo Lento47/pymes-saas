@@ -272,6 +272,8 @@ type SheetProps = {
 	footer?: React.ReactNode;
 	/** Lift the body when the keyboard opens. On for a sheet with a text field in it. */
 	avoidKeyboard?: boolean;
+	/** Temporarily yield vertical drags to an interactive child, such as a map. */
+	scrollEnabled?: boolean;
 	children: React.ReactNode;
 };
 
@@ -285,6 +287,7 @@ export function Sheet({
 	variant = "panel",
 	footer,
 	avoidKeyboard = false,
+	scrollEnabled = true,
 	children,
 }: SheetProps) {
 	const { colors } = useTheme();
@@ -572,6 +575,7 @@ export function Sheet({
 	const body = (
 		<ScrollView
 			style={styles.scroll}
+			scrollEnabled={scrollEnabled}
 			contentContainerStyle={[
 				styles.body,
 				// The variant's gutter, and it is here rather than in `styles.body` because a
