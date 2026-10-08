@@ -65,25 +65,27 @@ export function DeviceSettings() {
 					onPress={openSettings}
 					chevron
 				/>
-				<ListRow
-					title={t("settings.push")}
-					subtitle={t("settings.push.help")}
-					state={t(
-						push.status === "granted"
-							? "settings.permission.granted"
-							: push.status === "denied"
-								? "settings.permission.denied"
-								: push.status === "unasked"
-									? "settings.permission.unasked"
-									: "settings.permission.unknown",
-					)}
-					accessibilityHint={t("settings.push.open")}
-					onPress={() => {
-						if (push.status === "unasked") void push.request();
-						else openSettings();
-					}}
-					chevron
-				/>
+				{push.status !== "unavailable" ? (
+					<ListRow
+						title={t("settings.push")}
+						subtitle={t("settings.push.help")}
+						state={t(
+							push.status === "granted"
+								? "settings.permission.granted"
+								: push.status === "denied"
+									? "settings.permission.denied"
+									: push.status === "unasked"
+										? "settings.permission.unasked"
+										: "settings.permission.unknown",
+						)}
+						accessibilityHint={t("settings.push.open")}
+						onPress={() => {
+							if (push.status === "unasked") void push.request();
+							else openSettings();
+						}}
+						chevron
+					/>
+				) : null}
 				<ListRow
 					title={t("settings.motion")}
 					subtitle={t("settings.motion.help")}
