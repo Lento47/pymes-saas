@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, LockKeyhole, Mail, User } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { ChamferedSubmit } from "@/components/marketing/cta-button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/arc/input/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,9 @@ function parseError(err: unknown): string {
     const p = JSON.parse(rest) as { message?: string | string[] };
     if (Array.isArray(p.message)) return p.message.join(", ");
     if (typeof p.message === "string") return p.message;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return rest || m;
 }
 
@@ -58,11 +60,17 @@ export default function RegisterPage() {
     // form being honest, not the guard, and `auth.service.ts:register()` is what
     // actually enforces it.
     if (!ageConfirmed) {
-      toast({ title: "Confirmá que tenés 18 años o más", variant: "destructive" });
+      toast({
+        title: "Confirmá que tenés 18 años o más",
+        variant: "destructive",
+      });
       return;
     }
     if (!termsAccepted) {
-      toast({ title: "Aceptá los Términos de Servicio", variant: "destructive" });
+      toast({
+        title: "Aceptá los Términos de Servicio",
+        variant: "destructive",
+      });
       return;
     }
     setLoading(true);
@@ -80,7 +88,11 @@ export default function RegisterPage() {
       await refreshUser();
       window.location.hash = "#/onboarding";
     } catch (err) {
-      toast({ title: "Error al crear cuenta", description: parseError(err), variant: "destructive" });
+      toast({
+        title: "Error al crear cuenta",
+        description: parseError(err),
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -99,7 +111,8 @@ export default function RegisterPage() {
           width: 700,
           height: 500,
           borderRadius: "50%",
-          background: "radial-gradient(ellipse at center, rgba(245,158,11,0.10) 0%, transparent 70%)",
+          background:
+            "radial-gradient(ellipse at center, rgba(245,158,11,0.10) 0%, transparent 70%)",
           filter: "blur(40px)",
         }}
       />
@@ -109,13 +122,17 @@ export default function RegisterPage() {
         <div
           className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070c24]/90 px-7 py-8 backdrop-blur-2xl"
           style={{
-            boxShadow: "0 0 0 1px rgba(245,158,11,0.05), 0 32px 64px rgba(0,0,0,0.6), 0 0 80px rgba(245,158,11,0.06)",
+            boxShadow:
+              "0 0 0 1px rgba(245,158,11,0.05), 0 32px 64px rgba(0,0,0,0.6), 0 0 80px rgba(245,158,11,0.06)",
           }}
         >
           {/* Subtle top glow line */}
           <div
             className="pointer-events-none absolute inset-x-0 top-0 h-px"
-            style={{ background: "linear-gradient(90deg, transparent 0%, rgba(245,158,11,0.5) 50%, transparent 100%)" }}
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(245,158,11,0.5) 50%, transparent 100%)",
+            }}
           />
 
           {/* ── Brand lockup ── */}
@@ -134,11 +151,12 @@ export default function RegisterPage() {
           {/* ── Form ── */}
           <form onSubmit={handleSubmit} className="mt-7 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-xs text-white/70">Nombre completo</Label>
               <div className="relative">
-                <FieldIcon><User className="h-4 w-4" /></FieldIcon>
+                <FieldIcon>
+                  <User className="h-4 w-4" />
+                </FieldIcon>
                 <Input
-                  id="name"
+                  label="Nombre completo"
                   type="text"
                   placeholder="María García"
                   value={name}
@@ -150,11 +168,12 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs text-white/70">Correo electrónico</Label>
               <div className="relative">
-                <FieldIcon><Mail className="h-4 w-4" /></FieldIcon>
+                <FieldIcon>
+                  <Mail className="h-4 w-4" />
+                </FieldIcon>
                 <Input
-                  id="email"
+                  label="Correo electrónico"
                   type="email"
                   placeholder="nombre@empresa.com"
                   value={email}
@@ -166,11 +185,12 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs text-white/70">Contraseña</Label>
               <div className="relative">
-                <FieldIcon><LockKeyhole className="h-4 w-4" /></FieldIcon>
+                <FieldIcon>
+                  <LockKeyhole className="h-4 w-4" />
+                </FieldIcon>
                 <Input
-                  id="password"
+                  label="Contraseña"
                   type="password"
                   placeholder="Mín. 12 caracteres"
                   value={pass}
@@ -182,11 +202,12 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="confirm" className="text-xs text-white/70">Confirmar contraseña</Label>
               <div className="relative">
-                <FieldIcon><LockKeyhole className="h-4 w-4" /></FieldIcon>
+                <FieldIcon>
+                  <LockKeyhole className="h-4 w-4" />
+                </FieldIcon>
                 <Input
-                  id="confirm"
+                  label="Confirmar contraseña"
                   type="password"
                   placeholder="••••••••••••"
                   value={confirm}
@@ -205,7 +226,10 @@ export default function RegisterPage() {
                 className="mt-0.5 border-white/25 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
               />
               <span className="text-xs leading-5 text-white/65">
-                Confirmo que tengo <strong className="text-white/85">18 años o más</strong>. PymesHub es un servicio profesional no apto para menores de edad.
+                Confirmo que tengo{" "}
+                <strong className="text-white/85">18 años o más</strong>.
+                PymesHub es un servicio profesional no apto para menores de
+                edad.
               </span>
             </label>
 
@@ -218,11 +242,19 @@ export default function RegisterPage() {
               />
               <span className="text-xs leading-5 text-white/65">
                 Acepto los{" "}
-                <a href="/legal/terms-of-service" target="_blank" className="text-amber-400 underline hover:text-amber-300">
+                <a
+                  href="/legal/terms-of-service"
+                  target="_blank"
+                  className="text-amber-400 underline hover:text-amber-300"
+                >
                   Términos de Servicio
                 </a>{" "}
                 y la{" "}
-                <a href="/legal/privacy-policy" target="_blank" className="text-amber-400 underline hover:text-amber-300">
+                <a
+                  href="/legal/privacy-policy"
+                  target="_blank"
+                  className="text-amber-400 underline hover:text-amber-300"
+                >
                   Política de Privacidad
                 </a>
                 .
@@ -247,7 +279,10 @@ export default function RegisterPage() {
           <div className="mt-7 flex flex-col items-center gap-3 text-center">
             <p className="text-sm text-white/60">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="font-medium text-amber-400 transition hover:text-amber-300">
+              <Link
+                href="/login"
+                className="font-medium text-amber-400 transition hover:text-amber-300"
+              >
                 Iniciar sesión
               </Link>
             </p>

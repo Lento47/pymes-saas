@@ -8,7 +8,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/arc/button/button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/arc/input/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -175,9 +175,8 @@ function TaskSheetForm({
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="task-title">{es ? "Título" : "Title"}</Label>
               <Input
-                id="task-title"
+                label={es ? "Título" : "Title"}
                 name="title"
                 autoComplete="off"
                 required
@@ -235,11 +234,10 @@ function TaskSheetForm({
               </div>
             </fieldset>
             <div className="space-y-2">
-              <Label htmlFor="task-date">
-                {es ? "Fecha de vencimiento (opcional)" : "Due date (optional)"}
-              </Label>
               <Input
-                id="task-date"
+                label={
+                  es ? "Fecha de vencimiento (opcional)" : "Due date (optional)"
+                }
                 name="dueDate"
                 type="date"
                 value={form.dueDate}

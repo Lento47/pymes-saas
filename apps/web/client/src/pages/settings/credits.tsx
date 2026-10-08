@@ -3,9 +3,26 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft, Flame, Gem, Rocket, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Bot,
+  Coins,
+  History,
+  ShoppingCart,
+  Zap,
+  TrendingUp,
+  CheckCircle2,
+  Clock,
+  Sliders,
+  Loader2,
+  ArrowRightLeft,
+  Flame,
+  Gem,
+  Rocket,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/arc/button/button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/arc/input/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -24,20 +41,20 @@ import { connectSocket, getSocket } from "@/hooks/use-socket";
 function calcCustomPrice(credits: number): number {
   if (credits >= 5000) return credits * 0.014;
   if (credits >= 1500) return credits * 0.0166;
-  if (credits >= 500)  return credits * 0.02;
+  if (credits >= 500) return credits * 0.02;
   return credits * 0.03;
 }
 
 function calcPricePerCredit(credits: number): number {
   if (credits >= 5000) return 0.014;
   if (credits >= 1500) return 0.0166;
-  if (credits >= 500)  return 0.02;
+  if (credits >= 500) return 0.02;
   return 0.03;
 }
 
 const PACK_ICONS: Record<string, React.ElementType> = {
-  pack_100:  Zap,
-  pack_500:  Flame,
+  pack_100: Zap,
+  pack_500: Flame,
   pack_1500: Gem,
   pack_5000: Rocket,
 };
@@ -46,7 +63,8 @@ const PACK_POPULAR = "pack_500";
 const AI_TOKEN_PACK_POPULAR = "ai_tokens_500k";
 
 function formatTokens(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (value >= 1_000_000)
+    return `${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
   if (value >= 1_000) return `${Math.round(value / 1_000)}k`;
   return value.toLocaleString();
 }
@@ -82,9 +100,16 @@ function CreditPackCard({
 
       <div className="flex items-start justify-between">
         <div>
-          {(() => { const PackIcon = PACK_ICONS[pack.id] ?? Zap; return <PackIcon className="w-5 h-5 text-primary" />; })()}
-          <p className="text-sm font-semibold text-foreground mt-1.5">{pack.label}</p>
-          <p className="text-[11px] text-muted-foreground">${pricePerCredit} USD / mes</p>
+          {(() => {
+            const PackIcon = PACK_ICONS[pack.id] ?? Zap;
+            return <PackIcon className="w-5 h-5 text-primary" />;
+          })()}
+          <p className="text-sm font-semibold text-foreground mt-1.5">
+            {pack.label}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            ${pricePerCredit} USD / mes
+          </p>
         </div>
         <div className="text-right">
           <p className="text-xl font-bold text-foreground">${pack.price_usd}</p>
@@ -98,8 +123,8 @@ function CreditPackCard({
           {pack.credits.toLocaleString()} contactos/mes
         </li>
         <li className="flex items-center gap-1.5">
-          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-          1 crédito = 1 contacto activo por mes
+          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />1
+          crédito = 1 contacto activo por mes
         </li>
         <li className="flex items-center gap-1.5">
           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
@@ -112,7 +137,9 @@ function CreditPackCard({
         disabled={isPending}
         className={cn(
           "w-full h-8 text-xs mt-auto",
-          isPopular ? "bg-primary hover:bg-primary/90" : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
+          isPopular
+            ? "bg-primary hover:bg-primary/90"
+            : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
         )}
         variant={isPopular ? "primary" : "secondary"}
       >
@@ -155,7 +182,9 @@ function AiTokenPackCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <Bot className="w-5 h-5 text-primary" />
-          <p className="text-sm font-semibold text-foreground mt-2">{pack.label}</p>
+          <p className="text-sm font-semibold text-foreground mt-2">
+            {pack.label}
+          </p>
           <p className="text-[11px] text-muted-foreground">
             {tokensPerDollar.toLocaleString()} tokens / USD
           </p>
@@ -186,7 +215,9 @@ function AiTokenPackCard({
         disabled={isPending}
         className={cn(
           "w-full h-8 text-xs mt-auto",
-          isPopular ? "bg-primary hover:bg-primary/90" : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
+          isPopular
+            ? "bg-primary hover:bg-primary/90"
+            : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
         )}
         variant={isPopular ? "primary" : "secondary"}
       >
@@ -217,7 +248,9 @@ function TransactionRow({ tx }: { tx: any }) {
         <div>
           <p className="text-xs text-foreground">{tx.description ?? tx.type}</p>
           <p className="text-[10px] text-muted-foreground">
-            {format(new Date(tx.created_at), "d MMM yyyy · HH:mm", { locale: es })}
+            {format(new Date(tx.created_at), "d MMM yyyy · HH:mm", {
+              locale: es,
+            })}
           </p>
         </div>
       </div>
@@ -227,7 +260,8 @@ function TransactionRow({ tx }: { tx: any }) {
           isPositive ? "text-emerald-400" : "text-muted-foreground",
         )}
       >
-        {isPositive ? "+" : ""}{tx.amount.toLocaleString()}
+        {isPositive ? "+" : ""}
+        {tx.amount.toLocaleString()}
       </span>
     </div>
   );
@@ -257,7 +291,9 @@ function AiTokenTransactionRow({ tx }: { tx: any }) {
         <div>
           <p className="text-xs text-foreground">{tx.description ?? tx.type}</p>
           <p className="text-[10px] text-muted-foreground">
-            {format(new Date(tx.created_at), "d MMM yyyy · HH:mm", { locale: es })}
+            {format(new Date(tx.created_at), "d MMM yyyy · HH:mm", {
+              locale: es,
+            })}
             {usage ? ` · ${usage}` : ""}
           </p>
         </div>
@@ -268,7 +304,8 @@ function AiTokenTransactionRow({ tx }: { tx: any }) {
           isPositive ? "text-emerald-400" : "text-muted-foreground",
         )}
       >
-        {isPositive ? "+" : "-"}{formatTokens(tx.amount)}
+        {isPositive ? "+" : "-"}
+        {formatTokens(tx.amount)}
       </span>
     </div>
   );
@@ -288,14 +325,21 @@ function CustomPackSection({
   }, [rawInput]);
 
   const price = credits > 0 ? calcCustomPrice(credits) : 0;
-  const ppc   = credits > 0 ? calcPricePerCredit(credits) : 0;
-  const tier  = credits >= 5000 ? "5000+" : credits >= 1500 ? "1500+" : credits >= 500 ? "500+" : "base";
+  const ppc = credits > 0 ? calcPricePerCredit(credits) : 0;
+  const tier =
+    credits >= 5000
+      ? "5000+"
+      : credits >= 1500
+        ? "1500+"
+        : credits >= 500
+          ? "500+"
+          : "base";
 
   const tierLabel: Record<string, string> = {
     "5000+": "Precio máximo descuento",
     "1500+": "Descuento avanzado",
-    "500+":  "Descuento estándar",
-    "base":  "Precio base",
+    "500+": "Descuento estándar",
+    base: "Precio base",
   };
 
   return (
@@ -310,11 +354,8 @@ function CustomPackSection({
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 space-y-1.5">
-          <Label htmlFor="custom-credits" className="text-[11px] text-muted-foreground">
-            Cantidad de créditos
-          </Label>
           <Input
-            id="custom-credits"
+            label="Cantidad de créditos"
             type="number"
             min={1}
             placeholder="ej. 800"
@@ -328,18 +369,28 @@ function CustomPackSection({
           <div className="flex-1 rounded-lg border border-border/40 bg-background/30 px-4 py-3 space-y-1.5">
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Total</span>
-              <span className="text-sm font-bold text-foreground">${price.toFixed(2)} USD</span>
+              <span className="text-sm font-bold text-foreground">
+                ${price.toFixed(2)} USD
+              </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[11px] text-muted-foreground">Por crédito</span>
-              <span className="text-[11px] text-foreground">${ppc.toFixed(4)}</span>
+              <span className="text-[11px] text-muted-foreground">
+                Por crédito
+              </span>
+              <span className="text-[11px] text-foreground">
+                ${ppc.toFixed(4)}
+              </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Nivel</span>
-              <span className="text-[10px] text-primary font-medium">{tierLabel[tier]}</span>
+              <span className="text-[10px] text-primary font-medium">
+                {tierLabel[tier]}
+              </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[11px] text-muted-foreground">Estimado</span>
+              <span className="text-[11px] text-muted-foreground">
+                Estimado
+              </span>
               <span className="text-[11px] text-foreground">
                 ~{credits.toLocaleString()} contactos/mes
               </span>
@@ -356,7 +407,9 @@ function CustomPackSection({
         >
           <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
           Comprar con PayPal
-          {credits > 0 && <span className="ml-1.5 opacity-70">· ${price.toFixed(2)}</span>}
+          {credits > 0 && (
+            <span className="ml-1.5 opacity-70">· ${price.toFixed(2)}</span>
+          )}
         </Button>
 
         {/* Tier threshold hints */}
@@ -368,12 +421,14 @@ function CustomPackSection({
           )}
           {credits >= 500 && credits < 1500 && (
             <span>
-              +{(1500 - credits).toLocaleString()} para ${(0.0166).toFixed(4)}/créd
+              +{(1500 - credits).toLocaleString()} para ${(0.0166).toFixed(4)}
+              /créd
             </span>
           )}
           {credits >= 1500 && credits < 5000 && (
             <span>
-              +{(5000 - credits).toLocaleString()} para ${(0.014).toFixed(3)}/créd
+              +{(5000 - credits).toLocaleString()} para ${(0.014).toFixed(3)}
+              /créd
             </span>
           )}
         </div>
@@ -431,7 +486,15 @@ function TransferCreditsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && !isTransferring) { onClose(); setRawInput(""); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v && !isTransferring) {
+          onClose();
+          setRawInput("");
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -439,24 +502,24 @@ function TransferCreditsDialog({
             Transferir créditos a tokens IA
           </DialogTitle>
           <DialogDescription>
-            Convertí tus créditos de memoria en tokens IA. Tasa: 1 crédito = 1,000 tokens.
+            Convertí tus créditos de memoria en tokens IA. Tasa: 1 crédito =
+            1,000 tokens.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="flex items-center justify-between rounded-lg border border-border/40 bg-background/40 px-4 py-3">
-            <span className="text-xs text-muted-foreground">Créditos disponibles</span>
+            <span className="text-xs text-muted-foreground">
+              Créditos disponibles
+            </span>
             <span className="text-sm font-semibold text-foreground tabular-nums">
               {creditBalance.toLocaleString()}
             </span>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="transfer-credits" className="text-[11px] text-muted-foreground">
-              Créditos a transferir
-            </Label>
             <Input
-              id="transfer-credits"
+              label="Créditos a transferir"
               type="number"
               min={1}
               max={creditBalance}
@@ -471,13 +534,17 @@ function TransferCreditsDialog({
           {credits > 0 && (
             <div className="rounded-lg border border-primary/20 bg-primary/[0.04] px-4 py-3 space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-[11px] text-muted-foreground">Créditos a descontar</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Créditos a descontar
+                </span>
                 <span className="text-sm font-semibold text-foreground tabular-nums">
                   -{credits.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[11px] text-muted-foreground">Tokens IA a recibir</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Tokens IA a recibir
+                </span>
                 <span className="text-sm font-semibold text-emerald-400 tabular-nums">
                   +{formatTokens(tokensToGet)}
                 </span>
@@ -503,13 +570,15 @@ function TransferCreditsDialog({
             ) : (
               <>
                 <ArrowRightLeft className="w-3.5 h-3.5 mr-2" />
-                Transferir {credits > 0 ? `${credits.toLocaleString()} créditos` : ""}
+                Transferir{" "}
+                {credits > 0 ? `${credits.toLocaleString()} créditos` : ""}
               </>
             )}
           </Button>
 
           <p className="text-[10px] text-muted-foreground/60 text-center">
-            Esta acción no tiene reversión. Los créditos se convertirán de inmediato.
+            Esta acción no tiene reversión. Los créditos se convertirán de
+            inmediato.
           </p>
         </div>
       </DialogContent>
@@ -528,13 +597,22 @@ function PayPalCheckoutDialog({
   open: boolean;
   onClose: () => void;
   orderId: string | null;
-  onSuccess: (result: { credits: number; tokens?: number; newBalance: number }) => void;
+  onSuccess: (result: {
+    credits: number;
+    tokens?: number;
+    newBalance: number;
+  }) => void;
 }) {
   const { toast } = useToast();
   const [capturing, setCapturing] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && !capturing) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v && !capturing) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Completar pago con PayPal</DialogTitle>
@@ -550,10 +628,13 @@ function PayPalCheckoutDialog({
             </div>
           ) : !PAYPAL_CLIENT_ID ? (
             <p className="text-xs text-amber-400 text-center">
-              PayPal no está configurado. VITE_PAYPAL_CLIENT_ID no está definido.
+              PayPal no está configurado. VITE_PAYPAL_CLIENT_ID no está
+              definido.
             </p>
           ) : orderId ? (
-            <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, currency: "USD" }}>
+            <PayPalScriptProvider
+              options={{ clientId: PAYPAL_CLIENT_ID, currency: "USD" }}
+            >
               <PayPalButtons
                 style={{ layout: "vertical", shape: "rect", label: "pay" }}
                 createOrder={() => Promise.resolve(orderId)}
@@ -575,13 +656,15 @@ function PayPalCheckoutDialog({
                     } else {
                       toast({
                         title: "Pago recibido",
-                        description: "Tus créditos se activarán en unos segundos.",
+                        description:
+                          "Tus créditos se activarán en unos segundos.",
                       });
                     }
                   } catch (err: any) {
                     toast({
                       title: "Error al procesar el pago",
-                      description: err?.message || "Ocurrió un error inesperado.",
+                      description:
+                        err?.message || "Ocurrió un error inesperado.",
                       variant: "destructive",
                     });
                   } finally {
@@ -598,7 +681,10 @@ function PayPalCheckoutDialog({
                   onClose();
                 }}
                 onCancel={() => {
-                  toast({ title: "Pago cancelado", description: "No se realizó ningún cargo." });
+                  toast({
+                    title: "Pago cancelado",
+                    description: "No se realizó ningún cargo.",
+                  });
                   onClose();
                 }}
               />
@@ -635,7 +721,10 @@ export default function CreditsSettingsPage() {
   const history: any[] = data?.history ?? [];
   const packs: any[] = data?.packs ?? [];
   const [liveTokenBalance, setLiveTokenBalance] = useState<{
-    balance: number; reserved: number; available: number; totalPurchased: number;
+    balance: number;
+    reserved: number;
+    available: number;
+    totalPurchased: number;
   } | null>(null);
 
   const tokenBalance = liveTokenBalance ?? {
@@ -650,8 +739,12 @@ export default function CreditsSettingsPage() {
   const HISTORY_PREVIEW = 5;
   const [showAllTokens, setShowAllTokens] = useState(false);
   const [showAllCredits, setShowAllCredits] = useState(false);
-  const visibleTokenHistory = showAllTokens ? tokenHistory : tokenHistory.slice(0, HISTORY_PREVIEW);
-  const visibleHistory = showAllCredits ? history : history.slice(0, HISTORY_PREVIEW);
+  const visibleTokenHistory = showAllTokens
+    ? tokenHistory
+    : tokenHistory.slice(0, HISTORY_PREVIEW);
+  const visibleHistory = showAllCredits
+    ? history
+    : history.slice(0, HISTORY_PREVIEW);
 
   useEffect(() => {
     if (aiTokenData) setLiveTokenBalance(null);
@@ -665,50 +758,60 @@ export default function CreditsSettingsPage() {
         balance: Number(data.balance ?? 0),
         reserved: Number(data.reserved ?? 0),
         available: Number(data.available ?? 0),
-        totalPurchased: Number(data.totalPurchased ?? tokenBalance.totalPurchased ?? 0),
+        totalPurchased: Number(
+          data.totalPurchased ?? tokenBalance.totalPurchased ?? 0,
+        ),
       });
     };
     socket.on("ai_token_balance_updated", handler);
-    return () => { socket.off("ai_token_balance_updated", handler); };
+    return () => {
+      socket.off("ai_token_balance_updated", handler);
+    };
   }, []);
 
-  const handleBuy = useCallback(async (packId: string) => {
-    setBuyingPack(packId);
-    setIsCreatingOrder(true);
-    try {
-      const { orderId } = await api.createPayPalOrder({ packId });
-      setCurrentOrderId(orderId);
-      setShowPayPal(true);
-    } catch (err: any) {
-      toast({
-        title: "Error al crear la orden",
-        description: err?.message || "No se pudo iniciar el pago con PayPal.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingOrder(false);
-      setBuyingPack(null);
-    }
-  }, [toast]);
+  const handleBuy = useCallback(
+    async (packId: string) => {
+      setBuyingPack(packId);
+      setIsCreatingOrder(true);
+      try {
+        const { orderId } = await api.createPayPalOrder({ packId });
+        setCurrentOrderId(orderId);
+        setShowPayPal(true);
+      } catch (err: any) {
+        toast({
+          title: "Error al crear la orden",
+          description: err?.message || "No se pudo iniciar el pago con PayPal.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsCreatingOrder(false);
+        setBuyingPack(null);
+      }
+    },
+    [toast],
+  );
 
-  const handleBuyTokens = useCallback(async (packId: string) => {
-    setBuyingPack(packId);
-    setIsCreatingOrder(true);
-    try {
-      const { orderId } = await api.createPayPalOrder({ packId });
-      setCurrentOrderId(orderId);
-      setShowPayPal(true);
-    } catch (err: any) {
-      toast({
-        title: "Error al crear la orden",
-        description: err?.message || "No se pudo iniciar el pago con PayPal.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingOrder(false);
-      setBuyingPack(null);
-    }
-  }, [toast]);
+  const handleBuyTokens = useCallback(
+    async (packId: string) => {
+      setBuyingPack(packId);
+      setIsCreatingOrder(true);
+      try {
+        const { orderId } = await api.createPayPalOrder({ packId });
+        setCurrentOrderId(orderId);
+        setShowPayPal(true);
+      } catch (err: any) {
+        toast({
+          title: "Error al crear la orden",
+          description: err?.message || "No se pudo iniciar el pago con PayPal.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsCreatingOrder(false);
+        setBuyingPack(null);
+      }
+    },
+    [toast],
+  );
 
   const handlePayPalSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/memory/credits"] });
@@ -720,14 +823,14 @@ export default function CreditsSettingsPage() {
     setCurrentOrderId(null);
   }, []);
 
-  const daysEstimate = balance > 0
-    ? `~${balance} día${balance !== 1 ? "s" : ""} para 1 contacto activo`
-    : null;
+  const daysEstimate =
+    balance > 0
+      ? `~${balance} día${balance !== 1 ? "s" : ""} para 1 contacto activo`
+      : null;
 
   return (
     <SettingsLayout>
       <div className="space-y-8 max-w-3xl">
-
         {/* AI token balance */}
         <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-4">
@@ -738,49 +841,78 @@ export default function CreditsSettingsPage() {
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">
                 Tokens IA
               </p>
-              <p className={cn(
-                "text-3xl font-bold tabular-nums",
-                isLoadingAiTokens ? "text-foreground" :
-                tokenBalance.available > 10_000 ? "text-emerald-400" :
-                tokenBalance.available > 1_000 ? "text-amber-400" :
-                "text-red-400"
-              )}>
+              <p
+                className={cn(
+                  "text-3xl font-bold tabular-nums",
+                  isLoadingAiTokens
+                    ? "text-foreground"
+                    : tokenBalance.available > 10_000
+                      ? "text-emerald-400"
+                      : tokenBalance.available > 1_000
+                        ? "text-amber-400"
+                        : "text-red-400",
+                )}
+              >
                 {isLoadingAiTokens ? "—" : formatTokens(tokenBalance.available)}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Disponible para Agente IA
-                {tokenBalance.reserved > 0 ? ` · ${formatTokens(tokenBalance.reserved)} reservados` : ""}
+                {tokenBalance.reserved > 0
+                  ? ` · ${formatTokens(tokenBalance.reserved)} reservados`
+                  : ""}
               </p>
               {(() => {
                 const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
                 const weeklyUsed = tokenHistory
-                  .filter((tx: any) => tx.type === "CONSUMPTION" && new Date(tx.created_at).getTime() >= cutoff)
-                  .reduce((sum: number, tx: any) => sum + (Number(tx.total_tokens) || Number(tx.amount) || 0), 0);
+                  .filter(
+                    (tx: any) =>
+                      tx.type === "CONSUMPTION" &&
+                      new Date(tx.created_at).getTime() >= cutoff,
+                  )
+                  .reduce(
+                    (sum: number, tx: any) =>
+                      sum + (Number(tx.total_tokens) || Number(tx.amount) || 0),
+                    0,
+                  );
                 return weeklyUsed > 0 ? (
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {formatTokens(weeklyUsed)} tokens usados (últimos 7 días)
                   </p>
                 ) : null;
               })()}
-              {tokenBalance.totalPurchased > 0 && !isLoadingAiTokens && (() => {
-                const pct = Math.min(100, Math.round((tokenBalance.available / tokenBalance.totalPurchased) * 100));
-                return (
-                  <div className="w-full mt-2.5">
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          pct > 50 ? "bg-emerald-500" : pct > 20 ? "bg-amber-500" : "bg-red-500"
-                        )}
-                        style={{ width: `${pct}%` }}
-                      />
+              {tokenBalance.totalPurchased > 0 &&
+                !isLoadingAiTokens &&
+                (() => {
+                  const pct = Math.min(
+                    100,
+                    Math.round(
+                      (tokenBalance.available / tokenBalance.totalPurchased) *
+                        100,
+                    ),
+                  );
+                  return (
+                    <div className="w-full mt-2.5">
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            pct > 50
+                              ? "bg-emerald-500"
+                              : pct > 20
+                                ? "bg-amber-500"
+                                : "bg-red-500",
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {formatTokens(tokenBalance.available)} de{" "}
+                        {formatTokens(tokenBalance.totalPurchased)} restantes (
+                        {pct}%)
+                      </p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {formatTokens(tokenBalance.available)} de {formatTokens(tokenBalance.totalPurchased)} restantes ({pct}%)
-                    </p>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
               {tokenBalance.available === 0 && !isLoadingAiTokens && (
                 <p className="text-[11px] text-amber-400 mt-0.5">
                   Sin tokens IA — el agente no responderá hasta recargar saldo
@@ -790,9 +922,15 @@ export default function CreditsSettingsPage() {
           </div>
           <div className="flex flex-col items-end gap-3 shrink-0">
             <div className="text-right hidden sm:block">
-              <p className="text-[10px] text-muted-foreground">Cobro por uso real</p>
-              <p className="text-xs text-foreground font-medium">Prompt + respuesta</p>
-              <p className="text-[10px] text-muted-foreground mt-1">Separado de memoria</p>
+              <p className="text-[10px] text-muted-foreground">
+                Cobro por uso real
+              </p>
+              <p className="text-xs text-foreground font-medium">
+                Prompt + respuesta
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Separado de memoria
+              </p>
             </div>
             {balance > 0 && (
               <Button
@@ -825,8 +963,9 @@ export default function CreditsSettingsPage() {
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground mt-3">
-            Los tokens IA se consumen solo cuando el modelo genera una respuesta. Si el proveedor no reporta uso,
-            PymesHub registra una estimación marcada como estimada.
+            Los tokens IA se consumen solo cuando el modelo genera una
+            respuesta. Si el proveedor no reporta uso, PymesHub registra una
+            estimación marcada como estimada.
           </p>
         </div>
 
@@ -843,9 +982,12 @@ export default function CreditsSettingsPage() {
           ) : tokenHistory.length === 0 ? (
             <div className="rounded-xl border border-border/60 bg-card/40 p-8 text-center">
               <Bot className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Sin consumo de tokens aún</p>
+              <p className="text-sm text-muted-foreground">
+                Sin consumo de tokens aún
+              </p>
               <p className="text-[11px] text-muted-foreground/60 mt-1">
-                Aquí aparecerán las compras y respuestas generadas por el Agente IA.
+                Aquí aparecerán las compras y respuestas generadas por el Agente
+                IA.
               </p>
             </div>
           ) : (
@@ -855,11 +997,17 @@ export default function CreditsSettingsPage() {
               ))}
               {tokenHistory.length > HISTORY_PREVIEW && (
                 <button
-                  onClick={() => setShowAllTokens(v => !v)}
+                  onClick={() => setShowAllTokens((v) => !v)}
                   className="w-full py-2.5 text-xs text-primary hover:text-primary/80 font-medium flex items-center justify-center gap-1.5 border-t border-border/40 mt-1"
                 >
-                  {showAllTokens ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  {showAllTokens ? "Ver menos" : `Ver ${tokenHistory.length - HISTORY_PREVIEW} más`}
+                  {showAllTokens ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                  {showAllTokens
+                    ? "Ver menos"
+                    : `Ver ${tokenHistory.length - HISTORY_PREVIEW} más`}
                 </button>
               )}
             </div>
@@ -881,7 +1029,8 @@ export default function CreditsSettingsPage() {
               </p>
               {daysEstimate && (
                 <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />{daysEstimate}
+                  <Clock className="w-3 h-3" />
+                  {daysEstimate}
                 </p>
               )}
               {balance === 0 && !isLoading && (
@@ -893,8 +1042,12 @@ export default function CreditsSettingsPage() {
           </div>
           <div className="text-right shrink-0 hidden sm:block">
             <p className="text-[10px] text-muted-foreground">1 crédito =</p>
-            <p className="text-xs text-foreground font-medium">1 contacto activo por mes</p>
-            <p className="text-[10px] text-muted-foreground mt-1">Sin vencimiento del saldo</p>
+            <p className="text-xs text-foreground font-medium">
+              1 contacto activo por mes
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Sin vencimiento del saldo
+            </p>
           </div>
         </div>
 
@@ -915,8 +1068,8 @@ export default function CreditsSettingsPage() {
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground mt-3">
-            Los créditos se comparten entre todos los contactos del workspace. No tienen fecha de vencimiento.
-            Pagos procesados con PayPal.
+            Los créditos se comparten entre todos los contactos del workspace.
+            No tienen fecha de vencimiento. Pagos procesados con PayPal.
           </p>
         </div>
 
@@ -933,7 +1086,9 @@ export default function CreditsSettingsPage() {
           ) : history.length === 0 ? (
             <div className="rounded-xl border border-border/60 bg-card/40 p-8 text-center">
               <Coins className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Sin transacciones aún</p>
+              <p className="text-sm text-muted-foreground">
+                Sin transacciones aún
+              </p>
               <p className="text-[11px] text-muted-foreground/60 mt-1">
                 Aquí aparecerán tus compras y el consumo diario de créditos.
               </p>
@@ -945,11 +1100,17 @@ export default function CreditsSettingsPage() {
               ))}
               {history.length > HISTORY_PREVIEW && (
                 <button
-                  onClick={() => setShowAllCredits(v => !v)}
+                  onClick={() => setShowAllCredits((v) => !v)}
                   className="w-full py-2.5 text-xs text-primary hover:text-primary/80 font-medium flex items-center justify-center gap-1.5 border-t border-border/40 mt-1"
                 >
-                  {showAllCredits ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  {showAllCredits ? "Ver menos" : `Ver ${history.length - HISTORY_PREVIEW} más`}
+                  {showAllCredits ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                  {showAllCredits
+                    ? "Ver menos"
+                    : `Ver ${history.length - HISTORY_PREVIEW} más`}
                 </button>
               )}
             </div>
@@ -958,27 +1119,47 @@ export default function CreditsSettingsPage() {
 
         {/* How it works */}
         <div className="rounded-xl border border-border/60 bg-card/40 p-5">
-          <h3 className="text-xs font-semibold text-foreground mb-3">¿Cómo funcionan los créditos?</h3>
+          <h3 className="text-xs font-semibold text-foreground mb-3">
+            ¿Cómo funcionan los créditos?
+          </h3>
           <ul className="space-y-2 text-[11px] text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="text-primary mt-0.5">1.</span>
-              <span>Cada contacto tiene <strong className="text-foreground">14 días de memoria gratuita</strong> desde que el agente IA lo atiende por primera vez.</span>
+              <span>
+                Cada contacto tiene{" "}
+                <strong className="text-foreground">
+                  14 días de memoria gratuita
+                </strong>{" "}
+                desde que el agente IA lo atiende por primera vez.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary mt-0.5">2.</span>
-              <span>Al día 15, el perfil se <strong className="text-foreground">pausa</strong> (se guarda, pero el agente deja de usarlo).</span>
+              <span>
+                Al día 15, el perfil se{" "}
+                <strong className="text-foreground">pausa</strong> (se guarda,
+                pero el agente deja de usarlo).
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary mt-0.5">3.</span>
-              <span>Comprá créditos para <strong className="text-foreground">extender la memoria</strong>. Cada día que un contacto tiene memoria activa consume 1 crédito.</span>
+              <span>
+                Comprá créditos para{" "}
+                <strong className="text-foreground">extender la memoria</strong>
+                . Cada día que un contacto tiene memoria activa consume 1
+                crédito.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary mt-0.5">4.</span>
-              <span>Si los créditos se agotan, las memorias extendidas se pausan automáticamente. Los perfiles <strong className="text-foreground">no se borran</strong>.</span>
+              <span>
+                Si los créditos se agotan, las memorias extendidas se pausan
+                automáticamente. Los perfiles{" "}
+                <strong className="text-foreground">no se borran</strong>.
+              </span>
             </li>
           </ul>
         </div>
-
       </div>
 
       <PayPalCheckoutDialog
