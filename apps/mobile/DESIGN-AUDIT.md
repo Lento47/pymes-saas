@@ -135,8 +135,11 @@ the keyboard's search action dismissed the keyboard to reveal them.
 
 On a 360 x 640 dp Android emulator with Spanish labels, three-button navigation,
 and 200% text, the sign-in role selector broke labels midword. Three-or-more
-segment groups now stack into full-width rows at this scale; the same selector
-remains horizontal at 100%. Sign-in and sign-up no longer open the keyboard on
+segment groups now stack into full-width rows at enlarged scales; the same selector
+remains horizontal at 100%. A follow-up at 150% exposed labels broken midword
+below the original 175% threshold, so the phone-size fallback now begins at 125%.
+The 150% native recheck showed complete labels in full-width rows, while the 100%
+layout stayed horizontal. Sign-in and sign-up no longer open the keyboard on
 entry, so the page title and action remain visible until a field is chosen.
 
 The Android form scroller now follows focused inputs when the keyboard opens.

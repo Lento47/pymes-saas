@@ -25,7 +25,7 @@ import { Text } from "./text";
  * a setting — which is why this one is a `radio` group and announces itself as one.
  *
  * Five is the ceiling and it was raised from four for `app/nearby.tsx`'s sort row.
- * At 200% text on a phone, three or more narrow segments broke words in half.
+ * At 150% text on a phone, three or more narrow segments broke words in half.
  * Full-width rows retain the closed set and its radio semantics; the surrounding
  * screen can scroll to show the rest. A sixth sort should be a picker.
  *
@@ -95,7 +95,7 @@ export function Segmented({
 }: SegmentedProps) {
 	const { colors } = useTheme();
 	const { fontScale, width } = useWindowDimensions();
-	const stacked = fontScale >= 1.75 && width < 500 && options.length >= 3;
+	const stacked = fontScale >= 1.25 && width < 500 && options.length >= 3;
 
 	return (
 		<View
