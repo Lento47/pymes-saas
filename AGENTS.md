@@ -1,22 +1,56 @@
 # Hermes — Agente de PymesHub
 
 > **Auto-carga:** Este archivo se inyecta al inicio de cada sesión. No requiere carga manual.
-> **Última actualización:** 2026-05-22
+> **Última actualización:** 2026-10-08 — stack canónico corregido a Cloudflare-only; se
+> inventarió lo que aún vive en Railway en vez de borrarlo del documento.
 
 ---
 
 ## Stack Canónico
 
+> **Dirección canónica:** un solo proveedor. Cloudflare. Todo lo que corre es un Worker, y
+> todo lo que guarda es D1, R2, KV o Queues. No hay segundo backend, ni segunda base, ni
+> segunda cola.
+
 | Capa | Tecnología | Host |
 |------|-----------|------|
-| Backend | NestJS 11, Express, Prisma 7, BullMQ, Redis | Railway |
+| Backend | Cloudflare Worker (Hono, tRPC, Drizzle) | Cloudflare |
 | Frontend | React 18, Vite 7, Tailwind 3, wouter, shadcn/ui | Cloudflare Pages |
-| DB | PostgreSQL 16 | Railway |
-| Cache/Queue | Redis (BullMQ) | Railway |
-| Storage | MinIO/R2 | Cloudflare |
-| Edge | Cloudflare Worker (WebSocket proxy, KV cache) | Cloudflare |
+| DB | D1 (SQLite) | Cloudflare |
+| Cache/Queue | KV (cache) + Queues (`pymeshub-order-events`) | Cloudflare |
+| Storage | R2 (`pymeshub-media`) | Cloudflare |
+| Auth | Better Auth sobre D1 (`auth_*`) | Cloudflare |
 | Desktop | Tauri 2 | — |
-| Mobile | Flutter | — |
+| Mobile | React Native 0.86 / Expo 57 | — |
+
+### Lo que queda fuera de Cloudflare hoy
+
+**La tabla de arriba es el objetivo. El repositorio todavía no lo cumple entero.** Verificado
+el 2026-10-08:
+
+| Pieza | Dónde vive | Nota |
+|-------|-----------|------|
+| `apps/api` — NestJS 11, Express, Prisma 7 | Railway | **Sin migrar.** Sigue siendo el backend de la consola de plataforma y de `error_reports`. |
+| PostgreSQL 16 | Railway | La segunda base. `support_ticket` y el marketplace viven en D1, no acá. |
+| BullMQ + ioredis | Railway | **La segunda cola**, conviviendo con Cloudflare Queues. |
+| `error_reports` | PostgreSQL vía Prisma | **No existe en D1.** Todo error de cliente de web va ahí. |
+
+**Consecuencia práctica:** hay dos bases y dos sistemas de cola. Antes de agregar algo en
+`apps/api`, preguntarse si no pertenece al Worker. El argumento ya está escrito en el repo:
+`packages/trpc-api/src/routers/support.ts:39-45` rechaza un quinto nombre de capability
+*"because a fifth capability name would not say anything the existing set does not"*, y eso
+vale igual para un segundo backend.
+
+**Dos tickets, dos modelos — no confundirlos:**
+
+| | `support_ticket` | `SupportDiagnosticCase` |
+|---|---|---|
+| Dónde | D1 | PostgreSQL |
+| Qué es | El comerciante pregunta, el operador responde | Auto-abierto desde un error de cliente |
+| Ruta | `support.*` (tRPC, Worker) | `POST /api/error-reports/client` (NestJS) |
+
+Ninguno reemplaza al otro. Consolidar en Cloudflare implica mover también el segundo, o
+quedan dos sumideros de errores.
 
 ---
 
@@ -83,10 +117,12 @@ Si el usuario responde con desviación del objetivo, realinear antes de continua
 
 | Fecha | Decisión | Razón |
 |-------|----------|-------|
+| 2026-10 | **Cloudflare-only como dirección canónica** | Un proveedor, una base, una cola. Lo que queda en Railway está inventariado arriba y hay que vaciarlo. |
+| 2026-10 | El Worker es **el** backend, no el edge | **Anula la decisión de 2026-04.** 21 routers y servicios de miles de líneas (`orders.ts` 2285, `admin.ts` 2245). "No lógica de negocio en Workers" quedó obsoleto hace tiempo. |
 | 2026-05 | Unified `master` branch | Simplificar deploys, un solo source of truth |
-| 2026-05 | Prisma v7.8+ en Railway, v5.22 local | Railway usa `prisma.config.ts`, local requiere `url` temporal |
-| 2026-04 | Railway para backend, Cloudflare Pages para frontend | Separación clara de responsabilidades |
-| 2026-04 | Cloudflare Worker solo para edge (WS proxy, KV) | No lógica de negocio en Workers |
+| 2026-05 | Prisma v7.8+ en Railway, v5.22 local | Railway usa `prisma.config.ts`, local requiere `url` temporal — **anulada por el 2026-10**; Prisma se va con `apps/api` |
+| 2026-04 | Railway para backend, Cloudflare Pages para frontend | **Superada.** Separación de responsabilidades que hoy son dos bases y dos colas |
+| 2026-04 | Cloudflare Worker solo para edge (WS proxy, KV) | **Superada.** Ver fila 2026-10 |
 | 2026-03 | Hash de identidad para servicios externos | GDPR — no pasar raw identifiers |
 
 ---
