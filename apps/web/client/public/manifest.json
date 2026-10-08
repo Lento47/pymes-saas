@@ -1,7 +1,7 @@
 {
   "name": "PymesHub",
   "short_name": "PymesHub",
-  "description": "CRM, facturación electrónica y automatización para PYMEs",
+  "description": "Lo que necesitas, de negocios cerca de ti",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

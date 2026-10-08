@@ -14,22 +14,29 @@
     <link rel="privacy-policy" href="/privacy-policy.html" />
     <link rel="terms-of-service" href="/terms-of-service.html" />
 
-    <title>PymesHub — CRM, facturación electrónica y automatización para PYMEs</title>
-    <meta name="description" content="Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas. Todo en un solo lugar." />
-    <meta name="keywords" content="facturación electrónica, CRM, WhatsApp business, PYMEs, Costa Rica, Hacienda, pipeline de ventas, automatización" />
+    <!--
+      The title and description describe **the marketplace**, which is the product these
+      pages are. They described the retired CRM — WhatsApp inboxes, electronic invoicing,
+      a sales pipeline — so every search result and browser tab advertised a product this
+      site does not sell. See `docs/` and AGENTS.md: `apps/api` is the legacy backend and
+      nothing here reads it.
+    -->
+    <title>PymesHub — Lo que necesitas, de negocios cerca de ti</title>
+    <meta name="description" content="Pedí de negocios cerca de vos y seguí tu pedido en vivo. Para comercios: tu tienda con catálogo, delivery y retiro en tienda, por una tarifa fija y sin comisión de tus ventas." />
+    <meta name="keywords" content="marketplace, delivery, retiro en tienda, comercios locales, PYMEs, Costa Rica, pedidos en línea" />
 
     <link rel="canonical" href="https://pymeshub.lat/" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="PymesHub" />
     <meta property="og:url" content="https://pymeshub.lat/" />
-    <meta property="og:title" content="PymesHub — CRM, facturación electrónica y automatización para PYMEs" />
-    <meta property="og:description" content="Centralizá conversaciones, facturá electrónicamente con Hacienda CR, automatizá tareas y gestioná tu pipeline de ventas." />
+    <meta property="og:title" content="PymesHub — Lo que necesitas, de negocios cerca de ti" />
+    <meta property="og:description" content="Pedí de negocios cerca de vos y seguí tu pedido en vivo. Tu tienda con catálogo, delivery y retiro, por una tarifa fija y sin comisión." />
     <meta property="og:image" content="https://pymeshub.lat/images/pymesHub.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="PymesHub — CRM, facturación electrónica y automatización para PYMEs" />
-    <meta name="twitter:description" content="Centralizá conversaciones, facturá electrónicamente con Hacienda CR, automatizá tareas y gestioná tu pipeline de ventas." />
+    <meta name="twitter:title" content="PymesHub — Lo que necesitas, de negocios cerca de ti" />
+    <meta name="twitter:description" content="Pedí de negocios cerca de vos y seguí tu pedido en vivo. Tu tienda con catálogo, delivery y retiro, por una tarifa fija y sin comisión." />
     <meta name="twitter:image" content="https://pymeshub.lat/images/pymesHub.png" />
 
     <link rel="icon" type="image/png" href="/images/appIcon-192.png" />
@@ -45,7 +52,7 @@
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
         "url": "https://pymeshub.lat/",
-        "description": "CRM, WhatsApp shared inbox, client management, invoicing and workflow automation for growing SMBs.",
+        "description": "A marketplace where local businesses sell with delivery or pickup, and a storefront app for the merchants themselves.",
         "offers": {
           "@type": "Offer",
           "category": "SaaS",
@@ -104,15 +111,7 @@
     </script>
   </head>
   <body>
-    <div id="root" style="min-height:100dvh">
-      <!-- Google OAuth verification — crawlers see this, React.render() replaces entire #root -->
-      <div id="seo-legal">
-        <h1>PymesHub — CRM, facturación electrónica y automatización para PYMEs</h1>
-        <p>Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas.</p>
-        <a href="/privacy-policy.html">Política de privacidad</a>
-        <a href="/terms-of-service.html">Términos del servicio</a>
-      </div>
-    </div>
+    <div id="root" style="min-height:100dvh"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Facebook SDK — async, non-blocking -->
     <script>
