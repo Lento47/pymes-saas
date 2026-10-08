@@ -61,10 +61,8 @@ export function CouponStrip({
 			onPress={onPress}
 			accessibilityLabel={sentence}
 			accessibilityHint={t("home.minOrder.help")}
-			// Flat: no `shadow.card` lift. The strip sits one screen above the
-			// floating `ActionBar`, and two lifted cards 8pt apart read as one
-			// surface split in two — the bar keeps the lift, this keeps the border.
-			style={{ elevation: 0, shadowOpacity: 0, boxShadow: "none" }}
+			// The nearby ActionBar carries the lift; this strip keeps the card border.
+			elevation="flat"
 		>
 			<View style={styles.row}>
 				<View style={[styles.disc, { backgroundColor: colors.accent }]}>

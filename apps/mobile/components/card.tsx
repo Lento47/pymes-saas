@@ -25,6 +25,7 @@ export function Card({
 	accessibilityLabel,
 	accessibilityHint,
 	tone = "surface",
+	elevation = "card",
 	style,
 }: {
 	children: React.ReactNode;
@@ -45,6 +46,8 @@ export function Card({
 	 * a border nobody asked for. Every other number on it is the same card.
 	 */
 	tone?: "surface" | "brand" | "spotlight";
+	/** Keep adjacent floating surfaces distinct without overriding shadow styles at call sites. */
+	elevation?: "card" | "flat";
 	/**
 	 * `StyleProp<ViewStyle>` and not a bare `ViewStyle`, which is what `View` accepts and
 	 * what a caller composing `[a, b]` needs. It is spread **last** into the surface array,
@@ -70,7 +73,7 @@ export function Card({
 						: colors.card,
 			borderColor: tone === "brand" ? colors.primary : colors.border,
 		},
-		shadow.card,
+		elevation === "card" ? shadow.card : null,
 		style,
 	];
 
