@@ -17,6 +17,7 @@ import {
 	ScrollView,
 	StyleSheet,
 	TextInput,
+	useWindowDimensions,
 	View,
 } from "react-native";
 
@@ -145,6 +146,8 @@ export default function HomeScreen() {
 	const trpc = useTRPC();
 	const { t, intlLocale } = useT();
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
+	const expandedShortcuts = fontScale > 1.25;
 	const { session } = useSession();
 	const { coords, request, status: locationStatus } = useDeviceLocation();
 	const browseLocation = useBrowseLocation();
@@ -454,20 +457,32 @@ export default function HomeScreen() {
 			    draws (`./hero-search`'s own note), so the row reads as doors *around* the
 			    marketplace rather than as filters inside one screen. */}
 				{searching ? null : (
-					<View style={styles.shortcuts}>
+					<View
+						style={[
+							styles.shortcuts,
+							expandedShortcuts && styles.shortcutsExpanded,
+						]}
+					>
 						<Shortcut
 							label={t("home.offers")}
 							onPress={() => router.push("/offers")}
+							expanded={expandedShortcuts}
 						/>
 						<Shortcut
 							label={t("home.shortcuts.nearby")}
 							onPress={() => router.push("/nearby")}
+							expanded={expandedShortcuts}
 						/>
 						<Shortcut
 							label={t("nav.favorites")}
 							onPress={() => router.push("/favorites")}
+							expanded={expandedShortcuts}
 						/>
-						<Shortcut label={t("home.shortcuts.recent")} onPress={openSearch} />
+						<Shortcut
+							label={t("home.shortcuts.recent")}
+							onPress={openSearch}
+							expanded={expandedShortcuts}
+						/>
 					</View>
 				)}
 
@@ -718,7 +733,15 @@ function CartSummary({
  * recents search — and the only palette it borrows is the same `input` boundary the
  * field above it draws.
  */
-function Shortcut({ label, onPress }: { label: string; onPress: () => void }) {
+function Shortcut({
+	label,
+	onPress,
+	expanded,
+}: {
+	label: string;
+	onPress: () => void;
+	expanded: boolean;
+}) {
 	const { colors } = useTheme();
 
 	return (
@@ -728,10 +751,11 @@ function Shortcut({ label, onPress }: { label: string; onPress: () => void }) {
 			accessibilityLabel={label}
 			style={[
 				styles.shortcut,
+				expanded && styles.shortcutExpanded,
 				{ backgroundColor: colors.card, borderColor: colors.input },
 			]}
 		>
-			<Text variant="label" bold numberOfLines={1}>
+			<Text variant="label" bold style={styles.shortcutLabel}>
 				{label}
 			</Text>
 		</Pressable>
@@ -862,6 +886,7 @@ const styles = StyleSheet.create({
 		marginHorizontal: space.lg,
 		marginTop: space.sm,
 	},
+	shortcutsExpanded: { flexWrap: "wrap" },
 	shortcut: {
 		flex: 1,
 		paddingVertical: space.sm,
@@ -870,6 +895,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	shortcutExpanded: { flexBasis: "45%" },
+	shortcutLabel: { textAlign: "center" },
 });
 
 /** `catalog.feed`'s five lists and its taxonomy, as `Feed` draws them. */

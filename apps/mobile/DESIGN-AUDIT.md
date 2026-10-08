@@ -114,6 +114,17 @@ reported 279 passing tests and two failures: the known palette uniqueness assert
 and business tab/layout coverage while a separate merchant-support change was in
 progress. Those unrelated files were not included in this increment.
 
+## Follow-up: Home shortcut text
+
+The four catalogue shortcuts were clipped to one line at 200% text sizing on a
+360 x 640 dp Android screen; Spanish labels appeared as fragments. Home now uses
+two rows when the system font scale exceeds 125%, and shortcut labels may wrap.
+The four destinations and their press targets remain the same. Native checks on
+October 8 show complete Spanish labels in two rows at 200%, and the original
+single row with complete labels at 100%. Mobile TypeScript, focused Biome, and
+27 Home/navigation/scroll tests passed. This is a Home-specific finding, not a
+sign-off on other browse or account screens.
+
 ## Verification baseline
 
 - Mobile and API TypeScript passed before shared-control edits.
