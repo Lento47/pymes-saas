@@ -7,7 +7,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
@@ -154,7 +154,7 @@ function TaskSheetForm({
                   <Button
                     ref={keepEditingRef}
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     className="min-h-11"
                     onClick={() => {
                       setConfirmDiscard(false);
@@ -165,7 +165,7 @@ function TaskSheetForm({
                   </Button>
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="danger"
                     className="min-h-11"
                     onClick={() => onOpenChange(false)}
                   >
@@ -312,7 +312,7 @@ function TaskSheetForm({
           <SheetFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border px-5 py-4 pb-[max(16px,env(safe-area-inset-bottom))]">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={isSaving}
               className="min-h-12 rounded-xl"
               onClick={() => close(false)}

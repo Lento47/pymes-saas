@@ -6,7 +6,7 @@ import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -340,7 +340,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               className="h-8 gap-1.5 text-xs"
               onClick={handleMarkAllRead}
             >

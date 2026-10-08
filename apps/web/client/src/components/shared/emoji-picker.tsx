@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Smile } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { cn } from "@/lib/utils";
 
 const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [

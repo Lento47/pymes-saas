@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { SecretInput } from "@/components/settings/secret-input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Label } from "@/components/ui/label";
 
 function ApiKeyCard({
@@ -40,7 +40,7 @@ function ApiKeyCard({
       </div>
       <div className="flex items-center gap-2 justify-end">
         {isSet && (
-          <Button size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={onClear} disabled={isPending}>
+          <Button size="sm" variant="secondary" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={onClear} disabled={isPending}>
             {isPending ? "Eliminando..." : "Eliminar key"}
           </Button>
         )}

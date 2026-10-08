@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import {
   Loader2, CheckCircle2, ChevronLeft,
   UtensilsCrossed, Briefcase, ShoppingCart, Heart, BookOpen, Laptop,
@@ -270,7 +270,7 @@ export default function OnboardingPage() {
         <div className="mt-6 flex items-center gap-2.5">
           {step > 0 && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className="h-8 gap-1.5 text-xs"
               onClick={() => setStep((s) => s - 1)}

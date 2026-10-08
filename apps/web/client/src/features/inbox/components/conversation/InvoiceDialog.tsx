@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -182,7 +182,7 @@ export function InvoiceDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => onOpenChange(false)}>Cancelar</Button>
           {contactId && (
             <Button size="sm" className="h-8 text-xs"
               onClick={() => createInvMut.mutate({ form: { number: invoiceForm.number, currency: invoiceForm.currency, due_date: invoiceForm.due_date, description: invoiceForm.description }, lines })}

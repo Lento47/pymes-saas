@@ -12,7 +12,7 @@ import {
   Users,
   Workflow,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -269,7 +269,7 @@ export default function HelpCenterPage() {
             </p>
           </div>
           <Link href="/support">
-            <Button variant="outline" size="sm" className="gap-2 shrink-0">
+            <Button variant="secondary" size="sm" className="gap-2 shrink-0">
               <MessageSquare className="h-4 w-4" />
               Hablar con soporte
             </Button>

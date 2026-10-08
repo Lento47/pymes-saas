@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { SecretInput } from "@/components/settings/secret-input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -444,7 +444,7 @@ export function WorkspaceTab() {
                   <div className="mt-1 flex items-center gap-2">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => certInputRef.current?.click()}
                     >
@@ -494,7 +494,7 @@ export function WorkspaceTab() {
                   Paso {taxStep + 1} de {taxSteps.length}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={() => setTaxStep((prev) => Math.max(prev - 1, 0))} disabled={taxStep === 0}>
+                  <Button type="button" variant="secondary" onClick={() => setTaxStep((prev) => Math.max(prev - 1, 0))} disabled={taxStep === 0}>
                     Anterior
                   </Button>
                   <Button type="button" onClick={() => setTaxStep((prev) => Math.min(prev + 1, taxSteps.length - 1))} disabled={taxStep === taxSteps.length - 1}>

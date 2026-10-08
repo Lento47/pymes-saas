@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { EmojiPicker } from "@/components/shared/emoji-picker";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,

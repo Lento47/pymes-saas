@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Phone, PhoneOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { createRingtone } from "./lib/ringtone";
 import { useCallContext } from "./CallProvider";
 
@@ -55,7 +55,7 @@ export function IncomingCallDialog() {
 
         <div className="flex items-center gap-4">
           <Button
-            variant="outline"
+            variant="secondary"
             size="lg"
             className="h-14 w-14 rounded-full p-0 bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
             onClick={rejectCall}

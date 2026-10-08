@@ -58,7 +58,7 @@ export default function VerifyEmailPage() {
               <h1 className="text-base font-semibold text-foreground">No se pudo verificar</h1>
               <p className="text-sm text-muted-foreground">{errorMsg}</p>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>
+            <Button variant="secondary" className="w-full" onClick={() => navigate('/dashboard')}>
               Volver al panel
             </Button>
           </>

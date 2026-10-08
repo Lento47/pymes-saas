@@ -4,7 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Badge } from "@/components/ui/badge";
 
 const statusColors: Record<string, string> = {
@@ -83,7 +83,7 @@ export default function PlaybookSuggestionsPage() {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     className="text-green-700 border-green-200 hover:bg-green-50"
                     disabled={updateMut.isPending}
                     onClick={() => updateMut.mutate({ id: pb.id, status: "APPROVED" })}

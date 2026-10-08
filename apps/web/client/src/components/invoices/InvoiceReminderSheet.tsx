@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { apiErrorDescription } from "@/lib/api-error";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
@@ -77,7 +77,7 @@ export function InvoiceReminderSheet({ invoice, onClose, onSent, restoreFocus }:
             <div className="space-y-2">
               <Label htmlFor="reminder-channel">Canal de envío</Label>
               {channelsQuery.isLoading ? <p role="status" className="text-sm">Cargando canales…</p>
-                : channelsQuery.isError ? <div role="alert" className="space-y-2 text-sm"><p>No se pudieron cargar los canales.</p><Button type="button" variant="outline" className="min-h-12" disabled={channelsQuery.isFetching} onClick={() => channelsQuery.refetch()}>Reintentar canales</Button></div>
+                : channelsQuery.isError ? <div role="alert" className="space-y-2 text-sm"><p>No se pudieron cargar los canales.</p><Button type="button" variant="secondary" className="min-h-12" disabled={channelsQuery.isFetching} onClick={() => channelsQuery.refetch()}>Reintentar canales</Button></div>
                 : channels.length === 0 ? <p role="status" className="text-sm text-muted-foreground">No hay canales activos compatibles con los datos de este cliente. Revisa su correo o teléfono y la configuración del canal.</p>
                 : <select id="reminder-channel" className="h-12 w-full min-w-0 rounded-xl border bg-background px-3 text-base" value={channelId} onChange={event => setChannelId(event.target.value)}>
                   {channels.map((item: any) => <option key={item.id} value={item.id}>{item.name} · {item.type === "EMAIL" ? "Correo" : "WhatsApp"}</option>)}
@@ -88,15 +88,15 @@ export function InvoiceReminderSheet({ invoice, onClose, onSent, restoreFocus }:
             <div className="space-y-2">
               <Label htmlFor="reminder-draft">Borrador del recordatorio</Label>
               {generate.isPending && <p role="status" className="text-sm">Preparando borrador…</p>}
-              {generate.isError && <div role="alert" className="space-y-2 text-sm"><p>{apiErrorDescription(generate.error, "No se pudo preparar el borrador.")}</p><Button type="button" variant="outline" className="min-h-12" onClick={() => generate.mutate()}>Reintentar borrador</Button></div>}
+              {generate.isError && <div role="alert" className="space-y-2 text-sm"><p>{apiErrorDescription(generate.error, "No se pudo preparar el borrador.")}</p><Button type="button" variant="secondary" className="min-h-12" onClick={() => generate.mutate()}>Reintentar borrador</Button></div>}
               <Textarea id="reminder-draft" className="min-h-[200px] rounded-xl text-base" value={draft} disabled={generate.isPending} required onChange={event => { edited.current = true; setDraft(event.target.value); }} />
             </div>
             {send.isError && <div role="alert" className="text-sm text-destructive">{apiErrorDescription(send.error, "No se pudo enviar el recordatorio. Conservamos tu borrador.")}</div>}
-            {discard && <div role="group" aria-label="Cambios sin enviar" className="space-y-3 rounded-xl border p-4"><p className="text-sm">Tienes cambios sin enviar. ¿Quieres descartarlos?</p><div className="flex flex-wrap gap-2"><Button ref={keepEditing} type="button" variant="outline" className="min-h-12" onClick={() => setDiscard(false)}>Seguir editando</Button><Button type="button" variant="destructive" className="min-h-12" onClick={onClose}>Descartar cambios</Button></div></div>}
+            {discard && <div role="group" aria-label="Cambios sin enviar" className="space-y-3 rounded-xl border p-4"><p className="text-sm">Tienes cambios sin enviar. ¿Quieres descartarlos?</p><div className="flex flex-wrap gap-2"><Button ref={keepEditing} type="button" variant="secondary" className="min-h-12" onClick={() => setDiscard(false)}>Seguir editando</Button><Button type="button" variant="danger" className="min-h-12" onClick={onClose}>Descartar cambios</Button></div></div>}
           </fieldset>
         </div>
         <SheetFooter className="shrink-0 gap-2 border-t px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <Button type="button" variant="outline" className="min-h-12" disabled={send.isPending} onClick={close}>Cancelar</Button>
+          <Button type="button" variant="secondary" className="min-h-12" disabled={send.isPending} onClick={close}>Cancelar</Button>
           <Button type="submit" className="min-h-12" disabled={!canSend}>{send.isPending ? <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" /> : <Send aria-hidden className="mr-2 h-4 w-4" />}{send.isPending ? "Enviando…" : "Enviar recordatorio"}</Button>
         </SheetFooter>
       </form>

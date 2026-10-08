@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Settings, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { useCallContext } from "./CallProvider";
 import { getDevices, type MediaDevice } from "./lib/device-utils";
 
@@ -116,7 +116,7 @@ export function CallPage() {
       {/* Controls */}
       <div className="flex items-center justify-center gap-4 p-6 border-t border-border">
         <Button
-          variant="outline"
+          variant="secondary"
           size="lg"
           className={`h-12 w-12 rounded-full p-0 ${isMuted ? "bg-destructive/10 border-destructive/30 text-destructive" : ""}`}
           onClick={handleToggleMute}
@@ -127,7 +127,7 @@ export function CallPage() {
 
         {call?.type === "video" && (
           <Button
-            variant="outline"
+            variant="secondary"
             size="lg"
             className={`h-12 w-12 rounded-full p-0 ${isVideoOff ? "bg-destructive/10 border-destructive/30 text-destructive" : ""}`}
             onClick={handleToggleVideo}
@@ -138,7 +138,7 @@ export function CallPage() {
         )}
 
         <Button
-          variant="destructive"
+          variant="danger"
           size="lg"
           className="h-12 w-12 rounded-full p-0"
           onClick={endCall}

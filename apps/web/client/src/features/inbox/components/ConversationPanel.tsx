@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { hasPermission, Permission } from "@/lib/permissions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
@@ -532,7 +532,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   if (!id) return null;
   if (conversationLoading) return <div role="status" className="p-6">Cargando conversación…</div>;
-  if (conversationError || !conv) return <div role="alert" className="space-y-4 p-6"><p>No se pudo cargar la conversación.</p><Button className="min-h-12" onClick={() => retryConversation()}>Reintentar conversación</Button>{onBack && <Button variant="outline" className="min-h-12" onClick={onBack}>Volver a la bandeja</Button>}</div>;
+  if (conversationError || !conv) return <div role="alert" className="space-y-4 p-6"><p>No se pudo cargar la conversación.</p><Button className="min-h-12" onClick={() => retryConversation()}>Reintentar conversación</Button>{onBack && <Button variant="secondary" className="min-h-12" onClick={onBack}>Volver a la bandeja</Button>}</div>;
 
   const channelLabel = CHANNEL_LABELS[channelType] || channelType;
   const statusLabel = conversation?.status ? STATUS_LABELS[conversation.status] ?? conversation.status : null;

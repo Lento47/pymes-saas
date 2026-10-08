@@ -1,5 +1,5 @@
 import { Bot, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 
 interface AgentTemplateCardProps {
   template: Record<string, any>;
@@ -27,7 +27,7 @@ export function AgentTemplateCard({
         </span>
         <Button
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={installing}
           onClick={() => onInstall(template.id)}
           className="h-7 gap-1 text-xs"

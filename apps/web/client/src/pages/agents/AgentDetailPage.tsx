@@ -9,7 +9,7 @@ import { queryClient } from "@/lib/queryClient";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -164,7 +164,7 @@ export default function AgentDetailPage({ id }: Props) {
           {isActive ? (
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() => deactivateMut.mutate()}
               disabled={deactivateMut.isPending}
               className="text-xs h-8"

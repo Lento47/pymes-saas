@@ -401,7 +401,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
       {onRetry ? (
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={onRetry}
           className="border-destructive/40 text-destructive hover:bg-destructive/10"
         >

@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { apiErrorDescription } from "@/lib/api-error";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -65,7 +65,7 @@ export function InvoiceActionDialog({ action, onClose, onSuccess, restoreFocus }
         {operation.isError && <div role="alert" className="text-sm text-destructive">{apiErrorDescription(operation.error, "No se pudo completar la operación. Vuelve a intentar.")}</div>}
         <AlertDialogFooter className="gap-2">
           <AlertDialogCancel type="button" className="min-h-12" disabled={operation.isPending}>Volver</AlertDialogCancel>
-          <Button type="submit" variant={destructive ? "destructive" : "default"} className="min-h-12 whitespace-normal" disabled={operation.isPending}>
+          <Button type="submit" variant={destructive ? "danger" : "primary"} className="min-h-12 whitespace-normal" disabled={operation.isPending}>
             {operation.isPending && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}{operation.isPending ? "Procesando…" : text.button}
           </Button>
         </AlertDialogFooter>

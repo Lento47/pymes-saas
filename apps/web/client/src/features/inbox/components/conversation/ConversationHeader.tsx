@@ -15,7 +15,7 @@ import {
   UserPlus,
   Video,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -126,7 +126,7 @@ export function ConversationHeader({
     <div className={`flex items-center gap-2.5 border-b border-border bg-background px-3 py-2.5 sm:px-4 shrink-0 ${className ?? ""}`}>
       <div className="hidden shrink-0 items-center sm:flex" role="group" aria-label="Navegación de conversación">
         {onBack && (
-          <Button variant="outline" size="sm" className={groupedIconButtonClass} onClick={onBack} aria-label="Volver">
+          <Button variant="secondary" size="sm" className={groupedIconButtonClass} onClick={onBack} aria-label="Volver">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
@@ -170,7 +170,7 @@ export function ConversationHeader({
           <div className="hidden items-center lg:flex" role="group" aria-label="Acciones de IA">
             {onStartAgent && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 className={`${groupedButtonClass} text-violet-600 hover:text-violet-700`}
                 onClick={onStartAgent}
@@ -183,7 +183,7 @@ export function ConversationHeader({
             )}
             {onDelegateToAi && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 className={`${groupedButtonClass} text-primary hover:text-primary`}
                 onClick={onDelegateToAi}
@@ -196,7 +196,7 @@ export function ConversationHeader({
             )}
             {onPauseAi && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 className={`${groupedButtonClass} text-amber-600 hover:text-amber-600`}
                 onClick={onPauseAi}
@@ -213,7 +213,7 @@ export function ConversationHeader({
         <div className="hidden items-center 2xl:flex" role="group" aria-label="Acciones principales de conversación">
           {canCall && onStartAudioCall && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className={groupedButtonClass}
               onClick={onStartAudioCall}
@@ -225,7 +225,7 @@ export function ConversationHeader({
           )}
           {canCall && onStartVideoCall && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className={groupedButtonClass}
               onClick={onStartVideoCall}
@@ -239,7 +239,7 @@ export function ConversationHeader({
           {onStatusChange && currentStatus && currentStatus !== "RESOLVED" ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className={groupedButtonClass} aria-label="Cambiar estado">
+                <Button variant="secondary" size="sm" className={groupedButtonClass} aria-label="Cambiar estado">
                   {currentStatusLabel}
                   <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
                 </Button>
@@ -261,7 +261,7 @@ export function ConversationHeader({
             </DropdownMenu>
           ) : onResolve ? (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className={`${groupedButtonClass} text-emerald-600 hover:text-emerald-700`}
               disabled={!canResolve}
@@ -274,14 +274,14 @@ export function ConversationHeader({
           ) : null}
 
           {onCreateTask && (
-            <Button variant="outline" size="sm" className={groupedButtonClass} onClick={onCreateTask} aria-label="Crear tarea">
+            <Button variant="secondary" size="sm" className={groupedButtonClass} onClick={onCreateTask} aria-label="Crear tarea">
               <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
               Tarea
             </Button>
           )}
 
           {onInvoice && canSendInvoice && (
-            <Button variant="outline" size="sm" className={groupedButtonClass} onClick={onInvoice} aria-label="Crear factura">
+            <Button variant="secondary" size="sm" className={groupedButtonClass} onClick={onInvoice} aria-label="Crear factura">
               <Receipt className="mr-1.5 h-3.5 w-3.5" />
               Factura
             </Button>
@@ -291,7 +291,7 @@ export function ConversationHeader({
         <div className="flex items-center" role="group" aria-label="Más acciones de conversación">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-11 w-11 p-0" aria-label="Más opciones">
+              <Button variant="secondary" size="sm" className="h-11 w-11 p-0" aria-label="Más opciones">
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>

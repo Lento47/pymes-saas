@@ -451,7 +451,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     className="h-7 text-xs border-border"
                     onClick={registerWebhook}
                     disabled={registering || !isEdit}
@@ -461,7 +461,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     className="h-7 text-xs border-border"
                     onClick={checkWebhookStatus}
                     disabled={checkingStatus}
@@ -536,7 +536,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
                 <CardTitle className="text-sm flex items-center gap-2"><Bot className="h-4 w-4 text-sky-400" /> Información del Bot</CardTitle>
                 <CardDescription className="text-xs">Datos devueltos por Telegram (getMe)</CardDescription>
               </div>
-              <Button size="sm" variant="outline" onClick={loadBotInfo} disabled={checkingBot || !isEdit} className="border-border h-7 text-xs">
+              <Button size="sm" variant="secondary" onClick={loadBotInfo} disabled={checkingBot || !isEdit} className="border-border h-7 text-xs">
                 {checkingBot ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Cargar / Actualizar
               </Button>
             </CardHeader>

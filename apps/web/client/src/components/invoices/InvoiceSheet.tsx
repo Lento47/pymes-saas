@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -293,7 +293,7 @@ function InvoiceSheetForm({
               </p>
             ) : (
               <div className="space-y-3">
-                {templateQuery.isError && <div role="alert"><p>No se pudieron cargar las plantillas.</p><Button type="button" variant="outline" onClick={() => void templateQuery.refetch()}>Reintentar plantillas</Button></div>}
+                {templateQuery.isError && <div role="alert"><p>No se pudieron cargar las plantillas.</p><Button type="button" variant="secondary" onClick={() => void templateQuery.refetch()}>Reintentar plantillas</Button></div>}
                 {templates.length > 0 && (
                   <div className="space-y-1.5">
                     <Label htmlFor="invoice-template" className="text-sm text-muted-foreground">Usar plantilla</Label>
@@ -359,7 +359,7 @@ function InvoiceSheetForm({
                     />
                     {productLoading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
                     {!productLoading && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />}
-                    {productError && <div role="alert"><p>No se pudieron cargar los productos.</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void handleProductSearch(productQuery)}>Reintentar productos</Button></div>}
+                    {productError && <div role="alert"><p>No se pudieron cargar los productos.</p><Button type="button" variant="secondary" className="min-h-11" onClick={() => void handleProductSearch(productQuery)}>Reintentar productos</Button></div>}
                     {productOpen && productResults.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 max-h-44 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
                         {productResults.map((p) => (
@@ -427,7 +427,7 @@ function InvoiceSheetForm({
                       {cabysLoading && <Loader2 className="absolute right-2.5 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
                       {!cabysLoading && <Search className="absolute right-2.5 w-3.5 h-3.5 text-muted-foreground/40" />}
                     </div>
-                    {cabysOpen && cabysError && <div role="alert"><p>No se pudo consultar CABYS.</p><Button type="button" variant="outline" className="min-h-11" onClick={retryCabys}>Reintentar CABYS</Button></div>}
+                    {cabysOpen && cabysError && <div role="alert"><p>No se pudo consultar CABYS.</p><Button type="button" variant="secondary" className="min-h-11" onClick={retryCabys}>Reintentar CABYS</Button></div>}
                     {cabysOpen && !cabysError && !cabysLoading && !cabysResults.length && <p role="status">No hay resultados CABYS.</p>}
                     {cabysOpen && cabysResults.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 max-h-44 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
@@ -471,7 +471,7 @@ function InvoiceSheetForm({
             <p>Hay cambios sin guardar.</p>
             <div className="flex flex-wrap gap-2">
               <Button ref={keepEditing} type="button" className="min-h-12" onClick={() => setConfirmDiscard(false)}>Seguir editando</Button>
-              <Button type="button" variant="outline" className="min-h-12" onClick={() => { onChange(original.current); onOpenChange(false); }}>Descartar cambios</Button>
+              <Button type="button" variant="secondary" className="min-h-12" onClick={() => { onChange(original.current); onOpenChange(false); }}>Descartar cambios</Button>
             </div>
           </div>}
         </fieldset>

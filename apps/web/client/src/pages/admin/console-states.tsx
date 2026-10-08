@@ -2,7 +2,7 @@ import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { EmptyState as ArcEmptyState } from "@/components/arc/empty-state/empty-state";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 
 /**
  * How a failed read and an empty one are drawn.
@@ -105,7 +105,7 @@ export function QueryErrorState({
     >
       <p className="text-sm text-destructive">{describeError(error, fallback)}</p>
       {onRetry ? (
-        <Button variant="outline" size="sm" onClick={onRetry} disabled={isRetrying}>
+        <Button variant="secondary" size="sm" onClick={onRetry} disabled={isRetrying}>
           <RefreshCw className={isRetrying ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
           {isRetrying ? "Reintentando…" : "Reintentar"}
         </Button>

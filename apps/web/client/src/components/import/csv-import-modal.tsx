@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { api, getAuthToken } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -188,7 +188,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
               </table>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setStep("map")}>Volver</Button>
+              <Button variant="secondary" size="sm" onClick={() => setStep("map")}>Volver</Button>
               <Button onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending} size="sm" className="gap-1.5">
                 {confirmMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 Importar {allRows.length} {entityType === "products" ? "productos" : entityType === "invoices" ? "facturas" : "contactos"}
@@ -215,7 +215,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
                 ))}
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={() => { onClose(); reset(); }}>Cerrar</Button>
+            <Button variant="secondary" size="sm" onClick={() => { onClose(); reset(); }}>Cerrar</Button>
           </div>
         )}
       </DialogContent>

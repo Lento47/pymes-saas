@@ -8,7 +8,7 @@ import { PageLoader } from "@/components/shared/loading-spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { useRoute, Link } from "wouter";
 import { TaskSheet, type TaskFormData } from "@/components/tasks/TaskSheet";
 import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, RefreshCw, Brain, Clock, PlusCircle, Receipt, Plus } from "lucide-react";
@@ -304,7 +304,7 @@ export default function ContactDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             className="h-8 gap-1.5 text-xs"
             onClick={() => setShowCreateTask(true)}
@@ -313,7 +313,7 @@ export default function ContactDetailPage() {
             Tarea
           </Button>
           <Link href={`/invoices?contact_id=${id}`}>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+            <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-xs">
               <Receipt className="w-3.5 h-3.5" />
               Factura
             </Button>

@@ -181,7 +181,7 @@ export default function MarketplaceCartPage() {
             />
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={applyPromotion.isPending || code.trim().length === 0}
               onClick={() =>
                 applyPromotion.mutate(

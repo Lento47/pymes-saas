@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,7 +50,7 @@ export default function ContactSalesModal({ open, onClose }: Props) {
             <Check className="w-10 h-10 text-emerald-400 mx-auto" />
             <p className="text-sm text-foreground font-semibold">¡Gracias por tu interés!</p>
             <p className="text-xs text-muted-foreground">Te contactaremos pronto para armar tu plan Business+ a medida.</p>
-            <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
+            <Button variant="secondary" size="sm" onClick={onClose}>Cerrar</Button>
           </div>
         </DialogContent>
       </Dialog>

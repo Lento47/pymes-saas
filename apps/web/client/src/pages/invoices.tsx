@@ -45,7 +45,7 @@ import { InvoiceActionDialog, type InvoiceAction } from "@/components/invoices/I
 import { FieldHelp } from "@/components/invoices/FieldHelp";
 import { HACIENDA_GUIDE } from "@/data/hacienda-guide";
 import { STATUS_OPTIONS, HACIENDA_STATUS_OPTIONS, DOCUMENT_TYPES, ISSUANCE_MODES } from "@/data/invoice-filters";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -558,7 +558,7 @@ function InvoiceWorkspace() {
         <form role="search" className="flex gap-2" onSubmit={(event) => { event.preventDefault(); filters({ q: search.trim() }); }}>
           <Label htmlFor="invoice-search" className="sr-only">Buscar factura o contacto</Label>
           <Input id="invoice-search" value={search} maxLength={255} onChange={event => setSearch(event.target.value)} placeholder="Factura o contacto" className="h-12 min-w-0 rounded-xl text-base" />
-          <Button type="submit" variant="outline" className="h-12 w-12 shrink-0 rounded-xl p-0" aria-label="Buscar facturas"><Search className="h-5 w-5" /></Button>
+          <Button type="submit" variant="secondary" className="h-12 w-12 shrink-0 rounded-xl p-0" aria-label="Buscar facturas"><Search className="h-5 w-5" /></Button>
         </form>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="space-y-1 text-sm">Estado de cobro
@@ -584,7 +584,7 @@ function InvoiceWorkspace() {
           </details>
         </div>
         {isError ? (
-          <div role="alert" className="rounded-xl border border-border p-5"><p>No se pudieron cargar las facturas.</p><Button className="mt-3 min-h-11" variant="outline" onClick={() => void refetch()} disabled={isFetching}>Reintentar</Button></div>
+          <div role="alert" className="rounded-xl border border-border p-5"><p>No se pudieron cargar las facturas.</p><Button className="mt-3 min-h-11" variant="secondary" onClick={() => void refetch()} disabled={isFetching}>Reintentar</Button></div>
         ) : isLoading ? (
           <PageLoader />
         ) : filteredInvoices.length === 0 ? (
@@ -682,16 +682,16 @@ function InvoiceWorkspace() {
           </>
         )}
         {!isError && !isLoading && (pages > 1 || page > 1) && <nav aria-label="Páginas de facturas" className="flex flex-wrap justify-between gap-3">
-          <Button variant="outline" className="min-h-12" disabled={page <= 1 || isFetching} onClick={() => filters({ page: String(page - 1) })}>Anterior</Button>
-          <Button variant="outline" className="min-h-12" disabled={page >= pages || isFetching} onClick={() => filters({ page: String(page + 1) })}>Siguiente</Button>
+          <Button variant="secondary" className="min-h-12" disabled={page <= 1 || isFetching} onClick={() => filters({ page: String(page - 1) })}>Anterior</Button>
+          <Button variant="secondary" className="min-h-12" disabled={page >= pages || isFetching} onClick={() => filters({ page: String(page + 1) })}>Siguiente</Button>
         </nav>}
         <details className="rounded-xl border border-border">
           <summary className="flex min-h-12 cursor-pointer items-center px-4 text-sm">Herramientas y ayuda fiscal</summary>
           <div className="space-y-3 border-t border-border p-4">
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="min-h-11" onClick={() => detectMutation.mutate()} disabled={detectMutation.isPending}>Detectar deudas</Button>
-              <Button variant="outline" className="min-h-11" onClick={event => { returnFocus.current = event.currentTarget; setShowGuide(true); }}>Guía Hacienda</Button>
-              <Button variant="outline" className="min-h-11" onClick={() => setImportOpen(true)}>Importar CSV</Button>
+              <Button variant="secondary" className="min-h-11" onClick={() => detectMutation.mutate()} disabled={detectMutation.isPending}>Detectar deudas</Button>
+              <Button variant="secondary" className="min-h-11" onClick={event => { returnFocus.current = event.currentTarget; setShowGuide(true); }}>Guía Hacienda</Button>
+              <Button variant="secondary" className="min-h-11" onClick={() => setImportOpen(true)}>Importar CSV</Button>
               <DiagnosticButton module="invoices" />
             </div>
             {workspaceData && !isHaciendaWorkspaceReady && <p className="text-sm text-muted-foreground">Para emitir con Hacienda, completa en Configuración: {haciendaReadinessIssues.join(", ")}.</p>}
@@ -801,7 +801,7 @@ function InvoiceWorkspace() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" className="h-12 text-base" onClick={() => setShowDetail(false)}>Cerrar</Button>
+            <Button variant="secondary" size="sm" className="h-12 text-base" onClick={() => setShowDetail(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -884,11 +884,11 @@ function InvoiceWorkspace() {
           {updateMutation.isError && <div role="alert" className="mt-3 text-sm text-destructive">{getErrorMessage(updateMutation.error)}</div>}
           {discardEdit && <div role="alert" className="mt-4 space-y-3 rounded-xl border border-border p-4"><p>Hay cambios sin guardar.</p><div className="flex flex-wrap gap-2">
             <Button ref={keepEditing} type="button" className="min-h-12" onClick={() => setDiscardEdit(false)}>Seguir editando</Button>
-            <Button type="button" variant="outline" className="min-h-12" onClick={() => { setShowEdit(false); setSelectedInvoice(null); setDiscardEdit(false); }}>Descartar cambios</Button>
+            <Button type="button" variant="secondary" className="min-h-12" onClick={() => { setShowEdit(false); setSelectedInvoice(null); setDiscardEdit(false); }}>Descartar cambios</Button>
           </div></div>}
           </div>
           <SheetFooter className="shrink-0 flex-row justify-between gap-2 border-t border-border px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-            <Button type="button" variant="outline" size="sm" className="h-12 text-base" disabled={updateMutation.isPending} onClick={() => closeEdit(false)}>Cancelar</Button>
+            <Button type="button" variant="secondary" size="sm" className="h-12 text-base" disabled={updateMutation.isPending} onClick={() => closeEdit(false)}>Cancelar</Button>
             <Button
               size="sm"
               className="h-12 text-base"
@@ -937,7 +937,7 @@ function InvoiceWorkspace() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" className="min-h-12 text-sm" onClick={() => setShowGuide(false)}>
+            <Button variant="secondary" size="sm" className="min-h-12 text-sm" onClick={() => setShowGuide(false)}>
               Cerrar
             </Button>
           </DialogFooter>
@@ -1044,7 +1044,7 @@ function InvoiceWorkspace() {
           )}
           {registerPaymentMutation.isError && <p role="alert" className="my-3 text-sm text-destructive">No se pudo registrar el pago. Revisa los datos y vuelve a intentar.</p>}
           <DialogFooter className="mt-4 gap-2">
-            <Button type="button" variant="outline" size="sm" className="h-12 text-base" disabled={registerPaymentMutation.isPending} onClick={() => setShowPayment(false)}>
+            <Button type="button" variant="secondary" size="sm" className="h-12 text-base" disabled={registerPaymentMutation.isPending} onClick={() => setShowPayment(false)}>
               Cancelar
             </Button>
             <Button
@@ -1099,7 +1099,7 @@ function InvoiceWorkspace() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" className="min-h-12 text-sm" onClick={() => setShowValidation(false)}>Cerrar</Button>
+            <Button variant="secondary" size="sm" className="min-h-12 text-sm" onClick={() => setShowValidation(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1131,7 +1131,7 @@ function InvoiceWorkspace() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" className="min-h-12 text-sm" onClick={() => setShowErrorExplain(false)}>Cerrar</Button>
+            <Button variant="secondary" size="sm" className="min-h-12 text-sm" onClick={() => setShowErrorExplain(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1148,7 +1148,7 @@ function InvoiceWorkspace() {
             <div className="min-w-0 space-y-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-12 text-sm"
                   onClick={async () => { try { await navigator.clipboard.writeText(xmlPreview.xml); setCopyStatus("XML copiado."); } catch { setCopyStatus("No se pudo copiar. Puedes seleccionar el XML o descargarlo."); } }}
@@ -1156,7 +1156,7 @@ function InvoiceWorkspace() {
                   Copiar XML
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-12 text-sm"
                   onClick={() => {
@@ -1179,7 +1179,7 @@ function InvoiceWorkspace() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" className="min-h-12 text-sm" onClick={() => setShowXmlPreview(false)}>Cerrar</Button>
+            <Button variant="secondary" size="sm" className="min-h-12 text-sm" onClick={() => setShowXmlPreview(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

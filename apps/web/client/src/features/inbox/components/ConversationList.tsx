@@ -1,7 +1,7 @@
 import type { ChannelTab, InboxConversation } from "../types";
 import { ConversationListItem } from "./ConversationListItem";
 import { ConversationEmptyState } from "./ConversationEmptyState";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import type { RefObject } from "react";
 
 function ConversationListSkeleton() {
@@ -49,7 +49,7 @@ export function ConversationList({
       </div>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto minimal-scrollbar">
-        {isError && <div role="alert" className="space-y-3 p-4"><p className="text-sm">No se pudieron cargar las conversaciones. {conversations.length > 0 && "La lista anterior puede estar desactualizada."}</p><Button className="min-h-12" variant="outline" onClick={onRetry} disabled={isFetching}>Reintentar conversaciones</Button></div>}
+        {isError && <div role="alert" className="space-y-3 p-4"><p className="text-sm">No se pudieron cargar las conversaciones. {conversations.length > 0 && "La lista anterior puede estar desactualizada."}</p><Button className="min-h-12" variant="secondary" onClick={onRetry} disabled={isFetching}>Reintentar conversaciones</Button></div>}
         {isLoading ? (
           <ConversationListSkeleton />
         ) : conversations.length === 0 && !isError ? (
@@ -68,9 +68,9 @@ export function ConversationList({
         )}
       </div>
       {pages > 1 && <nav aria-label="Páginas de conversaciones" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-background p-3">
-        <Button className="min-h-11" variant="outline" disabled={page <= 1 || isLoading} onClick={() => onPageChange(page - 1)}>Anterior</Button>
+        <Button className="min-h-11" variant="secondary" disabled={page <= 1 || isLoading} onClick={() => onPageChange(page - 1)}>Anterior</Button>
         <span className="text-sm text-muted-foreground">{page} de {pages}</span>
-        <Button className="min-h-11" variant="outline" disabled={page >= pages || isLoading} onClick={() => onPageChange(page + 1)}>Siguiente</Button>
+        <Button className="min-h-11" variant="secondary" disabled={page >= pages || isLoading} onClick={() => onPageChange(page + 1)}>Siguiente</Button>
       </nav>}
     </section>
   );

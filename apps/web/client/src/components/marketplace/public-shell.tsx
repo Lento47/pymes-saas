@@ -14,7 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
 import { useTheme } from "@/components/providers/theme-provider";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { marketplaceAuth, useCart, useMarketplaceSession } from "@/lib/marketplace";
@@ -316,7 +316,7 @@ export function OutlineButton({
   return (
     <Button
       type={type}
-      variant="outline"
+      variant="secondary"
       onClick={onClick}
       disabled={disabled}
       className={cn(

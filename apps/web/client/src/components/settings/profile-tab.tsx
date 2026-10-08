@@ -4,7 +4,7 @@ import { Camera, Eye, EyeOff, Loader2, Upload } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AccountAvatar } from "@/components/account-avatar";
@@ -126,7 +126,7 @@ export function ProfileTab({
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   className="min-h-12 rounded-xl"
                   disabled={uploadAv.isPending}
                   onClick={() => fileInput.current?.click()}
@@ -146,7 +146,7 @@ export function ProfileTab({
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   className="min-h-12 rounded-xl"
                   disabled={uploadAv.isPending}
                   onClick={() => cameraInput.current?.click()}

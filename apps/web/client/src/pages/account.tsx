@@ -19,7 +19,7 @@ import { useDisplayPreferences } from "@/components/providers/display-preference
 import { ProfileTab } from "@/components/settings/profile-tab";
 import { AccountAvatar } from "@/components/account-avatar";
 import { DevicePermissions } from "@/components/settings/device-permissions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { hasPermission, Permission } from "@/lib/permissions";
@@ -122,7 +122,7 @@ export default function AccountPage({ section }: { section?: string }) {
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-11 rounded-lg text-xs"
                   disabled={uploadingPhoto}
@@ -133,7 +133,7 @@ export default function AccountPage({ section }: { section?: string }) {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-11 rounded-lg text-xs"
                   disabled={uploadingPhoto}
@@ -211,7 +211,7 @@ export default function AccountPage({ section }: { section?: string }) {
             <ChevronRight aria-hidden="true" className="h-4 w-4" />
           </Link>
           <Button
-            variant="outline"
+            variant="secondary"
             disabled={leaving}
             className="mt-5 min-h-12 w-full rounded-2xl"
             onClick={async () => {

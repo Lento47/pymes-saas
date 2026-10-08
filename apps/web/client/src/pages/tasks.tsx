@@ -7,7 +7,7 @@ import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { hasPermission, Permission } from "@/lib/permissions";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -200,7 +200,7 @@ export default function TasksPage() {
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         className="mobile-tab h-11 w-11 shrink-0 rounded-full p-0"
         aria-label={
           (done
@@ -387,7 +387,7 @@ export default function TasksPage() {
           />
           <Button
             type="submit"
-            variant="outline"
+            variant="secondary"
             className="min-h-12 rounded-2xl"
           >
             {es ? "Buscar" : "Search"}
@@ -401,7 +401,7 @@ export default function TasksPage() {
             <Button
               key={value}
               type="button"
-              variant={status === value ? "default" : "outline"}
+              variant={status === value ? "primary" : "secondary"}
               className="mobile-tab min-h-11 shrink-0 rounded-full px-4"
               aria-pressed={status === value}
               onClick={() => filters({ status: value })}
@@ -480,7 +480,7 @@ export default function TasksPage() {
         >
           <p>{complete.error.message}</p>
           <Button
-            variant="outline"
+            variant="secondary"
             className="mt-2 min-h-11"
             disabled={complete.isPending}
             onClick={() =>
@@ -512,7 +512,7 @@ export default function TasksPage() {
           </h2>
           <p className="text-sm text-muted-foreground">{tasks.error.message}</p>
           <Button
-            variant="outline"
+            variant="secondary"
             className="min-h-11"
             onClick={() => void tasks.refetch()}
           >
@@ -686,7 +686,7 @@ export default function TasksPage() {
               className="flex items-center justify-between gap-3"
             >
               <Button
-                variant="outline"
+                variant="secondary"
                 className="min-h-11"
                 disabled={page <= 1 || tasks.isFetching}
                 onClick={() => filters({ page: String(page - 1) })}
@@ -698,7 +698,7 @@ export default function TasksPage() {
                 {page} / {Math.max(1, meta.pages)}
               </span>
               <Button
-                variant="outline"
+                variant="secondary"
                 className="min-h-11"
                 disabled={page >= meta.pages || tasks.isFetching}
                 onClick={() => filters({ page: String(page + 1) })}
@@ -760,7 +760,7 @@ export default function TasksPage() {
               {es ? "Cancelar" : "Cancel"}
             </AlertDialogCancel>
             <Button
-              variant="destructive"
+              variant="danger"
               disabled={remove.isPending}
               className="min-h-11"
               onClick={() => deleting && remove.mutate(deleting.id)}

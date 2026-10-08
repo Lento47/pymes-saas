@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import {
   Sheet,
   SheetContent,
@@ -187,7 +187,7 @@ export function HomeShortcuts({ can }: { can: (key: string) => boolean }) {
             )}
             <div className="flex flex-wrap gap-3">
               <Button
-                variant="outline"
+                variant="secondary"
                 className="min-h-12 rounded-xl"
                 onClick={() =>
                   save(available.slice(0, 4).map((choice) => choice.key))

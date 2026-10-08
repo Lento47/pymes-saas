@@ -12,7 +12,7 @@ import { HelpButton } from "@/components/shared/help-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SearchInput } from "@/components/shared/search-input";
 import { PageLoader } from "@/components/shared/loading-spinner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,7 @@ export default function ContactsPage() {
         }} data-testid="button-create-contact">
           <Plus className="w-3.5 h-3.5 mr-1.5" /> Nuevo contacto
         </Button>
-        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportOpen(true)}>
+        <Button size="sm" variant="secondary" className="h-8 text-xs" onClick={() => setImportOpen(true)}>
           <Upload className="w-3.5 h-3.5 mr-1.5" /> Importar CSV
         </Button>
       </PageHeader>
@@ -312,7 +312,7 @@ export default function ContactsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs" data-testid="button-cancel">Cancelar</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs" data-testid="button-cancel">Cancelar</Button>
             <Button size="sm" className="h-8 text-xs" onClick={() => createMutation.mutate()} disabled={createMutation.isPending} data-testid="button-save-contact">
               {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
               {editingId ? "Guardar cambios" : "Crear"}

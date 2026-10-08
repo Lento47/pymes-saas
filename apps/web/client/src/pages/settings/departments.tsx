@@ -215,7 +215,7 @@ export default function DepartmentsSettingsPage() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   className="flex-1"
                   onClick={() => updateMut.mutate({ id: editDept?.id, is_active: !editDept?.is_active })}
                 >

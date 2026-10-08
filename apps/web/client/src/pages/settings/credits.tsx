@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft, Flame, Gem, Rocket, ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -114,7 +114,7 @@ function CreditPackCard({
           "w-full h-8 text-xs mt-auto",
           isPopular ? "bg-primary hover:bg-primary/90" : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
         )}
-        variant={isPopular ? "default" : "outline"}
+        variant={isPopular ? "primary" : "secondary"}
       >
         <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
         Comprar con PayPal
@@ -188,7 +188,7 @@ function AiTokenPackCard({
           "w-full h-8 text-xs mt-auto",
           isPopular ? "bg-primary hover:bg-primary/90" : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
         )}
-        variant={isPopular ? "default" : "outline"}
+        variant={isPopular ? "primary" : "secondary"}
       >
         <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
         Comprar tokens IA
@@ -796,7 +796,7 @@ export default function CreditsSettingsPage() {
             </div>
             {balance > 0 && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 className="h-8 text-xs gap-1.5"
                 onClick={() => setShowTransfer(true)}

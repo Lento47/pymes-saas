@@ -31,7 +31,16 @@ interface PageTemplateProps {
     label: string;
     href?: string;
     onClick?: () => void;
-    variant?: "primary" | "secondary";
+    /*
+      This is the template's own vocabulary, not a Button's, and it stays shadcn's while the
+      Button below stays shadcn's too: `PageTemplate` needs `asChild`, which Arc's Button does not
+      implement, so this file was left out of the Arc Button migration entirely.
+
+      Rewriting the union to Arc's names here was the codemod's one genuine mistake — it cannot
+      tell a type declaration from a prop it is passed, and a union that drifts away from the
+      component it describes is worse than either vocabulary alone.
+    */
+    variant?: "default" | "secondary";
     icon?: React.ReactNode;
   }>;
 }
@@ -74,7 +83,7 @@ export function PageTemplate({
                 {actions.map((action, i) => (
                   <Button
                     key={i}
-                    variant={action.variant === "primary" ? "default" : "outline"}
+                    variant={action.variant === "default" ? "default" : "secondary"}
                     size="sm"
                     onClick={action.onClick}
                     asChild={!!action.href}

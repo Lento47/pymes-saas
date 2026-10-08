@@ -37,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -266,15 +266,24 @@ function ActionButton({
   action,
   targetName,
   onRun,
-  variant = "default",
+  variant = "primary",
   size = "sm",
 }: {
   label: string;
   action: AdminAction;
   targetName: string;
   onRun: (reason?: string) => Promise<unknown>;
-  variant?: "default" | "outline" | "destructive" | "secondary";
-  size?: "sm" | "default";
+  /*
+    Arc's vocabulary, not shadcn's: `primary` / `danger` rather than `default` / `destructive`,
+    and `md` rather than `default` for the default size.
+
+    These are this component's own prop types and they used to mirror shadcn's Button union
+    literally, which is the kind of coupling that turns a component swap into a type error in
+    every caller. Declaring the vocabulary the button actually takes means the next swap is a
+    change in one file rather than a sweep.
+  */
+  variant?: "primary" | "secondary" | "danger";
+  size?: "sm" | "md";
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -444,7 +453,7 @@ function RowActions({ actions }: { actions: RowAction[] }) {
             action={action.action}
             targetName={action.targetName}
             onRun={action.onRun}
-            variant={action.destructive ? "destructive" : "default"}
+            variant={action.destructive ? "danger" : "primary"}
             size="sm"
           />
         ))}
@@ -1299,7 +1308,7 @@ function GrantAdminButton({
 
   return (
     <Button
-      variant="outline"
+      variant="secondary"
       size="sm"
       disabled={grant.isPending}
       onClick={() => grant.mutate()}
@@ -1457,7 +1466,7 @@ function UsersTab() {
                     action="user.revoke_admin"
                     targetName={u.name}
                     onRun={(reason) => adminApi.revokeAdmin(u.id, reason ?? "")}
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                   />
                 ) : (
@@ -1477,7 +1486,7 @@ function UsersTab() {
                     action="user.suspend"
                     targetName={u.name}
                     onRun={(reason) => adminApi.suspendUser(u.id, reason ?? "")}
-                    variant="destructive"
+                    variant="danger"
                     size="sm"
                   />
                 )}
@@ -1621,7 +1630,7 @@ function OrdersTab() {
                   action="order.cancel"
                   targetName={o.reference}
                   onRun={(reason) => adminApi.cancelOrder(o.id, reason ?? "")}
-                  variant="destructive"
+                  variant="danger"
                   size="sm"
                 />
               </div>
@@ -1818,7 +1827,7 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
                     onRun={(reason) =>
                       adminApi.reviewCourier(c.id, "REJECTED", reason ?? "")
                     }
-                    variant="destructive"
+                    variant="danger"
                     size="sm"
                   />
                 ) : null}
@@ -1997,14 +2006,14 @@ function TicketThread({ ticketId }: { ticketId: string }) {
           />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => setClosing("RESOLVED")}
             >
               Resolver
             </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => setClosing("CLOSED")}
             >
@@ -2551,7 +2560,7 @@ function BillingTab() {
           Two segmented controls, from Arc.
 
           These were Radix `ToggleGroup`s, which are what this row of buttons was hand-rolling
-          before it: five `Button`s each computing `variant={status === s ? "default" : "outline"}`.
+          before it: five `Button`s each computing `variant={status === s ? "primary" : "secondary"}`.
 
           **The empty-string guard is load-bearing, and the control change is why it goes.**
           A single-select `ToggleGroup` emits `""` when the selected item is clicked again, so
@@ -3066,7 +3075,7 @@ function CategoryDialog({
     <>
       <Button
         size="sm"
-        variant={category ? "outline" : "default"}
+        variant={category ? "secondary" : "primary"}
         onClick={() => setOpen(true)}
       >
         {category ? "Editar" : "Nueva categoría"}
@@ -3291,7 +3300,7 @@ function CategoriesTab() {
                   onRun={(reason) =>
                     adminApi.deleteCategory(c.id, reason ?? "")
                   }
-                  variant="destructive"
+                  variant="danger"
                   size="sm"
                 />
               </div>
@@ -3367,7 +3376,7 @@ function TableSort<T extends string>({
       </Select>
       {showDirection ? (
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           aria-label={`${directionLabel(value.direction)} — ${label}`}
           title={directionLabel(value.direction)}

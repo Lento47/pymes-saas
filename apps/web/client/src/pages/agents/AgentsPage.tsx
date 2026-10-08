@@ -6,7 +6,7 @@ import { queryClient } from "@/lib/queryClient";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,7 +81,7 @@ export default function AgentsPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/agents/templates">
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="secondary" size="sm" className="gap-1.5">
               <LayoutTemplate className="h-4 w-4" />
               Plantillas
             </Button>
@@ -109,7 +109,7 @@ export default function AgentsPage() {
               Crear agente
             </Button>
             <Link href="/agents/templates">
-              <Button variant="outline" size="sm">
+              <Button variant="secondary" size="sm">
                 Explorar plantillas
               </Button>
             </Link>
@@ -177,7 +177,7 @@ Si el cliente tiene un reclamo o consulta legal, deriva al equipo humano.`}
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => setShowCreate(false)}
               >

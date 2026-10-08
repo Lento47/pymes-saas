@@ -305,7 +305,7 @@ export default function BillingPage() {
 
               {subscription?.provider === 'PAYPAL' && activePlan !== 'FREE' && (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="h-7 text-xs text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
                   onClick={handleCancel}

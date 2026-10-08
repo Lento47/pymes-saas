@@ -4,7 +4,7 @@ import { Redirect } from "wouter";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -547,7 +547,7 @@ function PlatformContent() {
                     <p className="text-xs text-muted-foreground">{membersList.length} miembro(s)</p>
                     <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-7 text-xs">
+                        <Button size="sm" variant="secondary" className="h-7 text-xs">
                           <UserPlus className="h-3 w-3 mr-1" />Asignar usuario
                         </Button>
                       </DialogTrigger>

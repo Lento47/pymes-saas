@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { api, getAuthToken } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Check, Copy, Zap, MessageCircle, Receipt, LayoutTemplate } from "lucide-react";
@@ -91,7 +91,7 @@ export default function TemplateBrowser({ open, onClose, type }: Props) {
                 </div>
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   className="h-7 text-xs gap-1.5"
                   onClick={() => instantiateMutation.mutate(t.id)}
                   disabled={instantiateMutation.isPending}

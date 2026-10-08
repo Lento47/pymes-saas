@@ -472,7 +472,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
         <div className="ml-auto flex items-center gap-2">
           {showFollowUp && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => { setCaseClosed(true); setError('Caso cerrado. Podés abrir uno nuevo volviendo al menú.'); }}
               className="text-[11px] h-7"
@@ -483,7 +483,7 @@ function ChatView({ agent, channelId, onBack }: { agent: SupportAgent; channelId
           )}
           {messages.length > 1 && !escalated && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={handleEscalate}
               disabled={escalating}

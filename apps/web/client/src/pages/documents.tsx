@@ -11,7 +11,7 @@ import { HelpButton } from "@/components/shared/help-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SearchInput } from "@/components/shared/search-input";
 import { PageLoader } from "@/components/shared/loading-spinner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -235,7 +235,7 @@ export default function DocumentsPage() {
           <div className="ml-auto">
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               className="h-8 text-xs"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadMutation.isPending}

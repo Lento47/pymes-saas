@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { ArrowLeft, Package, Clock, ArrowUpRight, ArrowDownRight, Pencil, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { StockBar } from "@/components/inventory/StockBar";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ export default function InventoryDetailPage() {
       <div className="min-h-full bg-background flex flex-col items-center justify-center gap-3">
         <Package className="h-10 w-10 text-muted-foreground/65" />
         <span className="text-sm text-muted-foreground">Producto no encontrado</span>
-        <Link href="/inventory"><Button variant="outline" size="sm">Volver al inventario</Button></Link>
+        <Link href="/inventory"><Button variant="secondary" size="sm">Volver al inventario</Button></Link>
       </div>
     );
   }

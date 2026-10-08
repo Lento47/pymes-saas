@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -255,7 +255,7 @@ export default function WorkspaceSettingsPage() {
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-11 gap-1.5 rounded-lg px-3 text-xs"
                   disabled={uploadingLogo}
@@ -266,7 +266,7 @@ export default function WorkspaceSettingsPage() {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-11 gap-1.5 rounded-lg px-3 text-xs"
                   disabled={uploadingLogo}
@@ -418,7 +418,7 @@ export default function WorkspaceSettingsPage() {
                   <Button
                     key={step.key}
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => setTaxStep(index)}
                     className={`w-full rounded-xl border px-4 py-3 h-auto text-left transition-colors ${
                       taxStep === index
@@ -604,7 +604,7 @@ export default function WorkspaceSettingsPage() {
                     Paso {taxStep + 1} de {taxSteps.length}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" onClick={() => setTaxStep((prev) => Math.max(prev - 1, 0))} disabled={taxStep === 0}>
+                    <Button type="button" variant="secondary" onClick={() => setTaxStep((prev) => Math.max(prev - 1, 0))} disabled={taxStep === 0}>
                       Anterior
                     </Button>
                     <Button type="button" onClick={() => setTaxStep((prev) => Math.min(prev + 1, taxSteps.length - 1))} disabled={taxStep === taxSteps.length - 1}>

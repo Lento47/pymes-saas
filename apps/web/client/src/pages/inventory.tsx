@@ -135,12 +135,12 @@ export default function InventoryPage() {
               </ToggleGroupItem>
             </ToggleGroup>
             <Link href="/inventory/movements">
-              <Button variant="outline" size="sm" className="h-9"><ChevronDown className="h-4 w-4 mr-1" />Movimientos</Button>
+              <Button variant="secondary" size="sm" className="h-9"><ChevronDown className="h-4 w-4 mr-1" />Movimientos</Button>
             </Link>
             <Button size="sm" className="h-9" onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}>
               <Plus className="h-4 w-4 mr-1" />Nuevo
             </Button>
-            <Button variant="outline" size="sm" className="h-9" onClick={() => setImportOpen(true)}>
+            <Button variant="secondary" size="sm" className="h-9" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />Importar CSV
             </Button>
           </div>
@@ -226,9 +226,9 @@ export default function InventoryPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-8">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-8 text-xs">Anterior</Button>
+            <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-8 text-xs">Anterior</Button>
             <span className="text-xs text-muted-foreground px-3">{page} de {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-8 text-xs">Siguiente</Button>
+            <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-8 text-xs">Siguiente</Button>
           </div>
         )}
       </div>
@@ -277,7 +277,7 @@ export default function InventoryPage() {
             <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground font-semibold">{(adjusting?.current_stock || 0) + adjustQty}</span></p>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
+            <Button variant="secondary" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
             <Button size="sm" className="flex-1 h-8 text-xs" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjusting && adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
               {adjustMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
               Ajustar

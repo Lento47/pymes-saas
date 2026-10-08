@@ -1,5 +1,5 @@
 import { Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { useCallContext } from "./CallProvider";
 
 function formatDuration(seconds: number): string {
@@ -27,7 +27,7 @@ export function ActiveCallBar() {
       </span>
 
       <Button
-        variant="destructive"
+        variant="danger"
         size="sm"
         className="h-8 w-8 rounded-full p-0"
         onClick={endCall}

@@ -16,7 +16,7 @@ import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { canAccessAppFeature } from "@/lib/app-access";
 import { hasPermission, Permission } from "@/lib/permissions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HomeShortcuts } from "@/components/home/home-shortcuts";
 import { SetupChecklist } from "@/components/shared/setup-checklist";
@@ -97,7 +97,7 @@ function RemoteSection({
               : "This information could not be loaded."}
           </p>
           <Button
-            variant="outline"
+            variant="secondary"
             className="min-h-12 rounded-xl"
             disabled={query.isFetching}
             onClick={() => void query.refetch()}
@@ -350,7 +350,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <Button
-          variant="outline"
+          variant="secondary"
           className="min-h-12 rounded-xl"
           disabled={refreshing}
           onClick={() => queries.forEach((query) => void query.refetch())}
@@ -725,7 +725,7 @@ export default function DashboardPage() {
               </p>
             )}
             <Button
-              variant="outline"
+              variant="secondary"
               className="min-h-12 rounded-xl"
               disabled={generate.isPending}
               onClick={() => generate.mutate()}

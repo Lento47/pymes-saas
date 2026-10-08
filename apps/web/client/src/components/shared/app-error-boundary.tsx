@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { reportClientError } from "@/lib/error-reporting";
 
@@ -55,7 +55,7 @@ export class AppErrorBoundary extends React.Component<Props, State> {
               </Button>
               {errStack && (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(`${errMsg}\n\n${errStack}`).catch(() => {});

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -530,7 +530,7 @@ export default function AiSettingsPage() {
           <div className="flex gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => testConnection.mutate()}
               disabled={!canTest || testConnection.isPending || !customApiEnabled}
               className="h-8 text-xs border-border"
@@ -561,7 +561,7 @@ export default function AiSettingsPage() {
               <Button
                 key={id}
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => applyProfile(BUSINESS_PROFILES.find(p => p.id === id)!)}
                 className={cn(
                   "flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 h-auto text-center transition-colors",
@@ -882,7 +882,7 @@ export default function AiSettingsPage() {
                 </Select>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="h-8 text-xs shrink-0"
                   disabled={!addingModel}

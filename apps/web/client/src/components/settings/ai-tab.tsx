@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -164,7 +164,7 @@ export function AiTab() {
         <div className="flex gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => testConnection.mutate()}
             disabled={!canTest || testConnection.isPending}
             className="h-8 text-xs border-border"

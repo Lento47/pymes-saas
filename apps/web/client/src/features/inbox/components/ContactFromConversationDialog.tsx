@@ -4,7 +4,7 @@ import { Loader2, UserPlus } from "lucide-react";
 import { api, parsePlanError } from "@/lib/api";
 import { apiErrorDescription } from "@/lib/api-error";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -196,7 +196,7 @@ export function ContactFromConversationDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button

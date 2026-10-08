@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Package, ArrowUpRight, ArrowDownRight, Pencil, RotateCcw, Clock } from "lucide-react";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 
 const ICONS: Record<string, any> = { IN: ArrowUpRight, OUT: ArrowDownRight, ADJUSTMENT: Pencil, REVERSAL: RotateCcw };
 const COLORS: Record<string, string> = { IN: "text-emerald-400", OUT: "text-red-400", ADJUSTMENT: "text-amber-400", REVERSAL: "text-blue-400" };

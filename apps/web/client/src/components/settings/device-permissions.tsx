@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Camera, Mic } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 
 type DevicePermission = "camera" | "microphone";
 type Status = PermissionState | "unknown" | "unavailable" | "loading";
@@ -136,7 +136,7 @@ export function DevicePermissions() {
       </p>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         className="mt-3 min-h-11 rounded-xl"
         onClick={() => setRevision((value) => value + 1)}
       >

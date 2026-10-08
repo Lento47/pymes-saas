@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -152,7 +152,7 @@ function TemplateForm({ initial, channel, onSave, onCancel, isPending }: Templat
       </div>
 
       <div className="flex justify-end gap-2 pt-1">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isPending}>Cancelar</Button>
+        <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={isPending}>Cancelar</Button>
         <Button type="submit" size="sm" disabled={isPending || !name.trim() || !body.trim()}>
           {isPending ? "Guardando..." : "Guardar"}
         </Button>
@@ -217,7 +217,7 @@ function TemplateList({ channel }: { channel: "WHATSAPP" | "TELEGRAM" }) {
       {/* Actions */}
       <div className="flex items-center gap-2">
         {channel === "WHATSAPP" && (
-          <Button variant="outline" size="sm" onClick={() => syncMut.mutate()} disabled={syncMut.isPending} className="gap-1.5">
+          <Button variant="secondary" size="sm" onClick={() => syncMut.mutate()} disabled={syncMut.isPending} className="gap-1.5">
             <RefreshCw className={cn("h-3.5 w-3.5", syncMut.isPending && "animate-spin")} />
             Sincronizar desde Meta
           </Button>
@@ -315,8 +315,8 @@ function TemplateList({ channel }: { channel: "WHATSAPP" | "TELEGRAM" }) {
             Se eliminará <strong>{deleteTarget?.name}</strong>. Esta acción no se puede deshacer.
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" size="sm" onClick={() => deleteTarget && deleteMut.mutate(deleteTarget.id)} disabled={deleteMut.isPending}>
+            <Button variant="secondary" size="sm" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+            <Button variant="danger" size="sm" onClick={() => deleteTarget && deleteMut.mutate(deleteTarget.id)} disabled={deleteMut.isPending}>
               Eliminar
             </Button>
           </div>
@@ -432,7 +432,7 @@ function TemplateLibrary() {
 
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   className="h-7 text-xs gap-1.5 self-end"
                   onClick={() => installMut.mutate(tpl.id)}
                   disabled={installMut.isPending && installMut.variables === tpl.id}

@@ -13,7 +13,7 @@ import { hasPermission, Permission } from "@/lib/permissions";
 import { canAccessAppFeature } from "@/lib/app-access";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Separator } from "@/components/ui/separator";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
@@ -701,7 +701,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </button>
 
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setSearchOpen(true)}
             className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border-primary/20 bg-white/[0.04] px-3 text-left text-xs text-muted-foreground hover:text-foreground md:flex"
             title="Buscar (Ctrl+K)"

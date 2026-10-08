@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -265,7 +265,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () =
         <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
           <div className="flex items-center justify-between">
             <p className="font-medium text-foreground">Estado del webhook</p>
-            <Button size="sm" variant="outline" className="h-6 text-[11px] border-border"
+            <Button size="sm" variant="secondary" className="h-6 text-[11px] border-border"
               onClick={checkWebhookStatus} disabled={checkingStatus}>
               <RefreshCw className={`h-3 w-3 mr-1 ${checkingStatus ? "animate-spin" : ""}`} />
               Verificar
@@ -545,7 +545,7 @@ export default function ChannelsSettingsPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     {needsConfig && (
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         className="flex items-center gap-1.5 text-xs"
                         title="Configurar canal" onClick={() => setConfigChannel(ch)}
@@ -555,7 +555,7 @@ export default function ChannelsSettingsPage() {
                     )}
                     {canConnect && (
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         className="flex items-center gap-1.5 text-xs"
                         title="Conectar canal"
@@ -566,7 +566,7 @@ export default function ChannelsSettingsPage() {
                     )}
                     {canEdit && (
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         className="flex items-center gap-1.5 text-xs"
                         title="Editar canal" onClick={() => setConfigChannel(ch)}

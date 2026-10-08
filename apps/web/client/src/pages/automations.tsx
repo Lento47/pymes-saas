@@ -5,7 +5,7 @@ import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -175,7 +175,7 @@ export default function AutomationsPage() {
           <span className="text-[11px] text-muted-foreground">{automations.filter((a: any) => a.enabled).length} activas</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setTemplateOpen(true)} className="gap-1.5 rounded-md text-[12px]">
+          <Button variant="secondary" size="sm" onClick={() => setTemplateOpen(true)} className="gap-1.5 rounded-md text-[12px]">
             <LayoutTemplate className="w-[13px] h-[13px]" />Plantillas
           </Button>
           <Button onClick={() => { setEditingAuto(null); setCreateOpen(true); }} size="sm" className="gap-1.5 rounded-md text-[12px]">
@@ -403,7 +403,7 @@ export default function AutomationsPage() {
             <p className="text-muted-foreground text-sm">Esta acción no se puede deshacer.</p>
             <div className="flex gap-2 justify-end pt-2">
               <Button variant="ghost" onClick={() => setDeleteId(null)} className="text-muted-foreground text-xs">Cancelar</Button>
-              <Button onClick={() => deleteMut.mutate(deleteId)} variant="destructive" size="sm" className="text-xs">Eliminar</Button>
+              <Button onClick={() => deleteMut.mutate(deleteId)} variant="danger" size="sm" className="text-xs">Eliminar</Button>
             </div>
           </DialogContent>
         </Dialog>

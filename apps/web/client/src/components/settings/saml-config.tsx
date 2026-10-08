@@ -93,7 +93,7 @@ export function SamlConfig() {
           </div>
         </div>
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={() => toggleMutation.mutate()}
           disabled={toggleMutation.isPending || (!hasCert && !isEnabled)}

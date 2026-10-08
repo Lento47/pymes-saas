@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import {
   Loader2, CheckCircle2, ChevronLeft, LogOut,
   UtensilsCrossed, Briefcase, ShoppingCart, Heart, BookOpen, Laptop,
@@ -260,7 +260,7 @@ export default function BusinessProfilePage() {
 
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
           {step > 0 && (
-            <Button variant="outline" className="min-h-12 gap-1.5 px-4 text-sm" onClick={() => setStep((s) => s - 1)}>
+            <Button variant="secondary" className="min-h-12 gap-1.5 px-4 text-sm" onClick={() => setStep((s) => s - 1)}>
               <ChevronLeft className="h-4 w-4" />
               Atrás
             </Button>

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/arc/button/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -192,7 +192,7 @@ export function DealSheet({ open, onClose, stages, deal, defaultStageId }: DealS
         <SheetFooter className="px-6 py-3 border-t border-border/60 shrink-0 flex-row justify-between sm:justify-between gap-2">
           <div className="flex items-center gap-2">
             {isEdit && (
-              <Button onClick={() => winMut.mutate()} variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10">
+              <Button onClick={() => winMut.mutate()} variant="secondary" size="sm" className="h-8 text-xs gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10">
                 <Trophy className="w-3.5 h-3.5" />Ganado
               </Button>
             )}
