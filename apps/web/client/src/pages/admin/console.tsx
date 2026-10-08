@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { JsonViewer } from "@/components/arc/json-viewer/json-viewer";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
@@ -35,7 +36,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -135,19 +135,28 @@ const STATUS_LABEL: Record<string, string> = {
   CLOSED: "Cerrado",
 };
 
-const STATUS_CLASS: Record<string, string> = {
-  DRAFT: "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  ACTIVE: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-  SUSPENDED: "bg-red-500/10 text-red-600 border-red-500/30",
-  CLOSED: "bg-muted text-muted-foreground border-border",
+/**
+ * Status → tone, rather than status → a pile of Tailwind colour classes.
+ *
+ * These were two hand-written class strings per status — `bg-emerald-500/10 text-emerald-600
+ * border-emerald-500/30` and its five siblings, repeated verbatim in three places in this file.
+ * Every one of them is the same decision ("this is a success") spelled out in raw palette, so
+ * they had drifted: the courier table and the billing table each carried their own copy, and
+ * `bg-muted text-muted-foreground` for "closed" was a fourth spelling of "nothing to see here".
+ *
+ * A tone is the decision; the colour behind it belongs to the token layer. So the three tables
+ * now agree by construction, and a future status that means "warning" says so in one word.
+ */
+const STATUS_TONE: Record<string, BadgeTone> = {
+  DRAFT: "warning",
+  ACTIVE: "success",
+  SUSPENDED: "danger",
+  CLOSED: "neutral",
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge
-      variant="outline"
-      className={STATUS_CLASS[status] ?? STATUS_CLASS.CLOSED}
-    >
+    <Badge tone={STATUS_TONE[status] ?? STATUS_TONE.CLOSED}>
       {STATUS_LABEL[status] ?? status}
     </Badge>
   );
@@ -1133,11 +1142,7 @@ function UserSheet({ userId }: { userId: string }) {
                 [
                   "Plataforma",
                   person.isAdmin ? (
-                    <Badge
-                      key="admin"
-                      variant="outline"
-                      className="border-amber-500/40 text-amber-600"
-                    >
+                    <Badge key="admin" tone="warning">
                       admin
                     </Badge>
                   ) : (
@@ -1382,10 +1387,10 @@ function UsersTab() {
                   <span className="font-medium">{u.name}</span>
                   {u.isAdmin ? (
                     <Badge
-                      variant="outline"
-                      className="border-amber-500/40 text-amber-600"
+                      tone="warning"
+                      icon={<ShieldCheck className="h-3 w-3" />}
                     >
-                      <ShieldCheck className="mr-1 h-3 w-3" /> admin
+                      admin
                     </Badge>
                   ) : null}
                 </div>
@@ -1761,13 +1766,12 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
             label: "Estado",
             render: (_v, c) => (
               <Badge
-                variant="outline"
-                className={
+                tone={
                   c.verificationStatus === "VERIFIED"
-                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                    ? "success"
                     : c.verificationStatus === "PENDING"
-                      ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
-                      : "bg-muted text-muted-foreground border-border"
+                      ? "warning"
+                      : "neutral"
                 }
               >
                 {c.verificationStatus === "VERIFIED"
@@ -1952,14 +1956,7 @@ function TicketThread({ ticketId }: { ticketId: string }) {
           {TICKET_CATEGORY_LABEL[data.category] ?? data.category}
         </p>
         <h3 className="mt-0.5 font-semibold">{data.subject}</h3>
-        <Badge
-          variant="outline"
-          className={
-            done
-              ? "mt-2"
-              : "mt-2 bg-amber-500/10 text-amber-600 border-amber-500/30"
-          }
-        >
+        <Badge tone={done ? "neutral" : "warning"} className="mt-2">
           {TICKET_STATUS_LABEL[data.status] ?? data.status}
         </Badge>
       </header>
@@ -2238,11 +2235,19 @@ const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
   SUSPENDED: "Suspendido",
 };
 
-const SUBSCRIPTION_STATUS_CLASS: Record<string, string> = {
-  ACTIVE: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-  GRACE: "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  PAST_DUE: "bg-red-500/10 text-red-600 border-red-500/30",
-  SUSPENDED: "bg-muted text-muted-foreground border-border",
+/**
+ * Subscription status → tone. See `STATUS_TONE` for why this is a tone and not a class string.
+ *
+ * `SUSPENDED` is `neutral` here and `danger` on a business, which is not a copy-paste slip: a
+ * suspended subscription is a state the system puts shops into routinely, while a suspended
+ * business is one an operator chose to stop. Same word, two meanings, so the two maps stay
+ * separate rather than sharing one lookup.
+ */
+const SUBSCRIPTION_STATUS_TONE: Record<string, BadgeTone> = {
+  ACTIVE: "success",
+  GRACE: "warning",
+  PAST_DUE: "danger",
+  SUSPENDED: "neutral",
 };
 
 /**
@@ -2644,10 +2649,9 @@ function BillingTab() {
               sortable: true,
               render: (_v, s) => (
                 <Badge
-                  variant="outline"
-                  className={
-                    SUBSCRIPTION_STATUS_CLASS[s.status] ??
-                    SUBSCRIPTION_STATUS_CLASS.SUSPENDED
+                  tone={
+                    SUBSCRIPTION_STATUS_TONE[s.status] ??
+                    SUBSCRIPTION_STATUS_TONE.SUSPENDED
                   }
                 >
                   {SUBSCRIPTION_STATUS_LABEL[s.status] ?? s.status}
@@ -2870,13 +2874,12 @@ function PriceBooksTab() {
             sortable: false,
             render: (_v, book) => (
               <Badge
-                variant="outline"
-                className={
+                tone={
                   book.isStaged
-                    ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                    ? "warning"
                     : book.isCurrent
-                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                      : undefined
+                      ? "success"
+                      : "neutral"
                 }
               >
                 {book.isStaged

@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/arc/badge/badge";
+import { Tooltip } from "@/components/arc/tooltip/tooltip";
 
 /**
  * Which environment this build is pointed at, or `null` when it cannot tell.
@@ -13,7 +14,10 @@ import { Badge } from "@/components/ui/badge";
  *
  * So the signal is the API host, which genuinely differs per environment.
  */
-function detectEnvironment(): { label: string; tone: "destructive" | "outline" } | null {
+function detectEnvironment(): {
+  label: string;
+  tone: "destructive" | "outline";
+} | null {
   // `import.meta.env.DEV` rather than `MODE`: this one is unambiguous by construction.
   if (import.meta.env.DEV) return { label: "Desarrollo", tone: "outline" };
 
@@ -22,7 +26,10 @@ function detectEnvironment(): { label: string; tone: "destructive" | "outline" }
     // An explicit name always wins, including an explicit "production" — somebody set it
     // because they know something this function does not.
     const isProduction = configured.toLowerCase() === "production";
-    return { label: configured, tone: isProduction ? "outline" : "destructive" };
+    return {
+      label: configured,
+      tone: isProduction ? "outline" : "destructive",
+    };
   }
 
   /*
@@ -39,7 +46,8 @@ function detectEnvironment(): { label: string; tone: "destructive" | "outline" }
   if (/staging|preview|\.dev\b|localhost|test/i.test(host)) {
     return { label: "No producción", tone: "destructive" };
   }
-  if (/prod|api\.pymeshub/i.test(host)) return { label: "Producción", tone: "outline" };
+  if (/prod|api\.pymeshub/i.test(host))
+    return { label: "Producción", tone: "outline" };
   return null;
 }
 
@@ -71,19 +79,28 @@ export function ConsoleEnvBadge() {
   const environment = detectEnvironment();
   if (!environment) return null;
 
+  /*
+    The host is in a tooltip rather than a `title`.
+
+    A `title` is the obvious choice and the wrong one on all three counts that matter here: it
+    appears only on hover and only after a delay, it does not appear at all on keyboard focus,
+    and screen readers do not reliably announce it. So the one piece of information this badge
+    exists to add — *which API am I looking at* — was reachable by mouse only.
+
+    This is the badge's whole case for existing. An operator handed a preview deployment needs to
+    know before they touch anything, and a tooltip that opens on focus and is announced gets
+    there; a `title` does not.
+
+    Also migrated to Arc's `Badge` and its `tone`, which is what the console's other five status
+    badges use. The `destructive` tone is the loud one and carries "this is not production"; the
+    quiet `neutral` tone carries production, which is the case where the badge says nothing the
+    operator did not already know.
+  */
   return (
-    <Badge
-      variant="outline"
-      // Destructive is the loud one, and it is used for "this is not production" — the case
-      // where being wrong has consequences. Production gets the quiet outline.
-      className={
-        environment.tone === "destructive"
-          ? "border-destructive/50 text-destructive"
-          : "text-muted-foreground"
-      }
-      title={`API: ${apiHost() ?? "sin host configurado"}`}
-    >
-      {environment.label}
-    </Badge>
+    <Tooltip content={`API: ${apiHost() ?? "sin host configurado"}`}>
+      <Badge tone={environment.tone === "destructive" ? "danger" : "neutral"}>
+        {environment.label}
+      </Badge>
+    </Tooltip>
   );
 }
