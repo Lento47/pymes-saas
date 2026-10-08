@@ -17,7 +17,6 @@ import { Card } from "@/components/card";
 import { Field } from "@/components/field";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
-import { useToast } from "@/components/toast";
 import { Segmented } from "@/components/segmented";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
@@ -272,7 +271,6 @@ export default function SignIn() {
 
 export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 	const keyboardVisible = useKeyboardState((state) => state.isVisible);
-	const debugToast = useToast();
 	const { t } = useT();
 	const { colors } = useTheme();
 	const auth = useSession();
@@ -746,7 +744,6 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 							keyboardType="email-address"
 							autoCorrect={false}
 							ref={emailRef}
-							onFocus={() => debugToast.show("Keyboard clearance verification")}
 							returnKeyType="next"
 							blurOnSubmit={false}
 							onSubmitEditing={() => passwordRef.current?.focus()}
