@@ -34,8 +34,18 @@ export function HomeLocationPicker({
 	onSaveAddress: (coords: NonNullable<DeviceLocation>) => void;
 }) {
 	const { t } = useT();
-	const { height } = useWindowDimensions();
+	const { height, fontScale } = useWindowDimensions();
 	const tabBarClearance = useTabBarClearance();
+	// Large text makes the instruction and actions taller. Give that space back from the map
+	// while keeping enough map to pan and place a pin with a finger.
+	const normalMapHeight = Math.min(480, height * 0.48);
+	const mapHeight = Math.min(
+		normalMapHeight,
+		Math.max(
+			180,
+			height * Math.max(0.28, 0.48 - 0.12 * Math.max(0, fontScale - 1)),
+		),
+	);
 	const [draft, setDraft] = useState<DeviceLocation>(null);
 	const [applied, setApplied] = useState<DeviceLocation>(null);
 	const [mapTouching, setMapTouching] = useState(false);
@@ -86,7 +96,7 @@ export function HomeLocationPicker({
 								showUserLocation={
 									locationStatus === "granted" && current !== null
 								}
-								style={{ height: Math.min(480, height * 0.48) }}
+								style={{ height: mapHeight }}
 								onPick={pick}
 							/>
 						</View>
