@@ -21,9 +21,11 @@ import { useLocation, useParams } from "wouter";
 import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
 import { Card as ArcCard } from "@/components/arc/card/card";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
+import { Input } from "@/components/arc/input/input";
 import { JsonViewer } from "@/components/arc/json-viewer/json-viewer";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
 import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { Textarea } from "@/components/arc/textarea/textarea";
 import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { Sparkline } from "@/components/arc/sparkline/sparkline";
 import { PageTemplate } from "@/components/layout/page-template";
@@ -39,7 +41,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/arc/button/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+/*
+  Two inputs, deliberately.
+
+  Arc's `Input`/`Textarea` require a `label` and own the label markup, which is right for every
+  field in a dialog or a form: the id is generated, the association cannot drift, and the label
+  sits in one place.
+
+  shadcn's bare control is imported as **`SearchInput`** because the console's filter rows need
+  the opposite. A search box carries `aria-label` and no visible label — the placeholder says
+  "Buscar por comercio o correo" and a second visible label above it would be noise on every one
+  of six filter toolbars. Arc's `label` is rendered unconditionally, so it cannot express that.
+
+  Naming the second import is the point: `SearchInput` says at every call site that the absence
+  of a visible label is a decision, rather than looking like the same control with a prop missing.
+ */
+import { Input as SearchInput } from "@/components/ui/input";
+import { Textarea as SearchTextarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -56,7 +74,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -234,7 +252,7 @@ function ActionDialog({
             motivo va con ella.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <Input
+        <SearchInput
           value={reason}
           onChange={(e) => onReasonChange(e.target.value)}
           placeholder="Motivo (obligatorio)"
@@ -1049,7 +1067,7 @@ function BusinessTab({ onlyPending }: { onlyPending: boolean }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         {!onlyPending ? (
-          <Input
+          <SearchInput
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -1359,7 +1377,7 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Input
+        <SearchInput
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -1706,7 +1724,7 @@ function CouriersTab({ onlyPending }: { onlyPending?: boolean } = {}) {
   return (
     <div className="space-y-4">
       {!onlyPending ? (
-        <Input
+        <SearchInput
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -1997,7 +2015,7 @@ function TicketThread({ ticketId }: { ticketId: string }) {
         </p>
       ) : (
         <div className="space-y-3 border-t pt-3">
-          <Textarea
+          <SearchTextarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Responder al comercio…"
@@ -2044,7 +2062,7 @@ function TicketThread({ ticketId }: { ticketId: string }) {
               del ticket, así que el comercio ve exactamente por qué se cerró.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea
+          <SearchTextarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Motivo del cierre (obligatorio)"
@@ -2119,7 +2137,7 @@ function SupportTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Input
+        <SearchInput
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -2373,19 +2391,12 @@ function RecordPaymentDialog({
           </AlertDialogHeader>
           <div className="space-y-3">
             <div>
-              <label
-                htmlFor="pay-amount"
-                className="text-xs text-muted-foreground"
-              >
-                Monto recibido
-              </label>
               <Input
-                id="pay-amount"
+                label="Monto recibido"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
                 placeholder={String(invoicedMinor / 100)}
-                className="mt-1"
               />
               {/*
                 The period's own price, not the arrears total. The old placeholder was
@@ -2404,18 +2415,11 @@ function RecordPaymentDialog({
               ) : null}
             </div>
             <div>
-              <label
-                htmlFor="pay-ref"
-                className="text-xs text-muted-foreground"
-              >
-                Referencia
-              </label>
               <Input
-                id="pay-ref"
+                label="Referencia"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
                 placeholder="Referencia bancaria o SINPE"
-                className="mt-1"
               />
             </div>
             {/*
@@ -2435,18 +2439,11 @@ function RecordPaymentDialog({
               </p>
             ) : null}
             <div>
-              <label
-                htmlFor="pay-reason"
-                className="text-xs text-muted-foreground"
-              >
-                Motivo (obligatorio)
-              </label>
               <Textarea
-                id="pay-reason"
+                label="Motivo (obligatorio)"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={2}
-                className="mt-1"
               />
             </div>
           </div>
@@ -2544,7 +2541,7 @@ function BillingTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Input
+        <SearchInput
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -2925,61 +2922,45 @@ function PriceBooksTab() {
           the panel's primary signal — into the footer and promote a 16px icon to a cover image.
       */}
       <ArcCard title="Programar un precio nuevo">
+        {/*
+          Arc's `Input` and `Textarea`, which is where they are a clear win and not a wash.
+
+          Both take a required `label` and **own the label markup** — an unconditional
+          `<label htmlFor>` plus a `useId()`-generated id — where shadcn's are bare controls with
+          a `<label>` sibling. Every field below had that pairing written out by hand: an `id`, a
+          `htmlFor` naming the same string, and a `className="mt-1"` to close the gap the manual
+          label left. The id was duplicated in two places per field, which is exactly the shape
+          that drifts: rename one and the other silently stops being associated.
+
+          So five fields lose five `id`/`htmlFor` pairs and five `mt-1` spacers, and gain a
+          consistent label position. The search inputs further up this file are **not** migrated,
+          for the opposite reason — see `SearchInput`.
+        */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label htmlFor="pb-label" className="text-xs text-muted-foreground">
-              Etiqueta
-            </label>
-            <Input
-              id="pb-label"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="2026-Q2"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="pb-weekly"
-              className="text-xs text-muted-foreground"
-            >
-              Semanal (₡)
-            </label>
-            <Input
-              id="pb-weekly"
-              value={weekly}
-              onChange={(e) => setWeekly(e.target.value)}
-              inputMode="decimal"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="pb-monthly"
-              className="text-xs text-muted-foreground"
-            >
-              Mensual (₡)
-            </label>
-            <Input
-              id="pb-monthly"
-              value={monthly}
-              onChange={(e) => setMonthly(e.target.value)}
-              inputMode="decimal"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="pb-from" className="text-xs text-muted-foreground">
-              Vigente desde
-            </label>
-            <Input
-              id="pb-from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+          <Input
+            label="Etiqueta"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="2026-Q2"
+          />
+          <Input
+            label="Semanal (₡)"
+            value={weekly}
+            onChange={(e) => setWeekly(e.target.value)}
+            inputMode="decimal"
+          />
+          <Input
+            label="Mensual (₡)"
+            value={monthly}
+            onChange={(e) => setMonthly(e.target.value)}
+            inputMode="decimal"
+          />
+          <Input
+            label="Vigente desde"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
         </div>
         {/*
             The reason, and it is required. `subscription.create_price_book` is in
@@ -2993,16 +2974,12 @@ function PriceBooksTab() {
             the reason-required list drifted in the first place.
           */}
         <div className="mt-3">
-          <label htmlFor="pb-reason" className="text-xs text-muted-foreground">
-            Motivo (obligatorio)
-          </label>
           <Textarea
-            id="pb-reason"
+            label="Motivo (obligatorio)"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Por qué sube el precio, y desde cuándo"
             rows={2}
-            className="mt-1"
           />
         </div>
         <div className="mt-3 flex justify-end">
@@ -3092,47 +3069,22 @@ function CategoryDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
+            <Input
+              label="Nombre (es)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              label="Nombre (en)"
+              value={nameEn}
+              onChange={(e) => setNameEn(e.target.value)}
+            />
             <div>
-              <label
-                htmlFor="cat-name"
-                className="text-xs text-muted-foreground"
-              >
-                Nombre (es)
-              </label>
               <Input
-                id="cat-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="cat-name-en"
-                className="text-xs text-muted-foreground"
-              >
-                Nombre (en)
-              </label>
-              <Input
-                id="cat-name-en"
-                value={nameEn}
-                onChange={(e) => setNameEn(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="cat-image"
-                className="text-xs text-muted-foreground"
-              >
-                Foto
-              </label>
-              <Input
-                id="cat-image"
+                label="Foto"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="/files/… o https://…"
-                className="mt-1"
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Cuadrada, sin texto ni logotipos. Es lo que ve el cliente en la
@@ -3147,23 +3099,14 @@ function CategoryDialog({
                 />
               )}
             </div>
-            <div>
-              <label
-                htmlFor="cat-sort"
-                className="text-xs text-muted-foreground"
-              >
-                Orden
-              </label>
-              <Input
-                id="cat-sort"
-                type="number"
-                min={0}
-                max={999}
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="mt-1"
-              />
-            </div>
+            <Input
+              label="Orden"
+              type="number"
+              min={0}
+              max={999}
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
