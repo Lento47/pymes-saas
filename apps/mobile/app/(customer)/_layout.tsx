@@ -124,7 +124,6 @@ function CustomerTabs() {
 			<Tabs.Screen name="offers" options={{ href: null }} />
 			<Tabs.Screen name="product/[id]" options={{ href: null }} />
 			<Tabs.Screen name="store/[slug]" options={{ href: null }} />
-			<Tabs.Screen name="purchase-preview" options={{ href: null }} />
 		</Tabs>
 	);
 }
