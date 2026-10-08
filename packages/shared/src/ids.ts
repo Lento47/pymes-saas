@@ -40,6 +40,12 @@ export const ID_PREFIXES = {
 	review: "rev",
 	supportTicket: "tkt",
 	supportTicketMessage: "tkm",
+	/**
+	 * A crash, kept apart from the ticket ids because it is kept apart from the ticket table.
+	 * `crs` rather than `tkt`: a log line that reads `crs_` tells an operator it came from the
+	 * crash queue and not from a merchant waiting for an answer.
+	 */
+	crashReport: "crs",
 	favorite: "fav",
 	promotion: "prm",
 	notification: "ntf",

@@ -30,6 +30,10 @@
 import type {
 	BusinessHoursEntry,
 	CourierVerificationStatus,
+	CrashCategory,
+	CrashSeverity,
+	CrashSource,
+	CrashStatus,
 	LocationPauseReason,
 	Plan,
 	SubscriptionStatus,
@@ -1660,6 +1664,70 @@ export const supportTicketMessage = sqliteTable(
 	],
 );
 
+/**
+ * A crash, kept beside `support_ticket` rather than inside it.
+ *
+ * The two models look alike to an operator — something arrived, someone has to look, then it
+ * is closed with a note — and they are deliberately not one table. `support_ticket` is a
+ * merchant's question about their shop, and three of its constraints are exactly right for that
+ * and exactly wrong for a crash:
+ *
+ * - `business_id` NOT NULL with `cascade`, and the table is in `REASON_REQUIRED_ACTIONS`, so
+ *   a ticket **blocks a business delete**. A crash must not stop a shop from being erased.
+ * - `opened_by` NOT NULL with `restrict`. Somebody has to stay accountable for an answer
+ *   given; nobody is accountable for a stack trace.
+ * - The admin list and detail `innerJoin` both `business` and `user`, so a crash with a null
+ *   business would be dropped before the row returned — a silent disappearance from the very
+ *   console this table exists to feed.
+ *
+ * Hence `user_id` nullable and `SET NULL`: the crash outlives the account, which is the whole
+ * reason to keep it. And `business_id` nullable with **no foreign key at all** — a filter, not
+ * an ownership claim, and an FK is what would put this table back in the delete guard's way.
+ */
+export const crashReport = sqliteTable(
+	"crash_report",
+	{
+		id: text("id").primaryKey(),
+		/** Null once the account is gone. See the note above. */
+		userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+		/** The shop the reporter was looking at, when there was one. Deliberately not an FK. */
+		businessId: text("business_id"),
+		source: text("source").$type<CrashSource>().notNull(),
+		category: text("category").$type<CrashCategory>().notNull(),
+		severity: text("severity")
+			.$type<CrashSeverity>()
+			.notNull()
+			.default("ERROR"),
+		title: text("title"),
+		message: text("message").notNull(),
+		stack: text("stack"),
+		/** The screen it happened on, as a route. */
+		route: text("route"),
+		appVersion: text("app_version"),
+		/** Indexed: this is how a crash is matched to the release that produced it. */
+		buildNumber: text("build_number"),
+		contextJson: text("context_json", { mode: "json" }).$type<Record<
+			string,
+			unknown
+		> | null>(),
+		/** The operator's lifecycle. The client writes `OPEN` and never touches it again. */
+		status: text("status").$type<CrashStatus>().notNull().default("OPEN"),
+		resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		// The queue's own ordering, so "the crashes still open, newest first" is an index
+		// rather than a sort the Worker does on every page. Same shape as
+		// `support_ticket_business_status_created`, without the business.
+		index("crash_report_status_created").on(table.status, table.createdAt),
+		// "Is this our problem on this platform" — the second question after "is it still open".
+		index("crash_report_source").on(table.source),
+		// "Did build 13 do this", which is the question that decides whether 14 contains the fix.
+		index("crash_report_build").on(table.buildNumber),
+	],
+);
+
 // ---------------------------------------------------------------------------
 // Inferred row types
 // ---------------------------------------------------------------------------
@@ -1756,3 +1824,6 @@ export type NewSupportTicket = typeof supportTicket.$inferInsert;
 
 export type SupportTicketMessage = typeof supportTicketMessage.$inferSelect;
 export type NewSupportTicketMessage = typeof supportTicketMessage.$inferInsert;
+
+export type CrashReport = typeof crashReport.$inferSelect;
+export type NewCrashReport = typeof crashReport.$inferInsert;

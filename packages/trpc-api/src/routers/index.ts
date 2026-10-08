@@ -5,6 +5,7 @@ import { businessesRouter } from "./businesses";
 import { cartRouter } from "./cart";
 import { catalogRouter } from "./catalog";
 import { couriersRouter } from "./couriers";
+import { crashReportRouter } from "./crash-report";
 import { deliveriesRouter } from "./deliveries";
 import { devicesRouter } from "./devices";
 import { favoritesRouter } from "./favorites";
@@ -54,6 +55,13 @@ export const appRouter = router({
 	 * missing permission check.
 	 */
 	support: supportRouter,
+	/**
+	 * Crashes, as a queue an operator works. **Not** under `support`, and the separation is
+	 * the point: `support` is a merchant asking about their shop, gated on a membership, and
+	 * a crash belongs to a phone that may belong to nobody. `support_ticket` also *blocks a
+	 * business delete*, which a stack trace must not do. See `routers/crash-report.ts`.
+	 */
+	crashReport: crashReportRouter,
 	// Was `payouts`, a list of settlement runs. The consumer pays the merchant and the
 	// courier directly, so there is nothing to settle and the namespace now holds the
 	// merchant's own subscription. `payouts:read` survives as the capability name —

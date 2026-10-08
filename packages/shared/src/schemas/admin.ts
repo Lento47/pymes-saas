@@ -58,6 +58,20 @@ export const ADMIN_ACTIONS = [
 	 */
 	"support.reply",
 	"support.resolve",
+	/**
+	 * Closing a crash, and annotating one that is still open.
+	 *
+	 * Audited for the same reason `support.resolve` is, and it is the *only* thing this table
+	 * does to a row: there is no thread on `crash_report`, so the audit entry plus the note are
+	 * the entire record of why a release was believed fixed. An entry that says "an operator
+	 * closed this at 14:02" without the reasoning is not checkable when build 15 crashes the
+	 * same way, which is the whole purpose.
+	 *
+	 * Reporting one is **not** here, for `support.reply`'s reason inverted: a client writing
+	 * its own row is not an act an operator performed.
+	 */
+	"crash.report",
+	"crash.resolve",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 export const adminActionSchema = z.enum(ADMIN_ACTIONS);

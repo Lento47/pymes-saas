@@ -30,6 +30,7 @@ export * from "./schemas/cart";
 export * from "./schemas/catalog";
 export * from "./schemas/common";
 export * from "./schemas/courier";
+export * from "./schemas/crash-report";
 export * from "./schemas/delivery";
 export * from "./schemas/device";
 export * from "./schemas/location";

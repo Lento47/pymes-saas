@@ -29,6 +29,7 @@ import {
 	courierInvite,
 	courierPresence,
 	courierProfile,
+	crashReport,
 	delivery,
 	deliveryOffer,
 	deliveryRating,
@@ -451,3 +452,22 @@ export const supportTicketMessageRelations = relations(
 		}),
 	}),
 );
+
+/**
+ * A crash, and the account that reported it.
+ *
+ * `reporter` is nullable and nullable **on purpose**, unlike `supportTicket.opener`. The
+ * column is `SET NULL`, so deleting the account leaves the report standing with no reporter —
+ * which is the entire reason to keep a crash: the account that hit it is gone and the release
+ * that produced it still needs fixing.
+ *
+ * There is deliberately **no `business` relation** here, because `crash_report.business_id`
+ * carries no foreign key. It is a filter, not an ownership claim, and a relation is how this
+ * table would quietly rejoin the delete guard that `support_ticket` is part of.
+ */
+export const crashReportRelations = relations(crashReport, ({ one }) => ({
+	reporter: one(user, {
+		fields: [crashReport.userId],
+		references: [user.id],
+	}),
+}));
