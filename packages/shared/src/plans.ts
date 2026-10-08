@@ -107,9 +107,11 @@ export type PriceBookPrices = Partial<
  * The launch price book: the four paid tiers, monthly and annual, IVA-inclusive.
  *
  * **Annual is ten months of monthly for every tier** — 16.7% off, one rule, so the pricing
- * page states a single saving instead of three unrelated discounts. The numbers themselves
- * are the retired `apps/api` catalogue (₡6 900 / ₡12 900 / ₡29 900 / ₡59 900), so no
- * merchant meets a price they have not seen before.
+ * page states a single saving instead of three unrelated discounts. The two bottom tiers are
+ * the retired `apps/api` figures **raised** (₡6 900→₡10 900, ₡12 900→₡19 900); the top two
+ * are unchanged, so `Growth` and `Business` still match what that catalogue quoted and the
+ * ladder stays monotonic — the rungs are ₡10 900, ₡19 900, ₡29 900, ₡59 900, which is a
+ * tighter spread at the bottom and a wider one at the top than before.
  *
  * `FREE` is **absent from every cadence**, not present at zero. A `FREE` row priced at 0
  * would satisfy `priceMinorFor` and then be charged 0 forever; absence is what makes the
@@ -134,8 +136,8 @@ export const LAUNCH_PRICE_BOOK: {
 	 * is never charged" becomes checkable — could not write that assertion at all.
 	 */
 	prices: {
-		EMPRENDE: { MONTHLY: 690_000, YEARLY: 6_900_000 },
-		STARTER: { MONTHLY: 1_290_000, YEARLY: 12_900_000 },
+		EMPRENDE: { MONTHLY: 1_090_000, YEARLY: 10_900_000 },
+		STARTER: { MONTHLY: 1_990_000, YEARLY: 19_900_000 },
 		GROWTH: { MONTHLY: 2_990_000, YEARLY: 29_900_000 },
 		BUSINESS: { MONTHLY: 5_990_000, YEARLY: 59_900_000 },
 	},

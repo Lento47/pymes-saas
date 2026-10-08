@@ -80,6 +80,25 @@ describe("what a merchant pays", () => {
 		}
 	});
 
+	test("the launch prices are the ones the page and the seed quote", () => {
+		// **Pinned, so a price change is a deliberate diff rather than a drift.** These are
+		// the headline numbers a merchant reads and an invoice charges, and the seed, the
+		// pricing page and this file all read the same object — so a figure that moved
+		// without anyone deciding it did would otherwise be invisible until an invoice.
+		expect(priceMinorFor("EMPRENDE", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(1_090_000);
+		expect(priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(1_990_000);
+		expect(priceMinorFor("GROWTH", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(2_990_000);
+		expect(priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(5_990_000);
+
+		// The ladder stays strictly increasing, which the top two tiers being unchanged and
+		// the bottom two rising is exactly the kind of edit that can quietly break.
+		const monthly = PLAN_ORDER.filter((plan) => plan !== "FREE").map((plan) =>
+			priceMinorFor(plan, "MONTHLY", LAUNCH_PRICE_BOOK),
+		);
+		expect(monthly).toEqual([...monthly].sort((a, b) => a - b));
+		expect(new Set(monthly).size).toBe(monthly.length);
+	});
+
 	test("the launch book is the one the seed and a fresh install run on", () => {
 		expect(LAUNCH_PRICE_BOOK.priceBookId).toBeTruthy();
 		// Every paid tier carries both cadences. A tier missing one is a picker offering a

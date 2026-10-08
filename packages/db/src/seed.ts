@@ -50,6 +50,7 @@ import {
 	GRACE_DAYS,
 	LAUNCH_PRICE_BOOK,
 	type Plan,
+	priceMinorFor,
 } from "@pymeshub/shared/plans";
 import { type Column, getTableColumns, getTableName } from "drizzle-orm";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
@@ -2239,7 +2240,9 @@ subscriptionRows.push({
 	plan: "STARTER",
 	cadence: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
-	priceMinor: 1_290_000,
+	// **Read from the book, not restated.** A seed row that hardcoded the figure would keep
+	// charging the old price after a rise, and it would be the one row nobody re-read.
+	priceMinor: priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK),
 	status: "ACTIVE",
 	periodStart: daysAgo(4),
 	periodEnd: new Date(daysAgo(4).getTime() + 30 * 86_400_000),
@@ -2255,7 +2258,7 @@ subscriptionRows.push({
 	plan: "EMPRENDE",
 	cadence: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
-	priceMinor: 690_000,
+	priceMinor: priceMinorFor("EMPRENDE", "MONTHLY", LAUNCH_PRICE_BOOK),
 	status: "GRACE",
 	periodStart: daysAgo(17),
 	periodEnd: daysAgo(10),
@@ -2272,7 +2275,7 @@ subscriptionRows.push({
 	plan: "STARTER",
 	cadence: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
-	priceMinor: 1_290_000,
+	priceMinor: priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK),
 	status: "PAST_DUE",
 	periodStart: daysAgo(75),
 	periodEnd: daysAgo(45),

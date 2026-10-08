@@ -85,10 +85,10 @@ UPDATE `subscription` SET `plan` = 'FREE' WHERE `plan` NOT IN ('EMPRENDE','START
 -- cadence: a free shop is never charged, and absence is what makes that checkable.
 -- ─────────────────────────────────────────────────────────────────────────────
 INSERT INTO `price_book_price` (`price_book_id`, `plan`, `cadence`, `minor`) VALUES
-	('launch-2026', 'EMPRENDE', 'MONTHLY', 690000),
-	('launch-2026', 'EMPRENDE', 'YEARLY',  6900000),
-	('launch-2026', 'STARTER',  'MONTHLY', 1290000),
-	('launch-2026', 'STARTER',  'YEARLY',  12900000),
+	('launch-2026', 'EMPRENDE', 'MONTHLY', 1090000),
+	('launch-2026', 'EMPRENDE', 'YEARLY',  10900000),
+	('launch-2026', 'STARTER',  'MONTHLY', 1990000),
+	('launch-2026', 'STARTER',  'YEARLY',  19900000),
 	('launch-2026', 'GROWTH',   'MONTHLY', 2990000),
 	('launch-2026', 'GROWTH',   'YEARLY',  29900000),
 	('launch-2026', 'BUSINESS', 'MONTHLY', 5990000),
