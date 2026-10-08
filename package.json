@@ -89,7 +89,13 @@
       "@hono/node-server@>=2.0.0": "^2.0.10",
       "esbuild@<0.25.0": "^0.25.0",
       "esbuild@>=0.27.0": "^0.28.1",
-      "multer": "^2.3.0"
+      "multer": "^2.3.0",
+      "wouter>react": "19.3.0",
+      "react-freeze>react": "19.3.0",
+      "use-latest-callback>react": "19.3.0",
+      "@sentry/react>react": "19.3.0",
+      "@tanstack/react-query>react": "19.3.0",
+      "@trpc/tanstack-react-query>react": "19.3.0"
     }
   }
 }
