@@ -1,4 +1,3 @@
-import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import {
 	createContext,
@@ -9,10 +8,11 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState } from "react-native";
 
 import { useSession } from "@/lib/auth/session";
 import { getAccountProfile, initDevicePrefs } from "@/lib/device-prefs";
+import { notificationRuntime } from "@/lib/notification-runtime";
 import { registerPushToken } from "@/lib/push-token";
 
 export type PushStatus =
@@ -25,8 +25,9 @@ export type PushStatus =
 
 type PushValue = { status: PushStatus; request: () => Promise<void> };
 const PushContext = createContext<PushValue | null>(null);
+const Notifications = notificationRuntime();
 
-if (Platform.OS !== "web") {
+if (Notifications) {
 	Notifications.setNotificationHandler({
 		handleNotification: async () => ({
 			shouldShowBanner: true,
@@ -38,7 +39,7 @@ if (Platform.OS !== "web") {
 }
 
 async function openNotification(
-	response: Notifications.NotificationResponse,
+	response: import("expo-notifications").NotificationResponse,
 ): Promise<void> {
 	const data = response.notification.request.content.data;
 	const deliveryId = data?.deliveryId;
@@ -65,7 +66,7 @@ export function PushNotificationsProvider({
 	const [status, setStatus] = useState<PushStatus>("checking");
 
 	const refresh = useCallback(async () => {
-		if (Platform.OS === "web") {
+		if (!Notifications) {
 			setStatus("unavailable");
 			return;
 		}
@@ -91,7 +92,7 @@ export function PushNotificationsProvider({
 	}, [refresh]);
 
 	useEffect(() => {
-		if (Platform.OS === "web") return;
+		if (!Notifications) return;
 		const initial = Notifications.getLastNotificationResponse();
 		if (initial) {
 			void openNotification(initial);
@@ -106,7 +107,7 @@ export function PushNotificationsProvider({
 	}, []);
 
 	const request = useCallback(async () => {
-		if (Platform.OS === "web" || sessionStatus !== "signed-in") return;
+		if (!Notifications || sessionStatus !== "signed-in") return;
 		setStatus("checking");
 		try {
 			const permission = await Notifications.requestPermissionsAsync({

@@ -3,14 +3,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import type { AppRouter } from "api/app-router";
 import Constants from "expo-constants";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import superjson from "superjson";
 
 import { accessToken } from "@/lib/auth/client";
 import { env } from "@/lib/env";
+import { notificationRuntime } from "@/lib/notification-runtime";
 
 const TOKEN_KEY = "pymeshub:expo-push-token";
+const Notifications = notificationRuntime();
 
 const client = createTRPCClient<AppRouter>({
 	links: [
@@ -41,6 +42,7 @@ function projectId(): string | undefined {
 export async function registerPushToken(): Promise<string> {
 	if (Platform.OS !== "ios" && Platform.OS !== "android")
 		throw new Error("push_not_available");
+	if (!Notifications) throw new Error("push_not_available");
 	const id = projectId();
 	if (!id) throw new Error("push_project_missing");
 
