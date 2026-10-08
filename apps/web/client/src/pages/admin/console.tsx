@@ -19,6 +19,7 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
+import { Card as ArcCard } from "@/components/arc/card/card";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { JsonViewer } from "@/components/arc/json-viewer/json-viewer";
 import { MetricCard } from "@/components/arc/metric-card/metric-card";
@@ -2893,74 +2894,85 @@ function PriceBooksTab() {
         ]}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Programar un precio nuevo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <label
-                htmlFor="pb-label"
-                className="text-xs text-muted-foreground"
-              >
-                Etiqueta
-              </label>
-              <Input
-                id="pb-label"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="2026-Q2"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="pb-weekly"
-                className="text-xs text-muted-foreground"
-              >
-                Semanal (₡)
-              </label>
-              <Input
-                id="pb-weekly"
-                value={weekly}
-                onChange={(e) => setWeekly(e.target.value)}
-                inputMode="decimal"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="pb-monthly"
-                className="text-xs text-muted-foreground"
-              >
-                Mensual (₡)
-              </label>
-              <Input
-                id="pb-monthly"
-                value={monthly}
-                onChange={(e) => setMonthly(e.target.value)}
-                inputMode="decimal"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="pb-from"
-                className="text-xs text-muted-foreground"
-              >
-                Vigente desde
-              </label>
-              <Input
-                id="pb-from"
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="mt-1"
-              />
-            </div>
+      {/*
+        Arc's `Card`, and the **only** one of this file's five that fits it exactly: a titled
+        panel whose body is a form. `title` is required by the component and this card has a
+        title, so nothing had to be invented to fill the prop.
+
+        Its heading is an `h3`, under the page's `h1` with no `h2` between them. That is a level
+        skip, and still an improvement on what it replaces: shadcn's `CardTitle` renders an
+        unlabelled `div`, so the section was not in the document outline at all and nobody
+        navigating by heading could find it. A heading at an imperfect level beats no heading.
+
+        **The other four are deliberately left on shadcn's**, and the reasons are not "ran out of
+        time":
+
+        - The two `AdminGate` cards hold the page's only `<h1>`. Those are full-screen states with
+          nothing else mounted, so moving that text into a Card `title` would demote the
+          document's top-level heading to an `h3`.
+        - The two Aprobaciones queue panels carry a leading status icon and a live count **in the
+          header**. Arc's Card has no leading-icon slot: `media` is a large cover block above the
+          card, and `action`/`status` are *footer* slots. Adopting it would move the queue count —
+          the panel's primary signal — into the footer and promote a 16px icon to a cover image.
+      */}
+      <ArcCard title="Programar un precio nuevo">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label htmlFor="pb-label" className="text-xs text-muted-foreground">
+              Etiqueta
+            </label>
+            <Input
+              id="pb-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="2026-Q2"
+              className="mt-1"
+            />
           </div>
-          {/*
+          <div>
+            <label
+              htmlFor="pb-weekly"
+              className="text-xs text-muted-foreground"
+            >
+              Semanal (₡)
+            </label>
+            <Input
+              id="pb-weekly"
+              value={weekly}
+              onChange={(e) => setWeekly(e.target.value)}
+              inputMode="decimal"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="pb-monthly"
+              className="text-xs text-muted-foreground"
+            >
+              Mensual (₡)
+            </label>
+            <Input
+              id="pb-monthly"
+              value={monthly}
+              onChange={(e) => setMonthly(e.target.value)}
+              inputMode="decimal"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label htmlFor="pb-from" className="text-xs text-muted-foreground">
+              Vigente desde
+            </label>
+            <Input
+              id="pb-from"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+        </div>
+        {/*
             The reason, and it is required. `subscription.create_price_book` is in
             `REASON_REQUIRED_ACTIONS`, so this is the console mirroring a server rule rather
             than inventing a field: the rise is the one act here that changes what *every*
@@ -2971,33 +2983,29 @@ function PriceBooksTab() {
             `@pymeshub/shared` through `@/lib/admin` — not a number typed here, which is how
             the reason-required list drifted in the first place.
           */}
-          <div className="mt-3">
-            <label
-              htmlFor="pb-reason"
-              className="text-xs text-muted-foreground"
-            >
-              Motivo (obligatorio)
-            </label>
-            <Textarea
-              id="pb-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Por qué sube el precio, y desde cuándo"
-              rows={2}
-              className="mt-1"
-            />
-          </div>
-          <div className="mt-3 flex justify-end">
-            <Button
-              size="sm"
-              disabled={!canSubmit || create.isPending}
-              onClick={() => create.mutate()}
-            >
-              {create.isPending ? "Guardando…" : "Programar"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="mt-3">
+          <label htmlFor="pb-reason" className="text-xs text-muted-foreground">
+            Motivo (obligatorio)
+          </label>
+          <Textarea
+            id="pb-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Por qué sube el precio, y desde cuándo"
+            rows={2}
+            className="mt-1"
+          />
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button
+            size="sm"
+            disabled={!canSubmit || create.isPending}
+            onClick={() => create.mutate()}
+          >
+            {create.isPending ? "Guardando…" : "Programar"}
+          </Button>
+        </div>
+      </ArcCard>
     </div>
   );
 }

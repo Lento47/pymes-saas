@@ -212,6 +212,40 @@ describe("foundation.css token adapter", () => {
     // asserting against the raw text fails on the explanation rather than on a regression.
     expect(foundationCss).not.toMatch(/outline:\s*none\s*!important/);
   });
+
+  it("is imported after index.css, because index.css also declares these tokens — bare", () => {
+    /*
+      The one thing that makes every assertion above true at runtime.
+       *
+      `index.css` declares `--surface` itself, in shadcn's token block, and declares it **bare**:
+
+          --surface: var(--bg-card);
+
+      which is the same defect this file exists to catch, sitting in the app's own stylesheet.
+      Both stylesheets target `:root`, so specificity cannot break the tie — only source order
+      can. `main.tsx` imports `index.css` first and `foundation.css` second, so the adapter's
+      `hsl(...)` wins and the Arc components get colours.
+
+      That is the whole margin, and it was invisible until someone read the built bundle: the
+      fixed declaration sits at a later byte offset than the bare one, which is the only reason
+      the console's tables have a border. Reorder those two imports — a tidy-up, an added import,
+      anything — and every surface, border and muted string in the Arc set silently drops again,
+      with no build error and no failing test.
+
+      So the ordering is asserted. It is an odd thing to assert and it is exactly the kind of
+      invariant that is load-bearing, undocumented and untested until the day it breaks.
+     */
+    const main = readFileSync(
+      join(import.meta.dirname, "..", "..", "main.tsx"),
+      "utf-8",
+    );
+    const indexAt = main.indexOf("./index.css");
+    const foundationAt = main.indexOf("arc/foundation.css");
+
+    expect(indexAt).toBeGreaterThan(-1);
+    expect(foundationAt).toBeGreaterThan(-1);
+    expect(foundationAt).toBeGreaterThan(indexAt);
+  });
 });
 
 /**

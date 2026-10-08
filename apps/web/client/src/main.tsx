@@ -12,9 +12,24 @@ import "./index.css";
  * things it deliberately does not do: it does not take ownership of `:root`, and it does not
  * remove focus outlines.
  *
- * Order matters only in that the app's own tokens must already exist for the adapter to have
- * something to point at; both blocks are `:root` custom properties, so either order would
- * resolve, and this one is last so the intent is readable.
+ * Order is **load-bearing**, not cosmetic, and this comment used to say the opposite.
+ *
+ * The reasoning it gave was that custom properties resolve lazily, so the adapter does not need
+ * the app's tokens to exist first and either order would do. That part is true and irrelevant.
+ *
+ * What matters is that `index.css` declares `--surface` **itself**, in shadcn's token block, and
+ * declares it bare — `--surface: var(--bg-card)`, which is a channel string and not a colour.
+ * That is the same defect the adapter exists to prevent, sitting in the app's own stylesheet.
+ * Both files therefore set the *same* custom property on `:root`, so specificity cannot break
+ * the tie and only source order can. Last writer wins, and this import has to be the last one.
+ *
+ * Reverse them and every surface, border and muted string in `components/arc` silently resolves
+ * to nothing — no build error, no failing assertion, just flat unbordered tables. Confirmed by
+ * byte offset in the built bundle: the adapter's `hsl(...)` sits after the bare declaration, and
+ * that ordering is the entire margin.
+ *
+ * `foundation-tokens.test.ts` asserts this ordering, so a tidy-up that reorders these imports
+ * fails the suite instead of quietly un-fixing the console.
  */
 import "@/components/arc/foundation.css";
 import { normalizeInitialLocation } from "@/hooks/use-workspace-location";
