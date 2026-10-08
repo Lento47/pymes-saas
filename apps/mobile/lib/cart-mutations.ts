@@ -63,14 +63,10 @@ import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 
 /**
- * The id a line has until the server names it.
- *
- * Deliberately not shaped like a real one (`cit_…`): nothing should ever be able to send
- * this back to the API, and a key that looks temporary is the cheapest way to make that
- * obvious at a glance. The response that lands moments later replaces the whole cart, so
- * nothing holds this id for longer than a round trip.
+ * Give concurrent optimistic adds distinct row keys until the server names them. The
+ * `pending:` prefix cannot be mistaken for a real cart item ID (`cit_…`).
  */
-const PENDING_LINE_ID = "cit_pending";
+let pendingLineSequence = 0;
 
 /** The same arithmetic the API does, on a list this client just changed. */
 function totalsOf(totals: CartTotals, items: CartItem[]): CartTotals {
@@ -344,7 +340,7 @@ function pendingLine(
 	const quantity = input.quantity ?? 1;
 
 	return {
-		id: PENDING_LINE_ID,
+		id: `pending:${++pendingLineSequence}`,
 		productId: input.productId,
 		name: line.name,
 		imageUrl: line.imageUrl ?? null,
