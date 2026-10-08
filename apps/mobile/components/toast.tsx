@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import Animated, {
 	Easing,
 	runOnJS,
@@ -194,6 +195,7 @@ function ToastSurface({ children }: { children: ReactNode }) {
 	const { colors } = useTheme();
 	const { t } = useT();
 	const insets = useSafeAreaInsets();
+	const keyboardHeight = useKeyboardState((state) => state.height);
 	const tabClearance = useTabBarClearance({ bottomInsetPaid: true });
 	const obstruction = useBottomObstructionHeight();
 	const reduceMotion = useReducedMotion();
@@ -313,7 +315,11 @@ function ToastSurface({ children }: { children: ReactNode }) {
 						styles.host,
 						{
 							bottom:
-								Math.max(insets.bottom + tabClearance, obstruction) + space.md,
+								Math.max(
+									insets.bottom + tabClearance,
+									obstruction,
+									keyboardHeight,
+								) + space.md,
 						},
 						animated,
 					]}
