@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useRef } from "react";
-import { StyleSheet, type TextStyle, View, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ViewStyle } from "react-native";
 import Animated, {
 	cancelAnimation,
 	useAnimatedStyle,
@@ -299,7 +299,7 @@ export function Button({
 			    without that floor the button would shrink by the few points between them. */}
 			<View style={styles.content}>
 				{leading}
-				<Text variant="heading" bold style={{ color: ink } as TextStyle}>
+				<Text variant="heading" bold style={[styles.label, { color: ink }]}>
 					{label}
 				</Text>
 			</View>
@@ -331,7 +331,10 @@ const styles = StyleSheet.create({
 	content: {
 		flexDirection: "row",
 		alignItems: "center",
+		maxWidth: "100%",
 		gap: space.sm,
 		minHeight: type.heading.lineHeight,
 	},
+	// Give the leading mark its space before wrapping a large or translated label.
+	label: { flexShrink: 1, textAlign: "center" },
 });

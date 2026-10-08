@@ -147,6 +147,13 @@ export function Pressable({
 	);
 
 	useEffect(() => {
+		if (!disabled) return;
+		// An async action can disable its control before press-out is delivered.
+		setPressed(false);
+		settle(0);
+	}, [disabled, settle]);
+
+	useEffect(() => {
 		fade.value = withTiming(
 			disabled ? disabledOpacity : pressed ? PRESS_OPACITY : 1,
 			{ duration: duration.instant },

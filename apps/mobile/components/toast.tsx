@@ -33,6 +33,7 @@ import {
 
 import { MEASURE } from "./error-state";
 import { Pressable } from "./pressable";
+import { useTabBarClearance } from "./tab-bar";
 import { Text } from "./text";
 
 /**
@@ -115,11 +116,8 @@ import { Text } from "./text";
  *
  * ## Where it sits
  *
- * The bottom inset plus one step of air, on every screen — above the home
- * indicator and clear of the floating order controls on home. It is a
- * constant rather than a per-screen value on purpose: a toast that sits at a
- * different height on the cart than on the feed is a toast that moves for no
- * reason the customer can see.
+ * Above the navigation capsule when present, otherwise above the bottom safe area.
+ * The same clearance used by scrolling content keeps the toast off the tab targets.
  *
  * ## What a screen reader gets
  *
@@ -131,19 +129,18 @@ import { Text } from "./text";
  * already the announcement, and asking twice is a sentence read twice.
  *
  * The dismiss is a tap with an `accessibilityHint`, because an alert is not discovered as a
- * control — without it a reader would wait out the 3.2 seconds rather than know they can end
+ * control — without it a reader would wait for dismissal rather than know they can end
  * it sooner. The mark is hidden from the tree; the word is the message.
  */
 
 /**
  * How long the sentence stays before it leaves on its own.
  *
- * §46 gives "2—3 sec", and the 3.2s this used to hold is outside that window:
- * long enough to read twice, short enough that a merchant who wants it gone has already
- * tapped. 2800 is the middle of the window, and the tap-to-dismiss escape below is what
- * covers the reader who needs longer.
+ * Leave time to read a wrapping message and more time to choose Undo. Android's
+ * accessibility timeout can extend both; screen-reader users dismiss explicitly.
  */
-const AUTO_DISMISS = 2800;
+const AUTO_DISMISS = 5000;
+const UNDO_DISMISS = 8000;
 
 // The sentence's measure is `./error-state`'s exported `MEASURE` — the same cap the error
 // block puts on its own centred lines, read from there rather than spelled a second time:
@@ -185,6 +182,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	const { colors } = useTheme();
 	const { t } = useT();
 	const insets = useSafeAreaInsets();
+	const tabClearance = useTabBarClearance({ bottomInsetPaid: true });
 	const reduceMotion = useReducedMotion();
 
 	const [current, setCurrent] = useState<Toast | null>(null);
@@ -235,8 +233,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		if (!current) return;
-		const timer = setTimeout(() => dismiss(), AUTO_DISMISS);
-		return () => clearTimeout(timer);
+		let active = true;
+		let revision = 0;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const baseTimeout = current.undo ? UNDO_DISMISS : AUTO_DISMISS;
+		const schedule = async (screenReader: boolean) => {
+			const request = ++revision;
+			clearTimeout(timer);
+			if (screenReader) return;
+			const timeout =
+				Platform.OS === "android"
+					? await AccessibilityInfo.getRecommendedTimeoutMillis(
+							baseTimeout,
+						).catch(() => baseTimeout)
+					: baseTimeout;
+			if (active && request === revision) {
+				timer = setTimeout(dismiss, Math.max(baseTimeout, timeout));
+			}
+		};
+		const subscription = AccessibilityInfo.addEventListener(
+			"screenReaderChanged",
+			(enabled) => void schedule(enabled),
+		);
+		void AccessibilityInfo.isScreenReaderEnabled()
+			.then((enabled) => {
+				if (active && revision === 0) void schedule(enabled);
+			})
+			.catch(() => {
+				if (active && revision === 0) void schedule(false);
+			});
+		return () => {
+			active = false;
+			clearTimeout(timer);
+			subscription.remove();
+		};
 	}, [current, dismiss]);
 
 	useEffect(() => {
@@ -266,7 +296,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 			{children}
 			{current ? (
 				<Animated.View
-					style={[styles.host, { bottom: insets.bottom + space.md }, animated]}
+					style={[
+						styles.host,
+						{ bottom: insets.bottom + tabClearance + space.md },
+						animated,
+					]}
 				>
 					{/* The surface carries no `Pressable` of its own: the two halves below are
 					    siblings, and a tappable surface around them would swallow the action's
