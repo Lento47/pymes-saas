@@ -7,6 +7,8 @@
 import { z } from "zod";
 import { CURRENCIES } from "../money";
 import {
+	CADENCES,
+	type Cadence,
 	PLANS,
 	type Plan,
 	SUBSCRIPTION_STATUSES,
@@ -31,6 +33,18 @@ export const uploadIdSchema = idSchema.startsWith("upl_");
  */
 export const planSchema = z.enum(PLANS);
 export type { Plan };
+
+/**
+ * The billing cadence, as a wire value. A **second** axis from `planSchema`, not a
+ * refinement of it — the tier decides what a merchant gets and this decides when they are
+ * invoiced, and the limits follow only the first.
+ *
+ * Nullable on every wire that carries it, because `FREE` has no cadence: a plan that is
+ * never charged has no period, and giving it one is what would make a free subscription
+ * billable. See `PLAN_PERIOD_DAYS`.
+ */
+export const cadenceSchema = z.enum(CADENCES);
+export type { Cadence };
 
 /** The billing status. Same reasoning: derived from the statuses, not restated. */
 export const subscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);

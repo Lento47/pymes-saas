@@ -2341,10 +2341,23 @@ function slugifyCategory(name: string): string {
  *   owes one, because the period it bought has ended whether or not they noticed.
  */
 function periodsSqlFor(now: Date) {
+	/**
+	 * The period in milliseconds, from **both** axes.
+	 *
+	 * It was `case plan when 'WEEKLY' … else MONTHLY`, which read a tier to mean a duration.
+	 * With the split it is the cadence that decides the length and the tier that says whether
+	 * there is one at all — so the `else` is `YEARLY`, not `MONTHLY`, because an annual
+	 * subscriber owing money owes against a 365-day period and would be charged roughly a
+	 * twelfth of what they owe.
+	 *
+	 * `FREE` reaches neither branch and falls to `coalesce(…, 1)`, which the `periodEnd is
+	 * null` arm of the outer `case` already returns 0 for. The two guards are not
+	 * redundant: one covers a free row and the other a paid row with no period.
+	 */
 	const periodMsSql = sql<number>`coalesce(
-		case ${subscriptionTable.plan}
-			when 'WEEKLY' then ${PLAN_PERIOD_DAYS.WEEKLY * DAY_MS}
-			else ${PLAN_PERIOD_DAYS.MONTHLY * DAY_MS}
+		case ${subscriptionTable.cadence}
+			when 'MONTHLY' then ${30 * DAY_MS}
+			when 'YEARLY' then ${365 * DAY_MS}
 		end,
 		1
 	)`;

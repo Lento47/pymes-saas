@@ -2,6 +2,7 @@ import {
 	business as businessTable,
 	type Db,
 	priceBook as priceBookTable,
+	priceBookPrice as priceBookPriceTable,
 	subscription as subscriptionTable,
 } from "@pymeshub/db";
 // `PlanOption` and `Subscription` are wire shapes, so they come from the barrel; the
@@ -11,15 +12,18 @@ import type { PlanOption, Subscription } from "@pymeshub/shared";
 import { newId } from "@pymeshub/shared/ids";
 import { CURRENCIES, type Currency } from "@pymeshub/shared/money";
 import {
+	cadencesFor,
+	type Cadence,
 	effectivePlan,
 	GRACE_DAYS,
 	HIDDEN_AFTER_DAYS,
 	ivaOn,
 	netOfIva,
+	periodDaysFor,
 	PLAN_LIMITS,
 	PLAN_ORDER,
-	PLAN_PERIOD_DAYS,
 	type Plan,
+	type PriceBookPrices,
 	priceMinorFor,
 	STATUS_IS_LISTED,
 	type SubscriptionStatus,
@@ -84,6 +88,42 @@ export async function activePriceBook(db: Db, at: Date) {
 }
 
 /**
+ * The current book **with its prices**, as the shape `priceMinorFor` reads.
+ *
+ * Two reads rather than one join: the book row and its price pairs. A join would multiply
+ * the book row across every pair before the "latest by `effectiveFrom`" ordering picked
+ * one — the same trap `admin.businesses`' docblock names for its counts.
+ *
+ * The pairs come back keyed by tier and cadence, so `priceMinorFor` can **throw** on a
+ * missing pair rather than the charge path inventing a number.
+ */
+export async function activePriceBookWithPrices(
+	db: Db,
+	at: Date,
+): Promise<{ id: string; label: string; prices: PriceBookPrices }> {
+	// Sequential, not `Promise.all`: the second read needs the book's id, so the "two
+	// independent reads" shape the docblock describes is not the one the code can have.
+	const book = await activePriceBook(db, at);
+	const rows = await db
+		.select({
+			plan: priceBookPriceTable.plan,
+			cadence: priceBookPriceTable.cadence,
+			minor: priceBookPriceTable.minor,
+		})
+		.from(priceBookPriceTable)
+		.where(eq(priceBookPriceTable.priceBookId, book.id));
+
+	const prices: PriceBookPrices = {};
+	for (const row of rows) {
+		const forPlan: Partial<Record<Cadence, number>> = prices[row.plan] ?? {};
+		forPlan[row.cadence] = row.minor;
+		prices[row.plan] = forPlan;
+	}
+
+	return { id: book.id, label: book.label, prices };
+}
+
+/**
  * A subscription as the merchant sees it.
  *
  * `daysUntilDue` is what a dashboard actually renders, and it is computed here rather
@@ -109,6 +149,9 @@ async function dbSubscription(db: Db, businessId: string) {
 			id: subscriptionTable.id,
 			businessId: subscriptionTable.businessId,
 			plan: subscriptionTable.plan,
+			// Selected for the wire only. It changes nothing a limit reads — limits follow
+			// the tier alone — so unlike `plan` it is **not** denormalised onto `business`.
+			cadence: subscriptionTable.cadence,
 			status: subscriptionTable.status,
 			/**
 			 * Selected but not put on the wire: `priceBookId` is a foreign key, and the
@@ -145,6 +188,7 @@ function shapeSubscription(
 		id: string;
 		businessId: string;
 		plan: Plan;
+		cadence: Cadence | null;
 		status: SubscriptionStatus;
 		priceMinor: number | null;
 		periodStart: Date | null;
@@ -169,6 +213,7 @@ function shapeSubscription(
 		id: row.id,
 		businessId: row.businessId,
 		plan: row.plan,
+		cadence: row.cadence,
 		status,
 		priceMinor: row.priceMinor,
 		netMinor: row.priceMinor === null ? null : netOf(row.priceMinor),
@@ -207,29 +252,79 @@ function ivaOf(gross: number): number {
  * `priceMinor`.
  */
 export async function planOptions(ctx: BusinessContext): Promise<PlanOption[]> {
-	const book = await activePriceBook(ctx.db, new Date());
+	// The prices are a **child table** now, so the book is read as one row plus its pairs
+	// rather than as two columns on the book itself.
+	const book = await activePriceBookWithPrices(ctx.db, new Date());
 	const currentPlan = effectivePlan(ctx.businessPlan, ctx.subscriptionStatus);
+	const currentCadence = ctx.subscriptionCadence ?? null;
 
-	return PLAN_ORDER.map((plan) => ({
-		plan,
-		priceMinor: priceMinorFor(plan, book),
-		netMinor: netOfIva(priceMinorFor(plan, book)),
-		ivaMinor: ivaOf(priceMinorFor(plan, book)),
-		periodDays: PLAN_PERIOD_DAYS[plan],
-		limits: {
+	/**
+	 * One entry per **(tier, cadence)** pair, not per tier.
+	 *
+	 * `FREE` contributes a single entry with a zero price and no period, because a picker
+	 * that omits the free plan cannot answer "what does this cost me" — the answer is
+	 * nothing, and that is the answer a merchant needs before they will pay anything.
+	 * `isFree` is what tells the client to render it as a button that subscribes rather
+	 * than a price with a checkout.
+	 *
+	 * Every paid pair is priced from the same read as the charge, so the number a merchant
+	 * is shown to choose is the number written to `priceMinor`. A pair the book does not
+	 * carry is **skipped rather than defaulted to zero**: a tier whose annual price has not
+	 * been inserted yet must not be offered as free.
+	 */
+	const options: PlanOption[] = [];
+
+	for (const plan of PLAN_ORDER) {
+		const limits = {
 			locations: PLAN_LIMITS[plan].locations,
 			staffAccounts: PLAN_LIMITS[plan].staffAccounts,
 			products: PLAN_LIMITS[plan].products,
+			optionGroupsPerProduct: PLAN_LIMITS[plan].optionGroupsPerProduct,
+			optionsPerGroup: PLAN_LIMITS[plan].optionsPerGroup,
+			imagesPerProduct: PLAN_LIMITS[plan].imagesPerProduct,
 			storageBytes: PLAN_LIMITS[plan].storageBytes,
 			activePromotions: PLAN_LIMITS[plan].activePromotions,
 			analyticsDays: PLAN_LIMITS[plan].analyticsDays,
 			inventoryTracking: PLAN_LIMITS[plan].inventoryTracking,
-		},
-		isCurrent: plan === currentPlan,
-		// `isCeiling` is what stops a client offering a plan the merchant cannot use
-		// as an escape: the picker dims it rather than selling it.
-		isCeiling: !hasAnyHeadroomAbove(plan),
-	}));
+		};
+		const isCurrent = plan === currentPlan;
+		const isCeiling = !hasAnyHeadroomAbove(plan);
+
+		if (plan === "FREE") {
+			options.push({
+				plan,
+				cadence: null,
+				isFree: true,
+				priceMinor: 0,
+				netMinor: 0,
+				ivaMinor: 0,
+				periodDays: null,
+				limits,
+				isCurrent,
+				isCeiling,
+			});
+			continue;
+		}
+
+		for (const cadence of cadencesFor(plan)) {
+			const minor = book.prices[plan]?.[cadence];
+			if (typeof minor !== "number") continue;
+			options.push({
+				plan,
+				cadence,
+				isFree: false,
+				priceMinor: minor,
+				netMinor: netOfIva(minor),
+				ivaMinor: ivaOf(minor),
+				periodDays: periodDaysFor(plan, cadence),
+				limits,
+				isCurrent: isCurrent && currentCadence === cadence,
+				isCeiling,
+			});
+		}
+	}
+
+	return options;
 }
 
 function hasAnyHeadroomAbove(plan: Plan): boolean {
@@ -269,12 +364,22 @@ function hasAnyHeadroomAbove(plan: Plan): boolean {
 export async function changePlan(
 	ctx: BusinessContext,
 	plan: Plan,
+	cadence: Cadence | null,
 	now: Date,
 ): Promise<Subscription> {
 	const db = ctx.db;
 	const existing = await dbSubscription(db, ctx.membership.businessId);
-	const book = await activePriceBook(db, now);
-	const price = priceMinorFor(plan, book);
+	const book = await activePriceBookWithPrices(db, now);
+
+	/**
+	 * `FREE` is priced at nothing and has no period, and it is the one plan a merchant can
+	 * move to that involves no money at all.
+	 *
+	 * Everything downstream reads `cadence` rather than re-deriving it from the plan, so
+	 * `FREE` is not special-cased in five places — it is just a plan with no cadence, and
+	 * `periodDaysFor` already returns `null` for it.
+	 */
+	const price = plan === "FREE" ? null : priceMinorFor(plan, cadence ?? "MONTHLY", book);
 
 	/**
 	 * Rewrite the denormalised pair on `business`, from the status as of `now`.
@@ -302,17 +407,25 @@ export async function changePlan(
 		// No subscription row: sign them up. The floor plan is what they get for free,
 		// so a signup is never a downgrade past it.
 		const id = newId("subscription");
+		// **A free signup has no period at all** — not a zero-length one. `periodStart` and
+		// `periodEnd` stay null, which is what `subscriptionStatusAt` reads to know nothing
+		// was ever charged, and what `PLAN_PERIOD_DAYS`'s `null` exists to express.
+		const periodDays = periodDaysFor(plan, cadence ?? "MONTHLY");
 		await db.batch(
 			batchOf([
 				db.insert(subscriptionTable).values({
 					id,
 					businessId: ctx.membership.businessId,
 					plan,
+					cadence,
 					priceBookId: book.id,
 					priceMinor: price,
 					status: "ACTIVE",
-					periodStart: now,
-					periodEnd: new Date(now.getTime() + PLAN_PERIOD_DAYS[plan] * DAY_MS),
+					periodStart: periodDays === null ? null : now,
+					periodEnd:
+						periodDays === null
+							? null
+							: new Date(now.getTime() + periodDays * DAY_MS),
 					gracedUntil: null,
 					lastPaidAt: null,
 					createdAt: now,
@@ -329,8 +442,16 @@ export async function changePlan(
 	const charged = row.priceMinor !== null;
 	const periodEnd = row.periodEnd;
 
-	// A plan change with no money to settle either way is not a change.
-	if (row.plan === plan && charged) {
+	/**
+	 * A change with nothing to settle either way is not a change.
+	 *
+	 * Both axes, because with two of them "same plan" is no longer sufficient: a merchant
+	 * moving from monthly to annual **is** changing something, and one moving from monthly
+	 * to monthly is not. `charged` is what separates them — a `FREE` row is never charged,
+	 * so re-selecting `FREE` on it is the no-op.
+	 */
+	const samePosition = row.plan === plan && row.cadence === cadence;
+	if (samePosition && charged) {
 		return shapeSubscription(row, now);
 	}
 
@@ -339,6 +460,10 @@ export async function changePlan(
 	const periodEnded =
 		periodEnd !== null && periodEnd.getTime() <= now.getTime();
 	const nextPrice = charged && !periodEnded ? row.priceMinor : price;
+	// The cadence moves **with the plan, immediately** even mid-period: it says when the
+	// *next* invoice falls, and holding the old one while the new price is already captured
+	// would show a merchant "next charge in 30 days" on a plan billed yearly.
+	const nextPeriodDays = periodDaysFor(plan, cadence ?? "MONTHLY");
 
 	await db.batch(
 		batchOf([
@@ -346,6 +471,7 @@ export async function changePlan(
 				.update(subscriptionTable)
 				.set({
 					plan,
+					cadence,
 					priceMinor: nextPrice,
 					priceBookId: periodEnded ? book.id : row.priceBookId,
 					updatedAt: now,
@@ -354,6 +480,14 @@ export async function changePlan(
 			syncBusiness(plan, subscriptionStatusAt(row, now)),
 		]),
 	);
+	// A move to `FREE` clears the period rather than leaving a stale one behind, so the
+	// row's dates cannot describe a period the merchant was never charged for.
+	if (nextPeriodDays === null && !periodEnded) {
+		await db
+			.update(subscriptionTable)
+			.set({ periodStart: null, periodEnd: null, gracedUntil: null })
+			.where(eq(subscriptionTable.id, row.id));
+	}
 
 	const updated = await dbSubscription(db, ctx.membership.businessId);
 	return shapeSubscription(orNotFound(updated[0]), now);

@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { currencySchema, planSchema, subscriptionStatusSchema } from "./common";
+import {
+	cadenceSchema,
+	currencySchema,
+	planSchema,
+	subscriptionStatusSchema,
+} from "./common";
 
 /**
  * What a merchant is told about their own billing.
@@ -19,6 +24,16 @@ export const subscriptionSchema = z.object({
 	id: z.string(),
 	businessId: z.string(),
 	plan: planSchema,
+	/**
+	 * How this subscription is invoiced, or `null` for `FREE`.
+	 *
+	 * **Separate from `plan` on purpose.** Limits follow the tier alone, so an annual
+	 * merchant holds the same numbers as a monthly one on the same tier — this field says
+	 * when the money moves and nothing else. It is nullable rather than defaulted because
+	 * a free subscription is never charged, and a cadence on it would be a period that
+	 * never begins (see `PLAN_PERIOD_DAYS`).
+	 */
+	cadence: cadenceSchema.nullable(),
 	status: subscriptionStatusSchema,
 	/** Colones, IVA-inclusive, captured when the current period began. */
 	priceMinor: z.number().int().nullable(),
@@ -51,23 +66,41 @@ export type Subscription = z.infer<typeof subscriptionSchema>;
 // because the two answer different questions, and a merge would make every operator
 // field optional in the type a merchant's dashboard reads.
 
-/** The plans as a picker renders them. */
+/**
+ * The plans as a picker renders them — one entry per **(tier, cadence)** pair.
+ *
+ * **`plan` alone is not addressable any more.** With two axes there are eight paid pairs
+ * and a free one, and a picker keyed only by tier cannot say which invoice it is quoting.
+ * That is why `cadence` is on the option rather than on the page: the pair is the unit a
+ * merchant actually chooses, and it is what a change request has to name.
+ */
 export const planOptionSchema = z.object({
 	plan: planSchema,
+	/** `null` on the free entry, which has no invoice. */
+	cadence: cadenceSchema.nullable(),
+	/**
+	 * True only for the `FREE` entry, so a client renders a subscribe button instead of a
+	 * price with a checkout — and so it cannot mistake a zero price for a pricing bug.
+	 */
+	isFree: z.boolean(),
 	priceMinor: z.number().int(),
 	netMinor: z.number().int(),
 	ivaMinor: z.number().int(),
-	periodDays: z.number().int(),
+	/** `null` on the free entry: a plan that is never charged has no period. */
+	periodDays: z.number().int().nullable(),
 	limits: z.object({
 		locations: z.number(),
 		staffAccounts: z.number(),
 		products: z.number(),
+		optionGroupsPerProduct: z.number(),
+		optionsPerGroup: z.number(),
+		imagesPerProduct: z.number(),
 		storageBytes: z.number(),
 		activePromotions: z.number(),
 		analyticsDays: z.number(),
 		inventoryTracking: z.boolean(),
 	}),
-	/** False when this plan is the merchant's current one. */
+	/** False when this exact (tier, cadence) is the merchant's current one. */
 	isCurrent: z.boolean(),
 	/** Set when no plan reaches whatever they need; the reason to talk to us. */
 	isCeiling: z.boolean(),

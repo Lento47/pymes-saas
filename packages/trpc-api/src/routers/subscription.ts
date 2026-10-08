@@ -66,22 +66,54 @@ export const subscriptionRouter = router({
 				membership,
 				businessPlan: billing.plan,
 				subscriptionStatus: billing.status,
+				subscriptionCadence: billing.cadence,
 			});
 			return { options };
 		}),
 
 	/**
-	 * Moving between plans.
+	 * Moving between tiers, or between cadences on one tier.
 	 *
 	 * The limits apply **immediately**; the new price is captured at the next period. A
-	 * merchant who upgrades on day 29 of a month gets the bigger catalogue today and is
-	 * not charged a second time four weeks early.
+	 * merchant who upgrades on day 29 gets the bigger catalogue today and is not charged a
+	 * second time four weeks early.
+	 *
+	 * **Both axes are in the input and both are required to be consistent.** `cadence` is
+	 * nullable rather than optional because "absent" and "none" are different facts here, in
+	 * the same way they are on `nameEn` and `imageUrl` in `adminCategoryInput`: absent
+	 * leaves the cadence where it is, and `null` moves the shop to `FREE`, which is the only
+	 * tier with no cadence. Without that distinction a client that forgot the key would
+	 * silently unsubscribe a paying merchant.
+	 *
+	 * The consistency is enforced rather than left to the service, because the pair is
+	 * checked here with the tier list already in hand and nowhere else has both.
 	 */
 	changePlan: businessProcedure("business:settings")
 		.input(
-			z.object({ businessId: z.string(), plan: z.enum(["WEEKLY", "MONTHLY"]) }),
+			z
+				.object({
+					businessId: z.string(),
+					plan: z.enum(PLANS),
+					cadence: cadenceSchema.nullable().optional(),
+				})
+				.refine(
+					(data) =>
+						data.plan === "FREE"
+							? data.cadence === undefined || data.cadence === null
+							: data.cadence !== null && data.cadence !== undefined,
+					{
+						message:
+							"El plan gratis no tiene periodicidad, y un plan pagado necesita una.",
+						path: ["cadence"],
+					},
+				),
 		)
 		.mutation(({ ctx, input }) =>
-			subscriptions.changePlan(ctx, input.plan, new Date()),
+			subscriptions.changePlan(
+				ctx,
+				input.plan,
+				input.cadence === undefined ? ctx.subscriptionCadence : input.cadence,
+				new Date(),
+			),
 		),
 });

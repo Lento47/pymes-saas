@@ -16,6 +16,7 @@ import {
 	productOption as optionTable,
 	order as orderTable,
 	priceBook as priceBookTable,
+	priceBookPrice as priceBookPriceTable,
 	product as productTable,
 	review as reviewTable,
 	session as sessionTable,
@@ -31,7 +32,15 @@ import type {
 import { newOrderReference, PLAN_LIMITS } from "@pymeshub/shared";
 import type { OrderStatus, PaymentStatus } from "@pymeshub/shared/order-state";
 import {
+	CADENCES,
+	type Cadence,
+	DEFAULT_PLAN,
 	effectivePlan,
+	LAUNCH_PRICE_BOOK,
+	periodDaysFor,
+	type Plan,
+	PLANS,
+	priceMinorFor,
 	STATUS_IS_LISTED,
 	subscriptionStatusAt,
 } from "@pymeshub/shared/plans";
@@ -482,23 +491,49 @@ export async function seedPriceBook(
 	overrides: {
 		id?: string;
 		label?: string;
-		weeklyMinor?: number;
-		monthlyMinor?: number;
+		/**
+		 * Per-pair overrides, keyed `"TIER:CADENCE"` — `{ "STARTER:MONTHLY": 1_400_000 }`.
+		 *
+		 * Pairs default to the launch book, so a spec that only cares about a tier does not
+		 * restate prices, and a spec that needs a different price cannot forget to insert
+		 * it, which is exactly what a `0` default would have let it do.
+		 */
+		prices?: Record<string, number>;
 		effectiveFrom?: Date;
 	} = {},
 ): Promise<string> {
 	const id = overrides.id ?? "pbk_test_launch";
+
 	await db
 		.insert(priceBookTable)
 		.values({
 			id,
 			label: overrides.label ?? "Test",
-			weeklyMinor: overrides.weeklyMinor ?? 2_000,
-			monthlyMinor: overrides.monthlyMinor ?? 10_000,
 			effectiveFrom: overrides.effectiveFrom ?? daysAgo(90),
 			createdAt: new Date(),
 		})
 		.onConflictDoNothing();
+
+	// `FREE` is skipped, matching the launch book: a free shop is never charged, and a row
+	// priced at 0 would let a spec assert that a free subscription costs nothing instead of
+	// asserting that it is never charged.
+	for (const plan of PLANS) {
+		if (plan === "FREE") continue;
+		for (const cadence of CADENCES) {
+			await db
+				.insert(priceBookPriceTable)
+				.values({
+					priceBookId: id,
+					plan,
+					cadence,
+					minor:
+						overrides.prices?.[`${plan}:${cadence}`] ??
+						priceMinorFor(plan, cadence, LAUNCH_PRICE_BOOK),
+				})
+				.onConflictDoNothing();
+		}
+	}
+
 	return id;
 }
 
@@ -525,7 +560,14 @@ export async function seedSubscription(
 	input: {
 		businessId: string;
 		id?: string;
-		plan?: "WEEKLY" | "MONTHLY";
+		/** The tier. `FREE` by default so a fixture is on the floor unless it says otherwise. */
+		plan?: Plan;
+		/**
+		 * The cadence. `null` for `FREE` and monthly otherwise, and the **period length
+		 * follows it** — 30 days or 365 — because a fixture that wrote a 30-day period onto
+		 * a yearly subscription would test a state no real row can hold.
+		 */
+		cadence?: Cadence | null;
 		priceBookId?: string;
 		priceMinor?: number | null;
 		/** Negative means the period ended that many days ago. */
@@ -541,21 +583,26 @@ export async function seedSubscription(
 	},
 ): Promise<string> {
 	const id = input.id ?? `sub_test_${input.businessId}`;
-	const plan = input.plan ?? "WEEKLY";
+	const plan = input.plan ?? DEFAULT_PLAN;
+	// A free subscription has no period at all — see `PLAN_PERIOD_DAYS`, where it is
+	// `null` and not zero precisely so nothing can bill it.
+	const cadence = input.cadence === undefined && plan === "FREE" ? null : input.cadence ?? "MONTHLY";
 	const days = input.daysUntilDue ?? 5;
-	const periodStart = new Date(Date.now() + (days - 7) * 86_400_000);
+	const periodLength = periodDaysFor(plan, cadence ?? "MONTHLY") ?? 0;
+	const periodStart = new Date(Date.now() + (days - periodLength) * 86_400_000);
 	const periodEnd = new Date(Date.now() + days * 86_400_000);
 	const priceBookId = input.priceBookId ?? (await seedPriceBook(db));
 	const row = {
 		id,
 		businessId: input.businessId,
 		plan,
+		cadence,
 		priceBookId,
 		priceMinor:
 			input.priceMinor === undefined
-				? plan === "WEEKLY"
-					? 2_000
-					: 10_000
+				? cadence === null
+					? null
+					: priceMinorFor(plan, cadence, LAUNCH_PRICE_BOOK)
 				: input.priceMinor,
 		status: input.storedStatus ?? ("ACTIVE" as const),
 		periodStart,
@@ -599,7 +646,12 @@ export async function seedSubscription(
 	// disagree — and `effectivePlan` is applied for the same reason, so a lapsed shop's
 	// fixture is already on the floor plan the service will hold it to.
 	const status = subscriptionStatusAt(
-		{ periodEnd, gracedUntil: null, createdAt: daysAgo(60) },
+		{
+			plan,
+			periodEnd: cadence === null ? null : periodEnd,
+			gracedUntil: cadence === null ? null : gracedUntil,
+			createdAt: daysAgo(60),
+		},
 		new Date(),
 	);
 	await db

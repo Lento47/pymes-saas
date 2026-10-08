@@ -40,14 +40,16 @@ import { ID_PREFIXES } from "@pymeshub/shared/ids";
 import { optionDelta, optionsHash } from "@pymeshub/shared/options";
 import {
 	canTransition,
+	type DeliverySpeed,
 	type FulfilmentKind,
 	type OrderActor,
 	type OrderStatus,
 } from "@pymeshub/shared/order-state";
 import {
+	type Cadence,
 	GRACE_DAYS,
 	LAUNCH_PRICE_BOOK,
-	PLAN_PERIOD_DAYS,
+	type Plan,
 } from "@pymeshub/shared/plans";
 import { type Column, getTableColumns, getTableName } from "drizzle-orm";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
@@ -80,6 +82,7 @@ import {
 	type NewOrderEvent,
 	type NewOrderItem,
 	type NewPriceBook,
+	type NewPriceBookPrice,
 	type NewProduct,
 	type NewProductOption,
 	type NewProductOptionGroup,
@@ -93,6 +96,7 @@ import {
 	orderEvent,
 	orderItem,
 	priceBook,
+	priceBookPrice,
 	product,
 	productOption,
 	productOptionGroup,
@@ -1380,6 +1384,7 @@ const reviewRows: NewReview[] = [];
 const favoriteRows: NewFavorite[] = [];
 const notificationRows: NewNotification[] = [];
 const priceBookRows: NewPriceBook[] = [];
+const priceBookPriceRows: NewPriceBookPrice[] = [];
 const subscriptionRows: NewSubscription[] = [];
 const auditRows: NewAuditLog[] = [];
 
@@ -2211,23 +2216,33 @@ notificationRows.push(
 priceBookRows.push({
 	id: LAUNCH_PRICE_BOOK.priceBookId,
 	label: LAUNCH_PRICE_BOOK.label,
-	weeklyMinor: LAUNCH_PRICE_BOOK.weeklyMinor,
-	monthlyMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
 	effectiveFrom: daysAgo(120),
 	createdAt: daysAgo(120),
 });
 
+// One row per (tier, cadence). `FREE` is absent from every cadence on purpose: a free shop
+// is never charged, and its absence is what makes that checkable rather than a zero price.
+for (const [plan, byCadence] of Object.entries(LAUNCH_PRICE_BOOK.prices)) {
+	for (const [cadence, minor] of Object.entries(byCadence)) {
+		priceBookPriceRows.push({
+			priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
+			plan: plan as Plan,
+			cadence: cadence as Cadence,
+			minor: minor as number,
+		});
+	}
+}
+
 subscriptionRows.push({
 	id: seedId(ID_PREFIXES.subscription, 1),
 	businessId: businessIds.get("yunta") as string,
-	plan: "MONTHLY",
+	plan: "STARTER",
+	cadence: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
-	priceMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
+	priceMinor: 1_290_000,
 	status: "ACTIVE",
 	periodStart: daysAgo(4),
-	periodEnd: new Date(
-		daysAgo(4).getTime() + PLAN_PERIOD_DAYS.MONTHLY * 86_400_000,
-	),
+	periodEnd: new Date(daysAgo(4).getTime() + 30 * 86_400_000),
 	gracedUntil: null,
 	lastPaidAt: daysAgo(4),
 	createdAt: daysAgo(94),
@@ -2237,9 +2252,10 @@ subscriptionRows.push({
 subscriptionRows.push({
 	id: seedId(ID_PREFIXES.subscription, 2),
 	businessId: businessIds.get("mirador") as string,
-	plan: "WEEKLY",
+	plan: "EMPRENDE",
+	cadence: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
-	priceMinor: LAUNCH_PRICE_BOOK.weeklyMinor,
+	priceMinor: 690_000,
 	status: "GRACE",
 	periodStart: daysAgo(17),
 	periodEnd: daysAgo(10),
@@ -2253,18 +2269,45 @@ subscriptionRows.push({
 subscriptionRows.push({
 	id: seedId(ID_PREFIXES.subscription, 3),
 	businessId: businessIds.get("cosecha") as string,
-	plan: "MONTHLY",
+	plan: "STARTER",
+	cadence: "MONTHLY",
 	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
-	priceMinor: LAUNCH_PRICE_BOOK.monthlyMinor,
+	priceMinor: 1_290_000,
 	status: "PAST_DUE",
 	periodStart: daysAgo(75),
 	periodEnd: daysAgo(45),
-	// The grace window ran out; `business.plan` is WEEKLY so the limits have already
-	// fallen, which is what a row in this state should look like.
+	// The grace window ran out; `business.plan` has fallen to FREE so the limits have
+	// already dropped, which is what a row in this state should look like.
 	gracedUntil: new Date(daysAgo(45).getTime() + GRACE_DAYS * 86_400_000),
 	lastPaidAt: daysAgo(75),
 	createdAt: daysAgo(75),
 	updatedAt: daysAgo(15),
+});
+
+/**
+ * A **free** shop, and the row this file exists to catch regressions in.
+ *
+ * It is four months old and has never been charged, which is the only shape a permanent
+ * free tier has. Without the `plan` argument short-circuiting in `subscriptionStatusAt`,
+ * the null `periodEnd` would fall back to this `createdAt` and the shop would read as
+ * `GRACE` at 30 days, `PAST_DUE` at 31 and `SUSPENDED` at 90 — **unlisted from the
+ * marketplace with no payment ever requested**. It is listed here rather than left to a
+ * unit test because a seed row is read by whoever opens the database next.
+ */
+subscriptionRows.push({
+	id: seedId(ID_PREFIXES.subscription, 4),
+	businessId: businessIds.get("bosque") as string,
+	plan: "FREE",
+	cadence: null,
+	priceBookId: LAUNCH_PRICE_BOOK.priceBookId,
+	priceMinor: null,
+	status: "ACTIVE",
+	periodStart: null,
+	periodEnd: null,
+	gracedUntil: null,
+	lastPaidAt: null,
+	createdAt: daysAgo(122),
+	updatedAt: daysAgo(122),
 });
 
 auditRows.push({
@@ -2358,6 +2401,9 @@ const statements = [
 	// A price book before its subscriptions: `subscription.price_book_id` references
 	// it, and the order is a foreign-key requirement rather than a preference.
 	insertStatement(priceBook, priceBookRows),
+	// After its book: `price_book_price.price_book_id` references it, and the order is a
+	// foreign-key requirement rather than a preference.
+	insertStatement(priceBookPrice, priceBookPriceRows),
 	insertStatement(subscription, subscriptionRows),
 	insertStatement(auditLog, auditRows),
 ].filter((statement): statement is string => statement !== null);

@@ -27,11 +27,14 @@ import {
 	type CancelOrderInput,
 	type Cart,
 	type CartStatus,
+	canAcceptExpress,
 	canTransition,
 	type Discount,
 	decodeCursor,
 	discountAmountOf,
 	encodeCursor,
+	effectivePlan,
+	isExpress,
 	isPaymentMethodEnabled,
 	isTerminalStatus,
 	MARKET_TIME_ZONE,
@@ -57,8 +60,12 @@ import {
 	type ReorderSkippedLine,
 	type ReorderSkipReason,
 	type ReportLocationInput,
+	DEFAULT_PLAN,
+	PLAN_LIMITS,
 	requiresCollection,
 	startOfMarketDay,
+	upgradeTarget,
+	weekWindowStart,
 } from "@pymeshub/shared";
 import {
 	and,
@@ -71,6 +78,7 @@ import {
 	like,
 	lt,
 	lte,
+	notInArray,
 	type SQL,
 	sql,
 } from "drizzle-orm";
@@ -89,7 +97,11 @@ import { type OrderEventEnvelope, orderEvent, outboxRowOf } from "../events";
 import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
 import { prepareDeliveryForOrder } from "./delivery-dispatch";
-import type { BusinessContext, UserContext } from "./helpers";
+import type {
+	BillingPlan,
+	BusinessContext,
+	UserContext,
+} from "./helpers";
 import {
 	batchOf,
 	isPublicBusiness,
@@ -98,6 +110,7 @@ import {
 	publicBusiness,
 } from "./helpers";
 import { operationalStatus } from "./locations";
+import { QuotaExceededError } from "./plan-limits";
 import {
 	orderDetailOf,
 	orderSummaryOf,
@@ -794,7 +807,7 @@ function discountOf(kind: PromotionKind, value: number): Discount {
  * told the order moved under it.
  */
 export async function advance(
-	ctx: UserContext,
+	ctx: UserContext & Partial<BillingPlan>,
 	input: AdvanceOrderInput,
 ): Promise<OrderDetail> {
 	const order = await reachableOrder(ctx, input.orderId);
@@ -860,6 +873,65 @@ export async function advance(
 		);
 	}
 
+	/**
+	 * The express quota, consumed **on acceptance** by the business.
+	 *
+	 * Three decisions, all of them load-bearing:
+	 *
+	 * - **On `ACCEPTED`, and only by `BUSINESS`.** The customer placed the order and the shop
+	 *   decides to take it, so that is the moment the quota is spent. Counting at placement
+	 *   would charge a shop for orders it declined, and counting on `OUT_FOR_DELIVERY` would
+	 *   let it accept twenty express orders before discovering it could serve ten.
+	 * - **`effectivePlan`, not `businessPlan`.** A shop in `PAST_DUE` has already lost its
+	 *   tools, this one included. Refusing a delivery to a shop that stopped paying *is* the
+	 *   enforcement working, and it is why this reads the same plan the other limits do.
+	 * - **Counted, not decremented.** The count is a read of the express orders this shop has
+	 *   already accepted in the current window, so a missed write cannot strand a merchant
+	 *   that had room. See `canAcceptExpress`.
+	 *
+	 * The customer has already paid the courier and that is unaffected either way — this
+	 * governs whether the shop may *take on* the order, not who pays for it.
+	 */
+	if (
+		input.to === "ACCEPTED" &&
+		actor === "BUSINESS" &&
+		isExpress(order.deliverySpeed)
+	) {
+		const used = await countExpressAcceptedSince(
+			ctx.db,
+			order.businessId,
+			weekWindowStart(new Date()),
+		);
+		// Read the billing pair off the context **or** the business row, because `advance` is
+		// not a `businessProcedure` — it is reachable by the customer, the courier and an
+		// admin, so the middleware has no membership to resolve the plan from. The fallback
+		// is the denormalised `business.plan`, the same column every product and staff write
+		// reads, and `ACTIVE` because a caller with no subscription on the context has not
+		// been shown to owe anything. `effectivePlan` then applies the floor either way, so
+		// a lapsed shop is held to `FREE` and cannot be the one place that is not.
+		const plan = effectivePlan(
+			ctx.businessPlan ??
+				(await ctx.db
+					.select({ plan: businessTable.plan })
+					.from(businessTable)
+					.where(eq(businessTable.id, order.businessId))
+					.limit(1))[0]?.plan ??
+				DEFAULT_PLAN,
+			ctx.subscriptionStatus ?? "ACTIVE",
+		);
+
+		if (!canAcceptExpress(plan, used)) {
+			throw new QuotaExceededError({
+				resourceType: "entregas express esta semana",
+				current: used,
+				limit: PLAN_LIMITS[plan].expressPerWeek,
+				plan,
+				limitName: "expressPerWeek",
+				upgradeTo: upgradeTarget(plan, "expressPerWeek", used)?.plan ?? null,
+			});
+		}
+	}
+
 	return applyMove(ctx, order, {
 		to: input.to,
 		actor,
@@ -868,6 +940,37 @@ export async function advance(
 		courierName: input.courierName ?? null,
 		courierPhone: input.courierPhone ?? null,
 	});
+}
+
+/**
+ * How many express orders this shop has accepted since `since`.
+ *
+ * **`acceptedAt`, not `placedAt`.** The quota is spent at acceptance, so the window is
+ * anchored there: an order placed on Sunday and accepted on Monday spent Monday's quota, and
+ * counting it from Sunday would take a slot from a window it never used.
+ *
+ * `CANCELLED` and `REJECTED` are excluded, and a **`REJECTED` order is the shop declining** —
+ * so that exclusion is the whole reason the count is written here rather than as a plain
+ * count of the window's orders.
+ */
+async function countExpressAcceptedSince(
+	db: BusinessContext["db"],
+	businessId: string,
+	since: Date,
+): Promise<number> {
+	const rows = await db
+		.select({ id: orderTable.id })
+		.from(orderTable)
+		.where(
+			and(
+				eq(orderTable.businessId, businessId),
+				eq(orderTable.deliverySpeed, "EXPRESS"),
+				gte(orderTable.acceptedAt, since),
+				notInArray(orderTable.status, ["CANCELLED", "REJECTED"]),
+			),
+		);
+
+	return rows.length;
 }
 
 /**

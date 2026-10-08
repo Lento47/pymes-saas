@@ -30,6 +30,27 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export const FULFILMENT_KINDS = ["PICKUP", "DELIVERY"] as const;
 export type FulfilmentKind = (typeof FULFILMENT_KINDS)[number];
 
+/**
+ * How fast a delivery is meant to arrive.
+ *
+ * **A separate axis from `FulfilmentKind`, not a third value of it.** `FULFILMENT_KINDS`
+ * answers *whether* the customer comes to the shop or the goods come to them, and that
+ * question is orthogonal to urgency — a customer may want a pickup in ten minutes or a
+ * delivery next week. Folding express into the fulfilment enum would make "express pickup"
+ * a third thing to reason about everywhere, and would make the tier's express quota
+ * unanswerable for the pickups it does not cover.
+ *
+ * `STANDARD` is the default on the wire and the default in the column, because an order
+ * placed before this column existed is a standard one and must not be read as express.
+ */
+export const DELIVERY_SPEEDS = ["STANDARD", "EXPRESS"] as const;
+export type DeliverySpeed = (typeof DELIVERY_SPEEDS)[number];
+
+/** Whether an order counts against the tier's weekly express quota. */
+export function isExpress(speed: DeliverySpeed): boolean {
+	return speed === "EXPRESS";
+}
+
 export const ORDER_ACTORS = [
 	"CUSTOMER",
 	"BUSINESS",

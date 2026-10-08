@@ -8,6 +8,8 @@ import {
 	user as userTable,
 } from "@pymeshub/db";
 import {
+	type Cadence,
+	DEFAULT_PLAN,
 	type Plan,
 	type SubscriptionStatus,
 	subscriptionStatusAt,
@@ -95,8 +97,10 @@ export type Context = {
  * `plan-limits.ts` rather than trusted from a column.
  */
 export type BusinessBilling = {
-	/** What they pay for — the floor plan, never the effective one. */
+	/** What they pay for — the tier, never the effective one. */
 	businessPlan: Plan;
+	/** How they are invoiced, or `null` on `FREE`. Changes no limit. */
+	subscriptionCadence: Cadence | null;
 	/** Derived from `periodEnd`/`gracedUntil` on the subscription, at request time. */
 	subscriptionStatus: SubscriptionStatus;
 };
@@ -138,15 +142,20 @@ async function loadMemberships(db: Db, userId: string): Promise<Membership[]> {
  * merchant three weeks into grace is `GRACE` today whether or not a sweeper has run,
  * and one that has never been charged has no subscription row at all — which is
  * `ACTIVE`, not a crash and not a suspension.
+ *
+ * `cadence` comes off the **subscription** rather than being denormalised beside `plan`,
+ * because it changes no limit: nothing in `PLAN_LIMITS` reads it. It is here for the plan
+ * picker and the billing screen, which have to quote an invoice.
  */
 export async function loadBilling(
 	db: Db,
 	businessId: string,
 	now: Date,
-): Promise<{ plan: Plan; status: SubscriptionStatus }> {
+): Promise<{ plan: Plan; cadence: Cadence | null; status: SubscriptionStatus }> {
 	const rows = await db
 		.select({
 			plan: businessTable.plan,
+			cadence: subscriptionTable.cadence,
 			periodEnd: subscriptionTable.periodEnd,
 			gracedUntil: subscriptionTable.gracedUntil,
 			subscriptionCreatedAt: subscriptionTable.createdAt,
@@ -160,19 +169,31 @@ export async function loadBilling(
 		.limit(1);
 
 	const row = rows[0];
-	if (!row) return { plan: "WEEKLY", status: "ACTIVE" };
+	// `DEFAULT_PLAN`, not a literal. A business with no subscription row at all is on the
+	// floor, and the floor is `FREE` — a hardcoded `"WEEKLY"` here was the paid small tier,
+	// so a business created but never billed silently got a paid tier's limits. `cadence`
+	// is null alongside it, because `FREE` is the only tier without one.
+	if (!row) return { plan: DEFAULT_PLAN, cadence: null, status: "ACTIVE" };
 
 	// No subscription row at all — a business created but never billed, or a fixture.
 	// `subscriptionStatusAt` on a zero-date `createdAt` would read as long expired, so
 	// the "never charged" case is answered here rather than inferred from a null
 	// period. A merchant nobody has billed is not in arrears; they are `ACTIVE` on
 	// the floor plan.
-	if (!row.subscriptionCreatedAt) return { plan: row.plan, status: "ACTIVE" };
+	if (!row.subscriptionCreatedAt) {
+		return { plan: row.plan, cadence: row.cadence, status: "ACTIVE" };
+	}
 
 	return {
 		plan: row.plan,
+		cadence: row.cadence,
 		status: subscriptionStatusAt(
 			{
+				// The plan is read here, not inside the deriver from a lookup, because this
+				// function already holds the row and a second read could disagree with it.
+				// It is load-bearing: `FREE` returns `ACTIVE` on any date, and that is what
+				// keeps a permanent free shop out of `PAST_DUE` at day 30.
+				plan: row.plan,
 				periodEnd: row.periodEnd,
 				gracedUntil: row.gracedUntil,
 				createdAt: row.subscriptionCreatedAt,

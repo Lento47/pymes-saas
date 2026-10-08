@@ -204,6 +204,7 @@ export function businessProcedure(capability: RoleCapability) {
 				// two fields nothing reads and leave the two that matter undefined, which
 				// typechecks as `any` at the call site and fails at runtime.
 				businessPlan: billing.plan,
+				subscriptionCadence: billing.cadence,
 				subscriptionStatus: billing.status,
 			},
 		});

@@ -34,6 +34,7 @@ import type {
 	CrashSeverity,
 	CrashSource,
 	CrashStatus,
+	Cadence,
 	LocationPauseReason,
 	Plan,
 	SubscriptionStatus,
@@ -42,6 +43,7 @@ import type {
 } from "@pymeshub/shared";
 import type { Currency } from "@pymeshub/shared/money";
 import type {
+	DeliverySpeed,
 	FulfilmentKind,
 	OrderActor,
 	OrderStatus,
@@ -334,12 +336,15 @@ export const business = sqliteTable(
 		 * is the record**; this is the fast path, and the two are written together in
 		 * the same batch so they cannot drift.
 		 *
-		 * Defaults to `WEEKLY` because that is the floor: a business with no
+		 * Defaults to `FREE` because that is the floor: a business with no
 		 * subscription row — a newly created one, or a fixture — can still take orders
 		 * and still run a kitchen. It cannot do anything a paid plan does not also let
 		 * it do, so the default can never be a way to get more.
+		 *
+		 * It was `WEEKLY`, which was the *paid* small tier — so the floor was a price a
+		 * merchant had not agreed to pay, handed out by a column default.
 		 */
-		plan: text("plan").$type<Plan>().notNull().default("WEEKLY"),
+		plan: text("plan").$type<Plan>().notNull().default("FREE"),
 		/**
 		 * **Unlisted from the customer feed while the merchant's subscription is
 		 * `SUSPENDED`.**
@@ -797,6 +802,20 @@ export const order = sqliteTable(
 			onDelete: "set null",
 		}),
 		fulfilment: text("fulfilment").$type<FulfilmentKind>().notNull(),
+		/**
+		 * How fast this order is meant to arrive, counted against the business's weekly
+		 * express quota when the shop accepts it.
+		 *
+		 * **Separate from `fulfilment`, not a third fulfilment value** — whether the customer
+		 * comes to the shop and how urgently they want it are orthogonal questions, and a
+		 * customer may want either on a pickup. Defaulted to `STANDARD` because an order
+		 * placed before this column existed is a standard one, and reading those as express
+		 * would charge a shop a quota it never spent.
+		 */
+		deliverySpeed: text("delivery_speed")
+			.$type<DeliverySpeed>()
+			.notNull()
+			.default("STANDARD"),
 		status: text("status").$type<OrderStatus>().notNull().default("PENDING"),
 		/**
 		 * How many times this order has moved, starting at 1 when it is placed.
@@ -879,6 +898,19 @@ export const order = sqliteTable(
 			table.locationId,
 			table.status,
 			table.placedAt,
+		),
+		/**
+		 * The express quota's count, which runs on every acceptance.
+		 *
+		 * `acceptedAt` rather than `placedAt` because the quota is spent when the shop takes
+		 * the order, not when the customer sends it — and `deliverySpeed` is in the index
+		 * because a hot-path filter that is not indexed turns one read into a scan of the
+		 * shop's whole order history.
+		 */
+		index("order_business_express_accepted_idx").on(
+			table.businessId,
+			table.deliverySpeed,
+			table.acceptedAt,
 		),
 	],
 );
@@ -1396,18 +1428,48 @@ export const priceBook = sqliteTable(
 		id: text("id").primaryKey(),
 		/** For an admin's benefit: "Launch", "2026-Q1". Never shown to a merchant. */
 		label: text("label").notNull(),
-		/**
-		 * IVA-inclusive, in colones. Both figures are what the merchant is invoiced,
-		 * not what the platform keeps — see `netOfIva` in `@pymeshub/shared/plans`.
-		 */
-		weeklyMinor: integer("weekly_minor").notNull(),
-		monthlyMinor: integer("monthly_minor").notNull(),
 		effectiveFrom: integer("effective_from", {
 			mode: "timestamp_ms",
 		}).notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
 	(table) => [index("price_book_effective_idx").on(table.effectiveFrom)],
+);
+
+/**
+ * One price, for one (tier, cadence) pair.
+ *
+ * A child table rather than columns on `price_book`, for two reasons that are really one:
+ * a sixth tier or a third cadence is then an **insert instead of a migration**, and a book
+ * can no longer represent a state it should not be in. Nullable columns per tier would
+ * allow a tier with a monthly price and no annual one to exist silently, and the failure
+ * would be a picker offering a plan the charge path cannot price.
+ *
+ * `FREE` has **no row in any cadence**, which is the same property the shared module states
+ * as a rule: a free shop is never charged, not "charged zero". Absence is what makes that
+ * checkable — `priceMinorFor` throws on a missing pair rather than returning a number it
+ * cannot vouch for.
+ *
+ * IVA-inclusive, in colones. These are what the merchant is invoiced, not what the platform
+ * keeps — see `netOfIva` in `@pymeshub/shared/plans`.
+ */
+export const priceBookPrice = sqliteTable(
+	"price_book_price",
+	{
+		priceBookId: text("price_book_id")
+			.notNull()
+			.references(() => priceBook.id, { onDelete: "cascade" }),
+		plan: text("plan").$type<Plan>().notNull(),
+		cadence: text("cadence").$type<Cadence>().notNull(),
+		minor: integer("minor").notNull(),
+	},
+	(table) => [
+		uniqueIndex("price_book_price_unique").on(
+			table.priceBookId,
+			table.plan,
+			table.cadence,
+		),
+	],
 );
 
 /**
@@ -1445,6 +1507,19 @@ export const subscription = sqliteTable(
 			.unique()
 			.references(() => business.id, { onDelete: "cascade" }),
 		plan: text("plan").$type<Plan>().notNull(),
+		/**
+		 * How this subscription is invoiced, or `null` for `FREE`.
+		 *
+		 * **Separate from `plan`, and deliberately absent from `business`.** Limits follow the
+		 * tier alone, so this field changes nothing a merchant can hit — it says when money
+		 * moves. That is why it is not denormalised onto `business` alongside `plan`: the
+		 * hot path reads `business.plan` on every product, location and staff write, and a
+		 * cadence there would be a field nothing on that path reads.
+		 *
+		 * Null rather than defaulted for `FREE`, because a plan that is never charged has no
+		 * period. A cadence on a free subscription would be a period that never begins.
+		 */
+		cadence: text("cadence").$type<Cadence>(),
 		/** The book this subscription was priced under. Kept for the audit trail. */
 		priceBookId: text("price_book_id")
 			.notNull()
@@ -1806,6 +1881,8 @@ export type AccountDeletionRequest = typeof accountDeletionRequest.$inferSelect;
 
 export type PriceBook = typeof priceBook.$inferSelect;
 export type NewPriceBook = typeof priceBook.$inferInsert;
+export type PriceBookPrice = typeof priceBookPrice.$inferSelect;
+export type NewPriceBookPrice = typeof priceBookPrice.$inferInsert;
 
 export type Subscription = typeof subscription.$inferSelect;
 export type NewSubscription = typeof subscription.$inferInsert;

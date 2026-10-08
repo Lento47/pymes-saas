@@ -35,6 +35,17 @@ export type BusinessContext = AuthedContext &
 		membership: { businessId: string; role: MembershipRole };
 	};
 
+/**
+ * Just the plan, for a procedure that needs it without being a `businessProcedure`.
+ *
+ * `orders.advance` is the case: it is reachable by the customer, the courier and an admin,
+ * so the middleware has no membership to resolve a billing pair from — but a business
+ * accepting an express order still has to be checked against its tier's quota. Narrower than
+ * `BusinessContext` on purpose, so a caller cannot satisfy it with a membership it does not
+ * have.
+ */
+export type BillingPlan = Pick<BusinessBilling, "businessPlan" | "subscriptionStatus">;
+
 /** A `protectedProcedure` body, narrowed the way `protectedProcedure` narrows it. */
 export type UserContext = AuthedContext;
 
