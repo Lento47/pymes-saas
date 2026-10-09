@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { MAX_UPLOAD_BYTES, UPLOAD_MIME_TYPES } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
@@ -32,7 +33,7 @@ import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { requestSignOutNavigation } from "@/lib/sign-out-intent";
 import { useTRPC } from "@/lib/trpc/context";
-import { radius, space } from "@/theme";
+import { icon, radius, space, useTheme } from "@/theme";
 
 /**
  * The courier-owned `/courier-profile` route. Keeping it inside `(delivery)` gives a fresh
@@ -649,22 +650,7 @@ function ProfileForm({
 
 	return (
 		<View style={styles.content}>
-			<Card style={styles.statusCard}>
-				<Text variant="heading" bold>
-					{statusValue === "VERIFIED"
-						? t("biz.courier.verified")
-						: statusValue === "REJECTED"
-							? t("biz.courier.rejected")
-							: t("biz.courier.reviewPending")}
-				</Text>
-				<Text tone="muted">
-					{statusValue === "REJECTED"
-						? t("biz.courier.rejected.body")
-						: statusValue === "VERIFIED"
-							? t("biz.courier.directoryVerified")
-							: t("biz.courier.reviewPending.body")}
-				</Text>
-			</Card>
+			<CourierStatusCard status={statusValue} />
 
 			{/* The account read, refused in the slot where it would have drawn. The avatar, the
 			    email and the `displayName` fallback are gone; the fields below are not, because
@@ -921,10 +907,124 @@ function ProfileForm({
 	);
 }
 
+/**
+ * The courier's verification state, and the one thing this screen says first.
+ *
+ * ## Why it was rebuilt rather than restyled
+ *
+ * It drew all three states with identical chrome — a `Card`, a heading, a muted line — so
+ * "Perfil no aprobado" was laid out exactly like "Perfil verificado". That matters more here than
+ * anywhere else in the app: a `REJECTED` courier is the one state that degrades their whole role
+ * (`lib/role.ts` resolves them as `customer` and unmounts the delivery tree), and it used to look
+ * like the good news.
+ *
+ * ## A word and a glyph, not a colour
+ *
+ * `./list-row.tsx:52-58` states the rule the whole app works to: "colour is never the only signal,
+ * and the cheapest way to obey it is to make the signal a word; a reader with a colour vision
+ * deficiency, a greyscale screenshot and a screen reader all get the same answer from one string."
+ * So each state carries an **icon** and a **word**, and the tint is a third signal on top rather
+ * than the only one — a greyscale screenshot loses the tint and keeps the other two.
+ *
+ * The icons are `./status-badge`'s, reused deliberately: `time-outline` for a review in progress
+ * and `checkmark-circle-outline` for an accepted one are the same two the order board already
+ * draws for the same two meanings, and a courier learning this screen has already learned those.
+ *
+ * ## The `REJECTED` case names a next step
+ *
+ * `biz.courier.rejected.body` says "Actualiza tus datos y envíalos a revisión de nuevo" — an
+ * instruction, and an instruction on a card is nowhere to press. This one says what to change and
+ * points at the button that does it, because a rejection with no route out of it is the one state
+ * that can strand a courier who has already lost their board.
+ */
+function CourierStatusCard({
+	status,
+}: {
+	status: "VERIFIED" | "PENDING" | "REJECTED" | undefined;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+
+	const style =
+		status === "VERIFIED"
+			? VERIFIED_STATUS
+			: status === "REJECTED"
+				? REJECTED_STATUS
+				: PENDING_STATUS;
+
+	return (
+		<Card style={styles.statusCard}>
+			<View style={styles.statusHead}>
+				<Ionicons
+					name={style.icon}
+					size={icon.control}
+					color={colors[style.tint]}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+				<Text variant="heading" bold>
+					{status === "VERIFIED"
+						? t("biz.courier.verified")
+						: status === "REJECTED"
+							? t("biz.courier.rejected")
+							: t("biz.courier.reviewPending")}
+				</Text>
+			</View>
+			<Text tone="muted">
+				{status === "REJECTED"
+					? t("biz.courier.rejected.next")
+					: status === "VERIFIED"
+						? t("biz.courier.directoryVerified")
+						: t("biz.courier.reviewPending.body")}
+			</Text>
+			{/*
+			    No action button here, and the reason is that there is nowhere for it to go.
+
+			    `biz.courier.rejected.body` says "actualiza tus datos y envíalos a revisión de
+			    nuevo", which is an instruction with no destination — the fields it means are the
+			    ones four sections below this card, and the save that submits them is the pinned
+			    bar. A "Editar" on a card whose edit targets are already on screen is a control
+			    that scrolls, which is worse than the sentence: it looks like a step and is
+			    really a nudge. So `rejected.next` names the step in words and the form carries it
+			    out.
+			*/}
+		</Card>
+	);
+}
+
+/**
+ * What each state looks like, in one place so a fourth cannot half-arrive.
+ *
+ * **`PENDING` is the default rather than a third branch**, because it is what a courier with no
+ * profile row at all reads: `couriers.profile` answers `null` for someone who has never opened
+ * the form, and `statusValue` is `undefined` there. An undefined status is a courier waiting, not
+ * a courier broken, and a card that said "error" for it would be the first wrong thing on the
+ * screen they see.
+ */
+const PENDING_STATUS = {
+	icon: "time-outline",
+	tint: "statusPendingForeground",
+} as const;
+
+const VERIFIED_STATUS = {
+	icon: "checkmark-circle-outline",
+	tint: "success",
+} as const;
+
+const REJECTED_STATUS = {
+	icon: "close-circle-outline",
+	tint: "statusRejected",
+} as const;
+
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
 	statusCard: { gap: space.sm },
+	statusHead: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
 	rows: { gap: space.sm },
 	photoBlock: { gap: space.sm },
 	photo: {

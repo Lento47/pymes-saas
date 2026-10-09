@@ -598,6 +598,8 @@ export const business = {
 	"biz.courier.rejected": "Perfil no aprobado",
 	"biz.courier.rejected.body":
 		"Actualiza tus datos y envíalos a revisión de nuevo.",
+	"biz.courier.rejected.next":
+		"Cambia lo que está mal abajo y vuelve a guardar. PymesHub revisa tu perfil de nuevo antes de devolverte al directorio.",
 	"biz.courier.directoryVerified": "Verificado por PymesHub",
 
 	// La vista previa del directorio, y el encabezado que la introduce. El texto dice lo

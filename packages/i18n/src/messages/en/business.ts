@@ -550,6 +550,8 @@ export const business = {
 	"biz.courier.rejected": "Profile not approved",
 	"biz.courier.rejected.body":
 		"Update your details and send them for review again.",
+	"biz.courier.rejected.next":
+		"Change what is wrong below and save again. PymesHub reviews your profile before putting you back in the directory.",
 	"biz.courier.directoryVerified": "Verified by PymesHub",
 
 	// The directory preview and the heading that introduces it. The wording says what it
