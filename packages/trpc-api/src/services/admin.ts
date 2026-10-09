@@ -2355,7 +2355,17 @@ function periodsSqlFor(now: Date) {
 	 * `FREE` reaches neither branch and falls to `coalesce(…, 1)`, which the `periodEnd is
 	 * null` arm of the outer `case` already returns 0 for. The two guards are not
 	 * redundant: one covers a free row and the other a paid row with no period.
+	 *
+	 * **`now` is bound as epoch milliseconds, never as the `Date` object.** Every timestamp
+	 * column here is `integer(…, { mode: "timestamp_ms" })`, so what SQLite holds is a number,
+	 * and D1's `bind()` accepts null, number, string, ArrayBuffer and Blob — a `Date` is not
+	 * one of them. A `Date` interpolated into a `sql` fragment also skips the column encoder
+	 * that an ordinary comparison goes through, which is exactly why `admin.subscriptions`
+	 * answered 500 while `admin.orders` — whose `from`/`to` reach D1 through
+	 * `gte(businessTable.createdAt, …)` — did not.
 	 */
+	const at = now.getTime();
+
 	const periodMsSql = sql<number>`coalesce(
 		case ${subscriptionTable.cadence}
 			when 'MONTHLY' then ${30 * DAY_MS}
@@ -2366,10 +2376,10 @@ function periodsSqlFor(now: Date) {
 
 	return sql<number>`case
 		when ${subscriptionTable.periodEnd} is null
-			or ${subscriptionTable.periodEnd} > ${now}
+			or ${subscriptionTable.periodEnd} > ${at}
 			or ${subscriptionTable.priceMinor} is null
 		then 0
-		else max(1, cast((${now} - ${subscriptionTable.periodEnd}) / ${periodMsSql} as integer))
+		else max(1, cast((${at} - ${subscriptionTable.periodEnd}) / ${periodMsSql} as integer))
 	end`;
 }
 
@@ -2408,12 +2418,14 @@ function arrearsSqlFor(now: Date) {
  * on something else.
  */
 function derivedStatusSql(now: Date) {
+	// Epoch milliseconds, not the `Date` — see `periodsSqlFor` for why D1 refuses the object.
+	const at = now.getTime();
 	const periodEnd = sql`coalesce(${subscriptionTable.periodEnd}, ${subscriptionTable.createdAt})`;
 	const gracedUntil = sql`coalesce(${subscriptionTable.gracedUntil}, ${periodEnd} + ${GRACE_DAYS * DAY_MS})`;
 	return sql<SubscriptionStatus>`case
-		when ${periodEnd} > ${now} then 'ACTIVE'
-		when ${now} < ${gracedUntil} then 'GRACE'
-		when ${now} - ${periodEnd} >= ${HIDDEN_AFTER_DAYS * DAY_MS} then 'SUSPENDED'
+		when ${periodEnd} > ${at} then 'ACTIVE'
+		when ${at} < ${gracedUntil} then 'GRACE'
+		when ${at} - ${periodEnd} >= ${HIDDEN_AFTER_DAYS * DAY_MS} then 'SUSPENDED'
 		else 'PAST_DUE'
 	end`;
 }

@@ -273,13 +273,16 @@ export async function acceptOffer(
 		throw new NotFoundError();
 	}
 	const now = new Date();
+	// `now.getTime()` below rather than `now`: `expires_at` is `integer(…, { mode:
+	// "timestamp_ms" })` and D1's `bind()` takes a number, not a `Date`. Same bug as the one
+	// that made `admin.subscriptions` answer 500 — see `periodsSqlFor` in `admin.ts`.
 	const validOffer = sql`exists (
 		select 1 from ${offerTable}
 		where ${offerTable.id} = ${input.offerId}
 		and ${offerTable.deliveryId} = ${offer.deliveryId}
 		and ${offerTable.courierUserId} = ${ctx.user.id}
 		and ${offerTable.status} = 'PENDING'
-		and ${offerTable.expiresAt} > ${now}
+		and ${offerTable.expiresAt} > ${now.getTime()}
 	)`;
 	const acceptedDelivery = sql`exists (
 		select 1 from ${deliveryTable}
