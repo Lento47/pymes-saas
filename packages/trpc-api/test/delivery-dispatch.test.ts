@@ -216,6 +216,46 @@ const statusOf = async (test: TestWorld, deliveryId: string) =>
 			.where(eq(deliveryTable.id, deliveryId))
 	)[0]?.status;
 
+test("saving a shop pin dispatches an existing unassigned order without one", async () => {
+	const testWorld = world();
+	const ready = await shopWithBasket(testWorld, "missing_pickup");
+	await testWorld.db
+		.update(locationTable)
+		.set({ lat: null, lng: null })
+		.where(eq(locationTable.id, ready.locationId));
+	const courier = await courierAt(testWorld, {
+		businessId: ready.businessId,
+		id: "usr_missing_pickup_courier",
+		lat: 9.9301,
+		lng: -84.0801,
+	});
+	const { delivery } = await placeAndRead(testWorld, ready, "missing_pickup");
+	expect(delivery.status).toBe("SEARCHING");
+	expect(delivery.pickupLat).toBeNull();
+	const owner = await seedUser(testWorld.db, {
+		id: "usr_missing_pickup_owner",
+	});
+	await seedMembership(testWorld.db, owner.id, ready.businessId, "OWNER");
+	const merchant = appRouter.createCaller(
+		await authed(testWorld, owner),
+	) as Caller;
+	await merchant.business.update({
+		businessId: ready.businessId,
+		lat: 9.93,
+		lng: -84.08,
+	});
+	const [recovered] = await testWorld.db
+		.select()
+		.from(deliveryTable)
+		.where(eq(deliveryTable.id, delivery.id));
+	expect(recovered?.pickupLat).toBe(9.93);
+	expect(recovered?.status).toBe("OFFERED");
+	expect((await courier.caller.deliveries.offers())[0]?.deliveryId).toBe(
+		delivery.id,
+	);
+	testWorld.close();
+});
+
 /** The offer is now older than its TTL. The clock is the only thing a test can move. */
 async function ageOffer(test: TestWorld, offerId: string) {
 	await test.db

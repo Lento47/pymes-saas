@@ -4,6 +4,7 @@ import {
 	boundingBox,
 	business as businessTable,
 	category as categoryTable,
+	delivery as deliveryTable,
 	encodeGeohash,
 	haversineKm,
 	merchantLocation as locationTable,
@@ -46,6 +47,7 @@ import {
 	gte,
 	inArray,
 	isNotNull,
+	isNull,
 	like,
 	lte,
 	ne,
@@ -57,6 +59,7 @@ import {
 
 import type { Context } from "../context";
 import { ConflictError, ForbiddenError, ValidationError } from "../errors";
+import { dispatchNext } from "./delivery-dispatch";
 import type { BusinessContext, UserContext } from "./helpers";
 import {
 	assertRole,
@@ -634,6 +637,38 @@ export async function update(
 	assignIfPresent(defaultLocationPatch, "postalCode", input.postalCode);
 	if (patch.lat !== undefined) defaultLocationPatch.lat = patch.lat;
 	if (patch.lng !== undefined) defaultLocationPatch.lng = patch.lng;
+	// A delivery created before the shop had a pin holds an empty pickup snapshot.
+	// Repair only unassigned, still-searching runs from this default branch. Once a
+	// courier has an offer or accepts, the route remains its original snapshot.
+	const waiting =
+		patch.lat != null && patch.lng != null
+			? await ctx.db
+					.select({
+						id: deliveryTable.id,
+						line1: locationTable.line1,
+						city: locationTable.city,
+						region: locationTable.region,
+					})
+					.from(deliveryTable)
+					.innerJoin(orderTable, eq(orderTable.id, deliveryTable.orderId))
+					.innerJoin(locationTable, eq(locationTable.id, orderTable.locationId))
+					.where(
+						and(
+							eq(deliveryTable.businessId, businessId),
+							eq(locationTable.businessId, businessId),
+							eq(locationTable.isDefault, true),
+							eq(deliveryTable.status, "SEARCHING"),
+							isNull(deliveryTable.courierUserId),
+							isNull(deliveryTable.pickupLat),
+							isNull(deliveryTable.pickupLng),
+							notInArray(orderTable.status, [
+								"CANCELLED",
+								"REJECTED",
+								"COMPLETED",
+							]),
+						),
+					)
+			: [];
 	await ctx.db.batch([
 		ctx.db
 			.update(businessTable)
@@ -648,7 +683,29 @@ export async function update(
 					eq(locationTable.isDefault, true),
 				),
 			),
+		...waiting.map(({ id, line1, city, region }) =>
+			ctx.db
+				.update(deliveryTable)
+				.set({
+					pickupLine1: input.line1 ?? line1 ?? "",
+					pickupCity: input.city ?? city ?? "",
+					pickupRegion: input.region ?? region ?? "",
+					pickupLat: patch.lat,
+					pickupLng: patch.lng,
+					updatedAt: patch.updatedAt,
+				})
+				.where(
+					and(
+						eq(deliveryTable.id, id),
+						eq(deliveryTable.status, "SEARCHING"),
+						isNull(deliveryTable.courierUserId),
+						isNull(deliveryTable.pickupLat),
+						isNull(deliveryTable.pickupLng),
+					),
+				),
+		),
 	]);
+	for (const { id } of waiting) await dispatchNext(ctx.db, id);
 
 	return settingsOf(ctx, businessId);
 }

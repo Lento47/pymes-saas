@@ -80,6 +80,14 @@ function SettingsSurface({ scope }: { scope: ManagementScope }) {
 				/>
 				<KeyValue label={t("biz.settings.address")} value={address || notSet} />
 				<KeyValue
+					label={t("biz.location.map")}
+					value={
+						data.lat != null && data.lng != null
+							? t("biz.location.subtitle")
+							: t("biz.location.unset")
+					}
+				/>
+				<KeyValue
 					label={t("biz.settings.description")}
 					value={data.description || t("biz.manage.noDescription")}
 				/>
@@ -93,6 +101,14 @@ function SettingsSurface({ scope }: { scope: ManagementScope }) {
 					}
 				/>
 			</ManagementSection>
+			{canEdit ? (
+				<Button
+					label={t("biz.order.dispatch.setPickupPin")}
+					variant="secondary"
+					fullWidth
+					onPress={() => router.push("/(business)/shop-location")}
+				/>
+			) : null}
 			<ManagementSection title={t("biz.manage.brandAssets")}>
 				<KeyValue
 					label={t("biz.settings.logo")}

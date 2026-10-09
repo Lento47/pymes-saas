@@ -101,7 +101,7 @@ export const business = {
 	"biz.board.markDelivered": "Marcar entregado",
 	"biz.order.dispatch.title": "Estado del reparto",
 	"biz.order.dispatch.noPickupPin":
-		"Este pedido no tiene punto de recogida y no llegará a los repartidores. Ubica tu negocio para próximos pedidos o reparte este tú mismo.",
+		"Este pedido no tiene punto de recogida y no llegará a los repartidores. Ubica tu negocio para empezar a buscar repartidor.",
 	"biz.order.dispatch.setPickupPin": "Ubicar el negocio",
 	"biz.order.dispatch.searching": "Buscando un repartidor disponible cerca.",
 	"biz.order.dispatch.offered":
@@ -789,7 +789,9 @@ export const business = {
 		"Se pueden ofrecer tus pedidos a repartidores hasta {count} km de este punto.",
 	"biz.location.useDevice": "Usar mi ubicación actual",
 	"biz.location.noFix":
-		"Esta tienda aún no tiene ubicación y tu teléfono no está compartiendo la tuya. Activa la ubicación para colocarla desde donde estás.",
+		"El mapa necesita un punto de partida. Activa la ubicación o completa la dirección de tu negocio en el perfil.",
+	"biz.location.mapUnavailable":
+		"El mapa no está disponible en este dispositivo. Inténtalo en la app de desarrollo.",
 	"biz.locations.select": "Elegir sucursal",
 	"biz.locations.current": "Actual",
 	"biz.locations.allBusiness": "Todas las sucursales",

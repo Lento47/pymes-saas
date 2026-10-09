@@ -1,12 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName } from "@pymeshub/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
+import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
@@ -65,11 +67,9 @@ import { icon, MIN_TOUCH_TARGET, media, space, useTheme } from "@/theme";
  * have no writer on `businessUpdateInput`. `currency` and `slug` have a column
  * and no door — `packages/trpc-api/src/services/businesses.ts` refuses both,
  * because a currency change re-prices every product and a slug change
- * re-points every link. `country` is two letters this market does not change,
- * and `lat`/`lng`/`geohash` are written by the update itself, resolved from
- * the address before the row lands — a box for them would be a box that writes
- * nothing the merchant chose. A control that cannot land anything is a control
- * for a silence: the same rule `app/settings.tsx` states for the customer tree.
+ * re-points every link. `country` is two letters this market does not change.
+ * Pickup coordinates are chosen on `shop-location`, where the merchant places
+ * a map pin.
  *
  * ## Clearing is a write, and the three shapes of it
  *
@@ -502,6 +502,12 @@ export default function ShopSettings() {
 									<Text variant="caption" tone="muted">
 										{t("biz.settings.address.help")}
 									</Text>
+									<Button
+										label={t("biz.order.dispatch.setPickupPin")}
+										variant="secondary"
+										fullWidth
+										onPress={() => router.push("/(business)/shop-location")}
+									/>
 									<Field
 										label={t("biz.settings.line1")}
 										value={line1}

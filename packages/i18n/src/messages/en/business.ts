@@ -86,7 +86,7 @@ export const business = {
 	"biz.board.markDelivered": "Mark delivered",
 	"biz.order.dispatch.title": "Delivery status",
 	"biz.order.dispatch.noPickupPin":
-		"This order has no pickup pin, so couriers cannot receive it. Set your shop location for future orders, or deliver this one yourself.",
+		"This order has no pickup pin, so couriers cannot receive it. Set your shop location to start looking for a courier.",
 	"biz.order.dispatch.setPickupPin": "Set shop location",
 	"biz.order.dispatch.searching": "Looking for an available courier nearby.",
 	"biz.order.dispatch.offered": "An offer is waiting for a courier's response.",
@@ -725,7 +725,9 @@ export const business = {
 		"Couriers up to {count} km from this point can be offered your orders.",
 	"biz.location.useDevice": "Use my current location",
 	"biz.location.noFix":
-		"This shop has no location yet and your phone is not sharing one. Turn location on to place it from where you are standing.",
+		"The map needs a starting point. Enable location or add a complete shop address in your profile.",
+	"biz.location.mapUnavailable":
+		"The map is unavailable on this device. Try again in the development app.",
 	"biz.locations.select": "Select location",
 	"biz.locations.current": "Current",
 	"biz.locations.allBusiness": "All locations",

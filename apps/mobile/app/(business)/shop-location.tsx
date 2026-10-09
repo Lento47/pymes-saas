@@ -1,13 +1,14 @@
 import { OFFER_RADIUS_KM } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { View } from "react-native";
+import * as Location from "expo-location";
+import { useEffect, useRef, useState } from "react";
+import { Platform, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
-import { MapView } from "@/components/map";
+import { isMapAvailable, MapView } from "@/components/map";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
@@ -85,6 +86,17 @@ export default function ShopLocation() {
 	const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(
 		null,
 	);
+	const [addressCentre, setAddressCentre] = useState<{
+		lat: number;
+		lng: number;
+	} | null>(null);
+	const [pickedAddress, setPickedAddress] = useState<{
+		line1: string;
+		city: string;
+		region: string;
+	} | null>(null);
+	const [lookingUp, setLookingUp] = useState(false);
+	const selection = useRef(0);
 	const [saving, setSaving] = useState(false);
 
 	const update = useMutation(trpc.business.update.mutationOptions());
@@ -100,25 +112,92 @@ export default function ShopLocation() {
 
 	// The pin: what the reader has chosen, falling back to what the server has.
 	const pin = picked ?? saved;
-	// The camera: the pin if there is one, and otherwise wherever the merchant is standing,
-	// so a shop that has never been placed still opens on a usable map instead of on
-	// `MapView`'s silent `null`.
-	const centre = pin ?? device.coords;
+	// The camera prefers the chosen pin, then the shop address, then the device.
+	// A country centre keeps the map pannable with denied location permission;
+	// only an explicit tap can turn any camera position into a saved pin.
+	const centre = pin ??
+		addressCentre ??
+		device.coords ?? { lat: 9.7489, lng: -83.7534 };
+	useEffect(() => {
+		if (!settings.data || saved || addressCentre) return;
+		let active = true;
+		void (async () => {
+			if (
+				Platform.OS === "android" &&
+				!(await Location.getForegroundPermissionsAsync()).granted
+			)
+				return [];
+			return Location.geocodeAsync(
+				[
+					settings.data.line1,
+					settings.data.city,
+					settings.data.region,
+					settings.data.country,
+				]
+					.filter(Boolean)
+					.join(", "),
+			);
+		})()
+			.then(([point]) => {
+				if (active && point)
+					setAddressCentre({ lat: point.latitude, lng: point.longitude });
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, [settings.data, saved, addressCentre]);
+	const choosePin = async (point: { lat: number; lng: number }) => {
+		const selected = ++selection.current;
+		setPicked(point);
+		setPickedAddress(null);
+		setLookingUp(true);
+		try {
+			if (Platform.OS === "android") {
+				let permission = await Location.getForegroundPermissionsAsync();
+				if (!permission.granted && permission.canAskAgain)
+					permission = await Location.requestForegroundPermissionsAsync();
+				if (!permission.granted) return;
+			}
+			const [place] = await Location.reverseGeocodeAsync({
+				latitude: point.lat,
+				longitude: point.lng,
+			});
+			if (!place || selected !== selection.current) return;
+			const line1 = [place.street, place.streetNumber]
+				.filter(Boolean)
+				.join(" ");
+			const city = place.city ?? place.district ?? place.subregion;
+			if (line1 && city && place.region) {
+				setPickedAddress({
+					line1: line1.slice(0, 200),
+					city: city.slice(0, 80),
+					region: place.region.slice(0, 80),
+				});
+			}
+		} catch {
+			// The verified map pin is still usable with the existing street address.
+		} finally {
+			if (selected === selection.current) setLookingUp(false);
+		}
+	};
 
 	const submit = () => {
-		if (update.isPending || !picked) return;
+		if (update.isPending || lookingUp || !picked) return;
 		setSaving(true);
 		update.mutate(
 			{
 				businessId,
 				lat: picked.lat,
 				lng: picked.lng,
+				...pickedAddress,
 			},
 			{
 				onSuccess: async () => {
 					setSaving(false);
 					// The tap has become the saved value, so it is no longer a change.
 					setPicked(null);
+					setPickedAddress(null);
 					toast.show(t("biz.settings.saved"));
 					await cache.invalidateQueries({
 						queryKey: trpc.business.pathKey(),
@@ -147,6 +226,8 @@ export default function ShopLocation() {
 							update.reset();
 						}}
 					/>
+				) : shops.isPending || settings.isLoading ? (
+					<Text>{t("state.loading")}</Text>
 				) : !shop ? (
 					<Text>{t("biz.onboarding.notLive")}</Text>
 				) : (
@@ -156,33 +237,50 @@ export default function ShopLocation() {
 						    with `null`, and a blank screen under a title that promises a map
 						    is the same failure this screen was built to fix — so it is said in
 						    words, with the one action that can change it. */}
-						{centre ? (
+						{centre && isMapAvailable() ? (
 							<MapView
 								coords={centre}
 								marker={pin}
 								radiusKm={OFFER_RADIUS_KM}
-								onPick={setPicked}
+								onPick={(point) => {
+									void choosePin(point);
+								}}
 							/>
 						) : (
 							<View>
 								<Text variant="body" tone="muted">
-									{t("biz.location.noFix")}
+									{t(
+										centre
+											? "biz.location.mapUnavailable"
+											: "biz.location.noFix",
+									)}
 								</Text>
-								<Button
-									label={t("biz.location.useDevice")}
-									onPress={device.request}
-									fullWidth
-								/>
+								{isMapAvailable() ? (
+									<Button
+										label={t("biz.location.useDevice")}
+										onPress={device.request}
+										fullWidth
+									/>
+								) : null}
 							</View>
 						)}
 
-						{centre ? (
+						{centre && isMapAvailable() ? (
 							<>
 								<Text variant="caption" tone="muted">
 									{t("biz.location.radius", {
 										count: OFFER_RADIUS_KM,
 									})}
 								</Text>
+								{pickedAddress ? (
+									<Text variant="body">
+										{[
+											pickedAddress.line1,
+											pickedAddress.city,
+											pickedAddress.region,
+										].join(", ")}
+									</Text>
+								) : null}
 								{/* Offered only when it would do something. On a shop that has
 								    never been placed the button *is* the way out, so it stays; on
 								    one already placed it is the fast path for a merchant who is
@@ -190,7 +288,9 @@ export default function ShopLocation() {
 								{device.coords ? (
 									<Button
 										label={t("biz.location.useDevice")}
-										onPress={() => setPicked(device.coords)}
+										onPress={() => {
+											if (device.coords) void choosePin(device.coords);
+										}}
 										variant="secondary"
 										fullWidth
 									/>
@@ -210,8 +310,8 @@ export default function ShopLocation() {
 					primary={{
 						label: t("action.save"),
 						onPress: submit,
-						loading: saving,
-						disabled: saving,
+						loading: saving || lookingUp,
+						disabled: saving || lookingUp,
 					}}
 				/>
 			) : null}
