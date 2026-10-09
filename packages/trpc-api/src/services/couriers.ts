@@ -15,6 +15,7 @@ import type {
 	CourierProfile,
 	CourierProfileInput,
 	CourierRespondInput,
+	CourierZoneInput,
 } from "@pymeshub/shared";
 import { newId } from "@pymeshub/shared";
 import {
@@ -46,6 +47,9 @@ function profileOf(row: ProfileRow): CourierProfile {
 		userId: row.userId,
 		displayName: row.displayName,
 		serviceArea: row.serviceArea,
+		zoneLat: row.zoneLat,
+		zoneLng: row.zoneLng,
+		zoneRadiusKm: row.zoneRadiusKm,
 		bio: row.bio,
 		vehicleName: row.vehicleName,
 		vehiclePlate: row.vehiclePlate,
@@ -127,6 +131,9 @@ export async function saveProfile(
 			.set({
 				displayName: input.displayName,
 				serviceArea: input.serviceArea,
+				zoneLat: input.zone?.lat ?? current.zoneLat,
+				zoneLng: input.zone?.lng ?? current.zoneLng,
+				zoneRadiusKm: input.zone?.radiusKm ?? current.zoneRadiusKm,
 				bio,
 				vehicleName,
 				vehiclePlate,
@@ -140,6 +147,9 @@ export async function saveProfile(
 			...current,
 			displayName: input.displayName,
 			serviceArea: input.serviceArea,
+			zoneLat: input.zone?.lat ?? current.zoneLat,
+			zoneLng: input.zone?.lng ?? current.zoneLng,
+			zoneRadiusKm: input.zone?.radiusKm ?? current.zoneRadiusKm,
 			bio,
 			vehicleName,
 			vehiclePlate,
@@ -156,6 +166,9 @@ export async function saveProfile(
 		userId: ctx.user.id,
 		displayName: input.displayName,
 		serviceArea: input.serviceArea,
+		zoneLat: input.zone?.lat ?? null,
+		zoneLng: input.zone?.lng ?? null,
+		zoneRadiusKm: input.zone?.radiusKm ?? null,
 		bio,
 		vehicleName,
 		vehiclePlate,
@@ -171,6 +184,9 @@ export async function saveProfile(
 		userId: ctx.user.id,
 		displayName: input.displayName,
 		serviceArea: input.serviceArea,
+		zoneLat: input.zone?.lat ?? null,
+		zoneLng: input.zone?.lng ?? null,
+		zoneRadiusKm: input.zone?.radiusKm ?? null,
 		bio,
 		vehicleName,
 		vehiclePlate,
@@ -179,6 +195,35 @@ export async function saveProfile(
 		verificationStatus: "PENDING",
 		createdAt: now,
 		updatedAt: now,
+	};
+}
+
+/** Operational coverage can change without restarting identity review. */
+export async function saveZone(
+	ctx: UserContext,
+	input: CourierZoneInput,
+): Promise<CourierProfile> {
+	const current = await myProfile(ctx);
+	if (!current)
+		throw new ValidationError("Complete your courier profile first");
+	const updatedAt = new Date();
+	await ctx.db
+		.update(profileTable)
+		.set({
+			serviceArea: input.label,
+			zoneLat: input.lat,
+			zoneLng: input.lng,
+			zoneRadiusKm: input.radiusKm,
+			updatedAt,
+		})
+		.where(eq(profileTable.userId, ctx.user.id));
+	return {
+		...current,
+		serviceArea: input.label,
+		zoneLat: input.lat,
+		zoneLng: input.lng,
+		zoneRadiusKm: input.radiusKm,
+		updatedAt,
 	};
 }
 
@@ -241,6 +286,7 @@ export async function directory(
 		displayName: profile.displayName,
 		image,
 		serviceArea: profile.serviceArea,
+		zoneRadiusKm: profile.zoneRadiusKm,
 		bio: profile.bio,
 		isAvailable: profile.isAvailable,
 		isVerified: true,

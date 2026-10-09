@@ -545,6 +545,12 @@ export const business = {
 		"Tu perfil se muestra a los negocios solo cuando lo permites.",
 	"biz.courier.displayName": "Nombre que ven los negocios",
 	"biz.courier.serviceArea": "Dónde repartes",
+	"biz.courier.zone.title": "Zona de reparto",
+	"biz.courier.zone.help":
+		"Toca el mapa para elegir el centro. El origen y el destino deben estar dentro del círculo; también debes estar cerca del origen.",
+	"biz.courier.zone.radius": "Radio: {count} km",
+	"biz.courier.zone.save": "Guardar zona de reparto",
+	"biz.courier.zone.saved": "Zona de reparto guardada",
 	"biz.courier.bio": "Sobre ti",
 	"biz.courier.bio.help": "Una frase corta ayuda a que el negocio te elija.",
 	"biz.courier.vehicle": "Vehículo",
@@ -1076,10 +1082,22 @@ export const business = {
 	"delivery.board.subtitle": "Ofertas y entregas activas",
 	"delivery.board.offers": "Ofertas para aceptar",
 	"delivery.board.active": "Entregas activas",
-	"delivery.board.history": "Entregas terminadas",
-	"delivery.board.empty": "No tienes entregas por ahora",
+	"delivery.board.active.body":
+		"Tus pedidos actuales de todos los negocios, incluidas las ofertas aceptadas y asignaciones directas.",
+	"delivery.board.active.empty": "No tienes entregas activas",
+	"delivery.board.active.emptyBody":
+		"Aquí aparecerán los pedidos que aceptes o que un negocio te asigne.",
+	"delivery.board.openRun": "Abrir entrega",
+	"delivery.board.zone.title": "Elige tu zona de reparto",
+	"delivery.board.zone.body":
+		"Marca en el mapa dónde quieres trabajar. Hasta entonces seguirás recibiendo ofertas cercanas como ahora.",
+	"delivery.board.zone.action": "Marcar zona en el mapa",
+	"delivery.board.history": "Entregas terminadas recientes",
+	"delivery.board.empty": "No hay ofertas nuevas por ahora",
+	"delivery.board.offers.busy":
+		"Termina tu entrega actual para recibir otra oferta.",
 	"delivery.board.empty.body":
-		"Las nuevas ofertas aparecerán aquí mientras estés disponible.",
+		"Las entregas cercanas que coincidan aparecerán aquí cuando estés disponible y compartas tu ubicación.",
 
 	/*
 	 * El segundo tablero, y por qué existe aparte del primero.

@@ -32,6 +32,13 @@ export type CourierInviteStatus = (typeof COURIER_INVITE_STATUSES)[number];
 export const courierProfileInput = z.object({
 	displayName: shortText(80),
 	serviceArea: shortText(100),
+	zone: z
+		.object({
+			lat: z.number().min(-90).max(90),
+			lng: z.number().min(-180).max(180),
+			radiusKm: z.number().int().min(1).max(30),
+		})
+		.optional(),
 	bio: z.string().trim().max(300).optional(),
 	/** The vehicle: name (model or nickname), plate, and its photo's URL. */
 	vehicleName: z.string().trim().max(80).optional(),
@@ -41,11 +48,22 @@ export const courierProfileInput = z.object({
 });
 export type CourierProfileInput = z.infer<typeof courierProfileInput>;
 
+export const courierZoneInput = z.object({
+	lat: z.number().min(-90).max(90),
+	lng: z.number().min(-180).max(180),
+	radiusKm: z.number().int().min(1).max(30),
+	label: shortText(100),
+});
+export type CourierZoneInput = z.infer<typeof courierZoneInput>;
+
 export const courierProfileSchema = z.object({
 	id: z.string(),
 	userId: z.string(),
 	displayName: z.string(),
 	serviceArea: z.string(),
+	zoneLat: z.number().nullable(),
+	zoneLng: z.number().nullable(),
+	zoneRadiusKm: z.number().nullable(),
 	bio: z.string().nullable(),
 	vehicleName: z.string().nullable(),
 	vehiclePlate: z.string().nullable(),
@@ -69,6 +87,7 @@ export const courierDirectoryEntrySchema = z.object({
 	displayName: z.string(),
 	image: imageUrlSchema.nullable(),
 	serviceArea: z.string(),
+	zoneRadiusKm: z.number().nullable().optional(),
 	bio: z.string().nullable(),
 	isAvailable: z.boolean(),
 	isVerified: z.literal(true),

@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { MAX_UPLOAD_BYTES, UPLOAD_MIME_TYPES } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
@@ -20,6 +21,7 @@ import { ConfirmSheet } from "@/components/confirm-sheet";
 import { CourierDirectoryCard } from "@/components/courier-directory-card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
+import { isMapAvailable, MapView } from "@/components/map";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
 import { SignOutSheet } from "@/components/sign-out-sheet";
@@ -32,6 +34,7 @@ import { useSession } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { useDeviceLocation } from "@/lib/location";
 import { requestSignOutNavigation } from "@/lib/sign-out-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
@@ -288,6 +291,7 @@ function ProfileForm({
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
+	const device = useDeviceLocation();
 	const { status } = useSession();
 	const profile = useQuery(
 		trpc.couriers.profile.queryOptions(undefined, {
@@ -301,6 +305,12 @@ function ProfileForm({
 	);
 	const [displayName, setDisplayName] = useState("");
 	const [serviceArea, setServiceArea] = useState("");
+	const [zonePin, setZonePin] = useState<{ lat: number; lng: number } | null>(
+		null,
+	);
+	const [zoneRadius, setZoneRadius] = useState(15);
+	const [zoneLabel, setZoneLabel] = useState("");
+	const zoneSelection = useRef(0);
 	const [bio, setBio] = useState("");
 	const [vehicleName, setVehicleName] = useState("");
 	const [vehiclePlate, setVehiclePlate] = useState("");
@@ -346,6 +356,13 @@ function ProfileForm({
 		initial.current = snapshot;
 		setDisplayName(snapshot.displayName);
 		setServiceArea(snapshot.serviceArea);
+		setZonePin(
+			profile.data?.zoneLat != null && profile.data.zoneLng != null
+				? { lat: profile.data.zoneLat, lng: profile.data.zoneLng }
+				: null,
+		);
+		setZoneRadius(profile.data?.zoneRadiusKm ?? 15);
+		setZoneLabel(snapshot.serviceArea);
 		setBio(snapshot.bio);
 		setVehicleName(snapshot.vehicleName);
 		setVehiclePlate(snapshot.vehiclePlate);
@@ -368,6 +385,43 @@ function ProfileForm({
 			},
 		}),
 	);
+	const saveZone = useMutation(
+		trpc.couriers.saveZone.mutationOptions({
+			onSuccess: async (saved) => {
+				setServiceArea(saved.serviceArea);
+				if (initial.current)
+					initial.current = {
+						...initial.current,
+						serviceArea: saved.serviceArea,
+					};
+				toast.show(t("biz.courier.zone.saved"));
+				await cache.invalidateQueries({ queryKey: trpc.couriers.pathKey() });
+			},
+		}),
+	);
+	const selectZone = async (pin: { lat: number; lng: number }) => {
+		const selection = ++zoneSelection.current;
+		setZonePin(pin);
+		const fallback = `${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`;
+		setZoneLabel(fallback);
+		if (!profile.data) setServiceArea(fallback);
+		try {
+			const [place] = await Location.reverseGeocodeAsync({
+				latitude: pin.lat,
+				longitude: pin.lng,
+			});
+			if (selection !== zoneSelection.current) return;
+			const label = (
+				[place?.district ?? place?.city, place?.region]
+					.filter(Boolean)
+					.join(", ") || fallback
+			).slice(0, 100);
+			setZoneLabel(label);
+			if (!profile.data) setServiceArea(label);
+		} catch {
+			/* The pin and coordinate label remain usable without geocoding. */
+		}
+	};
 
 	/**
 	 * Availability, written the moment it is chosen.
@@ -478,6 +532,9 @@ function ProfileForm({
 		sentSnapshot.current = { ...values, vehiclePhotoUrl, isAvailable: flag };
 		save.mutate({
 			...values,
+			...(zonePin
+				? { zone: { lat: zonePin.lat, lng: zonePin.lng, radiusKm: zoneRadius } }
+				: {}),
 			bio: values.bio || undefined,
 			vehicleName: values.vehicleName || undefined,
 			vehiclePlate: values.vehiclePlate || undefined,
@@ -492,6 +549,8 @@ function ProfileForm({
 		isAvailable,
 		save,
 		serviceArea,
+		zonePin,
+		zoneRadius,
 		vehicleName,
 		vehiclePhotoUrl,
 		vehiclePlate,
@@ -552,7 +611,7 @@ function ProfileForm({
 	const nameError =
 		submitted && !displayName.trim() ? t("form.required") : null;
 	const areaError =
-		submitted && !serviceArea.trim() ? t("form.required") : null;
+		submitted && !zonePin && !profile.data?.zoneLat ? t("form.required") : null;
 	// The session alone, where this used to also want `me.data`: the write needs nothing from the
 	// account read, and a courier creating their profile for the first time has no
 	// `couriers.profile` row either, so requiring either one left a reader with no save button.
@@ -596,13 +655,26 @@ function ProfileForm({
 	 */
 	const pressSave = useCallback(() => {
 		setSubmitted(true);
-		if (!displayName.trim() || !serviceArea.trim()) return;
+		if (
+			!displayName.trim() ||
+			!serviceArea.trim() ||
+			(!profile.data && !zonePin)
+		)
+			return;
 		if (reverify) {
 			onRequestReview();
 			return;
 		}
 		submit();
-	}, [displayName, onRequestReview, reverify, serviceArea, submit]);
+	}, [
+		displayName,
+		onRequestReview,
+		profile.data,
+		reverify,
+		serviceArea,
+		submit,
+		zonePin,
+	]);
 
 	useEffect(() => {
 		saveRef.current = pressSave;
@@ -620,7 +692,10 @@ function ProfileForm({
 	 * landed first. The bar is the screen's one commit control, so it waits for all three.
 	 */
 	const saving =
-		save.isPending || photoUpload.isPending || availability.isPending;
+		save.isPending ||
+		photoUpload.isPending ||
+		availability.isPending ||
+		saveZone.isPending;
 	useEffect(() => {
 		publishBar({
 			ready: ready && !waiting && !profile.isError,
@@ -735,6 +810,7 @@ function ProfileForm({
 							displayName: profile.data.displayName,
 							image: me.data?.image ?? null,
 							serviceArea: profile.data.serviceArea,
+							zoneRadiusKm: profile.data.zoneRadiusKm,
 							bio: profile.data.bio,
 							isAvailable: profile.data.isAvailable,
 						}}
@@ -743,13 +819,7 @@ function ProfileForm({
 				</ScreenSection>
 			) : null}
 
-			{/*
-			    The identity a business reads, and what saving it costs. The subtitle is on both
-			    this section and the vehicle one because `services/couriers.ts` treats all six of
-			    these fields the same way — any non-empty change returns the row to PENDING, so a
-			    verified courier leaves the directory and the offers pool — and a sentence under
-			    one section and not the other would be a claim that editing the plate is free.
-			*/}
+			{/* Identity edits require review; the operational zone below saves separately. */}
 			<ScreenSection
 				title={t("biz.courier.profile")}
 				subtitle={t("biz.courier.reviewReset.help")}
@@ -763,14 +833,6 @@ function ProfileForm({
 					maxLength={80}
 				/>
 				<Field
-					label={t("biz.courier.serviceArea")}
-					value={serviceArea}
-					onChangeText={setServiceArea}
-					error={areaError}
-					autoComplete="address-line2"
-					maxLength={100}
-				/>
-				<Field
 					label={t("biz.courier.bio")}
 					value={bio}
 					onChangeText={setBio}
@@ -780,20 +842,117 @@ function ProfileForm({
 					numberOfLines={3}
 				/>
 			</ScreenSection>
+			<ScreenSection
+				title={t("biz.courier.zone.title")}
+				subtitle={t("biz.courier.zone.help")}
+			>
+				<View style={{ gap: space.sm }}>
+					{isMapAvailable() ? (
+						<MapView
+							coords={
+								zonePin ?? device.coords ?? { lat: 9.9281, lng: -84.0907 }
+							}
+							marker={zonePin}
+							radiusKm={zonePin ? zoneRadius : null}
+							zoom={zonePin || device.coords ? 11 : 7}
+							style={{ height: 260 }}
+							onPick={(pin) => void selectZone(pin)}
+						/>
+					) : (
+						<Text tone="muted">{t("location.mapUnavailable")}</Text>
+					)}
+					{device.coords ? (
+						<Button
+							label={t("location.use")}
+							variant="secondary"
+							onPress={() => {
+								if (device.coords) void selectZone(device.coords);
+							}}
+						/>
+					) : null}
+					{device.status === "denied" ? (
+						<Button
+							label={t("biz.courier.location.action")}
+							variant="secondary"
+							onPress={device.request}
+						/>
+					) : null}
+					{zonePin ? (
+						<>
+							<Text variant="body">
+								{zoneLabel} · {zoneRadius} km
+							</Text>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									flexWrap: "wrap",
+									gap: space.sm,
+								}}
+							>
+								<Button
+									label="− 1 km"
+									variant="secondary"
+									disabled={zoneRadius <= 1}
+									onPress={() =>
+										setZoneRadius((value) => Math.max(1, value - 1))
+									}
+								/>
+								<Text variant="label" accessibilityLiveRegion="polite">
+									{t("biz.courier.zone.radius", { count: zoneRadius })}
+								</Text>
+								<Button
+									label="+ 1 km"
+									variant="secondary"
+									disabled={zoneRadius >= 30}
+									onPress={() =>
+										setZoneRadius((value) => Math.min(30, value + 1))
+									}
+								/>
+							</View>
+							{profile.data ? (
+								<Button
+									label={t("biz.courier.zone.save")}
+									loading={saveZone.isPending}
+									disabled={
+										saveZone.isPending ||
+										save.isPending ||
+										availability.isPending ||
+										(zonePin.lat === profile.data.zoneLat &&
+											zonePin.lng === profile.data.zoneLng &&
+											zoneRadius === profile.data.zoneRadiusKm)
+									}
+									onPress={() =>
+										saveZone.mutate({
+											lat: zonePin.lat,
+											lng: zonePin.lng,
+											radiusKm: zoneRadius,
+											label: zoneLabel,
+										})
+									}
+								/>
+							) : null}
+						</>
+					) : null}
+					{areaError ? <Text tone="destructive">{areaError}</Text> : null}
+					{saveZone.error ? (
+						<ErrorState
+							error={saveZone.error}
+							onRetry={() => {
+								if (zonePin)
+									saveZone.mutate({
+										lat: zonePin.lat,
+										lng: zonePin.lng,
+										radiusKm: zoneRadius,
+										label: zoneLabel,
+									});
+							}}
+						/>
+					) : null}
+				</View>
+			</ScreenSection>
 
-			{/*
-			    The vehicle a run happens in: name, plate, and a picture.
-
-			    It used to sit between the profile and availability because a business reviews it
-			    with the profile — "a changed plate sends the row back to PENDING
-			    (`services/couriers.ts`)" — and that sentence named one field of six and was the
-			    reason the consequence went unmentioned for so long. `services/couriers.ts:116-126`
-			    computes `meaningfulChange` over `displayName`, `serviceArea`, `bio`,
-			    `vehicleName`, `vehiclePlate` and `vehiclePhotoUrl`: all six return the row to
-			    PENDING, so adding the photo this section asks for costs a verified courier their
-			    verification exactly as much as retyping the plate does. The two still read as one
-			    unit; the comment now says the true thing about both.
-			*/}
+			{/* Vehicle identity is reviewed with the name and bio. */}
 			<ScreenSection
 				title={t("biz.courier.vehicle")}
 				subtitle={t("biz.courier.reviewReset.help")}

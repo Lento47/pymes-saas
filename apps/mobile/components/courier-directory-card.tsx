@@ -41,6 +41,7 @@ export interface CourierDirectoryIdentity {
 	/** `user.image` — the avatar, not the vehicle photo. */
 	image: string | null;
 	serviceArea: string;
+	zoneRadiusKm?: number | null;
 	bio: string | null;
 	isAvailable: boolean;
 }
@@ -107,6 +108,7 @@ export function CourierDirectoryCard({
 					</Text>
 					<Text variant="caption" tone="muted" numberOfLines={1}>
 						{courier.serviceArea}
+						{courier.zoneRadiusKm ? ` · ${courier.zoneRadiusKm} km` : ""}
 					</Text>
 					{verified ? (
 						<Text variant="caption" tone="action" numberOfLines={1}>

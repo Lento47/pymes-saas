@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	address as addressTable,
 	delivery as deliveryTable,
 	merchantLocation as locationTable,
 	membership as membershipTable,
@@ -429,6 +430,56 @@ describe("delivery creation and dispatch", () => {
 });
 
 describe("a courier the shop never added", () => {
+	test("a pinned zone does not offer a destination without coordinates", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "zone_no_destination");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_zone_no_destination",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		await courier.caller.couriers.saveZone({
+			lat: 9.935,
+			lng: -84.085,
+			radiusKm: 5,
+			label: "San José",
+		});
+		await test.db
+			.update(addressTable)
+			.set({ lat: null, lng: null })
+			.where(eq(addressTable.id, ready.address.id));
+		await placeDelivery(ready, "zone_no_destination");
+		expect(await courier.caller.deliveries.offers()).toHaveLength(0);
+		test.close();
+	});
+	test("a saved zone requires both pickup and destination inside its radius", async () => {
+		for (const [tag, lat, lng, radiusKm, expectedOffers] of [
+			["zone_both", 9.935, -84.085, 5, 1],
+			["zone_pickup_only", 9.93, -84.08, 1, 0],
+			["zone_dropoff_only", 9.94, -84.09, 1, 0],
+		] as const) {
+			const test = world();
+			const ready = await orderReadyToPlace(test, tag);
+			const courier = await seedCourier(test, {
+				businessId: ready.businessId,
+				id: `usr_delivery_${tag}`,
+				lat: 9.9301,
+				lng: -84.0801,
+			});
+			await courier.caller.couriers.saveZone({
+				lat,
+				lng,
+				radiusKm,
+				label: "San José",
+			});
+			await placeDelivery(ready, tag);
+			expect(await courier.caller.deliveries.offers()).toHaveLength(
+				expectedOffers,
+			);
+			test.close();
+		}
+	});
 	/**
 	 * The whole feature, in one test: a verified courier with no membership of the business
 	 * is offered its deliveries and can accept one.

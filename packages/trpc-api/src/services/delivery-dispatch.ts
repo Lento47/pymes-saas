@@ -145,6 +145,8 @@ async function candidateFor(
 		businessId: string;
 		pickupLat: number | null;
 		pickupLng: number | null;
+		dropoffLat: number | null;
+		dropoffLng: number | null;
 		now: Date;
 	},
 ): Promise<RankedCandidate | null> {
@@ -166,6 +168,9 @@ async function candidateFor(
 			phone: userTable.phone,
 			lat: presenceTable.lat,
 			lng: presenceTable.lng,
+			zoneLat: profileTable.zoneLat,
+			zoneLng: profileTable.zoneLng,
+			zoneRadiusKm: profileTable.zoneRadiusKm,
 		})
 		.from(profileTable)
 		.innerJoin(presenceTable, eq(presenceTable.userId, profileTable.userId))
@@ -292,6 +297,22 @@ async function candidateFor(
 					(pending.get(row.userId) ?? 0) === 0,
 			)
 			.flatMap((row) => {
+				if (
+					row.zoneLat != null &&
+					row.zoneLng != null &&
+					row.zoneRadiusKm != null
+				) {
+					if (input.dropoffLat == null || input.dropoffLng == null) return [];
+					const center = { lat: row.zoneLat, lng: row.zoneLng };
+					if (
+						haversineKm(center, origin) > row.zoneRadiusKm ||
+						haversineKm(center, {
+							lat: input.dropoffLat,
+							lng: input.dropoffLng,
+						}) > row.zoneRadiusKm
+					)
+						return [];
+				}
 				const distanceToPickupKm = haversineKm(origin, {
 					lat: row.lat,
 					lng: row.lng,
@@ -396,6 +417,8 @@ export async function prepareDeliveryForOrder(
 		businessId: input.businessId,
 		pickupLat: input.location.lat,
 		pickupLng: input.location.lng,
+		dropoffLat: input.dropoff.lat,
+		dropoffLng: input.dropoff.lng,
 		now: input.now,
 	});
 	const offer = candidate
@@ -462,6 +485,8 @@ export async function dispatchNext(db: Db, deliveryId: string): Promise<void> {
 		businessId: row.delivery.businessId,
 		pickupLat: row.delivery.pickupLat,
 		pickupLng: row.delivery.pickupLng,
+		dropoffLat: row.delivery.dropoffLat,
+		dropoffLng: row.delivery.dropoffLng,
 		now: new Date(),
 	});
 	if (!candidate) return;

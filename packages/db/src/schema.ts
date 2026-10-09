@@ -29,12 +29,12 @@
 
 import type {
 	BusinessHoursEntry,
+	Cadence,
 	CourierVerificationStatus,
 	CrashCategory,
 	CrashSeverity,
 	CrashSource,
 	CrashStatus,
-	Cadence,
 	LocationPauseReason,
 	Plan,
 	SubscriptionStatus,
@@ -497,6 +497,9 @@ export const courierProfile = sqliteTable(
 			.references(() => user.id, { onDelete: "cascade" }),
 		displayName: text("display_name").notNull(),
 		serviceArea: text("service_area").notNull(),
+		zoneLat: real("zone_lat"),
+		zoneLng: real("zone_lng"),
+		zoneRadiusKm: integer("zone_radius_km"),
 		bio: text("bio"),
 		/**
 		 * The vehicle a courier rides, added with the profile's own photo work:

@@ -498,6 +498,12 @@ export const business = {
 		"Your profile is shown to businesses only when you allow it.",
 	"biz.courier.displayName": "Name businesses see",
 	"biz.courier.serviceArea": "Where you deliver",
+	"biz.courier.zone.title": "Delivery zone",
+	"biz.courier.zone.help":
+		"Tap the map to choose the center. Pickups and destinations must both be inside this circle; you also need to be near the pickup.",
+	"biz.courier.zone.radius": "Radius: {count} km",
+	"biz.courier.zone.save": "Save delivery zone",
+	"biz.courier.zone.saved": "Delivery zone saved",
 	"biz.courier.bio": "About you",
 	"biz.courier.bio.help": "A short line helps a business choose you.",
 	"biz.courier.vehicle": "Vehicle",
@@ -1001,10 +1007,22 @@ export const business = {
 	"delivery.board.subtitle": "Offers and active deliveries",
 	"delivery.board.offers": "Offers to accept",
 	"delivery.board.active": "Active deliveries",
-	"delivery.board.history": "Completed deliveries",
-	"delivery.board.empty": "No deliveries right now",
+	"delivery.board.active.body":
+		"Your current orders from every business, including accepted offers and direct assignments.",
+	"delivery.board.active.empty": "No active deliveries",
+	"delivery.board.active.emptyBody":
+		"Orders you accept or a business assigns to you will appear here.",
+	"delivery.board.openRun": "Open delivery",
+	"delivery.board.zone.title": "Choose your delivery zone",
+	"delivery.board.zone.body":
+		"Pin where you want to work. Until then, your current nearby-offer matching continues.",
+	"delivery.board.zone.action": "Set zone on map",
+	"delivery.board.history": "Recent completed deliveries",
+	"delivery.board.empty": "No new offers right now",
+	"delivery.board.offers.busy":
+		"Finish your current delivery to receive another offer.",
 	"delivery.board.empty.body":
-		"New offers will appear here while you are available.",
+		"Matching nearby deliveries will appear here when you are available and sharing your location.",
 
 	/*
 	 * The second board, and why it exists apart from the first.

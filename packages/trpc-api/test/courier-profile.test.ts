@@ -54,6 +54,26 @@ function profileInput(
 }
 
 describe("couriers.profile", () => {
+	test("changing the operational zone keeps a verified profile approved", async () => {
+		const test = world();
+		const user = await seedUser(test.db, { id: "usr_profile_zone" });
+		const caller = appRouter.createCaller(await authed(test, user)) as Caller;
+		await caller.couriers.saveProfile(profileInput());
+		await test.db
+			.update(courierProfile)
+			.set({ verificationStatus: "VERIFIED" })
+			.where(eq(courierProfile.userId, user.id));
+		const saved = await caller.couriers.saveZone({
+			lat: 9.93,
+			lng: -84.08,
+			radiusKm: 15,
+			label: "San José",
+		});
+		expect(saved.verificationStatus).toBe("VERIFIED");
+		expect(saved.zoneRadiusKm).toBe(15);
+		expect((await caller.couriers.profile())?.zoneLat).toBe(9.93);
+		test.close();
+	});
 	test("a person who never filled the form has no profile at all", async () => {
 		const test = world();
 		const user = await seedUser(test.db, { id: "usr_profile_none" });
@@ -72,11 +92,15 @@ describe("couriers.profile", () => {
 		const user = await seedUser(test.db, { id: "usr_profile_first" });
 		const caller = appRouter.createCaller(await authed(test, user)) as Caller;
 
-		const saved = await caller.couriers.saveProfile(profileInput());
+		const saved = await caller.couriers.saveProfile(
+			profileInput({ zone: { lat: 9.93, lng: -84.08, radiusKm: 15 } }),
+		);
 
 		expect(saved.verificationStatus).toBe("PENDING");
 		expect(saved.displayName).toBe("Ana Entrega");
 		expect(saved.serviceArea).toBe("San José centro");
+		expect(saved.zoneLat).toBe(9.93);
+		expect(saved.zoneRadiusKm).toBe(15);
 		// The three vehicle facts, asserted by value: a save that dropped the
 		// plate or the photo path would still return 200 and a happy screen.
 		expect(saved.vehicleName).toBe("Honda PCX");

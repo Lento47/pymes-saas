@@ -268,8 +268,23 @@ function Runs() {
 	// courier standing on a street with no work nearby deserves to know that is the whole story.
 	return (
 		<View style={styles.body}>
-			<Dispatch available={me.isAvailable} />
 			<Board />
+			{me.zoneLat == null || me.zoneLng == null || me.zoneRadiusKm == null ? (
+				<Card style={styles.howTo}>
+					<Text variant="body" bold>
+						{t("delivery.board.zone.title")}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{t("delivery.board.zone.body")}
+					</Text>
+					<Button
+						label={t("delivery.board.zone.action")}
+						variant="secondary"
+						onPress={() => router.push("/courier-profile")}
+					/>
+				</Card>
+			) : null}
+			<Dispatch available={me.isAvailable} />
 		</View>
 	);
 }
@@ -349,11 +364,10 @@ function CourierSharing({
 }
 
 /**
- * Dispatch offers and active delivery runs (the `deliveries.*` model).
+ * Dispatch offers and recent history (the `deliveries.*` model).
  *
- * The board below reads `orders.list`; this section reads `deliveries.offers`
- * (PENDING, unexpired) plus `deliveries.mine` (active runs) so an offered run
- * has somewhere to be accepted — previously no screen called `acceptOffer`.
+ * The board above reads `orders.list`; this section reads `deliveries.offers`
+ * (PENDING, unexpired) plus `deliveries.mine` for the recent history.
  * Accepting navigates to `/delivery/:id`, which is what finally gives that
  * detail screen an inbound link.
  */
@@ -365,6 +379,7 @@ function Dispatch({ available }: { available: boolean }) {
 	const cache = useQueryClient();
 	const { colors } = useTheme();
 	const [busyId, setBusyId] = useState<string | null>(null);
+	const [historyOpen, setHistoryOpen] = useState(false);
 	const offers = useQuery(
 		trpc.deliveries.offers.queryOptions(undefined, {
 			refetchInterval: OFFERS_POLL_MS,
@@ -452,31 +467,25 @@ function Dispatch({ available }: { available: boolean }) {
 	const failure = accept.error ?? decline.error;
 
 	const pending = offers.data ?? [];
-	const active = (mine.data ?? []).filter(
+	const activeCount = (mine.data ?? []).filter(
 		(delivery) =>
 			delivery.status !== "DELIVERED" && delivery.status !== "CANCELLED",
-	);
+	).length;
 	const history = (mine.data ?? []).filter(
 		(delivery) => delivery.status === "DELIVERED",
 	);
 
 	if (offers.isPending && mine.isPending) return null;
-	if (offers.isError && mine.isError) {
+	if (offers.isError) {
 		return (
-			<ErrorState
-				error={offers.error}
-				onRetry={() => {
-					void offers.refetch();
-					void mine.refetch();
-				}}
-			/>
+			<ErrorState error={offers.error} onRetry={() => void offers.refetch()} />
 		);
 	}
 
 	return (
 		<View style={styles.body}>
 			<Text variant="heading" bold>
-				{t("delivery.board.title")}
+				{t("delivery.board.offers")}
 			</Text>
 
 			{/*
@@ -637,35 +646,6 @@ function Dispatch({ available }: { available: boolean }) {
 				/>
 			) : null}
 
-			{active.length > 0 ? (
-				<View style={styles.body}>
-					<Text variant="label" tone="muted">
-						{t("delivery.board.active")}
-					</Text>
-					{active.map((delivery) => (
-						<Card key={delivery.id}>
-							<View style={styles.order}>
-								<Text variant="label" tone="muted" tabular>
-									{t("order.number", { code: delivery.orderReference })}
-								</Text>
-								<Text variant="body" bold>
-									{delivery.business.name}
-								</Text>
-								<View style={styles.orderActions}>
-									<Button
-										label={t("action.view")}
-										variant="secondary"
-										onPress={() =>
-											router.push(`/delivery/${delivery.id}` as Href)
-										}
-									/>
-								</View>
-							</View>
-						</Card>
-					))}
-				</View>
-			) : null}
-
 			{/*
 			    How offers actually reach you, and the conditions are not guesses.
 
@@ -716,7 +696,12 @@ function Dispatch({ available }: { available: boolean }) {
 			    available" printed directly under "you are not receiving offers" is the same
 			    contradiction this screen was already making in a different place.
 			*/}
-			{available && pending.length === 0 && active.length === 0 && mine.data ? (
+			{available && pending.length === 0 && offers.data && activeCount > 0 ? (
+				<Text variant="body" tone="muted">
+					{t("delivery.board.offers.busy")}
+				</Text>
+			) : null}
+			{available && pending.length === 0 && offers.data && activeCount === 0 ? (
 				<EmptyState
 					icon="bicycle-outline"
 					title={t("delivery.board.empty")}
@@ -725,6 +710,13 @@ function Dispatch({ available }: { available: boolean }) {
 			) : null}
 
 			{history.length > 0 ? (
+				<Button
+					label={t("delivery.board.history")}
+					variant="ghost"
+					onPress={() => setHistoryOpen((open) => !open)}
+				/>
+			) : null}
+			{historyOpen && history.length > 0 ? (
 				<View style={styles.body}>
 					<Text variant="label" tone="muted">
 						{t("delivery.board.history")}
@@ -773,6 +765,11 @@ function Board() {
 	const { session } = useSession();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
+	const mine = useQuery(
+		trpc.deliveries.mine.queryOptions(undefined, {
+			refetchInterval: OFFERS_POLL_MS,
+		}),
+	);
 	const [trackingResult, setTrackingResult] =
 		useState<StartTrackingResult | null>(null);
 	const [startIntent, setStartIntent] = useState<{
@@ -831,6 +828,13 @@ function Board() {
 		() => board?.pages.flatMap((page) => page.items) ?? [],
 		[board],
 	);
+	const activeDeliveries = (mine.data ?? []).filter(
+		(delivery) =>
+			delivery.status !== "DELIVERED" && delivery.status !== "CANCELLED",
+	);
+	const unmatchedDeliveries = activeDeliveries.filter(
+		(delivery) => !orders.some((order) => order.id === delivery.orderId),
+	);
 	const movingId = move.isPending ? move.variables?.orderId : undefined;
 	const movingTo = move.isPending ? move.variables?.to : undefined;
 	// What the conflicted run's status is *now*, read from the refreshed board rather than from
@@ -868,14 +872,17 @@ function Board() {
 			*/}
 			<View style={styles.boardHead}>
 				<Text variant="heading" bold>
-					{t("delivery.board.assigned")}
+					{t("delivery.board.active")}
 				</Text>
 				<Text variant="caption" tone="muted">
-					{t("delivery.board.assigned.body")}
+					{t("delivery.board.active.body")}
 				</Text>
 			</View>
 
 			<CourierSharing result={trackingResult} sharing={ridingId != null} />
+			{mine.isError ? (
+				<ErrorState error={mine.error} onRetry={() => void mine.refetch()} />
+			) : null}
 
 			{/* Above the rows: the run that failed can be twenty rows down, and a refusal nobody
 			    scrolls to was not said. `ErrorState` carries the announcement on both platforms,
@@ -902,9 +909,9 @@ function Board() {
 
 			{query.isError ? (
 				<ErrorState error={query.error} onRetry={() => void query.refetch()} />
-			) : waiting || !board ? (
+			) : waiting || mine.isPending || !board ? (
 				<RunsSkeleton label={t("state.loading")} />
-			) : orders.length === 0 ? (
+			) : orders.length === 0 && unmatchedDeliveries.length === 0 ? (
 				// **The courier's own pair, not the shop board's.** `biz.board.empty` and its body
 				// are the merchant board's, and the comment that used to sit here said so: "true of
 				// this board and vaguer than this board deserves; a courier-specific pair is a
@@ -912,11 +919,30 @@ function Board() {
 				// locales, and the sentence on this screen belongs to the person reading it.
 				<EmptyState
 					icon="bicycle-outline"
-					title={t("delivery.board.assigned.empty")}
-					body={t("delivery.board.assigned.emptyBody")}
+					title={t("delivery.board.active.empty")}
+					body={t("delivery.board.active.emptyBody")}
 				/>
 			) : (
 				<>
+					{unmatchedDeliveries.map((delivery) => (
+						<Card key={delivery.id}>
+							<View style={styles.order}>
+								<Text variant="label" tone="muted">
+									{t("order.number", { code: delivery.orderReference })}
+								</Text>
+								<Text variant="body" bold>
+									{delivery.business.name}
+								</Text>
+								<Button
+									label={t("action.view")}
+									variant="secondary"
+									onPress={() =>
+										router.push(`/delivery/${delivery.id}` as Href)
+									}
+								/>
+							</View>
+						</Card>
+					))}
 					{orders.map((order, index) => (
 						// `reorder`: this board is read with `activeOnly`, so marking a run
 						// delivered takes it off and every card under it is the same card at a new
@@ -953,6 +979,19 @@ function Board() {
 									    The order detail is an explicit button rather than the whole
 									    card, so the move controls never sit inside another pressable. */}
 									<View style={styles.orderActions}>
+										{activeDeliveries.find(
+											(delivery) => delivery.orderId === order.id,
+										) ? (
+											<Button
+												label={t("delivery.board.openRun")}
+												variant="secondary"
+												onPress={() =>
+													router.push(
+														`/delivery/${activeDeliveries.find((delivery) => delivery.orderId === order.id)?.id}` as Href,
+													)
+												}
+											/>
+										) : null}
 										{order.nextStatuses.map((to) => (
 											<Button
 												key={to}

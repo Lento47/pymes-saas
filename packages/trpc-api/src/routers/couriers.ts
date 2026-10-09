@@ -5,6 +5,7 @@ import {
 	courierInviteInput,
 	courierProfileInput,
 	courierRespondInput,
+	courierZoneInput,
 } from "@pymeshub/shared";
 
 import { rateLimit } from "../context";
@@ -22,6 +23,9 @@ export const couriersRouter = router({
 	saveProfile: protectedProcedure
 		.input(courierProfileInput)
 		.mutation(({ ctx, input }) => couriers.saveProfile(ctx, input)),
+	saveZone: protectedProcedure
+		.input(courierZoneInput)
+		.mutation(({ ctx, input }) => couriers.saveZone(ctx, input)),
 
 	directory: businessProcedure("staff:manage")
 		.input(courierDirectoryInput)
