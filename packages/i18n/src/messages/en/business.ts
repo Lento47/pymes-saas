@@ -525,16 +525,16 @@ export const business = {
 	/*
 	 * The price of saving.
 	 *
-	 * `services/couriers.ts` puts `verificationStatus` back to PENDING on any non-empty change ΓÇö
-	 * name, area, bio, vehicle, plate or photo ΓÇö so a verified profile leaves the directory and
+	 * `services/couriers.ts` puts `verificationStatus` back to PENDING on any non-empty change —
+	 * name, area, bio, vehicle, plate or photo — so a verified profile leaves the directory and
 	 * the offers pool until the platform approves it again. These are the sentences that say so:
 	 * a save that quietly makes the profile worse is the worst kind of surprise, and it went
 	 * unspoken for years because the comment beside the vehicle section named a single field as
 	 * though the rest of them were free.
 	 *
 	 * `.help` is the subtitle on the two sections it touches, and the panel is only asked when
-	 * the profile is verified: a REJECTED one is already asking for this save ΓÇö its own body
-	 * says "update your details and send them for review again" ΓÇö and a PENDING one has nothing
+	 * the profile is verified: a REJECTED one is already asking for this save — its own body
+	 * says "update your details and send them for review again" — and a PENDING one has nothing
 	 * to fall out of.
 	 */
 	"biz.courier.reviewReset.help":
