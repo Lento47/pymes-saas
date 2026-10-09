@@ -525,10 +525,40 @@ export const business = {
 	"biz.courier.vehiclePhoto.tooLarge":
 		"Usa una foto más pequeña, de hasta 2 MB.",
 	"biz.courier.availability": "Disponibilidad",
+	/*
+	 * La disponibilidad no espera al guardado, y esta es la frase que lo dice. `isAvailable`
+	 * es el campo con el que cada negocio filtra el pool de repartidores
+	 * (`services/deliveries.ts` pide `VERIFIED AND isAvailable`), así que el cambio tiene que
+	 * ser el que el lector acaba de hacer y no el que Remember treinta segundos después.
+	 */
+	"biz.courier.availability.help":
+		"Se aplica al instante. Los negocios solo te ofrecen entregas cuando estás disponible.",
 	"biz.courier.available": "Disponible para invitaciones",
 	"biz.courier.unavailable": "No disponible por ahora",
 	"biz.courier.save": "Guardar perfil",
 	"biz.courier.saved": "Perfil guardado",
+
+	/*
+	 * El precio de guardar.
+	 *
+	 * `services/couriers.ts` pone `verificationStatus` en PENDING ante cualquier cambio que no
+	 * sea vacío — nombre, zona, bio, vehículo, placa o foto — así que un perfil verificado sale
+	 * del directorio y del pool de ofertas hasta que la plataforma lo apruebe otra vez. Esta es
+	 * la frase que lo dice: un guardado que empeora el perfil sin avisar es la peor clase de
+	 * sorpresa, y es exactamente lo que se pasó años sin decir porque el comentario junto a la
+	 * sección de vehículo nombraba un solo campo como si el resto fuera gratis.
+	 *
+	 * `.help` va como subtítulo de las dos secciones que la tocan, y el panel sólo se pregunta
+	 * cuando el perfil está verificado: un REJECTED ya está pidiendo este guardado —su propio
+	 * cuerpo dice "actualiza tus datos y envíalos a revisión de nuevo"— y un PENDING no tiene
+	 * nada que perder.
+	 */
+	"biz.courier.reviewReset.help":
+		"Guardar un cambio vuelve a poner tu perfil en revisión y te saca del directorio hasta que se apruebe.",
+	"biz.courier.reviewReset.title": "¿Guardar y volver a revisión?",
+	"biz.courier.reviewReset.body":
+		"Tu perfil ya está verificado. Al guardar, dejas de recibir ofertas hasta que PymesHub apruebe los cambios.",
+	"biz.courier.reviewReset.confirm": "Guardar y revisar",
 	"biz.courier.reviewPending": "Revisión pendiente",
 	"biz.courier.reviewPending.body":
 		"PymesHub revisa tu perfil antes de que aparezca en el directorio.",

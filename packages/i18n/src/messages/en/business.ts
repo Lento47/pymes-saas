@@ -477,10 +477,40 @@ export const business = {
 	"biz.courier.vehiclePhoto.remove": "Remove photo",
 	"biz.courier.vehiclePhoto.tooLarge": "Use a smaller photo, up to 2 MB.",
 	"biz.courier.availability": "Availability",
+	/*
+	 * Availability does not wait for the save, and this is the sentence that says so.
+	 * `isAvailable` is the field every business filters the pool on
+	 * (`services/deliveries.ts` asks for `VERIFIED AND isAvailable`), so the change has to be
+	 * the one the reader just made rather than the one they remember thirty seconds later.
+	 */
+	"biz.courier.availability.help":
+		"Applies immediately. Businesses only offer you deliveries while you are available.",
 	"biz.courier.available": "Available for invitations",
 	"biz.courier.unavailable": "Not available right now",
 	"biz.courier.save": "Save profile",
 	"biz.courier.saved": "Profile saved",
+
+	/*
+	 * The price of saving.
+	 *
+	 * `services/couriers.ts` puts `verificationStatus` back to PENDING on any non-empty change ΓÇö
+	 * name, area, bio, vehicle, plate or photo ΓÇö so a verified profile leaves the directory and
+	 * the offers pool until the platform approves it again. These are the sentences that say so:
+	 * a save that quietly makes the profile worse is the worst kind of surprise, and it went
+	 * unspoken for years because the comment beside the vehicle section named a single field as
+	 * though the rest of them were free.
+	 *
+	 * `.help` is the subtitle on the two sections it touches, and the panel is only asked when
+	 * the profile is verified: a REJECTED one is already asking for this save ΓÇö its own body
+	 * says "update your details and send them for review again" ΓÇö and a PENDING one has nothing
+	 * to fall out of.
+	 */
+	"biz.courier.reviewReset.help":
+		"Saving a change puts your profile back into review and takes it out of the directory until it is approved.",
+	"biz.courier.reviewReset.title": "Save and go back to review?",
+	"biz.courier.reviewReset.body":
+		"Your profile is already verified. Saving means you stop receiving offers until PymesHub approves the changes.",
+	"biz.courier.reviewReset.confirm": "Save and review",
 	"biz.courier.reviewPending": "Review pending",
 	"biz.courier.reviewPending.body":
 		"PymesHub reviews your profile before it appears in the directory.",
