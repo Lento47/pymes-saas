@@ -646,12 +646,61 @@ async function readDetail(
 	ctx: UserContext,
 	deliveryId: string,
 ): Promise<DeliveryDetail> {
+	// Whole-table selections across three joins used to sit here, and D1 answers that
+	// with "too many columns in result set": the delivery, order and business rows
+	// together exceed the engine's bound on result-set columns (127), so every
+	// `readDetail` answering a courier's board 500'd (dlv_9f2a57a0, the whole
+	// post-accept outage of 2026-10-09). Only the fields `DeliveryDetail` reads are
+	// named now — a smaller result that also names nothing a caller cannot see.
 	const row = (
 		await ctx.db
 			.select({
-				delivery: deliveryTable,
-				order: orderTable,
-				business: businessTable,
+				delivery: {
+					id: deliveryTable.id,
+					orderId: deliveryTable.orderId,
+					businessId: deliveryTable.businessId,
+					customerId: deliveryTable.customerId,
+					courierUserId: deliveryTable.courierUserId,
+					status: deliveryTable.status,
+					// Drizzle's own column objects, so `pickupOf`/`dropoffOf` receive the
+					// inferred shape they were written against.
+					pickupName: deliveryTable.pickupName,
+					pickupLine1: deliveryTable.pickupLine1,
+					pickupLine2: deliveryTable.pickupLine2,
+					pickupCity: deliveryTable.pickupCity,
+					pickupRegion: deliveryTable.pickupRegion,
+					pickupPostalCode: deliveryTable.pickupPostalCode,
+					pickupLat: deliveryTable.pickupLat,
+					pickupLng: deliveryTable.pickupLng,
+					pickupPhone: deliveryTable.pickupPhone,
+					pickupInstructions: deliveryTable.pickupInstructions,
+					dropoffName: deliveryTable.dropoffName,
+					dropoffLine1: deliveryTable.dropoffLine1,
+					dropoffLine2: deliveryTable.dropoffLine2,
+					dropoffCity: deliveryTable.dropoffCity,
+					dropoffRegion: deliveryTable.dropoffRegion,
+					dropoffPostalCode: deliveryTable.dropoffPostalCode,
+					dropoffLat: deliveryTable.dropoffLat,
+					dropoffLng: deliveryTable.dropoffLng,
+					dropoffPhone: deliveryTable.dropoffPhone,
+					dropoffInstructions: deliveryTable.dropoffInstructions,
+					acceptedAt: deliveryTable.acceptedAt,
+					arrivedPickupAt: deliveryTable.arrivedPickupAt,
+					pickedUpAt: deliveryTable.pickedUpAt,
+					deliveredAt: deliveryTable.deliveredAt,
+					createdAt: deliveryTable.createdAt,
+				},
+				order: {
+					reference: orderTable.reference,
+					status: orderTable.status,
+					totalMinor: orderTable.totalMinor,
+					currency: orderTable.currency,
+				},
+				business: {
+					id: businessTable.id,
+					name: businessTable.name,
+					phone: businessTable.phone,
+				},
 			})
 			.from(deliveryTable)
 			.innerJoin(orderTable, eq(orderTable.id, deliveryTable.orderId))
@@ -731,7 +780,18 @@ async function readDetail(
 	};
 }
 
-function pickupOf(row: typeof deliveryTable.$inferSelect) {
+function pickupOf(row: {
+	pickupName: string;
+	pickupLine1: string;
+	pickupLine2: string | null;
+	pickupCity: string;
+	pickupRegion: string;
+	pickupPostalCode: string | null;
+	pickupLat: number | null;
+	pickupLng: number | null;
+	pickupPhone: string | null;
+	pickupInstructions: string | null;
+}) {
 	return {
 		name: row.pickupName,
 		line1: row.pickupLine1,
@@ -746,7 +806,18 @@ function pickupOf(row: typeof deliveryTable.$inferSelect) {
 	};
 }
 
-function dropoffOf(row: typeof deliveryTable.$inferSelect) {
+function dropoffOf(row: {
+	dropoffName: string;
+	dropoffLine1: string;
+	dropoffLine2: string | null;
+	dropoffCity: string;
+	dropoffRegion: string;
+	dropoffPostalCode: string | null;
+	dropoffLat: number | null;
+	dropoffLng: number | null;
+	dropoffPhone: string | null;
+	dropoffInstructions: string | null;
+}) {
 	return {
 		name: row.dropoffName,
 		line1: row.dropoffLine1,
