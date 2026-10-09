@@ -679,18 +679,28 @@ export default function MerchantHome() {
 										) : null}
 									</Pressable>
 								) : null}
-								{/* Location pill: the picker's only door — the whole pill asks. */}
+								{/* One branch opens its pickup map; multiple branches keep the selector. */}
 								{selectedLocation ? (
 									<Pressable
-										onPress={() => setLocationPickerOpen(true)}
-										disabled={(locations.data?.length ?? 0) < 2}
+										onPress={() => {
+											if ((locations.data?.length ?? 0) > 1)
+												setLocationPickerOpen(true);
+											else if (canManage && selectedLocation.isDefault)
+												router.push("/(business)/shop-location");
+										}}
+										disabled={
+											(locations.data?.length ?? 0) < 2 &&
+											(!canManage || !selectedLocation.isDefault)
+										}
 										disabledOpacity={1}
 										accessibilityRole="button"
 										accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
 										accessibilityHint={
 											(locations.data?.length ?? 0) > 1
 												? t("biz.locations.select")
-												: undefined
+												: canManage && selectedLocation.isDefault
+													? t("biz.order.dispatch.setPickupPin")
+													: undefined
 										}
 										style={[
 											styles.locationPill,
@@ -1167,6 +1177,17 @@ export default function MerchantHome() {
 				title={t("biz.locations.select")}
 				closeLabel={t("action.close")}
 			>
+				{canManage && selectedLocation?.isDefault ? (
+					<Button
+						label={t("biz.order.dispatch.setPickupPin")}
+						variant="secondary"
+						fullWidth
+						onPress={() => {
+							setLocationPickerOpen(false);
+							router.push("/(business)/shop-location");
+						}}
+					/>
+				) : null}
 				<Card>
 					{(locations.data ?? []).map((location, index, all) => (
 						<ListRow
