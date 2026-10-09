@@ -224,7 +224,7 @@ for (const [name, s] of [
 	["DARK", dark],
 ] as const) {
 	console.log(`\n  ${name}`);
-	console.log("  " + "-".repeat(68));
+	console.log(`  ${"-".repeat(68)}`);
 	let bad = 0;
 	for (const [fg, bg, what, bar] of PAIRS) {
 		const r = ratio(s[fg], s[bg]);

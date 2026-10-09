@@ -135,7 +135,7 @@ const PAIRS: readonly [keyof Scheme, keyof Scheme, string, number][] = [
 for (const scheme of ["light", "dark"] as const) {
 	const s = PROPOSAL[scheme];
 	console.log(`\n  ${scheme.toUpperCase()}`);
-	console.log("  " + "-".repeat(72));
+	console.log(`  ${"-".repeat(72)}`);
 	let failures = 0;
 	for (const [fg, bg, what, bar] of PAIRS) {
 		const value = ratio(s[fg] ?? "", s[bg] ?? "");

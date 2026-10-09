@@ -82,26 +82,6 @@ const toLinear = (channel: number) => {
 	return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 };
 
-const toOklab = (hex: string) => {
-	const read = (index: number) =>
-		toLinear(Number.parseInt(hex.slice(index, index + 2), 16));
-	const [r, g, b] = [read(1), read(3), read(5)];
-	const l = Math.cbrt(
-		0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b,
-	);
-	const m = Math.cbrt(
-		0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b,
-	);
-	const s = Math.cbrt(
-		0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b,
-	);
-	return [
-		0.210_454_255_3 * l + 0.793_617_785 * m - 0.004_072_046_8 * s,
-		1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s,
-		0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s,
-	];
-};
-
 const luminanceOf = (hex: string) => {
 	const read = (index: number) =>
 		toLinear(Number.parseInt(hex.slice(index, index + 2), 16));
@@ -200,7 +180,7 @@ console.log(
 );
 console.log("    theme     retained   vs the old 56%");
 let worst = 1;
-for (const [name, hex] of THEMES) {
+for (const [name] of THEMES) {
 	// At 24% of the height, find the curve's retention by piecewise interpolation.
 	const retained = 1 - restAt(1 - 0.24 / SPENT_AT);
 	worst = Math.min(worst, retained);
