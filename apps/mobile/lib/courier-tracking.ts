@@ -17,6 +17,8 @@ const PENDING_KEY = "pymeshub:courier-location:pending";
 const MOVING_INTERVAL_MS = 15_000;
 const WALKING_INTERVAL_MS = 30_000;
 const STILL_INTERVAL_MS = 60_000;
+const MAX_FIX_AGE_MS = 120_000;
+const MAX_FIX_ACCURACY_METERS = 200;
 
 type TrackingSession = {
 	orderId: string;
@@ -82,6 +84,26 @@ function intervalFor(speed: number | null): number {
 	if (speed !== null && speed >= 2) return MOVING_INTERVAL_MS;
 	if (speed !== null && speed >= 0.5) return WALKING_INTERVAL_MS;
 	return STILL_INTERVAL_MS;
+}
+
+function usableFix(position: Location.LocationObject): boolean {
+	const { latitude, longitude, accuracy } = position.coords;
+	const age = Date.now() - position.timestamp;
+	return (
+		Number.isFinite(latitude) &&
+		latitude >= -90 &&
+		latitude <= 90 &&
+		Number.isFinite(longitude) &&
+		longitude >= -180 &&
+		longitude <= 180 &&
+		Number.isFinite(position.timestamp) &&
+		age >= -60_000 &&
+		age <= MAX_FIX_AGE_MS &&
+		accuracy != null &&
+		Number.isFinite(accuracy) &&
+		accuracy >= 0 &&
+		accuracy <= MAX_FIX_ACCURACY_METERS
+	);
 }
 
 function payloadOf(
@@ -242,6 +264,7 @@ export async function reconcileTrackingPermissions(): Promise<void> {
 }
 
 async function deliver(position: Location.LocationObject): Promise<void> {
+	if (!usableFix(position)) return;
 	const session = await readSession();
 	if (!session) return;
 
@@ -286,9 +309,10 @@ if (
 		COURIER_LOCATION_TASK,
 		async ({ data, error }) => {
 			if (error || !data?.locations?.length) return;
-			const latest = data.locations.reduce((best, location) =>
-				location.timestamp > best.timestamp ? location : best,
-			);
+			const latest = data.locations
+				.filter(usableFix)
+				.sort((a, b) => b.timestamp - a.timestamp)[0];
+			if (!latest) return;
 			await deliver(latest);
 		},
 	);
