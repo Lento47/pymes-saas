@@ -705,7 +705,19 @@ export async function update(
 				),
 		),
 	]);
-	for (const { id } of waiting) await dispatchNext(ctx.db, id);
+	for (const { id } of waiting) {
+		try {
+			await dispatchNext(ctx.db, id);
+		} catch (error) {
+			// The pin and the waiting delivery were committed above. A transient offer
+			// failure must not tell the merchant the pin failed to save; opening the
+			// courier board or reporting presence retries SEARCHING deliveries.
+			console.error("pickup dispatch failed after shop pin save", {
+				deliveryId: id,
+				error: String(error),
+			});
+		}
+	}
 
 	return settingsOf(ctx, businessId);
 }

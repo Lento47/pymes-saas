@@ -2,7 +2,7 @@ import { OFFER_RADIUS_KM } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Location from "expo-location";
 import { useEffect, useRef, useState } from "react";
-import { Platform, View } from "react-native";
+import { Platform, useWindowDimensions, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { BackButton } from "@/components/back-button";
@@ -12,6 +12,7 @@ import { isMapAvailable, MapView } from "@/components/map";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
+import { useApiFailure } from "@/lib/api-error";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
 import { useMerchantScope } from "@/lib/merchant-scope";
@@ -53,6 +54,14 @@ export default function ShopLocation() {
 	const cache = useQueryClient();
 	const toast = useToast();
 	const scope = useMerchantScope();
+	const { height, fontScale } = useWindowDimensions();
+	const mapHeight = Math.min(
+		480,
+		Math.max(
+			280,
+			height * Math.max(0.3, 0.43 - 0.1 * Math.max(0, fontScale - 1)),
+		),
+	);
 
 	/**
 	 * The shop, resolved the way `shop-settings.tsx` and `locations.tsx` both resolve it:
@@ -100,6 +109,7 @@ export default function ShopLocation() {
 	const [saving, setSaving] = useState(false);
 
 	const update = useMutation(trpc.business.update.mutationOptions());
+	const saveFailure = useApiFailure(update.error);
 
 	// `typeof … === "number"` rather than a truthiness test: `0` and `-0` are legal
 	// longitudes and latitudes, and `null` is the only value that means "unset" here.
@@ -148,6 +158,7 @@ export default function ShopLocation() {
 		};
 	}, [settings.data, saved, addressCentre]);
 	const choosePin = async (point: { lat: number; lng: number }) => {
+		if (update.isError) update.reset();
 		const selected = ++selection.current;
 		setPicked(point);
 		setPickedAddress(null);
@@ -208,7 +219,8 @@ export default function ShopLocation() {
 		);
 	};
 
-	const failed = shops.error ?? settings.error ?? update.error;
+	const failed =
+		(!shops.data && shops.error) || (!settings.data && settings.error);
 
 	return (
 		<View style={{ flex: 1 }}>
@@ -242,6 +254,7 @@ export default function ShopLocation() {
 								coords={centre}
 								marker={pin}
 								radiusKm={OFFER_RADIUS_KM}
+								style={{ height: mapHeight }}
 								onPick={(point) => {
 									void choosePin(point);
 								}}
@@ -296,6 +309,18 @@ export default function ShopLocation() {
 									/>
 								) : null}
 							</>
+						) : null}
+						{update.error ? (
+							<View accessibilityRole="alert" accessibilityLiveRegion="polite">
+								<Text variant="body" tone="destructive">
+									{saveFailure.message}
+								</Text>
+								{saveFailure.supportLine ? (
+									<Text variant="caption" tone="muted" selectable>
+										{saveFailure.supportLine}
+									</Text>
+								) : null}
+							</View>
 						) : null}
 					</ScreenSection>
 				)}
