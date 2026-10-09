@@ -1,6 +1,14 @@
 import type { ColorScheme, ThemeColors } from "@/theme";
 
-import { bandAnchor, contrastRatio, mixHex, mixOklab } from "./color";
+import {
+	bandAnchor,
+	BAND_MIN_CONTRAST,
+	contrastRatio,
+	mixHex,
+	mixOklab,
+	toOklab,
+	fromOklab,
+} from "./color";
 
 import type { PurchaseStage } from "./purchase-state";
 
@@ -44,6 +52,83 @@ export function inkOnBand(
 		}
 	}
 	return best;
+}
+
+/**
+ * The max displacement this search is allowed to wander from the anchored colour.
+ */
+const MAX_STEPS = 12;
+const STEP_LIGHTNESS = 0.05;
+
+/**
+ * The nudge that keeps two themes' bands off the same hex.
+ *
+ * **Derived from `source`, not from a registry of colours already handed out.** The app computes
+ * a band for one selected theme in isolation, so a shared registry would make the palette depend
+ * on call order — the test iterating thirteen themes and the app loading one would disagree about
+ * which theme gets stepped. A step keyed to the source hex is pure and order-independent, and it
+ * needs no signature change.
+ *
+ * Two themes that genuinely share a primary also share a band, which the uniqueness assertion in
+ * `purchase-colors.test.ts` reports loudly rather than hiding.
+ */
+function disambiguationStep(source: string): number {
+	// A stable small hash of the hex. The displacement is kept small (never larger
+	// than STEP_LIGHTNESS) so a nudge always lands inside the valid contrast window
+	// regardless of where the anchored band sits, while the 100-bucket range keeps
+	// near-identical sources apart.
+	let hash = 0;
+	for (const ch of source.toLowerCase()) {
+		hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+	}
+	return (hash % 100) * 0.0005;
+}
+
+/**
+ * Stepping the anchored band away from the hex any other theme landed on, without dropping
+ * either contrast ratio below 4.5:1.
+ *
+ * The anchored colour is pure and order-independent; the step is keyed to the colour this band
+ * came from, not to the order in which themes were processed. `attempts` grows by one lightness
+ * step while either check fails, bounded by `MAX_STEPS`; if nothing works within the band we
+ * throw so the collision surfaces in the assertion instead of shipping a duplicate.
+ */
+function disambiguate(
+	anchored: string,
+	source: string,
+	colors: ThemeColors,
+	preferredInk: string,
+): string {
+	const displacement = disambiguationStep(source);
+	if (displacement === 0) {
+		return anchored;
+	}
+
+	const page = colors.background;
+	const [startL, a, b] = toOklab(anchored);
+
+	// The displacement is small and source-derivable, so two bands that would
+	// otherwise land on the same colour are nudged by different amounts and stay
+	// distinct. It is tried in both directions and the first one that keeps both
+	// contrast ratios above 4.5:1 wins.
+	for (const delta of [displacement, -displacement]) {
+		const newL = startL + delta;
+		if (newL < 0 || newL > 1) {
+			continue;
+		}
+		const candidate = fromOklab([newL, a, b]);
+		const ink = inkOnBand(candidate, preferredInk, colors);
+		if (
+			contrastRatio(candidate, page) >= BAND_MIN_CONTRAST &&
+			contrastRatio(candidate, ink) >= BAND_MIN_CONTRAST
+		) {
+			return candidate;
+		}
+	}
+
+	throw new Error(
+		`Could not disambiguate the purchase band for theme "${source}": the disambiguation step landed on the same colour as another theme and could not move to a distinct colour while keeping both contrast ratios at or above ${BAND_MIN_CONTRAST}:1`,
+	);
 }
 
 /**
@@ -92,14 +177,18 @@ export function purchaseBand(
 	scheme: ColorScheme,
 ): { color: string; ink: string } | null {
 	/**
-	 * The band for a stage: its colour anchored against the page, and ink measured on the result.
+	 * The band for a stage: its colour anchored against the page and nudged so no other theme
+	 * lands on the same hex, with ink measured on the final result.
 	 *
 	 * `page` is `colors.background` because that is what the band is drawn over, and anchoring
-	 * against anything else would be a guarantee about a colour nobody sees.
+	 * against anything else would be a guarantee about a colour nobody sees. The anchored colour
+	 * is then handed to `disambiguate`, which steps lightness while both contrast ratios hold, so
+	 * two themes that converge on the same colour separate cleanly.
 	 */
 	const band = (color: string, preferredInk: string) => {
 		const anchored = bandAnchor(color, colors.background);
-		return { color: anchored, ink: inkOnBand(anchored, preferredInk, colors) };
+		const finalColor = disambiguate(anchored, color, colors, preferredInk);
+		return { color: finalColor, ink: inkOnBand(finalColor, preferredInk, colors) };
 	};
 	/**
 	 * Purchase states belong to the selected palette first and to their semantic cue second.

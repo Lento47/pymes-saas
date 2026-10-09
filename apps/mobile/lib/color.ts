@@ -33,7 +33,7 @@ export function mixHex(
  * periwinkle band keeps its identity all the way down instead of greying out.
  */
 
-type Lab = [lightness: number, a: number, b: number];
+export type Lab = [lightness: number, a: number, b: number];
 
 function toLinear(channel: number): number {
 	const c = channel / 255;
@@ -48,7 +48,7 @@ function fromLinear(channel: number): number {
 	return Math.round(Math.min(255, Math.max(0, c * 255)));
 }
 
-function toOklab(hex: string): Lab {
+export function toOklab(hex: string): Lab {
 	const read = (index: number) =>
 		toLinear(Number.parseInt(hex.slice(index, index + 2), 16));
 	const [r, g, b] = [read(1), read(3), read(5)];
@@ -68,7 +68,7 @@ function toOklab(hex: string): Lab {
 	];
 }
 
-function fromOklab([lightness, a, b]: Lab): string {
+export function fromOklab([lightness, a, b]: Lab): string {
 	const l = (lightness + 0.396_337_777_4 * a + 0.215_803_757_3 * b) ** 3;
 	const m = (lightness - 0.105_561_345_8 * a - 0.063_854_172_8 * b) ** 3;
 	const s = (lightness - 0.089_484_177_5 * a - 1.291_485_548 * b) ** 3;
