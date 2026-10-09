@@ -438,6 +438,12 @@ export async function businesses(
 	if (input.status && input.status.length > 0) {
 		conditions.push(inArray(businessTable.status, input.status));
 	}
+	// Verification is its own flag, not a `status`. `verifyBusiness` writes `is_verified` and
+	// leaves the lifecycle alone, so a list that filtered on `DRAFT` kept showing shops that
+	// were already verified — and disagreed with `metrics`, which counts on this column.
+	if (input.isVerified !== undefined) {
+		conditions.push(eq(businessTable.isVerified, input.isVerified));
+	}
 	if (input.from) conditions.push(gte(businessTable.createdAt, input.from));
 	if (input.to) conditions.push(lte(businessTable.createdAt, input.to));
 

@@ -151,7 +151,14 @@ import { useAdminPage } from "./use-admin-page";
  */
 
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Sin verificar",
+  /**
+   * `DRAFT` is a lifecycle state — a shop that has not been published — and it was labelled
+   * "Sin verificar", which is a different claim about a different column. `verifyBusiness`
+   * writes `is_verified` and leaves this alone, so a shop that had been verified kept reading
+   * "Sin verificar" forever. Verification is shown where verification happens: the Verificar
+   * action, which only exists while `isVerified` is false.
+   */
+  DRAFT: "Borrador",
   ACTIVE: "Activo",
   SUSPENDED: "Suspendido",
   CLOSED: "Cerrado",
@@ -935,7 +942,7 @@ function BusinessTable({ rows }: { rows: AdminBusinessRow[] }) {
           render: (_v, b) => (
             <RowActions
               actions={[
-                ...(b.status === "DRAFT" || !b.isVerified
+                ...(!b.isVerified
                   ? [
                       {
                         label: "Verificar",

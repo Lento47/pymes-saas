@@ -306,8 +306,13 @@ export const adminApi = {
    *
    * `metrics.businesses.pendingVerification` is the count this badges, and the list is the
    * same `businesses` query filtered to `DRAFT` — an unverified shop is a draft that has
-   * asked to be seen. One query, two views, and no way for the count and the list to
-   * disagree.
+   * asked to be seen. That conflated two different fields, and it is why the count and the
+   * list could not both be right.
+   *
+   * It now filters `isVerified: false` — the same column `metrics` counts. `verifyBusiness`
+   * writes `is_verified` and leaves the lifecycle alone, so a verified shop stayed `DRAFT`
+   * and sat in this queue forever: still badged "Sin verificar", the Verificar button still
+   * on it, and clicking it again changing nothing.
    *
    * The ordering is a parameter, and it is here rather than hardcoded because the queue is
    * the one table where **oldest first** is the ordering an operator wants: a shop that
@@ -321,7 +326,7 @@ export const adminApi = {
     > = {},
   ): Promise<Page<AdminBusinessRow>> =>
     adminApi.businesses({
-      status: ["DRAFT"],
+      isVerified: false,
       sort: "newest",
       direction: "desc",
       ...input,

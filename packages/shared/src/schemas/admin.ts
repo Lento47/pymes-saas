@@ -153,6 +153,16 @@ export const REASON_MIN_LENGTH = 8;
 export const adminListInput = z.object({
 	search: z.string().trim().max(120).optional(),
 	status: z.array(z.enum(BUSINESS_STATUSES)).max(4).optional(),
+	/**
+	 * Filter by the verification flag itself.
+	 *
+	 * It is here because `status` cannot answer the question. `DRAFT` is a lifecycle state —
+	 * a shop that has not been published — and it is not the same claim as "unverified": the
+	 * console's own `metrics` has always counted the queue as `is_verified = 0 and status <>
+	 * 'SUSPENDED'`, so a list filtered on `status: ["DRAFT"]` disagreed with the badge on the
+	 * tab that opens it. One flag, one meaning: verification is `is_verified`.
+	 */
+	isVerified: z.boolean().optional(),
 	from: z.date().optional(),
 	to: z.date().optional(),
 	sort: z.enum(["newest", "name", "orders", "revenue"]).default("newest"),
