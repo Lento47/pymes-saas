@@ -72,71 +72,113 @@ describe("home gradient", () => {
 	test("every other theme keeps its alpha ramp, dark and light alike", () => {
 		expect(gradient).toContain("withAlpha(color, strengths[0])");
 		expect(gradient).toContain("withAlpha(color, strengths[3])");
-		expect(gradient).toMatch(
-			/scheme === "dark" \? \[0\.42, 0\.24, 0\.04, 0\] : \[0\.8, 0\.6, 0\.16, 0\]/,
+		// The four alphas have one home — `BROWSING_RAMP_ALPHA` in `./purchase-colors` — because
+		// the header measures its ink against the stop the first one composites to. Pinned there,
+		// and pinned that this file reads them rather than re-typing the numbers, so a change
+		// cannot move the ramp without moving the ink that goes on it.
+		expect(purchaseColors).toContain("light: [0.8, 0.6, 0.16, 0]");
+		expect(purchaseColors).toContain("dark: [0.42, 0.24, 0.04, 0]");
+		expect(purchaseColors).toContain("export const BROWSING_RAMP_ALPHA = {");
+		expect(gradient).toContain(
+			"const strengths = BROWSING_RAMP_ALPHA[scheme];",
 		);
 		expect(screen).toContain("backgroundColor: colors.background");
 	});
 });
 
-describe("header ink on the lime band", () => {
-	test("ink is measured against the colour actually drawn under it", () => {
-		// This spec used to require the opposite, and was wrong. It asserted that browsing ink
-		// came from `purchaseBand("browsing", …)`, on the reasoning that one source could not
-		// disagree with itself.
+describe("header ink on the band", () => {
+	test("browsing ink is measured against the stop the ramp draws, on every theme", () => {
+		// Three wrong versions of this, each recorded because each looked right.
 		//
-		// It could — and did, invisibly. `purchaseBand` *anchors* its colour with `bandAnchor`
-		// before choosing ink, but the lime browsing ramps in `./home-gradient` are hand-authored
-		// and draw `#C8FF18` at the top regardless. So the ink was chosen against the anchor's
-		// `#638000` and painted onto `#C8FF18`: **1.18:1**, white on bright lime. The band and the
-		// ink came from one function and still described two different colours.
+		// 1. `scheme === "dark" ? primaryForeground : secondaryForeground` — keyed off the scheme
+		//    rather than the band under the ink.
+		// 2. `purchaseBand("browsing", …).ink` — one source for band and ink, on the reasoning
+		//    that it could not disagree with itself. It could: `purchaseBand` *anchors* its colour
+		//    with `bandAnchor`, while the browsing ramp draws the primary. The ink was chosen
+		//    against the anchor's `#638000` and painted on `#C8FF18`: **1.18:1**.
+		// 3. Measuring against `colors.primary`, gated on `onLimeGradient` — right for lime and
+		//    **applied to lime alone**. On the other twelve themes nothing was measured at all, so
+		//    the meta line kept its own `mutedForeground` over the band: **1.09:1 to 4.28:1**
+		//    across the twelve, against the 4.5 a 13px line owes. That gate was the defect.
 		//
-		// The rule that holds is per-owner: whichever function owns the colour measures the ink
-		// against it. Browsing owns `#C8FF18` (`LIME_LIGHT`/`LIME_DARK`), so it measures against
-		// `colors.primary`. The journey stages get their colour *and* their ink from
-		// `purchaseBand`, which anchors both together.
-		expect(header).toContain('colors.primary.toLowerCase() === "#c8ff18"');
+		// The rule that holds is per-owner, and total: whichever function owns the colour measures
+		// the ink against it, on every theme. `browsingBandTop` reproduces the browsing ramp's top
+		// stop from the same `BROWSING_RAMP_ALPHA` `./home-gradient` draws with; the journey stages
+		// get their colour *and* their ink from `purchaseBand`, which anchors both together.
+		// **The header no longer names lime at all**, and that is the correction: the lime branch
+		// is what the third wrong version was made of. `./home-gradient` still keys its
+		// hand-authored ramps on `isLime` (they are the two opaque ones); `./home-header` reads a
+		// measurement, so there is nothing left there for a theme to fall outside of.
+		expect(header).not.toMatch(/=== "#c8ff18"/);
+		expect(header).not.toMatch(/const onLimeGradient/);
+		// Matched as a pattern because the formatter wraps this import across lines; the three
+		// names are what matter, not the wrap.
 		expect(header).toMatch(
-			/const bandInk = onLimeGradient\s+\? inkOnBand\(\s+colors\.primary,/,
+			/import \{\s+browsingBandTop,\s+inkOnBand,\s+purchaseBand,\s+\} from "@\/lib\/purchase-colors";/,
 		);
+		expect(header).toMatch(
+			/const browsingInk =\s+stage === "browsing"\s+\? inkOnBand\(\s+browsingBandTop\(colors\.primary, scheme, colors\.background\),/,
+		);
+		expect(header).toContain("const activeInk = journeyInk ?? browsingInk");
 		// The journey stages keep the anchored source, which is where anchoring applies.
 		expect(header).toContain("? purchaseBand(stage, colors, scheme)?.ink");
-		// Neither the scheme-keyed branch nor the anchored-browsing mistake may come back.
-		expect(header).not.toMatch(
-			/const bandInk = onLimeGradient\s*\?\s*scheme ===/,
-		);
+		// Neither the scheme-keyed branch, the anchored-browsing mistake, nor the lime-only gate
+		// on the ink may come back.
 		expect(header).not.toContain(
 			'purchaseBand("browsing", colors, scheme)?.ink',
 		);
+		expect(header).not.toMatch(/onLimeGradient\s*\?\s*inkOnBand/);
 		// And the band it is measured against is the one `./home-gradient` draws, so the two files
 		// cannot drift apart silently again.
+		expect(purchaseColors).toContain("export function browsingBandTop(");
+		expect(gradient).toContain("BROWSING_RAMP_ALPHA");
 		expect(gradient).toContain('LIME_LIGHT = ["#C8FF18"');
 		expect(gradient).toContain('LIME_DARK = ["#C8FF18"');
 	});
 
-	test("the nested location label takes dark-only ink, so light is untouched", () => {
-		// These cannot read `bandInk`: they carry a `tone` that light resolves to `#111111`, so
-		// `bandInk` would repaint them with the band's ink instead of their own. `limeDarkInk` is
-		// `undefined` in light, so no style is attached and the element is byte-identical to what
-		// it was.
-		expect(header).toContain("limeDarkInk");
+	test("the browsing band's ink is measured only while the band is drawn", () => {
+		// `stage === "browsing"` is exactly when `./screen` mounts this ramp, and `/` is the only
+		// route this header appears on. With a journey stage in flight the band is a journey ramp
+		// and `journeyInk` answers for it; with no stage there is no band, so no mark may take an
+		// ink measured for one. That case used to apply lime's ink unconditionally, which put
+		// `#0F0F0F` lettering on `#0F0F0F` for a signed-in reader whose order list had not loaded.
+		// The whole assignment, including its `: undefined` — so the ink cannot become
+		// unconditional again by dropping the ternary's other arm.
 		expect(header).toMatch(
-			/const limeDarkInk =\s+onLimeGradient && scheme === "dark"/,
+			/const browsingInk =\s+stage === "browsing"\s+\? inkOnBand\([\s\S]*?\n\t\t\t: undefined;/,
 		);
-		expect(header).toContain("const nestedInk = journeyInk ?? limeDarkInk");
-		expect(
-			header.match(/nestedInk \? \{ color: nestedInk \} : undefined/g),
-		).toHaveLength(1);
 	});
 
-	test("the pin keeps light on `foreground` and only dark moves", () => {
-		expect(header).toContain("journeyInk ??");
-		expect(header).toMatch(/onLimeGradient\s+\? scheme === "light"/);
+	test("every mark on the band wears the one measured ink", () => {
+		// There used to be two more variables here — `limeDarkInk`, which repainted the nested
+		// location label in dark only, and `nestedInk`, which was `journeyInk ?? limeDarkInk`. The
+		// argument for them was that the label's `tone` already resolves dark ink in light, so a
+		// band ink would overrule a tone that was already right. That held for lime and was the
+		// wrong trade everywhere else: on `berry` light the measured ink is `colors.background`
+		// (white, 4.4967:1) while the label's own tone is its `foreground` `#140A16`, 4.31:1 on the
+		// same band — one line, two inks, and only one of them chosen by measurement. The band's
+		// ink now answers
+		// for the whole line, and no part of this file names lime any more.
+		expect(header).toContain(
+			"style={activeInk ? { color: activeInk } : undefined}",
+		);
+		expect(header).not.toMatch(/const nestedInk/);
+		expect(header).not.toMatch(/const limeDarkInk/);
+	});
+
+	test("the pin takes the measured ink, and the page's own ink with no band", () => {
+		// It used to draw `colors.primary` on every non-lime theme — the accent painted onto a
+		// band that *is* that accent composited over the page, so roughly 1:1 and invisible on all
+		// twelve. The no-band fallback is `foreground` rather than `primary`: with no band the
+		// page is all there is, and lime's `#C8FF18` pin on a white page is the same invisible
+		// mistake facing the other way.
+		expect(header).toContain("color={activeInk ?? colors.foreground}");
+		expect(header).not.toMatch(/colors\.primary\.toLowerCase\(\)/);
 	});
 
 	test("the greeting is coloured from the band rather than left at the default", () => {
 		// It carried no colour at all and took `foreground` — white — which is 1.08:1 on lime.
-		expect(header).toContain("const activeInk = journeyInk ?? bandInk");
+		expect(header).toContain("const activeInk = journeyInk ?? browsingInk");
 		expect(header).toContain(
 			"style={[styles.title, activeInk ? { color: activeInk } : null]}",
 		);

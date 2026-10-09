@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useIsFocused } from "expo-router";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { bandAnchor, RAMP_LOCATIONS, RAMP_WEIGHTS } from "@/lib/color";
-import { deliveryFluidColor } from "@/lib/purchase-colors";
+import { BROWSING_RAMP_ALPHA, deliveryFluidColor } from "@/lib/purchase-colors";
 import type { PurchaseStage } from "@/lib/purchase-state";
 import type { ColorScheme } from "@/theme";
 
@@ -42,6 +42,14 @@ import { type FluidMotion, TopFluidGradient } from "./top-fluid-gradient";
  * rather than keyed off `scheme`. A deepened band sits in the middle of the range where "light
  * scheme, dark ink" is simply wrong, and dark ink on the anchored light bands measures 2.70:1 to
  * 4.20:1 — under the 4.5 the 13px meta line owes. See `inkOnBand` in `./purchase-colors`.
+ *
+ * Two colours, two measurements, and the split is by **which function owns the colour**. A journey
+ * stage's band arrives already anchored (`purchaseBand`), so its ink is measured on that. The
+ * browsing ramp below is not anchored — it opens on the theme's primary — so its ink is measured
+ * on the top stop's own composite, through `browsingBandTop`, which reproduces that stop from the
+ * same `BROWSING_RAMP_ALPHA` this file draws with. `components/home-header.tsx` reads it on every
+ * theme; measuring against the anchor for browsing is what once painted `#111111` on `#C8FF18`
+ * (1.18:1) and, on the other twelve themes, left the meta line unmeasured entirely.
  *
  * ## The forms
  *
@@ -96,8 +104,16 @@ export function HomeGradient({
 	const { height, width } = useWindowDimensions();
 	const focused = useIsFocused();
 	const isLime = color.toLowerCase() === "#c8ff18";
-	const strengths: readonly [number, number, number, number] =
-		scheme === "dark" ? [0.42, 0.24, 0.04, 0] : [0.8, 0.6, 0.16, 0];
+	/**
+	 * The other twelve themes' ramp, and its alphas **come from `lib/purchase-colors.ts`** rather
+	 * than being typed here.
+	 *
+	 * The top one is not decoration: it is what the header's ink is measured against, through
+	 * `browsingBandTop`, and the header cannot reach this file's arrays without loading React
+	 * Native. One constant, two readers, so the band and the ink on it cannot describe two
+	 * different colours — the failure `./home-gradient.test.ts` records in full.
+	 */
+	const strengths = BROWSING_RAMP_ALPHA[scheme];
 
 	/**
 	 * The one combination with different geometry, and it is a *shape* fact rather than a taste

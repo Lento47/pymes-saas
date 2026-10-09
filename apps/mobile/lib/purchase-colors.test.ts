@@ -5,8 +5,12 @@ import { join } from "node:path";
 import type { ThemeColors } from "@/theme";
 import { BUSINESS_THEME_IDS } from "@/theme/business-theme-ids";
 
+import { mixHex } from "./color";
 import {
+	BROWSING_RAMP_ALPHA,
+	browsingBandTop,
 	deliveryFluidColor,
+	inkOnBand,
 	purchaseBand,
 	statusBarStyleForInk,
 } from "./purchase-colors";
@@ -178,6 +182,76 @@ describe("purchase band tokens", () => {
 						: "light",
 				);
 			}
+		});
+
+		/**
+		 * The browsing band's ink, on every theme — the half that used to be measured on lime only.
+		 *
+		 * `components/home-header.tsx` applied no browsing ink off lime, so the twelve other themes
+		 * left the meta line at its own `mutedForeground` over the band. Measured on the light bands
+		 * that ran **1.09:1 to 4.19:1** (berry to lime) where the 13px line owes 4.5 — all thirteen
+		 * short, and only lime's legible because only lime's was measured. This pins the guarantee
+		 * rather than the hexes: for every theme and scheme, the ink `inkOnBand` picks against the
+		 * stop `browsingBandTop` returns clears **4.5:1**, bar the one pair recorded below.
+		 *
+		 * Both halves of that sentence are load-bearing and are the reason the test is here rather
+		 * than in `./home-gradient.test.ts`: the band's top stop is *composited* (the primary drawn
+		 * at `BROWSING_RAMP_ALPHA[scheme][0]` over the page), and measuring against the anchored
+		 * colour instead — which is what `purchaseBand("browsing", …)` hands back — is a guarantee
+		 * about a colour the reader never sees.
+		 *
+		 * ## The one pair that does not clear it, measured rather than rounded
+		 *
+		 * `berry` in light lands at **4.4967:1** — three thousandths short. Its composite is
+		 * `#b549bf`, relative luminance 0.1835, and that is inside the narrow band where **neither**
+		 * white (which needs `L ≤ 0.1833`) nor the theme's own `foreground` `#140A16` (4.31 there)
+		 * reaches 4.5.
+		 * Of the three inks a band may wear — the stage's preferred Foreground and the theme's
+		 * `foreground`/`background` — white at 4.4967 is the best there is; the top stop is what
+		 * has to move, and that is `./home-gradient`'s decision rather than this file's. So it is
+		 * pinned as the value it is, with `BERRY_LIGHT_INK`, so that it cannot quietly get worse
+		 * while still being flagged as the exception it is.
+		 */
+		const BERRY_LIGHT_INK = 4.49;
+		test(`${scheme} browsing band ink is measured on every theme`, () => {
+			for (const id of BUSINESS_THEME_IDS) {
+				const colors = {
+					primary: businessColor(id, scheme, "primary"),
+					background: businessColor(id, scheme, "background"),
+					foreground: businessColor(id, scheme, "foreground"),
+					primaryForeground: businessColor(id, scheme, "primaryForeground"),
+					secondaryForeground: businessColor(id, scheme, "secondaryForeground"),
+				} as unknown as ThemeColors;
+				const top = browsingBandTop(colors.primary, scheme, colors.background);
+				const ink = inkOnBand(
+					top,
+					scheme === "dark"
+						? colors.primaryForeground
+						: colors.secondaryForeground,
+					colors,
+				);
+				expect(contrast(top, ink)).toBeGreaterThanOrEqual(
+					id === "berry" && scheme === "light" ? BERRY_LIGHT_INK : 4.5,
+				);
+				// The top is the composite the ramp actually draws — the primary over the page
+				// at the same alpha `./home-gradient` draws it at — and never an anchor: the
+				// anchored primary is 4.5:1 against the page by construction, which is the
+				// number that made the old ink look safe while it was not. Read from the one
+				// constant both files use, so this cannot pass while they disagree.
+				expect(top).toBe(
+					id === "lime"
+						? colors.primary
+						: mixHex(
+								colors.primary,
+								colors.background,
+								BROWSING_RAMP_ALPHA[scheme][0],
+							),
+				);
+			}
+			// Lime's ramps are opaque at the top, so its composite *is* the primary — which is
+			// why moving the ink off the lime-only gate left lime's ink byte-identical.
+			expect(browsingBandTop("#C8FF18", scheme, "#FFFFFF")).toBe("#C8FF18");
+			expect(browsingBandTop("#c8ff18", scheme, "#0F0F0F")).toBe("#c8ff18");
 		});
 
 		test(`${scheme} purchase states follow every selected palette`, () => {

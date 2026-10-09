@@ -1,6 +1,6 @@
 import type { ColorScheme, ThemeColors } from "@/theme";
 
-import { bandAnchor, contrastRatio, mixOklab } from "./color";
+import { bandAnchor, contrastRatio, mixHex, mixOklab } from "./color";
 
 import type { PurchaseStage } from "./purchase-state";
 
@@ -44,6 +44,46 @@ export function inkOnBand(
 		}
 	}
 	return best;
+}
+
+/**
+ * The opacity each of the browsing ramp's four stops is drawn at, per scheme.
+ *
+ * **One source, two readers.** `components/home-gradient.tsx` draws the ramp with these
+ * numbers and `browsingBandTop` below reproduces the stop that matters for ink; the alpha could
+ * not live in the component, because the ink decision is measured in a test that cannot load
+ * React Native (`./purchase-colors.test.ts`, the same constraint that keeps
+ * `theme/business-theme-ids.ts` import-free).
+ *
+ * The lime ramps are the exception and are not here: they are hand-authored four-stop palettes
+ * (`LIME_LIGHT`/`LIME_DARK`) that open **opaque** on the primary, which is why
+ * `browsingBandTop` special-cases them.
+ */
+export const BROWSING_RAMP_ALPHA = {
+	light: [0.8, 0.6, 0.16, 0],
+	dark: [0.42, 0.24, 0.04, 0],
+} as const;
+
+/**
+ * The colour the browsing ramp opens on, for the theme and scheme it is drawn in.
+ *
+ * **This is what the band's ink must be measured against**, and it is not
+ * `purchaseBand("browsing", …).color`. That function anchors its colour with `bandAnchor`
+ * before choosing ink, and the browsing ramp is *not* anchored — `components/home-gradient.tsx`
+ * draws the theme's primary, verbatim on lime and composited over the page at
+ * `BROWSING_RAMP_ALPHA`'s top stop on the other twelve. Measuring ink on the anchored colour
+ * would be a guarantee about a colour nobody sees, which is the mistake this replaces.
+ *
+ * Alpha composites on gamma-encoded channels, which is exactly what `mixHex` walks, so the
+ * result is the pixel the reader gets at the top of the band.
+ */
+export function browsingBandTop(
+	color: string,
+	scheme: ColorScheme,
+	page: string,
+): string {
+	if (color.toLowerCase() === "#c8ff18") return color;
+	return mixHex(color, page, BROWSING_RAMP_ALPHA[scheme][0]);
 }
 
 export function purchaseBand(

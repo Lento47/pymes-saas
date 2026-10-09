@@ -3,7 +3,11 @@ import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
 import { usePurchaseAccent } from "@/lib/purchase-accent";
-import { inkOnBand, purchaseBand } from "@/lib/purchase-colors";
+import {
+	browsingBandTop,
+	inkOnBand,
+	purchaseBand,
+} from "@/lib/purchase-colors";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -121,58 +125,72 @@ export function HomeHeader({
 		stage && stage !== "browsing"
 			? purchaseBand(stage, colors, scheme)?.ink
 			: undefined;
-	const onLimeGradient = colors.primary.toLowerCase() === "#c8ff18";
 	/**
-	 * The ink for **every** mark drawn on the lime band, and `undefined` off it.
+	 * The ink for every mark drawn on the browsing band, on **every** theme, and `undefined`
+	 * when there is no browsing band to draw on.
 	 *
-	 * **Measured against `colors.primary`, which is the colour the band actually draws.**
+	 * **Measured against the colour the ramp opens on, which is not the anchored one.** This is
+	 * the invariant the whole file turns on: *ink is measured against the colour under it*,
+	 * whichever function owns that colour. A journey stage's band arrives anchored
+	 * (`purchaseBand`), so its ink comes from there. The browsing ramp does not anchor —
+	 * `./home-gradient` draws the theme's primary, verbatim on lime's hand-authored ramps and
+	 * composited over the page at the top stop's alpha everywhere else — so `browsingBandTop`
+	 * reproduces that one stop and this measures against it. The two files share
+	 * `BROWSING_RAMP_ALPHA`, so they cannot drift into describing two different colours, which
+	 * they once did: the ink was chosen against the anchor's `#638000` and painted onto the
+	 * ramp's `#C8FF18`, **1.18:1**, white on bright lime.
 	 *
-	 * It used to be `scheme === "dark" ? primaryForeground : secondaryForeground`. It then became
-	 * `purchaseBand("browsing", …).ink`, which was wrong in a way worth recording: `purchaseBand`
-	 * *anchors* its colour with `bandAnchor` before choosing ink, but the lime browsing ramps in
-	 * `./home-gradient` are hand-authored and draw `#C8FF18` at the top either way. So the ink was
-	 * chosen against `#638000` — an olive that clears 4.5:1 — and then painted onto `#C8FF18`,
-	 * which is **1.18:1**. White on bright lime: invisible. Measured, not guessed.
+	 * **It used to run on lime only** — behind a check that the theme's primary was the lime
+	 * token — and that check was the defect rather than the safety rail it looked like. On the
+	 * other twelve themes no ink was applied at all, so the greeting took `foreground` and the meta
+	 * line its own `mutedForeground` over a band nobody had measured. Measured on the light
+	 * bands, `mutedForeground` against the stop the ramp opens on runs **1.09:1 to 4.19:1** —
+	 * berry 1.09, orchid 1.36, vine 1.53, harbor 1.73, forest 1.87, sunset 1.89, dune 1.91,
+	 * ocean 2.13, coral 2.43, citrus 2.77, sky 3.21, amber 3.40, lime 4.19 — **thirteen themes,
+	 * and not one of them clearing the 4.5 a 13px line owes.** Lime is in that list and was the
+	 * only line that was legible, because lime was the only one the old gate measured. Measuring
+	 * here instead takes the best of the three candidates and lands **4.4967:1 to 15.98:1** in light
+	 * and **6.41:1 to 16.22:1** in dark, twenty-five of the twenty-six theme/scheme pairs
+	 * clearing 4.5 outright.
 	 *
-	 * So browsing measures against the colour that reaches the screen, and the journey stages keep
-	 * reading `purchaseBand`, which anchors both together. The invariant is one rule: **ink is
-	 * measured against the colour under it**, whichever function owns that colour. That is also
-	 * why the status bar, which asks `purchaseBand`, cannot disagree with the greeting.
+	 * **The one pair that does not, and why the ink is not what fixes it.** `berry` in light is
+	 * **4.4967:1**, three thousandths short. Its ramp opens on `#b549bf` — the one composite of
+	 * the thirteen whose relative luminance, 0.1835, falls in the narrow band where neither
+	 * white (needs `L ≤ 0.1833`) nor its own `foreground`, `#140A16` (4.31 there), clears 4.5.
+	 * That is its top stop's problem, not the ink's, and it is written down rather than rounded
+	 * to a pass;
+	 * `lib/purchase-colors.test.ts` pins the value so it cannot quietly get worse.
 	 *
-	 * Both results are dark, and both are correct: `#111111` on `#C8FF18` is 15.43:1 in light and
-	 * 16.22:1 in dark. Dark letters on a lime band are the design, not a defect — worth saying
-	 * because "dark mode, dark letters" reads like a bug and is not one.
+	 * Lime's ink is unchanged by the move: its ramp opens on `#C8FF18` either way, and what
+	 * `inkOnBand` returns for it is what it already returned — `#111111` in light (15.98:1) and
+	 * `colors.background` in dark (16.22:1). Both are dark, and both are correct: dark letters
+	 * on a lime band are the design, not a defect, and worth saying because "dark mode, dark
+	 * letters" reads like a bug and is not one.
 	 *
-	 * Five marks read this, and the avatar deliberately does not — `./image` paints
-	 * `colors.muted`, so the initials sit on their own disc and never see the ramp. The list:
-	 * the greeting, the meta line's lead, the meta line's value in both its states, and the
-	 * pin beside them.
+	 * **Every mark on the band reads it, and nothing on this file knows about lime.** The
+	 * greeting, the meta line's lead *and* its value, the pin and the chevron all wear
+	 * `activeInk`, which is the whole of what the old file was trying to express through
+	 * `onLimeGradient`, `bandInk`, `limeDarkInk` and `nestedInk`. The avatar deliberately
+	 * reads nothing — `./image` paints `colors.muted`, so the initials sit on their own disc
+	 * and never see the ramp.
+	 *
+	 * `stage === "browsing"` is the gate because it is exactly when this ramp is drawn —
+	 * `./screen` mounts `<HomeGradient>` for a non-null stage, and `/` is the only route this
+	 * header appears on. With a journey stage in flight the band is a journey ramp, and
+	 * `journeyInk` above is what answers for it; with no stage at all there is no band, and no
+	 * mark takes an ink it would be wrong to trust.
 	 */
-	const bandInk = onLimeGradient
-		? inkOnBand(
-				colors.primary,
-				scheme === "dark"
-					? colors.primaryForeground
-					: colors.secondaryForeground,
-				colors,
-			)
-		: undefined;
-	const activeInk = journeyInk ?? bandInk;
-
-	/**
-	 * The same ink, but for the two nested `tone` values — and `undefined` everywhere else.
-	 *
-	 * **These two must not use `bandInk`.** The greeting and the pin can, because each is a
-	 * single element whose light value is already dark. These two carry a `tone` that light
-	 * resolves to `#111111` — `default` and `action` both do in `lime.light` — and pointing them
-	 * at `bandInk` would repaint them with the band ink rather than their own tone's.
-	 *
-	 * Dark-only by construction: in light this is `undefined`, no style is attached at all, and
-	 * the element is byte-identical to what it was.
-	 */
-	const limeDarkInk =
-		onLimeGradient && scheme === "dark" ? colors.primaryForeground : undefined;
-	const nestedInk = journeyInk ?? limeDarkInk;
+	const browsingInk =
+		stage === "browsing"
+			? inkOnBand(
+					browsingBandTop(colors.primary, scheme, colors.background),
+					scheme === "dark"
+						? colors.primaryForeground
+						: colors.secondaryForeground,
+					colors,
+				)
+			: undefined;
+	const activeInk = journeyInk ?? browsingInk;
 
 	// Two initials where the name has two parts, one where it has one. The avatar's box is
 	// `MIN_TOUCH_TARGET` square — a target drawn at its own floor, like `./business-card`'s
@@ -203,8 +221,8 @@ export function HomeHeader({
 					bold
 					// The greeting is the one mark here that carried no colour of its own and
 					// took `foreground` by default — white, which on the dark theme's new lime
-					// band is unreadable. `bandInk` is `undefined` off the band, so every other
-					// theme keeps the default it had.
+					// band is unreadable. `activeInk` is `undefined` with no band, so a screen
+					// that draws none keeps the default it had.
 					style={[styles.title, activeInk ? { color: activeInk } : null]}
 				>
 					{name ? t("home.greeting", { name }) : t("home.greeting.anon")}
@@ -223,20 +241,15 @@ export function HomeHeader({
 					<Ionicons
 						name="location"
 						size={icon.inline}
-						// Three cases, and **light is deliberately untouched**: it keeps
-						// `colors.foreground`, which is what it has always drawn here. Dark
-						// needed a third branch rather than `bandInk`, because light's pin is
-						// `foreground` while its meta line is `secondaryForeground` — the two
-						// have always differed by a hair and folding them together would be a
-						// light-theme change dressed as a tidy-up.
-						color={
-							journeyInk ??
-							(onLimeGradient
-								? scheme === "light"
-									? colors.foreground
-									: colors.primaryForeground
-								: colors.primary)
-						}
+						// The measured ink, and `foreground` where no band is drawn at all —
+						// the page's own ink, light on a dark page and dark on a light one.
+						// This used to be a four-case expression: lime light took
+						// `foreground`, lime dark `primaryForeground`, and every other theme
+						// drew `colors.primary` **on** the primary — roughly 1:1, invisible on
+						// every one of the twelve. `activeInk` answers all of it with one
+						// measurement, and what it gives lime is the ink lime already wore,
+						// bar one step in dark.
+						color={activeInk ?? colors.foreground}
 						accessibilityElementsHidden
 						importantForAccessibility="no"
 					/>
@@ -254,7 +267,7 @@ export function HomeHeader({
 						<Text
 							variant="label"
 							tone="default"
-							style={nestedInk ? { color: nestedInk } : undefined}
+							style={activeInk ? { color: activeInk } : undefined}
 						>
 							{locationLabel}
 						</Text>
