@@ -408,6 +408,20 @@ function Dispatch({ available }: { available: boolean }) {
 	const pendingInvites = (invites.data ?? []).filter(
 		(one) => one.status === "PENDING",
 	).length;
+	/**
+	 * What this courier has done, and what customers think of them.
+	 *
+	 * **`couriers.stats` and not a length of `mine`.** `deliveries.mine` is capped at
+	 * `.limit(30)` (`services/deliveries.ts:411`), so counting what it returned would read "30"
+	 * forever after a courier's thirtieth run — roughly their first month — and it would be the
+	 * one number on this screen that is confidently wrong. The server's `COUNT(*)` is why this
+	 * is a separate query, and `test/courier-stats.test.ts`'s thirty-one-row test is what keeps
+	 * it that way.
+	 *
+	 * **No poll interval**, like the invitations above it. These numbers move when a delivery is
+	 * completed, which is a person acting somewhere else.
+	 */
+	const stats = useQuery(trpc.couriers.stats.queryOptions());
 	// `preferCurrent`: presence is a claim about where the courier is now, and the server
 	// timestamps whatever arrives. A cached fix would therefore pass the freshness window
 	// while being hours old — see `useDeviceLocation`'s option note. It also re-reads on an
@@ -547,6 +561,54 @@ function Dispatch({ available }: { available: boolean }) {
 						chevron
 						onPress={() => router.push("/courier-invites" as Href)}
 					/>
+				</Card>
+			) : null}
+
+			{/*
+			    The record, and the only card on this screen that is not about the next delivery.
+
+			    **A courier with nothing has nothing on their board at all** without it — and
+			    "nothing" is exactly when a courier most needs to see that the platform is counting
+			    them. That is the complaint this whole change answers: a work surface that reads as
+			    broken when it is merely quiet.
+
+			    **Drawn only once there is something to say, and each line only when it is.**
+			    A courier who has delivered nothing and been rated by nobody gets no card at all,
+			    because "0 entregas · sin calificaciones" is worse to read than nothing — it is a
+			    scoreboard for a person who has not started. `./courier-profile.tsx`'s completion
+			    line makes the same call.
+
+			    **The rating refuses to print itself off one tap.** `ratingCount` is in the payload
+			    precisely so the mean of a single 5-star rating can be withheld, which is what
+			    `components/list-row.tsx`'s argument about a number standing in for a judgement
+			    comes to.
+
+			    **The two lines can disagree, so they are gated separately rather than the card
+			    once.** A `delivery` row can be re-pointed at another courier after the fact, so a
+			    courier can hold ratings without holding runs. Gating the card on the union and each
+			    line on its own number means that case reads "4.8 de 5, según 3 clientes" and not
+			    also "0 entregas completadas".
+			*/}
+			{stats.data &&
+			(stats.data.deliveredTotal > 0 ||
+				(stats.data.ratingAverage !== null && stats.data.ratingCount > 1)) ? (
+				<Card style={styles.record}>
+					<Text variant="heading" bold>
+						{t("delivery.board.record.title")}
+					</Text>
+					{stats.data.deliveredTotal > 0 ? (
+						<Text variant="body" tone="muted">
+							{tp("delivery.board.record.delivered", stats.data.deliveredTotal)}
+						</Text>
+					) : null}
+					{stats.data.ratingAverage !== null && stats.data.ratingCount > 1 ? (
+						<Text variant="body" tone="muted">
+							{t("delivery.board.record.rating", {
+								value: stats.data.ratingAverage.toFixed(1),
+								count: stats.data.ratingCount,
+							})}
+						</Text>
+					) : null}
 				</Card>
 			) : null}
 
@@ -1078,6 +1140,9 @@ function RunsSkeleton({ label }: { label: string }) {
 const styles = StyleSheet.create({
 	gap: { gap: space.lg },
 	body: { gap: space.lg },
+	// The record card's three lines, tighter than `body`'s card-to-card gap because these are
+	// three sentences about one subject rather than three separate things.
+	record: { gap: space.xs },
 	// The run's own column: reference line, headline, stamp and total, then the move. The
 	// same gaps the shop's board uses, because it is the same card with one control taken out.
 	order: { gap: space.sm },

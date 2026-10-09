@@ -1,8 +1,10 @@
 import {
 	business as businessTable,
+	delivery as deliveryTable,
 	courierInvite as inviteTable,
 	membership as membershipTable,
 	courierProfile as profileTable,
+	deliveryRating as ratingTable,
 	user as userTable,
 } from "@pymeshub/db";
 import type {
@@ -15,6 +17,7 @@ import type {
 	CourierProfile,
 	CourierProfileInput,
 	CourierRespondInput,
+	CourierStats,
 	CourierZoneInput,
 } from "@pymeshub/shared";
 import { newId } from "@pymeshub/shared";
@@ -91,6 +94,76 @@ export async function myProfile(
 		.where(eq(profileTable.userId, ctx.user.id))
 		.limit(1);
 	return rows[0] ? profileOf(rows[0]) : null;
+}
+
+/** How long "this month" means, for the thirty-day count below. */
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * What this courier has delivered and what customers think of them.
+ *
+ * **The pool's own ranking inputs, read back for the person they rank.** `candidateFor`
+ * (`services/delivery-dispatch.ts`) orders candidates by delivered runs, received rating and the
+ * oldest last offer — a business is choosing on these numbers, and the courier cannot see any of
+ * them. This is that read pointed the other way, which is why it is here rather than invented for
+ * the card: if the ranking changes, this is the query that changes with it.
+ *
+ * **Every count is a `COUNT(*)` over the delivery table, never a length of something handed to the
+ * client.** `deliveries.mine` is capped at `.limit(30)` (`services/deliveries.ts:411`) and a count
+ * taken from it would read "30" forever after a courier's thirtieth run — which is about a month
+ * of work. `deliveredTotal` would then be the one number on the card that is confidently wrong.
+ *
+ * **`fromRole: "CUSTOMER"` and nothing else.** A courier also rates the customer they delivered
+ * to, and those rows have the same `toUserId` shape in reverse; without the role filter this would
+ * average a courier's own generosity back at them. The unique index is on
+ * `(deliveryId, fromRole)`, so one customer rate per run is already guaranteed.
+ *
+ * **No profile required.** A courier who has never opened the form gets zeros and a `null` rating
+ * rather than a refusal: the numbers are about deliveries, not about the profile existing, and an
+ * empty card is the honest answer for someone who has not worked yet.
+ */
+export async function stats(ctx: UserContext): Promise<CourierStats> {
+	const now = new Date();
+	const [deliveries, ratings] = await Promise.all([
+		ctx.db
+			.select({
+				total: sql<number>`count(*)`,
+				recent: sql<number>`sum(case when ${deliveryTable.deliveredAt} >= ${new Date(
+					now.getTime() - THIRTY_DAYS_MS,
+				)} then 1 else 0 end)`,
+				first: sql<Date | null>`min(${deliveryTable.deliveredAt})`,
+			})
+			.from(deliveryTable)
+			.where(
+				and(
+					eq(deliveryTable.courierUserId, ctx.user.id),
+					eq(deliveryTable.status, "DELIVERED"),
+				),
+			),
+		ctx.db
+			.select({
+				average: sql<number>`avg(${ratingTable.rating})`,
+				count: sql<number>`count(*)`,
+			})
+			.from(ratingTable)
+			.where(
+				and(
+					eq(ratingTable.toUserId, ctx.user.id),
+					eq(ratingTable.fromRole, "CUSTOMER"),
+				),
+			),
+	]);
+
+	const delivered = deliveries[0];
+	const rating = ratings[0];
+	return {
+		deliveredTotal: Number(delivered?.total ?? 0),
+		// `sum` over zero matching rows is `null` in SQL, not `0`.
+		deliveredLast30Days: Number(delivered?.recent ?? 0),
+		firstDeliveredAt: delivered?.first ?? null,
+		ratingAverage: rating?.average == null ? null : Number(rating.average),
+		ratingCount: Number(rating?.count ?? 0),
+	};
 }
 
 /**

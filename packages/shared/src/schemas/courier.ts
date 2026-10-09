@@ -123,6 +123,37 @@ export const courierInviteSchema = z.object({
 });
 export type CourierInvite = z.infer<typeof courierInviteSchema>;
 
+/**
+ * What this courier has actually done, and what customers think of them.
+ *
+ * **The reputation a business ranks on, handed back to the person it is about.**
+ * `candidateFor` already reads exactly these rows to order the pool — delivered runs, received
+ * rating, the oldest last offer — and nothing exposed any of it to the courier. This is that read,
+ * pointed the other way.
+ *
+ * **Every count here is a real `COUNT(*)`, and that is the point.** `deliveries.mine` would be the
+ * obvious source and it is capped at `.limit(30)` (`services/deliveries.ts:411`), so a count taken
+ * from it silently becomes a lie past thirty deliveries — which is roughly a courier's first month.
+ */
+export const courierStatsSchema = z.object({
+	/** Completed runs, all time. Not a count of anything the client was handed. */
+	deliveredTotal: z.number().int().nonnegative(),
+	/** Completed runs in the last 30 days, for the number a courier cares about this month. */
+	deliveredLast30Days: z.number().int().nonnegative(),
+	/** When this courier first completed a run, or `null` if they never have. */
+	firstDeliveredAt: z.date().nullable(),
+	/**
+	 * The mean of the ratings customers gave this courier, or `null` before the first one.
+	 *
+	 * `null` rather than `0`: a courier nobody has rated yet is not badly rated, and a zero here
+	 * would render as "0 / 5" on a profile card.
+	 */
+	ratingAverage: z.number().min(1).max(5).nullable(),
+	/** How many ratings the average is over, so the client can refuse to show a mean of one. */
+	ratingCount: z.number().int().nonnegative(),
+});
+export type CourierStats = z.infer<typeof courierStatsSchema>;
+
 export const courierBusinessInvitesInput = z.object({
 	businessId: z.string(),
 });

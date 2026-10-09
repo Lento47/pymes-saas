@@ -20,6 +20,20 @@ const INVITE_WINDOW_SECONDS = 60 * 60;
 export const couriersRouter = router({
 	profile: protectedProcedure.query(({ ctx }) => couriers.myProfile(ctx)),
 
+	/**
+	 * What this courier has delivered and what customers rated them.
+	 *
+	 * **`protectedProcedure`, not a role gate**, for the same reason `profile` is: a courier's
+	 * first run is possible before any profile row exists, and refusing the numbers to somebody
+	 * whose history exists would be backwards.
+	 *
+	 * **No rate limit, deliberately.** `directory` and `invite` are limited because they expose
+	 * *other people's* rows and one of them writes. This reads only the caller's own totals, is
+	 * two `COUNT(*)`s over indexed columns, and changes when a delivery is completed — so the
+	 * limiter would be guarding a number against the person it belongs to.
+	 */
+	stats: protectedProcedure.query(({ ctx }) => couriers.stats(ctx)),
+
 	saveProfile: protectedProcedure
 		.input(courierProfileInput)
 		.mutation(({ ctx, input }) => couriers.saveProfile(ctx, input)),

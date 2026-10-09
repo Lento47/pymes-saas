@@ -1073,6 +1073,28 @@ export const business = {
 	"delivery.board.how.detail":
 		"You have to be within 15 km with your location up to date, and each offer lasts 2 minutes. That is why they are worth reading the moment they arrive.",
 
+	/*
+	 * The courier's record, and the only card on that screen that is not about the next
+	 * delivery.
+	 *
+	 * **Drawn only once there is something to say.** Zero deliveries and zero ratings is worse
+	 * to read than nothing: it is a scoreboard for somebody who has not started. And the mean of
+	 * a single five-star rating is withheld too — `ratingCount` is in the payload precisely so
+	 * the client can leave it out, because a number is not a judgement.
+	 *
+	 * **The two English forms differ, unlike the Spanish ones.** `{count}` is on both keys so
+	 * `tp()` does not have to know that.
+	 */
+	"delivery.board.record.title": "Your record",
+	"delivery.board.record.delivered": "{count} delivery completed",
+	"delivery.board.record.delivered_plural": "{count} deliveries completed",
+	/*
+	 * `rating` is `t()` and not `tp()`, and that is the point: the card draws it only when
+	 * `ratingCount > 1`, so "customers" is the only honest word and there is no singular form
+	 * that could ever be reached with it.
+	 */
+	"delivery.board.record.rating": "{value} out of 5, from {count} customers",
+
 	"delivery.offer.accept": "Accept delivery",
 	"delivery.offer.decline": "Decline",
 	"delivery.offer.distance": "{value} km from the business",

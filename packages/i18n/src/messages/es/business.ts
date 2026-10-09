@@ -1148,6 +1148,23 @@ export const business = {
 	"delivery.board.how.detail":
 		"Tienes que estar a 15 km o menos, con la ubicación al día, y cada oferta dura 2 minutos. Por eso vale la pena mirarlas en cuanto llegan.",
 
+	/*
+	 * El historial del repartidor, y la única tarjeta de la pantalla que no es sobre el
+	 * próximo reparto.
+	 *
+	 * **No se dibuja cuando no hay nada que decir.** Cero entregas y cero calificaciones es peor
+	 * de leer que nada: es un marcador para alguien que todavía no ha empezado. Y la media de una
+	 * sola calificación de cinco tampoco se imprime — `ratingCount` viene en la respuesta
+	 * precisamente para poder omitirla, porque un número no es un juicio.
+	 *
+	 * **El plural de «entregas» es el mismo en las dos formas.** El inglés necesita las dos, el
+	 * español no, y las dos llaves existen para que `tp()` no tenga que saber eso.
+	 */
+	"delivery.board.record.title": "Tu historial",
+	"delivery.board.record.delivered": "{count} entregas completadas",
+	"delivery.board.record.delivered_plural": "{count} entregas completadas",
+	"delivery.board.record.rating": "{value} de 5, según {count} clientes",
+
 	"delivery.offer.accept": "Aceptar entrega",
 	"delivery.offer.decline": "Rechazar",
 	"delivery.offer.distance": "A {value} km del negocio",
