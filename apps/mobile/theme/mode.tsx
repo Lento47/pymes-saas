@@ -23,21 +23,17 @@ import type { ColorScheme } from "./tokens";
  *
  * It is not an argument against this one, because `system` is a member of the set. The
  * question a switch answers is not "light or dark" but *"who decides"*, and the three
- * answers here are the only three there are: the phone (`system`, the default, and today's
- * behaviour exactly), or the reader (`light`, `dark`). Nothing can disagree, because when
+ * answers here are the only three there are: the phone (`system`), or the reader (`light`,
+ * the default, `dark`). Nothing can disagree, because when
  * the mode is `system` there is no second opinion to hold — the OS answer is read and used
  * directly, and the override only exists once somebody has asked for one.
  *
- * That is also why the default is `system` and not `light`: a reader who never opens this
- * setting gets precisely the app they got before it existed, and the setting is opt-in
- * rather than a change of behaviour disguised as a feature.
- *
- * `system` is first in the list for the same reason — it is the state an untouched app is
+ * Light is first in the list for the same reason — it is the state an untouched app is
  * in, so it is the one the control should show as chosen.
  */
 
 /** The three answers to "who decides", in the order the control draws them. */
-export const THEME_MODES = ["system", "light", "dark"] as const;
+export const THEME_MODES = ["light", "system", "dark"] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
 
@@ -68,7 +64,7 @@ function isThemeMode(value: string | null): value is ThemeMode {
 }
 
 type ThemeModeValue = {
-	/** What the reader chose. `system` unless they said otherwise. */
+	/** What the reader chose. `light` unless they said otherwise. */
 	mode: ThemeMode;
 	/** What that resolves to right now — what a screen should draw with. */
 	scheme: ColorScheme;
@@ -78,7 +74,7 @@ type ThemeModeValue = {
 const ThemeModeContext = createContext<ThemeModeValue | null>(null);
 
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
-	const [mode, setModeState] = useState<ThemeMode>("system");
+	const [mode, setModeState] = useState<ThemeMode>("light");
 
 	/**
 	 * The OS answer, read once and only used when `mode` is `system`.
@@ -95,9 +91,10 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
 
 	/**
 	 * The stored choice, read once at boot — `lib/i18n.tsx`'s shape exactly, and for its
-	 * reason: the first frame draws the OS answer and is corrected a moment later, which is
-	 * better than holding the splash screen on a disk read to avoid a flash that only
-	 * happens for readers who overrode their phone.
+	 * reason: the first frame draws the default light answer and is corrected a moment
+	 * later by whatever the reader stored, which is better than holding the splash screen
+	 * on a disk read to avoid a flash that only happens for readers who overrode their
+	 * default.
 	 */
 	useEffect(() => {
 		let alive = true;
@@ -133,7 +130,7 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
  *
  * Throws outside the provider rather than falling back to `system`, which is the same call
  * `useT()` and `useSession()` make and for the same reason: the fallback is a bug that
- * ships. A control rendered outside the provider would *look* right — `system` is the
+ * ships. A control rendered outside the provider would *look* right — `light` is the
  * default, so most of the time tapping it would appear to work — and would silently forget
  * the choice. A thrown error at the first render is found in a minute.
  */

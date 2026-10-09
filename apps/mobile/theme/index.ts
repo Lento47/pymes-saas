@@ -15,9 +15,9 @@ export * from "./transition";
 /**
  * The active palette.
  *
- * The scheme comes from `./mode`, which is either a subscription to the OS setting or the
- * reader's explicit choice of `light`/`dark` — `system` is the default, so an untouched app
- * reads `useColorScheme()` directly and there is no second source for one fact.
+ * The scheme comes from `./mode`: `light` is the default and an untouched app draws it
+ * immediately, the reader's explicit choice of `light`/`dark` overrides it, and `system` is
+ * an opt-in subscription to the OS setting — still no second source for one fact.
  *
  * This used to resolve `useColorScheme()` here, and the comment above it said there was no
  * in-app theme switch because the phone already has one. That is still true of the *phone*;
