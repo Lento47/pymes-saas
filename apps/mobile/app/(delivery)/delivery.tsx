@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { MOVE_LABELS } from "@pymeshub/i18n";
 import type { OrderStatus } from "@pymeshub/shared";
 import {
@@ -17,6 +18,7 @@ import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { ListEnd } from "@/components/list-end";
+import { ListRow } from "@/components/list-row";
 import { Price } from "@/components/price";
 import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
@@ -36,7 +38,7 @@ import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
-import { space, TEXT_STACK_GAP, type } from "@/theme";
+import { icon, space, TEXT_STACK_GAP, type, useTheme } from "@/theme";
 
 /**
  * The courier's board: the runs assigned to this person, and the move each one is waiting for.
@@ -209,23 +211,37 @@ function Runs() {
 
 	// `couriers.myProfile` answers `null` for someone who has never opened the form, and a
 	// row for everyone else. `null` and a row are different facts and get different sentences.
+	//
+	// **All three states below carry the step.** `./empty-state` has taken an `actionLabel` and
+	// an `onAction` since before this tree existed, and these three were the only empty states in
+	// the app that named a fix and gave the reader nothing to press. An empty state that says
+	// "fill in your profile" and cannot take you there is worse than one that stays quiet: it
+	// spends the reader's attention on an instruction they then have to act on alone.
 	if (!me)
 		return (
 			<EmptyState
 				icon="bicycle-outline"
 				title={t("biz.courier.profileTitle")}
 				body={t("biz.courier.profileRequired")}
+				actionLabel={t("account.profile.title")}
+				onAction={() => router.push("/courier-profile")}
 			/>
 		);
 
 	if (me.verificationStatus === "PENDING")
 		// Filled in, waiting on the platform. The courier is identified and cannot become
 		// anyone else by waiting, so this resolves `delivery` in `lib/role.ts` and draws here.
+		//
+		// The action here is to *look*, not to fix — there is nothing wrong to change. It opens
+		// the form because that is where the directory preview and the "what is being reviewed"
+		// sentence are, which is the only answer a courier waiting can be given.
 		return (
 			<EmptyState
 				icon="bicycle-outline"
 				title={t("biz.courier.reviewPending")}
 				body={t("biz.courier.reviewPending.body")}
+				actionLabel={t("action.view")}
+				onAction={() => router.push("/courier-profile")}
 			/>
 		);
 
@@ -237,7 +253,9 @@ function Runs() {
 			<EmptyState
 				icon="bicycle-outline"
 				title={t("biz.courier.rejected")}
-				body={t("biz.courier.rejected.body")}
+				body={t("biz.courier.rejected.next")}
+				actionLabel={t("account.profile.title")}
+				onAction={() => router.push("/courier-profile")}
 			/>
 		);
 
@@ -342,9 +360,10 @@ function CourierSharing({
 const OFFERS_POLL_MS = 15_000;
 
 function Dispatch({ available }: { available: boolean }) {
-	const { t, intlLocale } = useT();
+	const { t, tp, intlLocale } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
+	const { colors } = useTheme();
 	const [busyId, setBusyId] = useState<string | null>(null);
 	const offers = useQuery(
 		trpc.deliveries.offers.queryOptions(undefined, {
@@ -356,6 +375,24 @@ function Dispatch({ available }: { available: boolean }) {
 			refetchInterval: OFFERS_POLL_MS,
 		}),
 	);
+	/**
+	 * Shop invitations, and the one thing on this screen that is not about work.
+	 *
+	 * **`myInvites` worked and `/courier-invites` was a finished screen with accept and
+	 * decline, and nothing linked either from this tree.** The only route to the screen was
+	 * `app/account.tsx:389`, and the courier tree cannot reach `/account` — so a business that
+	 * invited a courier reached a courier with no way to find out. That is the whole reason this
+	 * query is here, and the reason the row is not a bell: the row is the notification.
+	 *
+	 * **`no poll interval`, unlike the two reads above it.** An invitation is written once by a
+	 * shop and answered once by the courier; polling it every fifteen seconds would spend a round
+	 * trip a minute on a fact that changes when a person acts somewhere else. It refetches on
+	 * focus, which is when the answer changes.
+	 */
+	const invites = useQuery(trpc.couriers.myInvites.queryOptions());
+	const pendingInvites = (invites.data ?? []).filter(
+		(one) => one.status === "PENDING",
+	).length;
 	// `preferCurrent`: presence is a claim about where the courier is now, and the server
 	// timestamps whatever arrives. A cached fix would therefore pass the freshness window
 	// while being hours old — see `useDeviceLocation`'s option note. It also re-reads on an
@@ -463,6 +500,46 @@ function Dispatch({ available }: { available: boolean }) {
 					? t("delivery.board.receiving.on")
 					: t("delivery.board.receiving.off")}
 			</Text>
+
+			{/*
+			    The invitations row, and it is the only control on this screen that is not about
+			    the next delivery.
+
+			    **Drawn whenever a row exists, not only when something is pending.** A courier who
+			    has already accepted the one invitation from a shop is owed the answer to "did they
+			    get me?" too, and a row that appears only while there is something to do is a row
+			    that appears and disappears with no explanation.
+
+			    **The count is a word in `state`, not a badge.** `./list-row.tsx:52-58`: `state` is
+			    "a **word** that states a fact about this row", and it joins the row's accessibility
+			    label, so a screen reader hears it too. A numeral in a coloured pill would be a
+			    second signal that a greyscale screenshot loses and this app does not use.
+			*/}
+			{invites.data?.length ? (
+				<Card>
+					<ListRow
+						title={t("biz.courier.invites")}
+						subtitle={t("biz.courier.invites.help")}
+						state={
+							pendingInvites > 0
+								? tp("biz.courier.invites.pending", pendingInvites)
+								: undefined
+						}
+						leading={
+							<Ionicons
+								name="mail-outline"
+								size={icon.control}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						}
+						divider={false}
+						chevron
+						onPress={() => router.push("/courier-invites" as Href)}
+					/>
+				</Card>
+			) : null}
 
 			{/*
 			    The location dead end, and the only place on this screen that can open one.
@@ -587,6 +664,43 @@ function Dispatch({ available }: { available: boolean }) {
 						</Card>
 					))}
 				</View>
+			) : null}
+
+			{/*
+			    How offers actually reach you, and the conditions are not guesses.
+
+			    `candidateFor` (`services/delivery-dispatch.ts:141-190`) is the whole rulebook, and
+			    every clause below is one of its conditions: verified and available, a
+			    `courierPresence` row younger than `PRESENCE_FRESH_MS` (two minutes), inside the
+			    `OFFER_RADIUS_KM` box (15 km) and again inside the exact circle after the square,
+			    with no active run and no pending offer. `OFFER_TTL_MS` is two minutes, which is why
+			    an offer is worth answering rather than reading later.
+
+			    **Shown while this courier has never delivered anything, and never again.** The
+			    condition is `history.length === 0` — the courier's own record, not a dismissal flag
+			    — so it cannot be swiped away and still be true, and it disappears for good the
+			    moment the note stops being news. It sits under the empty state rather than above
+			    it, because the thing it explains is the empty.
+
+			    **The `.limit(30)` on `mine` cannot hide a delivery here**, and it is worth saying
+			    why rather than assuming. That cap would matter for a *count* — which is why
+			    `couriers.stats` does a real `COUNT(*)` — but `mine` is ordered `updatedAt desc` and
+			    the only statuses beside `DELIVERED` are the four a run is actively in, of which a
+			    courier holds at most one. Thirty rows is therefore thirty deliveries, so a courier
+			    with any delivery at all has one in the window.
+			*/}
+			{history.length === 0 ? (
+				<Card style={styles.howTo}>
+					<Text variant="heading" bold>
+						{t("delivery.board.how.title")}
+					</Text>
+					<Text variant="body" tone="muted">
+						{t("delivery.board.how.body")}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{t("delivery.board.how.detail")}
+					</Text>
+				</Card>
 			) : null}
 
 			{/*
@@ -943,5 +1057,6 @@ const styles = StyleSheet.create({
 	orderActions: { marginTop: space.xs },
 	sharing: { gap: space.sm },
 	boardHead: { gap: TEXT_STACK_GAP },
+	howTo: { gap: space.sm },
 	skeletonLine: { height: space.md },
 });

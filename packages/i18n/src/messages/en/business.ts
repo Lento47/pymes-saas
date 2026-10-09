@@ -563,6 +563,21 @@ export const business = {
 	"biz.courier.preview.pending":
 		"This is how businesses will see you once PymesHub approves your profile. The verified mark is not there yet.",
 
+	/*
+	 * Business invitations, and the row that makes them visible.
+	 *
+	 * `couriers.myInvites` worked and `/courier-invites` was a finished screen with accept and
+	 * decline, and nothing linked either from this tree: the only route was
+	 * `app/account.tsx:389`, and the courier tree cannot reach `/account`. A business that invited
+	 * someone reached a courier with no way to find out.
+	 *
+	 * `.pending` takes `{count}` and follows the dictionary's `_plural` convention.
+	 */
+	"biz.courier.invites.help":
+		"Businesses that invited you to deliver their orders.",
+	"biz.courier.invites.pending": "{count} to answer",
+	"biz.courier.invites.pending_plural": "{count} to answer",
+
 	/* A refused move that is not the conflict below — see the Spanish file's note. */
 	"biz.board.moveFailed": "We couldn't move the order",
 	/* Someone else advanced the order while this phone was looking at the board. */
@@ -1022,6 +1037,23 @@ export const business = {
 	"delivery.board.presence.action": "Turn on location",
 	"delivery.board.presence.body":
 		"Without your location businesses cannot tell that you are nearby, so no offers reach you. Turn it on to start receiving them again.",
+
+	/*
+	 * How offers reach you, and every sentence is a condition of `candidateFor`.
+	 *
+	 * Shown while `mine` holds no `DELIVERED` delivery — the courier's own record, not a
+	 * dismissal flag — so it cannot be swiped away and still be true.
+	 *
+	 * The numbers come from the server rather than from taste: `PRESENCE_FRESH_MS` is two
+	 * minutes, `OFFER_RADIUS_KM` is 15 km and `OFFER_TTL_MS` is two minutes. If any of them
+	 * changes in `services/delivery-dispatch.ts` these sentences go stale, and a test on this row
+	 * is what should say so.
+	 */
+	"delivery.board.how.title": "How offers reach you",
+	"delivery.board.how.body":
+		"PymesHub looks for you, not the other way around. A business opens a delivery and it goes to the nearest verified, available courier.",
+	"delivery.board.how.detail":
+		"You have to be within 15 km with your location up to date, and each offer lasts 2 minutes. That is why they are worth reading the moment they arrive.",
 
 	"delivery.offer.accept": "Accept delivery",
 	"delivery.offer.decline": "Decline",

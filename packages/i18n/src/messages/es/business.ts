@@ -612,6 +612,21 @@ export const business = {
 		"Así te verán los negocios cuando PymesHub apruebe tu perfil. El visto bueno todavía no está.",
 
 	/*
+	 * Las invitaciones de los negocios, y la fila que las hace visibles.
+	 *
+	 * `couriers.myInvites` funcionaba y `/courier-invites` era una pantalla terminada con
+	 * aceptar y rechazar, y nada la enlazaba desde este árbol: la única ruta era
+	 * `app/account.tsx:389`, y el árbol del repartidor no llega a `/account`. Un negocio que
+	 * invitaba a alguien alcanzaba a alguien sin forma de enterarse.
+	 *
+	 * `.pending` lleva `{count}` y usa la convención `_plural` del diccionario.
+	 */
+	"biz.courier.invites.help":
+		"Negocios que te invitaron a repartir sus pedidos.",
+	"biz.courier.invites.pending": "{count} por responder",
+	"biz.courier.invites.pending_plural": "{count} por responder",
+
+	/*
 	 * A move the API refused for a reason that is not the conflict below: a transition the
 	 * order is not in, a code with no sentence of its own, the network gone.
 	 *
@@ -1097,6 +1112,23 @@ export const business = {
 	"delivery.board.presence.action": "Activar ubicación",
 	"delivery.board.presence.body":
 		"Sin tu ubicación los negocios no pueden saber que estás cerca, así que no te llegan ofertas. Actívala para volver a recibirlas.",
+
+	/*
+	 * Cómo llegan las ofertas, y cada frase es una condición de `candidateFor`.
+	 *
+	 * Se muestra mientras `mine` no tiene ninguna entrega `DELIVERED` — el propio historial del
+	 * repartidor, no un flag descartado — así que no se puede cerrar y seguir siendo cierta.
+	 *
+	 * Los números son del servidor y no están escritos a mano: `PRESENCE_FRESH_MS` son dos
+	 * minutos, `OFFER_RADIUS_KM` son 15 km y `OFFER_TTL_MS` son dos minutos. Si alguno cambia en
+	 * `services/delivery-dispatch.ts`, estas frases quedan vieja y el test de esta fila es lo
+	 * que debería avisar.
+	 */
+	"delivery.board.how.title": "Cómo te llegan las ofertas",
+	"delivery.board.how.body":
+		"PymesHub te busca a ti, no al revés. Un negocio abre una entrega y se ofrece al repartidor verificado y disponible que esté más cerca.",
+	"delivery.board.how.detail":
+		"Tienes que estar a 15 km o menos, con la ubicación al día, y cada oferta dura 2 minutos. Por eso vale la pena mirarlas en cuanto llegan.",
 
 	"delivery.offer.accept": "Aceptar entrega",
 	"delivery.offer.decline": "Rechazar",
