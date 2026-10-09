@@ -427,7 +427,14 @@ export async function acceptOffer(
 			]),
 		);
 	} catch (error) {
-		if (!String(error).includes("delivery_offer_accepted_unique")) throw error;
+		const failure = String(error);
+		if (
+			failure.includes("delivery_courier_active_unique") ||
+			failure.includes("UNIQUE constraint failed: delivery.courier_user_id")
+		) {
+			throw new ConflictError("Ya tienes una entrega activa");
+		}
+		if (!failure.includes("delivery_offer_accepted_unique")) throw error;
 	}
 
 	const accepted = await readDetail(ctx, offer.deliveryId);

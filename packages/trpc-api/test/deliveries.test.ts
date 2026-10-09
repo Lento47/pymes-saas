@@ -684,6 +684,72 @@ describe("a courier the shop never added", () => {
 });
 
 describe("delivery offer authorization", () => {
+	test("two outstanding offers for one courier leave exactly one active run", async () => {
+		const test = world();
+		const first = await orderReadyToPlace(test, "capacity_first");
+		const second = await orderReadyToPlace(test, "capacity_second");
+		const courier = await seedCourier(test, {
+			businessId: first.businessId,
+			id: "usr_delivery_capacity_courier",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		const firstOrder = await placeDelivery(first, "capacity_first");
+		const firstOffer = (await courier.caller.deliveries.offers())[0];
+		if (!firstOffer) throw new Error("First offer was not created");
+
+		const secondOrder = await placeDelivery(second, "capacity_second");
+		const secondDelivery = (
+			await test.db
+				.select()
+				.from(deliveryTable)
+				.where(eq(deliveryTable.orderId, secondOrder.id))
+		)[0];
+		if (!secondDelivery) throw new Error("Second delivery was not created");
+		const now = new Date();
+		const secondOfferId = "dof_delivery_capacity_second";
+		// Two dispatch workers can have read capacity before either offer commits.
+		// Recreate that persisted race; acceptance must enforce capacity atomically.
+		await test.db
+			.update(deliveryTable)
+			.set({ status: "OFFERED", updatedAt: now })
+			.where(eq(deliveryTable.id, secondDelivery.id));
+		await test.db.insert(offerTable).values({
+			id: secondOfferId,
+			deliveryId: secondDelivery.id,
+			courierUserId: courier.user.id,
+			status: "PENDING",
+			expiresAt: new Date(now.getTime() + 120_000),
+			createdAt: now,
+		});
+
+		await courier.caller.deliveries.acceptOffer({ offerId: firstOffer.id });
+		const conflict = await refused(
+			courier.caller.deliveries.acceptOffer({ offerId: secondOfferId }),
+		);
+		expect(conflict.code).toBe("CONFLICT");
+		const active = await test.db
+			.select({ orderId: deliveryTable.orderId })
+			.from(deliveryTable)
+			.where(eq(deliveryTable.status, "ACCEPTED"));
+		expect(active).toHaveLength(1);
+		if (!active[0]) throw new Error("Accepted run was not stored");
+		const assignedOrders = await test.db
+			.select({ id: orderTable.id })
+			.from(orderTable)
+			.where(eq(orderTable.courierUserId, courier.user.id));
+		expect(assignedOrders).toHaveLength(1);
+		expect([firstOrder.id, secondOrder.id]).toContain(active[0].orderId);
+		const untouchedOffer = (
+			await test.db
+				.select({ status: offerTable.status })
+				.from(offerTable)
+				.where(eq(offerTable.id, secondOfferId))
+		)[0];
+		expect(untouchedOffer?.status).toBe("PENDING");
+		test.close();
+	});
+
 	test("only the addressed courier can decline or accept an offer", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "offers");

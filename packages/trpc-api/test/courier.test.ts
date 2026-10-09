@@ -425,9 +425,25 @@ describe("courier moves and pings", () => {
 			orderId: first.order.id,
 			courierUserId: first.rider.id,
 		});
-		// The second shop has never heard of this courier, which is the whole point — a
-		// manager is assigning a run to a verified courier the platform matched, and
-		// `assign` reads them off the profile rather than a roster.
+		// The second shop can use the same courier, but only after the first run is
+		// complete. Capacity is global across shops, including manual assignments.
+		const busy = await refused(
+			second.manager.orders.assign({
+				orderId: second.order.id,
+				courierUserId: first.rider.id,
+			}),
+		);
+		expect(busy.code).toBe("CONFLICT");
+		await first.courier.orders.advance({
+			orderId: first.order.id,
+			to: "OUT_FOR_DELIVERY",
+		});
+		await first.courier.orders.advance({
+			orderId: first.order.id,
+			to: "COMPLETED",
+		});
+		// The second shop has never heard of this courier. The manager can still
+		// assign them once their active capacity is free.
 		await second.manager.orders.assign({
 			orderId: second.order.id,
 			courierUserId: first.rider.id,

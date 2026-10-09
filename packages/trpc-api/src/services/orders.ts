@@ -1256,42 +1256,53 @@ export async function assign(
 	}
 
 	const now = new Date();
-	await ctx.db.batch(
-		batchOf([
-			ctx.db
-				.update(orderTable)
-				.set({
-					courierUserId: courier.id,
-					courierName: courier.name,
-					courierPhone: courier.phone,
-					updatedAt: now,
-				})
-				.where(eq(orderTable.id, order.id)),
-			ctx.db
-				.update(deliveryTable)
-				.set({
-					courierUserId: courier.id,
-					status: "AT_PICKUP",
-					acceptedAt: now,
-					startedToPickupAt: now,
-					arrivedPickupAt: now,
-					updatedAt: now,
-				})
-				.where(eq(deliveryTable.orderId, order.id)),
-			ctx.db
-				.update(deliveryOfferTable)
-				.set({ status: "CANCELLED", respondedAt: now })
-				.where(
-					and(
-						eq(
-							deliveryOfferTable.deliveryId,
-							sql`(select id from delivery where order_id = ${order.id})`,
+	try {
+		await ctx.db.batch(
+			batchOf([
+				ctx.db
+					.update(orderTable)
+					.set({
+						courierUserId: courier.id,
+						courierName: courier.name,
+						courierPhone: courier.phone,
+						updatedAt: now,
+					})
+					.where(eq(orderTable.id, order.id)),
+				ctx.db
+					.update(deliveryTable)
+					.set({
+						courierUserId: courier.id,
+						status: "AT_PICKUP",
+						acceptedAt: now,
+						startedToPickupAt: now,
+						arrivedPickupAt: now,
+						updatedAt: now,
+					})
+					.where(eq(deliveryTable.orderId, order.id)),
+				ctx.db
+					.update(deliveryOfferTable)
+					.set({ status: "CANCELLED", respondedAt: now })
+					.where(
+						and(
+							eq(
+								deliveryOfferTable.deliveryId,
+								sql`(select id from delivery where order_id = ${order.id})`,
+							),
+							eq(deliveryOfferTable.status, "PENDING"),
 						),
-						eq(deliveryOfferTable.status, "PENDING"),
 					),
-				),
-		]),
-	);
+			]),
+		);
+	} catch (error) {
+		const failure = String(error);
+		if (
+			failure.includes("delivery_courier_active_unique") ||
+			failure.includes("UNIQUE constraint failed: delivery.courier_user_id")
+		) {
+			throw new ConflictError("Este repartidor ya tiene una entrega activa");
+		}
+		throw error;
+	}
 
 	return detail(ctx, order.id, actorFor(ctx, order));
 }

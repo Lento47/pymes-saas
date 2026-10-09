@@ -975,6 +975,11 @@ export const delivery = sqliteTable(
 	},
 	(table) => [
 		uniqueIndex("delivery_order_unique").on(table.orderId),
+		uniqueIndex("delivery_courier_active_unique")
+			.on(table.courierUserId)
+			.where(
+				sql`${table.status} in ('ACCEPTED', 'TO_PICKUP', 'AT_PICKUP', 'PICKED_UP')`,
+			),
 		index("delivery_courier_status_idx").on(table.courierUserId, table.status),
 		index("delivery_business_status_idx").on(table.businessId, table.status),
 	],
