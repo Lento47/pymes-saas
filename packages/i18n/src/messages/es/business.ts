@@ -999,7 +999,8 @@ export const business = {
 	"biz.support.body": "Descripción",
 	"biz.support.bodyHelp": "Contá qué pasa. Hasta 2000 caracteres.",
 	"biz.support.bodyRequired": "Contá qué necesitás.",
-	"biz.support.bodyTooLong": "La descripción puede tener hasta 2000 caracteres.",
+	"biz.support.bodyTooLong":
+		"La descripción puede tener hasta 2000 caracteres.",
 	"biz.support.submit": "Enviar solicitud",
 	"biz.support.submitFailed": "No pudimos enviar la solicitud.",
 	"biz.support.status.OPEN": "Abierta",
