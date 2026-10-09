@@ -259,9 +259,9 @@ async function candidateFor(
 			.select({
 				userId: offerTable.courierUserId,
 				lastOfferedAt: max(offerTable.createdAt),
-				recentOffers: sql<number>`sum(case when ${offerTable.createdAt} >= ${new Date(
-					input.now.getTime() - FAIRNESS_WINDOW_MS,
-				)} then 1 else 0 end)`,
+				// Raw sql parameters bypass Drizzle's timestamp_ms encoder. D1 accepts
+				// the stored integer milliseconds, not a JavaScript Date object.
+				recentOffers: sql<number>`sum(case when ${offerTable.createdAt} >= ${input.now.getTime() - FAIRNESS_WINDOW_MS} then 1 else 0 end)`,
 			})
 			.from(offerTable)
 			.where(inArray(offerTable.courierUserId, userIds))
