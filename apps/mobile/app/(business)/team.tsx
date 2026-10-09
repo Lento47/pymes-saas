@@ -436,6 +436,12 @@ export default function TeamScreen() {
 										<CourierDirectoryCard
 											key={courier.profileId}
 											courier={courier}
+											// The pool cannot return an unverified courier —
+											// `courierDirectoryEntrySchema.isVerified` is
+											// `z.literal(true)` — so this is the schema's own
+											// guarantee passed through rather than a second
+											// opinion about it.
+											verified
 											action={
 												<Button
 													label={

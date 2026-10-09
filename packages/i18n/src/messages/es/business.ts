@@ -606,6 +606,8 @@ export const business = {
 	"biz.courier.preview.title": "Cómo te ven los negocios",
 	"biz.courier.preview.body":
 		"Esta es tu tarjeta en el directorio de repartidores, tal como la ve un negocio que te está buscando.",
+	"biz.courier.preview.pending":
+		"Así te verán los negocios cuando PymesHub apruebe tu perfil. El visto bueno todavía no está.",
 
 	/*
 	 * A move the API refused for a reason that is not the conflict below: a transition the

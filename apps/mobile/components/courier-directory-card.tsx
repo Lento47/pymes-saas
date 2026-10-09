@@ -47,9 +47,22 @@ export interface CourierDirectoryIdentity {
 
 export function CourierDirectoryCard({
 	courier,
+	verified,
 	action,
 }: {
 	courier: CourierDirectoryIdentity;
+	/**
+	 * Whether this courier is in the verified directory, and so whether the mark draws.
+	 *
+	 * **Required, not optional.** The mark used to print unconditionally, which was safe only
+	 * because `courierDirectoryEntrySchema.isVerified` is `z.literal(true)` — every entry the
+	 * pool produced was already verified, so the card had no way to be wrong. That stops being
+	 * true the moment the courier's own profile screen renders this as a *preview* of a profile
+	 * that is still `PENDING`, and an optional prop would default to the lie that is currently
+	 * the only behaviour. There are exactly two call sites: `app/(business)/team.tsx` and
+	 * `app/(delivery)/courier-profile.tsx`.
+	 */
+	verified: boolean;
 	/** The business's own row action. Absent when nobody is being invited. */
 	action?: React.ReactNode;
 }) {
@@ -95,9 +108,11 @@ export function CourierDirectoryCard({
 					<Text variant="caption" tone="muted" numberOfLines={1}>
 						{courier.serviceArea}
 					</Text>
-					<Text variant="caption" tone="action" numberOfLines={1}>
-						{t("biz.courier.directoryVerified")}
-					</Text>
+					{verified ? (
+						<Text variant="caption" tone="action" numberOfLines={1}>
+							{t("biz.courier.directoryVerified")}
+						</Text>
+					) : null}
 				</View>
 			</View>
 

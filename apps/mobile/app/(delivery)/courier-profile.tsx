@@ -49,6 +49,8 @@ function absolutePhotoUrl(url: string): string {
 export default function CourierProfileScreen() {
 	const { t } = useT();
 	const { signOut } = useSession();
+	const trpc = useTRPC();
+	const cache = useQueryClient();
 	const [signOutOpen, setSignOutOpen] = useState(false);
 	const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -126,7 +128,32 @@ export default function CourierProfileScreen() {
 				leading={<BackButton to="/delivery" />}
 				scroll
 				keyboardInsets
-				contentStyle={styles.content}
+				/**
+				 * **No `contentStyle`, and the doubled gap it used to declare is gone with it.**
+				 *
+				 * `Screen`'s body wrapper takes this as a `View` style, and its only child here is
+				 * `<SignedIn>` — one child, so `gap: space.lg` had nothing to separate and was
+				 * inert. The gap that actually spaces this form is on `ProfileForm`'s own root
+				 * `View`, which is where the sections are. Declaring it in both places read as
+				 * "twice the spacing" and was neither twice the spacing nor a bug anyone could
+				 * see; it was two declarations of one gutter with the outer one unreachable.
+				 */
+				/**
+				 * Pull to refresh, and only `couriers.profile`.
+				 *
+				 * **The status on this screen is decided by somebody else.** A courier's
+				 * verification moves when the platform reviews it, and until now the only way to
+				 * see that had changed was to leave the screen and come back — so an approved
+				 * courier kept reading "Revisión pendiente" until they navigated away.
+				 *
+				 * `users.me` is deliberately not invalidated: nothing here changed on the account,
+				 * and the avatar is the one thing a refresh cannot improve without a round trip.
+				 */
+				onRefresh={() => {
+					void cache.invalidateQueries({
+						queryKey: trpc.couriers.pathKey(),
+					});
+				}}
 			>
 				<SignedIn>
 					<ProfileForm
@@ -691,30 +718,46 @@ function ProfileForm({
 			</ScreenSection>
 
 			{/*
-			    The directory preview, and only once the profile is actually in the
-			    directory. Everything here is already on screen: `couriers.profile` for the
-			    name, area, bio and availability, and `users.me` for the avatar — which is
-			    the same `user.image` the pool entry reads, so this cannot drift from what a
-			    shop sees. No request, no new shape.
+			    The directory preview, and the gate on it moved.
 
-			    `isMember` and `isInvited` are absent on purpose. They say whether *this*
-			    courier is on *that* shop's roster, and there is no "that" here. The card takes
-			    the identity half; the business screen supplies its own row as `action`.
+			    It used to draw only once the profile was `VERIFIED`, which meant the courier who
+			    most wanted to check it saw nothing: someone who has just filled the form is
+			    `PENDING`, and "does this look right to a shop?" is the question they are actually
+			    holding. The gate is now `profile.data` at all — a courier with no profile has
+			    nothing to preview — and the card's `verified` prop carries the real status.
+
+			    **`verified` is what makes that safe.** `./courier-directory-card` used to print
+			    "Verificado por PymesHub" unconditionally, so lifting this gate without the prop
+			    would have shown that sentence to a courier the platform has not approved.
+
+			    Everything here is already on screen: `couriers.profile` for the name, area, bio
+			    and availability, and `users.me` for the avatar — which is the same `user.image`
+			    the pool entry reads, so this cannot drift from what a shop sees. No request, no
+			    new shape.
+
+			    `isMember` and `isInvited` are absent on purpose. They say whether *this* courier is
+			    on *that* shop's roster, and there is no "that" here. The card takes the identity
+			    half; the business screen supplies its own row as `action`.
 			*/}
-			{statusValue === "VERIFIED" && profile.data && me.data ? (
+			{profile.data ? (
 				<ScreenSection
 					title={t("biz.courier.preview.title")}
-					subtitle={t("biz.courier.preview.body")}
+					subtitle={
+						statusValue === "VERIFIED"
+							? t("biz.courier.preview.body")
+							: t("biz.courier.preview.pending")
+					}
 				>
 					<CourierDirectoryCard
 						courier={{
 							profileId: profile.data.id,
 							displayName: profile.data.displayName,
-							image: me.data.image,
+							image: me.data?.image ?? null,
 							serviceArea: profile.data.serviceArea,
 							bio: profile.data.bio,
 							isAvailable: profile.data.isAvailable,
 						}}
+						verified={statusValue === "VERIFIED"}
 					/>
 				</ScreenSection>
 			) : null}

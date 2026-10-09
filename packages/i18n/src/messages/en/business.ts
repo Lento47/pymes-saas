@@ -558,6 +558,8 @@ export const business = {
 	"biz.courier.preview.title": "How businesses see you",
 	"biz.courier.preview.body":
 		"This is your card in the courier directory, exactly as a business looking for a rider sees it.",
+	"biz.courier.preview.pending":
+		"This is how businesses will see you once PymesHub approves your profile. The verified mark is not there yet.",
 
 	/* A refused move that is not the conflict below — see the Spanish file's note. */
 	"biz.board.moveFailed": "We couldn't move the order",
