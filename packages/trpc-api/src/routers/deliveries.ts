@@ -15,6 +15,9 @@ export const deliveriesRouter = router({
 	reportPresence: protectedProcedure
 		.input(courierPresenceInput)
 		.mutation(({ ctx, input }) => deliveries.reportPresence(ctx, input)),
+	requestOffers: protectedProcedure.mutation(({ ctx }) =>
+		deliveries.requestOffers(ctx),
+	),
 
 	offers: protectedProcedure.query(({ ctx }) => deliveries.offers(ctx)),
 

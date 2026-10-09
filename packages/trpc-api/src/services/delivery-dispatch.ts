@@ -20,10 +20,12 @@ import {
 	eq,
 	gte,
 	inArray,
+	isNotNull,
 	isNull,
 	lt,
 	lte,
 	max,
+	or,
 	sql,
 } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
@@ -125,10 +127,9 @@ export function rankCourierCandidates(
  *
  * **The pool is every verified, available courier on the platform** — not the shop's
  * roster. That is the whole point of the change: a business no longer has to add a courier
- * before that courier can carry its deliveries. What replaces the membership as a *gate* is
- * the profile (`VERIFIED` and available) plus fresh foreground presence; what remains of
- * the membership is a *rank* (`preferred`), because "you asked for this person" is a real
- * signal and dropping it entirely would make every shop's own roster strangers.
+ * before that courier can carry its deliveries. The profile must be verified and available;
+ * a pinned zone covers its pickup and dropoff without device location, while a courier
+ * without a zone needs fresh nearby presence. Membership is only a ranking preference.
  *
  * **A delivery with no pickup coordinates gets no offer at all**, and this is deliberate
  * rather than a fallback. `business.lat` and `merchantLocation.lat` are both nullable, so a
@@ -158,9 +159,8 @@ async function candidateFor(
 	const origin = { lat: pickupLat, lng: pickupLng };
 	const box = boundingBox(pickupLat, pickupLng, OFFER_RADIUS_KM);
 
-	// The pool. No `membership` join: a courier is a candidate because their profile says
-	// they are verified and available and they are standing somewhere, not because a shop
-	// wrote their name down.
+	// A pinned zone is the courier's declared work area. It can match without a live
+	// device fix; couriers without a zone still need recent nearby presence.
 	const rows = await db
 		.select({
 			userId: profileTable.userId,
@@ -168,29 +168,36 @@ async function candidateFor(
 			phone: userTable.phone,
 			lat: presenceTable.lat,
 			lng: presenceTable.lng,
+			presenceAt: presenceTable.updatedAt,
 			zoneLat: profileTable.zoneLat,
 			zoneLng: profileTable.zoneLng,
 			zoneRadiusKm: profileTable.zoneRadiusKm,
 		})
 		.from(profileTable)
-		.innerJoin(presenceTable, eq(presenceTable.userId, profileTable.userId))
+		.leftJoin(presenceTable, eq(presenceTable.userId, profileTable.userId))
 		.innerJoin(userTable, eq(userTable.id, profileTable.userId))
 		.where(
 			and(
 				eq(profileTable.verificationStatus, "VERIFIED"),
 				eq(profileTable.isAvailable, true),
 				isNull(userTable.suspendedAt),
-				gte(
-					presenceTable.updatedAt,
-					new Date(input.now.getTime() - PRESENCE_FRESH_MS),
+				or(
+					and(
+						isNotNull(profileTable.zoneLat),
+						isNotNull(profileTable.zoneLng),
+						isNotNull(profileTable.zoneRadiusKm),
+					),
+					and(
+						gte(
+							presenceTable.updatedAt,
+							new Date(input.now.getTime() - PRESENCE_FRESH_MS),
+						),
+						gte(presenceTable.lat, box.minLat),
+						lte(presenceTable.lat, box.maxLat),
+						gte(presenceTable.lng, box.minLng),
+						lte(presenceTable.lng, box.maxLng),
+					),
 				),
-				// The box, in SQL. `courierPresence.lat`/`.lng` are `notNull()`, so there is
-				// no null-coordinate courier to exclude the way `businesses.ts` excludes a
-				// shop with no address — a courier without a ping is simply not a row here.
-				gte(presenceTable.lat, box.minLat),
-				lte(presenceTable.lat, box.maxLat),
-				gte(presenceTable.lng, box.minLng),
-				lte(presenceTable.lng, box.maxLng),
 			),
 		);
 	if (rows.length === 0) return null;
@@ -297,33 +304,48 @@ async function candidateFor(
 					(pending.get(row.userId) ?? 0) === 0,
 			)
 			.flatMap((row) => {
-				if (
-					row.zoneLat != null &&
-					row.zoneLng != null &&
-					row.zoneRadiusKm != null
-				) {
+				const zone =
+					row.zoneLat != null && row.zoneLng != null && row.zoneRadiusKm != null
+						? {
+								center: { lat: row.zoneLat, lng: row.zoneLng },
+								radiusKm: row.zoneRadiusKm,
+							}
+						: null;
+				if (zone) {
 					if (input.dropoffLat == null || input.dropoffLng == null) return [];
-					const center = { lat: row.zoneLat, lng: row.zoneLng };
 					if (
-						haversineKm(center, origin) > row.zoneRadiusKm ||
-						haversineKm(center, {
+						haversineKm(zone.center, origin) > zone.radiusKm ||
+						haversineKm(zone.center, {
 							lat: input.dropoffLat,
 							lng: input.dropoffLng,
-						}) > row.zoneRadiusKm
+						}) > zone.radiusKm
 					)
 						return [];
 				}
-				const distanceToPickupKm = haversineKm(origin, {
-					lat: row.lat,
-					lng: row.lng,
-				});
+				const liveDistance =
+					row.lat != null &&
+					row.lng != null &&
+					row.presenceAt != null &&
+					row.presenceAt.getTime() >= input.now.getTime() - PRESENCE_FRESH_MS
+						? haversineKm(origin, { lat: row.lat, lng: row.lng })
+						: null;
+				const distanceToPickupKm =
+					liveDistance != null && liveDistance <= OFFER_RADIUS_KM
+						? liveDistance
+						: zone
+							? null
+							: liveDistance;
 				// The circle, after the square. `boundingBox` above is a square and its
 				// corner sits `OFFER_RADIUS_KM * 1.41` from the pickup, so without this the
 				// radius is a suggestion rather than a limit. Rejecting here rather than in
 				// SQL is what `businesses.ts` does, and for the same reason: D1 has no
 				// spatial index, so the exact test is a function call over the handful of
 				// rows the box let through.
-				if (distanceToPickupKm > OFFER_RADIUS_KM) return [];
+				if (
+					!zone &&
+					(distanceToPickupKm == null || distanceToPickupKm > OFFER_RADIUS_KM)
+				)
+					return [];
 				return [
 					{
 						userId: row.userId,

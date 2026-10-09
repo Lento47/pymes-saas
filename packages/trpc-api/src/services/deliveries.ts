@@ -2,6 +2,7 @@ import {
 	boundingBox,
 	business as businessTable,
 	delivery as deliveryTable,
+	haversineKm,
 	deliveryOffer as offerTable,
 	order as orderTable,
 	courierPresence as presenceTable,
@@ -163,6 +164,83 @@ export async function reportPresence(
 		await dispatchNext(ctx.db, delivery.id);
 	}
 	return { updatedAt };
+}
+
+/** Search the pinned work area when a courier opens the board or comes available. */
+export async function requestOffers(
+	ctx: UserContext,
+): Promise<{ checked: number }> {
+	const [profile] = await ctx.db
+		.select({
+			zoneLat: profileTable.zoneLat,
+			zoneLng: profileTable.zoneLng,
+			zoneRadiusKm: profileTable.zoneRadiusKm,
+		})
+		.from(profileTable)
+		.where(
+			and(
+				eq(profileTable.userId, ctx.user.id),
+				eq(profileTable.verificationStatus, "VERIFIED"),
+				eq(profileTable.isAvailable, true),
+			),
+		)
+		.limit(1);
+	if (
+		profile?.zoneLat == null ||
+		profile.zoneLng == null ||
+		profile.zoneRadiusKm == null
+	) {
+		throw new ValidationError("Activa tu perfil y marca una zona de reparto");
+	}
+	const center = { lat: profile.zoneLat, lng: profile.zoneLng };
+	const box = boundingBox(center.lat, center.lng, profile.zoneRadiusKm);
+	await sweepExpiredOffers(ctx.db, 10, center);
+	const waiting = await ctx.db
+		.select({
+			id: deliveryTable.id,
+			pickupLat: deliveryTable.pickupLat,
+			pickupLng: deliveryTable.pickupLng,
+			dropoffLat: deliveryTable.dropoffLat,
+			dropoffLng: deliveryTable.dropoffLng,
+		})
+		.from(deliveryTable)
+		.where(
+			and(
+				eq(deliveryTable.status, "SEARCHING"),
+				gte(deliveryTable.pickupLat, box.minLat),
+				lte(deliveryTable.pickupLat, box.maxLat),
+				gte(deliveryTable.pickupLng, box.minLng),
+				lte(deliveryTable.pickupLng, box.maxLng),
+				gte(deliveryTable.dropoffLat, box.minLat),
+				lte(deliveryTable.dropoffLat, box.maxLat),
+				gte(deliveryTable.dropoffLng, box.minLng),
+				lte(deliveryTable.dropoffLng, box.maxLng),
+			),
+		)
+		.orderBy(deliveryTable.createdAt)
+		.limit(50);
+	let checked = 0;
+	for (const delivery of waiting) {
+		if (
+			delivery.pickupLat == null ||
+			delivery.pickupLng == null ||
+			delivery.dropoffLat == null ||
+			delivery.dropoffLng == null ||
+			haversineKm(center, {
+				lat: delivery.pickupLat,
+				lng: delivery.pickupLng,
+			}) > profile.zoneRadiusKm ||
+			haversineKm(center, {
+				lat: delivery.dropoffLat,
+				lng: delivery.dropoffLng,
+			}) > profile.zoneRadiusKm
+		)
+			continue;
+		await dispatchNext(ctx.db, delivery.id);
+		checked += 1;
+		if (checked === 10) break;
+	}
+	return { checked };
 }
 
 /**

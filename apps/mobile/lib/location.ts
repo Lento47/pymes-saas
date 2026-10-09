@@ -25,6 +25,8 @@ let permissionRequest: Promise<Permission> | null = null;
  * a late tick harmless instead of an outage.
  */
 const CURRENT_FIX_POLL_MS = 60 * 1000;
+const CURRENT_FIX_RETRY_MS = 20 * 1000;
+const RECENT_FIX_MAX_AGE_MS = 30 * 1000;
 
 function requestPermission(): Promise<Permission> {
 	permissionRequest ??= Location.requestForegroundPermissionsAsync().finally(
@@ -43,8 +45,10 @@ function requestPermission(): Promise<Permission> {
  */
 export function useDeviceLocation(
 	options: {
+		/** Skip location reads while a courier is unavailable for offers. */
+		enabled?: boolean;
 		/**
-		 * Read a **current** fix instead of the cached one.
+		 * Read a **current** fix, allowing a recent fix only if the provider fails.
 		 *
 		 * The cache is the right answer for browsing and the wrong one for presence. A
 		 * cached fix is a claim about where the device *was*, and for a browse screen that
@@ -65,7 +69,7 @@ export function useDeviceLocation(
 	status: LocationStatus;
 	request: () => void;
 } {
-	const { preferCurrent = false } = options;
+	const { preferCurrent = false, enabled = true } = options;
 	const [coords, setCoords] = useState<DeviceLocation>(null);
 	const [status, setStatus] = useState<LocationStatus>("asking");
 	const mounted = useRef(false);
@@ -74,7 +78,7 @@ export function useDeviceLocation(
 
 	const refresh = useCallback(
 		async (explicit = false) => {
-			if (!mounted.current || requesting.current) return;
+			if (!mounted.current || !enabled || requesting.current) return;
 			if (explicit) requesting.current = true;
 			const current = ++sequence.current;
 			const isCurrent = () => mounted.current && sequence.current === current;
@@ -113,17 +117,30 @@ export function useDeviceLocation(
 				// out of it — see that option's own note for why the courier board does. Never
 				// read either before checking both permission and services: a cached coordinate
 				// can outlive either consent.
-				const cached = preferCurrent
+				let position = preferCurrent
 					? null
 					: await Location.getLastKnownPositionAsync();
 				if (!isCurrent()) return;
-				const position =
-					cached ??
-					(await Location.getCurrentPositionAsync({
-						accuracy: Location.Accuracy.Balanced,
-						// Passive screen reads must not raise Android's provider dialog.
-						mayShowUserSettingsDialog: explicit,
-					}));
+				if (!position) {
+					try {
+						position = await Location.getCurrentPositionAsync({
+							accuracy: preferCurrent
+								? Location.Accuracy.High
+								: Location.Accuracy.Balanced,
+							// Couriers need the provider enabled before they can receive offers.
+							mayShowUserSettingsDialog: explicit || preferCurrent,
+						});
+					} catch (error) {
+						if (!preferCurrent) throw error;
+						// A recent fix bridges a transient provider failure. Never restamp
+						// an old position as fresh courier presence.
+						position = await Location.getLastKnownPositionAsync({
+							maxAge: RECENT_FIX_MAX_AGE_MS,
+							requiredAccuracy: 1000,
+						});
+						if (!position) throw error;
+					}
+				}
 				if (!isCurrent()) return;
 				setCoords({
 					lat: position.coords.latitude,
@@ -139,11 +156,19 @@ export function useDeviceLocation(
 				if (explicit && isCurrent()) requesting.current = false;
 			}
 		},
-		[preferCurrent],
+		[preferCurrent, enabled],
 	);
 
 	useEffect(() => {
 		mounted.current = true;
+		if (!enabled) {
+			setCoords(null);
+			setStatus("asking");
+			return () => {
+				mounted.current = false;
+				sequence.current += 1;
+			};
+		}
 		void refresh();
 		const subscription = AppState.addEventListener("change", (state) => {
 			if (state === "active") void refresh();
@@ -167,7 +192,13 @@ export function useDeviceLocation(
 			if (poll !== null) clearInterval(poll);
 			requesting.current = false;
 		};
-	}, [refresh, preferCurrent]);
+	}, [refresh, preferCurrent, enabled]);
+
+	useEffect(() => {
+		if (!enabled || !preferCurrent || status !== "unavailable") return;
+		const retry = setTimeout(() => void refresh(), CURRENT_FIX_RETRY_MS);
+		return () => clearTimeout(retry);
+	}, [enabled, preferCurrent, status, refresh]);
 
 	const request = useCallback(() => {
 		void refresh(true);

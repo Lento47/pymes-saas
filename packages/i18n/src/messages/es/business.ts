@@ -1115,7 +1115,7 @@ export const business = {
 	"delivery.board.offers.busy":
 		"Termina tu entrega actual para recibir otra oferta.",
 	"delivery.board.empty.body":
-		"Las entregas cercanas que coincidan aparecerán aquí cuando estés disponible y compartas tu ubicación.",
+		"Las entregas que coincidan aparecerán aquí mientras estés disponible.",
 
 	/*
 	 * El segundo tablero, y por qué existe aparte del primero.
@@ -1136,15 +1136,12 @@ export const business = {
 		"Aquí aparecerán los pedidos que un negocio te asigne sin pedirte que los aceptes.",
 
 	/*
-	 * Si el repartidor está en el pool. `candidateFor` exige `VERIFIED AND isAvailable` y una
-	 * posición con menos de `PRESENCE_FRESH_MS` (dos minutos), así que "no hay ofertas" tiene al
-	 * menos seis causas distintas y la pantalla no distinguía ninguna: ni si el problema era él o
-	 * el vecindario. Esta es la línea que separa las dos.
+	 * Disponibilidad para ofertas en la zona marcada o cerca de la ubicación actual.
 	 */
 	"delivery.board.receiving.on": "Disponible para ofertas",
 	"delivery.board.receiving.off": "Ofertas pausadas",
 	"delivery.board.availability.change": "Cambiar estado",
-	/* La ubicación es la puerta: sin posición fresca el pool no te ve, y `Dispatch` no la pedía. */
+	/* Sin zona marcada hace falta una ubicación cercana y reciente. */
 	"delivery.board.presence.action": "Activar ubicación",
 	"delivery.board.presence.body":
 		"Sin tu ubicación los negocios no pueden saber que estás cerca, así que no te llegan ofertas. Actívala para volver a recibirlas.",
@@ -1152,6 +1149,8 @@ export const business = {
 		"Tu ubicación no está disponible. Revisa los servicios de ubicación para recibir ofertas.",
 	"delivery.board.presenceFailed":
 		"No pudimos actualizar tu ubicación para recibir ofertas.",
+	"delivery.board.zoneDispatchFailed":
+		"No pudimos buscar ofertas en tu zona de reparto.",
 
 	/*
 	 * Cómo llegan las ofertas, y cada frase es una condición de `candidateFor`.
@@ -1168,7 +1167,7 @@ export const business = {
 	"delivery.board.how.body":
 		"PymesHub te busca a ti, no al revés. Un negocio abre una entrega y se ofrece al repartidor verificado y disponible que esté más cerca.",
 	"delivery.board.how.detail":
-		"Tienes que estar a 15 km o menos, con la ubicación al día, y cada oferta dura 2 minutos. Por eso vale la pena mirarlas en cuanto llegan.",
+		"Con zona marcada, ambos puntos deben estar dentro. Sin zona, mantén la ubicación activa a menos de 15 km. Cada oferta dura 2 minutos.",
 
 	/*
 	 * El historial del repartidor, y la única tarjeta de la pantalla que no es sobre el

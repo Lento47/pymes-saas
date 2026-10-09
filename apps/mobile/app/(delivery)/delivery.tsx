@@ -276,7 +276,7 @@ function Runs() {
 					onPress={() => router.push("/courier-profile")}
 				/>
 			) : null}
-			<Dispatch available={me.isAvailable} />
+			<Dispatch profile={me} />
 		</View>
 	);
 }
@@ -431,7 +431,12 @@ function CourierSharing({
  */
 const OFFERS_POLL_MS = 15_000;
 
-function Dispatch({ available }: { available: boolean }) {
+function Dispatch({ profile }: { profile: CourierProfile }) {
+	const available = profile.isAvailable;
+	const hasZone =
+		profile.zoneLat != null &&
+		profile.zoneLng != null &&
+		profile.zoneRadiusKm != null;
 	const { t, tp } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
@@ -480,17 +485,31 @@ function Dispatch({ available }: { available: boolean }) {
 	 * completed, which is a person acting somewhere else.
 	 */
 	const stats = useQuery(trpc.couriers.stats.queryOptions());
-	// `preferCurrent`: presence is a claim about where the courier is now, and the server
-	// timestamps whatever arrives. A cached fix would therefore pass the freshness window
-	// while being hours old — see `useDeviceLocation`'s option note. It also re-reads on an
-	// interval, so `coords` genuinely updates rather than going stale in place.
+	// The pinned zone is enough for zone offers. Without one, a fresh device fix
+	// keeps the nearby courier pool eligible and is refreshed while available.
 	const {
 		coords,
 		status: locationStatus,
 		request: requestLocation,
 	} = useDeviceLocation({
 		preferCurrent: true,
+		enabled: available && !hasZone,
 	});
+	const zoneDispatch = useMutation(
+		trpc.deliveries.requestOffers.mutationOptions({
+			onSuccess: () =>
+				cache.invalidateQueries({
+					queryKey: trpc.deliveries.offers.queryKey(),
+				}),
+		}),
+	);
+	const requestZoneOffers = zoneDispatch.mutate;
+	useEffect(() => {
+		if (!available || !hasZone) return;
+		requestZoneOffers();
+		const poll = setInterval(requestZoneOffers, 60_000);
+		return () => clearInterval(poll);
+	}, [available, hasZone, requestZoneOffers]);
 	const presence = useMutation(
 		trpc.deliveries.reportPresence.mutationOptions({
 			onSuccess: () =>
@@ -501,8 +520,8 @@ function Dispatch({ available }: { available: boolean }) {
 	);
 	const reportPresence = presence.mutate;
 
-	// Best-effort eligibility ping: dispatch only offers runs to couriers with a fresh
-	// presence, and `PRESENCE_FRESH_MS` is two minutes.
+	// Nearby matching for a courier without a pinned zone uses a presence younger
+	// than `PRESENCE_FRESH_MS` (two minutes).
 	//
 	// **This follows the position rather than deduplicating it, and that is the fix.** It
 	// used to post once per distinct coordinate and never again, which made the ping an
@@ -512,7 +531,7 @@ function Dispatch({ available }: { available: boolean }) {
 	// `coords` arrives again even when the courier has not moved, and this effect reposts
 	// and keeps the window open.
 	//
-	// A failed ping shows a retry action, since stale presence stops new offers.
+	// A failed ping shows a retry action, since stale presence stops nearby offers.
 	useEffect(() => {
 		if (!coords || !available) return;
 		reportPresence({ lat: coords.lat, lng: coords.lng });
@@ -620,6 +639,18 @@ function Dispatch({ available }: { available: boolean }) {
 					/>
 				</Card>
 			) : null}
+			{available && hasZone && zoneDispatch.isError ? (
+				<Card>
+					<Text variant="body" bold>
+						{t("delivery.board.zoneDispatchFailed")}
+					</Text>
+					<Button
+						label={t("action.retry")}
+						variant="secondary"
+						onPress={() => requestZoneOffers()}
+					/>
+				</Card>
+			) : null}
 
 			{pending.length > 0 ? (
 				<View style={styles.body}>
@@ -710,11 +741,9 @@ function Dispatch({ available }: { available: boolean }) {
 			    How offers actually reach you, and the conditions are not guesses.
 
 			    `candidateFor` (`services/delivery-dispatch.ts:141-190`) is the whole rulebook, and
-			    every clause below is one of its conditions: verified and available, a
-			    `courierPresence` row younger than `PRESENCE_FRESH_MS` (two minutes), inside the
-			    `OFFER_RADIUS_KM` box (15 km) and again inside the exact circle after the square,
-			    with no active run and no pending offer. `OFFER_TTL_MS` is two minutes, which is why
-			    an offer is worth answering rather than reading later.
+			    a verified, available courier is matched by a pinned zone covering both stops,
+			    or by fresh nearby presence when no zone is pinned. An active run or pending offer
+			    excludes the courier until it clears. Offers expire after two minutes.
 
 			    **Shown while this courier has never delivered anything, and never again.** The
 			    condition is `history.length === 0` — the courier's own record, not a dismissal flag

@@ -1039,7 +1039,7 @@ export const business = {
 	"delivery.board.offers.busy":
 		"Finish your current delivery to receive another offer.",
 	"delivery.board.empty.body":
-		"Matching nearby deliveries will appear here when you are available and sharing your location.",
+		"Matching deliveries will appear here while you are available.",
 
 	/*
 	 * The second board, and why it exists apart from the first.
@@ -1060,15 +1060,12 @@ export const business = {
 		"Orders a business assigns you without asking you to accept them will appear here.",
 
 	/*
-	 * Whether the courier is in the pool. `candidateFor` requires `VERIFIED AND isAvailable` and
-	 * a position less than `PRESENCE_FRESH_MS` old (two minutes), so "no offers" has at least six
-	 * distinct causes and the screen distinguished none of them: not whether the problem was the
-	 * reader or the neighbourhood. This is the line that tells the two apart.
+	 * Whether the courier is available for offers, in their pinned zone or nearby.
 	 */
 	"delivery.board.receiving.on": "Available for offers",
 	"delivery.board.receiving.off": "Offers paused",
 	"delivery.board.availability.change": "Change status",
-	/* Location is the door: without a fresh position the pool cannot see you, and `Dispatch` never asked for one. */
+	/* Couriers without a pinned zone need a fresh nearby location. */
 	"delivery.board.presence.action": "Turn on location",
 	"delivery.board.presence.body":
 		"Without your location businesses cannot tell that you are nearby, so no offers reach you. Turn it on to start receiving them again.",
@@ -1076,6 +1073,8 @@ export const business = {
 		"Your location is unavailable. Check location services to receive offers.",
 	"delivery.board.presenceFailed":
 		"We couldn't update your location for offers.",
+	"delivery.board.zoneDispatchFailed":
+		"Couldn't check your delivery zone for offers.",
 
 	/*
 	 * How offers reach you, and every sentence is a condition of `candidateFor`.
@@ -1092,7 +1091,7 @@ export const business = {
 	"delivery.board.how.body":
 		"PymesHub looks for you, not the other way around. A business opens a delivery and it goes to the nearest verified, available courier.",
 	"delivery.board.how.detail":
-		"You have to be within 15 km with your location up to date, and each offer lasts 2 minutes. That is why they are worth reading the moment they arrive.",
+		"With a pinned zone, both stops must fit inside it. Without one, keep location on within 15 km. Each offer lasts 2 minutes.",
 
 	/*
 	 * The courier's record, and the only card on that screen that is not about the next

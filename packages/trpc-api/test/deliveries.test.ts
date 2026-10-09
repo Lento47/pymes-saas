@@ -430,6 +430,63 @@ describe("delivery creation and dispatch", () => {
 });
 
 describe("a courier the shop never added", () => {
+	test("a pinned zone receives an offer without device location or shop membership", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "zone_without_gps");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_zone_without_gps",
+			lat: 9.935,
+			lng: -84.085,
+		});
+		await test.db
+			.delete(presenceTable)
+			.where(eq(presenceTable.userId, courier.user.id));
+		await test.db
+			.delete(membershipTable)
+			.where(eq(membershipTable.userId, courier.user.id));
+		await courier.caller.couriers.saveZone({
+			lat: 9.935,
+			lng: -84.085,
+			radiusKm: 2,
+			label: "San José",
+		});
+		await placeDelivery(ready, "zone_without_gps");
+		expect(await courier.caller.deliveries.offers()).toHaveLength(1);
+		test.close();
+	});
+
+	test("opening the board offers a waiting run after pinning a zone", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "zone_waiting");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_zone_waiting",
+			lat: 9.935,
+			lng: -84.085,
+		});
+		await test.db
+			.delete(presenceTable)
+			.where(eq(presenceTable.userId, courier.user.id));
+		const order = await placeDelivery(ready, "zone_waiting");
+		const [run] = await test.db
+			.select()
+			.from(deliveryTable)
+			.where(eq(deliveryTable.orderId, order.id));
+		expect(run?.status).toBe("SEARCHING");
+		await courier.caller.couriers.saveZone({
+			lat: 9.935,
+			lng: -84.085,
+			radiusKm: 2,
+			label: "San José",
+		});
+		expect(await courier.caller.deliveries.requestOffers()).toEqual({
+			checked: 1,
+		});
+		expect(await courier.caller.deliveries.offers()).toHaveLength(1);
+		test.close();
+	});
+
 	test("a pinned zone does not offer a destination without coordinates", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "zone_no_destination");
