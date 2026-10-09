@@ -155,20 +155,15 @@ export default function DeliveryScreen() {
 				*/}
 				<Runs />
 				{/*
-				    The profile door, on the board itself: the courier tree has no tab bar
-				    and no hub row, so a screen that never offers the way in is a screen with
-				    no way in. It sits under the queue for the same reason the pending state
-				    names its next step - the vehicle a run happens in and the account behind
-				    it belong one tap away from the work.
+				    No profile door here any more, and the tab bar is the reason it can go.
+
+				    It used to sit under the queue because the courier tree had no tab bar and no
+				    hub row, so a screen that never offered the way in was a screen with no way
+				    in. `./_layout.tsx` now declares the two-tab capsule the other two roles draw,
+				    and the second tab is the account hub - which carries the courier profile row,
+				    Ajustes, Ayuda, Seguridad and the Bandeja. A button that duplicated one of
+				    six doors was the wrong shape for the role even when it was the only one.
 				*/}
-				<View style={styles.actions}>
-					<Button
-						label={t("biz.courier.profile")}
-						variant="secondary"
-						fullWidth
-						onPress={() => router.push("/courier-profile")}
-					/>
-				</View>
 			</SignedIn>
 		</Screen>
 	);
@@ -929,7 +924,6 @@ function RunsSkeleton({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
 	gap: { gap: space.lg },
-	actions: { gap: space.sm },
 	body: { gap: space.lg },
 	// The run's own column: reference line, headline, stamp and total, then the move. The
 	// same gaps the shop's board uses, because it is the same card with one control taken out.

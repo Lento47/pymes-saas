@@ -100,10 +100,38 @@ export const CUSTOMER_LIFTED_ROUTES = [
 	"store/[slug]",
 ] as const;
 
+/**
+ * The `(delivery)` routes that own the foot of their own screen.
+ *
+ * **The two pushed screens, and the same question the other lists answer: is there another
+ * way off?** `courier-profile` is a form that pins its own docked `ActionBar`, and
+ * `delivery/[id]` is the far end of a run. Both draw a `BackButton`, so hiding the capsule
+ * costs the reader nothing and returns the floor to the action each screen exists for.
+ *
+ * **`index` is here because it is a route in this tree, not because it is a screen.**
+ * `app/(delivery)/index.tsx` is `<Redirect href="/delivery" />` - the group's root, which
+ * every group href resolves to. It renders no UI and takes no tab, but it must stay
+ * declared: its own docblock records that without it `/(delivery)` matched no route at all
+ * and Expo Router drew its Unmatched screen for every courier, at sign-up, at the next cold
+ * start and on every switch to the delivery profile. `href: null` plus the hidden bar is the
+ * treatment `./(business)/_layout.tsx` gives `product-form` - a route in the tree, not a
+ * destination of it.
+ *
+ * **The board (`delivery`) and the account hub are deliberately not on this list.** They are
+ * the two tabs, and a bar hidden on a tab is a screen with no way out - the argument
+ * `CUSTOMER_BARLESS_ROUTES` makes about the cart, which is why it is not there either.
+ */
+export const DELIVERY_BARLESS_ROUTES = [
+	"index",
+	"courier-profile",
+	"delivery/[id]",
+] as const;
+
 /** Which tree's barless list answers for a route group, keyed by its first segment. */
 const BARLESS_BY_GROUP: Readonly<Record<string, readonly string[]>> = {
 	"(business)": MERCHANT_BARLESS_ROUTES,
 	"(customer)": CUSTOMER_BARLESS_ROUTES,
+	"(delivery)": DELIVERY_BARLESS_ROUTES,
 };
 
 /**
@@ -144,11 +172,25 @@ export function customerBarlessOptions(
 }
 
 /**
+ * `merchantBarlessOptions` for the delivery tree, over `DELIVERY_BARLESS_ROUTES`.
+ *
+ * The third copy rather than one over the union, for the reason the second copy gives: a
+ * `Tabs.Screen` for `(delivery)/index` typed against the union would compile, and so would
+ * one for `(delivery)/shop-hours` - a merchant name - which is a bar silently missing from
+ * the courier's profile form. Naming the tree keeps each closed set closed to its own.
+ */
+export function deliveryBarlessOptions(
+	_name: (typeof DELIVERY_BARLESS_ROUTES)[number],
+): { href: null; tabBarStyle: { display: "none" } } {
+	return { href: null, tabBarStyle: { display: "none" } };
+}
+
+/**
  * How much room the foot of a scroll has to leave free on this screen.
  *
- * `0` in a tree with no capsule — `(auth)`, `(delivery)`, the root routes — and
- * `./screen`'s own `space.huge` is the whole of their gutter. Inside `(business)` or
- * `(customer)`, the capsule's footprint — and `0` again on the routes that hide it, because
+ * `0` in a tree with no capsule — `(auth)` and the root routes — and `./screen`'s own
+ * `space.huge` is the whole of their gutter. Inside `(business)`, `(customer)` or
+ * `(delivery)`, the capsule's footprint — and `0` again on the routes that hide it, because
  * a bar that is not drawn covers nothing and reserving for it is a screen's worth of dead
  * air under a form.
  *
@@ -200,9 +242,9 @@ export function useTabBarClearance({
  * every screen in the tree is a tab to the navigator whether or not it is a tab to the
  * reader.
  *
- * A group absent from `BARLESS_BY_GROUP` draws no bar — `(auth)`, `(delivery)`, the root
- * routes. That is the default rather than a list of three, so a new tree gets the inert
- * answer and has to be given a bar on purpose.
+ * A group absent from `BARLESS_BY_GROUP` draws no bar — `(auth)` and the root routes. That
+ * is the default rather than a list, so a new tree gets the inert answer and has to be
+ * given a bar on purpose.
  */
 function drawsTabBar(segments: readonly string[]): boolean {
 	const barless = BARLESS_BY_GROUP[segments[0] ?? ""];

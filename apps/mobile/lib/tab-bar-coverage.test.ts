@@ -44,6 +44,7 @@ import { join } from "node:path";
 const APP = join(import.meta.dir, "..", "app");
 const BUSINESS = join(APP, "(business)");
 const CUSTOMER = join(APP, "(customer)");
+const DELIVERY = join(APP, "(delivery)");
 const TAB_BAR = join(import.meta.dir, "..", "components", "tab-bar.ts");
 
 /** Route files under a group dir, recursing: `dir/[id].tsx` → `dir/[id]`. */
@@ -160,5 +161,51 @@ describe("(customer) floating bar coverage", () => {
 			}
 		}
 		expect(bars).toHaveLength(hidden.length + lifted.length);
+	});
+});
+
+/**
+ * `(delivery)` has the merchant tree's *answer* and the customer tree's *shape of test*, and
+ * that combination is the whole of this block.
+ *
+ * The answer is one: hide the capsule. There is no `DELIVERY_LIFTED_ROUTES`, because a courier
+ * board is a work queue and its one action belongs at the bottom of the screen.
+ *
+ * The shape is the customer's rather than the merchant's, because
+ * `DELIVERY_BARLESS_ROUTES` holds two routes that draw no `ActionBar` at all and both
+ * correctly: `index` is the group's root redirect and renders no UI, and `delivery/[id]` is a
+ * detail screen that hides the bar for the reason every barless route does — it draws its own
+ * `BackButton`, so losing the capsule costs the reader nothing. Strict equality with
+ * `screensWithActionBar` (the merchant assertion) would therefore fail on a list that is
+ * exactly right, which is why this tree asks the subset question instead.
+ *
+ * The layout-agreement test below is still strict, and that is where a list entry nobody
+ * declared is caught — the failure mode that matters most here, because
+ * `DELIVERY_BARLESS_ROUTES` and `./(delivery)/_layout.tsx` are edited by the same commit and
+ * could drift without anybody noticing which of them was wrong.
+ */
+describe("(delivery) floating bar coverage", () => {
+	const barless = list("DELIVERY_BARLESS_ROUTES");
+
+	test("every screen with an action bar hides the capsule", () => {
+		const unaccounted = screensWithActionBar(DELIVERY).filter(
+			(route) => !barless.includes(route),
+		);
+		expect(unaccounted).toEqual([]);
+	});
+
+	test("the list and the layout agree, both ways", () => {
+		expect(hiddenInLayout(DELIVERY, "deliveryBarlessOptions")).toEqual(barless);
+	});
+
+	test("both tabs are declared, and neither is on the barless list", () => {
+		// A tab hidden from the capsule is a screen with no way out — the argument
+		// `CUSTOMER_BARLESS_ROUTES` makes about the cart. Pinning it here is what stops the
+		// board or the account hub being added to the list by a later "just tidy this up".
+		const source = readFileSync(join(DELIVERY, "_layout.tsx"), "utf-8");
+		for (const tab of ["delivery", "account"]) {
+			expect(source).toContain(`name="${tab}"`);
+			expect(barless).not.toContain(tab);
+		}
 	});
 });

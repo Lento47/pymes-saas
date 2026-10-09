@@ -11,6 +11,7 @@ import {
 	View,
 } from "react-native";
 
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
@@ -92,6 +93,14 @@ export default function CourierProfileScreen() {
 			<Screen
 				title={t("biz.courier.profileTitle")}
 				subtitle={t("biz.courier.profileSubtitle")}
+				// **Not decoration.** This screen is on `DELIVERY_BARLESS_ROUTES`, so the courier
+				// capsule does not draw here and this is the only visible way out of it. That is
+				// the reason `tab-bar.ts` keeps the cart off its barless list — "a barless cart is
+				// a screen with no way out" — and the reason `delivery/[id].tsx` pairs its own
+				// `BackButton` with the same treatment. `./screen`'s `leading` slot is where a
+				// back control belongs: a leading control is part of the heading, not the first
+				// thing in the body.
+				leading={<BackButton to="/delivery" />}
 				scroll
 				keyboardInsets
 				contentStyle={styles.content}
