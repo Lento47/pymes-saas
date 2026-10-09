@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { MOVE_LABELS } from "@pymeshub/i18n";
-import type { OrderStatus } from "@pymeshub/shared";
+import type { CourierProfile, OrderStatus } from "@pymeshub/shared";
 import {
 	useInfiniteQuery,
 	useMutation,
@@ -24,8 +24,9 @@ import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { StatusBadge, statusKey } from "@/components/status-badge";
+import { Switch } from "@/components/switch";
 import { Text } from "@/components/text";
-import { toApiFailure } from "@/lib/api-error";
+import { toApiFailure, useApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
 import {
 	reconcileCourierTracking,
@@ -262,12 +263,11 @@ function Runs() {
 	// Verified, so the board draws. No `businessId`: the runs are the courier's own, from
 	// whichever shops they happen to be carrying for.
 	//
-	// **Availability is not a gate on drawing the board — it is drawn as a fact.** A courier who
-	// switched themselves off has no offers, and `offers()` answers `[]` for them, which is the
-	// same answer as "nothing near you". `./Dispatch` says which of the two it is, because a
-	// courier standing on a street with no work nearby deserves to know that is the whole story.
+	// Availability stays above the runs and offers: it controls new offers, not work already
+	// assigned to this courier.
 	return (
 		<View style={styles.body}>
+			<AvailabilityCard profile={me} />
 			<Board />
 			{me.zoneLat == null || me.zoneLng == null || me.zoneRadiusKm == null ? (
 				<Button
@@ -278,6 +278,93 @@ function Runs() {
 			) : null}
 			<Dispatch available={me.isAvailable} />
 		</View>
+	);
+}
+
+/** A work setting on the home screen, using the profile's availability-only write. */
+function AvailabilityCard({ profile }: { profile: CourierProfile }) {
+	const { t } = useT();
+	const trpc = useTRPC();
+	const cache = useQueryClient();
+	const profileKey = trpc.couriers.profile.queryKey();
+	const availability = useMutation(
+		trpc.couriers.saveProfile.mutationOptions({
+			onMutate: async (input) => {
+				await cache.cancelQueries({ queryKey: profileKey });
+				const previous = cache.getQueryData<CourierProfile | null>(profileKey);
+				if (previous)
+					cache.setQueryData<CourierProfile | null>(profileKey, (current) =>
+						current
+							? {
+									...current,
+									isAvailable: input.isAvailable ?? current.isAvailable,
+								}
+							: current,
+					);
+				return { previous };
+			},
+			onError: (_error, _input, context) => {
+				if (context?.previous)
+					cache.setQueryData<CourierProfile | null>(
+						profileKey,
+						context.previous,
+					);
+				warning();
+			},
+			onSuccess: (saved) =>
+				cache.setQueryData<CourierProfile | null>(profileKey, saved),
+			onSettled: async () => {
+				await Promise.all([
+					cache.invalidateQueries({ queryKey: trpc.couriers.pathKey() }),
+					cache.invalidateQueries({
+						queryKey: trpc.deliveries.offers.queryKey(),
+					}),
+				]);
+			},
+		}),
+	);
+	const availabilityFailure = useApiFailure(availability.error);
+
+	return (
+		<Card style={styles.availabilityCard}>
+			<View style={styles.availabilityRow}>
+				<View style={styles.availabilityCopy}>
+					<Text variant="body" bold>
+						{t("biz.courier.availability")}
+					</Text>
+					<Text
+						variant="caption"
+						tone={profile.isAvailable ? "action" : "muted"}
+					>
+						{profile.isAvailable
+							? t("delivery.board.receiving.on")
+							: t("delivery.board.receiving.off")}
+					</Text>
+				</View>
+				<Switch
+					checked={profile.isAvailable}
+					label={t("biz.courier.availability")}
+					disabled={availability.isPending}
+					onChange={(next) => {
+						light();
+						availability.mutate({
+							displayName: profile.displayName,
+							serviceArea: profile.serviceArea,
+							bio: profile.bio ?? undefined,
+							vehicleName: profile.vehicleName ?? undefined,
+							vehiclePlate: profile.vehiclePlate ?? undefined,
+							vehiclePhotoUrl: profile.vehiclePhotoUrl ?? undefined,
+							isAvailable: next,
+						});
+					}}
+				/>
+			</View>
+			{availabilityFailure.message ? (
+				<Text tone="destructive" accessibilityRole="alert">
+					{availabilityFailure.message}
+				</Text>
+			) : null}
+		</Card>
 	);
 }
 
@@ -495,45 +582,6 @@ function Dispatch({ available }: { available: boolean }) {
 			</Text>
 
 			{/*
-			    Whether this courier is in the pool at all, said out loud.
-
-			    `candidateFor` (`services/delivery-dispatch.ts:173-190`) needs three things and the
-			    screen showed none of them: `VERIFIED`, `isAvailable`, and a `courierPresence` row
-			    less than `PRESENCE_FRESH_MS` old — two minutes. Every one of those failing produces
-			    exactly the same empty list, so "no offers" was indistinguishable across six causes
-			    (not verified, switched off, no fresh position, out of the 15 km radius, already
-			    carrying something, genuinely nothing nearby) and the courier had no way to tell
-			    which one was happening to them.
-
-			    The availability half is the one the reader can act on and it is now a `Segmented` on
-			    their profile that writes the moment it is chosen, so a courier who taps "No
-			    disponible" and comes back here to check is told the truth rather than shown an
-			    identical screen.
-			*/}
-			<View style={styles.statusRow}>
-				<Ionicons
-					name={available ? "radio-button-on" : "pause-circle-outline"}
-					size={icon.inline}
-					color={available ? colors.action : colors.mutedForeground}
-					accessibilityElementsHidden
-					importantForAccessibility="no"
-				/>
-				<Text variant="caption" tone={available ? "action" : "muted"} bold>
-					{available
-						? t("delivery.board.receiving.on")
-						: t("delivery.board.receiving.off")}
-				</Text>
-				{!available ? (
-					<Button
-						label={t("delivery.board.availability.change")}
-						variant="ghost"
-						size="sm"
-						onPress={() => router.push("/courier-profile")}
-					/>
-				) : null}
-			</View>
-
-			{/*
 			    The location dead end, and the only place on this screen that can open one.
 
 			    `reportPresence` needs a fix, a fix needs permission, and permission is asked
@@ -678,7 +726,7 @@ function Dispatch({ available }: { available: boolean }) {
 			    `delivery.board.empty.body` alone, so the section had a sentence and no heading to
 			    hang it on.
 
-			    **Suppressed entirely while the courier is unavailable.** The line above already says
+			    **Suppressed entirely while the courier is unavailable.** The home switch already says
 			    why the list is empty in that case, and "new offers will appear here while you are
 			    available" printed directly under "you are not receiving offers" is the same
 			    contradiction this screen was already making in a different place.
@@ -1171,12 +1219,13 @@ function RunsSkeleton({ label }: { label: string }) {
 const styles = StyleSheet.create({
 	gap: { gap: space.lg },
 	body: { gap: space.lg },
-	statusRow: {
+	availabilityCard: { gap: space.xs },
+	availabilityRow: {
 		flexDirection: "row",
 		alignItems: "center",
-		flexWrap: "wrap",
-		gap: space.xs,
+		gap: space.sm,
 	},
+	availabilityCopy: { flex: 1, gap: space.xs },
 	quietRow: {
 		flexDirection: "row",
 		alignItems: "center",
