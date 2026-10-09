@@ -499,6 +499,11 @@ export const business = {
 	"biz.courier.displayName": "Name businesses see",
 	"biz.courier.serviceArea": "Where you deliver",
 	"biz.courier.zone.title": "Delivery zone",
+	"biz.courier.zone.unset": "No zone selected",
+	"biz.courier.zone.choose": "Choose on map",
+	"biz.courier.zone.edit": "Edit on map",
+	"biz.courier.zone.hint": "Tap the map to place your zone.",
+	"biz.courier.zone.done": "Use this zone",
 	"biz.courier.zone.help":
 		"Tap the map to choose the center. Pickups and destinations must both be inside this circle; you also need to be near the pickup.",
 	"biz.courier.zone.radius": "Radius: {count} km",

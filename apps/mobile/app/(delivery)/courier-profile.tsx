@@ -7,11 +7,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
 	Image,
+	Modal,
 	Platform,
+	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActionBar } from "@/components/action-bar";
 import { BackButton } from "@/components/back-button";
@@ -122,7 +125,6 @@ export default function CourierProfileScreen() {
 		<View style={styles.root}>
 			<Screen
 				title={t("biz.courier.profileTitle")}
-				subtitle={t("biz.courier.profileSubtitle")}
 				// **Not decoration.** This screen is on `DELIVERY_BARLESS_ROUTES`, so the courier
 				// capsule does not draw here and this is the only visible way out of it. That is
 				// the reason `tab-bar.ts` keeps the cart off its barless list — "a barless cart is
@@ -288,6 +290,7 @@ function ProfileForm({
 	onRequestReview: () => void;
 }) {
 	const { t } = useT();
+	const { colors } = useTheme();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
@@ -310,6 +313,13 @@ function ProfileForm({
 	);
 	const [zoneRadius, setZoneRadius] = useState(15);
 	const [zoneLabel, setZoneLabel] = useState("");
+	const [zoneOpen, setZoneOpen] = useState(false);
+	const zoneBeforeEdit = useRef<{
+		pin: { lat: number; lng: number } | null;
+		radius: number;
+		label: string;
+		area: string;
+	} | null>(null);
 	const zoneSelection = useRef(0);
 	const [bio, setBio] = useState("");
 	const [vehicleName, setVehicleName] = useState("");
@@ -388,6 +398,8 @@ function ProfileForm({
 	const saveZone = useMutation(
 		trpc.couriers.saveZone.mutationOptions({
 			onSuccess: async (saved) => {
+				setZoneOpen(false);
+				zoneBeforeEdit.current = null;
 				setServiceArea(saved.serviceArea);
 				if (initial.current)
 					initial.current = {
@@ -399,6 +411,29 @@ function ProfileForm({
 			},
 		}),
 	);
+	const openZone = () => {
+		saveZone.reset();
+		zoneBeforeEdit.current = {
+			pin: zonePin,
+			radius: zoneRadius,
+			label: zoneLabel,
+			area: serviceArea,
+		};
+		setZoneOpen(true);
+	};
+	const cancelZone = () => {
+		if (saveZone.isPending) return;
+		const previous = zoneBeforeEdit.current;
+		if (previous) {
+			zoneSelection.current += 1;
+			setZonePin(previous.pin);
+			setZoneRadius(previous.radius);
+			setZoneLabel(previous.label);
+			setServiceArea(previous.area);
+		}
+		zoneBeforeEdit.current = null;
+		setZoneOpen(false);
+	};
 	const selectZone = async (pin: { lat: number; lng: number }) => {
 		const selection = ++zoneSelection.current;
 		setZonePin(pin);
@@ -740,10 +775,7 @@ function ProfileForm({
 			    a closed set of two that changes a fact about you rather than a value you are
 			    typing, and it announces itself as a radio group with `accessibilityState.checked`.
 			*/}
-			<ScreenSection
-				title={t("biz.courier.availability")}
-				subtitle={t("biz.courier.availability.help")}
-			>
+			<ScreenSection title={t("biz.courier.availability")}>
 				<Segmented
 					label={t("biz.courier.availability")}
 					value={isAvailable ? "available" : "unavailable"}
@@ -773,6 +805,163 @@ function ProfileForm({
 				) : null}
 			</ScreenSection>
 
+			<ScreenSection title={t("biz.courier.zone.title")}>
+				<Card style={styles.zoneSummary}>
+					<View style={styles.zoneSummaryHead}>
+						<Ionicons
+							name="location-outline"
+							size={icon.control}
+							color={colors.action}
+						/>
+						<View style={styles.zoneSummaryText}>
+							<Text variant="body" bold>
+								{zonePin ? zoneLabel : t("biz.courier.zone.unset")}
+							</Text>
+							{zonePin ? (
+								<Text variant="caption" tone="muted">
+									{t("biz.courier.zone.radius", { count: zoneRadius })}
+								</Text>
+							) : null}
+						</View>
+					</View>
+					<Button
+						label={t(
+							zonePin ? "biz.courier.zone.edit" : "biz.courier.zone.choose",
+						)}
+						variant="secondary"
+						onPress={openZone}
+					/>
+					{areaError ? <Text tone="destructive">{areaError}</Text> : null}
+				</Card>
+			</ScreenSection>
+
+			<Modal
+				visible={zoneOpen}
+				animationType="slide"
+				onRequestClose={cancelZone}
+			>
+				<SafeAreaView
+					style={[styles.zonePicker, { backgroundColor: colors.background }]}
+				>
+					<View style={styles.zonePickerHeader}>
+						<Text variant="heading" bold>
+							{t("biz.courier.zone.title")}
+						</Text>
+						<Button
+							label={t("action.cancel")}
+							variant="ghost"
+							disabled={saveZone.isPending}
+							onPress={cancelZone}
+						/>
+					</View>
+					<View style={styles.zoneMap}>
+						{isMapAvailable() ? (
+							<MapView
+								coords={
+									zonePin ?? device.coords ?? { lat: 9.9281, lng: -84.0907 }
+								}
+								marker={zonePin}
+								radiusKm={zonePin ? zoneRadius : null}
+								zoom={zonePin || device.coords ? 11 : 7}
+								style={styles.zoneMapFill}
+								onPick={(pin) => void selectZone(pin)}
+							/>
+						) : (
+							<View style={styles.zoneMapFallback}>
+								<Text tone="muted">{t("location.mapUnavailable")}</Text>
+							</View>
+						)}
+					</View>
+					<ScrollView
+						style={[styles.zonePickerFooter, { borderTopColor: colors.border }]}
+						contentContainerStyle={styles.zonePickerFooterContent}
+					>
+						<Text variant="caption" tone="muted">
+							{t("biz.courier.zone.hint")}
+						</Text>
+						{device.coords ? (
+							<Button
+								label={t("location.use")}
+								variant="secondary"
+								onPress={() => {
+									if (device.coords) void selectZone(device.coords);
+								}}
+							/>
+						) : device.status === "denied" ? (
+							<Button
+								label={t("biz.courier.location.action")}
+								variant="secondary"
+								onPress={device.request}
+							/>
+						) : null}
+						{zonePin ? (
+							<>
+								<Text variant="body" bold>
+									{zoneLabel}
+								</Text>
+								<View style={styles.zoneRadiusRow}>
+									<Button
+										label="−"
+										variant="secondary"
+										disabled={zoneRadius <= 1}
+										onPress={() =>
+											setZoneRadius((value) => Math.max(1, value - 1))
+										}
+									/>
+									<Text variant="label" accessibilityLiveRegion="polite">
+										{t("biz.courier.zone.radius", { count: zoneRadius })}
+									</Text>
+									<Button
+										label="+"
+										variant="secondary"
+										disabled={zoneRadius >= 30}
+										onPress={() =>
+											setZoneRadius((value) => Math.min(30, value + 1))
+										}
+									/>
+								</View>
+							</>
+						) : null}
+						{saveZone.error ? (
+							<Text tone="destructive">{saveZone.error.message}</Text>
+						) : null}
+						<Button
+							label={t(
+								profile.data
+									? "biz.courier.zone.save"
+									: "biz.courier.zone.done",
+							)}
+							loading={saveZone.isPending}
+							disabled={
+								!zonePin ||
+								saveZone.isPending ||
+								save.isPending ||
+								availability.isPending
+							}
+							onPress={() => {
+								if (!zonePin) return;
+								if (
+									!profile.data ||
+									(zonePin.lat === profile.data.zoneLat &&
+										zonePin.lng === profile.data.zoneLng &&
+										zoneRadius === profile.data.zoneRadiusKm)
+								) {
+									zoneBeforeEdit.current = null;
+									setZoneOpen(false);
+									return;
+								}
+								saveZone.mutate({
+									lat: zonePin.lat,
+									lng: zonePin.lng,
+									radiusKm: zoneRadius,
+									label: zoneLabel,
+								});
+							}}
+						/>
+					</ScrollView>
+				</SafeAreaView>
+			</Modal>
+
 			{/*
 			    The directory preview, and the gate on it moved.
 
@@ -796,14 +985,7 @@ function ProfileForm({
 			    half; the business screen supplies its own row as `action`.
 			*/}
 			{profile.data ? (
-				<ScreenSection
-					title={t("biz.courier.preview.title")}
-					subtitle={
-						statusValue === "VERIFIED"
-							? t("biz.courier.preview.body")
-							: t("biz.courier.preview.pending")
-					}
-				>
+				<ScreenSection title={t("biz.courier.preview.title")}>
 					<CourierDirectoryCard
 						courier={{
 							profileId: profile.data.id,
@@ -819,11 +1001,8 @@ function ProfileForm({
 				</ScreenSection>
 			) : null}
 
-			{/* Identity edits require review; the operational zone below saves separately. */}
-			<ScreenSection
-				title={t("biz.courier.profile")}
-				subtitle={t("biz.courier.reviewReset.help")}
-			>
+			{/* Identity edits require review; the operational zone above saves separately. */}
+			<ScreenSection title={t("biz.courier.profile")}>
 				<Field
 					label={t("biz.courier.displayName")}
 					value={displayName}
@@ -842,121 +1021,8 @@ function ProfileForm({
 					numberOfLines={3}
 				/>
 			</ScreenSection>
-			<ScreenSection
-				title={t("biz.courier.zone.title")}
-				subtitle={t("biz.courier.zone.help")}
-			>
-				<View style={{ gap: space.sm }}>
-					{isMapAvailable() ? (
-						<MapView
-							coords={
-								zonePin ?? device.coords ?? { lat: 9.9281, lng: -84.0907 }
-							}
-							marker={zonePin}
-							radiusKm={zonePin ? zoneRadius : null}
-							zoom={zonePin || device.coords ? 11 : 7}
-							style={{ height: 260 }}
-							onPick={(pin) => void selectZone(pin)}
-						/>
-					) : (
-						<Text tone="muted">{t("location.mapUnavailable")}</Text>
-					)}
-					{device.coords ? (
-						<Button
-							label={t("location.use")}
-							variant="secondary"
-							onPress={() => {
-								if (device.coords) void selectZone(device.coords);
-							}}
-						/>
-					) : null}
-					{device.status === "denied" ? (
-						<Button
-							label={t("biz.courier.location.action")}
-							variant="secondary"
-							onPress={device.request}
-						/>
-					) : null}
-					{zonePin ? (
-						<>
-							<Text variant="body">
-								{zoneLabel} · {zoneRadius} km
-							</Text>
-							<View
-								style={{
-									flexDirection: "row",
-									alignItems: "center",
-									flexWrap: "wrap",
-									gap: space.sm,
-								}}
-							>
-								<Button
-									label="− 1 km"
-									variant="secondary"
-									disabled={zoneRadius <= 1}
-									onPress={() =>
-										setZoneRadius((value) => Math.max(1, value - 1))
-									}
-								/>
-								<Text variant="label" accessibilityLiveRegion="polite">
-									{t("biz.courier.zone.radius", { count: zoneRadius })}
-								</Text>
-								<Button
-									label="+ 1 km"
-									variant="secondary"
-									disabled={zoneRadius >= 30}
-									onPress={() =>
-										setZoneRadius((value) => Math.min(30, value + 1))
-									}
-								/>
-							</View>
-							{profile.data ? (
-								<Button
-									label={t("biz.courier.zone.save")}
-									loading={saveZone.isPending}
-									disabled={
-										saveZone.isPending ||
-										save.isPending ||
-										availability.isPending ||
-										(zonePin.lat === profile.data.zoneLat &&
-											zonePin.lng === profile.data.zoneLng &&
-											zoneRadius === profile.data.zoneRadiusKm)
-									}
-									onPress={() =>
-										saveZone.mutate({
-											lat: zonePin.lat,
-											lng: zonePin.lng,
-											radiusKm: zoneRadius,
-											label: zoneLabel,
-										})
-									}
-								/>
-							) : null}
-						</>
-					) : null}
-					{areaError ? <Text tone="destructive">{areaError}</Text> : null}
-					{saveZone.error ? (
-						<ErrorState
-							error={saveZone.error}
-							onRetry={() => {
-								if (zonePin)
-									saveZone.mutate({
-										lat: zonePin.lat,
-										lng: zonePin.lng,
-										radiusKm: zoneRadius,
-										label: zoneLabel,
-									});
-							}}
-						/>
-					) : null}
-				</View>
-			</ScreenSection>
-
 			{/* Vehicle identity is reviewed with the name and bio. */}
-			<ScreenSection
-				title={t("biz.courier.vehicle")}
-				subtitle={t("biz.courier.reviewReset.help")}
-			>
+			<ScreenSection title={t("biz.courier.vehicle")}>
 				<Field
 					label={t("biz.courier.vehicleName")}
 					value={vehicleName}
@@ -1242,6 +1308,37 @@ function CourierProfileSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
+	zoneSummary: { gap: space.md },
+	zoneSummaryHead: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
+	zoneSummaryText: { flex: 1, gap: space.xs },
+	zonePicker: { flex: 1 },
+	zonePickerHeader: {
+		padding: space.md,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: space.sm,
+	},
+	zoneMap: { flex: 1, minHeight: 180 },
+	zoneMapFill: { flex: 1 },
+	zoneMapFallback: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+		padding: space.lg,
+	},
+	zonePickerFooter: { flexGrow: 0, maxHeight: "55%", borderTopWidth: 1 },
+	zonePickerFooterContent: { padding: space.md, gap: space.sm },
+	zoneRadiusRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: space.sm,
+	},
 	statusCard: { gap: space.sm },
 	statusHead: {
 		flexDirection: "row",

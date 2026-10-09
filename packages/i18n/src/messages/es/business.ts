@@ -546,6 +546,11 @@ export const business = {
 	"biz.courier.displayName": "Nombre que ven los negocios",
 	"biz.courier.serviceArea": "Dónde repartes",
 	"biz.courier.zone.title": "Zona de reparto",
+	"biz.courier.zone.unset": "Sin zona seleccionada",
+	"biz.courier.zone.choose": "Elegir en el mapa",
+	"biz.courier.zone.edit": "Editar en el mapa",
+	"biz.courier.zone.hint": "Toca el mapa para marcar tu zona.",
+	"biz.courier.zone.done": "Usar esta zona",
 	"biz.courier.zone.help":
 		"Toca el mapa para elegir el centro. El origen y el destino deben estar dentro del círculo; también debes estar cerca del origen.",
 	"biz.courier.zone.radius": "Radio: {count} km",

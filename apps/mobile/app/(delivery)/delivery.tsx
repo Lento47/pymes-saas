@@ -270,19 +270,11 @@ function Runs() {
 		<View style={styles.body}>
 			<Board />
 			{me.zoneLat == null || me.zoneLng == null || me.zoneRadiusKm == null ? (
-				<Card style={styles.howTo}>
-					<Text variant="body" bold>
-						{t("delivery.board.zone.title")}
-					</Text>
-					<Text variant="caption" tone="muted">
-						{t("delivery.board.zone.body")}
-					</Text>
-					<Button
-						label={t("delivery.board.zone.action")}
-						variant="secondary"
-						onPress={() => router.push("/courier-profile")}
-					/>
-				</Card>
+				<Button
+					label={t("delivery.board.zone.action")}
+					variant="secondary"
+					onPress={() => router.push("/courier-profile")}
+				/>
 			) : null}
 			<Dispatch available={me.isAvailable} />
 		</View>
@@ -518,99 +510,20 @@ function Dispatch({ available }: { available: boolean }) {
 			    disponible" and comes back here to check is told the truth rather than shown an
 			    identical screen.
 			*/}
-			<Text variant="label" tone={available ? "action" : "muted"} bold>
-				{available
-					? t("delivery.board.receiving.on")
-					: t("delivery.board.receiving.off")}
-			</Text>
-
-			{/*
-			    The invitations row, and it is the only control on this screen that is not about
-			    the next delivery.
-
-			    **Drawn whenever a row exists, not only when something is pending.** A courier who
-			    has already accepted the one invitation from a shop is owed the answer to "did they
-			    get me?" too, and a row that appears only while there is something to do is a row
-			    that appears and disappears with no explanation.
-
-			    **The count is a word in `state`, not a badge.** `./list-row.tsx:52-58`: `state` is
-			    "a **word** that states a fact about this row", and it joins the row's accessibility
-			    label, so a screen reader hears it too. A numeral in a coloured pill would be a
-			    second signal that a greyscale screenshot loses and this app does not use.
-			*/}
-			{invites.data?.length ? (
-				<Card>
-					<ListRow
-						title={t("biz.courier.invites")}
-						subtitle={t("biz.courier.invites.help")}
-						state={
-							pendingInvites > 0
-								? tp("biz.courier.invites.pending", pendingInvites)
-								: undefined
-						}
-						leading={
-							<Ionicons
-								name="mail-outline"
-								size={icon.control}
-								color={colors.mutedForeground}
-								accessibilityElementsHidden
-								importantForAccessibility="no"
-							/>
-						}
-						divider={false}
-						chevron
-						onPress={() => router.push("/courier-invites" as Href)}
-					/>
-				</Card>
-			) : null}
-
-			{/*
-			    The record, and the only card on this screen that is not about the next delivery.
-
-			    **A courier with nothing has nothing on their board at all** without it — and
-			    "nothing" is exactly when a courier most needs to see that the platform is counting
-			    them. That is the complaint this whole change answers: a work surface that reads as
-			    broken when it is merely quiet.
-
-			    **Drawn only once there is something to say, and each line only when it is.**
-			    A courier who has delivered nothing and been rated by nobody gets no card at all,
-			    because "0 entregas · sin calificaciones" is worse to read than nothing — it is a
-			    scoreboard for a person who has not started. `./courier-profile.tsx`'s completion
-			    line makes the same call.
-
-			    **The rating refuses to print itself off one tap.** `ratingCount` is in the payload
-			    precisely so the mean of a single 5-star rating can be withheld, which is what
-			    `components/list-row.tsx`'s argument about a number standing in for a judgement
-			    comes to.
-
-			    **The two lines can disagree, so they are gated separately rather than the card
-			    once.** A `delivery` row can be re-pointed at another courier after the fact, so a
-			    courier can hold ratings without holding runs. Gating the card on the union and each
-			    line on its own number means that case reads "4.8 de 5, según 3 clientes" and not
-			    also "0 entregas completadas".
-			*/}
-			{stats.data &&
-			(stats.data.deliveredTotal > 0 ||
-				(stats.data.ratingAverage !== null && stats.data.ratingCount > 1)) ? (
-				<Card style={styles.record}>
-					<Text variant="heading" bold>
-						{t("delivery.board.record.title")}
-					</Text>
-					{stats.data.deliveredTotal > 0 ? (
-						<Text variant="body" tone="muted">
-							{tp("delivery.board.record.delivered", stats.data.deliveredTotal)}
-						</Text>
-					) : null}
-					{stats.data.ratingAverage !== null && stats.data.ratingCount > 1 ? (
-						<Text variant="body" tone="muted">
-							{t("delivery.board.record.rating", {
-								value: stats.data.ratingAverage.toFixed(1),
-								count: stats.data.ratingCount,
-							})}
-						</Text>
-					) : null}
-				</Card>
-			) : null}
+			<View style={styles.statusRow}>
+				<Ionicons
+					name={available ? "radio-button-on" : "pause-circle-outline"}
+					size={icon.inline}
+					color={available ? colors.action : colors.mutedForeground}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+				<Text variant="caption" tone={available ? "action" : "muted"} bold>
+					{available
+						? t("delivery.board.receiving.on")
+						: t("delivery.board.receiving.off")}
+				</Text>
+			</View>
 
 			{/*
 			    The location dead end, and the only place on this screen that can open one.
@@ -642,9 +555,6 @@ function Dispatch({ available }: { available: boolean }) {
 
 			{pending.length > 0 ? (
 				<View style={styles.body}>
-					<Text variant="label" tone="muted">
-						{t("delivery.board.offers")}
-					</Text>
 					{pending.map((offer) => {
 						const busy = busyId === offer.id;
 						return (
@@ -731,19 +641,6 @@ function Dispatch({ available }: { available: boolean }) {
 			    courier holds at most one. Thirty rows is therefore thirty deliveries, so a courier
 			    with any delivery at all has one in the window.
 			*/}
-			{history.length === 0 ? (
-				<Card style={styles.howTo}>
-					<Text variant="heading" bold>
-						{t("delivery.board.how.title")}
-					</Text>
-					<Text variant="body" tone="muted">
-						{t("delivery.board.how.body")}
-					</Text>
-					<Text variant="caption" tone="muted">
-						{t("delivery.board.how.detail")}
-					</Text>
-				</Card>
-			) : null}
 
 			{/*
 			    The empty, in the pair that was written for it and never used.
@@ -759,16 +656,119 @@ function Dispatch({ available }: { available: boolean }) {
 			    contradiction this screen was already making in a different place.
 			*/}
 			{available && pending.length === 0 && offers.data && activeCount > 0 ? (
-				<Text variant="body" tone="muted">
-					{t("delivery.board.offers.busy")}
-				</Text>
+				<View style={styles.quietRow}>
+					<Ionicons
+						name="time-outline"
+						size={icon.control}
+						color={colors.mutedForeground}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+					<Text variant="body" tone="muted" style={styles.quietText}>
+						{t("delivery.board.offers.busy")}
+					</Text>
+				</View>
 			) : null}
 			{available && pending.length === 0 && offers.data && activeCount === 0 ? (
-				<EmptyState
-					icon="bicycle-outline"
-					title={t("delivery.board.empty")}
-					body={t("delivery.board.empty.body")}
-				/>
+				<View style={styles.quietRow}>
+					<Ionicons
+						name="notifications-outline"
+						size={icon.control}
+						color={colors.mutedForeground}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+					<Text variant="body" tone="muted" style={styles.quietText}>
+						{t("delivery.board.empty")}
+					</Text>
+				</View>
+			) : null}
+
+			{/*
+			    The invitations row, and it is the only control on this screen that is not about
+			    the next delivery.
+
+			    **Drawn whenever a row exists, not only when something is pending.** A courier who
+			    has already accepted the one invitation from a shop is owed the answer to "did they
+			    get me?" too, and a row that appears only while there is something to do is a row
+			    that appears and disappears with no explanation.
+
+			    **The count is a word in `state`, not a badge.** `./list-row.tsx:52-58`: `state` is
+			    "a **word** that states a fact about this row", and it joins the row's accessibility
+			    label, so a screen reader hears it too. A numeral in a coloured pill would be a
+			    second signal that a greyscale screenshot loses and this app does not use.
+			*/}
+			{invites.data?.length ? (
+				<Card>
+					<ListRow
+						title={t("biz.courier.invites")}
+						state={
+							pendingInvites > 0
+								? tp("biz.courier.invites.pending", pendingInvites)
+								: undefined
+						}
+						leading={
+							<Ionicons
+								name="mail-outline"
+								size={icon.control}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						}
+						divider={false}
+						chevron
+						onPress={() => router.push("/courier-invites" as Href)}
+					/>
+				</Card>
+			) : null}
+
+			{/*
+			    The record, and the only card on this screen that is not about the next delivery.
+
+			    **A courier with nothing has nothing on their board at all** without it — and
+			    "nothing" is exactly when a courier most needs to see that the platform is counting
+			    them. That is the complaint this whole change answers: a work surface that reads as
+			    broken when it is merely quiet.
+
+			    **Drawn only once there is something to say, and each line only when it is.**
+			    A courier who has delivered nothing and been rated by nobody gets no card at all,
+			    because "0 entregas · sin calificaciones" is worse to read than nothing — it is a
+			    scoreboard for a person who has not started. `./courier-profile.tsx`'s completion
+			    line makes the same call.
+
+			    **The rating refuses to print itself off one tap.** `ratingCount` is in the payload
+			    precisely so the mean of a single 5-star rating can be withheld, which is what
+			    `components/list-row.tsx`'s argument about a number standing in for a judgement
+			    comes to.
+
+			    **The two lines can disagree, so they are gated separately rather than the card
+			    once.** A `delivery` row can be re-pointed at another courier after the fact, so a
+			    courier can hold ratings without holding runs. Gating the card on the union and each
+			    line on its own number means that case reads "4.8 de 5, según 3 clientes" and not
+			    also "0 entregas completadas".
+			*/}
+			{stats.data &&
+			(stats.data.deliveredTotal > 0 ||
+				(stats.data.ratingAverage !== null && stats.data.ratingCount > 1)) ? (
+				<Card style={styles.record}>
+					<Text variant="label" bold>
+						{t("delivery.board.record.title")}
+					</Text>
+					{stats.data.deliveredTotal > 0 ? (
+						<Text variant="caption" tone="muted">
+							{tp("delivery.board.record.delivered", stats.data.deliveredTotal)}
+						</Text>
+					) : null}
+					{stats.data.ratingAverage !== null && stats.data.ratingCount > 1 ? (
+						<Text variant="caption" tone="muted">
+							{t("delivery.board.record.rating", {
+								value: stats.data.ratingAverage.toFixed(1),
+								count: stats.data.ratingCount,
+							})}
+						</Text>
+					) : null}
+				</Card>
 			) : null}
 
 			{history.length > 0 ? (
@@ -824,6 +824,7 @@ function Dispatch({ available }: { available: boolean }) {
  */
 function Board() {
 	const { t, intlLocale } = useT();
+	const { colors } = useTheme();
 	const { session } = useSession();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
@@ -932,14 +933,9 @@ function Board() {
 			    in both lists at once. With no heading the second `EmptyState` read as the first
 			    one's contradiction; with one, it is the answer to a different question.
 			*/}
-			<View style={styles.boardHead}>
-				<Text variant="heading" bold>
-					{t("delivery.board.active")}
-				</Text>
-				<Text variant="caption" tone="muted">
-					{t("delivery.board.active.body")}
-				</Text>
-			</View>
+			<Text variant="heading" bold>
+				{t("delivery.board.active")}
+			</Text>
 
 			<CourierSharing result={trackingResult} sharing={ridingId != null} />
 			{mine.isError ? (
@@ -979,11 +975,18 @@ function Board() {
 				// this board and vaguer than this board deserves; a courier-specific pair is a
 				// string request, not a literal." It is now a string request, landed in both
 				// locales, and the sentence on this screen belongs to the person reading it.
-				<EmptyState
-					icon="bicycle-outline"
-					title={t("delivery.board.active.empty")}
-					body={t("delivery.board.active.emptyBody")}
-				/>
+				<View style={styles.quietRow}>
+					<Ionicons
+						name="bicycle-outline"
+						size={icon.control}
+						color={colors.mutedForeground}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+					<Text variant="body" tone="muted" style={styles.quietText}>
+						{t("delivery.board.active.empty")}
+					</Text>
+				</View>
 			) : (
 				<>
 					{unmatchedDeliveries.map((delivery) => (
@@ -1140,6 +1143,14 @@ function RunsSkeleton({ label }: { label: string }) {
 const styles = StyleSheet.create({
 	gap: { gap: space.lg },
 	body: { gap: space.lg },
+	statusRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
+	quietRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		paddingVertical: space.sm,
+	},
+	quietText: { flex: 1 },
 	// The record card's three lines, tighter than `body`'s card-to-card gap because these are
 	// three sentences about one subject rather than three separate things.
 	record: { gap: space.xs },
