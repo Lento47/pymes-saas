@@ -71,23 +71,24 @@ function RemoteSection({
       aria-label={title}
       className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
     >
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+        <h2 className="text-base font-semibold">{title}</h2>
         {href && (
           <Link
             href={href}
-            className="flex min-h-12 shrink-0 items-center gap-1 rounded-xl px-2 text-sm font-medium"
+            className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-primary/90 hover:text-primary"
           >
             {es ? "Ver todo" : "View all"}
-            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+            <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
           </Link>
         )}
       </div>
       {query.isLoading ? (
         <div role="status" className="space-y-3 px-4 pb-5">
           <span className="sr-only">{es ? "Cargando…" : "Loading…"}</span>
-          <Skeleton className="h-12 rounded-xl" />
-          <Skeleton className="h-12 rounded-xl" />
+          <Skeleton className="h-11 rounded-xl" />
+          <Skeleton className="h-11 rounded-xl" />
+          <Skeleton className="h-11 rounded-xl" />
         </div>
       ) : query.isError ? (
         <div role="alert" className="space-y-2 px-4 pb-5">
@@ -117,31 +118,45 @@ function PulseMetric({
   value,
   href,
   query,
+  icon: Icon,
 }: {
   label: string;
   value?: number;
   href: string;
   query: QueryState;
+  icon?: typeof Inbox;
 }) {
   const { locale } = useI18n();
   return (
     <Link
       href={href}
-      className="mobile-tab flex min-h-16 min-w-0 flex-col justify-center px-2 py-3 first:pl-0 last:pr-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="mobile-tab group relative flex flex-1 flex-col justify-center gap-2.5 px-3 py-3.5 first:pl-0 last:pr-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-background/5"
       aria-label={`${label}: ${query.isError || value == null ? "—" : value}`}
     >
-      {query.isLoading ? (
-        <span aria-hidden="true" className="block h-8 w-12 rounded bg-background/25" />
-      ) : (
-        <p className="text-2xl font-bold tabular-nums leading-none sm:text-3xl">
-          {query.isError || value == null
-            ? "—"
-            : new Intl.NumberFormat(locale).format(value)}
-        </p>
-      )}
-      <p className="mt-2 text-xs leading-tight opacity-75">{label}</p>
+      <div className="flex items-center gap-2.5">
+        {Icon && (
+          <Icon
+            aria-hidden="true"
+            className="h-4.5 w-4.5 shrink-0 text-foreground/45 transition-colors group-hover:text-foreground/80"
+            strokeWidth={1.75}
+          />
+        )}
+        {query.isLoading ? (
+          <span aria-hidden="true" className="block h-7 w-14 rounded bg-background/15" />
+        ) : (
+          <p className="flex items-center gap-2 text-3xl font-bold tabular-nums leading-none sm:text-4xl">
+            {query.isError || value == null
+              ? "—"
+              : new Intl.NumberFormat(locale).format(value)}
+            {query.isFetching && (
+              <span aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-foreground/40" />
+            )}
+          </p>
+        )}
+      </div>
+      <span className="text-xs leading-tight text-foreground/60 transition-colors group-hover:text-foreground/80">{label}</span>
       {query.isError && (
-        <span className="mt-1 block text-xs opacity-60">
+        <span className="block text-[10.5px] leading-tight text-foreground/75">
           {locale === "es" ? "No disponible" : "Unavailable"}
         </span>
       )}
@@ -181,12 +196,12 @@ function AttentionBanner({
   return (
     <Link
       href={href}
-      className={["mobile-tab relative flex min-h-12 items-center gap-3 overflow-hidden rounded-xl border border-border py-3 pl-5 pr-3", surface].join(" ")}
+      className={["mobile-tab relative flex min-h-13 items-center gap-3 overflow-hidden rounded-xl border border-border py-3 pl-5 pr-4 hover:brightness-105", surface].join(" ")}
     >
       <span aria-hidden="true" className={"absolute inset-y-0 left-0 w-1 " + rail} />
       <Icon aria-hidden="true" className={"h-5 w-5 shrink-0 " + iconColor} strokeWidth={1.75} />
       <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{text}</span>
-      <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground/70" />
     </Link>
   );
 }
@@ -406,13 +421,14 @@ export default function DashboardPage() {
                 }).format(new Date())}
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-3 divide-x divide-background/20">
+            <div className="mt-2 grid grid-cols-3 divide-x divide-foreground/12">
               {inboxAllowed && (
                 <PulseMetric
                   label={es ? "Por responder" : "Awaiting reply"}
                   value={today.data?.unanswered_conversations}
                   href="/inbox"
                   query={today}
+                  icon={Inbox}
                 />
               )}
               {tasksAllowed && (
@@ -421,6 +437,7 @@ export default function DashboardPage() {
                   value={tasks.data?.meta.total}
                   href="/tasks"
                   query={tasks}
+                  icon={CheckSquare}
                 />
               )}
               {invoicesAllowed && (
@@ -429,6 +446,7 @@ export default function DashboardPage() {
                   value={overdue.data?.meta.total}
                   href="/invoices"
                   query={overdue}
+                  icon={Receipt}
                 />
               )}
             </div>

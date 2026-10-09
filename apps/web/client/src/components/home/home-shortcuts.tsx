@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore, type ElementType } from "react";
 import { Link } from "wouter";
+import { cn } from "@/lib/utils";
 import {
   CheckSquare,
   FileText,
@@ -206,8 +207,8 @@ export function HomeShortcuts({ can }: { can: (key: string) => boolean }) {
         </Sheet>
       </div>
       {visible.length ? (
-        <div className="-mx-4 border-y border-border bg-card px-2 py-1.5 md:mx-0 md:rounded-xl md:border-x">
-          <div className="flex gap-1 overflow-x-auto overscroll-x-contain md:flex-wrap md:overflow-visible">
+        <div className="-mx-4 md:-mx-6 lg:-mx-8 border-y border-border bg-card/70 backdrop-blur supports-[backdrop-filter]:bg-card md:mx-0 md:rounded-xl md:border-x">
+          <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain py-2 md:flex-wrap md:overflow-visible">
             {visible.map((choice) => {
               const dominant = choice.key === dominantKey;
               return (
@@ -215,15 +216,18 @@ export function HomeShortcuts({ can }: { can: (key: string) => boolean }) {
                   key={choice.key}
                   href={choice.path}
                   className={
-                    "mobile-tab flex min-h-14 min-w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-3 py-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+                    "mobile-tab flex min-h-15 min-w-20 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-center transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:-translate-y-0.5 hover:shadow-lg " +
                     (dominant
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-muted")
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground/90 hover:bg-muted/80")
                   }
                 >
                   <choice.icon
                     aria-hidden="true"
-                    className="h-5 w-5"
+                    className={cn(
+                      "h-5 w-5",
+                      dominant ? "font-bold" : "transition-transform",
+                    )}
                     strokeWidth={dominant ? 2 : 1.75}
                   />
                   <span className="text-[11px] font-semibold leading-none">

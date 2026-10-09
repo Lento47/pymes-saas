@@ -524,7 +524,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 "flex w-full items-center rounded-lg text-left transition-colors",
                 isCollapsed
                   ? "mx-2 h-9 justify-center px-0 text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
-                  : "gap-2 px-3 py-1.5",
+                  : "gap-2 px-3 py-2",
               )}
               title={isCollapsed ? copy.settingsButton : undefined}
             >
@@ -703,7 +703,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <Button
             variant="secondary"
             onClick={() => setSearchOpen(true)}
-            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border-primary/20 bg-white/[0.04] px-3 text-left text-xs text-muted-foreground hover:text-foreground md:flex"
+            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border-border/40 bg-card/30 px-3 text-left text-xs text-muted-foreground hover:border-border hover:bg-card/50 hover:text-foreground md:flex"
             title="Buscar (Ctrl+K)"
           >
             <Search className="h-3.5 w-3.5" />
