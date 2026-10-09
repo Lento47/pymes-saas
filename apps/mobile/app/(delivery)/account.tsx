@@ -181,11 +181,21 @@ export default function CourierAccountScreen() {
 									divider
 									onPress={() => router.push("/settings")}
 								/>
+								{/* The password, and this row is the reason the hub exists rather than
+								    just another place to link the courier profile. Neither other hub
+								    carries one — `/change-password` was reachable only from the three
+								    `Button`s at the foot of `courier-profile.tsx`, and moving that screen's
+								    save to a docked bar meant those buttons had to move somewhere. */}
+								<ListRow
+									title={t("account.password.title")}
+									chevron
+									divider
+									onPress={() => router.push("/change-password")}
+								/>
 								{/* The inbox is here and not only on the root hub because
 								    `app/account.tsx:331` is the other link to it and the courier tree
 								    reaches neither. It matters most once `services/couriers.ts`
-								    starts writing the invitation notification — see the sign-out
-								    sheet's sibling decision in `docs/architecture.md`. */}
+								    starts writing the invitation notification. */}
 								<ListRow
 									title={t("account.inbox")}
 									subtitle={t("account.inbox.help")}
