@@ -1028,6 +1028,39 @@ export const business = {
 	"delivery.board.empty": "No tienes entregas por ahora",
 	"delivery.board.empty.body":
 		"Las nuevas ofertas aparecerán aquí mientras estés disponible.",
+
+	/*
+	 * El segundo tablero, y por qué existe aparte del primero.
+	 *
+	 * `/delivery` lee dos flujos distintos: `deliveries.offers` (una oferta que el repartidor
+	 * acepta) y `orders.list` con `assignedToMe` (un pedido que un negocio asigna por su cuenta).
+	 * `services/orders.ts` escribe `order.courierUserId` y `deliveryTable.courierUserId` en la
+	 * misma asignación, así que una sola entrega vive en las dos listas a la vez — con dos
+	 * vocabularios de estado y dos juegos de botones distintos. Lo que faltaba era el encabezado
+	 * que lo dijera, y sin él el segundo `EmptyState` se leía como la contradicción del primero
+	 * en lugar de como la respuesta a otra pregunta.
+	 */
+	"delivery.board.assigned": "Pedidos asignados",
+	"delivery.board.assigned.body":
+		"Un negocio puede asignarte un pedido directamente, sin pasar por las ofertas.",
+	"delivery.board.assigned.empty": "No tienes pedidos asignados",
+	"delivery.board.assigned.emptyBody":
+		"Aquí aparecerán los pedidos que un negocio te asigne sin pedirte que los aceptes.",
+
+	/*
+	 * Si el repartidor está en el pool. `candidateFor` exige `VERIFIED AND isAvailable` y una
+	 * posición con menos de `PRESENCE_FRESH_MS` (dos minutos), así que "no hay ofertas" tiene al
+	 * menos seis causas distintas y la pantalla no distinguía ninguna: ni si el problema era él o
+	 * el vecindario. Esta es la línea que separa las dos.
+	 */
+	"delivery.board.receiving.on": "Estás recibiendo ofertas",
+	"delivery.board.receiving.off":
+		"No estás recibiendo ofertas. Actívalas en tu perfil para volver a recibirlas.",
+	/* La ubicación es la puerta: sin posición fresca el pool no te ve, y `Dispatch` no la pedía. */
+	"delivery.board.presence.action": "Activar ubicación",
+	"delivery.board.presence.body":
+		"Sin tu ubicación los negocios no pueden saber que estás cerca, así que no te llegan ofertas. Actívala para volver a recibirlas.",
+
 	"delivery.offer.accept": "Aceptar entrega",
 	"delivery.offer.decline": "Rechazar",
 	"delivery.offer.distance": "A {value} km del negocio",

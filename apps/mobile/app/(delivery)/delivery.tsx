@@ -36,7 +36,7 @@ import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
-import { space, type } from "@/theme";
+import { space, TEXT_STACK_GAP, type } from "@/theme";
 
 /**
  * The courier's board: the runs assigned to this person, and the move each one is waiting for.
@@ -139,7 +139,20 @@ export default function DeliveryScreen() {
 			}}
 		>
 			<SignedIn>
-				<Dispatch />
+				{/*
+				    `./Runs` first and `./Dispatch` inside it, which is the order this screen used
+				    to draw them and the order it must not.
+
+				    `Dispatch` read `deliveries.offers`, whose server gate is `VERIFIED AND
+				    isAvailable` (`services/deliveries.ts:172-186`), and it rendered *above* the
+				    states that explain those gates. So a courier who had never opened the profile
+				    form, whose review was pending, or who had been refused — and, before this
+				    change, anyone who had simply switched themselves unavailable — saw a heading
+				    reading "Repartos", a list that could never fill, and an empty sentence
+				    promising offers, all above the one line on the screen that would have told
+				    them why. `./Runs` owns the profile read that decides it, so it is the only
+				    place that can gate honestly.
+				*/}
 				<Runs />
 				{/*
 				    The profile door, on the board itself: the courier tree has no tab bar
@@ -235,7 +248,17 @@ function Runs() {
 
 	// Verified, so the board draws. No `businessId`: the runs are the courier's own, from
 	// whichever shops they happen to be carrying for.
-	return <Board />;
+	//
+	// **Availability is not a gate on drawing the board — it is drawn as a fact.** A courier who
+	// switched themselves off has no offers, and `offers()` answers `[]` for them, which is the
+	// same answer as "nothing near you". `./Dispatch` says which of the two it is, because a
+	// courier standing on a street with no work nearby deserves to know that is the whole story.
+	return (
+		<View style={styles.body}>
+			<Dispatch available={me.isAvailable} />
+			<Board />
+		</View>
+	);
 }
 
 /**
@@ -323,7 +346,7 @@ function CourierSharing({
  */
 const OFFERS_POLL_MS = 15_000;
 
-function Dispatch() {
+function Dispatch({ available }: { available: boolean }) {
 	const { t, intlLocale } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
@@ -423,10 +446,55 @@ function Dispatch() {
 			<Text variant="heading" bold>
 				{t("delivery.board.title")}
 			</Text>
+
+			{/*
+			    Whether this courier is in the pool at all, said out loud.
+
+			    `candidateFor` (`services/delivery-dispatch.ts:173-190`) needs three things and the
+			    screen showed none of them: `VERIFIED`, `isAvailable`, and a `courierPresence` row
+			    less than `PRESENCE_FRESH_MS` old — two minutes. Every one of those failing produces
+			    exactly the same empty list, so "no offers" was indistinguishable across six causes
+			    (not verified, switched off, no fresh position, out of the 15 km radius, already
+			    carrying something, genuinely nothing nearby) and the courier had no way to tell
+			    which one was happening to them.
+
+			    The availability half is the one the reader can act on and it is now a `Segmented` on
+			    their profile that writes the moment it is chosen, so a courier who taps "No
+			    disponible" and comes back here to check is told the truth rather than shown an
+			    identical screen.
+			*/}
+			<Text variant="label" tone={available ? "action" : "muted"} bold>
+				{available
+					? t("delivery.board.receiving.on")
+					: t("delivery.board.receiving.off")}
+			</Text>
+
+			{/*
+			    The location dead end, and the only place on this screen that can open one.
+
+			    `reportPresence` needs a fix, a fix needs permission, and permission is asked
+			    nowhere in this component — so a courier who declined it posts no presence, falls
+			    out of `candidateFor`'s freshness window two minutes later, and watches an empty
+			    board forever with a muted caption as the entire explanation. `./CourierSharing`
+			    below already draws this recovery for tracking; the same treatment here is the
+			    difference between a courier who can fix it and one who cannot.
+			*/}
 			{locationStatus === "denied" ? (
-				<Text variant="caption" tone="muted">
-					{t("delivery.presence.denied")}
-				</Text>
+				<Card>
+					<View style={styles.sharing}>
+						<Text variant="body" bold>
+							{t("delivery.presence.denied")}
+						</Text>
+						<Text variant="caption" tone="muted">
+							{t("delivery.board.presence.body")}
+						</Text>
+						<Button
+							label={t("delivery.board.presence.action")}
+							variant="secondary"
+							onPress={() => void Linking.openSettings()}
+						/>
+					</View>
+				</Card>
 			) : null}
 
 			{pending.length > 0 ? (
@@ -526,10 +594,25 @@ function Dispatch() {
 				</View>
 			) : null}
 
-			{pending.length === 0 && active.length === 0 && mine.data ? (
-				<Text variant="caption" tone="muted">
-					{t("delivery.board.empty.body")}
-				</Text>
+			{/*
+			    The empty, in the pair that was written for it and never used.
+
+			    `delivery.board.empty` and its body have been landed in both locales since the
+			    offers pipeline shipped and referenced nowhere; this was a bare caption under
+			    `delivery.board.empty.body` alone, so the section had a sentence and no heading to
+			    hang it on.
+
+			    **Suppressed entirely while the courier is unavailable.** The line above already says
+			    why the list is empty in that case, and "new offers will appear here while you are
+			    available" printed directly under "you are not receiving offers" is the same
+			    contradiction this screen was already making in a different place.
+			*/}
+			{available && pending.length === 0 && active.length === 0 && mine.data ? (
+				<EmptyState
+					icon="bicycle-outline"
+					title={t("delivery.board.empty")}
+					body={t("delivery.board.empty.body")}
+				/>
 			) : null}
 
 			{history.length > 0 ? (
@@ -663,6 +746,26 @@ function Board() {
 
 	return (
 		<View style={styles.body}>
+			{/*
+			    The heading this section never had.
+
+			    `./Dispatch` draws "Repartos" over `deliveries.*`, and this board reads a different
+			    thing — `orders.list` with `assignedToMe` — with a different vocabulary
+			    (`READY → OUT_FOR_DELIVERY → COMPLETED` against `OFFERED → PICKED_UP → DELIVERED`)
+			    and a different set of buttons. `services/orders.ts` writes `order.courierUserId`
+			    and `deliveryTable.courierUserId` in the same assignment, so one physical run sits
+			    in both lists at once. With no heading the second `EmptyState` read as the first
+			    one's contradiction; with one, it is the answer to a different question.
+			*/}
+			<View style={styles.boardHead}>
+				<Text variant="heading" bold>
+					{t("delivery.board.assigned")}
+				</Text>
+				<Text variant="caption" tone="muted">
+					{t("delivery.board.assigned.body")}
+				</Text>
+			</View>
+
 			<CourierSharing result={trackingResult} sharing={ridingId != null} />
 
 			{/* Above the rows: the run that failed can be twenty rows down, and a refusal nobody
@@ -693,16 +796,15 @@ function Board() {
 			) : waiting || !board ? (
 				<RunsSkeleton label={t("state.loading")} />
 			) : orders.length === 0 ? (
-				// `biz.board.empty` is the shop board's pair, and it is reused rather than
-				// invented: `docs/design-mobile.md` keeps `packages/i18n` a closed union, so a
-				// lane that needs a string reports it and stops. The sentence it prints — "Aquí
-				// ves los pedidos que siguen en curso" — is true of this board and vaguer than
-				// this board deserves; a courier-specific pair is a string request, not a
-				// literal.
+				// **The courier's own pair, not the shop board's.** `biz.board.empty` and its body
+				// are the merchant board's, and the comment that used to sit here said so: "true of
+				// this board and vaguer than this board deserves; a courier-specific pair is a
+				// string request, not a literal." It is now a string request, landed in both
+				// locales, and the sentence on this screen belongs to the person reading it.
 				<EmptyState
 					icon="bicycle-outline"
-					title={t("biz.board.empty")}
-					body={t("biz.board.empty.body")}
+					title={t("delivery.board.assigned.empty")}
+					body={t("delivery.board.assigned.emptyBody")}
 				/>
 			) : (
 				<>
@@ -846,5 +948,6 @@ const styles = StyleSheet.create({
 	},
 	orderActions: { marginTop: space.xs },
 	sharing: { gap: space.sm },
+	boardHead: { gap: TEXT_STACK_GAP },
 	skeletonLine: { height: space.md },
 });

@@ -954,6 +954,39 @@ export const business = {
 	"delivery.board.empty": "No deliveries right now",
 	"delivery.board.empty.body":
 		"New offers will appear here while you are available.",
+
+	/*
+	 * The second board, and why it exists apart from the first.
+	 *
+	 * `/delivery` reads two different pipelines: `deliveries.offers` (an offer the courier
+	 * accepts) and `orders.list` with `assignedToMe` (an order a business assigns by hand).
+	 * `services/orders.ts` writes `order.courierUserId` and `deliveryTable.courierUserId` in the
+	 * same assignment, so one delivery lives in both lists at once — with two state vocabularies
+	 * and two different sets of buttons. What was missing was the heading that says so, and
+	 * without it the second `EmptyState` read as a contradiction of the first rather than as the
+	 * answer to a different question.
+	 */
+	"delivery.board.assigned": "Assigned orders",
+	"delivery.board.assigned.body":
+		"A business can assign you an order directly, without going through offers.",
+	"delivery.board.assigned.empty": "No assigned orders",
+	"delivery.board.assigned.emptyBody":
+		"Orders a business assigns you without asking you to accept them will appear here.",
+
+	/*
+	 * Whether the courier is in the pool. `candidateFor` requires `VERIFIED AND isAvailable` and
+	 * a position less than `PRESENCE_FRESH_MS` old (two minutes), so "no offers" has at least six
+	 * distinct causes and the screen distinguished none of them: not whether the problem was the
+	 * reader or the neighbourhood. This is the line that tells the two apart.
+	 */
+	"delivery.board.receiving.on": "You are receiving offers",
+	"delivery.board.receiving.off":
+		"You are not receiving offers. Turn them back on in your profile to start again.",
+	/* Location is the door: without a fresh position the pool cannot see you, and `Dispatch` never asked for one. */
+	"delivery.board.presence.action": "Turn on location",
+	"delivery.board.presence.body":
+		"Without your location businesses cannot tell that you are nearby, so no offers reach you. Turn it on to start receiving them again.",
+
 	"delivery.offer.accept": "Accept delivery",
 	"delivery.offer.decline": "Decline",
 	"delivery.offer.distance": "{value} km from the business",
