@@ -57,6 +57,52 @@ const t = initTRPC.context<Context>().create({
 	 * it.
 	 */
 	errorFormatter({ shape, error, ctx }) {
+		/**
+		 * Log the cause, because until this nothing recorded it.
+		 *
+		 * `app.onError` in `app.ts` logs an unhandled error with its message and cause, and it
+		 * **never fires for a tRPC procedure**: `@hono/trpc-server` catches the throw, runs it
+		 * through this formatter and answers 500 itself, so `onError` never sees it. The only
+		 * trace of a resolver that threw was the middleware's `"request failed"` line —
+		 * a `requestId` and no reason at all.
+		 *
+		 * Found in production on an `admin.subscriptions` 500, where every candidate cause was
+		 * a `no such column` and nothing in the log chose between them. This is the fix for
+		 * that, and the formatter is the only place it can go: `initTRPC.create({ onError })`
+		 * does not exist in `@trpc/server@11.19.0`'s `RuntimeConfigOptions`, while every error
+		 * response passes through here — the same reason the `code` correction below lives here
+		 * rather than in a middleware.
+		 *
+		 * **A domain error is not a failure.** `ValidationError`, `NotFoundError`,
+		 * `ConflictError` and the rest are the API declining on purpose, and they arrive here as
+		 * ordinary `TRPCError`s with the `DomainError` as `cause`. Logging those at `error` fills
+		 * the log with lines that mean "working as intended", so they are counted at `warn` and
+		 * only an unrecognised cause is treated as a bug.
+		 */
+		const loggedCause = error.cause instanceof DomainError ? error.cause : null;
+		if (loggedCause) {
+			ctx?.logger?.warn("procedure declined", {
+				code: error.code,
+				domainCode: loggedCause.code,
+				message: loggedCause.message,
+				cause:
+					error.cause instanceof Error
+						? error.cause.message
+						: String(error.cause),
+			});
+		} else if (error.code === "INTERNAL_SERVER_ERROR") {
+			// No `path` here: on this version's `TRPCError` it does not exist, and the
+			// request-completion log already names the procedure this requestId belongs to.
+			ctx?.logger?.error("procedure failed", {
+				code: error.code,
+				message: error.message,
+				cause:
+					error.cause instanceof Error
+						? error.cause.message
+						: String(error.cause),
+			});
+		}
+
 		// One place decides what a client may see. A domain error's message was
 		// written for a customer; anything else is a bug on our side and gets the
 		// generic sentence plus the id that makes it findable in the logs.
