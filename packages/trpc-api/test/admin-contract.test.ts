@@ -497,6 +497,36 @@ describe("platform console contracts", () => {
 
 			w.close();
 		});
+/**
+		 * The aggregate sorts are the ones that build a **correlated subquery**, and they were
+		 * the only sorts never exercised here — `newest` and `name` are a bare column, so the
+		 * suite stayed green while `admin.businesses` answered 500 in production the moment an
+		 * operator sorted the approvals queue by order count.
+		 *
+		 * The assertion is that the call returns the right rows, not merely that it does not
+		 * throw: a service that answered `[]` would satisfy "no error" and prove nothing.
+		 */
+		test("sorts by the aggregate columns, which are correlated subqueries", async () => {
+			const w = world();
+			const operator = await seedUser(w.db, { id: "usr_agg_sort", isAdmin: true });
+			const ctx = requireAuthed(await contextFor(w, operator));
+			await seedBusiness(w.db, { id: "biz_agg_a", name: "Alfa" });
+			await seedBusiness(w.db, { id: "biz_agg_b", name: "Zeta" });
+
+			for (const sort of ["orders", "revenue"] as const) {
+				for (const direction of ["asc", "desc"] as const) {
+					const page = await admin.businesses(ctx, {
+						sort,
+						direction,
+						limit: 25,
+					} as AdminListInput);
+					expect(page.rows.length).toBe(2);
+					expect(page.total).toBe(2);
+				}
+			}
+
+			w.close();
+		});
 	});
 
 	/**

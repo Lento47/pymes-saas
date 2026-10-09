@@ -451,11 +451,13 @@ export async function businesses(
 	const paging = listPaging(input);
 	const direction = paging.direction === "asc" ? sql`asc` : sql`desc`;
 
+	// The `*_SORT_SQL` twins, not the select-list originals: these go into `order by`, where
+	// drizzle already qualifies a column and the select spelling double-qualifies it.
 	const SORTS = {
 		newest: sql`${businessTable.createdAt}`,
 		name: sql`${businessTable.name}`,
-		orders: ORDER_COUNT_SQL,
-		revenue: GROSS_VOLUME_SQL,
+		orders: ORDER_COUNT_SORT_SQL,
+		revenue: GROSS_VOLUME_SORT_SQL,
 	};
 	// `?? SORTS.newest` rather than `SORTS[paging.sort]`: see `listPaging`. A lookup miss is
 	// `undefined`, and interpolating that into `order by` produces a query SQLite rejects by
@@ -2432,10 +2434,30 @@ function derivedStatusSql(now: Date) {
 
 const PRODUCT_COUNT_SQL = sql<number>`(select count(*) from ${productTable} where ${productTable.businessId} = ${businessTable}.${businessTable.id})`;
 
+/**
+ * A correlated subquery has to be written **twice**, because drizzle qualifies a column
+ * differently depending on where it appears.
+ *
+ * In a `select` list a bare `${table.column}` renders unqualified — `"id"` — so a subquery
+ * reaching the *outer* row has to spell the correlation as `${table}.${table.column}`, which
+ * renders `"business"."id"`. In an `orderBy` the same interpolation already renders qualified,
+ * so that fragment comes out as `"business"."business"."id"` and SQLite refuses it with
+ * `no such column: business.business.id`.
+ *
+ * Neither spelling works in both places, and there is no third: in an `orderBy` the bare form
+ * is right, in a `select` it is the ambiguous one (`ambiguous column name: id`). So an
+ * aggregate used in **both** needs two spellings, and the pair must be kept in step.
+ * `admin.businesses` answered 500 in production for `sort: "orders"` and `sort: "revenue"`
+ * because it had only the select-list one; `ORDER_COUNT_SQL` and `GROSS_VOLUME_SQL` are the
+ * two aggregates any list actually sorts by, so those are the two that carry a twin.
+ */
 const ORDER_COUNT_SQL = sql<number>`(select count(*) from ${orderTable} where ${orderTable.businessId} = ${businessTable}.${businessTable.id})`;
+const ORDER_COUNT_SORT_SQL = sql<number>`(select count(*) from ${orderTable} where ${orderTable.businessId} = ${businessTable.id})`;
 
 /** Completed volume, in the business's own currency: cancelled orders never happened. */
 const GROSS_VOLUME_SQL = sql<number>`(select coalesce(sum(${orderTable.totalMinor}), 0) from ${orderTable} where ${orderTable.businessId} = ${businessTable}.${businessTable.id} and ${orderTable.status} not in ('CANCELLED','REJECTED'))`;
+/** The order-by twin of `GROSS_VOLUME_SQL` — see the note above the two. */
+const GROSS_VOLUME_SORT_SQL = sql<number>`(select coalesce(sum(${orderTable.totalMinor}), 0) from ${orderTable} where ${orderTable.businessId} = ${businessTable.id} and ${orderTable.status} not in ('CANCELLED','REJECTED'))`;
 
 const OWNER_NAME_SQL = sql<
 	string | null
