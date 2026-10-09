@@ -366,7 +366,7 @@ function CourierSharing({
 const OFFERS_POLL_MS = 15_000;
 
 function Dispatch({ available }: { available: boolean }) {
-	const { t, tp, intlLocale } = useT();
+	const { t, tp } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { colors } = useTheme();
@@ -523,6 +523,14 @@ function Dispatch({ available }: { available: boolean }) {
 						? t("delivery.board.receiving.on")
 						: t("delivery.board.receiving.off")}
 				</Text>
+				{!available ? (
+					<Button
+						label={t("delivery.board.availability.change")}
+						variant="ghost"
+						size="sm"
+						onPress={() => router.push("/courier-profile")}
+					/>
+				) : null}
 			</View>
 
 			{/*
@@ -557,6 +565,9 @@ function Dispatch({ available }: { available: boolean }) {
 				<View style={styles.body}>
 					{pending.map((offer) => {
 						const busy = busyId === offer.id;
+						const minutesLeft = Math.ceil(
+							(new Date(offer.expiresAt).getTime() - Date.now()) / 60_000,
+						);
 						return (
 							<Card key={offer.id}>
 								<View style={styles.order}>
@@ -564,21 +575,38 @@ function Dispatch({ available }: { available: boolean }) {
 										<Text variant="label" tone="muted" tabular>
 											{t("order.number", { code: offer.orderReference })}
 										</Text>
-										<Text variant="caption" tone="muted">
-											{formatStamp(offer.expiresAt, intlLocale)}
+										<Text variant="caption" tone="action" bold>
+											{minutesLeft <= 1
+												? t("delivery.offer.expiresSoon")
+												: t("delivery.offer.expiresMinutes", {
+														count: minutesLeft,
+													})}
 										</Text>
 									</View>
 									<Text variant="body" bold>
 										{offer.businessName}
 									</Text>
-									<Text variant="caption" tone="muted">
-										{offer.dropoffArea}
-										{offer.distanceToPickupKm != null
-											? ` · ${t("delivery.offer.distance", {
-													value: offer.distanceToPickupKm.toFixed(1),
-												})}`
-											: null}
-									</Text>
+									<View style={styles.offerDestination}>
+										<Ionicons
+											name="navigate-outline"
+											size={icon.inline}
+											color={colors.mutedForeground}
+											accessibilityElementsHidden
+											importantForAccessibility="no"
+										/>
+										<Text
+											variant="caption"
+											tone="muted"
+											style={styles.quietText}
+										>
+											{offer.dropoffArea}
+											{offer.distanceToPickupKm != null
+												? ` · ${t("delivery.offer.distance", {
+														value: offer.distanceToPickupKm.toFixed(1),
+													})}`
+												: null}
+										</Text>
+									</View>
 									<View style={styles.orderActions}>
 										<Button
 											label={t("delivery.offer.accept")}
@@ -1143,7 +1171,12 @@ function RunsSkeleton({ label }: { label: string }) {
 const styles = StyleSheet.create({
 	gap: { gap: space.lg },
 	body: { gap: space.lg },
-	statusRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
+	statusRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		flexWrap: "wrap",
+		gap: space.xs,
+	},
 	quietRow: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -1151,6 +1184,11 @@ const styles = StyleSheet.create({
 		paddingVertical: space.sm,
 	},
 	quietText: { flex: 1 },
+	offerDestination: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+	},
 	// The record card's three lines, tighter than `body`'s card-to-card gap because these are
 	// three sentences about one subject rather than three separate things.
 	record: { gap: space.xs },

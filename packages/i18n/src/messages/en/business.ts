@@ -1011,6 +1011,8 @@ export const business = {
 	"delivery.board.title": "Deliveries",
 	"delivery.board.subtitle": "Offers and active deliveries",
 	"delivery.board.offers": "Offers to accept",
+	"delivery.offer.expiresSoon": "Expires soon",
+	"delivery.offer.expiresMinutes": "{count} min left",
 	"delivery.board.active": "Active deliveries",
 	"delivery.board.active.body":
 		"Your current orders from every business, including accepted offers and direct assignments.",
@@ -1053,9 +1055,9 @@ export const business = {
 	 * distinct causes and the screen distinguished none of them: not whether the problem was the
 	 * reader or the neighbourhood. This is the line that tells the two apart.
 	 */
-	"delivery.board.receiving.on": "You are receiving offers",
-	"delivery.board.receiving.off":
-		"You are not receiving offers. Turn them back on in your profile to start again.",
+	"delivery.board.receiving.on": "Available for offers",
+	"delivery.board.receiving.off": "Offers paused",
+	"delivery.board.availability.change": "Change status",
 	/* Location is the door: without a fresh position the pool cannot see you, and `Dispatch` never asked for one. */
 	"delivery.board.presence.action": "Turn on location",
 	"delivery.board.presence.body":

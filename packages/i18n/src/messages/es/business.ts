@@ -1086,6 +1086,8 @@ export const business = {
 	"delivery.board.title": "Repartos",
 	"delivery.board.subtitle": "Ofertas y entregas activas",
 	"delivery.board.offers": "Ofertas para aceptar",
+	"delivery.offer.expiresSoon": "Vence pronto",
+	"delivery.offer.expiresMinutes": "Quedan {count} min",
 	"delivery.board.active": "Entregas activas",
 	"delivery.board.active.body":
 		"Tus pedidos actuales de todos los negocios, incluidas las ofertas aceptadas y asignaciones directas.",
@@ -1128,9 +1130,9 @@ export const business = {
 	 * menos seis causas distintas y la pantalla no distinguía ninguna: ni si el problema era él o
 	 * el vecindario. Esta es la línea que separa las dos.
 	 */
-	"delivery.board.receiving.on": "Estás recibiendo ofertas",
-	"delivery.board.receiving.off":
-		"No estás recibiendo ofertas. Actívalas en tu perfil para volver a recibirlas.",
+	"delivery.board.receiving.on": "Disponible para ofertas",
+	"delivery.board.receiving.off": "Ofertas pausadas",
+	"delivery.board.availability.change": "Cambiar estado",
 	/* La ubicación es la puerta: sin posición fresca el pool no te ve, y `Dispatch` no la pedía. */
 	"delivery.board.presence.action": "Activar ubicación",
 	"delivery.board.presence.body":

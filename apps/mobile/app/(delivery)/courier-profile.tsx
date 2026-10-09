@@ -962,45 +962,6 @@ function ProfileForm({
 				</SafeAreaView>
 			</Modal>
 
-			{/*
-			    The directory preview, and the gate on it moved.
-
-			    It used to draw only once the profile was `VERIFIED`, which meant the courier who
-			    most wanted to check it saw nothing: someone who has just filled the form is
-			    `PENDING`, and "does this look right to a shop?" is the question they are actually
-			    holding. The gate is now `profile.data` at all — a courier with no profile has
-			    nothing to preview — and the card's `verified` prop carries the real status.
-
-			    **`verified` is what makes that safe.** `./courier-directory-card` used to print
-			    "Verificado por PymesHub" unconditionally, so lifting this gate without the prop
-			    would have shown that sentence to a courier the platform has not approved.
-
-			    Everything here is already on screen: `couriers.profile` for the name, area, bio
-			    and availability, and `users.me` for the avatar — which is the same `user.image`
-			    the pool entry reads, so this cannot drift from what a shop sees. No request, no
-			    new shape.
-
-			    `isMember` and `isInvited` are absent on purpose. They say whether *this* courier is
-			    on *that* shop's roster, and there is no "that" here. The card takes the identity
-			    half; the business screen supplies its own row as `action`.
-			*/}
-			{profile.data ? (
-				<ScreenSection title={t("biz.courier.preview.title")}>
-					<CourierDirectoryCard
-						courier={{
-							profileId: profile.data.id,
-							displayName: profile.data.displayName,
-							image: me.data?.image ?? null,
-							serviceArea: profile.data.serviceArea,
-							zoneRadiusKm: profile.data.zoneRadiusKm,
-							bio: profile.data.bio,
-							isAvailable: profile.data.isAvailable,
-						}}
-						verified={statusValue === "VERIFIED"}
-					/>
-				</ScreenSection>
-			) : null}
-
 			{/* Identity edits require review; the operational zone above saves separately. */}
 			<ScreenSection title={t("biz.courier.profile")}>
 				<Field
@@ -1081,6 +1042,45 @@ function ProfileForm({
 					</Text>
 				) : null}
 			</ScreenSection>
+
+			{/*
+			    The directory preview, and the gate on it moved.
+
+			    It used to draw only once the profile was `VERIFIED`, which meant the courier who
+			    most wanted to check it saw nothing: someone who has just filled the form is
+			    `PENDING`, and "does this look right to a shop?" is the question they are actually
+			    holding. The gate is now `profile.data` at all — a courier with no profile has
+			    nothing to preview — and the card's `verified` prop carries the real status.
+
+			    **`verified` is what makes that safe.** `./courier-directory-card` used to print
+			    "Verificado por PymesHub" unconditionally, so lifting this gate without the prop
+			    would have shown that sentence to a courier the platform has not approved.
+
+			    Everything here is already on screen: `couriers.profile` for the name, area, bio
+			    and availability, and `users.me` for the avatar — which is the same `user.image`
+			    the pool entry reads, so this cannot drift from what a shop sees. No request, no
+			    new shape.
+
+			    `isMember` and `isInvited` are absent on purpose. They say whether *this* courier is
+			    on *that* shop's roster, and there is no "that" here. The card takes the identity
+			    half; the business screen supplies its own row as `action`.
+			*/}
+			{profile.data ? (
+				<ScreenSection title={t("biz.courier.preview.title")}>
+					<CourierDirectoryCard
+						courier={{
+							profileId: profile.data.id,
+							displayName: profile.data.displayName,
+							image: me.data?.image ?? null,
+							serviceArea: profile.data.serviceArea,
+							zoneRadiusKm: profile.data.zoneRadiusKm,
+							bio: profile.data.bio,
+							isAvailable: profile.data.isAvailable,
+						}}
+						verified={statusValue === "VERIFIED"}
+					/>
+				</ScreenSection>
+			) : null}
 
 			{failure.message ? (
 				<Text
