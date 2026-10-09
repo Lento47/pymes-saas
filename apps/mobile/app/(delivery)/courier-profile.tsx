@@ -8,6 +8,7 @@ import {
 	Image,
 	Platform,
 	StyleSheet,
+	useWindowDimensions,
 	View,
 } from "react-native";
 
@@ -33,7 +34,7 @@ import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { requestSignOutNavigation } from "@/lib/sign-out-intent";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, radius, space, useTheme } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
 /**
  * The courier-owned `/courier-profile` route. Keeping it inside `(delivery)` gives a fresh
@@ -629,13 +630,7 @@ function ProfileForm({
 	}, [dirty, profile.isError, publishBar, ready, saving, waiting]);
 
 	if (waiting) {
-		return (
-			<View style={styles.skeleton}>
-				<Skeleton style={styles.skeletonLine} />
-				<Skeleton style={styles.skeletonLine} />
-				<Skeleton style={styles.skeletonLine} />
-			</View>
-		);
+		return <CourierProfileSkeleton loadingLabel={t("state.loading")} />;
 	}
 	if (profile.isError) {
 		return (
@@ -1016,6 +1011,75 @@ const REJECTED_STATUS = {
 	tint: "statusRejected",
 } as const;
 
+/**
+ * The wait, in the shape the screen will actually have.
+ *
+ * ## What it used to be
+ *
+ * Three identical grey lines with no label and no role — against a screen that is a status card,
+ * an availability control, five labelled inputs, a photo block two hundred points tall, a
+ * two-segment control and a pinned bar. Two failures at once: **the layout jumped** because the
+ * skeleton was not the layout standing in for itself, and **the load was silent** to a screen
+ * reader, because nothing in those three lines was announced and nothing claimed to be a progress
+ * indicator.
+ *
+ * ## How it is built
+ *
+ * **Text lines are composed with the reader's font scale.** `./profile.tsx`'s note on its own
+ * skeleton is the reasoning: "a skeleton frozen at 100% metrics is eight points short of a real
+ * row at 200%", so the wait reserves less than the content and the form grows under the reader's
+ * fingers. `./skeletons`'s `line()` is the shared composition, not a copy of the arithmetic.
+ *
+ * **Control blocks are not composed**, and that is the same file's other half: they stand in for
+ * inputs and buttons, so they keep the floor a control owns — `MIN_TOUCH_TARGET`. Scaling a
+ * control would make the skeleton's own layout jump when the reader's text size changes.
+ *
+ * **Wrapped in a labelled `progressbar`**, as `(business)/account.tsx:219-241` does. One
+ * announcement for the whole wait, and it says what is happening.
+ */
+function CourierProfileSkeleton({ loadingLabel }: { loadingLabel: string }) {
+	const { fontScale } = useWindowDimensions();
+	const label = (variant: keyof typeof type) =>
+		Math.round(type[variant].lineHeight * fontScale);
+
+	return (
+		<View
+			style={styles.content}
+			accessible
+			accessibilityRole="progressbar"
+			accessibilityLabel={loadingLabel}
+		>
+			{/* The status card: a heading's line and the sentence under it. */}
+			<Card style={styles.statusCard}>
+				<Skeleton style={{ width: "45%", height: label("heading") }} />
+				<Skeleton style={{ width: "80%", height: label("body") }} />
+			</Card>
+
+			{/* Availability: the segment group's own height, so the control below does not move. */}
+			<Skeleton style={{ height: MIN_TOUCH_TARGET + space.lg }} />
+
+			{/* Three labelled inputs with their section headings. */}
+			<Skeleton style={{ width: "35%", height: label("heading") }} />
+			{[0, 1, 2].map((index) => (
+				<View key={index} style={styles.skeletonField}>
+					<Skeleton style={{ width: "30%", height: label("label") }} />
+					<Skeleton style={{ height: MIN_TOUCH_TARGET }} />
+				</View>
+			))}
+
+			{/* The vehicle block: two inputs and the photo, at the height the photo draws. */}
+			<Skeleton style={{ width: "35%", height: label("heading") }} />
+			{[0, 1].map((index) => (
+				<View key={index} style={styles.skeletonField}>
+					<Skeleton style={{ width: "30%", height: label("label") }} />
+					<Skeleton style={{ height: MIN_TOUCH_TARGET }} />
+				</View>
+			))}
+			<Skeleton style={styles.skeletonPhoto} />
+		</View>
+	);
+}
+
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
@@ -1026,12 +1090,15 @@ const styles = StyleSheet.create({
 		gap: space.sm,
 	},
 	rows: { gap: space.sm },
+	skeletonField: { gap: space.sm },
+	// The photo's own box: `media`-less because `styles.photo` here is a full-width block whose
+	// height is fixed at 200, and a skeleton at any other height is a second layout jump when the
+	// real picture arrives.
+	skeletonPhoto: { width: "100%", height: 200, borderRadius: radius.md },
 	photoBlock: { gap: space.sm },
 	photo: {
 		width: "100%",
 		height: 200,
 		borderRadius: radius.md,
 	},
-	skeleton: { gap: space.md },
-	skeletonLine: { height: space.xl, width: "80%" },
 });
