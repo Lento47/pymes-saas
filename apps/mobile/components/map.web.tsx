@@ -41,6 +41,10 @@ export function MapView(_props: {
 	route?: {
 		pickup: { lat: number; lng: number };
 		destination: { lat: number; lng: number };
+		geometry?: {
+			type: "LineString";
+			coordinates: [number, number][];
+		} | null;
 	} | null;
 	style?: StyleProp<ViewStyle>;
 	onPick?: ((coords: { lat: number; lng: number }) => void) | null;

@@ -206,6 +206,11 @@ export type MapViewProps = {
 	route?: {
 		pickup: { lat: number; lng: number };
 		destination: { lat: number; lng: number };
+		/** A server-validated road shape; endpoints alone never imply a straight route. */
+		geometry?: {
+			type: "LineString";
+			coordinates: [number, number][];
+		} | null;
 	} | null;
 	/**
 	 * Where the band sits, which is the caller's. The band's *height*, radius, border and
@@ -490,6 +495,27 @@ export function MapView({
 							paint={{
 								"line-color": colors.primary,
 								"line-width": fitRadius ? 3 : PIN_RING_WIDTH,
+							}}
+						/>
+					</GeoJSONSource>
+				) : null}
+
+				{route?.geometry ? (
+					<GeoJSONSource
+						id="deliveryRoadRoute"
+						data={{
+							type: "Feature",
+							properties: {},
+							geometry: route.geometry,
+						}}
+					>
+						<Layer
+							id="deliveryRoadRouteLine"
+							type="line"
+							paint={{
+								"line-color": colors.primary,
+								"line-width": 4,
+								"line-opacity": 0.9,
 							}}
 						/>
 					</GeoJSONSource>
