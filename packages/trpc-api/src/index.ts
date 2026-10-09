@@ -11,7 +11,10 @@ import { publishPending } from "./outbox";
 import { deliverPendingPushes, processPushReceipts } from "./push";
 import { handleQueue } from "./queue";
 import { sweepAccountDeletions } from "./services/account-deletion";
-import { sweepExpiredOffers } from "./services/delivery-dispatch";
+import {
+	sweepExpiredOffers,
+	sweepWaitingDeliveries,
+} from "./services/delivery-dispatch";
 import { sweepLapsed } from "./services/subscription";
 
 /**
@@ -116,6 +119,20 @@ const handler = {
 			await sweepExpiredOffers(createDb(env.DB));
 		} catch (error) {
 			logger.error("delivery offer sweep failed", {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		// The READY push fires dispatch the moment an order is prepared; this is the
+		// backstop for the runs that push could not fill — no courier in the pool at
+		// that instant, a courier whose offer expired without an answer. It runs after
+		// the expiry sweep so a run just returned to `SEARCHING` by that sweep is
+		// offered again within the same tick rather than the next one, and it is
+		// bounded (`limit = 10`) so it cannot spend the whole tick on a busy day.
+		try {
+			await sweepWaitingDeliveries(createDb(env.DB));
+		} catch (error) {
+			logger.error("waiting delivery sweep failed", {
 				cause: error instanceof Error ? error.message : String(error),
 			});
 		}

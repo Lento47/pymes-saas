@@ -126,9 +126,18 @@ function disambiguate(
 		}
 	}
 
-	throw new Error(
-		`Could not disambiguate the purchase band for theme "${source}": the disambiguation step landed on the same colour as another theme and could not move to a distinct colour while keeping both contrast ratios at or above ${BAND_MIN_CONTRAST}:1`,
+	// Neither direction landed inside the contrast window. This used to throw, and
+	// the throw ran during a render — a theme whose anchored band sits where both
+	// displacements fail brings the whole screen down with a ReferenceError-reported
+	// crash (`crs_beaf1b8c`, 2026-10-09). The two-way displacement is a uniqueness
+	// nicety between themes, not a correctness gate: the anchored colour already
+	// cleared `bandAnchor`'s floor against the page by construction, so returning it
+	// keeps a legible band on screen and leaves the collision to surface loudly in
+	// `purchase-colors.test.ts`'s uniqueness assertion instead of in production.
+	console.warn(
+		`purchase band: could not disambiguate theme "${source}" while keeping both contrast ratios at or above ${BAND_MIN_CONTRAST}:1; using the anchored colour`,
 	);
+	return anchored;
 }
 
 /**

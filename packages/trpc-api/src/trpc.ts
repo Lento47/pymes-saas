@@ -16,6 +16,31 @@ import {
 } from "./errors";
 
 /**
+ * The deepest `message` on a cause chain, labelled at each hop.
+ *
+ * tRPC wraps a resolver's throw into one `TRPCError`, keeping the original as `cause`.
+ * That original is frequently **also** a wrapper: drizzle hands back a
+ * `DrizzleQueryError` whose `message` is only the SQL text and whose `cause` is D1's own
+ * error naming the real problem — a column, a constraint, a transport. Logging the first
+ * hop alone is what made the `deliveries.mine` 500 of 2026-10-09 a wall of SQL with no
+ * verdict in it. The second hop exists for exactly this log line, so this helper walks
+ * up to five hops, keeps every `message` it finds, and the last one is the closest thing
+ * to a driver error the chain holds.
+ */
+function causeChainOf(error: unknown): string | undefined {
+	const messages: string[] = [];
+	let current: unknown = error;
+	for (let hop = 0; hop < 5 && current instanceof Error; hop += 1) {
+		if (current.message) messages.push(current.message);
+		current = current.cause;
+	}
+	// The first hop is already logged as `message` for the tRPC error itself; what this
+	// chain adds in the wrapped-error case starts at the resolver's own throw. Single-hop
+	// chains repeat that first message and would only double it into the line.
+	return messages.length > 1 ? messages.slice(1).join("\n  ← ") : undefined;
+}
+
+/**
  * The tRPC instance, and the four procedures every router is built from.
  *
  * The whole authorisation model is in this file, which is the point: a router that
@@ -96,10 +121,14 @@ const t = initTRPC.context<Context>().create({
 			ctx?.logger?.error("procedure failed", {
 				code: error.code,
 				message: error.message,
+				// The full cause chain, not one hop. A wrapped failure (drizzle → D1)
+				// names its real cause on the second hop; logging only the first is how
+				// a query came out as an unknown error's SQL and nothing more.
 				cause:
-					error.cause instanceof Error
+					causeChainOf(error.cause) ??
+					(error.cause instanceof Error
 						? error.cause.message
-						: String(error.cause),
+						: String(error.cause)),
 			});
 		}
 

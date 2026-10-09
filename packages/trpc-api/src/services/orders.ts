@@ -1597,6 +1597,36 @@ async function applyMove(
 
 	await announce(ctx, envelope, move.to, now, move.note);
 
+	// The order becoming READY is the moment a waiting run can be filled, and this is the
+	// only push dispatch gets besides a courier's own ping. Dispatch is otherwise
+	// pull-based — `reportPresence` and `requestOffers` fire when a *courier* acts — so a
+	// shop that prepared an order at an hour no courier happened to ping left its run
+	// `SEARCHING` until somebody came online: `dlv_9f2a57a0` waited 77 minutes in exactly
+	// that state. Firing here costs one ranking pass over the nearby pool, and its own
+	// failure must not fail the shop's move that just succeeded.
+	if (move.to === "READY" && order.fulfilment === "DELIVERY") {
+		try {
+			const deliveryRow = (
+				await ctx.db
+					.select({ id: deliveryTable.id, status: deliveryTable.status })
+					.from(deliveryTable)
+					.where(eq(deliveryTable.orderId, order.id))
+					.limit(1)
+			)[0];
+			// `SEARCHING` only. A run that is already `OFFERED` has somebody to answer,
+			// and anything past that has a courier in hand — re-running either would
+			// race `acceptOffer`'s own transitions.
+			if (deliveryRow?.status === "SEARCHING") {
+				await dispatchNext(ctx.db, deliveryRow.id);
+			}
+		} catch (error) {
+			ctx.logger?.warn("ready delivery dispatch failed", {
+				orderId: order.id,
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	return detail(ctx, order.id, move.actor);
 }
 

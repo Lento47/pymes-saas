@@ -601,3 +601,46 @@ export async function sweepExpiredOffers(
 		await dispatchNext(db, row.deliveryId);
 	}
 }
+
+/**
+ * Offer the oldest still-unmatched runs, once a minute, to whoever is eligible now.
+ *
+ * Every other dispatch trigger is a person acting — a courier pinging presence, opening
+ * the board, or a shop moving the order to READY. This sweep is the one that needs none
+ * of those: a run that came out `SEARCHING` because the READY push found nobody online,
+ * or whose ordered candidate pool was empty at that instant, waits here for the pool to
+ * refill. `dispatchNext` itself refuses anything not `SEARCHING`, so a run that moved on
+ * between the read and the call is skipped rather than raced.
+ *
+ * Oldest first, and bounded: the cron runs every minute and each unchecked row costs a
+ * full ranking pass, so the limit is what keeps a busy day from spending the tick.
+ * Ten is the same bound `reportPresence`'s local sweep uses.
+ *
+ * A run whose pickup has no coordinates is deliberately left alone, the same rule
+ * `candidateFor` enforces: there is no radius to offer it inside, so a human assignment
+ * is the answer, not an offer to everywhere.
+ */
+export async function sweepWaitingDeliveries(
+	db: Db,
+	limit = 10,
+): Promise<void> {
+	const waiting = await db
+		.select({ id: deliveryTable.id })
+		.from(deliveryTable)
+		.where(
+			and(
+				eq(deliveryTable.status, "SEARCHING"),
+				isNotNull(deliveryTable.pickupLat),
+				isNotNull(deliveryTable.pickupLng),
+			),
+		)
+		// Oldest first: the run that has waited longest is the one a filling pool
+		// should reach first, and it is also the one a shop owner is most likely
+		// to be watching.
+		.orderBy(asc(deliveryTable.createdAt))
+		.limit(limit);
+
+	for (const row of waiting) {
+		await dispatchNext(db, row.id);
+	}
+}
