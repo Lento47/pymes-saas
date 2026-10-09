@@ -911,6 +911,90 @@ describe("releasing an order onto the road", () => {
 		return rows[0];
 	}
 
+	test("an unassigned run can be delivered by the business", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "self_delivery");
+		const owner = await seedOwner(test, ready.businessId, "self_delivery");
+		const order = await placeDelivery(ready, "self_delivery");
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+		const started = await owner.orders.startSelfDelivery({
+			orderId: order.id,
+			expectedStatus: "READY",
+		});
+		expect(started.status).toBe("OUT_FOR_DELIVERY");
+		expect(started.nextStatuses).not.toContain("COMPLETED");
+		expect(await runFor(test, order.id)).toMatchObject({
+			status: "PICKED_UP",
+			courierUserId: null,
+		});
+		const completed = await owner.orders.completeSelfDelivery({
+			orderId: order.id,
+			expectedStatus: "OUT_FOR_DELIVERY",
+		});
+		expect(completed.status).toBe("COMPLETED");
+		expect((await runFor(test, order.id))?.status).toBe("DELIVERED");
+		test.close();
+	});
+
+	test("taking over an open offer cancels it before a courier can accept", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "takeover");
+		const owner = await seedOwner(test, ready.businessId, "takeover");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_takeover_courier",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		const order = await placeDelivery(ready, "takeover");
+		const offer = (await courier.caller.deliveries.offers())[0];
+		if (!offer) throw new Error("Courier did not receive an offer");
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+		await owner.orders.startSelfDelivery({
+			orderId: order.id,
+			expectedStatus: "READY",
+		});
+		expect(await courier.caller.deliveries.offers()).toEqual([]);
+		expect(
+			(
+				await refused(
+					courier.caller.deliveries.acceptOffer({ offerId: offer.id }),
+				)
+			).code,
+		).toBe("CONFLICT");
+		test.close();
+	});
+
+	test("a business can take over after sending an unassigned order out", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "late_takeover");
+		const owner = await seedOwner(test, ready.businessId, "late_takeover");
+		const order = await placeDelivery(ready, "late_takeover");
+		for (const to of [
+			"ACCEPTED",
+			"PREPARING",
+			"READY",
+			"OUT_FOR_DELIVERY",
+		] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+		await owner.orders.startSelfDelivery({
+			orderId: order.id,
+			expectedStatus: "OUT_FOR_DELIVERY",
+		});
+		expect((await runFor(test, order.id))?.status).toBe("PICKED_UP");
+		const completed = await owner.orders.completeSelfDelivery({
+			orderId: order.id,
+			expectedStatus: "OUT_FOR_DELIVERY",
+		});
+		expect(completed.status).toBe("COMPLETED");
+		test.close();
+	});
+
 	test("the shop can send it out while the run is still searching for a courier", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "unassigned");
@@ -987,6 +1071,16 @@ describe("releasing an order onto the road", () => {
 		await expect(
 			owner.orders.advance({ orderId: order.id, to: "OUT_FOR_DELIVERY" }),
 		).rejects.toThrow(/repartidor/i);
+		expect(
+			(
+				await refused(
+					owner.orders.startSelfDelivery({
+						orderId: order.id,
+						expectedStatus: "READY",
+					}),
+				)
+			).code,
+		).toBe("CONFLICT");
 
 		test.close();
 	});

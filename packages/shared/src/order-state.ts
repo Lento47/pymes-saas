@@ -117,7 +117,8 @@ const TRANSITIONS: Record<OrderStatus, readonly Transition[]> = {
 		{ to: "CANCELLED", by: ["BUSINESS", "ADMIN"] },
 	],
 	OUT_FOR_DELIVERY: [
-		{ to: "COMPLETED", by: ["COURIER", "BUSINESS", "ADMIN"] },
+		// A business completing its own run uses the guarded self-delivery action.
+		{ to: "COMPLETED", by: ["COURIER", "ADMIN"] },
 		{ to: "CANCELLED", by: ["ADMIN"] },
 	],
 	COMPLETED: [],

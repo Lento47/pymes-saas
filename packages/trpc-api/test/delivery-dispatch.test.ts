@@ -225,6 +225,31 @@ async function ageOffer(test: TestWorld, offerId: string) {
 }
 
 describe("sweepExpiredOffers", () => {
+	test("a nearby presence ping recovers an expired offer without a scheduled tick", async () => {
+		const test = world();
+		const ready = await shopWithBasket(test, "presence_recovery");
+		await courierAt(test, {
+			businessId: ready.businessId,
+			id: "usr_sweep_presence_first",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		const next = await courierAt(test, {
+			businessId: ready.businessId,
+			id: "usr_sweep_presence_next",
+			lat: 9.9302,
+			lng: -84.0802,
+		});
+		const { delivery } = await placeAndRead(test, ready, "presence_recovery");
+		const first = await firstOffer(test, delivery.id);
+		await ageOffer(test, first.id);
+		await next.caller.deliveries.reportPresence({ lat: 9.9302, lng: -84.0802 });
+		const offers = await next.caller.deliveries.offers();
+		expect(offers).toHaveLength(1);
+		expect(offers[0]?.deliveryId).toBe(delivery.id);
+		expect((await firstOffer(test, delivery.id)).status).toBe("EXPIRED");
+		test.close();
+	});
 	test("a timed-out offer expires and its delivery goes back to looking", async () => {
 		const test = world();
 		const ready = await shopWithBasket(test, "expiry");

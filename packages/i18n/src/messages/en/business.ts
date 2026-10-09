@@ -84,6 +84,16 @@ export const business = {
 	"biz.board.markReady": "Mark ready",
 	"biz.board.markPickedUp": "Mark picked up",
 	"biz.board.markDelivered": "Mark delivered",
+	"biz.order.dispatch.title": "Delivery status",
+	"biz.order.dispatch.noPickupPin":
+		"This order has no pickup pin, so couriers cannot receive it. Set your shop location for future orders, or deliver this one yourself.",
+	"biz.order.dispatch.setPickupPin": "Set shop location",
+	"biz.order.dispatch.searching": "Looking for an available courier nearby.",
+	"biz.order.dispatch.offered": "An offer is waiting for a courier's response.",
+	"biz.order.dispatch.assigned": "A courier has accepted this delivery.",
+	"biz.order.dispatch.self": "Your business is delivering this order.",
+	"biz.order.selfDelivery.start": "Deliver ourselves",
+	"biz.order.selfDelivered": "Delivery marked complete",
 	"biz.board.sendOut": "Send for delivery",
 	"biz.board.advance": "Next step",
 	"biz.board.waitingFor": "Waiting {minutes} min",
@@ -1062,6 +1072,10 @@ export const business = {
 	"delivery.board.presence.action": "Turn on location",
 	"delivery.board.presence.body":
 		"Without your location businesses cannot tell that you are nearby, so no offers reach you. Turn it on to start receiving them again.",
+	"delivery.board.locationUnavailable":
+		"Your location is unavailable. Check location services to receive offers.",
+	"delivery.board.presenceFailed":
+		"We couldn't update your location for offers.",
 
 	/*
 	 * How offers reach you, and every sentence is a condition of `candidateFor`.

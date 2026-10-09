@@ -29,11 +29,12 @@ import {
 	type CartStatus,
 	canAcceptExpress,
 	canTransition,
+	DEFAULT_PLAN,
 	type Discount,
 	decodeCursor,
 	discountAmountOf,
-	encodeCursor,
 	effectivePlan,
+	encodeCursor,
 	isExpress,
 	isPaymentMethodEnabled,
 	isTerminalStatus,
@@ -51,6 +52,7 @@ import {
 	type OrderSummary,
 	type OrderTracking,
 	optionsHash,
+	PLAN_LIMITS,
 	type PlaceOrderInput,
 	type ProductCard,
 	type PromotionErrorKey,
@@ -60,9 +62,8 @@ import {
 	type ReorderSkippedLine,
 	type ReorderSkipReason,
 	type ReportLocationInput,
-	DEFAULT_PLAN,
-	PLAN_LIMITS,
 	requiresCollection,
+	type SelfDeliveryOrderInput,
 	startOfMarketDay,
 	upgradeTarget,
 	weekWindowStart,
@@ -96,12 +97,8 @@ import {
 import { type OrderEventEnvelope, orderEvent, outboxRowOf } from "../events";
 import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
-import { prepareDeliveryForOrder } from "./delivery-dispatch";
-import type {
-	BillingPlan,
-	BusinessContext,
-	UserContext,
-} from "./helpers";
+import { dispatchNext, prepareDeliveryForOrder } from "./delivery-dispatch";
+import type { BillingPlan, BusinessContext, UserContext } from "./helpers";
 import {
 	batchOf,
 	isPublicBusiness,
@@ -110,13 +107,13 @@ import {
 	publicBusiness,
 } from "./helpers";
 import { operationalStatus } from "./locations";
-import { QuotaExceededError } from "./plan-limits";
 import {
 	orderDetailOf,
 	orderSummaryOf,
 	orderTrackingOf,
 	productCardOf,
 } from "./mappers";
+import { QuotaExceededError } from "./plan-limits";
 
 /**
  * Orders — the one table where money has already changed hands.
@@ -937,11 +934,13 @@ export async function advance(
 		// a lapsed shop is held to `FREE` and cannot be the one place that is not.
 		const plan = effectivePlan(
 			ctx.businessPlan ??
-				(await ctx.db
-					.select({ plan: businessTable.plan })
-					.from(businessTable)
-					.where(eq(businessTable.id, order.businessId))
-					.limit(1))[0]?.plan ??
+				(
+					await ctx.db
+						.select({ plan: businessTable.plan })
+						.from(businessTable)
+						.where(eq(businessTable.id, order.businessId))
+						.limit(1)
+				)[0]?.plan ??
 				DEFAULT_PLAN,
 			ctx.subscriptionStatus ?? "ACTIVE",
 		);
@@ -965,6 +964,134 @@ export async function advance(
 		note: input.note ?? input.reason ?? null,
 		courierName: input.courierName ?? null,
 		courierPhone: input.courierPhone ?? null,
+	});
+}
+
+/** A shop claims an unassigned run before taking it out itself. */
+export async function startSelfDelivery(
+	ctx: UserContext,
+	input: SelfDeliveryOrderInput,
+): Promise<OrderDetail> {
+	const order = await reachableOrder(ctx, input.orderId);
+	const actor = actorFor(ctx, order);
+	if (actor !== "BUSINESS")
+		throw new ForbiddenError("Solo el negocio puede repartir este pedido");
+	if (
+		input.expectedStatus !== order.status ||
+		!["READY", "OUT_FOR_DELIVERY"].includes(order.status) ||
+		order.fulfilment !== "DELIVERY"
+	) {
+		throw new ConflictError("El pedido ya no está listo para reparto propio");
+	}
+	const now = new Date();
+	// This conditional claim wins or loses against acceptOffer's OFFERED -> ACCEPTED write.
+	// Once it succeeds, neither acceptance nor dispatch can offer the run again.
+	const claimed = await ctx.db
+		.update(deliveryTable)
+		.set({ status: "PICKED_UP", pickedUpAt: now, updatedAt: now })
+		.where(
+			and(
+				eq(deliveryTable.orderId, order.id),
+				isNull(deliveryTable.courierUserId),
+				inArray(deliveryTable.status, ["SEARCHING", "OFFERED"]),
+			),
+		)
+		.returning({ id: deliveryTable.id });
+	if (!claimed[0])
+		throw new ConflictError("Un repartidor ya tomó esta entrega");
+	if (order.status === "OUT_FOR_DELIVERY") {
+		await ctx.db
+			.update(deliveryOfferTable)
+			.set({ status: "CANCELLED", respondedAt: now })
+			.where(
+				and(
+					eq(deliveryOfferTable.deliveryId, claimed[0].id),
+					eq(deliveryOfferTable.status, "PENDING"),
+				),
+			);
+		return detail(ctx, order.id, actor);
+	}
+	try {
+		return await applyMove(ctx, order, {
+			to: "OUT_FOR_DELIVERY",
+			actor,
+			actorUserId: ctx.user.id,
+			note: null,
+			courierName: null,
+			courierPhone: null,
+			selfDelivery: "start",
+		});
+	} catch (error) {
+		// Release the claim if the order move failed before leaving READY.
+		const [current] = await ctx.db
+			.select({ status: orderTable.status })
+			.from(orderTable)
+			.where(eq(orderTable.id, order.id))
+			.limit(1);
+		if (current?.status === "READY") {
+			const restored = await ctx.db
+				.update(deliveryTable)
+				.set({ status: "SEARCHING", pickedUpAt: null, updatedAt: new Date() })
+				.where(
+					and(
+						eq(deliveryTable.id, claimed[0].id),
+						eq(deliveryTable.status, "PICKED_UP"),
+						isNull(deliveryTable.courierUserId),
+					),
+				)
+				.returning({ id: deliveryTable.id });
+			if (restored[0]) {
+				await ctx.db
+					.update(deliveryOfferTable)
+					.set({ status: "CANCELLED", respondedAt: new Date() })
+					.where(
+						and(
+							eq(deliveryOfferTable.deliveryId, claimed[0].id),
+							eq(deliveryOfferTable.status, "PENDING"),
+						),
+					);
+				await dispatchNext(ctx.db, claimed[0].id);
+			}
+		}
+		throw error;
+	}
+}
+
+/** Finish a run the shop claimed while no courier had accepted it. */
+export async function completeSelfDelivery(
+	ctx: UserContext,
+	input: SelfDeliveryOrderInput,
+): Promise<OrderDetail> {
+	const order = await reachableOrder(ctx, input.orderId);
+	const actor = actorFor(ctx, order);
+	if (actor !== "BUSINESS")
+		throw new ForbiddenError("Solo el negocio puede confirmar este reparto");
+	if (
+		input.expectedStatus !== "OUT_FOR_DELIVERY" ||
+		order.status !== "OUT_FOR_DELIVERY" ||
+		order.fulfilment !== "DELIVERY"
+	) {
+		throw new ConflictError("Este pedido no está en reparto propio");
+	}
+	const [run] = await ctx.db
+		.select({
+			status: deliveryTable.status,
+			courierUserId: deliveryTable.courierUserId,
+		})
+		.from(deliveryTable)
+		.where(eq(deliveryTable.orderId, order.id))
+		.limit(1);
+	if (run?.status !== "PICKED_UP" || run.courierUserId !== null) {
+		throw new ConflictError("Esta entrega pertenece a un repartidor");
+	}
+	return applyMove(ctx, order, {
+		to: "COMPLETED",
+		actor,
+		actorUserId: ctx.user.id,
+		note: null,
+		courierName: null,
+		courierPhone: null,
+		selfDelivery: "complete",
 	});
 }
 
@@ -1261,6 +1388,7 @@ async function applyMove(
 		note: string | null;
 		courierName: string | null;
 		courierPhone: string | null;
+		selfDelivery?: "start" | "complete";
 	},
 ): Promise<OrderDetail> {
 	const now = new Date();
@@ -1386,6 +1514,36 @@ async function applyMove(
 		}),
 		ctx.db.insert(outboxTable).values(outboxRowOf(envelope, now)),
 	];
+	if (move.selfDelivery === "start") {
+		statements.push(
+			ctx.db
+				.update(deliveryOfferTable)
+				.set({ status: "CANCELLED", respondedAt: now })
+				.where(
+					and(
+						eq(
+							deliveryOfferTable.deliveryId,
+							sql`(select id from delivery where order_id = ${order.id})`,
+						),
+						eq(deliveryOfferTable.status, "PENDING"),
+					),
+				),
+		);
+	}
+	if (move.selfDelivery === "complete") {
+		statements.push(
+			ctx.db
+				.update(deliveryTable)
+				.set({ status: "DELIVERED", deliveredAt: now, updatedAt: now })
+				.where(
+					and(
+						eq(deliveryTable.orderId, order.id),
+						isNull(deliveryTable.courierUserId),
+						eq(deliveryTable.status, "PICKED_UP"),
+					),
+				),
+		);
+	}
 	if (move.to === "OUT_FOR_DELIVERY") {
 		statements.push(
 			ctx.db

@@ -8,6 +8,7 @@ import {
 	purchasedProductsInput,
 	reorderOrderInput,
 	reportLocationInput,
+	selfDeliveryOrderInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
 
@@ -95,6 +96,14 @@ export const ordersRouter = router({
 	advance: protectedProcedure
 		.input(advanceOrderInput)
 		.mutation(({ ctx, input }) => orders.advance(ctx, input)),
+
+	startSelfDelivery: protectedProcedure
+		.input(selfDeliveryOrderInput)
+		.mutation(({ ctx, input }) => orders.startSelfDelivery(ctx, input)),
+
+	completeSelfDelivery: protectedProcedure
+		.input(selfDeliveryOrderInput)
+		.mutation(({ ctx, input }) => orders.completeSelfDelivery(ctx, input)),
 
 	/**
 	 * Hand a READY delivery to a courier. `protectedProcedure` like `advance`:

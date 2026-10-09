@@ -99,6 +99,17 @@ export const business = {
 	"biz.board.markReady": "Marcar listo",
 	"biz.board.markPickedUp": "Marcar retirado",
 	"biz.board.markDelivered": "Marcar entregado",
+	"biz.order.dispatch.title": "Estado del reparto",
+	"biz.order.dispatch.noPickupPin":
+		"Este pedido no tiene punto de recogida y no llegará a los repartidores. Ubica tu negocio para próximos pedidos o reparte este tú mismo.",
+	"biz.order.dispatch.setPickupPin": "Ubicar el negocio",
+	"biz.order.dispatch.searching": "Buscando un repartidor disponible cerca.",
+	"biz.order.dispatch.offered":
+		"Una oferta espera la respuesta de un repartidor.",
+	"biz.order.dispatch.assigned": "Un repartidor aceptó esta entrega.",
+	"biz.order.dispatch.self": "Tu negocio está repartiendo este pedido.",
+	"biz.order.selfDelivery.start": "Repartir nosotros",
+	"biz.order.selfDelivered": "Entrega marcada como completada",
 	"biz.board.sendOut": "Sale a entregar",
 	"biz.board.advance": "Siguiente paso",
 	"biz.board.waitingFor": "Esperando {minutes} min",
@@ -1137,6 +1148,10 @@ export const business = {
 	"delivery.board.presence.action": "Activar ubicación",
 	"delivery.board.presence.body":
 		"Sin tu ubicación los negocios no pueden saber que estás cerca, así que no te llegan ofertas. Actívala para volver a recibirlas.",
+	"delivery.board.locationUnavailable":
+		"Tu ubicación no está disponible. Revisa los servicios de ubicación para recibir ofertas.",
+	"delivery.board.presenceFailed":
+		"No pudimos actualizar tu ubicación para recibir ofertas.",
 
 	/*
 	 * Cómo llegan las ofertas, y cada frase es una condición de `candidateFor`.

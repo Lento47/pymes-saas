@@ -7,11 +7,12 @@ import {
 	type OrderStatus,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
 
 import { BackButton } from "@/components/back-button";
+import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { MerchantModule } from "@/components/merchant-module";
@@ -134,6 +135,15 @@ export default function MerchantOrderDetail() {
 			},
 		),
 	);
+	const delivery = useQuery(
+		trpc.deliveries.byOrder.queryOptions(
+			{ orderId: id ?? "" },
+			{
+				enabled: !!id && order.data?.fulfilment === "DELIVERY",
+				refetchInterval: 5_000,
+			},
+		),
+	);
 	const waiting = useSkeletonHold(!!id && order.isPending);
 	const refreshControl = useRefreshControl(() => order.refetch());
 	const move = useMutation(
@@ -154,6 +164,44 @@ export default function MerchantOrderDetail() {
 			},
 		}),
 	);
+	const selfStart = useMutation(
+		trpc.orders.startSelfDelivery.mutationOptions({
+			onSuccess: async () => {
+				light();
+				await Promise.all([
+					cache.invalidateQueries({ queryKey: trpc.orders.pathKey() }),
+					cache.invalidateQueries({ queryKey: trpc.deliveries.pathKey() }),
+				]);
+			},
+			onError: async (error) => {
+				warning();
+				if (toApiFailure(error).code === "CONFLICT") {
+					await Promise.all([order.refetch(), delivery.refetch()]);
+				}
+			},
+		}),
+	);
+	const selfComplete = useMutation(
+		trpc.orders.completeSelfDelivery.mutationOptions({
+			onSuccess: async () => {
+				light();
+				toast.show(t("biz.order.selfDelivered"));
+				await Promise.all([
+					cache.invalidateQueries({ queryKey: trpc.orders.pathKey() }),
+					cache.invalidateQueries({ queryKey: trpc.deliveries.pathKey() }),
+					cache.invalidateQueries({ queryKey: trpc.business.home.pathKey() }),
+				]);
+			},
+			onError: async (error) => {
+				warning();
+				if (toApiFailure(error).code === "CONFLICT") {
+					await Promise.all([order.refetch(), delivery.refetch()]);
+				}
+			},
+		}),
+	);
+	const moving =
+		move.isPending || selfStart.isPending || selfComplete.isPending;
 
 	const detail = order.data;
 	const next =
@@ -171,6 +219,17 @@ export default function MerchantOrderDetail() {
 	 * (`noNonNullAssertion`) asks for anyway.
 	 */
 	const advance = next[0];
+	const run = delivery.data;
+	const selfDelivering =
+		detail?.fulfilment === "DELIVERY" &&
+		detail.status === "OUT_FOR_DELIVERY" &&
+		run?.status === "PICKED_UP" &&
+		run.courier === null;
+	const mayTakeOver =
+		detail?.fulfilment === "DELIVERY" &&
+		(detail.status === "READY" || detail.status === "OUT_FOR_DELIVERY") &&
+		(run?.status === "SEARCHING" || run?.status === "OFFERED") &&
+		run.courier === null;
 
 	/**
 	 * The three hand-offs.
@@ -569,6 +628,49 @@ export default function MerchantOrderDetail() {
 								/>
 							</MerchantModule>
 
+							{detail.fulfilment === "DELIVERY" ? (
+								<MerchantModule radius={radius.lg}>
+									<ModuleHeading>{t("biz.order.dispatch.title")}</ModuleHeading>
+									{delivery.isPending ? (
+										<Text variant="body" tone="muted">
+											{t("state.loading")}
+										</Text>
+									) : run ? (
+										<>
+											<Text variant="body" tone="muted">
+												{detail.status === "COMPLETED"
+													? t("biz.board.column.done")
+													: selfDelivering
+														? t("biz.order.dispatch.self")
+														: run.courier
+															? t("biz.order.dispatch.assigned")
+															: run.pickup.lat == null || run.pickup.lng == null
+																? t("biz.order.dispatch.noPickupPin")
+																: run.status === "OFFERED"
+																	? t("biz.order.dispatch.offered")
+																	: t("biz.order.dispatch.searching")}
+											</Text>
+											{mayTakeOver &&
+											(run.pickup.lat == null || run.pickup.lng == null) ? (
+												<Button
+													label={t("biz.order.dispatch.setPickupPin")}
+													variant="secondary"
+													onPress={() =>
+														router.push("/(business)/shop-location")
+													}
+												/>
+											) : null}
+										</>
+									) : null}
+									{delivery.isError ? (
+										<ErrorState
+											error={delivery.error}
+											onRetry={() => void delivery.refetch()}
+										/>
+									) : null}
+								</MerchantModule>
+							) : null}
+
 							{/*
 							 * The action, in the scroll and not pinned to the foot.
 
@@ -598,7 +700,7 @@ export default function MerchantOrderDetail() {
 													expectedStatus: detail.status,
 												})
 											}
-											disabled={move.isPending}
+											disabled={moving}
 											disabledOpacity={1}
 											scaleTo={PRESS_SCALE_DIALOG}
 											ripple={false}
@@ -607,13 +709,13 @@ export default function MerchantOrderDetail() {
 												moveLabelKey(advance, detail.fulfilment),
 											)}
 											accessibilityState={{
-												busy: move.isPending,
-												disabled: move.isPending,
+												busy: moving,
+												disabled: moving,
 											}}
 											style={[
 												styles.primaryAction,
 												{
-													backgroundColor: move.isPending
+													backgroundColor: moving
 														? colors.muted
 														: colors.primary,
 												},
@@ -623,7 +725,7 @@ export default function MerchantOrderDetail() {
 												style={[
 													styles.primaryActionLabel,
 													{
-														color: move.isPending
+														color: moving
 															? colors.mutedForeground
 															: colors.primaryForeground,
 													},
@@ -654,13 +756,13 @@ export default function MerchantOrderDetail() {
 														expectedStatus: detail.status,
 													})
 												}
-												disabled={move.isPending}
+												disabled={moving}
 												scaleTo={PRESS_SCALE}
 												accessibilityRole="button"
 												accessibilityLabel={t(
 													moveLabelKey(status, detail.fulfilment),
 												)}
-												accessibilityState={{ disabled: move.isPending }}
+												accessibilityState={{ disabled: moving }}
 												style={styles.secondaryAction}
 											>
 												<Text variant="body" bold>
@@ -671,11 +773,11 @@ export default function MerchantOrderDetail() {
 										{detail.status === "PENDING" ? (
 											<Pressable
 												onPress={() => setRejectOpen(true)}
-												disabled={move.isPending}
+												disabled={moving}
 												scaleTo={PRESS_SCALE}
 												accessibilityRole="button"
 												accessibilityLabel={t("biz.board.reject")}
-												accessibilityState={{ disabled: move.isPending }}
+												accessibilityState={{ disabled: moving }}
 												style={styles.secondaryAction}
 											>
 												<Text variant="body" bold>
@@ -685,6 +787,36 @@ export default function MerchantOrderDetail() {
 										) : null}
 									</View>
 								</View>
+							) : null}
+							{mayTakeOver ? (
+								<Button
+									label={t("biz.order.selfDelivery.start")}
+									variant="secondary"
+									loading={selfStart.isPending}
+									disabled={move.isPending || selfComplete.isPending}
+									onPress={() =>
+										selfStart.mutate({
+											orderId: detail.id,
+											expectedStatus: detail.status,
+										})
+									}
+								/>
+							) : null}
+							{selfDelivering ? (
+								<Button
+									label={t("biz.board.markDelivered")}
+									loading={selfComplete.isPending}
+									disabled={move.isPending || selfStart.isPending}
+									onPress={() =>
+										selfComplete.mutate({
+											orderId: detail.id,
+											expectedStatus: detail.status,
+										})
+									}
+								/>
+							) : null}
+							{selfStart.error || selfComplete.error ? (
+								<ErrorState error={selfStart.error ?? selfComplete.error} />
 							) : null}
 						</>
 					)}

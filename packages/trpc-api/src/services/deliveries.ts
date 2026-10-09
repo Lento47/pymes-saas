@@ -2,7 +2,6 @@ import {
 	boundingBox,
 	business as businessTable,
 	delivery as deliveryTable,
-	membership as membershipTable,
 	deliveryOffer as offerTable,
 	order as orderTable,
 	courierPresence as presenceTable,
@@ -32,7 +31,11 @@ import {
 } from "drizzle-orm";
 
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
-import { dispatchNext, OFFER_RADIUS_KM } from "./delivery-dispatch";
+import {
+	dispatchNext,
+	OFFER_RADIUS_KM,
+	sweepExpiredOffers,
+} from "./delivery-dispatch";
 import type { UserContext } from "./helpers";
 import { batchOf } from "./helpers";
 import * as orders from "./orders";
@@ -133,6 +136,9 @@ export async function reportPresence(
 	// could plausibly be theirs, so a courier who comes online in San José offers themselves
 	// to San José's waiting deliveries and to nobody else's.
 	const nearby = boundingBox(input.lat, input.lng, OFFER_RADIUS_KM);
+	// Local development has no automatic scheduled tick. A bounded nearby sweep
+	// lets a fresh courier ping recover offers that expired while nobody was online.
+	await sweepExpiredOffers(ctx.db, 10, { lat: input.lat, lng: input.lng });
 	const waiting = await ctx.db
 		.select({ id: deliveryTable.id })
 		.from(deliveryTable)

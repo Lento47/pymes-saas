@@ -528,12 +528,31 @@ export async function dispatchNext(db: Db, deliveryId: string): Promise<void> {
 }
 
 /** Expire timed-out offers and immediately try the next candidate. */
-export async function sweepExpiredOffers(db: Db, limit = 50): Promise<void> {
+export async function sweepExpiredOffers(
+	db: Db,
+	limit = 50,
+	near?: { lat: number; lng: number },
+): Promise<void> {
 	const now = new Date();
+	const box = near ? boundingBox(near.lat, near.lng, OFFER_RADIUS_KM) : null;
 	const rows = await db
 		.select({ id: offerTable.id, deliveryId: offerTable.deliveryId })
 		.from(offerTable)
-		.where(and(eq(offerTable.status, "PENDING"), lt(offerTable.expiresAt, now)))
+		.innerJoin(deliveryTable, eq(deliveryTable.id, offerTable.deliveryId))
+		.where(
+			and(
+				eq(offerTable.status, "PENDING"),
+				lt(offerTable.expiresAt, now),
+				...(box
+					? [
+							gte(deliveryTable.pickupLat, box.minLat),
+							lte(deliveryTable.pickupLat, box.maxLat),
+							gte(deliveryTable.pickupLng, box.minLng),
+							lte(deliveryTable.pickupLng, box.maxLng),
+						]
+					: []),
+			),
+		)
 		.orderBy(asc(offerTable.expiresAt))
 		.limit(limit);
 

@@ -289,28 +289,7 @@ function AvailabilityCard({ profile }: { profile: CourierProfile }) {
 	const profileKey = trpc.couriers.profile.queryKey();
 	const availability = useMutation(
 		trpc.couriers.saveProfile.mutationOptions({
-			onMutate: async (input) => {
-				await cache.cancelQueries({ queryKey: profileKey });
-				const previous = cache.getQueryData<CourierProfile | null>(profileKey);
-				if (previous)
-					cache.setQueryData<CourierProfile | null>(profileKey, (current) =>
-						current
-							? {
-									...current,
-									isAvailable: input.isAvailable ?? current.isAvailable,
-								}
-							: current,
-					);
-				return { previous };
-			},
-			onError: (_error, _input, context) => {
-				if (context?.previous)
-					cache.setQueryData<CourierProfile | null>(
-						profileKey,
-						context.previous,
-					);
-				warning();
-			},
+			onError: () => warning(),
 			onSuccess: (saved) =>
 				cache.setQueryData<CourierProfile | null>(profileKey, saved),
 			onSettled: async () => {
@@ -505,12 +484,22 @@ function Dispatch({ available }: { available: boolean }) {
 	// timestamps whatever arrives. A cached fix would therefore pass the freshness window
 	// while being hours old — see `useDeviceLocation`'s option note. It also re-reads on an
 	// interval, so `coords` genuinely updates rather than going stale in place.
-	const { coords, status: locationStatus } = useDeviceLocation({
+	const {
+		coords,
+		status: locationStatus,
+		request: requestLocation,
+	} = useDeviceLocation({
 		preferCurrent: true,
 	});
 	const presence = useMutation(
-		trpc.deliveries.reportPresence.mutationOptions({}),
+		trpc.deliveries.reportPresence.mutationOptions({
+			onSuccess: () =>
+				cache.invalidateQueries({
+					queryKey: trpc.deliveries.offers.queryKey(),
+				}),
+		}),
 	);
+	const reportPresence = presence.mutate;
 
 	// Best-effort eligibility ping: dispatch only offers runs to couriers with a fresh
 	// presence, and `PRESENCE_FRESH_MS` is two minutes.
@@ -523,12 +512,11 @@ function Dispatch({ available }: { available: boolean }) {
 	// `coords` arrives again even when the courier has not moved, and this effect reposts
 	// and keeps the window open.
 	//
-	// Failures stay silent — an offer list that errors over a background ping would blame
-	// the wrong thing.
+	// A failed ping shows a retry action, since stale presence stops new offers.
 	useEffect(() => {
-		if (!coords) return;
-		presence.mutate({ lat: coords.lat, lng: coords.lng });
-	}, [coords, presence]);
+		if (!coords || !available) return;
+		reportPresence({ lat: coords.lat, lng: coords.lng });
+	}, [coords, available, reportPresence]);
 
 	const accept = useMutation(
 		trpc.deliveries.acceptOffer.mutationOptions({
@@ -606,6 +594,30 @@ function Dispatch({ available }: { available: boolean }) {
 							onPress={() => void Linking.openSettings()}
 						/>
 					</View>
+				</Card>
+			) : null}
+			{available && locationStatus === "unavailable" ? (
+				<Card>
+					<Text variant="body" bold>
+						{t("delivery.board.locationUnavailable")}
+					</Text>
+					<Button
+						label={t("action.retry")}
+						variant="secondary"
+						onPress={requestLocation}
+					/>
+				</Card>
+			) : null}
+			{available && coords && presence.isError ? (
+				<Card>
+					<Text variant="body" bold>
+						{t("delivery.board.presenceFailed")}
+					</Text>
+					<Button
+						label={t("action.retry")}
+						variant="secondary"
+						onPress={() => reportPresence({ lat: coords.lat, lng: coords.lng })}
+					/>
 				</Card>
 			) : null}
 

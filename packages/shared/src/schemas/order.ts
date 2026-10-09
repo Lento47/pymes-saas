@@ -84,6 +84,12 @@ export const advanceOrderInput = z.object({
 });
 export type AdvanceOrderInput = z.infer<typeof advanceOrderInput>;
 
+export const selfDeliveryOrderInput = z.object({
+	orderId: z.string().startsWith("ord_"),
+	expectedStatus: orderStatusSchema,
+});
+export type SelfDeliveryOrderInput = z.infer<typeof selfDeliveryOrderInput>;
+
 export const cancelOrderInput = z.object({
 	orderId: z.string().startsWith("ord_"),
 	reason: z.string().trim().max(300).optional(),
