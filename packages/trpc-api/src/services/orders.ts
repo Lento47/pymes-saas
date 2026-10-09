@@ -844,12 +844,38 @@ export async function advance(
 				)[0]
 			: null;
 	if (linkedDelivery) {
-		if (actor !== "COURIER" || linkedDelivery.courierUserId !== ctx.user.id) {
+		/**
+		 * The gate is about **a courier in hand**, not a run on file.
+		 *
+		 * It used to fire on the mere existence of a `delivery` row, which deadlocked a shop.
+		 * The order reaches `READY`, the shop requests a courier, and the run sits `SEARCHING`
+		 * with `courierUserId` still null — so every attempt to send the order out was refused
+		 * because *el repartidor* had to confirm a step nobody had been assigned to yet. The
+		 * shop had prepared the order and could not release it; `PYM-7SVRGR` sat exactly
+		 * there.
+		 *
+		 * The confirmation is asked for when there is a courier to ask, and only then. With a
+		 * courier carrying the run the previous rule holds whole: only that courier moves it,
+		 * and only from the delivery status that says they physically have it. With nobody
+		 * carrying it yet the shop may send the order out — the run stays `SEARCHING` and a
+		 * courier can still take it, because `advance` only reads the delivery table and never
+		 * writes it.
+		 *
+		 * `COMPLETED` stays courier-only either way. Closing a delivery is the proof it
+		 * arrived, and a shop that can write that itself can close an order nobody delivered.
+		 */
+		const carriedBy = linkedDelivery.courierUserId ?? null;
+		const courierOwnsStep =
+			carriedBy !== null && actor === "COURIER" && carriedBy === ctx.user.id;
+		const shopMayRelease =
+			carriedBy === null && input.to === "OUT_FOR_DELIVERY";
+
+		if (!courierOwnsStep && !shopMayRelease) {
 			throw new ValidationError("El repartidor debe confirmar este paso");
 		}
 		const expectedDeliveryStatus =
 			input.to === "OUT_FOR_DELIVERY" ? "AT_PICKUP" : "PICKED_UP";
-		if (linkedDelivery.status !== expectedDeliveryStatus) {
+		if (courierOwnsStep && linkedDelivery.status !== expectedDeliveryStatus) {
 			throw new ConflictError("La entrega todav├¡a no lleg├│ a este paso", {
 				deliveryStatus: linkedDelivery.status,
 			});

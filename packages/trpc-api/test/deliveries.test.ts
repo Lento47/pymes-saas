@@ -829,3 +829,114 @@ describe("accepted delivery lifecycle and ratings", () => {
 		test.close();
 	});
 });
+
+/**
+ * Who releases an order onto the road.
+ *
+ * `advance` gated the `OUT_FOR_DELIVERY` step on a delivery row merely *existing*, so a shop
+ * whose run was still `SEARCHING` — nobody assigned yet — could never send a prepared order
+ * out: the only person who could confirm the step was a courier who did not exist. That is
+ * where `PYM-7SVRGR` sat. The gate is now about a courier in hand, and these three hold both
+ * halves of that: the shop is unblocked while the run is unassigned, and the courier's rules
+ * come back whole the moment somebody is carrying it.
+ */
+describe("releasing an order onto the road", () => {
+	/**
+	 * The state under test, read rather than assumed.
+	 *
+	 * Without this the first test could pass for the wrong reason: had no delivery row
+	 * existed, `linkedDelivery` would be null and the shop's advance would sail straight
+	 * through the branch this change is about. Asserting the row is there **and unassigned**
+	 * is what makes the success mean anything.
+	 */
+	async function runFor(test: TestWorld, orderId: string) {
+		const rows = await test.db
+			.select({
+				status: deliveryTable.status,
+				courierUserId: deliveryTable.courierUserId,
+			})
+			.from(deliveryTable)
+			.where(eq(deliveryTable.orderId, orderId));
+		return rows[0];
+	}
+
+	test("the shop can send it out while the run is still searching for a courier", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "unassigned");
+		const owner = await seedOwner(test, ready.businessId, "unassigned");
+		const order = await placeDelivery(ready, "unassigned");
+
+		const before = await runFor(test, order.id);
+		expect(before).toBeDefined();
+		expect(before?.courierUserId ?? null).toBeNull();
+
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+
+		const released = await owner.orders.advance({
+			orderId: order.id,
+			to: "OUT_FOR_DELIVERY",
+		});
+		expect(released.status).toBe("OUT_FOR_DELIVERY");
+
+		// The run is left to the pool rather than consumed: `advance` reads the delivery
+		// table and never writes it, so a courier can still accept this one.
+		const after = await runFor(test, order.id);
+		expect(after?.status).toBe(before?.status);
+		expect(after?.courierUserId ?? null).toBeNull();
+
+		test.close();
+	});
+
+	test("closing a delivery stays the courier's, never the shop's", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "noclose");
+		const owner = await seedOwner(test, ready.businessId, "noclose");
+		const order = await placeDelivery(ready, "noclose");
+
+		for (const to of [
+			"ACCEPTED",
+			"PREPARING",
+			"READY",
+			"OUT_FOR_DELIVERY",
+		] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+
+		// The shop got the order onto the road and still cannot declare that it arrived.
+		await expect(
+			owner.orders.advance({ orderId: order.id, to: "COMPLETED" }),
+		).rejects.toThrow(/repartidor/i);
+
+		test.close();
+	});
+
+	test("once a courier is carrying it, the shop is refused again", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "carried");
+		const owner = await seedOwner(test, ready.businessId, "carried");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_carried_courier",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		const order = await placeDelivery(ready, "carried");
+		const offer = (await courier.caller.deliveries.offers())[0];
+		if (!offer) throw new Error("Courier did not receive an offer");
+		await courier.caller.deliveries.acceptOffer({ offerId: offer.id });
+
+		expect((await runFor(test, order.id))?.courierUserId).toBe(courier.user.id);
+
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+
+		await expect(
+			owner.orders.advance({ orderId: order.id, to: "OUT_FOR_DELIVERY" }),
+		).rejects.toThrow(/repartidor/i);
+
+		test.close();
+	});
+});
