@@ -157,6 +157,10 @@ export const auth = {
 	"account.addresses.edit": "Edit",
 	"account.addresses.form.title": "New address",
 	"account.addresses.form.editTitle": "Edit address",
+	"account.addresses.homeLabel": "Home",
+	"account.addresses.findingAddress": "Finding the address from your pin…",
+	"account.addresses.checkAddress":
+		"Check the address and fill in any missing details.",
 	"account.addresses.field.label": "Short name",
 	"account.addresses.field.label.placeholder": "Home, Office, Mom's place",
 	"account.addresses.field.line1": "Street address",

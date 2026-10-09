@@ -178,6 +178,10 @@ export const auth = {
 	"account.addresses.edit": "Editar",
 	"account.addresses.form.title": "Nueva dirección",
 	"account.addresses.form.editTitle": "Editar dirección",
+	"account.addresses.homeLabel": "Casa",
+	"account.addresses.findingAddress": "Buscando la dirección del pin…",
+	"account.addresses.checkAddress":
+		"Revisa la dirección y completa los datos que falten.",
 	// The label is what the customer sees in the checkout's chip row, so the example is
 	// worth showing: "Casa" tells them what the field is *for*, which the word "Etiqueta"
 	// does not.

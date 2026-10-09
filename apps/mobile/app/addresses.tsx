@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { Address } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
@@ -20,6 +21,7 @@ import { Screen } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
+import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
@@ -370,7 +372,12 @@ function AddressBook() {
 				avoidKeyboard
 			>
 				<AddressForm
-					key={editing?.id ?? "new"}
+					key={
+						editing?.id ??
+						(draftCoordinates
+							? `pin:${draftCoordinates.lat},${draftCoordinates.lng}`
+							: "new")
+					}
 					address={editing}
 					coordinates={draftCoordinates}
 					onDone={() => setShow(false)}
@@ -404,10 +411,50 @@ function AddressForm({
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { show } = useToast();
-	const [label, setLabel] = useState(address?.label ?? "");
+	const [label, setLabel] = useState(
+		address?.label ?? (coordinates ? t("account.addresses.homeLabel") : ""),
+	);
 	const [line1, setLine1] = useState(address?.line1 ?? "");
 	const [city, setCity] = useState(address?.city ?? "");
 	const [region, setRegion] = useState(address?.region ?? "");
+	const [lookupStatus, setLookupStatus] = useState<
+		"loading" | "failed" | "done"
+	>(coordinates && !address ? "loading" : "done");
+	const edited = useRef({ line1: false, city: false, region: false });
+	const latitude = coordinates?.lat;
+	const longitude = coordinates?.lng;
+
+	useEffect(() => {
+		if (latitude === undefined || longitude === undefined || address) return;
+		let active = true;
+		setLookupStatus("loading");
+		Location.reverseGeocodeAsync({
+			latitude,
+			longitude,
+		})
+			.then(([place]) => {
+				if (!active) return;
+				if (!place) {
+					setLookupStatus("failed");
+					return;
+				}
+				const street = [place.street, place.streetNumber]
+					.filter(Boolean)
+					.join(" ");
+				const cityName = place.city ?? place.district ?? place.subregion;
+				if (street && !edited.current.line1) setLine1(street.slice(0, 200));
+				if (cityName && !edited.current.city) setCity(cityName.slice(0, 80));
+				if (place.region && !edited.current.region)
+					setRegion(place.region.slice(0, 80));
+				setLookupStatus(street && cityName && place.region ? "done" : "failed");
+			})
+			.catch(() => {
+				if (active) setLookupStatus("failed");
+			});
+		return () => {
+			active = false;
+		};
+	}, [address, latitude, longitude]);
 	/**
 	 * Seeded from the address, so the control renders the value the save will write.
 	 *
@@ -443,6 +490,15 @@ function AddressForm({
 	);
 	return (
 		<View style={styles.formFields}>
+			{coordinates ? (
+				<Text variant="caption" tone="muted" accessibilityLiveRegion="polite">
+					{t(
+						lookupStatus === "loading"
+							? "account.addresses.findingAddress"
+							: "account.addresses.checkAddress",
+					)}
+				</Text>
+			) : null}
 			<Field
 				label={t("address.label")}
 				value={label}
@@ -452,20 +508,29 @@ function AddressForm({
 			<Field
 				label={t("address.line1")}
 				value={line1}
-				onChangeText={setLine1}
+				onChangeText={(value) => {
+					edited.current.line1 = true;
+					setLine1(value);
+				}}
 				maxLength={200}
 				autoComplete="street-address"
 			/>
 			<Field
 				label={t("address.city")}
 				value={city}
-				onChangeText={setCity}
+				onChangeText={(value) => {
+					edited.current.city = true;
+					setCity(value);
+				}}
 				maxLength={80}
 			/>
 			<Field
 				label={t("address.region")}
 				value={region}
-				onChangeText={setRegion}
+				onChangeText={(value) => {
+					edited.current.region = true;
+					setRegion(value);
+				}}
 				maxLength={80}
 			/>
 			{/* The second default the save can carry. `choiceRole="checkbox"` and not a radio:
