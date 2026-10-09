@@ -1,7 +1,6 @@
 import { MAX_UPLOAD_BYTES, UPLOAD_MIME_TYPES } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
@@ -11,6 +10,7 @@ import {
 	View,
 } from "react-native";
 
+import { ActionBar } from "@/components/action-bar";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
@@ -53,15 +53,38 @@ export default function CourierProfileScreen() {
 	const [reviewOpen, setReviewOpen] = useState(false);
 
 	/**
-	 * Where the review question's answer goes.
+	 * What "Guardar" does, wherever it is pressed from.
 	 *
-	 * `./sheet` has no portal, so a sheet rendered inside `Screen` scrolls away with the content
-	 * — which is why both panels here are siblings of the frame rather than children of it. That
-	 * puts them a level above the form, and the form owns the write. So the two halves meet at a
-	 * ref: `./profile.tsx` already reaches past its own frame for `ActionBar` the same way, and a
-	 * second copy of the payload in the panel would be a second answer to "what is being saved".
+	 * Two surfaces now commit this form — the pinned bar at the foot of the screen and the
+	 * review panel that can stand between the two — and they must be the *same* press. Two
+	 * handlers would be two answers to "what does saving do", and the second is the one that
+	 * goes stale. `./profile.tsx` reaches past its own frame for `ActionBar` the same way, by
+	 * hoisting its whole form into a hook; this file does not, because its state carries the
+	 * `sentSnapshot` ref and the availability rollback the re-review work depends on, and
+	 * moving those is a far larger change than pinning a button.
 	 */
 	const saveRef = useRef<(() => void) | null>(null);
+
+	/**
+	 * What the pinned bar needs to draw itself: three booleans, published by the form.
+	 *
+	 * **Published, not pulled, and deliberately only booleans.** The alternative is hoisting
+	 * fourteen pieces of form state up here for three flags' sake. A published *boolean* pair
+	 * fires its effect only when a boolean crosses, so a courier typing does not re-render the
+	 * frame once per keystroke — which a published string or object would.
+	 */
+	const [bar, setBar] = useState({ ready: false, dirty: false, saving: false });
+	const publishBar = useCallback(
+		(next: { ready: boolean; dirty: boolean; saving: boolean }) =>
+			setBar((current) =>
+				current.ready === next.ready &&
+				current.dirty === next.dirty &&
+				current.saving === next.saving
+					? current
+					: next,
+			),
+		[],
+	);
 
 	/**
 	 * Signing out, in three parts, and the middle one is the whole of it.
@@ -108,11 +131,54 @@ export default function CourierProfileScreen() {
 				<SignedIn>
 					<ProfileForm
 						saveRef={saveRef}
+						publishBar={publishBar}
 						onRequestReview={() => setReviewOpen(true)}
-						onSignOut={() => setSignOutOpen(true)}
 					/>
 				</SignedIn>
 			</Screen>
+
+			{/*
+			    The save, pinned.
+
+			    It was the last block inside the scroller, which made it the first thing to leave
+			    the screen: a courier edits their bio, scrolls, and the control that commits the
+			    edit is below the fold on a phone with the keyboard up. `./profile.tsx` moved its
+			    identical action here for exactly that reason, and quotes the cost: "a floating
+			    card would cover the field being typed in".
+
+			    **Docked, and a sibling of `Screen`.** Sibling because `ActionBar` draws edge to
+			    edge and pays its own bottom inset while `Screen` pads its body by `space.lg` — a
+			    bar inside that body would be sixteen points in from each edge with a hairline
+			    that stops short of both.
+
+			    **No `useActionBarClearance`, and no `bottomInset` on `Screen`.** Both belong to a
+			    *floating* bar. `action-bar.tsx:91`: "`docked` bars need none of this: it is the
+			    footer of a form, and nothing scrolls under it" — and the four callers of that
+			    hook are all floating screens. Adding one here would reserve `ACTION_BAR_CLEARANCE`,
+			    ninety points, of dead air under the form. Paying the home indicator in both
+			    places is the 34-point gap `./action-bar`'s docblock names.
+
+			    **Drawn only when the form has entered.** A "Guardar" over a skeleton, over a
+			    failure or over the signed-out sentence is a control for something that is not
+			    there, and it is the one control on this screen that cannot be walked past. `ready`
+			    is published by the form rather than read from the session here, because "the form
+			    is on screen" and "someone is signed in" are different claims and only the first
+			    one is the question.
+			*/}
+			{bar.ready ? (
+				<ActionBar
+					docked
+					primary={{
+						label: t("biz.courier.save"),
+						onPress: () => saveRef.current?.(),
+						loading: bar.saving,
+						// Dimmed on a pristine form: a save with nothing to write would only tell
+						// the courier their profile is what it already was. The same gate the
+						// inline button carried.
+						disabled: bar.saving || !bar.dirty,
+					}}
+				/>
+			) : null}
 
 			{/*
 			    The price of saving, asked before the write rather than explained after it.
@@ -169,13 +235,25 @@ type StoredSnapshot = {
 
 function ProfileForm({
 	saveRef,
+	publishBar,
 	onRequestReview,
-	onSignOut,
 }: {
-	/** Where `./confirm-sheet`'s answer lands. See the note on the ref above. */
+	/** Where the pinned bar and `./confirm-sheet`'s answer land. See the note on the ref. */
 	saveRef: React.RefObject<(() => void) | null>;
+	/**
+	 * The three flags the pinned bar draws itself from.
+	 *
+	 * Published rather than pulled, and only booleans, so the effect fires when one *crosses*
+	 * rather than on every keystroke. `ready` is deliberately here and not derived from the
+	 * session above: "the form is on screen" is a stronger claim than "someone is signed in",
+	 * and the bar must not draw over the skeleton or a failure.
+	 */
+	publishBar: (next: {
+		ready: boolean;
+		dirty: boolean;
+		saving: boolean;
+	}) => void;
 	onRequestReview: () => void;
-	onSignOut: () => void;
 }) {
 	const { t } = useT();
 	const trpc = useTRPC();
@@ -429,37 +507,19 @@ function ProfileForm({
 		[availability],
 	);
 
-	useEffect(() => {
-		saveRef.current = submit;
-		return () => {
-			saveRef.current = null;
-		};
-	}, [saveRef, submit]);
-
 	const waiting = useSkeletonHold(
 		status === "loading" || profile.isPending || me.isPending,
 	);
 
-	if (waiting) {
-		return (
-			<View style={styles.skeleton}>
-				<Skeleton style={styles.skeletonLine} />
-				<Skeleton style={styles.skeletonLine} />
-				<Skeleton style={styles.skeletonLine} />
-			</View>
-		);
-	}
-	if (profile.isError) {
-		return (
-			<ErrorState error={profile.error} onRetry={() => profile.refetch()} />
-		);
-	}
-	// `me.isError` deliberately does not return. It used to, and a failed avatar read cost this
-	// courier the whole screen: the form, the directory preview and the three doors at the foot —
-	// the only way out of this tree to `/profile`, `/change-password` and sign out. The refusal is
-	// drawn in its own slot further down instead, which is where `app/account.tsx` puts the same
-	// failure.
-
+	/**
+	 * Everything the bar and the review question need, derived **above** the early returns.
+	 *
+	 * It has to be here. `pressSave` reads `dirty` and `reverify`, and it is a `useCallback`
+	 * that the `saveRef` effect below installs — and a hook below a conditional `return` is the
+	 * crash `rules-of-hooks` is named after. None of these values needs a settled read:
+	 * `baseline` is a ref, `statusValue` is `undefined` until the profile lands, and every
+	 * expression below already answers honestly for a form that is not on screen yet.
+	 */
 	const nameError =
 		submitted && !displayName.trim() ? t("form.required") : null;
 	const areaError =
@@ -500,6 +560,65 @@ function ProfileForm({
 		baseline != null &&
 		baseline.displayName.trim().length > 0 &&
 		baseline.serviceArea.trim().length > 0;
+
+	/**
+	 * One press, three outcomes: the fields are incomplete, the write would cost a review, or
+	 * the write happens. Both surfaces that can commit this form go through here.
+	 */
+	const pressSave = useCallback(() => {
+		setSubmitted(true);
+		if (!displayName.trim() || !serviceArea.trim()) return;
+		if (reverify) {
+			onRequestReview();
+			return;
+		}
+		submit();
+	}, [displayName, onRequestReview, reverify, serviceArea, submit]);
+
+	useEffect(() => {
+		saveRef.current = pressSave;
+		return () => {
+			saveRef.current = null;
+		};
+	}, [saveRef, pressSave]);
+
+	/**
+	 * The bar's three flags, and what "busy" means here.
+	 *
+	 * **All three writes, not just the save.** A save racing a picture still in flight would
+	 * store the profile without the photo the reader just picked; a save racing the
+	 * availability toggle would resolve the server's `meaningfulChange` against whichever
+	 * landed first. The bar is the screen's one commit control, so it waits for all three.
+	 */
+	const saving =
+		save.isPending || photoUpload.isPending || availability.isPending;
+	useEffect(() => {
+		publishBar({
+			ready: ready && !waiting && !profile.isError,
+			dirty,
+			saving,
+		});
+	}, [dirty, profile.isError, publishBar, ready, saving, waiting]);
+
+	if (waiting) {
+		return (
+			<View style={styles.skeleton}>
+				<Skeleton style={styles.skeletonLine} />
+				<Skeleton style={styles.skeletonLine} />
+				<Skeleton style={styles.skeletonLine} />
+			</View>
+		);
+	}
+	if (profile.isError) {
+		return (
+			<ErrorState error={profile.error} onRetry={() => profile.refetch()} />
+		);
+	}
+	// `me.isError` deliberately does not return. It used to, and a failed avatar read cost this
+	// courier the whole screen: the form, the directory preview and the three doors at the foot —
+	// the only way out of this tree to `/profile`, `/change-password` and sign out. The refusal is
+	// drawn in its own slot further down instead, which is where `app/account.tsx` puts the same
+	// failure.
 
 	return (
 		<View style={styles.content}>
@@ -724,71 +843,37 @@ function ProfileForm({
 				</Text>
 			) : null}
 
-			{ready ? (
-				<Button
-					label={t("biz.courier.save")}
-					loading={save.isPending}
-					// Gated on the upload as well: a save racing a picture that is still
-					// in flight would store the profile without the photo the reader just
-					// picked, and the toast would say "saved" while losing it. And on the
-					// availability write, for the same reason one field over: two
-					// `saveProfile` calls at once would resolve `meaningfulChange` against
-					// whichever landed first.
-					disabled={
-						save.isPending ||
-						photoUpload.isPending ||
-						availability.isPending ||
-						!dirty
-					}
-					fullWidth
-					onPress={() => {
-						setSubmitted(true);
-						if (!displayName.trim() || !serviceArea.trim()) return;
-						// The question first, where there is something to lose. `./confirm-sheet`
-						// closes and then acts in the same tap, so the write it releases is the one
-						// the reader answered "yes" to — and the panel is a sibling of the frame,
-						// which is the only reason it can be asked at all.
-						if (reverify) {
-							onRequestReview();
-							return;
-						}
-						submit();
-					}}
-				/>
-			) : null}
+			{/*
+			    The save used to live here, as the last block inside the scroller.
+
+			    It cannot any more: the pinned bar is a sibling of `Screen` at the foot of the
+			    screen, and a bar pinned over a scroller is a bar the reader has to scroll out
+			    from under. `./profile.tsx` made the same move and quotes the cost — "a customer
+			    edits their name, scrolls, and the control that commits the edit is below the fold
+			    on a phone with the keyboard up". Its own note on `docked` is why the bar is flat
+			    rather than a lifted card: a floating card covers the field being typed in.
+
+			    The three guards this button carried are not lost, they moved. `dirty` is the bar's
+			    `disabled`; the photo-upload and availability races are `saving` in
+			    `publishBar`, so the bar waits for all three writes rather than one; and the
+			    review question is `pressSave`, which the bar and `./confirm-sheet` share.
+			*/}
 
 			{/*
-			    The courier tree has no account tab and no hub row: without these doors on
-			    this screen a courier cannot reach the account fields (`/profile` owns name,
-			    phone and email), the password, or the session itself - all three are shared
-			    root routes the delivery stack simply never links to. Sign out sits last and
-			    quiet, the same weight `./account.tsx` gives it: the destructive answer lives
-			    in the panel, not on the row that asks. It no longer carries its own busy state
-			    either - `./sign-out-sheet` owns that, along with the refusal, which the old
-			    `void signOut().finally(...)` threw away.
+			    The three account doors are gone from here too, and `./_layout.tsx` is why both
+			    removals could happen in one commit.
+
+			    They moved to `(delivery)/account.tsx` — the second tab — as `ListRow`s with
+			    chevrons and subtitles rather than `Button`s, under a name the courier can see
+			    before tapping it. That hub also carries what this screen was the *only* way to
+			    reach: Ajustes, Ayuda, Seguridad and the Bandeja, none of which the delivery tree
+			    linked at all.
+
+			    The password door is the one worth naming. Neither other hub has it — it lived
+			    here alone, on a form, as the middle of three stacked buttons — so moving the
+			    account without carrying it would have been a silent capability drop rather than a
+			    visible one. It is a row in the hub now.
 			*/}
-			<ScreenSection title={t("account.title")}>
-				<View style={styles.rows}>
-					<Button
-						label={t("account.profile.title")}
-						variant="secondary"
-						fullWidth
-						onPress={() => router.push("/profile")}
-					/>
-					<Button
-						label={t("account.password.title")}
-						variant="secondary"
-						fullWidth
-						onPress={() => router.push("/change-password")}
-					/>
-					<Button
-						label={t("action.signOut")}
-						variant="secondary"
-						fullWidth
-						onPress={onSignOut}
-					/>
-				</View>
-			</ScreenSection>
 		</View>
 	);
 }
