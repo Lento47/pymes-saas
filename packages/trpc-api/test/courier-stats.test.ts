@@ -170,7 +170,10 @@ describe("couriers.stats", () => {
 		const stats = await (await callerFor(w.test, w.courier)).couriers.stats();
 		expect(stats.deliveredTotal).toBe(31);
 		expect(stats.deliveredLast30Days).toBe(29);
-		expect(stats.firstDeliveredAt).not.toBeNull();
+		expect(stats.firstDeliveredAt).toBeInstanceOf(Date);
+		expect(stats.firstDeliveredAt?.getTime()).toBeLessThan(
+			Date.now() - 45 * 24 * 60 * 60 * 1000,
+		);
 	});
 
 	test("only the caller's own runs are counted", async () => {

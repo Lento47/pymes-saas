@@ -896,6 +896,47 @@ describe("delivery offer authorization", () => {
 });
 
 describe("accepted delivery lifecycle and ratings", () => {
+	test("an assigned courier can finish a delivery placed by the same account", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "dual_role");
+		const owner = await seedOwner(test, ready.businessId, "dual_role");
+		const order = await placeDelivery(ready, "dual_role");
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await owner.orders.advance({ orderId: order.id, to });
+		}
+		const [run] = await test.db
+			.select({ id: deliveryTable.id })
+			.from(deliveryTable)
+			.where(eq(deliveryTable.orderId, order.id));
+		if (!run) throw new Error("The order has no delivery");
+		await test.db
+			.update(orderTable)
+			.set({ courierUserId: ready.customer.id })
+			.where(eq(orderTable.id, order.id));
+		await test.db
+			.update(deliveryTable)
+			.set({
+				courierUserId: ready.customer.id,
+				status: "AT_PICKUP",
+				arrivedPickupAt: new Date(),
+			})
+			.where(eq(deliveryTable.id, run.id));
+
+		const pickedUp = await ready.buyer.deliveries.advance({
+			deliveryId: run.id,
+			action: "CONFIRM_PICKUP",
+		});
+		expect(pickedUp.status).toBe("PICKED_UP");
+		expect(pickedUp.orderStatus).toBe("OUT_FOR_DELIVERY");
+		const delivered = await ready.buyer.deliveries.advance({
+			deliveryId: run.id,
+			action: "COMPLETE",
+		});
+		expect(delivered.status).toBe("DELIVERED");
+		expect(delivered.orderStatus).toBe("COMPLETED");
+		test.close();
+	});
+
 	test("the courier collects and delivers, then both people rate once", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "lifecycle");

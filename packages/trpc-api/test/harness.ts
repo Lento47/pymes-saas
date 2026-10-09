@@ -95,11 +95,13 @@ function migrationFiles(): string[] {
 		.sort();
 }
 
-/** SQLite has no boolean and no `undefined`: the driver emits either. */
+/** Mirror D1's bindable values so raw SQL cannot quietly pass a Date in tests. */
 function toBindable(value: unknown): unknown {
 	if (value === undefined) return null;
 	if (typeof value === "boolean") return value ? 1 : 0;
-	if (value instanceof Date) return value.getTime();
+	if (value instanceof Date) {
+		throw new TypeError("D1 cannot bind a Date; bind epoch milliseconds instead");
+	}
 	return value;
 }
 

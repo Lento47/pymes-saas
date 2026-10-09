@@ -124,15 +124,15 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
  * empty card is the honest answer for someone who has not worked yet.
  */
 export async function stats(ctx: UserContext): Promise<CourierStats> {
-	const now = new Date();
+	const thirtyDaysAgoMs = Date.now() - THIRTY_DAYS_MS;
 	const [deliveries, ratings] = await Promise.all([
 		ctx.db
 			.select({
 				total: sql<number>`count(*)`,
-				recent: sql<number>`sum(case when ${deliveryTable.deliveredAt} >= ${new Date(
-					now.getTime() - THIRTY_DAYS_MS,
-				)} then 1 else 0 end)`,
-				first: sql<Date | null>`min(${deliveryTable.deliveredAt})`,
+				// Raw SQL parameters bypass the timestamp_ms column encoder. D1 accepts
+				// epoch milliseconds here, not a JavaScript Date object.
+				recent: sql<number>`sum(case when ${deliveryTable.deliveredAt} >= ${thirtyDaysAgoMs} then 1 else 0 end)`,
+				first: sql<number | null>`min(${deliveryTable.deliveredAt})`,
 			})
 			.from(deliveryTable)
 			.where(
@@ -161,7 +161,8 @@ export async function stats(ctx: UserContext): Promise<CourierStats> {
 		deliveredTotal: Number(delivered?.total ?? 0),
 		// `sum` over zero matching rows is `null` in SQL, not `0`.
 		deliveredLast30Days: Number(delivered?.recent ?? 0),
-		firstDeliveredAt: delivered?.first ?? null,
+		firstDeliveredAt:
+			delivered?.first == null ? null : new Date(Number(delivered.first)),
 		ratingAverage: rating?.average == null ? null : Number(rating.average),
 		ratingCount: Number(rating?.count ?? 0),
 	};

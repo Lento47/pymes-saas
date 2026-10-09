@@ -808,7 +808,14 @@ export async function advance(
 	input: AdvanceOrderInput,
 ): Promise<OrderDetail> {
 	const order = await reachableOrder(ctx, input.orderId);
-	const actor = actorFor(ctx, order);
+	// An account may buy from a shop and also carry its own test delivery. For
+	// these physical delivery steps, the assignment is stronger than the caller's
+	// other roles; customer cancellation and every other move keep their usual role.
+	const courierDeliveryStep =
+		order.fulfilment === "DELIVERY" &&
+		(input.to === "OUT_FOR_DELIVERY" || input.to === "COMPLETED") &&
+		order.courierUserId === ctx.user.id;
+	const actor = courierDeliveryStep ? "COURIER" : actorFor(ctx, order);
 
 	if (input.expectedStatus && input.expectedStatus !== order.status) {
 		throw new ConflictError("El pedido cambi├│ mientras lo mirabas", {
