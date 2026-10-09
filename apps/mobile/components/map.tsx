@@ -190,6 +190,8 @@ export type MapViewProps = {
 	coords: { lat: number; lng: number } | null;
 	zoom?: number;
 	showUserLocation?: boolean;
+	/** Names this map's purpose to a screen reader when it is not the discovery map. */
+	accessibilityLabel?: string;
 	/**
 	 * A second position to drop a pin on, or `null` for none.
 	 *
@@ -315,6 +317,7 @@ export function MapView({
 	onPick,
 	zoom,
 	showUserLocation = true,
+	accessibilityLabel,
 }: MapViewProps) {
 	const { colors } = useTheme();
 	const { t } = useT();
@@ -362,6 +365,28 @@ export function MapView({
 	// Read before the guard rather than after it, so the three reasons to draw nothing are one
 	// `if`: no style, no coordinate, or no MapLibre in this binary.
 	const MapLibre = loadMapLibre();
+	const routeBounds = route
+		? (() => {
+				const endpoints: [number, number][] = [
+					[route.pickup.lng, route.pickup.lat],
+					[route.destination.lng, route.destination.lat],
+				];
+				const points: [number, number][] = route.geometry?.coordinates.length
+					? route.geometry.coordinates
+					: endpoints;
+				const longitudes = points.map(([lng]) => lng);
+				const latitudes = points.map(([, lat]) => lat);
+				const west = Math.min(...longitudes);
+				const south = Math.min(...latitudes);
+				const east = Math.max(...longitudes);
+				const north = Math.max(...latitudes);
+				return [west, south, east, north].every(Number.isFinite) &&
+					(west !== east || south !== north)
+					? ([west, south, east, north] as [number, number, number, number])
+					: null;
+			})()
+		: null;
+	const visibleBounds = (fitRadius && radiusBounds) || routeBounds;
 	const mapCenter = route
 		? {
 				lat: (route.pickup.lat + route.destination.lat) / 2,
@@ -425,7 +450,7 @@ export function MapView({
 				// One label for the whole surface. Without it a screen reader walks
 				// MapLibre's own view tree and announces position after position; the map is
 				// its position is described by the surrounding screen's text.
-				accessibilityLabel={t("discovery.map.label")}
+				accessibilityLabel={accessibilityLabel ?? t("discovery.map.label")}
 				accessible
 				// Only wired when a caller asked for it, and `undefined` rather than a
 				// no-op function in every other case: a handler that is always attached is a
@@ -447,10 +472,10 @@ export function MapView({
 			>
 				<Camera
 					ref={cameraRef}
-					{...(fitRadius && radiusBounds
+					{...(visibleBounds
 						? {
 								initialViewState: {
-									bounds: radiusBounds,
+									bounds: visibleBounds,
 									padding: {
 										top: RADIUS_CAMERA_PADDING,
 										right: RADIUS_CAMERA_PADDING,

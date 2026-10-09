@@ -37,6 +37,7 @@ export function MapView(_props: {
 	coords: { lat: number; lng: number } | null;
 	zoom?: number;
 	showUserLocation?: boolean;
+	accessibilityLabel?: string;
 	marker?: { lat: number; lng: number } | null;
 	route?: {
 		pickup: { lat: number; lng: number };

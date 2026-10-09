@@ -22,12 +22,19 @@ import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
+import { isMapAvailable, MapView } from "@/components/map";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { RatingInput, type RatingValue } from "@/components/rating-input";
 import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { Text } from "@/components/text";
+import { useSession } from "@/lib/auth/session";
+import {
+	startCourierTracking,
+	stopCourierTracking,
+} from "@/lib/courier-tracking";
+import { formatClock } from "@/lib/format";
 import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
@@ -73,8 +80,9 @@ export default function CourierDeliveryDetailScreen() {
 }
 
 function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
-	const { t } = useT();
+	const { t, intlLocale } = useT();
 	const trpc = useTRPC();
+	const { session } = useSession();
 	const cache = useQueryClient();
 	const [completeOpen, setCompleteOpen] = useState(false);
 	const [rating, setRating] = useState<RatingValue>(0);
@@ -85,13 +93,41 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 			{ refetchInterval: POLL_MS },
 		),
 	);
-	const refreshControl = useRefreshControl(() => query.refetch());
+	const mapAvailable = Boolean(
+		query.data?.pickup.lat != null &&
+			query.data.pickup.lng != null &&
+			query.data.dropoff.lat != null &&
+			query.data.dropoff.lng != null &&
+			isMapAvailable(),
+	);
+	const tracking = useQuery(
+		trpc.orders.track.queryOptions(
+			{ id: query.data?.orderId ?? "" },
+			{
+				enabled: Boolean(query.data?.orderId && mapAvailable),
+				refetchInterval: 15_000,
+			},
+		),
+	);
+	const refreshControl = useRefreshControl(async () => {
+		await query.refetch();
+		if (query.data?.orderId && mapAvailable) await tracking.refetch();
+	});
 	const waiting = useSkeletonHold(query.isPending);
 	const advance = useMutation(
 		trpc.deliveries.advance.mutationOptions({
-			onSuccess: async (_delivery, input) => {
+			onSuccess: async (updated, input) => {
 				if (input.action === "COMPLETE") success();
 				else light();
+				if (
+					input.action === "CONFIRM_PICKUP" &&
+					updated.orderStatus === "OUT_FOR_DELIVERY" &&
+					session?.userId
+				) {
+					await startCourierTracking(updated.orderId, session.userId);
+				} else if (input.action === "COMPLETE") {
+					await stopCourierTracking();
+				}
 				await cache.invalidateQueries({
 					queryKey: trpc.deliveries.pathKey(),
 				});
@@ -121,11 +157,37 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 
 	const delivery = query.data;
 	const action = actionFor(delivery.status);
+	// A move can commit on the server and still lose its response. Once polling sees a
+	// later step, the old mutation error no longer describes the delivery on screen.
+	const actionError =
+		advance.variables?.action === action ? advance.error : null;
 	const waitingReady =
 		action === "CONFIRM_PICKUP" &&
 		delivery.orderStatus !== "READY" &&
 		delivery.orderStatus !== "OUT_FOR_DELIVERY";
 	const rated = delivery.ratings.courierToCustomer ?? rate.data;
+	const pickupPoint =
+		delivery.pickup.lat != null && delivery.pickup.lng != null
+			? { lat: delivery.pickup.lat, lng: delivery.pickup.lng }
+			: null;
+	const dropoffPoint =
+		delivery.dropoff.lat != null && delivery.dropoff.lng != null
+			? { lat: delivery.dropoff.lat, lng: delivery.dropoff.lng }
+			: null;
+	const courier = tracking.data?.courier;
+	const courierPosition =
+		courier?.lat != null && courier.lng != null && courier.updatedAt != null
+			? { lat: courier.lat, lng: courier.lng, at: courier.updatedAt }
+			: null;
+	const positionStatus = tracking.isError
+		? t("delivery.map.locationUnavailable")
+		: courierPosition
+			? Date.now() - courierPosition.at.getTime() < 60_000
+				? t("order.track.live")
+				: t("order.track.updated", {
+						time: formatClock(courierPosition.at, intlLocale),
+					})
+			: t("delivery.map.locationWaiting");
 
 	function runAction(next: DeliveryAction) {
 		if (next === "COMPLETE") {
@@ -151,14 +213,31 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 					</Text>
 				</Card>
 
+				{mapAvailable && pickupPoint && dropoffPoint ? (
+					<View style={styles.mapGroup}>
+						<MapView
+							coords={pickupPoint}
+							route={{ pickup: pickupPoint, destination: dropoffPoint }}
+							marker={courierPosition}
+							showUserLocation={false}
+							accessibilityLabel={t("delivery.map.label")}
+							style={styles.map}
+						/>
+						<Text variant="caption" tone="muted">
+							{t("delivery.map.courierLocation", { status: positionStatus })}
+						</Text>
+					</View>
+				) : null}
+
 				<StopCard title={t("delivery.pickup")} stop={delivery.pickup} />
 				<StopCard title={t("delivery.dropoff")} stop={delivery.dropoff} />
 
-				{advance.error ? (
+				{actionError ? (
 					<ErrorState
-						error={advance.error}
+						error={actionError}
 						onRetry={() => {
-							if (action) runAction(action);
+							advance.reset();
+							return query.refetch();
 						}}
 					/>
 				) : null}
@@ -348,6 +427,8 @@ const styles = StyleSheet.create({
 		paddingBottom: space.huge,
 	},
 	card: { gap: space.sm },
+	mapGroup: { gap: space.sm },
+	map: { height: space.huge * 8 },
 	skeletonStatus: { height: space.xl * 2 },
 	skeletonCard: { height: space.huge * 3 },
 	skeletonAction: { height: space.huge },

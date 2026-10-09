@@ -548,6 +548,8 @@ export const business = {
 	"biz.courier.location.unavailable":
 		"Activa el GPS del teléfono para compartir tu posición durante esta entrega.",
 	"biz.courier.location.action": "Permitir ubicación",
+	"biz.courier.location.active": "Compartiendo ubicación",
+	"biz.courier.location.starting": "Iniciando ubicación compartida…",
 
 	/* El perfil del repartidor: identidad, vehículo y la marca de revisión. */
 	"biz.courier.profile": "Perfil de repartidor",
@@ -1192,6 +1194,11 @@ export const business = {
 	"delivery.offer.decline": "Rechazar",
 	"delivery.offer.distance": "A {value} km del negocio",
 	"delivery.detail.title": "Detalle de la entrega",
+	"delivery.map.label": "Mapa de la recogida y la entrega",
+	"delivery.map.courierLocation": "Tu ubicación: {status}",
+	"delivery.map.locationWaiting": "Esperando una actualización de ubicación",
+	"delivery.map.locationUnavailable":
+		"Ubicación no disponible. Desliza para reintentar.",
 	"delivery.pickup": "Recoger en el negocio",
 	"delivery.dropoff": "Entregar al cliente",
 	"delivery.navigate": "Abrir indicaciones",

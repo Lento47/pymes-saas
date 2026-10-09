@@ -386,8 +386,8 @@ function CourierSharing({
 	sharing: boolean;
 }) {
 	const { t } = useT();
+	if (!sharing) return null;
 	if (!result || result === "started") {
-		if (!sharing) return null;
 		return (
 			<Card>
 				<View style={styles.sharing}>
@@ -395,7 +395,9 @@ function CourierSharing({
 						{t("biz.courier.location.title")}
 					</Text>
 					<Text variant="caption" tone="muted">
-						{t("order.track.live")}
+						{result === "started"
+							? t("biz.courier.location.active")
+							: t("biz.courier.location.starting")}
 					</Text>
 				</View>
 			</Card>
@@ -1029,13 +1031,23 @@ function Board() {
 	// A second one on the board — which the machine allows, since nothing stops two being sent
 	// out — shares the first, and the band's comment on `CourierSharing` is where that is
 	// honest rather than silently wrong.
-	const ridingId = orders.find(
-		(order) => order.status === "OUT_FOR_DELIVERY",
-	)?.id;
+	const ridingId =
+		orders.find((order) => order.status === "OUT_FOR_DELIVERY")?.id ??
+		activeDeliveries.find(
+			(delivery) => delivery.orderStatus === "OUT_FOR_DELIVERY",
+		)?.orderId;
 	useEffect(() => {
-		if (!session?.userId) return;
-		void reconcileCourierTracking(ridingId, session.userId);
-	}, [ridingId, session?.userId]);
+		// An empty first frame is not evidence that the run ended. Wait for both reads
+		// before stopping a persisted native task or restoring one after a restart.
+		if (!session?.userId || !query.isSuccess || !mine.isSuccess) return;
+		let cancelled = false;
+		void reconcileCourierTracking(ridingId, session.userId).then((result) => {
+			if (!cancelled) setTrackingResult(result);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [ridingId, session?.userId, query.isSuccess, mine.isSuccess]);
 
 	return (
 		<View style={styles.body}>

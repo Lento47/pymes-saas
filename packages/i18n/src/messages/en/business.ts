@@ -500,6 +500,8 @@ export const business = {
 	"biz.courier.location.unavailable":
 		"Turn on your phone's GPS to share your position during this delivery.",
 	"biz.courier.location.action": "Allow location",
+	"biz.courier.location.active": "Sharing is on",
+	"biz.courier.location.starting": "Starting location sharing…",
 
 	/* The courier's own profile: identity, vehicle, and the review mark on it. */
 	"biz.courier.profile": "Courier profile",
@@ -1121,6 +1123,10 @@ export const business = {
 	"delivery.offer.decline": "Decline",
 	"delivery.offer.distance": "{value} km from the business",
 	"delivery.detail.title": "Delivery details",
+	"delivery.map.label": "Map of the pickup and drop-off",
+	"delivery.map.courierLocation": "Your location: {status}",
+	"delivery.map.locationWaiting": "Waiting for a location update",
+	"delivery.map.locationUnavailable": "Location unavailable. Pull to retry.",
 	"delivery.pickup": "Pick up at the business",
 	"delivery.dropoff": "Deliver to the customer",
 	"delivery.navigate": "Open directions",

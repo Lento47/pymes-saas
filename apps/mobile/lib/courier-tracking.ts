@@ -88,16 +88,21 @@ function payloadOf(
 	orderId: string,
 	position: Location.LocationObject,
 ): LocationPayload {
-	const optional = (value: number | null) =>
-		typeof value === "number" && Number.isFinite(value) ? value : undefined;
+	const optional = (value: number | null, min: number, max: number) =>
+		typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= min &&
+		value <= max
+			? value
+			: undefined;
 	return {
 		orderId,
 		lat: position.coords.latitude,
 		lng: position.coords.longitude,
 		recordedAt: new Date(position.timestamp),
-		accuracy: optional(position.coords.accuracy),
-		heading: optional(position.coords.heading),
-		speed: optional(position.coords.speed),
+		accuracy: optional(position.coords.accuracy, 0, 10_000),
+		heading: optional(position.coords.heading, 0, 360),
+		speed: optional(position.coords.speed, 0, 150),
 	};
 }
 
@@ -111,6 +116,25 @@ async function stopNativeTask(): Promise<void> {
 		// State is already cleared by the caller. A platform stop failure cannot
 		// authorize the next callback to send anything.
 	}
+}
+
+function sendInitialFix(): void {
+	// A stationary courier may not cross the native task's distance threshold.
+	// Send a recent fix immediately, then let background updates take over.
+	void Location.getLastKnownPositionAsync({
+		maxAge: 60_000,
+		requiredAccuracy: 200,
+	})
+		.then((position) =>
+			position
+				? deliver(position)
+				: Location.getCurrentPositionAsync({
+						accuracy: Location.Accuracy.Balanced,
+					}).then(deliver),
+		)
+		.catch(() => {
+			// The native task remains active and can send its first later fix.
+		});
 }
 
 /** Stop first in storage, then on the OS, so a racing callback becomes a no-op. */
@@ -173,28 +197,37 @@ export async function startCourierTracking(
 			await stopCourierTracking();
 			throw error;
 		}
+		sendInitialFix();
 		return "started";
 	} catch {
 		return "failed";
 	}
 }
 
-/**
- * Called by the polled courier board. Cancellation, completion or reassignment
- * removes the run from `activeOrderId`, and tracking ends on that same refresh.
- */
+/** Restore an active run after a process restart, and stop a run that is no longer active. */
 export async function reconcileCourierTracking(
 	activeOrderId: string | undefined,
 	userId: string,
-): Promise<void> {
+): Promise<StartTrackingResult | null> {
 	const session = await readSession();
-	if (!session) return;
-	if (
-		!activeOrderId ||
-		session.orderId !== activeOrderId ||
-		session.userId !== userId
-	)
-		await stopCourierTracking();
+	if (!activeOrderId) {
+		if (session) await stopCourierTracking();
+		return null;
+	}
+	if (session?.orderId === activeOrderId && session.userId === userId) {
+		try {
+			if (
+				await Location.hasStartedLocationUpdatesAsync(COURIER_LOCATION_TASK)
+			) {
+				if (session.lastSentAt === 0) sendInitialFix();
+				return "started";
+			}
+		} catch {
+			// A native task can disappear after an OS restart. Start it again below.
+		}
+	}
+	if (session) await stopCourierTracking();
+	return startCourierTracking(activeOrderId, userId);
 }
 
 /** Stop if the user revoked either grant while the app was away. */
