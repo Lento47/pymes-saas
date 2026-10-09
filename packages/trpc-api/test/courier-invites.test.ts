@@ -244,4 +244,148 @@ describe("in-app courier trust and invitations", () => {
 
 		test.close();
 	});
+
+	/**
+	 * The courier is told.
+	 *
+	 * The client's `couriers.myInvites` has no poll interval on purpose — a board that re-reads
+	 * its invitations every five seconds is a board that lies about being quiet — so the
+	 * invitation has to announce itself the way an offer already does through
+	 * `offerStatements`. These are the claims that announcement rests on: the row is written,
+	 * it is addressed to the courier rather than to the shop, it survives the internal-kind
+	 * filter, it deep-links, and a refused invitation rings nothing.
+	 */
+	describe("an invitation tells the courier", () => {
+		async function invited(tag: string) {
+			const test = world();
+			const businessId = await seedBusiness(test.db, {
+				id: `biz_invite_bell_${tag}`,
+				name: "Soderia Bellavista",
+			});
+			const owner = await seedUser(test.db, {
+				id: `usr_invite_bell_${tag}_owner`,
+			});
+			const courier = await seedUser(test.db, {
+				id: `usr_invite_bell_${tag}_rider`,
+			});
+			await seedMembership(test.db, owner.id, businessId, "OWNER");
+			const ownerCaller = appRouter.createCaller(
+				await authed(test, owner),
+			) as Caller;
+			const courierCaller = appRouter.createCaller(
+				await authed(test, courier),
+			) as Caller;
+
+			const profile = await courierCaller.couriers.saveProfile({
+				displayName: "Bellavista Rider",
+				serviceArea: "San José",
+				isAvailable: true,
+			});
+			const admin = await seedUser(test.db, {
+				id: `usr_invite_bell_${tag}_admin`,
+				isAdmin: true,
+			});
+			await (
+				appRouter.createCaller(await authed(test, admin)) as Caller
+			).admin.reviewCourier({
+				profileId: profile.id,
+				decision: "VERIFIED",
+			});
+
+			return {
+				test,
+				businessId,
+				courier,
+				ownerCaller,
+				courierCaller,
+				profile,
+			};
+		}
+
+		test("one row reaches the courier's own bell, addressed and deep-linked", async () => {
+			const w = await invited("one");
+			const invite = await w.ownerCaller.couriers.invite({
+				businessId: w.businessId,
+				profileId: w.profile.id,
+			});
+
+			// **Read through the bell, not the table.** The claim is that the courier sees it,
+			// and `listNotifications` is what drops the internal kinds — so asking the table
+			// would pass even for a `kind` the bell refuses to show.
+			const bell = await w.courierCaller.notifications.list({ limit: 10 });
+			expect(bell.items).toHaveLength(1);
+			expect(bell.items[0]).toMatchObject({
+				kind: "DELIVERY",
+				title: "Nueva invitación de reparto",
+				body: "Soderia Bellavista te invitó a repartir sus pedidos",
+				data: {
+					type: "COURIER_INVITED",
+					inviteId: invite.id,
+					businessId: w.businessId,
+				},
+				readAt: null,
+			});
+
+			// The shop is not told about its own invitation; it made it.
+			expect(
+				(await w.ownerCaller.notifications.list({ limit: 10 })).items,
+			).toHaveLength(0);
+
+			w.test.close();
+		});
+
+		test("the key is the invite id, and a refused second invite rings no bell", async () => {
+			const w = await invited("key");
+			const invite = await w.ownerCaller.couriers.invite({
+				businessId: w.businessId,
+				profileId: w.profile.id,
+			});
+
+			// **The invite id, not a timestamp.** The column's own docblock says a timestamped
+			// key would make every row unique and the unique index would buy nothing; this is
+			// the assertion that the key is the event.
+			expect(
+				w.test.sqlite
+					.prepare("select dedupe_key from notification where user_id = ?")
+					.all(w.courier.id),
+			).toEqual([{ dedupe_key: `courier-invite:${invite.id}` }]);
+
+			// **A live pending invitation refuses a second one**, so the bell cannot gain a row
+			// for an invitation the courier will never be able to answer. A notification
+			// written before the refusal — or the insert landing outside the transaction —
+			// would leave a courier with two invitations in their list and one in the shop's.
+			const again = await refused(
+				w.ownerCaller.couriers.invite({
+					businessId: w.businessId,
+					profileId: w.profile.id,
+				}),
+			);
+			expect(again.code).toBe("CONFLICT");
+			expect(
+				(await w.courierCaller.notifications.list({ limit: 10 })).items,
+			).toHaveLength(1);
+
+			w.test.close();
+		});
+
+		test("a refused invitation writes nothing", async () => {
+			const w = await invited("refused");
+
+			// No profile at all: `invite` is refused before it reaches the insert, and a
+			// notification for an invitation that does not exist is the worst version of this
+			// feature — a bell entry that opens an empty list.
+			const error = await refused(
+				w.ownerCaller.couriers.invite({
+					businessId: w.businessId,
+					profileId: "cpr_does_not_exist",
+				}),
+			);
+			expect(error.code).toBe("NOT_FOUND");
+			expect(
+				(await w.courierCaller.notifications.list({ limit: 10 })).items,
+			).toHaveLength(0);
+
+			w.test.close();
+		});
+	});
 });

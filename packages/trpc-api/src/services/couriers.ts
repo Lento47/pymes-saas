@@ -5,6 +5,7 @@ import {
 	membership as membershipTable,
 	courierProfile as profileTable,
 	deliveryRating as ratingTable,
+	notification as notificationTable,
 	user as userTable,
 } from "@pymeshub/db";
 import type {
@@ -487,6 +488,44 @@ export async function invite(
 		.where(eq(businessTable.id, ctx.membership.businessId))
 		.limit(1);
 	const business = orNotFound(businessRows[0]);
+
+	/**
+	 * The courier is told, rather than left to notice.
+	 *
+	 * **An invitation nobody hears about is a request the courier has to already know about.**
+	 * Every other thing that reaches a courier announces itself — `offerStatements`
+	 * (`delivery-dispatch.ts:340-367`) writes one for each offer, and the courier's board
+	 * polls for those — but `couriers.myInvites` has no poll interval on the client, because a
+	 * board that re-reads its invitations every five seconds is a board that lies about being
+	 * quiet. That choice only works if something else says so, and this is that.
+	 *
+	 * **`kind: "DELIVERY"`, which reaches the bell.** `INTERNAL_NOTIFICATION_KINDS`
+	 * (`services/users.ts:437`) holds exactly one entry, `ORDER_REQUEST`, so this is not it.
+	 *
+	 * **The name is in the body, not the title.** The title is the same sentence for every
+	 * business, and the courier reads it on a lock screen — where "Nueva invitación" is
+	 * enough and "Sodero Pérez te invitó a repartir sus pedidos" is not.
+	 *
+	 * **One row per invite, keyed by the invite id.** `dedupeKey` is built from what
+	 * identifies the *event* and never from a timestamp, per the column's own docblock; a
+	 * business that re-invites gets a new invite id and a new row, which is a different event
+	 * and should read as one.
+	 */
+	await ctx.db.insert(notificationTable).values({
+		id: crypto.randomUUID(),
+		userId: row.profile.userId,
+		kind: "DELIVERY",
+		title: "Nueva invitación de reparto",
+		body: `${business.name} te invitó a repartir sus pedidos`,
+		data: {
+			type: "COURIER_INVITED",
+			inviteId: id,
+			businessId: ctx.membership.businessId,
+		},
+		readAt: null,
+		createdAt: now,
+		dedupeKey: `courier-invite:${id}`,
+	});
 
 	return inviteOf(
 		{

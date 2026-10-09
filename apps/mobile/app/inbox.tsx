@@ -1,6 +1,6 @@
 import type { Notification } from "@pymeshub/shared";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { type Href, router } from "expo-router";
 import { useMemo } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { AnimateIn } from "@/components/animate-in";
@@ -21,35 +21,42 @@ import { MIN_TOUCH_TARGET, space, TEXT_STACK_GAP, type } from "@/theme";
 /**
  * What the shop has told you: the bell, as a list.
  *
- * `notifications.list` is the only read here, and it is the customer's own feed —
- * `users.listNotifications` scopes it to `ctx.user.id` and drops the two kinds this API
+ * `notifications.list` is the only read here, and it is the reader's own feed —
+ * `users.listNotifications` scopes it to `ctx.user.id` and drops the one kind the API
  * writes for itself, so the screen cannot see the idempotency ledger behind `orders.place`
- * or the reply ledger behind `reviews.reply` (`apps/api/src/services/users.ts:341`). That
- * filter is the service's, not this screen's: a client that had to exclude the internal
- * kinds would be a client that could forget to, which is the whole reason it lives behind
- * the API.
+ * (`INTERNAL_NOTIFICATION_KINDS` in `packages/trpc-api/src/services/users.ts`, which holds a
+ * single entry — this file used to say *two* and cite a `reviews.reply` ledger that the
+ * constant has not listed for some time). That filter is the service's, not this screen's: a
+ * client that had to exclude the internal kinds would be a client that could forget to,
+ * which is the whole reason it lives behind the API.
  *
  * ## The title and the body are the API's words, not the dictionary's
  *
- * A notification carries its own `title` and `body` — written when the order moved
- * (`apps/api/src/queue.ts:172`) or when a shop answered a review
- * (`apps/api/src/services/reviews.ts:333`) — and this screen draws them verbatim. That is
- * the one exception to "nothing in this app hardcodes its own language", and it is the
- * exception `packages/shared/src/schemas/notification.ts` already argues for: the row is a
- * *record of something that happened*, and the sentence about it is part of the record. So
- * `@pymeshub/i18n`'s `inbox.*` names this screen and its empty state and holds **no content
- * keys at all** — there is nothing here a locale could change.
+ * A notification carries its own `title` and `body` — written when the order moved, when a
+ * shop answered a review, or when a business invited this courier to its pool
+ * (`packages/trpc-api/src/services/couriers.ts`'s `invite`) — and this screen draws them
+ * verbatim. That is the one exception to "nothing in this app hardcodes its own language",
+ * and it is the exception `packages/shared/src/schemas/notification.ts` already argues for:
+ * the row is a *record of something that happened*, and the sentence about it is part of the
+ * record. So `@pymeshub/i18n`'s `inbox.*` names this screen and its empty state and holds
+ * **no content keys at all** — there is nothing here a locale could change.
  *
  * ## Pressable only where there is somewhere to go
  *
- * `data` is what a client deep-links on, and exactly one of the two shapes that reach a
- * customer carries a destination:
+ * `data` is what a client deep-links on, and `./destinationOf` is the one place that decides
+ * whether there is an address. `chevron`, `onPress` and `accessibilityHint` all read its
+ * answer rather than each re-deriving it from the ids, so a row cannot end up with a
+ * chevron and no handler. The kinds that reach this screen, and where they go:
  *
- * - an order event sends `{ orderId, type }`, so the row opens `/order/[id]`
+ * - an offer sends `{ type: "DELIVERY_OFFERED", deliveryId, orderId }` and opens
+ *   `/delivery/[id]`, where the run can be accepted and worked
+ * - an invitation sends `{ type: "COURIER_INVITED", inviteId, businessId }` and opens
+ *   `/courier-invites`, the screen that carries the accept and decline
+ * - an order event sends `{ orderId, type }` and opens `/order/[id]`
  * - a reply to a review sends `{ reviewId, businessId }` — **no slug**, and the storefront
  *   route is `/store/[slug]`, so there is no address to build
  *
- * The second kind is therefore not a `Pressable` at all: no `onPress`, no chevron, and no
+ * The last kind is therefore not a `Pressable` at all: no `onPress`, no chevron, and no
  * `accessibilityHint` — `ListRow` draws a plain `View` with `accessibilityRole="text"` when
  * it is given neither handler (`list-row.tsx:163`). A row that looks like a door and opens
  * nothing is worse than a row that is plainly a sentence, and inventing a route from a
@@ -194,8 +201,11 @@ function Notice({
 	const { t, intlLocale } = useT();
 
 	const when = formatRelative(notification.createdAt, intlLocale);
-	const orderId = orderIdOf(notification.data);
-	const deliveryId = deliveryIdOf(notification.data);
+	// **One derivation, read by all three of the row's affordances.** `chevron`, `onPress`
+	// and `accessibilityHint` each used to re-ask the same question and could disagree — the
+	// exact failure a row that looks like a door and opens nothing is. There is one predicate
+	// now, and the row is pressable exactly when it is not `null`.
+	const where = destinationOf(notification.data);
 
 	const spoken = [notification.title, notification.body, when]
 		.filter(
@@ -214,56 +224,66 @@ function Notice({
 				state={when ?? undefined}
 				// The rows are separated by `./paginated-list`'s own gap and share no line.
 				divider={false}
-				chevron={orderId !== null || deliveryId !== null}
+				chevron={where !== null}
 				accessibilityLabel={spoken}
-				onPress={
-					deliveryId !== null
-						? () =>
-								router.push({
-									pathname: "/delivery/[id]",
-									params: { id: deliveryId },
-								})
-						: orderId === null
-							? undefined
-							: () =>
-									router.push({
-										pathname: "/order/[id]",
-										params: { id: orderId },
-									})
-				}
-				accessibilityHint={
-					orderId === null && deliveryId === null
-						? undefined
-						: t("inbox.row.help")
-				}
+				onPress={where === null ? undefined : () => router.push(where)}
+				accessibilityHint={where === null ? undefined : t("inbox.row.help")}
 			/>
 		</AnimateIn>
 	);
 }
 
 /**
- * The order id a notification points at, or `null` when it points nowhere.
+ * Where a notification points, or `null` when it points nowhere.
  *
- * `data` is `Record<string, unknown> | null` on the wire — the schema keeps it loose on
+ * **One function rather than three predicates.** `chevron`, `onPress` and
+ * `accessibilityHint` each asked whether there was somewhere to go, from their own copy of
+ * the ids, and adding a third kind meant editing all three — which is how a row ends up with
+ * a chevron and no handler. The row is pressable exactly when this returns an address.
+ *
+ * **`data` is `Record<string, unknown> | null` on the wire** — the schema keeps it loose on
  * purpose so a client that receives an unknown `kind` still renders the title and body it was
- * given rather than failing to parse — so the one field this screen routes on has to be
- * narrowed rather than trusted. A number, an object or an empty string all mean the same
- * thing here: there is no address, so the row is a sentence.
+ * given rather than failing to parse — so each field is narrowed rather than trusted. A
+ * number, an object or an empty string all mean the same thing here: no address, so the row
+ * is a sentence.
+ *
+ * **The order of the three cases is the order of how much a tap can do.** An offer opens the
+ * run itself; an invitation opens the list the invitation is on; an order opens the order.
+ *
+ * - `{ type: "DELIVERY_OFFERED", deliveryId, orderId }` — the delivery half wins, because it
+ *   is the one a courier can act on. `/delivery/[id]` is where the run is accepted and worked.
+ * - `{ type: "COURIER_INVITED", inviteId, businessId }` — `/courier-invites`, which is a
+ *   screen with the accept and decline controls on it. The row arrived because a business
+ *   invited this courier (`services/couriers.ts`'s `invite`), and a row that announces an
+ *   invitation and opens nothing is the plainest version of a door that is not one.
+ * - `{ orderId, type }` — `/order/[id]`.
+ *
+ * A reply to a review sends `{ reviewId, businessId }` with **no slug**, and the storefront
+ * route is `/store/[slug]`, so there is no address to build and the row is deliberately not a
+ * `Pressable`: no `onPress`, no chevron, no `accessibilityHint` — `ListRow` draws a plain
+ * `View` when given neither handler (`list-row.tsx:163`). Inventing a route from a
+ * `businessId` would mean a lookup this screen has no reason to make.
  */
-function orderIdOf(data: Record<string, unknown> | null): string | null {
-	const value = data?.orderId;
-	return typeof value === "string" && value.length > 0 ? value : null;
-}
+function destinationOf(data: Record<string, unknown> | null): Href | null {
+	const text = (value: unknown): string | null =>
+		typeof value === "string" && value.length > 0 ? value : null;
 
-/**
- * The delivery an offer notification points at, or `null` when it points
- * nowhere. Dispatch writes `{ type: "DELIVERY_OFFERED", deliveryId, orderId }`,
- * and the delivery half is the one a courier acts on — it opens
- * `/delivery/:id`, where the run can be accepted and worked.
- */
-function deliveryIdOf(data: Record<string, unknown> | null): string | null {
-	const value = data?.deliveryId;
-	return typeof value === "string" && value.length > 0 ? value : null;
+	if (data?.type === "COURIER_INVITED") return "/courier-invites" as Href;
+
+	const deliveryId = text(data?.deliveryId);
+	if (deliveryId !== null) {
+		return {
+			pathname: "/delivery/[id]",
+			params: { id: deliveryId },
+		} as Href;
+	}
+
+	const orderId = text(data?.orderId);
+	if (orderId !== null) {
+		return { pathname: "/order/[id]", params: { id: orderId } } as Href;
+	}
+
+	return null;
 }
 
 /**
