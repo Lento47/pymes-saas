@@ -106,3 +106,28 @@ export function radiusPolygon(
 		geometry: { type: "Polygon", coordinates: [ring] },
 	};
 }
+
+/** The smallest camera rectangle containing the polygon's geographic edge. */
+export function radiusPolygonBounds(
+	polygon: GeoJSON.Feature<GeoJSON.Polygon> | null,
+): [west: number, south: number, east: number, north: number] | null {
+	const ring = polygon?.geometry.coordinates[0];
+	if (!ring?.length) return null;
+	let west = Infinity;
+	let south = Infinity;
+	let east = -Infinity;
+	let north = -Infinity;
+	for (const [lng, lat] of ring) {
+		if (lng === undefined || lat === undefined) continue;
+		west = Math.min(west, lng);
+		south = Math.min(south, lat);
+		east = Math.max(east, lng);
+		north = Math.max(north, lat);
+	}
+	return Number.isFinite(west) &&
+		Number.isFinite(south) &&
+		Number.isFinite(east) &&
+		Number.isFinite(north)
+		? [west, south, east, north]
+		: null;
+}

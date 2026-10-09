@@ -862,6 +862,7 @@ function ProfileForm({
 								}
 								marker={zonePin}
 								radiusKm={zonePin ? zoneRadius : null}
+								fitRadius
 								zoom={zonePin || device.coords ? 11 : 7}
 								style={styles.zoneMapFill}
 								onPick={(pin) => void selectZone(pin)}

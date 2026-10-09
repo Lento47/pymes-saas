@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { KM_PER_DEGREE, RADIUS_SIDES, radiusPolygon } from "./radius-polygon";
+import {
+	KM_PER_DEGREE,
+	RADIUS_SIDES,
+	radiusPolygon,
+	radiusPolygonBounds,
+} from "./radius-polygon";
 
 /**
  * The drawn ring, measured against the arithmetic that actually gates an offer.
@@ -80,6 +85,21 @@ function edgeMidpoints(centre: Point, radiusKm: number): Point[] {
 }
 
 describe("the radius polygon", () => {
+	test("fits every edge of the drawn zone at each selectable radius", () => {
+		for (const radiusKm of [1, 15, 30]) {
+			const polygon = radiusPolygon(SAN_JOSE, radiusKm);
+			const bounds = radiusPolygonBounds(polygon);
+			if (!bounds) throw new Error("expected camera bounds");
+			const [west, south, east, north] = bounds;
+			for (const point of vertices(SAN_JOSE, radiusKm)) {
+				expect(point.lng).toBeGreaterThanOrEqual(west);
+				expect(point.lng).toBeLessThanOrEqual(east);
+				expect(point.lat).toBeGreaterThanOrEqual(south);
+				expect(point.lat).toBeLessThanOrEqual(north);
+			}
+		}
+		expect(radiusPolygonBounds(null)).toBeNull();
+	});
 	test("measures every vertex at the radius, using the server's own distance", () => {
 		for (const centre of [SAN_JOSE, PANAMA]) {
 			for (const point of vertices(centre, RADIUS_KM)) {

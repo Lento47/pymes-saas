@@ -1,4 +1,6 @@
+import type { CameraRef } from "@maplibre/maplibre-react-native";
 import { useIsFocused } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Platform,
 	type StyleProp,
@@ -10,7 +12,7 @@ import {
 
 import { env } from "@/lib/env";
 import { useT } from "@/lib/i18n";
-import { radiusPolygon } from "@/lib/radius-polygon";
+import { radiusPolygon, radiusPolygonBounds } from "@/lib/radius-polygon";
 import { radius, space, useTheme } from "@/theme";
 
 import { Text } from "./text";
@@ -247,6 +249,8 @@ export type MapViewProps = {
 	 * circle on this map is a merchant being told something untrue about who can reach them.
 	 */
 	radiusKm?: number | null;
+	/** Frame the complete radius when its pin or size changes (courier zone picker). */
+	fitRadius?: boolean;
 };
 
 /**
@@ -294,11 +298,13 @@ const RADIUS_FILL_OPACITY = 0.12;
  * `./merchant-pulse` owns its 11-point label: the documented exception, not a third step.
  */
 const PIN_RING_WIDTH = 2;
+const RADIUS_CAMERA_PADDING = 32;
 
 export function MapView({
 	coords,
 	marker,
 	radiusKm,
+	fitRadius = false,
 	route,
 	style,
 	onPick,
@@ -310,6 +316,43 @@ export function MapView({
 	// Called before the guard below, with the other hooks, because it is a hook: the early
 	// `return null` sits under it and the order has to be the same on every render.
 	const focused = useIsFocused();
+	const cameraRef = useRef<CameraRef>(null);
+	const [mapReady, setMapReady] = useState(false);
+	const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
+	const radiusLat = marker?.lat ?? coords?.lat;
+	const radiusLng = marker?.lng ?? coords?.lng;
+	const radius = useMemo(
+		() =>
+			radiusPolygon(
+				radiusLat === undefined || radiusLng === undefined
+					? null
+					: { lat: radiusLat, lng: radiusLng },
+				radiusKm ?? null,
+			),
+		[radiusLat, radiusLng, radiusKm],
+	);
+	const radiusBounds = useMemo(() => radiusPolygonBounds(radius), [radius]);
+
+	useEffect(() => {
+		if (
+			!fitRadius ||
+			!mapReady ||
+			!mapSize.width ||
+			!mapSize.height ||
+			!radiusBounds
+		)
+			return;
+		cameraRef.current?.fitBounds(radiusBounds, {
+			padding: {
+				top: RADIUS_CAMERA_PADDING,
+				right: RADIUS_CAMERA_PADDING,
+				bottom: RADIUS_CAMERA_PADDING,
+				left: RADIUS_CAMERA_PADDING,
+			},
+			duration: 250,
+			easing: "ease",
+		});
+	}, [fitRadius, mapReady, mapSize.width, mapSize.height, radiusBounds]);
 
 	// Read before the guard rather than after it, so the three reasons to draw nothing are one
 	// `if`: no style, no coordinate, or no MapLibre in this binary.
@@ -342,12 +385,25 @@ export function MapView({
 	// centred would be showing the limit for a position they are no longer choosing. No
 	// caller passes `radiusKm` together with `route`, and `route` draws its own two endpoints
 	// regardless, so the two can never disagree about which point the ring means.
-	const radius = radiusPolygon(marker ?? coords, radiusKm ?? null);
-
 	return (
-		<View style={[styles.band, { borderColor: colors.border }, style]}>
+		<View
+			style={[styles.band, { borderColor: colors.border }, style]}
+			onLayout={
+				fitRadius
+					? (event) => {
+							const { width, height } = event.nativeEvent.layout;
+							setMapSize((previous) =>
+								previous.width === width && previous.height === height
+									? previous
+									: { width, height },
+							);
+						}
+					: undefined
+			}
+		>
 			<MapLibreMap
 				mapStyle={mapStyleUrl}
+				onDidFinishLoadingMap={fitRadius ? () => setMapReady(true) : undefined}
 				// Android draws into a `SurfaceView` by default, and a `SurfaceView` is
 				// composited *below* the window rather than into it — so the band's
 				// `overflow: "hidden"` cannot clip it and the corners would come out square
@@ -385,8 +441,23 @@ export function MapView({
 				}
 			>
 				<Camera
-					center={[mapCenter.lng, mapCenter.lat]}
-					zoom={zoom ?? (route ? ROUTE_ZOOM : STREET_ZOOM)}
+					ref={cameraRef}
+					{...(fitRadius && radiusBounds
+						? {
+								initialViewState: {
+									bounds: radiusBounds,
+									padding: {
+										top: RADIUS_CAMERA_PADDING,
+										right: RADIUS_CAMERA_PADDING,
+										bottom: RADIUS_CAMERA_PADDING,
+										left: RADIUS_CAMERA_PADDING,
+									},
+								},
+							}
+						: {
+								center: [mapCenter.lng, mapCenter.lat] as [number, number],
+								zoom: zoom ?? (route ? ROUTE_ZOOM : STREET_ZOOM),
+							})}
 				/>
 
 				{radius ? (
@@ -406,12 +477,19 @@ export function MapView({
 								"fill-opacity": RADIUS_FILL_OPACITY,
 							}}
 						/>
+						{fitRadius ? (
+							<Layer
+								id="mapRadiusOutline"
+								type="line"
+								paint={{ "line-color": colors.card, "line-width": 5 }}
+							/>
+						) : null}
 						<Layer
 							id="mapRadiusLine"
 							type="line"
 							paint={{
 								"line-color": colors.primary,
-								"line-width": PIN_RING_WIDTH,
+								"line-width": fitRadius ? 3 : PIN_RING_WIDTH,
 							}}
 						/>
 					</GeoJSONSource>
