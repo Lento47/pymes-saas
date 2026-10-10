@@ -499,7 +499,8 @@ export async function place(
 			courierFeeMinor:
 				input.fulfilment === "DELIVERY" ? business.deliveryFeeMinor : null,
 			merchantCoversDelivery:
-				input.fulfilment === "DELIVERY" && business.merchantCoversDelivery,
+				input.fulfilment === "DELIVERY" &&
+				(business.merchantCoversDelivery || Boolean(promotion.freeDelivery)),
 			deliveryPricingVersion:
 				roadPricing?.pricingVersion ??
 				(input.fulfilment === "DELIVERY" ? "legacy-fixed" : null),

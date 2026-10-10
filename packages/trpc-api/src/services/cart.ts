@@ -160,7 +160,9 @@ export async function quote(
 	const fixedTotals = {
 		...cart.totals,
 		deliveryFeeMinor,
-		merchantCoversDelivery: business.merchantCoversDelivery,
+		merchantCoversDelivery:
+			input.fulfilment === "DELIVERY" &&
+			(business.merchantCoversDelivery || Boolean(promotion.freeDelivery)),
 		totalMinor: cart.totals.totalMinor + deliveryFeeMinor,
 	};
 	const pricingVersion =
@@ -225,7 +227,8 @@ export async function quote(
 			return {
 				...cart.totals,
 				...road,
-				merchantCoversDelivery: business.merchantCoversDelivery,
+				merchantCoversDelivery:
+					business.merchantCoversDelivery || Boolean(promotion.freeDelivery),
 			};
 		} catch (error) {
 			if (

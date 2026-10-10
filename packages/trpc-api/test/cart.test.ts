@@ -705,7 +705,22 @@ describe("checkout quote", () => {
 			expect(changed.message).toBe("checkout.refusal.totalChanged");
 			const fresh = await caller.cart.quote(input);
 			expect(fresh.deliveryFeeMinor).toBe(0);
+			expect(fresh.merchantCoversDelivery).toBe(true);
 			expect(fresh.roadQuote?.quoteId).not.toBe(quote.roadQuote?.quoteId);
+			const placed = await caller.orders.place({
+				...input,
+				quoteId: fresh.roadQuote?.quoteId,
+				paymentMethod: "CASH",
+				clientRequestId: "promotion-covered-delivery",
+				expectedTotalMinor: fresh.totalMinor,
+			});
+			const [stored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, placed.id));
+			expect(stored?.merchantCoversDelivery).toBe(true);
+			expect(stored?.courierFeeMinor).toBe(850);
+			expect(stored?.deliveryFeeMinor).toBe(0);
 		} finally {
 			globalThis.fetch = previousFetch;
 			test.close();
