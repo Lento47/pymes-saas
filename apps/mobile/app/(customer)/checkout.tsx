@@ -821,6 +821,11 @@ function CheckoutForm({
 											})}
 										</Text>
 									) : null}
+									{quote.data?.routingStatus === "UNAVAILABLE" ? (
+										<Text variant="caption" tone="muted">
+											{t("checkout.roadRouteUnavailable")}
+										</Text>
+									) : null}
 								</View>
 							) : null}
 

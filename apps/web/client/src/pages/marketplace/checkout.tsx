@@ -309,6 +309,9 @@ export default function MarketplaceCheckoutPage() {
               {new Intl.NumberFormat("es-CR", { maximumFractionDigits: 1 }).format(quote.data.roadQuote.distanceMeters / 1000)} km por carretera · aprox. {Math.ceil(quote.data.roadQuote.durationSeconds / 60)} min de manejo
             </p>
           ) : null}
+          {quote.data?.routingStatus === "UNAVAILABLE" && !quote.isError ? (
+            <p className="mb-2 text-xs text-muted-foreground">Ruta vial no disponible. Se aplica la tarifa fija de entrega del comercio.</p>
+          ) : null}
           <div className="flex items-center justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
             <span>Total</span>
             <span>{quote.data && !quote.isError ? money(quote.data.totalMinor, quote.data.currency) : "—"}</span>

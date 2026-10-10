@@ -102,6 +102,7 @@ import {
 	checkoutPriceFingerprint,
 	roadFeeEnabled,
 	roadQuoteForOrder,
+	routingPricingVersion,
 } from "./delivery-quote";
 import type { BillingPlan, BusinessContext, UserContext } from "./helpers";
 import {
@@ -346,13 +347,17 @@ export async function place(
 		: 0;
 	if (input.fulfilment === "DELIVERY" && business.deliveryFeeMinor <= 0)
 		throw new ValidationError("checkout.refusal.courierFeeUnavailable");
-	const roadPricingEnabled =
-		input.fulfilment === "DELIVERY" &&
-		roadFeeEnabled(ctx.env, business.currency);
-	if (!roadPricingEnabled && input.quoteId)
+	const pricingVersion =
+		input.fulfilment === "DELIVERY"
+			? routingPricingVersion(ctx.env, business.currency)
+			: null;
+	if (!pricingVersion && input.quoteId)
 		throw new ConflictError("checkout.refusal.totalChanged");
 	let roadPricing: Awaited<ReturnType<typeof roadQuoteForOrder>> | null = null;
-	if (roadPricingEnabled) {
+	if (
+		pricingVersion &&
+		(input.quoteId || roadFeeEnabled(ctx.env, business.currency))
+	) {
 		if (
 			!deliveryAddress ||
 			location.lat == null ||
@@ -389,6 +394,7 @@ export async function place(
 			},
 			promotionCode: input.promotionCode ?? cart.promotionCode,
 			currency: business.currency,
+			pricingVersion,
 			subtotalMinor,
 			discountMinor,
 		});
@@ -494,7 +500,9 @@ export async function place(
 				input.fulfilment === "DELIVERY" ? business.deliveryFeeMinor : null,
 			merchantCoversDelivery:
 				input.fulfilment === "DELIVERY" && business.merchantCoversDelivery,
-			deliveryPricingVersion: roadPricing?.pricingVersion ?? null,
+			deliveryPricingVersion:
+				roadPricing?.pricingVersion ??
+				(input.fulfilment === "DELIVERY" ? "legacy-fixed" : null),
 			deliveryQuoteId: roadPricing?.id ?? null,
 			routeDistanceMeters: roadPricing?.distanceMeters ?? null,
 			routeDurationSeconds: roadPricing?.durationSeconds ?? null,

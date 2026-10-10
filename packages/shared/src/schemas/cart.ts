@@ -196,6 +196,8 @@ export const cartTotalsSchema = z.object({
 	tipMinor: z.number().int(),
 	totalMinor: z.number().int(),
 	currency: currencySchema,
+	/** Road lookup failed in routing-only rollout; the fixed shop fee still applies. */
+	routingStatus: z.literal("UNAVAILABLE").optional(),
 	/** What the customer still needs to add to reach the business's minimum. */
 	missingForMinOrderMinor: z.number().int().min(0),
 	roadQuote: z

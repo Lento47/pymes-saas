@@ -547,6 +547,8 @@ export const customer = {
 		"Este comercio aún no tiene un local de retiro disponible.",
 	"checkout.roadRoute":
 		"{distance} km por carretera · aprox. {minutes} min de manejo",
+	"checkout.roadRouteUnavailable":
+		"Ruta vial no disponible. Se aplica la tarifa fija de entrega del comercio.",
 	"checkout.deliveryCoveredByMerchant":
 		"El comercio cubre tu envío y sigue debiendo el pago al repartidor por la entrega.",
 	"checkout.address": "Dirección de entrega",

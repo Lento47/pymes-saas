@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import type { LogLevel } from "./logging";
 import type { OrderEventEnvelope } from "./events";
+import type { LogLevel } from "./logging";
 
 /**
  * Everything this Worker is handed per request.
@@ -80,6 +80,8 @@ export type Env = {
 	CORS_ORIGINS?: string;
 	/** Operator-controlled HTTPS OSRM endpoint; never a public demo server. */
 	ROUTING_BASE_URL?: string;
+	/** Fetch road geometry without changing the legacy delivery fee. */
+	ROUTING_ENABLED?: string;
 	/** Road-priced CRC deliveries are opt-in; absent or false keeps the legacy fee. */
 	ROUTE_FEE_ENABLED?: string;
 	/** ETA-first courier ranking; absent keeps the legacy ordering. */

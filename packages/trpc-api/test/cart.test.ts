@@ -277,6 +277,146 @@ describe("checkout quote", () => {
 		}
 	});
 
+	test("routing-only quotes draw the road while charging the fixed shop fee", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		let routeCalls = 0;
+		globalThis.fetch = Object.assign(
+			async () => {
+				routeCalls += 1;
+				return Response.json({
+					code: "Ok",
+					routes: [
+						{
+							distance: 4_000,
+							duration: 720,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[-84.08, 9.93],
+									[-84.07, 9.94],
+								],
+							},
+						},
+					],
+				});
+			},
+			{ preconnect: previousFetch.preconnect },
+		);
+		try {
+			const { first, caller, coffee } = await twoShops(test);
+			test.env.ROUTING_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			await test.db
+				.update(locationTable)
+				.set({ lat: 9.93, lng: -84.08 })
+				.where(eq(locationTable.businessId, first));
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			const address = await caller.users.saveAddress({
+				label: "Home",
+				line1: "Street",
+				city: "San José",
+				region: "San José",
+				lat: 9.94,
+				lng: -84.07,
+			});
+			const input = {
+				fulfilment: "DELIVERY" as const,
+				locationId: `loc_${first}`,
+				addressId: address.id,
+			};
+			const quote = await caller.cart.quote(input);
+			expect(quote.deliveryFeeMinor).toBe(850);
+			expect(quote.roadQuote?.distanceMeters).toBe(4_000);
+			expect(quote.roadQuote?.baseFeeMinor).toBe(850);
+			expect((await caller.cart.quote(input)).roadQuote?.quoteId).toBe(
+				quote.roadQuote?.quoteId,
+			);
+			expect(routeCalls).toBe(1);
+			const placed = await caller.orders.place({
+				...input,
+				quoteId: quote.roadQuote?.quoteId,
+				paymentMethod: "CASH",
+				clientRequestId: "routing-only-quoted",
+				expectedTotalMinor: quote.totalMinor,
+			});
+			const [stored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, placed.id));
+			expect(stored?.deliveryPricingVersion).toBe("legacy-routed-v1");
+			expect(stored?.deliveryFeeMinor).toBe(850);
+			expect(stored?.routeDurationSeconds).toBe(720);
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			const olderClientOrder = await caller.orders.place({
+				...input,
+				paymentMethod: "CASH",
+				clientRequestId: "routing-only-old-client",
+				expectedTotalMinor: quote.totalMinor,
+			});
+			expect(olderClientOrder.totals.deliveryFeeMinor).toBe(850);
+			const [olderStored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, olderClientOrder.id));
+			expect(olderStored?.deliveryPricingVersion).toBe("legacy-fixed");
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
+	test("routing-only outage reports the fallback and keeps fixed-fee checkout usable", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		globalThis.fetch = Object.assign(
+			async () => Response.json({ code: "NoRoute" }),
+			{ preconnect: previousFetch.preconnect },
+		);
+		try {
+			const { first, caller, coffee } = await twoShops(test);
+			test.env.ROUTING_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			await test.db
+				.update(locationTable)
+				.set({ lat: 9.93, lng: -84.08 })
+				.where(eq(locationTable.businessId, first));
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			const address = await caller.users.saveAddress({
+				label: "Home",
+				line1: "Street",
+				city: "San José",
+				region: "San José",
+				lat: 9.94,
+				lng: -84.07,
+			});
+			const input = {
+				fulfilment: "DELIVERY" as const,
+				locationId: `loc_${first}`,
+				addressId: address.id,
+			};
+			const quote = await caller.cart.quote(input);
+			expect(quote.deliveryFeeMinor).toBe(850);
+			expect(quote.routingStatus).toBe("UNAVAILABLE");
+			expect(quote.roadQuote).toBeUndefined();
+			const order = await caller.orders.place({
+				...input,
+				paymentMethod: "CASH",
+				clientRequestId: "routing-only-fallback",
+				expectedTotalMinor: quote.totalMinor,
+			});
+			expect(order.totals.deliveryFeeMinor).toBe(850);
+			const [stored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, order.id));
+			expect(stored?.deliveryPricingVersion).toBe("legacy-fixed");
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
 	test("locks a road fee to the selected pins and stores its order snapshot", async () => {
 		const test = world();
 		const previousFetch = globalThis.fetch;

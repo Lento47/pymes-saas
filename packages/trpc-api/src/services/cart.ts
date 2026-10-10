@@ -37,6 +37,7 @@ import {
 	checkoutPriceFingerprint,
 	createRoadQuote,
 	roadFeeEnabled,
+	routingPricingVersion,
 } from "./delivery-quote";
 import type { UserContext } from "./helpers";
 import { batchOf, isPublicBusiness, orNotFound } from "./helpers";
@@ -150,70 +151,89 @@ export async function quote(
 	if (promotion.error) throw new ValidationError(promotion.error);
 	if (input.fulfilment === "DELIVERY" && business.deliveryFeeMinor <= 0)
 		throw new ValidationError("checkout.refusal.courierFeeUnavailable");
-	if (
-		input.fulfilment === "DELIVERY" &&
-		roadFeeEnabled(ctx.env, business.currency)
-	) {
-		if (!address)
-			throw new ValidationError("checkout.refusal.addressNotFound", {
-				field: "addressId",
-			});
-		if (
-			location.lat == null ||
-			location.lng == null ||
-			address.lat == null ||
-			address.lng == null
-		)
-			throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
-		const road = await createRoadQuote(ctx, {
-			userId: ctx.user.id,
-			cartId: row.id,
-			cartUpdatedAt: row.updatedAt,
-			cartFingerprint: checkoutPriceFingerprint(
-				cart.items.map((item) => ({
-					id: item.id,
-					quantity: item.quantity,
-					unitPriceMinor: item.effectiveUnitPriceMinor,
-				})),
-				{
-					courierFeeMinor: business.deliveryFeeMinor,
-					merchantCoversDelivery: business.merchantCoversDelivery,
-				},
-				{
-					discount: promotion.discount,
-					freeDelivery: Boolean(promotion.freeDelivery),
-				},
-			),
-			locationId: location.id,
-			addressId: address.id,
-			consistentOrigin: { lat: location.lat, lng: location.lng },
-			consistentDestination: { lat: address.lat, lng: address.lng },
-			promotionCode: row.promotionCode,
-			currency: business.currency,
-			subtotalMinor: cart.totals.subtotalMinor,
-			discountMinor: cart.totals.discountMinor,
-			baseTotalMinor: cart.totals.totalMinor,
-			freeDelivery:
-				Boolean(promotion.freeDelivery) || business.merchantCoversDelivery,
-		});
-		return {
-			...cart.totals,
-			...road,
-			merchantCoversDelivery: business.merchantCoversDelivery,
-		};
-	}
 	const deliveryFeeMinor =
 		input.fulfilment === "DELIVERY" &&
 		!promotion.freeDelivery &&
 		!business.merchantCoversDelivery
 			? business.deliveryFeeMinor
 			: 0;
-	return {
+	const fixedTotals = {
 		...cart.totals,
 		deliveryFeeMinor,
 		merchantCoversDelivery: business.merchantCoversDelivery,
 		totalMinor: cart.totals.totalMinor + deliveryFeeMinor,
 	};
+	const pricingVersion =
+		input.fulfilment === "DELIVERY"
+			? routingPricingVersion(ctx.env, business.currency)
+			: null;
+	if (pricingVersion) {
+		const dynamicPricing = roadFeeEnabled(ctx.env, business.currency);
+		if (!address && dynamicPricing)
+			throw new ValidationError("checkout.refusal.addressNotFound", {
+				field: "addressId",
+			});
+		if (!address) return fixedTotals;
+		if (
+			location.lat == null ||
+			location.lng == null ||
+			address.lat == null ||
+			address.lng == null
+		) {
+			if (dynamicPricing)
+				throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
+			return { ...fixedTotals, routingStatus: "UNAVAILABLE" as const };
+		}
+		try {
+			const road = await createRoadQuote(ctx, {
+				userId: ctx.user.id,
+				cartId: row.id,
+				cartUpdatedAt: row.updatedAt,
+				cartFingerprint: checkoutPriceFingerprint(
+					cart.items.map((item) => ({
+						id: item.id,
+						quantity: item.quantity,
+						unitPriceMinor: item.effectiveUnitPriceMinor,
+					})),
+					{
+						courierFeeMinor: business.deliveryFeeMinor,
+						merchantCoversDelivery: business.merchantCoversDelivery,
+					},
+					{
+						discount: promotion.discount,
+						freeDelivery: Boolean(promotion.freeDelivery),
+					},
+				),
+				locationId: location.id,
+				addressId: address.id,
+				consistentOrigin: { lat: location.lat, lng: location.lng },
+				consistentDestination: { lat: address.lat, lng: address.lng },
+				promotionCode: row.promotionCode,
+				currency: business.currency,
+				pricingVersion,
+				subtotalMinor: cart.totals.subtotalMinor,
+				discountMinor: cart.totals.discountMinor,
+				baseTotalMinor: cart.totals.totalMinor,
+				legacyFeeMinor: business.deliveryFeeMinor,
+				freeDelivery:
+					Boolean(promotion.freeDelivery) || business.merchantCoversDelivery,
+			});
+			return {
+				...cart.totals,
+				...road,
+				merchantCoversDelivery: business.merchantCoversDelivery,
+			};
+		} catch (error) {
+			if (
+				dynamicPricing ||
+				!(error instanceof ValidationError) ||
+				error.userMessage !== "checkout.refusal.deliveryQuoteUnavailable"
+			)
+				throw error;
+			return { ...fixedTotals, routingStatus: "UNAVAILABLE" as const };
+		}
+	}
+	return fixedTotals;
 }
 
 /**

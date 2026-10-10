@@ -17,6 +17,17 @@ export function roadFeeEnabled(env: Env, currency: Currency): boolean {
 	return env.ROUTE_FEE_ENABLED === "true" && currency === "CRC";
 }
 
+export const LEGACY_ROUTED_VERSION = "legacy-routed-v1";
+
+/** Routing can be observed with fixed prices before the road tariff is enabled. */
+export function routingPricingVersion(
+	env: Env,
+	currency: Currency,
+): string | null {
+	if (roadFeeEnabled(env, currency)) return EXPRESS_V1.version;
+	return env.ROUTING_ENABLED === "true" ? LEGACY_ROUTED_VERSION : null;
+}
+
 /** Bind a quote to the actual pinned coordinates, including edits to a saved address. */
 export function routeInputKey(origin: GeoPoint, destination: GeoPoint): string {
 	return [origin.lat, origin.lng, destination.lat, destination.lng]
@@ -50,6 +61,7 @@ type RoadInputs = {
 	consistentDestination: GeoPoint;
 	promotionCode: string | null;
 	currency: Currency;
+	pricingVersion: string;
 	subtotalMinor: number;
 	discountMinor: number;
 };
@@ -65,7 +77,7 @@ function sameCheckout(row: QuoteRow, input: RoadInputs): boolean {
 		row.routeInputKey ===
 			routeInputKey(input.consistentOrigin, input.consistentDestination) &&
 		row.promotionCode === input.promotionCode &&
-		row.pricingVersion === EXPRESS_V1.version &&
+		row.pricingVersion === input.pricingVersion &&
 		row.currency === input.currency &&
 		row.subtotalMinor === input.subtotalMinor &&
 		row.discountMinor === input.discountMinor
@@ -86,7 +98,11 @@ function payload(row: QuoteRow) {
 /** Routes once per unexpired checkout state; a poll reuses the same locked amount. */
 export async function createRoadQuote(
 	ctx: UserContext,
-	input: RoadInputs & { baseTotalMinor: number; freeDelivery: boolean },
+	input: RoadInputs & {
+		baseTotalMinor: number;
+		freeDelivery: boolean;
+		legacyFeeMinor: number;
+	},
 ) {
 	const now = new Date();
 	const previous = await ctx.db
@@ -131,10 +147,10 @@ export async function createRoadQuote(
 	} catch {
 		throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
 	}
-	const baseFeeMinor = routeFeeMinor(
-		route.distanceMeters,
-		route.durationSeconds,
-	);
+	const baseFeeMinor =
+		input.pricingVersion === EXPRESS_V1.version
+			? routeFeeMinor(route.distanceMeters, route.durationSeconds)
+			: input.legacyFeeMinor;
 	const feeMinor = input.freeDelivery ? 0 : baseFeeMinor;
 	const row: QuoteRow = {
 		id: newId("deliveryQuote"),
@@ -149,7 +165,7 @@ export async function createRoadQuote(
 			input.consistentOrigin,
 			input.consistentDestination,
 		),
-		pricingVersion: EXPRESS_V1.version,
+		pricingVersion: input.pricingVersion,
 		currency: input.currency,
 		subtotalMinor: input.subtotalMinor,
 		discountMinor: input.discountMinor,

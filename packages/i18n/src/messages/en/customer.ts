@@ -284,6 +284,8 @@ export const customer = {
 	"checkout.location.routeMap": "Map showing the shop pickup and delivery pins",
 	"checkout.location.none": "This shop has no pickup location available yet.",
 	"checkout.roadRoute": "{distance} km by road · about {minutes} min driving",
+	"checkout.roadRouteUnavailable":
+		"Road route unavailable. The shop's fixed delivery charge applies.",
 	"checkout.deliveryCoveredByMerchant":
 		"The shop covers your delivery charge and still owes the courier for the trip.",
 	"checkout.address": "Delivery address",
