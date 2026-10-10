@@ -26,7 +26,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { Image } from "@/components/image";
-import { MapView } from "@/components/map";
+import { isMapAvailable, MapView } from "@/components/map";
 import { MoneyLine } from "@/components/money-line";
 import { OrderTimeline } from "@/components/order-timeline";
 import { Price } from "@/components/price";
@@ -350,6 +350,7 @@ function OrderDetail() {
 				}
 			: null;
 	const fresh = ping ? Date.now() - ping.at.getTime() < FRESH_MS : false;
+	const mapAvailable = isMapAvailable();
 	const pickupPoint =
 		order.pickupLocation?.lat != null && order.pickupLocation.lng != null
 			? {
@@ -777,23 +778,25 @@ function OrderDetail() {
 						{/* The trip's fixed endpoints and the courier's latest foreground ping.
 						    Pickup and destination are shown whenever both stored addresses have
 						    coordinates; the moving blue marker appears after the assigned courier
-						    starts sharing. Without a configured basemap, MapView renders nothing
-						    while the address text and ping freshness remain readable. */}
-						{ping || deliveryRoute ? (
+						    starts sharing. Without a configured basemap, the map and its legend
+						    stay hidden while the address and ping freshness remain readable. */}
+						{ping || (deliveryRoute && mapAvailable) ? (
 							<View style={styles.group}>
-								<MapView
-									coords={ping ?? pickupPoint ?? destinationPoint}
-									marker={ping}
-									route={deliveryRoute}
-									accessibilityLabel={t(
-										ping
-											? deliveryRoute
-												? "order.map.courier"
-												: "order.map.courierOnly"
-											: "order.map.pins",
-									)}
-								/>
-								{deliveryRoute ? (
+								{mapAvailable ? (
+									<MapView
+										coords={ping ?? pickupPoint ?? destinationPoint}
+										marker={ping}
+										route={deliveryRoute}
+										accessibilityLabel={t(
+											ping
+												? deliveryRoute
+													? "order.map.courier"
+													: "order.map.courierOnly"
+												: "order.map.pins",
+										)}
+									/>
+								) : null}
+								{deliveryRoute && mapAvailable ? (
 									<View style={styles.routeLegend}>
 										<View style={styles.routeLegendItem}>
 											<View
