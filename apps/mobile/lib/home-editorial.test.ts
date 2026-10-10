@@ -74,6 +74,8 @@ describe("editorial hero copy", () => {
 		expect(hero).toContain("<SlidePlate");
 		expect(hero).toContain('justifyContent: "space-between"');
 		expect(hero).toContain("paddingTop: space.xl");
+		expect(hero).toContain("campaignPhoto");
+		expect(hero).not.toContain("campaignSticker");
 	});
 
 	test("pages horizontally through the campaign and live promotions", () => {

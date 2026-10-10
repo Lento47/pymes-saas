@@ -11,6 +11,7 @@ import type { DeviceLocation, LocationStatus } from "@/lib/location";
 import { space } from "@/theme";
 
 const OVERVIEW_CENTER = { lat: 9.9281, lng: -84.0907 };
+const FULL_SNAP = [1];
 
 export function HomeLocationPicker({
 	open,
@@ -71,7 +72,8 @@ export function HomeLocationPicker({
 			onClose={onClose}
 			title={t("location.title")}
 			closeLabel={t("action.close")}
-			snapPoints={[1]}
+			snapPoints={FULL_SNAP}
+			enterAnimation="timing"
 			scrollEnabled={!mapTouching}
 			footer={<View style={{ height: tabBarClearance + space.md }} />}
 		>

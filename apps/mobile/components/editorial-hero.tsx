@@ -58,7 +58,7 @@ export function EditorialHero({
 		CAMPAIGN_SLIDE,
 		...promotions.map((promotion) => promotion.id),
 	];
-	const bowlWidth = Math.max(pageWidth - space.xxl * 2, 0) * 0.62;
+	const bowlWidth = Math.max(pageWidth - space.xxl * 2, 0) * 0.7;
 
 	const onSettle = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		if (pageWidth <= 0) return;
@@ -205,6 +205,7 @@ function CampaignSlide({ bowlWidth }: { bowlWidth: number }) {
 				accessibilityLabel={t("home.editorial.photo")}
 				style={[
 					styles.photoHit,
+					styles.campaignPhoto,
 					{ width: bowlWidth, height: bowlWidth * 0.92 },
 				]}
 			>
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
 		paddingBottom: space.xl,
 		paddingLeft: space.xl,
 		paddingRight: space.sm,
-		zIndex: 2,
+		zIndex: 5,
 		maxWidth: "56%",
 	},
 	copyWide: {
@@ -412,6 +413,11 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		right: -20,
 		bottom: -18,
+		zIndex: 1,
+	},
+	campaignPhoto: {
+		right: -8,
+		bottom: 28,
 		zIndex: 1,
 	},
 	photo: {

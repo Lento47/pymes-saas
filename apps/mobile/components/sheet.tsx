@@ -263,6 +263,8 @@ type SheetProps = {
 	 * not individual props.
 	 */
 	variant?: SheetVariant;
+	/** Override the entrance/settle curve for content that must not overshoot. */
+	enterAnimation?: "spring" | "timing";
 	/**
 	 * A node pinned under the body, inside the sheet's own surface — an `ActionBar` or a
 	 * single `Button`. It is inside the sheet so it moves with it, which is the whole point
@@ -285,6 +287,7 @@ export function Sheet({
 	snapPoints = [0.5],
 	initialSnapIndex = 0,
 	variant = "panel",
+	enterAnimation,
 	footer,
 	avoidKeyboard = false,
 	scrollEnabled = true,
@@ -295,6 +298,7 @@ export function Sheet({
 	const insets = useSafeAreaInsets();
 	const reduceMotion = useReducedMotion();
 	const style = VARIANTS[variant];
+	const entrance = enterAnimation ?? style.enter;
 
 	/**
 	 * Mounted separately from `open`, so the exit can run before the sheet leaves the tree.
@@ -365,7 +369,7 @@ export function Sheet({
 			// arrival and exit bands together.
 			translateY.value = reduceMotion
 				? to
-				: style.enter === "spring"
+				: entrance === "spring"
 					? withSpring(to, spring.sheet)
 					: withTiming(to, {
 							duration: duration.dialog,
@@ -377,7 +381,7 @@ export function Sheet({
 							),
 						});
 		},
-		[reduceMotion, snapTarget, style.enter, translateY],
+		[reduceMotion, snapTarget, entrance, translateY],
 	);
 
 	/**
