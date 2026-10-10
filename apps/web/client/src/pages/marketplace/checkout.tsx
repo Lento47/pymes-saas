@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 import { EmptyState, ErrorState, money } from "@/components/marketplace/cards";
@@ -25,6 +25,9 @@ const PAYMENT_METHODS = [
 
 type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
 
+const CheckoutRouteMap = lazy(() => import("./checkout-route-map"));
+const CheckoutPinMap = lazy(() => import("./checkout-pin-map"));
+
 export default function MarketplaceCheckoutPage() {
   const { data: session, isLoading: loadingSession } = useMarketplaceSession();
   const cart = useCart(Boolean(session));
@@ -47,6 +50,7 @@ export default function MarketplaceCheckoutPage() {
     ?? locations.data?.find((location) => location.isDefault)
     ?? locations.data?.[0];
   const selectedAddress = addressId ?? addresses.data?.find((address) => address.isDefault)?.id ?? addresses.data?.[0]?.id;
+  const selectedAddressRow = addresses.data?.find((address) => address.id === selectedAddress);
   const quote = useCartQuote(
     { fulfilment, locationId: selectedLocation?.id, addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined },
     Boolean(session && cart.data?.items.length && selectedLocation && (fulfilment === "PICKUP" || selectedAddress)),
@@ -206,14 +210,19 @@ export default function MarketplaceCheckoutPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">Todavía no tenés direcciones guardadas.</p>
                 )}
+                {quote.isError && selectedAddressRow && (selectedAddressRow.lat == null || selectedAddressRow.lng == null) ? (
+                  <p className="mt-3 text-xs text-muted-foreground">Esta dirección no tiene un punto guardado. Agregá una dirección con un pin para obtener una cotización por carretera.</p>
+                ) : null}
 
                 {showAddressForm ? (
                   <AddressForm
                     saving={saveAddress.isPending}
+                    center={selectedLocation?.lat != null && selectedLocation.lng != null ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : null}
                     onCancel={() => setShowAddressForm(false)}
                     onSave={(input) =>
                       saveAddress.mutate(input, {
-                        onSuccess: () => {
+                        onSuccess: (address) => {
+                          setAddressId(address.id);
                           setShowAddressForm(false);
                           toast({ title: "Dirección guardada" });
                         },
@@ -230,6 +239,19 @@ export default function MarketplaceCheckoutPage() {
                     + Agregar dirección
                   </button>
                 )}
+
+                {quote.data?.roadQuote && !quote.isError && selectedLocation?.lat != null && selectedLocation.lng != null && selectedAddressRow?.lat != null && selectedAddressRow.lng != null ? (
+                  <div className="mt-4">
+                    <Suspense fallback={<Skeleton className="h-56 w-full rounded-lg" />}>
+                      <CheckoutRouteMap
+                        key={quote.data.roadQuote.quoteId}
+                        pickup={{ lat: selectedLocation.lat, lng: selectedLocation.lng }}
+                        destination={{ lat: selectedAddressRow.lat, lng: selectedAddressRow.lng }}
+                        geometry={quote.data.roadQuote.geometry}
+                      />
+                    </Suspense>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </fieldset>
@@ -333,18 +355,25 @@ function AddressForm({
   onSave,
   onCancel,
   saving,
+  center,
 }: {
   onSave: (input: Record<string, unknown>) => void;
   onCancel: () => void;
   saving: boolean;
+  center: { lat: number; lng: number } | null;
 }) {
   const [label, setLabel] = useState("Casa");
   const [line1, setLine1] = useState("");
   const [city, setCity] = useState("");
   const [region, setRegion] = useState("");
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
 
   return (
     <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
+      <Suspense fallback={<Skeleton className="h-64 w-full rounded-lg" />}>
+        <CheckoutPinMap center={center} point={pin} onPick={setPin} />
+      </Suspense>
+      {!pin ? <p className="text-xs text-muted-foreground">Marcá un punto para calcular la ruta y el precio de entrega por carretera.</p> : null}
       <Input
         value={label}
         onChange={(event) => setLabel(event.target.value)}
@@ -380,6 +409,7 @@ function AddressForm({
               line1: line1.trim(),
               city: city.trim(),
               region: region.trim(),
+              ...(pin ? { lat: pin.lat, lng: pin.lng } : {}),
             })
           }
         >

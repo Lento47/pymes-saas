@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { addProtocol, Map as MapLibreMap, NavigationControl, setWorkerUrl } from "maplibre-gl";
-import mapLibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { Protocol } from "pmtiles";
-import "maplibre-gl/dist/maplibre-gl.css";
+import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
+import { configureMapLibre, MAP_STYLE_URL } from "@/lib/maplibre-setup";
 
 /**
  * The style the mobile app uses too — one document, served by the Worker that hosts this
@@ -17,22 +15,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
  * third-party tile host. Replacing it is the point of this route — see
  * `docs/technical/architecture/cloudflare-and-maps.md`.
  */
-const STYLE_URL = "https://pymeshub.lat/api/map/style.json";
-
-setWorkerUrl(mapLibreWorkerUrl);
-
-/**
- * `pmtiles://` is not a scheme the browser can fetch. MapLibre Native has the protocol
- * compiled in; maplibre-gl does not, so a style whose source is `pmtiles://…` fails
- * before any tile is requested unless this is registered first.
- *
- * At module scope, next to `setWorkerUrl`: both are process-wide and both have to be in
- * place before the first map is constructed. `Protocol` is documented as "must be added
- * once globally" — a second registration would only replace the first, so this must not
- * move into the render body.
- */
-const pmtilesProtocol = new Protocol();
-addProtocol("pmtiles", pmtilesProtocol.tile);
+configureMapLibre();
 
 type MapStatus = "loading" | "ready" | "error";
 
@@ -52,7 +35,7 @@ export default function MapPage() {
     let loaded = false;
     const map = new MapLibreMap({
       container,
-      style: STYLE_URL,
+      style: MAP_STYLE_URL,
       center: [-84.0907, 9.9281],
       zoom: 7,
     });
@@ -78,7 +61,7 @@ export default function MapPage() {
           </a>
           <a
             className="text-sm text-amber-300 underline-offset-4 hover:underline"
-            href={STYLE_URL}
+            href={MAP_STYLE_URL}
             rel="noreferrer"
             target="_blank"
           >
