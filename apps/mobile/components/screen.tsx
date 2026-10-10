@@ -66,6 +66,12 @@ type ScreenProps = AccessibilityProps & {
 	scroll?: boolean;
 	/** Add the bottom inset. On for a screen whose content ends at the screen's edge. */
 	bottomInset?: boolean;
+	/**
+	 * Add the top inset. On by default. Off for a screen whose first child is a full-bleed
+	 * cover that has to reach the status bar — that child pays `useSafeAreaInsets` on its
+	 * own chrome.
+	 */
+	topInset?: boolean;
 	/** Horizontal padding. Off for a screen that renders edge-to-edge rows. */
 	padded?: boolean;
 	/**
@@ -103,6 +109,7 @@ export function Screen({
 	leading,
 	scroll = false,
 	bottomInset = false,
+	topInset = true,
 	padded = true,
 	keyboardInsets = false,
 	onRefresh,
@@ -119,7 +126,10 @@ export function Screen({
 		purchaseStage === undefined ? inheritedStage : purchaseStage;
 	const band = activeStage ? purchaseBand(activeStage, colors, scheme) : null;
 	const backdrop = background ?? null;
-	const edges: Edge[] = bottomInset ? ["top", "bottom"] : ["top"];
+	const edges: Edge[] = [
+		...(topInset ? (["top"] as const) : []),
+		...(bottomInset ? (["bottom"] as const) : []),
+	];
 	// The pull: the control, both tints, its own busy flag, and `undefined` when
 	// this screen did not ask for one — all of it in `./pull-refresh`, which is
 	// where those three decisions live so that a screen bringing its own scroller

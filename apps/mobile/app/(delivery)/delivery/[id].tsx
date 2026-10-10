@@ -23,6 +23,7 @@ import { ConfirmSheet } from "@/components/confirm-sheet";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { isMapAvailable, MapView } from "@/components/map";
+import { Pressable } from "@/components/pressable";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { RatingInput, type RatingValue } from "@/components/rating-input";
 import { Screen } from "@/components/screen";
@@ -38,7 +39,14 @@ import { formatClock } from "@/lib/format";
 import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, space, type, useTheme } from "@/theme";
+import {
+	icon,
+	MIN_TOUCH_TARGET,
+	space,
+	TEXT_STACK_GAP,
+	type,
+	useTheme,
+} from "@/theme";
 
 const STATUS_KEYS: Record<DeliveryStatus, MessageKey> = {
 	SEARCHING: "delivery.status.SEARCHING",
@@ -233,8 +241,11 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 					</View>
 				) : null}
 
-				<StopCard title={t("delivery.pickup")} stop={delivery.pickup} />
-				<StopCard title={t("delivery.dropoff")} stop={delivery.dropoff} />
+				<RouteStops
+					pickup={delivery.pickup}
+					dropoff={delivery.dropoff}
+					status={delivery.status}
+				/>
 
 				{actionError ? (
 					<ErrorState
@@ -339,60 +350,122 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 	);
 }
 
-function StopCard({ title, stop }: { title: string; stop: DeliveryStop }) {
+function currentStop(status: DeliveryStatus): "pickup" | "dropoff" | null {
+	if (status === "DELIVERED" || status === "CANCELLED") return null;
+	if (status === "PICKED_UP") return "dropoff";
+	return "pickup";
+}
+
+function stopStreet(stop: DeliveryStop) {
+	return [stop.line1, stop.line2].filter(Boolean).join(", ");
+}
+
+function openDirections(stop: DeliveryStop) {
+	const destination =
+		stop.lat != null && stop.lng != null
+			? `${stop.lat},${stop.lng}`
+			: stopStreet(stop) || stop.city;
+	const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+	void Linking.canOpenURL(url)
+		.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
+		.catch(() => null);
+}
+
+export function RouteStops({
+	pickup,
+	dropoff,
+	status,
+}: {
+	pickup: DeliveryStop;
+	dropoff: DeliveryStop;
+	status: DeliveryStatus;
+}) {
+	const active = currentStop(status);
+	return (
+		<Card style={styles.route}>
+			<StopRow
+				kind="pickup"
+				stop={pickup}
+				active={active === "pickup"}
+				connect
+			/>
+			<StopRow kind="dropoff" stop={dropoff} active={active === "dropoff"} />
+		</Card>
+	);
+}
+
+function StopRow({
+	kind,
+	stop,
+	active,
+	connect = false,
+}: {
+	kind: "pickup" | "dropoff";
+	stop: DeliveryStop;
+	active: boolean;
+	connect?: boolean;
+}) {
 	const { t } = useT();
 	const { colors } = useTheme();
-	const address = [
-		stop.line1,
-		stop.line2,
-		stop.city,
-		stop.region,
-		stop.postalCode,
-	]
-		.filter((part): part is string => Boolean(part))
-		.join(", ");
-
-	function navigate() {
-		const destination =
-			stop.lat != null && stop.lng != null
-				? `${stop.lat},${stop.lng}`
-				: address;
-		const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-		void Linking.canOpenURL(url)
-			.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
-			.catch(() => null);
-	}
+	const label =
+		kind === "pickup" ? t("delivery.stop.pickup") : t("delivery.stop.dropoff");
+	const spokenTitle =
+		kind === "pickup" ? t("delivery.pickup") : t("delivery.dropoff");
+	const street = stopStreet(stop);
+	const markColor = active ? colors.primary : colors.muted;
+	const glyphColor = active ? colors.primaryForeground : colors.mutedForeground;
 
 	return (
-		<Card style={styles.card}>
-			<Text variant="heading" bold>
-				{title}
-			</Text>
-			<Text variant="body" bold>
-				{stop.name}
-			</Text>
-			<Text variant="body">{address}</Text>
-			{stop.instructions ? (
-				<Text variant="caption" tone="muted">
-					{stop.instructions}
-				</Text>
-			) : null}
-			<Button
-				label={t("delivery.navigate")}
-				variant="secondary"
-				fullWidth
-				icon={
+		<View style={styles.stop}>
+			<View style={styles.rail}>
+				<View style={[styles.marker, { backgroundColor: markColor }]}>
 					<Ionicons
-						name="navigate-outline"
-						size={icon.control}
-						color={colors.secondaryForeground}
+						name={kind === "pickup" ? "storefront-outline" : "home-outline"}
+						size={icon.inline}
+						color={glyphColor}
 						accessibilityElementsHidden
 						importantForAccessibility="no"
 					/>
-				}
-				onPress={navigate}
-			/>
-		</Card>
+				</View>
+				{connect ? (
+					<View
+						style={[styles.connector, { backgroundColor: colors.border }]}
+					/>
+				) : null}
+			</View>
+			<View style={[styles.stopBody, connect ? styles.stopGap : null]}>
+				<Text variant="caption" tone="muted">
+					{label}
+				</Text>
+				<Text variant="body" bold>
+					{stop.name}
+				</Text>
+				{street ? <Text variant="caption">{street}</Text> : null}
+				<Text variant="caption" tone="muted">
+					{stop.city}
+				</Text>
+				{stop.instructions ? (
+					<Text variant="caption" tone="muted">
+						{stop.instructions}
+					</Text>
+				) : null}
+			</View>
+			<Pressable
+				onPress={() => openDirections(stop)}
+				accessibilityRole="button"
+				accessibilityLabel={`${t("delivery.navigate")}. ${spokenTitle}. ${stop.name}`}
+				hitSlop={8}
+				style={styles.navigate}
+			>
+				<Ionicons
+					name="navigate-outline"
+					size={icon.control}
+					color={colors.foreground}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			</Pressable>
+		</View>
 	);
 }
 
@@ -431,6 +504,25 @@ const styles = StyleSheet.create({
 		paddingBottom: space.huge,
 	},
 	card: { gap: space.sm },
+	route: { gap: 0, paddingVertical: space.sm },
+	stop: { flexDirection: "row", alignItems: "stretch", gap: space.md },
+	rail: { width: 28, alignItems: "center" },
+	marker: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	connector: { width: 2, flex: 1, minHeight: 12, marginVertical: 4 },
+	stopBody: { flex: 1, gap: TEXT_STACK_GAP },
+	stopGap: { paddingBottom: space.lg },
+	navigate: {
+		width: MIN_TOUCH_TARGET,
+		height: MIN_TOUCH_TARGET,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	mapGroup: { gap: space.sm },
 	map: { height: space.huge * 8 },
 	skeletonStatus: { height: space.xl * 2 },

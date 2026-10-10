@@ -46,12 +46,10 @@ describe("category discovery", () => {
 		expect(es).toContain('"category.showAll": "Ver más subcategorías"');
 	});
 
-	test("stocked children lead without removing the rest", () => {
-		expect(screen).toContain("const stockedChildren = children.filter(");
-		expect(screen).toContain("? [...stockedChildren, ...otherChildren]");
-		expect(screen).toContain(
-			"stockedChildren.length > 0 ? stockedChildren : children",
-		);
+	test("children scan A-Z and keep a way to the rest", () => {
+		expect(screen).toContain("sortCategoriesByName");
+		expect(screen).not.toContain("stockedChildren");
+		expect(screen).toContain("expanded ? children : children.slice(0, 4)");
 		expect(screen).toContain(
 			"children.length > shownChildren.length || expanded",
 		);

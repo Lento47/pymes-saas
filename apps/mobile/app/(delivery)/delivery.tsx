@@ -8,7 +8,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { type Href, router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
@@ -445,6 +445,7 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 	const { colors } = useTheme();
 	const [busyId, setBusyId] = useState<string | null>(null);
 	const [historyOpen, setHistoryOpen] = useState(false);
+	const acceptingDeliveryId = useRef<string | null>(null);
 	const offers = useQuery(
 		trpc.deliveries.offers.queryOptions(undefined, {
 			refetchInterval: OFFERS_POLL_MS,
@@ -543,6 +544,7 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 		trpc.deliveries.acceptOffer.mutationOptions({
 			onSuccess: async (detail) => {
 				setBusyId(null);
+				acceptingDeliveryId.current = null;
 				await cache.invalidateQueries({
 					queryKey: trpc.deliveries.pathKey(),
 				});
@@ -551,7 +553,34 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 				});
 				router.push(`/delivery/${detail.id}` as Href);
 			},
-			onError: () => setBusyId(null),
+			onError: async (error) => {
+				await cache.invalidateQueries({
+					queryKey: trpc.deliveries.pathKey(),
+				});
+				const failure = toApiFailure(error);
+				if (failure.code === "CONFLICT" || failure.code === "NOT_FOUND") {
+					const owned = await cache.fetchQuery(
+						trpc.deliveries.mine.queryOptions(),
+					);
+					const active = owned.filter(
+						(delivery) =>
+							delivery.status !== "DELIVERED" &&
+							delivery.status !== "CANCELLED",
+					);
+					const wanted = acceptingDeliveryId.current;
+					const target =
+						active.find((delivery) => delivery.id === wanted) ??
+						(active.length === 1 ? active[0] : undefined);
+					if (target) {
+						setBusyId(null);
+						acceptingDeliveryId.current = null;
+						router.push(`/delivery/${target.id}` as Href);
+						queueMicrotask(() => accept.reset());
+						return;
+					}
+				}
+				setBusyId(null);
+			},
 		}),
 	);
 	const decline = useMutation(
@@ -562,7 +591,12 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 					queryKey: trpc.deliveries.pathKey(),
 				});
 			},
-			onError: () => setBusyId(null),
+			onError: async () => {
+				setBusyId(null);
+				await cache.invalidateQueries({
+					queryKey: trpc.deliveries.pathKey(),
+				});
+			},
 		}),
 	);
 	const responding = accept.isPending || decline.isPending;
@@ -707,6 +741,7 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 											disabled={responding}
 											onPress={() => {
 												setBusyId(offer.id);
+												acceptingDeliveryId.current = offer.deliveryId;
 												accept.mutate({ offerId: offer.id });
 											}}
 										/>
@@ -731,6 +766,10 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 			{failure ? (
 				<ErrorState
 					error={failure}
+					overrides={{
+						CONFLICT: "delivery.board.offers.busy",
+						NOT_FOUND: "delivery.offer.unavailable",
+					}}
 					onRetry={() => {
 						if (busyId && accept.error) accept.mutate({ offerId: busyId });
 						else if (busyId && decline.error)

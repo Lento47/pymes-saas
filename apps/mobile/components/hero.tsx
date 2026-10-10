@@ -1,11 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
+import type { ReactNode } from "react";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useT } from "@/lib/i18n";
 import {
 	icon,
 	media,
-	palette,
 	radius,
 	STATUS_DOT_SIZE,
 	space,
@@ -57,14 +60,14 @@ import { Text } from "./text";
  *
  * So this component has two inks and picks by whether there is a cover, not by the theme:
  *
- * - **A cover** — the ink is the *dark* scheme's, read straight from `palette`. A dark
- *   scrim is exactly the surface the dark palette was drawn for, and `useTheme()` would
- *   answer "cream on cream" for every reader in the light scheme.
+ * - **A cover** — the photo fades into the page canvas, so the identity uses the ordinary
+ *   theme ink (`foreground` on `background`).
  * - **No cover** — there is no photograph to fight, so the hero becomes an `accent` surface
  *   and the ink is the ordinary theme's, through `Text`'s own `tone`.
  *
- * Both inks are tokens either way. Nothing here invents a colour, and there is no gradient
- * anywhere in the file — a gradient would be a second colour system inside a component.
+ * Both inks are tokens either way. A cover fades into `colors.background` with
+ * `expo-linear-gradient` so the menu under the hero is the same canvas the photo lands on.
+ * The fade is that token, not a second palette.
  *
  * The **facts are the one exception**, and it is not an exception to the rule: `./facts` fills
  * its chips with `colors.muted` and inks them from the theme, so a chip carries its own
@@ -72,21 +75,10 @@ import { Text } from "./text";
  * borrowed from `inks()` — a chip that inherited the scrim's light ink would be light ink on a
  * light chip.
  */
-export const HERO_MIN_HEIGHT = 200;
+export const HERO_MIN_HEIGHT = 360;
 
-/**
- * How dark the scrim is, and where the number comes from.
- *
- * A layer's opacity rather than an alpha channel in a colour, because the colour itself is
- * a token (`palette.light.foreground`, the warm near-black the light scheme writes its text
- * in) and the palette has no translucent values to borrow one from.
- *
- * 0.68 is a contrast measurement, not a taste: over the worst thing a shop can upload — a
- * blown-out white sky — it composites to about `#676767`, and the ink above clears **5:1**
- * against that, which is the floor the rest of this app is reviewed against. Lighter than
- * this and the meta line fails; much darker and the photograph stops being one.
- */
-const SCRIM_OPACITY = 0.68;
+/** Lower half of the cover, fading into the page canvas. */
+const FADE_LOCATIONS = [0, 1] as const;
 
 /**
  * The shield beside the name: `icon.inline` plus two.
@@ -110,23 +102,13 @@ const VERIFIED_SIZE = icon.inline + 2;
  */
 function inks(
 	hasCover: boolean,
-	theme: { success: string; mutedForeground: string },
+	theme: { success: string; mutedForeground: string; foreground: string },
 ): { text: string | undefined; closed: string; open: string } {
 	if (hasCover) {
 		return {
-			text: palette.dark.foreground,
-			// Decoration beside the word, not the word itself — that part of this comment was
-			// always right, and it is why these two are not the ink above. What it got wrong was
-			// the size of the concession. `mutedForeground` and `success` were measured against
-			// the scrim over the worst thing a shop can upload, and gave **2.35:1** and
-			// **2.73:1**: a mark the eye does not catch either, on the same grey the eye has to
-			// read the words on.
-			//
-			// These are the dark scheme's two *status* inks, which is what the pair is: a shop
-			// is either taking orders or it is not, and this app already draws that distinction
-			// in exactly two colours. **3.18:1** and **4.06:1** over the same scrim.
-			closed: palette.dark.statusCancelledForeground,
-			open: palette.dark.statusCompletedForeground,
+			text: theme.foreground,
+			closed: theme.mutedForeground,
+			open: theme.success,
 		};
 	}
 	return {
@@ -157,7 +139,7 @@ type HeroProps = {
 	 * are both fine: `./facts` renders nothing when a caller filtered every chip out, and a
 	 * shop with no rating, no distance and no minimum is a real shop.
 	 */
-	facts?: React.ReactNode;
+	facts?: ReactNode;
 	/**
 	 * Rendered in the top-right corner, on a `card` pill of its own.
 	 *
@@ -166,7 +148,12 @@ type HeroProps = {
 	 * heart on a dark picture. The pill is the hero's, so the heart sits on the surface it
 	 * was drawn for and this component stays ignorant of what the node is.
 	 */
-	action?: React.ReactNode;
+	action?: ReactNode;
+	/**
+	 * Top-left chrome on a cover (the storefront's back control). Same card pill as
+	 * `action`, so a chevron on a photograph sits on a surface the theme already owns.
+	 */
+	leading?: ReactNode;
 };
 
 export function Hero({
@@ -178,9 +165,17 @@ export function Hero({
 	isOpen,
 	facts,
 	action,
+	leading,
 }: HeroProps) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 	const { t } = useT();
+	const insets = useSafeAreaInsets();
+	const { height: windowHeight } = useWindowDimensions();
+	const coverHeight = Math.max(
+		HERO_MIN_HEIGHT,
+		Math.round(windowHeight * 0.42),
+	);
+	const chromeTop = insets.top + space.sm;
 
 	const hasCover = Boolean(coverUrl);
 	const ink = inks(hasCover, colors);
@@ -190,25 +185,32 @@ export function Hero({
 		<View
 			style={[
 				styles.hero,
-				{ backgroundColor: hasCover ? colors.muted : colors.accent },
+				styles.heroCover,
+				{
+					backgroundColor: hasCover ? colors.muted : colors.accent,
+					height: coverHeight,
+					minHeight: coverHeight,
+				},
 			]}
 		>
+			<StatusBar style={scheme === "dark" ? "light" : "dark"} />
 			{coverUrl ? (
 				<Image
 					uri={coverUrl}
-					style={styles.fill}
-					radiusToken="lg"
+					style={[styles.fill, styles.coverPhoto]}
+					radiusToken="sm"
 					// The name is written on top of it; announced, every storefront would open
 					// with an unlabelled image.
 					accessibilityElementsHidden
 				/>
 			) : null}
 
-			{hasCover ? (
-				// Above the picture and below the words, and `pointerEvents="none"` so it is a
-				// layer rather than something a finger can land on.
-				<View pointerEvents="none" style={[styles.fill, styles.scrim]} />
-			) : null}
+			<LinearGradient
+				pointerEvents="none"
+				colors={[`${colors.background}00`, colors.background]}
+				locations={[...FADE_LOCATIONS]}
+				style={styles.fade}
+			/>
 
 			<View style={styles.content}>
 				<View style={styles.identity}>
@@ -282,8 +284,24 @@ export function Hero({
 				{facts ? <View style={styles.facts}>{facts}</View> : null}
 			</View>
 
+			{leading ? (
+				<View
+					style={[
+						styles.leading,
+						{ backgroundColor: colors.card, top: chromeTop },
+					]}
+				>
+					{leading}
+				</View>
+			) : null}
+
 			{action ? (
-				<View style={[styles.action, { backgroundColor: colors.card }]}>
+				<View
+					style={[
+						styles.action,
+						{ backgroundColor: colors.card, top: chromeTop },
+					]}
+				>
 					{action}
 				</View>
 			) : null}
@@ -294,14 +312,22 @@ export function Hero({
 const styles = StyleSheet.create({
 	hero: {
 		borderRadius: radius.lg,
-		// Clips the picture and the scrim to the corner, so the two cannot disagree about
-		// the shape of the box they are filling.
+		// Clips the picture and the fade to the box, so the two cannot disagree about
+		// the shape they are filling.
 		overflow: "hidden",
 		minHeight: HERO_MIN_HEIGHT,
 		justifyContent: "flex-end",
 	},
+	heroCover: { borderRadius: 0 },
 	fill: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
-	scrim: { backgroundColor: palette.light.foreground, opacity: SCRIM_OPACITY },
+	coverPhoto: { borderRadius: 0 },
+	fade: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: "58%",
+	},
 	// The top padding is the action's room: the heart is pinned up there, and at 200% text
 	// the identity block grows up towards it.
 	content: { padding: space.lg, paddingTop: space.huge + space.xl },
@@ -336,6 +362,12 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		top: space.lg,
 		right: space.lg,
+		borderRadius: radius.full,
+	},
+	leading: {
+		position: "absolute",
+		top: space.lg,
+		left: space.lg,
 		borderRadius: radius.full,
 	},
 });

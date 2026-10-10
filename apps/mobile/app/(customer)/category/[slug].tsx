@@ -27,6 +27,7 @@ import {
 	CategorySkeleton,
 } from "@/components/skeletons";
 import { Text } from "@/components/text";
+import { sortCategoriesByName } from "@/lib/category-order";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
@@ -132,20 +133,19 @@ export default function Category() {
 	 * categories are separate fields. Child rows preserve a route to each part of the taxonomy;
 	 * the product preview below links directly to buyable items in the selected category.
 	 */
-	const children = (categories.data ?? []).filter(
-		(entry) => entry.parentId === category?.id,
-	);
-	const stockedChildren = children.filter(
-		(child) => (child.productCount ?? 0) > 0,
-	);
-	const otherChildren = children.filter(
-		(child) => (child.productCount ?? 0) === 0,
+	const children = useMemo(
+		() =>
+			sortCategoriesByName(
+				(categories.data ?? []).filter(
+					(entry) => entry.parentId === category?.id,
+				),
+				locale,
+			),
+		[categories.data, category?.id, locale],
 	);
 	const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
 	const expanded = expandedSlug === slug;
-	const shownChildren = expanded
-		? [...stockedChildren, ...otherChildren]
-		: (stockedChildren.length > 0 ? stockedChildren : children).slice(0, 4);
+	const shownChildren = expanded ? children : children.slice(0, 4);
 
 	const [filters, setFilters] = useState(DEFAULT_BUSINESS_FILTERS);
 	const [filtersOpen, setFiltersOpen] = useState(false);
@@ -343,9 +343,9 @@ export default function Category() {
 														// wherever it is drawn. `productCount` is optional, so a
 														// row without one states nothing rather than a zero.
 														state={
-															child.productCount === undefined
-																? undefined
-																: tp("store.category.count", child.productCount)
+															child.productCount && child.productCount > 0
+																? tp("store.category.count", child.productCount)
+																: undefined
 														}
 														chevron
 														onPress={() =>

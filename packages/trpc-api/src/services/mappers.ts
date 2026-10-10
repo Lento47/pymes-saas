@@ -161,6 +161,7 @@ export function businessCardOf(
 		deliveryEnabled: row.deliveryEnabled,
 		pickupEnabled: row.pickupEnabled,
 		deliveryFeeMinor: row.deliveryFeeMinor,
+		merchantCoversDelivery: row.merchantCoversDelivery,
 		prepTimeMinutes: row.prepTimeMinutes ?? DEFAULT_PREP_MINUTES,
 		minOrderMinor: row.minOrderMinor,
 		isVerified: row.isVerified,

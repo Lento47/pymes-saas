@@ -739,7 +739,7 @@ export default function Store() {
 
 	return (
 		<View style={styles.root}>
-			<Screen padded={false} contentStyle={styles.fill}>
+			<Screen padded={false} topInset={false} contentStyle={styles.fill}>
 				<Animated.ScrollView
 					ref={scrollRef}
 					onScroll={onScroll}
@@ -802,30 +802,22 @@ export default function Store() {
 						<StorefrontSkeleton />
 					) : (
 						<View style={styles.head}>
-							<View style={styles.pad}>
-								<BackButton to="/" />
-							</View>
-
-							<View style={styles.pad}>
-								{/* The card travels with the write so an optimistic add has something to
-								    insert — see `@/lib/favorites` — and it rides in the hero's corner slot
-								    so the heart sits on the `card` circle the hero draws for it rather than
-								    on the photograph. */}
-								<Hero
-									coverUrl={card.coverUrl}
-									name={card.name}
-									meta={
-										categoryName ? `${categoryName} · ${card.city}` : card.city
-									}
-									logoUrl={card.logoUrl}
-									verified={card.isVerified}
-									isOpen={isOpen}
-									facts={<StoreFacts card={card} />}
-									action={
-										<FavoriteButton target={{ kind: "business", card }} />
-									}
-								/>
-							</View>
+							{/* Edge-to-edge hero: a cover fills the top, and with no photo the
+							    accent block still bleeds so the fade into the page is one shape.
+							    Back rides in `leading` on the `card` pill. */}
+							<Hero
+								coverUrl={card.coverUrl}
+								name={card.name}
+								meta={
+									categoryName ? `${categoryName} · ${card.city}` : card.city
+								}
+								logoUrl={card.logoUrl}
+								verified={card.isVerified}
+								isOpen={isOpen}
+								facts={<StoreFacts card={card} />}
+								leading={<BackButton to="/" surface />}
+								action={<FavoriteButton target={{ kind: "business", card }} />}
+							/>
 
 							{selectedOffer ? (
 								<View style={styles.pad}>

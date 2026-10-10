@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { categoryIcon } from "@/lib/category-icon";
+import { sortCategoriesByName } from "@/lib/category-order";
 import { chunkPairs } from "@/lib/chunk-pairs";
 import { useT } from "@/lib/i18n";
 import { icon, space, TEXT_STACK_GAP, useTheme } from "@/theme";
@@ -22,7 +23,11 @@ import { Text } from "./text";
  * trailing tile. Callers filter to sectors (`parentId === null`); this draws what it is handed.
  */
 export function CategoryGrid({ items }: { items: Category[] }) {
-	const rows = useMemo(() => chunkPairs(items), [items]);
+	const { locale } = useT();
+	const rows = useMemo(
+		() => chunkPairs(sortCategoriesByName(items, locale)),
+		[items, locale],
+	);
 
 	if (items.length === 0) return null;
 
@@ -55,9 +60,9 @@ function CategoryTile({
 	const { tp, locale } = useT();
 	const name = localizedName(category, locale);
 	const count =
-		category.productCount === undefined
-			? null
-			: tp("store.category.count", category.productCount);
+		category.productCount && category.productCount > 0
+			? tp("store.category.count", category.productCount)
+			: null;
 	const spoken = count === null ? name : `${name} · ${count}`;
 
 	return (
@@ -81,7 +86,7 @@ function CategoryTile({
 						importantForAccessibility="no"
 					/>
 					<View style={styles.names}>
-						<Text variant="body" bold>
+						<Text variant="body" bold numberOfLines={2}>
 							{name}
 						</Text>
 						{count === null ? null : (
@@ -100,6 +105,12 @@ const styles = StyleSheet.create({
 	rows: { paddingHorizontal: space.lg, gap: space.md },
 	row: { flexDirection: "row", gap: space.md },
 	tile: { flex: 1 },
-	body: { flex: 1, gap: space.sm },
-	names: { gap: TEXT_STACK_GAP },
+	body: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		minHeight: 48,
+	},
+	names: { flex: 1, gap: TEXT_STACK_GAP },
 });

@@ -593,6 +593,7 @@ export async function update(
 	assignIfPresent(patch, "deliveryEnabled", input.deliveryEnabled);
 	assignIfPresent(patch, "pickupEnabled", input.pickupEnabled);
 	assignIfPresent(patch, "deliveryFeeMinor", input.deliveryFeeMinor);
+	assignIfPresent(patch, "merchantCoversDelivery", input.merchantCoversDelivery);
 	assignIfPresent(patch, "deliveryRadiusKm", input.deliveryRadiusKm);
 	assignIfPresent(patch, "prepTimeMinutes", input.prepTimeMinutes);
 	assignIfPresent(patch, "minOrderMinor", input.minOrderMinor);
@@ -604,6 +605,27 @@ export async function update(
 	// is edited without being forced through this first.
 	if (input.categoryId !== undefined)
 		await assertLeafCategory(ctx, input.categoryId);
+	if (
+		input.merchantCoversDelivery !== undefined ||
+		input.deliveryFeeMinor !== undefined
+	) {
+		const [current] = await ctx.db
+			.select({
+				fee: businessTable.deliveryFeeMinor,
+				covers: businessTable.merchantCoversDelivery,
+			})
+			.from(businessTable)
+			.where(eq(businessTable.id, businessId))
+			.limit(1);
+		const existing = orNotFound(current);
+		if (
+			(input.merchantCoversDelivery ?? existing.covers) &&
+			(input.deliveryFeeMinor ?? existing.fee) === 0
+		)
+			throw new ValidationError("biz.settings.delivery.courierFeeRequired", {
+				field: "deliveryFeeMinor",
+			});
+	}
 
 	// Moving the shop moves its geohash, or a customer standing outside it would not
 	// find it. Both coordinates are resolved before either is written: a patch that
@@ -792,6 +814,10 @@ export async function create(
 	const located = input.lat !== undefined && input.lng !== undefined;
 
 	await assertLeafCategory(ctx, input.categoryId);
+	if (input.merchantCoversDelivery && input.deliveryFeeMinor === 0)
+		throw new ValidationError("biz.settings.delivery.courierFeeRequired", {
+			field: "deliveryFeeMinor",
+		});
 
 	// Narrowed into locals so the write below reads a `number` and not a `number |
 	// undefined`: `noUncheckedIndexedAccess` is off for these, but the pair still has to
@@ -825,6 +851,7 @@ export async function create(
 			deliveryEnabled: input.deliveryEnabled,
 			pickupEnabled: input.pickupEnabled,
 			deliveryFeeMinor: input.deliveryFeeMinor,
+			merchantCoversDelivery: input.merchantCoversDelivery,
 			deliveryRadiusKm: input.deliveryRadiusKm,
 			prepTimeMinutes: input.prepTimeMinutes,
 			minOrderMinor: input.minOrderMinor,

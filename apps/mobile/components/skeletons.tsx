@@ -657,8 +657,8 @@ export function CategorySkeleton() {
  */
 function StoreHeaderBlock() {
 	return (
-		<View style={storeStyles.header}>
-			<Skeleton style={storeStyles.hero} radiusToken="lg" />
+		<View>
+			<Skeleton style={storeStyles.hero} />
 		</View>
 	);
 }
@@ -950,9 +950,9 @@ export function ProductGridSkeleton() {
  * ten tiles for a "seed's taxonomy of six rows", and ten was neither. A wait that is short of
  * the answer steps the page up as the tiles land, and one that is longer leaves a hole.
  *
- * The name and the count stand in at the heights the real ones draw: a `label` line and a
- * `caption` one, at the reader's text scale, three-quarters and half width, because a category
- * name is one or two words and its sentence is "{count} productos".
+ * The name stands in at the height the real one draws: a `body` line at the reader's
+ * text scale, three-quarters width. A count is drawn only above zero on the real tile,
+ * so the wait does not sketch a caption that usually never lands.
  */
 export function CategoryGridSkeleton() {
 	const { fontScale } = useWindowDimensions();
@@ -968,10 +968,7 @@ export function CategoryGridSkeleton() {
 									<Skeleton style={gridStyles.categoryIcon} />
 									<View style={gridStyles.categoryText}>
 										<Skeleton
-											style={[styles.threeQuarters, line("label", fontScale)]}
-										/>
-										<Skeleton
-											style={[styles.half, line("caption", fontScale)]}
+											style={[styles.threeQuarters, line("body", fontScale)]}
 										/>
 									</View>
 								</View>
@@ -1386,13 +1383,16 @@ const gridStyles = StyleSheet.create({
 	photo: { width: "100%", aspectRatio: 4 / 3 },
 	// The discount chip's width, which is a word ("-25%") and therefore a stand-in.
 	badge: { width: "44%" },
-	// `app/categories`' tile body, inside the same `Card` a product tile sits in: the glyph's
-	// box, then the name and the count as one stack — `space.sm` between the mark and the words
-	// and `TEXT_STACK_GAP` between the two lines, which is the shape the real tile draws.
-	categoryTile: { flex: 1, gap: space.sm },
-	// The name over the count, at the stack's own 2 — `TEXT_STACK_GAP`, the number every pair
-	// of lines in this app is 2 points apart by.
-	categoryText: { gap: TEXT_STACK_GAP },
+	// `./category-grid`'s tile body: glyph beside the name, `space.md` between them, a
+	// shared min height so a one-line name and a two-line name share a row rhythm.
+	categoryTile: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		minHeight: 48,
+	},
+	categoryText: { flex: 1, gap: TEXT_STACK_GAP },
 	// A glyph's own square, at `icon.action` — the size the tile draws the mark at. A block and
 	// not a line, because a stand-in for a 20-point glyph that is a 21-point line of text would
 	// be the wrong shape in the one place the eye checks first.
@@ -1407,7 +1407,6 @@ const storeStyles = StyleSheet.create({
 	pad: { paddingHorizontal: space.lg },
 	// The hero's own box: `./hero` puts this `minHeight` on it (its `hero` rule) and
 	// the header block pays the gutter the hero's parent does.
-	header: { paddingHorizontal: space.lg },
 	hero: { width: "100%", minHeight: HERO_MIN_HEIGHT },
 	// The search field, in `app/search.tsx`'s own shape and at its own inset — the field
 	// carries `marginHorizontal` rather than sitting in a padded block, because it is a child

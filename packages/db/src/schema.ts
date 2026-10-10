@@ -381,6 +381,11 @@ export const business = sqliteTable(
 			.notNull()
 			.default(true),
 		deliveryFeeMinor: integer("delivery_fee_minor").notNull().default(0),
+		merchantCoversDelivery: integer("merchant_covers_delivery", {
+			mode: "boolean",
+		})
+			.notNull()
+			.default(false),
 		deliveryRadiusKm: real("delivery_radius_km"),
 		prepTimeMinutes: integer("prep_time_minutes"),
 		minOrderMinor: integer("min_order_minor").notNull().default(0),
@@ -892,6 +897,14 @@ export const order = sqliteTable(
 		subtotalMinor: integer("subtotal_minor").notNull(),
 		discountMinor: integer("discount_minor").notNull().default(0),
 		deliveryFeeMinor: integer("delivery_fee_minor").notNull().default(0),
+		/** Courier compensation committed when the order is placed; null on old orders. */
+		courierFeeMinor: integer("courier_fee_minor"),
+		/** A zero customer charge can be funded by the merchant, without erasing courier pay. */
+		merchantCoversDelivery: integer("merchant_covers_delivery", {
+			mode: "boolean",
+		})
+			.notNull()
+			.default(false),
 		deliveryPricingVersion: text("delivery_pricing_version"),
 		deliveryQuoteId: text("delivery_quote_id"),
 		routeDistanceMeters: real("route_distance_meters"),

@@ -388,7 +388,9 @@ export async function place(
 	// ordinary way an order total goes wrong.
 	const deliveryFeeMinor = roadPricing
 		? roadPricing.feeMinor
-		: input.fulfilment === "DELIVERY" && !promotion.freeDelivery
+		: input.fulfilment === "DELIVERY" &&
+				!promotion.freeDelivery &&
+				!business.merchantCoversDelivery
 			? business.deliveryFeeMinor
 			: 0;
 	// No tax engine: the ADR says so, and a rate nobody configured would be invented here.
@@ -478,6 +480,10 @@ export async function place(
 			subtotalMinor,
 			discountMinor,
 			deliveryFeeMinor,
+			courierFeeMinor:
+				input.fulfilment === "DELIVERY" ? business.deliveryFeeMinor : null,
+			merchantCoversDelivery:
+				input.fulfilment === "DELIVERY" && business.merchantCoversDelivery,
 			deliveryPricingVersion: roadPricing?.pricingVersion ?? null,
 			deliveryQuoteId: roadPricing?.id ?? null,
 			routeDistanceMeters: roadPricing?.distanceMeters ?? null,

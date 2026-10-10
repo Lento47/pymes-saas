@@ -183,12 +183,15 @@ export async function quote(
 			subtotalMinor: cart.totals.subtotalMinor,
 			discountMinor: cart.totals.discountMinor,
 			baseTotalMinor: cart.totals.totalMinor,
-			freeDelivery: Boolean(promotion.freeDelivery),
+			freeDelivery:
+				Boolean(promotion.freeDelivery) || business.merchantCoversDelivery,
 		});
 		return { ...cart.totals, ...road };
 	}
 	const deliveryFeeMinor =
-		input.fulfilment === "DELIVERY" && !promotion.freeDelivery
+		input.fulfilment === "DELIVERY" &&
+		!promotion.freeDelivery &&
+		!business.merchantCoversDelivery
 			? business.deliveryFeeMinor
 			: 0;
 	return {
