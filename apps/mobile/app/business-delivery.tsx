@@ -364,7 +364,6 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 												? t("biz.new.amount.unreadable")
 												: null
 										}
-										help={t("biz.settings.delivery.fee.help")}
 										keyboardType="number-pad"
 										placeholder="0"
 									/>

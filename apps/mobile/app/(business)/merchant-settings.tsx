@@ -544,6 +544,7 @@ function SettingsForm({
 								value={form.deliveryFeeMinor}
 								onChangeText={(value) => change("deliveryFeeMinor", value)}
 								error={errors.deliveryFeeMinor}
+								help={t("biz.settings.delivery.fee.help")}
 								keyboardType="decimal-pad"
 								editable={canEdit}
 							/>
