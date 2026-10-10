@@ -1,11 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useIsFocused } from "expo-router";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
-import { RAMP_LOCATIONS, RAMP_WEIGHTS } from "@/lib/color";
+import { bandAnchor, RAMP_LOCATIONS, RAMP_WEIGHTS } from "@/lib/color";
 import { BROWSING_RAMP_ALPHA, deliveryFluidColor } from "@/lib/purchase-colors";
 import type { PurchaseStage } from "@/lib/purchase-state";
 import type { ColorScheme } from "@/theme";
 
+import { BandGeometry } from "./band-geometry";
 import { type FluidMotion, TopFluidGradient } from "./top-fluid-gradient";
 
 /**
@@ -75,6 +76,7 @@ const LOCATIONS = [0, 18 / 52, 35 / 52, 1] as const;
 const DARK_LIME_LOCATIONS = [0, 0.5, 0.72, 1] as const;
 const COMPACT_LOCATIONS = [0, 0.54, 0.72, 1] as const;
 const SMOOTH_LOCATIONS = [0, 0.28, 0.66, 1] as const;
+const GEOMETRY_FADE_LOCATIONS = [0, 0.65, 1] as const;
 
 /** `0.34` of 914 is 311pt — clears the header and search, ends at the sheet seam. */
 const BAND = 0.34;
@@ -100,7 +102,7 @@ export function HomeGradient({
 	fluidMotion?: FluidMotion;
 	compact?: boolean;
 }) {
-	const { height } = useWindowDimensions();
+	const { height, width } = useWindowDimensions();
 	const focused = useIsFocused();
 	const isLime = color.toLowerCase() === "#c8ff18";
 	/**
@@ -194,6 +196,27 @@ export function HomeGradient({
 					? DARK_LIME_LOCATIONS
 					: LOCATIONS;
 
+	/**
+	 * The colour the band opens on, and the one the forms are drawn in.
+	 *
+	 * `journeyBand` arrives already anchored — `purchaseBand` returns `bandAnchor(stage, page)`,
+	 * so the contrast floor is applied once, at the source, and every consumer of the band colour
+	 * gets it. The browsing ramps have no such source, so the anchor is applied here against the
+	 * page they are drawn over. Both paths converge on the same guarantee, which is the point of
+	 * putting it in `bandAnchor` rather than in each caller.
+	 *
+	 * Falls back to `color` when a journey band is absent, so the browsing ramps anchor on the
+	 * theme's own primary.
+	 */
+	const anchor = journeyBand ?? bandAnchor(color, backgroundColor);
+
+	/**
+	 * The forms, clipped by the band's own bounds.
+	 *
+	 * `overflow: "hidden"` on the band is what makes the well read as a panel cut by the band
+	 * rather than a rounded rect drawn over the page. Without it the well escapes into the
+	 * catalogue and the band stops being a band.
+	 */
 	if (stage === "delivery" && journeyBand) {
 		const fluidHeight = Math.min(height * 0.38, 380);
 		return (
@@ -204,6 +227,12 @@ export function HomeGradient({
 					backgroundColor={backgroundColor}
 					scheme={scheme}
 					motion={focused ? fluidMotion : "still"}
+				/>
+				<BandGeometryWithFade
+					color={anchor}
+					page={backgroundColor}
+					height={fluidHeight}
+					width={width}
 				/>
 			</View>
 		);
@@ -217,11 +246,47 @@ export function HomeGradient({
 				end={{ x: 0.5, y: 1 }}
 				style={StyleSheet.absoluteFill}
 			/>
+			<BandGeometryWithFade
+				color={anchor}
+				page={backgroundColor}
+				height={bandHeight}
+				width={width}
+			/>
 		</View>
 	);
 }
 
+function BandGeometryWithFade({
+	color,
+	page,
+	height,
+	width,
+}: {
+	color: string;
+	page: string;
+	height: number;
+	width: number;
+}) {
+	return (
+		<>
+			<BandGeometry color={color} page={page} height={height} width={width} />
+			<LinearGradient
+				colors={[withAlpha(page, 0), withAlpha(page, 0), page]}
+				locations={GEOMETRY_FADE_LOCATIONS}
+				start={{ x: 0.5, y: 0 }}
+				end={{ x: 0.5, y: 1 }}
+				style={StyleSheet.absoluteFill}
+			/>
+		</>
+	);
+}
+
 const styles = StyleSheet.create({
+	/**
+	 * The band itself, and `overflow: "hidden"` is load-bearing rather than tidy: it is what
+	 * clips `./band-geometry`'s well so it reads as a panel cut by the band instead of a
+	 * rounded rect floating over the page.
+	 */
 	band: { width: "100%", overflow: "hidden" },
 });
 

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
 	type AccessibilityProps,
 	type Insets,
-	Platform,
 	Pressable as RNPressable,
 	type StyleProp,
 	StyleSheet,
+	View,
 	type ViewStyle,
 } from "react-native";
 import Animated, {
@@ -178,49 +178,183 @@ export function Pressable({
 	}, [onPressOut, settle]);
 
 	const resolved = typeof style === "function" ? style({ pressed }) : style;
+	const flat = StyleSheet.flatten(resolved) ?? {};
+	const { clip, radii } = pressOutline(flat);
+	// `muted` is the token a pressed row already uses, so the ripple and the pressed
+	// background are the same colour by construction. A translucent overlay would
+	// read better on Android, and the palette has no alpha tokens — inventing one
+	// here would be a colour decision made outside the file that owns colour.
+	//
+	// `foreground: true` puts the ripple on the view's foreground, which Android
+	// clips to the same rounded outline as `overflow: "hidden"` + `borderRadius`.
+	// Without it the ripple is a rectangular mask the size of the layout box — a
+	// blank square on a pill, a card, or the home shortcuts.
+	const android_ripple =
+		ripple && !reduceMotion
+			? {
+					color: rippleColor ?? colors.muted,
+					borderless: false as const,
+					foreground: true,
+				}
+			: undefined;
 
+	const shared = {
+		onPress,
+		onLongPress,
+		onPressIn: handlePressIn,
+		onPressOut: handlePressOut,
+		disabled,
+		hitSlop,
+		android_ripple,
+		...a11y,
+	};
+
+	if (!hasShadow(flat)) {
+		return (
+			<AnimatedPressable
+				{...shared}
+				style={[styles.base, resolved, clip, animated]}
+			>
+				{children}
+			</AnimatedPressable>
+		);
+	}
+
+	// Lift lives on a wrapper so the inner clip cannot square it. iOS draws a
+	// rectangular shadow for any layer whose overflow is hidden; Android's
+	// elevation is the same square. The fill is copied onto the wrapper so the
+	// shadow follows the rounded background rather than an empty rectangle.
+	const { outer, inner } = splitPressStyle(flat);
+	const fills =
+		outer.flex != null ||
+		outer.flexGrow != null ||
+		outer.width != null ||
+		outer.height != null;
 	return (
-		<AnimatedPressable
-			onPress={onPress}
-			onLongPress={onLongPress}
-			onPressIn={handlePressIn}
-			onPressOut={handlePressOut}
-			disabled={disabled}
-			hitSlop={hitSlop}
-			// `muted` is the token a pressed row already uses, so the ripple and the pressed
-			// background are the same colour by construction. A translucent overlay would
-			// read better on Android, and the palette has no alpha tokens — inventing one
-			// here would be a colour decision made outside the file that owns colour.
-			android_ripple={
-				ripple && !reduceMotion
-					? { color: rippleColor ?? colors.muted, borderless: false }
-					: undefined
-			}
-			style={[styles.base, { borderRadius: radius.sm }, animated, resolved]}
-			{...a11y}
+		<View
+			style={[
+				outer,
+				radii,
+				flat.backgroundColor != null
+					? { backgroundColor: flat.backgroundColor }
+					: null,
+			]}
 		>
-			{children}
-		</AnimatedPressable>
+			<AnimatedPressable
+				{...shared}
+				style={[styles.base, inner, clip, fills ? styles.fill : null, animated]}
+			>
+				{children}
+			</AnimatedPressable>
+		</View>
 	);
 }
 
 /**
- * The ripple clip, on the platform that has a ripple to clip.
+ * The rounded outline the ripple has to match.
  *
- * Android draws the ripple inside the view's bounds and only clips it when the overflow is
- * hidden, which is what keeps a ripple off the corner of a rounded control. A caller whose own
- * style sets a larger radius — a card — gets its ripple clipped to that instead, which is the
- * same rule one step up.
- *
- * Android only, and not as a platform tweak: iOS has no ripple, and Fabric puts
- * `clipsToBounds` on the same layer that carries `shadow.card`, so the pressable version of a
- * card rendered flat while the identical non-pressable one kept its lift — one component drawn
- * two ways depending on whether it happened to be tappable. The gate removes nothing on
- * Android, where `overflow` is still `hidden`; it is iOS that stops paying for a clip it has no
- * use for.
+ * Android's ripple is a rectangle the size of the view unless the view both clips
+ * (`overflow: "hidden"`) and states the same corner the caller drew. A default
+ * `radius.sm` here used to win the outline while the fill used `lg` or `full`, which
+ * is the blank square on press. The caller's radius is flattened and applied last.
  */
-const RIPPLE_CLIP =
-	Platform.OS === "android" ? ({ overflow: "hidden" } as const) : null;
+function pressOutline(flat: ViewStyle): { clip: ViewStyle; radii: ViewStyle } {
+	const radii: ViewStyle = {};
+	const hasCorner =
+		flat.borderTopLeftRadius != null ||
+		flat.borderTopRightRadius != null ||
+		flat.borderBottomLeftRadius != null ||
+		flat.borderBottomRightRadius != null;
+	if (flat.borderRadius != null) {
+		radii.borderRadius = flat.borderRadius;
+	} else if (!hasCorner) {
+		radii.borderRadius = radius.sm;
+	}
+	if (flat.borderTopLeftRadius != null) {
+		radii.borderTopLeftRadius = flat.borderTopLeftRadius;
+	}
+	if (flat.borderTopRightRadius != null) {
+		radii.borderTopRightRadius = flat.borderTopRightRadius;
+	}
+	if (flat.borderBottomLeftRadius != null) {
+		radii.borderBottomLeftRadius = flat.borderBottomLeftRadius;
+	}
+	if (flat.borderBottomRightRadius != null) {
+		radii.borderBottomRightRadius = flat.borderBottomRightRadius;
+	}
+	return { radii, clip: { ...radii, overflow: "hidden" } };
+}
+
+function hasShadow(flat: ViewStyle): boolean {
+	if (typeof flat.elevation === "number" && flat.elevation > 0) return true;
+	if (typeof flat.shadowOpacity === "number" && flat.shadowOpacity > 0) {
+		return true;
+	}
+	if (typeof flat.boxShadow === "string" && flat.boxShadow.length > 0) {
+		return true;
+	}
+	return false;
+}
+
+const OUTER_KEYS = [
+	"flex",
+	"flexGrow",
+	"flexShrink",
+	"flexBasis",
+	"alignSelf",
+	"width",
+	"height",
+	"minWidth",
+	"minHeight",
+	"maxWidth",
+	"maxHeight",
+	"aspectRatio",
+	"margin",
+	"marginTop",
+	"marginRight",
+	"marginBottom",
+	"marginLeft",
+	"marginHorizontal",
+	"marginVertical",
+	"marginStart",
+	"marginEnd",
+	"position",
+	"top",
+	"right",
+	"bottom",
+	"left",
+	"start",
+	"end",
+	"zIndex",
+	"shadowColor",
+	"shadowOffset",
+	"shadowOpacity",
+	"shadowRadius",
+	"elevation",
+	"boxShadow",
+] as const;
+
+function splitPressStyle(flat: ViewStyle): {
+	outer: ViewStyle;
+	inner: ViewStyle;
+} {
+	const outer: ViewStyle = {};
+	const inner: ViewStyle = { ...flat };
+	for (const key of OUTER_KEYS) {
+		const value = inner[key];
+		if (value === undefined) continue;
+		(outer as Record<string, unknown>)[key] = value;
+		if (
+			key !== "minWidth" &&
+			key !== "minHeight" &&
+			key !== "maxWidth" &&
+			key !== "maxHeight"
+		) {
+			delete inner[key];
+		}
+	}
+	return { outer, inner };
+}
 
 const styles = StyleSheet.create({
 	base: {
@@ -233,6 +367,6 @@ const styles = StyleSheet.create({
 		// transparent drawable costs no pixel at rest and gives the ripple the
 		// control's own rounded frame to fill instead.
 		backgroundColor: "transparent",
-		...RIPPLE_CLIP,
 	},
+	fill: { alignSelf: "stretch", flex: 1 },
 });

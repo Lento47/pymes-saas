@@ -133,6 +133,7 @@ export const CHECKOUT_REFUSAL_KEYS = [
 	"checkout.refusal.shopInactive",
 	// No branch this shop can take the order at, and no `locationId` that names one.
 	"checkout.refusal.locationNotFound",
+	"checkout.refusal.addressNotFound",
 	"checkout.refusal.emptyCart",
 	"checkout.refusal.minOrder",
 	"checkout.refusal.totalChanged",
@@ -196,6 +197,19 @@ export const cartTotalsSchema = z.object({
 	missingForMinOrderMinor: z.number().int().min(0),
 });
 export type CartTotals = z.infer<typeof cartTotalsSchema>;
+
+/** The exact stops selected at checkout; older clients may omit either while choosing. */
+export const cartQuoteInput = z
+	.object({
+		fulfilment: z.enum(["PICKUP", "DELIVERY"]),
+		locationId: z.string().optional(),
+		addressId: z.string().optional(),
+	})
+	.refine((input) => input.fulfilment !== "PICKUP" || !input.addressId, {
+		path: ["addressId"],
+		message: "A pickup quote does not have a delivery address",
+	});
+export type CartQuoteInput = z.infer<typeof cartQuoteInput>;
 
 export const cartSchema = z.object({
 	id: z.string(),

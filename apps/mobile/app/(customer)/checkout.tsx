@@ -255,8 +255,18 @@ function CheckoutForm({
 
 	const cart = useQuery(trpc.cart.get.queryOptions());
 	const addresses = useQuery(trpc.users.addresses.queryOptions());
+	const selectedAddress =
+		addressId ??
+		addresses.data?.find((address) => address.isDefault)?.id ??
+		addresses.data?.[0]?.id;
 	const quote = useQuery(
-		trpc.cart.quote.queryOptions({ fulfilment }, { refetchInterval: 15000 }),
+		trpc.cart.quote.queryOptions(
+			{
+				fulfilment,
+				addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
+			},
+			{ refetchInterval: 15000 },
+		),
 	);
 	const quoting = useSkeletonHold(quote.isPending);
 	// The same hold for this screen's other two reads. Both drew their skeletons off the raw
@@ -363,11 +373,6 @@ function CheckoutForm({
 			},
 		}),
 	);
-
-	const selectedAddress =
-		addressId ??
-		addresses.data?.find((address) => address.isDefault)?.id ??
-		addresses.data?.[0]?.id;
 
 	const needsAddress = fulfilment === "DELIVERY" && !selectedAddress;
 	const short = (quote.data?.missingForMinOrderMinor ?? 0) > 0;

@@ -1,4 +1,3 @@
-import { usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
 import {
@@ -16,9 +15,7 @@ import { usePurchaseAccent } from "@/lib/purchase-accent";
 import { purchaseBand, statusBarStyleForInk } from "@/lib/purchase-colors";
 import type { PurchaseStage } from "@/lib/purchase-state";
 import { space, TEXT_STACK_GAP, useTheme } from "@/theme";
-import { useTweenedBandColor } from "@/theme/band-transition";
 
-import { HomeGradient } from "./home-gradient";
 import { useRefreshControl } from "./pull-refresh";
 import { useTabBarClearance } from "./tab-bar";
 import { Text } from "./text";
@@ -113,36 +110,15 @@ export function Screen({
 	contentStyle,
 	background,
 	purchaseStage,
-	fluidMotion,
+	fluidMotion: _fluidMotion,
 	...a11y
 }: ScreenProps) {
 	const { colors, scheme } = useTheme();
-	const pathname = usePathname();
 	const inheritedStage = usePurchaseAccent();
 	const activeStage =
 		purchaseStage === undefined ? inheritedStage : purchaseStage;
 	const band = activeStage ? purchaseBand(activeStage, colors, scheme) : null;
-	/**
-	 * The band's colour, mid-travel when the stage changes.
-	 *
-	 * `purchaseBand` above substitutes one token for another in a single render when
-	 * `activeStage` moves, and `<LinearGradient>` swaps colours rather than animating
-	 * them — so without this the band cuts where the palette glides. `theme/transition.tsx`
-	 * only animates `colors`, and knows nothing about a stage. See `theme/band-transition.ts`.
-	 */
-	const bandColor = useTweenedBandColor(band?.color);
-	const ambientBackground = activeStage ? (
-		<HomeGradient
-			scheme={scheme}
-			color={colors.primary}
-			stage={activeStage}
-			bandColor={bandColor}
-			backgroundColor={colors.background}
-			fluidMotion={fluidMotion}
-			compact={pathname !== "/"}
-		/>
-	) : null;
-	const backdrop = background ?? ambientBackground;
+	const backdrop = background ?? null;
 	const edges: Edge[] = bottomInset ? ["top", "bottom"] : ["top"];
 	// The pull: the control, both tints, its own busy flag, and `undefined` when
 	// this screen did not ask for one — all of it in `./pull-refresh`, which is

@@ -1,6 +1,7 @@
 import {
 	addToCartInput,
 	applyPromotionInput,
+	cartQuoteInput,
 	updateCartItemInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
@@ -23,8 +24,8 @@ import { protectedProcedure, router } from "../trpc";
  */
 export const cartRouter = router({
 	quote: protectedProcedure
-		.input(z.object({ fulfilment: z.enum(["PICKUP", "DELIVERY"]) }))
-		.query(({ ctx, input }) => cart.quote(ctx, input.fulfilment)),
+		.input(cartQuoteInput)
+		.query(({ ctx, input }) => cart.quote(ctx, input)),
 	get: protectedProcedure.query(({ ctx }) => cart.get(ctx)),
 
 	addItem: protectedProcedure

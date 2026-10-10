@@ -110,22 +110,77 @@ describe("header ink on the band", () => {
 		// measurement, so there is nothing left there for a theme to fall outside of.
 		expect(header).not.toMatch(/=== "#c8ff18"/);
 		expect(header).not.toMatch(/const onLimeGradient/);
-		expect(header).not.toMatch(/t\("home\.brand/);
-		expect(header).not.toContain("inkOnBand");
-		expect(header).not.toContain("browsingBandTop");
-		expect(header).toContain("color={colors.foreground}");
+		// Matched as a pattern because the formatter wraps this import across lines; the three
+		// names are what matter, not the wrap.
+		expect(header).toMatch(
+			/import \{\s+browsingBandTop,\s+inkOnBand,\s+purchaseBand,\s+\} from "@\/lib\/purchase-colors";/,
+		);
+		expect(header).toMatch(
+			/const browsingInk =\s+stage === "browsing"\s+\? inkOnBand\(\s+browsingBandTop\(colors\.primary, scheme, colors\.background\),/,
+		);
+		expect(header).toContain("const activeInk = journeyInk ?? browsingInk");
+		// The journey stages keep the anchored source, which is where anchoring applies.
+		expect(header).toContain("? purchaseBand(stage, colors, scheme)?.ink");
+		// Neither the scheme-keyed branch, the anchored-browsing mistake, nor the lime-only gate
+		// on the ink may come back.
+		expect(header).not.toContain(
+			'purchaseBand("browsing", colors, scheme)?.ink',
+		);
+		expect(header).not.toMatch(/onLimeGradient\s*\?\s*inkOnBand/);
+		// And the band it is measured against is the one `./home-gradient` draws, so the two files
+		// cannot drift apart silently again.
 		expect(purchaseColors).toContain("export function browsingBandTop(");
 		expect(gradient).toContain("BROWSING_RAMP_ALPHA");
 		expect(gradient).toContain('LIME_LIGHT = ["#C8FF18"');
 		expect(gradient).toContain('LIME_DARK = ["#C8FF18"');
 	});
 
-	test("the home identity is the greeting, not a split wordmark", () => {
-		expect(header).toContain('t("home.greeting"');
-		expect(header).toContain('t("home.greeting.anon")');
-		expect(header).toContain("onNotificationsPress");
-		expect(header).toContain('name="notifications-outline"');
-		expect(header).toContain('name="location"');
+	test("the browsing band's ink is measured only while the band is drawn", () => {
+		// `stage === "browsing"` is exactly when `./screen` mounts this ramp, and `/` is the only
+		// route this header appears on. With a journey stage in flight the band is a journey ramp
+		// and `journeyInk` answers for it; with no stage there is no band, so no mark may take an
+		// ink measured for one. That case used to apply lime's ink unconditionally, which put
+		// `#0F0F0F` lettering on `#0F0F0F` for a signed-in reader whose order list had not loaded.
+		// The whole assignment, including its `: undefined` — so the ink cannot become
+		// unconditional again by dropping the ternary's other arm.
+		expect(header).toMatch(
+			/const browsingInk =\s+stage === "browsing"\s+\? inkOnBand\([\s\S]*?\n\t\t\t: undefined;/,
+		);
+	});
+
+	test("every mark on the band wears the one measured ink", () => {
+		// There used to be two more variables here — `limeDarkInk`, which repainted the nested
+		// location label in dark only, and `nestedInk`, which was `journeyInk ?? limeDarkInk`. The
+		// argument for them was that the label's `tone` already resolves dark ink in light, so a
+		// band ink would overrule a tone that was already right. That held for lime and was the
+		// wrong trade everywhere else: on `berry` light the measured ink is `colors.background`
+		// (white, 4.4967:1) while the label's own tone is its `foreground` `#140A16`, 4.31:1 on the
+		// same band — one line, two inks, and only one of them chosen by measurement. The band's
+		// ink now answers
+		// for the whole line, and no part of this file names lime any more.
+		expect(header).toContain(
+			"style={activeInk ? { color: activeInk } : undefined}",
+		);
+		expect(header).not.toMatch(/const nestedInk/);
+		expect(header).not.toMatch(/const limeDarkInk/);
+	});
+
+	test("the pin takes the measured ink, and the page's own ink with no band", () => {
+		// It used to draw `colors.primary` on every non-lime theme — the accent painted onto a
+		// band that *is* that accent composited over the page, so roughly 1:1 and invisible on all
+		// twelve. The no-band fallback is `foreground` rather than `primary`: with no band the
+		// page is all there is, and lime's `#C8FF18` pin on a white page is the same invisible
+		// mistake facing the other way.
+		expect(header).toContain("color={activeInk ?? colors.foreground}");
+		expect(header).not.toMatch(/colors\.primary\.toLowerCase\(\)/);
+	});
+
+	test("the greeting is coloured from the band rather than left at the default", () => {
+		// It carried no colour at all and took `foreground` — white — which is 1.08:1 on lime.
+		expect(header).toContain("const activeInk = journeyInk ?? browsingInk");
+		expect(header).toContain(
+			"style={[styles.title, activeInk ? { color: activeInk } : null]}",
+		);
 	});
 });
 
@@ -262,12 +317,96 @@ describe("the feed's status bar", () => {
 	});
 });
 
-describe("the band has no extra geometry", () => {
-	test("draws the ramp only, with no well, disc, or SVG form", () => {
-		expect(gradient).not.toContain("BandGeometry");
-		expect(gradient).not.toContain("react-native-svg");
-		expect(gradient).not.toContain("<Svg");
+describe("the band has a shape, not only a falloff", () => {
+	test("the forms are drawn, and clipped by the band rather than over it", () => {
+		// Everything the band drew before was one-dimensional. `./home-gradient` pinned its
+		// gradient to a vertical axis and `./top-fluid-gradient` passed no `start`/`end` at all, so
+		// both defaulted to top-to-bottom, and `expo-linear-gradient` has no radial mode — a curve
+		// was not expressible at any alpha or weighting.
+		//
+		// `overflow: "hidden"` on the band is the half that is easy to lose. Without it the well
+		// escapes into the page and the band stops reading as a band.
+		expect(gradient).toContain("<BandGeometry");
 		expect(gradient).toMatch(/band: \{ width: "100%", overflow: "hidden" \}/);
+		// Both render paths get them, so `delivery` is not the one stage with a bare ramp.
+		expect(gradient.match(/<BandGeometryWithFade/g)).toHaveLength(2);
+	});
+
+	test("the geometry dissolves into the exact page colour over the lower third", () => {
+		// The base ramps already reach the page. This final veil exists for the solid geometry
+		// painted above them, which would otherwise be clipped into a visible horizontal edge.
+		expect(gradient).toContain(
+			"const GEOMETRY_FADE_LOCATIONS = [0, 0.65, 1] as const",
+		);
+		expect(gradient).toContain(
+			"colors={[withAlpha(page, 0), withAlpha(page, 0), page]}",
+		);
+		expect(gradient).toContain("locations={GEOMETRY_FADE_LOCATIONS}");
+		expect(gradient).toMatch(
+			/<BandGeometry[\s\S]*?<LinearGradient[\s\S]*?locations=\{GEOMETRY_FADE_LOCATIONS\}/,
+		);
+
+		// Geometry is measured against the container that actually clips it. Delivery has a
+		// taller fluid band than the other journey states and must not reuse `bandHeight`.
+		expect(gradient).toMatch(
+			/<BandGeometryWithFade[\s\S]*?height=\{fluidHeight\}/,
+		);
+		expect(gradient).toMatch(
+			/<BandGeometryWithFade[\s\S]*?height=\{bandHeight\}/,
+		);
+	});
+
+	test("drawn with plain Views, not SVG — no native surface on the scrolling home screen", () => {
+		// A deliberate departure from the obvious tool. `react-native-svg` is already a dependency,
+		// but a clipped filled disc needs no path, no stroke and no gradient definition, and
+		// `components/merchant-order-hero.tsx` already draws this exact form in this exact shape
+		// language with three `View`s and a `borderRadius`.
+		//
+		// Reusing that keeps the home screen free of an SVG surface, a native view and a GPU
+		// layer — the one genuinely performance-sensitive part of this work, on the screen that
+		// scrolls. `expect(fluid).not.toMatch(/react-native-svg/)` above keeps the delivery ramp
+		// clear of it too; this is the same rule for the file that owns the forms.
+		const geometry = readFileSync(
+			join(root, "components", "band-geometry.tsx"),
+			"utf8",
+		);
+		expect(geometry).not.toMatch(/^import .*from "react-native-svg"/m);
+		expect(geometry).not.toContain("<Svg");
+		expect(geometry).toContain("borderTopLeftRadius: radius.xl");
+		expect(geometry).toContain("borderTopRightRadius: radius.xl");
+		expect(geometry).toContain("useSafeAreaInsets");
+		expect(geometry).toContain("left: 0");
+		expect(geometry).toContain("right: 0");
+		expect(geometry).toContain('pointerEvents="none"');
+		expect(geometry).not.toContain("radius.full");
+		expect(geometry).not.toContain("marginLeft: -size / 2");
+	});
+
+	test("static, and tinted toward the page rather than toward white", () => {
+		// Static: the delivery band's breath already animates the ramp underneath, and two motions
+		// in one surface read as a wobble rather than as design. Nothing here mounts an animation,
+		// so `still` and `reduced` get the same shapes held — which is what those states promise
+		// everywhere else in the band, and needs no special case because there is nothing to gate.
+		const geometry = readFileSync(
+			join(root, "components", "band-geometry.tsx"),
+			"utf8",
+		);
+		expect(geometry).not.toMatch(
+			/withRepeat|withTiming|useSharedValue|Animated/,
+		);
+		expect(geometry).not.toMatch(/requestAnimationFrame/);
+		// Toward the page, not white: white at low alpha is invisible on the dark themes, where the
+		// band top is still a bright lime. Moving toward the page always deviates from the band in
+		// the direction the eye already reads as "not the band", in both schemes and on every hue.
+		expect(geometry).toContain("mixOklab(color, page, 0.22)");
+		expect(geometry).not.toContain('"#ffffff"');
+		expect(geometry).not.toContain('"#FFFFFF"');
+	});
+
+	test("the forms take the anchored colour, so they agree with the ramp", () => {
+		expect(gradient).toContain("const anchor = journeyBand ?? bandAnchor(");
+		expect(gradient).toContain("color={anchor}");
+		expect(gradient).toContain("page={backgroundColor}");
 	});
 });
 
@@ -276,11 +415,10 @@ describe("paints behind the safe area and home content", () => {
 		expect(screen).toContain(
 			'<View style={StyleSheet.absoluteFill} pointerEvents="none">',
 		);
-		expect(screen).toContain("const backdrop = background ?? null");
-		expect(screen).not.toContain("<HomeGradient");
-		expect(screen).not.toContain("HomeEditorialGeometry");
-		expect(screen).not.toContain("BandGeometry");
-		expect(home).toContain("purchaseStage={null}");
+		expect(screen).toContain(
+			"const backdrop = background ?? ambientBackground",
+		);
+		expect(screen).toContain("<HomeGradient");
 		expect(home).not.toContain("PurchaseWash");
 	});
 });

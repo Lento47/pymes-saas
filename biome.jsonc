@@ -34,6 +34,7 @@
 			"!apps/web/client/src/components/arc",
 			"!**/.next",
 			"!**/dist",
+			"!apps/mobile/backups",
 			// Static assets, not source.
 			"!**/*.svg",
 			// Agent tooling, managed outside this repo.

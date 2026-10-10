@@ -667,7 +667,7 @@ async function resolveAddress(
 	const address = rows[0];
 	// The same answer for "no such address" and "not yours"; see `orNotFound`.
 	if (!address) {
-		throw new ValidationError("Elige una direcci├│n para la entrega", {
+		throw new ValidationError("checkout.refusal.addressNotFound", {
 			field: "addressId",
 		});
 	}

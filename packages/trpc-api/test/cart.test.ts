@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import {
+	business as businessTable,
+	merchantLocation as locationTable,
+	product as productTable,
+} from "@pymeshub/db";
 import { addToCartInput } from "@pymeshub/shared";
+import { eq } from "drizzle-orm";
 
 import { appRouter } from "../src/routers";
 import {
@@ -154,6 +160,85 @@ describe("the cart's one-business rule", () => {
 		// The business stays on the cart: an empty basket at a shop is still that shop's.
 		expect(emptied.currency).toBe("CRC");
 
+		test.close();
+	});
+});
+
+describe("checkout quote", () => {
+	test("quotes current product prices, matching the placed order", async () => {
+		const test = world();
+		const { caller, coffee } = await twoShops(test);
+		await caller.cart.addItem({ productId: coffee.id, quantity: 2 });
+		await test.db
+			.update(productTable)
+			.set({ priceMinor: 1_800 })
+			.where(eq(productTable.id, coffee.id));
+
+		const cart = await caller.cart.get();
+		expect(cart.items[0]?.unitPriceMinor).toBe(1_800);
+		expect(cart.items[0]?.lineTotalMinor).toBe(3_600);
+		const quote = await caller.cart.quote({ fulfilment: "PICKUP" });
+		expect(quote.subtotalMinor).toBe(3_600);
+		expect(quote.totalMinor).toBe(3_600);
+		const order = await caller.orders.place({
+			fulfilment: "PICKUP",
+			paymentMethod: "CASH",
+			clientRequestId: "cart-quote-current-price",
+			expectedTotalMinor: quote.totalMinor,
+		});
+		expect(order.totals.totalMinor).toBe(quote.totalMinor);
+		test.close();
+	});
+
+	test("rejects a branch from another shop and another user's address", async () => {
+		const test = world();
+		const { first, second, caller, coffee } = await twoShops(test);
+		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+		const [otherLocation] = await test.db
+			.select({ id: locationTable.id })
+			.from(locationTable)
+			.where(eq(locationTable.businessId, second));
+		if (!otherLocation) throw new Error("The second shop has no branch");
+		const branchError = await refused(
+			caller.cart.quote({
+				fulfilment: "PICKUP",
+				locationId: otherLocation.id,
+			}),
+		);
+		expect(branchError.message).toBe("checkout.refusal.locationNotFound");
+
+		await test.db
+			.update(businessTable)
+			.set({ deliveryEnabled: true })
+			.where(eq(businessTable.id, first));
+		const otherUser = await seedUser(test.db, { id: "usr_cart_other_address" });
+		const otherCaller = appRouter.createCaller(
+			await authed(test, otherUser),
+		) as Caller;
+		const otherAddress = await otherCaller.users.saveAddress({
+			label: "Other home",
+			line1: "Other street",
+			city: "San José",
+			region: "San José",
+			lat: 9.93,
+			lng: -84.08,
+		});
+		const addressError = await refused(
+			caller.cart.quote({
+				fulfilment: "DELIVERY",
+				addressId: otherAddress.id,
+			}),
+		);
+		expect(addressError.message).toBe("checkout.refusal.addressNotFound");
+		const placeError = await refused(
+			caller.orders.place({
+				fulfilment: "DELIVERY",
+				addressId: otherAddress.id,
+				paymentMethod: "CASH",
+				clientRequestId: "cart-foreign-address",
+			}),
+		);
+		expect(placeError.message).toBe("checkout.refusal.addressNotFound");
 		test.close();
 	});
 });

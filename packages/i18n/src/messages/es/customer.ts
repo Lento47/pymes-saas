@@ -73,6 +73,27 @@ export const customer = {
 	 */
 	"home.nearby.enableLocation.action": "Activar ubicación",
 	"home.search.placeholder": "Busca productos o negocios",
+	"home.search.editorial": "Buscar restaurantes, tiendas, productos...",
+	"home.search.filters": "Filtros de búsqueda",
+	"home.editorial.line1": "Lo",
+	"home.editorial.line2": "bueno",
+	"home.editorial.line3": "cerca",
+	"home.editorial.lede1": "Comida, tiendas y todo",
+	"home.editorial.lede2": "lo que necesitas,",
+	"home.editorial.lede3": "de tu comunidad.",
+	"home.editorial.cta": "Ver destacados",
+	"home.editorial.photo": "Campaña destacada",
+	"home.editorial.sticker1": "Apoyá",
+	"home.editorial.sticker2": "comercios",
+	"home.editorial.sticker3": "locales",
+	"home.editorial.cat.comida": "Comida",
+	"home.editorial.cat.supermercado": "Supermercado",
+	"home.editorial.cat.tiendas": "Tiendas",
+	"home.editorial.cat.farmacia": "Farmacia",
+	"home.editorial.cat.express": "Express",
+	"home.editorial.cat.more": "Ver más",
+	"home.editorial.slide": "Oferta {index} de {count}",
+	"home.editorial.carousel.hint": "Deslizá para ver más ofertas",
 	/*
 	 * The two offer rails on the feed, and the three sentences a promotion card can carry.
 	 *
@@ -556,6 +577,8 @@ export const customer = {
 		"Esta tienda no está aceptando pedidos en este momento.",
 	"checkout.refusal.locationNotFound":
 		"No pudimos encontrar a dónde enviar este pedido.",
+	"checkout.refusal.addressNotFound":
+		"Elige una de tus direcciones de entrega guardadas.",
 	"checkout.refusal.emptyCart": "Tu carrito está vacío.",
 	"checkout.refusal.minOrder": "Este pedido no alcanza el mínimo de la tienda.",
 	"checkout.refusal.totalChanged":

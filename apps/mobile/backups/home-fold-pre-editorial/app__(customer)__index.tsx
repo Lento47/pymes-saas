@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
 	type BusinessCard as BusinessCardData,
+	type Category,
 	type Currency,
 	formatMoney,
 	type ProductCard,
@@ -9,7 +10,13 @@ import {
 } from "@pymeshub/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type ComponentProps,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	BackHandler,
 	Platform,
@@ -21,11 +28,10 @@ import {
 } from "react-native";
 
 import { ActionBar, useActionBarClearance } from "@/components/action-bar";
-import { AngledCategoryRail } from "@/components/angled-category-rail";
 import { AnimateIn } from "@/components/animate-in";
 import { BusinessCard } from "@/components/business-card";
+import { CategoryShowcase } from "@/components/category-showcase";
 import { CouponStrip } from "@/components/coupon-strip";
-import { EditorialHero } from "@/components/editorial-hero";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { HeroSearch } from "@/components/hero-search";
@@ -34,7 +40,9 @@ import { HomeLocationPicker } from "@/components/home-location-picker";
 import { hitSlopFor, Pressable } from "@/components/pressable";
 import { ProductRail } from "@/components/product-rail";
 import { ProductRow } from "@/components/product-row";
+import { PromoHero } from "@/components/promo-hero";
 import { useRefreshControl } from "@/components/pull-refresh";
+import { Rail } from "@/components/rail";
 import { RollbackNotice } from "@/components/rollback-notice";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
@@ -52,7 +60,11 @@ import { useBrowseLocation } from "@/lib/browse-location";
 import { useQuickAdd } from "@/lib/cart-mutations";
 import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
-import { clearRecentSearches, rememberSearch } from "@/lib/recent-searches";
+import {
+	clearRecentSearches,
+	readRecentSearches,
+	rememberSearch,
+} from "@/lib/recent-searches";
 import { type RoleDegradation, takeDegradation } from "@/lib/role";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -78,8 +90,8 @@ import {
  * foot and the strip above it).
  *
  * The header and search stay fixed. When the catalogue has live commerce, offers and
- * purchasable products lead the feed; shops follow. Category shortcuts live on the fold
- * ribbon, so this feed does not draw a second Categories card.
+ * purchasable products lead the feed; shops and category shortcuts follow. An empty
+ * marketplace keeps categories first so the screen offers a path without inventing products.
  *
  * ## The coordinate is stated once, above everything
  *
@@ -103,11 +115,11 @@ import {
  *
  * ## What each "Ver todo" means
  *
- * Three of them, and they are three destinations on purpose: the repeat shelf goes to the
- * orders that produced it (`/orders`), featured goes to `/featured`, and the shops go to
- * the paged list of every public business (`app/nearby`). None of them carries
- * `discovery.seeAll.hint` — "Abre la búsqueda" is true of none of them, and a hint that
- * lies is worse than no hint. The fold ribbon is the door into categories.
+ * Three of them, and they are three different destinations on purpose: the categories go to
+ * the whole taxonomy (`app/categories`), the repeat shelf goes to the orders that produced
+ * it (`/orders`), and the shops go to the paged list of every public business
+ * (`app/nearby`). None of them carries `discovery.seeAll.hint` — "Abre la búsqueda" is true
+ * of none of them, and a hint that lies is worse than no hint.
  *
  * ## The repeat shelf, and the one tap that is allowed to write
  *
@@ -280,8 +292,13 @@ export default function HomeScreen() {
 		: undefined;
 
 	/**
-	 * In-place search remains mounted for the hardware-back path and the activated field.
-	 * The fold capsule itself pushes `/search`, which is the editorial field's destination.
+	 * Search, in place rather than on its own route.
+	 *
+	 * Tapping the field does not push `/search` — there is no swipe, no new screen, no lost
+	 * scroll. The field activates where it sits and the feed below gives way to results with
+	 * the same entrance the rows use, and the hardware back key (or the arrow in the field)
+	 * stands the feed back up. The full `/search` screen stays for deep links and the feed's
+	 * own exit; this is the same procedure behind a nearer door.
 	 *
 	 * The floor is two characters and the settle 300ms — the search screen's own numbers, so
 	 * both doors ask at the same rhythm and share one cache entry per settled query.
@@ -300,6 +317,11 @@ export default function HomeScreen() {
 	);
 	const searchingWait = useSkeletonHold(searching && searchResults.isPending);
 
+	const openSearch = () => {
+		scrollerRef.current?.scrollTo({ y: 0, animated: false });
+		void readRecentSearches().then(setRecents);
+		setSearching(true);
+	};
 	const closeSearch = () => {
 		setSearching(false);
 		setQuery("");
@@ -338,7 +360,7 @@ export default function HomeScreen() {
 
 	return (
 		<View style={styles.fill}>
-			<Screen padded={false} contentStyle={styles.fill} purchaseStage={null}>
+			<Screen padded={false} contentStyle={styles.fill}>
 				{/* Outside the branch below on purpose. The header is the session's and the field
 			    is static, so neither has any reason to disappear while the feed loads — and a
 			    screen whose top third is stable reads as faster than one that rebuilds itself
@@ -355,7 +377,6 @@ export default function HomeScreen() {
 					name={name}
 					avatarUrl={me.data?.image ?? null}
 					onAvatarPress={() => router.push("/account")}
-					onNotificationsPress={() => router.push("/inbox")}
 				/>
 
 				{degradation ? (
@@ -437,14 +458,50 @@ export default function HomeScreen() {
 							) : null}
 						</View>
 					) : (
-						<HeroSearch
-							onPress={() => router.push("/search")}
-							onFilterPress={() => router.push("/search")}
-						/>
+						<HeroSearch onPress={openSearch} />
 					)}
 				</View>
 
-				<View style={styles.sheet}>
+				<View style={[styles.sheet, { backgroundColor: colors.card }]}>
+					{/* The four doors into the catalogue, one row, on the sheet. `!searching`
+			    only: once the field is active the answers below it are search, and four
+			    shortcuts into a catalogue that is giving way to results would just be noise.
+			    Each is a `radius.lg` tile on `muted`, so the row reads as doors *around* the
+			    marketplace rather than as filters inside one screen. */}
+					{searching ? null : (
+						<View
+							style={[
+								styles.shortcuts,
+								expandedShortcuts && styles.shortcutsExpanded,
+							]}
+						>
+							<Shortcut
+								icon="pricetag-outline"
+								label={t("home.offers")}
+								onPress={() => router.push("/offers")}
+								expanded={expandedShortcuts}
+							/>
+							<Shortcut
+								icon="navigate-outline"
+								label={t("home.shortcuts.nearby")}
+								onPress={() => router.push("/nearby")}
+								expanded={expandedShortcuts}
+							/>
+							<Shortcut
+								icon="heart-outline"
+								label={t("nav.favorites")}
+								onPress={() => router.push("/favorites")}
+								expanded={expandedShortcuts}
+							/>
+							<Shortcut
+								icon="time-outline"
+								label={t("home.shortcuts.recent")}
+								onPress={openSearch}
+								expanded={expandedShortcuts}
+							/>
+						</View>
+					)}
+
 					{/* One scroll view for all three branches, and one `RefreshControl` (`Rule 6`). */}
 					<ScrollView
 						ref={scrollerRef}
@@ -488,8 +545,6 @@ export default function HomeScreen() {
 							/>
 						) : (
 							<>
-								<EditorialHero promotions={feed.data?.promotions ?? []} />
-								<AngledCategoryRail />
 								{feed.isError ? (
 									// `padded` is off for this screen, because the rows are edge-to-edge;
 									// the error is not a row, so it pays the horizontal padding itself.
@@ -621,6 +676,9 @@ const FEATURED_PREVIEW = 5;
 const DISCOVER_PREVIEW = 3;
 const AGAIN_LIMIT = 8;
 
+/** The banner peeks the next offer — `./rail`'s rule that a row must show it scrolls. */
+const HERO_RATIO = 0.85;
+
 /**
  * The basket's summary, and the second target inside `./action-bar`.
  *
@@ -687,11 +745,62 @@ function CartSummary({
 	);
 }
 
+/**
+ * One of the four catalogue doors under the search field: a tile that names where it
+ * goes. Owned here rather than in a shared component because what the four tiles point
+ * at is a property of *this* layout — offers, nearby, favorites and the recents search.
+ */
+function Shortcut({
+	icon: iconName,
+	label,
+	onPress,
+	expanded,
+}: {
+	icon: ComponentProps<typeof Ionicons>["name"];
+	label: string;
+	onPress: () => void;
+	expanded: boolean;
+}) {
+	const { colors } = useTheme();
+
+	return (
+		<Pressable
+			onPress={onPress}
+			accessibilityRole="button"
+			accessibilityLabel={label}
+			style={[
+				styles.shortcut,
+				expanded && styles.shortcutExpanded,
+				{ backgroundColor: colors.muted },
+			]}
+		>
+			<Ionicons
+				name={iconName}
+				size={icon.control}
+				color={colors.foreground}
+				accessibilityElementsHidden
+				importantForAccessibility="no"
+			/>
+			<Text
+				variant="caption"
+				bold
+				numberOfLines={2}
+				style={styles.shortcutLabel}
+			>
+				{label}
+			</Text>
+		</Pressable>
+	);
+}
+
 const styles = StyleSheet.create({
 	fill: { flex: 1 },
-	hero: { zIndex: 1 },
+	hero: { marginTop: space.md, marginBottom: -space.xl, zIndex: 1 },
 	sheet: {
 		flex: 1,
+		borderTopLeftRadius: radius.xl,
+		borderTopRightRadius: radius.xl,
+		paddingTop: space.huge,
 		overflow: "hidden",
 	},
 	// `flex: 1` and not `flexGrow`/`flexShrink`, and the difference is `flexBasis`: RN's
@@ -700,6 +809,7 @@ const styles = StyleSheet.create({
 	// the page could not be scrolled into view. `./paginated-list` records the same one word.
 	scroller: { flex: 1 },
 	stateWrap: { paddingHorizontal: space.lg },
+	rail: { marginTop: space.xl },
 	// `ScreenSection`'s own top margin, in the open: a section here is a header that owns its
 	// inset and a block that owns its own, so the screen is what holds them together.
 	section: { marginTop: space.xl },
@@ -807,6 +917,26 @@ const styles = StyleSheet.create({
 	// input beside it is set on. `./back-button` and `./home-header` both centre for this
 	// reason, and the one screen that skipped it is why their comments exist.
 	iconButton: { alignItems: "center", justifyContent: "center" },
+	shortcuts: {
+		flexDirection: "row",
+		gap: space.sm,
+		marginHorizontal: space.lg,
+		marginTop: space.sm,
+	},
+	shortcutsExpanded: { flexWrap: "wrap" },
+	shortcut: {
+		flex: 1,
+		minHeight: MIN_TOUCH_TARGET,
+		paddingVertical: space.sm,
+		paddingHorizontal: space.xs,
+		borderRadius: radius.lg,
+		overflow: "hidden",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.xs,
+	},
+	shortcutExpanded: { flexBasis: "45%" },
+	shortcutLabel: { textAlign: "center" },
 });
 
 /** `catalog.feed`'s five lists and its taxonomy, as `Feed` draws them. */
@@ -816,6 +946,7 @@ type FeedData = {
 	offers: ProductCard[];
 	nearby: BusinessCardData[];
 	promotions: PromotionCard[];
+	categories: Category[];
 };
 
 type SeeAll = { label: string; onPress: () => void };
@@ -873,11 +1004,37 @@ function Feed({
 		data.offers.length > 0 ||
 		data.promotions.length > 0 ||
 		again.length > 0;
+	const categories =
+		data.categories.length > 0 ? (
+			<View style={styles.rail}>
+				<CategoryShowcase categories={data.categories} allHref="/categories" />
+			</View>
+		) : null;
 
 	return (
 		<>
-			{/* Offers live in `EditorialHero`'s carousel, so this feed does not draw them
-			    again. One promotion list on two surfaces is the same fact twice. */}
+			{!hasCommerce ? categories : null}
+
+			{/* The offer banner, with the code as its brand-colour mark. It replaces the
+			    "Cupones" rail this feed used to end with rather than joining it: one
+			    promotion list drawn twice is the same fact on the screen twice, which is the
+			    duplication `./home-header` exists to prevent. */}
+			{data.promotions.length > 0 ? (
+				<View style={styles.section}>
+					<Rail ratio={HERO_RATIO}>
+						{(width) =>
+							data.promotions.map((promotion, index) => (
+								<PromoHero
+									key={promotion.id}
+									promotion={promotion}
+									index={index}
+									style={{ width }}
+								/>
+							))
+						}
+					</Rail>
+				</View>
+			) : null}
 
 			{/* The repeat shelf. Signed-out visitors never see it — the query behind it is
 			    `enabled` only for a session — so there is no empty state to draw and no way
@@ -957,6 +1114,7 @@ function Feed({
 				</View>
 			) : null}
 
+			{hasCommerce ? categories : null}
 			{data.nearby.length === 0 && !hasCommerce ? (
 				<View style={styles.section}>
 					<View style={styles.sectionHead}>

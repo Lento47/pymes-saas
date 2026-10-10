@@ -36,6 +36,27 @@ export const customer = {
 	   is the prompt; this is the button — see the Spanish file's note. */
 	"home.nearby.enableLocation.action": "Turn on location",
 	"home.search.placeholder": "Search products or businesses",
+	"home.search.editorial": "Search restaurants, shops, products...",
+	"home.search.filters": "Search filters",
+	"home.editorial.line1": "Good",
+	"home.editorial.line2": "things",
+	"home.editorial.line3": "nearby",
+	"home.editorial.lede1": "Food, shops and everything",
+	"home.editorial.lede2": "you need,",
+	"home.editorial.lede3": "from your community.",
+	"home.editorial.cta": "See featured",
+	"home.editorial.photo": "Featured campaign",
+	"home.editorial.sticker1": "Support",
+	"home.editorial.sticker2": "local",
+	"home.editorial.sticker3": "shops",
+	"home.editorial.cat.comida": "Food",
+	"home.editorial.cat.supermercado": "Grocery",
+	"home.editorial.cat.tiendas": "Shops",
+	"home.editorial.cat.farmacia": "Pharmacy",
+	"home.editorial.cat.express": "Express",
+	"home.editorial.cat.more": "See more",
+	"home.editorial.slide": "Offer {index} of {count}",
+	"home.editorial.carousel.hint": "Swipe for more offers",
 	/* The two offer rails and the three promotion sentences — see the Spanish file's note,
 	   which covers why the headings are two and why there are exactly three sentences. */
 	"home.offers": "Deals",
@@ -292,6 +313,8 @@ export const customer = {
 		"This shop isn't accepting orders at the moment.",
 	"checkout.refusal.locationNotFound":
 		"We couldn't find where to send this order.",
+	"checkout.refusal.addressNotFound":
+		"Choose one of your saved delivery addresses.",
 	"checkout.refusal.emptyCart": "Your cart is empty.",
 	"checkout.refusal.minOrder": "This order hasn't reached the shop's minimum.",
 	"checkout.refusal.totalChanged":

@@ -9,11 +9,8 @@ import { bandColorAt, easeOutCubic } from "../theme/transition-math";
 /**
  * The band's colour tween.
  *
- * The band snapped on a stage change while the palette glided, and the cause was that
- * two inputs to one colour moved at different speeds: `theme/transition.tsx` animates
- * `ThemeColors` and knows nothing about a `purchaseStage`, while `screen.tsx`
- * substituted one band token for another in a single render. `expo-linear-gradient`
- * swaps colours, it does not animate them.
+ * The pure colour transition remains covered here. The editorial home now owns its
+ * gradient, so the shared Screen must not inject another one behind it.
  *
  * The pure half is separated from the hook for the same reason `transition-math.ts` is
  * separate from `transition.tsx`: answering "does this land on its endpoints, and in
@@ -109,19 +106,14 @@ describe("bandColorAt", () => {
 	});
 });
 
-describe("the band tween is wired where the band is composed", () => {
+describe("the home band is owned by its screen", () => {
 	const screen = readFileSync(
 		join(import.meta.dir, "..", "components", "screen.tsx"),
 		"utf8",
 	);
 
-	test("Screen hands the gradient the tweened colour, not the raw one", () => {
-		// `band?.color` reaching `HomeGradient` is the bug: a hard substitution in one
-		// render, which `<LinearGradient>` then swaps.
-		expect(screen).toContain(
-			"const bandColor = useTweenedBandColor(band?.color);",
-		);
-		expect(screen).toContain("bandColor={bandColor}");
+	test("Screen leaves the home gradient to the home composition", () => {
+		expect(screen).not.toContain("<HomeGradient");
 		expect(screen).not.toContain("bandColor={band?.color}");
 	});
 

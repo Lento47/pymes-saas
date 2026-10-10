@@ -464,7 +464,13 @@ export function cartItemOf(input: {
 	item: CartItemRow;
 	product: Pick<
 		ProductRow,
-		"id" | "name" | "imageUrl" | "status" | "trackInventory" | "stockQuantity"
+		| "id"
+		| "name"
+		| "imageUrl"
+		| "priceMinor"
+		| "status"
+		| "trackInventory"
+		| "stockQuantity"
 	>;
 }): {
 	id: string;
@@ -484,7 +490,9 @@ export function cartItemOf(input: {
 		(total, option) => total + option.priceDeltaMinor,
 		0,
 	);
-	const effectiveUnitPrice = input.item.unitPriceMinor + delta;
+	// The cart row remembers its add-time price, but the open cart and checkout
+	// show the price orders.place will actually snapshot from the product now.
+	const effectiveUnitPrice = input.product.priceMinor + delta;
 
 	const availability = availabilityOf({
 		trackInventory: input.product.trackInventory,
@@ -498,7 +506,7 @@ export function cartItemOf(input: {
 		name: input.product.name,
 		imageUrl: input.product.imageUrl,
 		quantity: input.item.quantity,
-		unitPriceMinor: input.item.unitPriceMinor,
+		unitPriceMinor: input.product.priceMinor,
 		effectiveUnitPriceMinor: effectiveUnitPrice,
 		lineTotalMinor: effectiveUnitPrice * input.item.quantity,
 		options: chosen.map((option) => ({

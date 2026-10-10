@@ -17,15 +17,6 @@ describe("home product discovery", () => {
 		expect(home).not.toContain("heroMap");
 		expect(home).toContain("<HomeHeader");
 		expect(home).toContain("<HeroSearch");
-		expect(home).toContain("<EditorialHero");
-		expect(home).toContain("promotions={feed.data?.promotions ?? []}");
-		expect(home).not.toContain("<PromoHero");
-		expect(home).toContain("<AngledCategoryRail");
-		expect(home).not.toContain("<CategoryShowcase");
-		expect(home).toContain('router.push("/inbox")');
-		expect(home).toContain('router.push("/search")');
-		expect(home).toContain("purchaseStage={null}");
-		expect(home).not.toContain("PymesHub");
 	});
 
 	test("gives Home products a rail of tappable tiles", () => {

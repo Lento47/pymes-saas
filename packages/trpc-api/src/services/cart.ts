@@ -1,8 +1,10 @@
 import type { ChosenOption, Db, PromotionKind } from "@pymeshub/db";
 import {
+	address as addressTable,
 	business as businessTable,
 	cartItem as cartItemTable,
 	cart as cartTable,
+	merchantLocation as locationTable,
 	productOptionGroup as productOptionGroupTable,
 	productOption as productOptionTable,
 	product as productTable,
@@ -14,6 +16,7 @@ import {
 	CART_STATUSES,
 	type Cart,
 	type CartItem,
+	type CartQuoteInput,
 	type CartStatus,
 	type CartTotals,
 	type Currency,
@@ -61,11 +64,10 @@ export async function get(ctx: UserContext): Promise<Cart> {
 /** Checkout quote, calculated by the same server that accepts the order. */
 export async function quote(
 	ctx: UserContext,
-	fulfilment: "PICKUP" | "DELIVERY",
+	input: CartQuoteInput,
 ): Promise<CartTotals> {
 	const row = await openCartOf(ctx.db, ctx.user.id);
 	if (!row) return EMPTY_CART_TOTALS;
-	const cart = await buildCart(ctx.db, row);
 	const [business] = await ctx.db
 		.select()
 		.from(businessTable)
@@ -73,17 +75,51 @@ export async function quote(
 		.limit(1);
 	if (!business) throw new NotFoundError();
 	if (
-		(fulfilment === "DELIVERY" && !business.deliveryEnabled) ||
-		(fulfilment === "PICKUP" && !business.pickupEnabled)
+		(input.fulfilment === "DELIVERY" && !business.deliveryEnabled) ||
+		(input.fulfilment === "PICKUP" && !business.pickupEnabled)
 	)
 		throw new ValidationError("Esta forma de entrega no está disponible");
+	if (input.locationId) {
+		const [location] = await ctx.db
+			.select({ id: locationTable.id })
+			.from(locationTable)
+			.where(
+				and(
+					eq(locationTable.id, input.locationId),
+					eq(locationTable.businessId, business.id),
+				),
+			)
+			.limit(1);
+		if (!location)
+			throw new ValidationError("checkout.refusal.locationNotFound", {
+				field: "locationId",
+			});
+	}
+	if (input.fulfilment === "DELIVERY" && input.addressId) {
+		const [address] = await ctx.db
+			.select({ id: addressTable.id })
+			.from(addressTable)
+			.where(
+				and(
+					eq(addressTable.id, input.addressId),
+					eq(addressTable.userId, ctx.user.id),
+				),
+			)
+			.limit(1);
+		if (!address)
+			throw new ValidationError("checkout.refusal.addressNotFound", {
+				field: "addressId",
+			});
+	}
+
+	const cart = await buildCart(ctx.db, row);
 	const promotion = await livePromotionOf(
 		ctx.db,
 		row,
 		cart.totals.subtotalMinor,
 	);
 	const deliveryFeeMinor =
-		fulfilment === "DELIVERY" && !promotion.freeDelivery
+		input.fulfilment === "DELIVERY" && !promotion.freeDelivery
 			? business.deliveryFeeMinor
 			: 0;
 	return {
@@ -463,7 +499,7 @@ async function buildCart(
 	const promotion = await livePromotionOf(db, cart, subtotalMinor);
 
 	const totals = totalsOf({
-		currency: cart.currency,
+		currency: business[0]?.currency ?? cart.currency,
 		subtotalMinor,
 		promotion: promotion.discount,
 		minOrderMinor: business[0]?.minOrderMinor ?? 0,
@@ -474,7 +510,7 @@ async function buildCart(
 		businessId: cart.businessId,
 		businessName: business[0]?.name ?? null,
 		businessSlug: business[0]?.slug ?? null,
-		currency: cart.currency,
+		currency: business[0]?.currency ?? cart.currency,
 		status: cart.status,
 		items,
 		totals,
