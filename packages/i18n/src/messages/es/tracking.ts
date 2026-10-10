@@ -5,19 +5,8 @@
  * here they are waiting, and the only thing they want is the answer to "where is it". The
  * word for an estimate lives here for that reason, and it is a word this app did not have.
  *
- * ## The estimate is a readiness, not an arrival
- *
- * `order.track.eta` already exists ("Llega alrededor de las {time}") and is deliberately
- * **not** reused here. It is built on the only estimate the API actually stores —
- * `estimatedReadyAt`, computed in `apps/api/src/services/mappers.ts` from the business's own
- * `prepTimeMinutes` and anchored at the moment the order was accepted — and "llega" is a
- * claim about *arrival*. On a pickup order nobody arrives at the customer, and on a delivery
- * order the arrival is later than the readiness by however long the courier takes; the API
- * says so itself, hardcoding `estimatedDeliveryAt: null` with a note that it has no courier
- * position and no routing service to compute one from. So the two sentences here say what the
- * field means: the food is ready. Nothing counts down and nothing is compared against the
- * clock on the device — see `tracking.estimate.help`, which is the second half of the same
- * honesty.
+ * La preparación usa el tiempo informado por la tienda. La llegada usa la duración vial
+ * aceptada y aparece solo después de confirmar la recogida. Ambas son estimaciones.
  *
  * ## The one key outside this domain
  *
@@ -48,6 +37,9 @@ export const tracking = {
 	 * alone would not say which one.
 	 */
 	"tracking.estimate.ready.otherDay": "Listo el {date} a las {time}",
+	"tracking.estimate.delivery.sameDay": "Llega alrededor de las {time}",
+	"tracking.estimate.delivery.otherDay":
+		"Llega el {date} alrededor de las {time}",
 	/**
 	 * What the estimate is, said once, right under it. It is not a disclaimer bolted on: the
 	 * number comes from a prep time the business typed, and a sentence that presented it as a

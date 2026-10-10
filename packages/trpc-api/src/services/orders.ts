@@ -1803,7 +1803,7 @@ export async function track(
 ): Promise<OrderTracking> {
 	const order = await reachableOrder(ctx, input.id);
 
-	const [events, business, lines] = await Promise.all([
+	const [events, business, lines, delivery] = await Promise.all([
 		ctx.db
 			.select()
 			.from(orderEventTable)
@@ -1819,6 +1819,14 @@ export async function track(
 			.from(orderItemTable)
 			.innerJoin(productTable, eq(orderItemTable.productId, productTable.id))
 			.where(eq(orderItemTable.orderId, order.id)),
+		ctx.db
+			.select({
+				status: deliveryTable.status,
+				pickedUpAt: deliveryTable.pickedUpAt,
+			})
+			.from(deliveryTable)
+			.where(eq(deliveryTable.orderId, order.id))
+			.limit(1),
 	]);
 
 	return orderTrackingOf(
@@ -1828,6 +1836,11 @@ export async function track(
 			lines.map((line) => line.prepTimeMinutes),
 			business[0]?.prepTimeMinutes ?? null,
 		),
+		{
+			pickedUpAt:
+				delivery[0]?.status === "PICKED_UP" ? delivery[0].pickedUpAt : null,
+			deliveryEtaEnabled: ctx.env.DELIVERY_ETA_ENABLED === "true",
+		},
 	);
 }
 

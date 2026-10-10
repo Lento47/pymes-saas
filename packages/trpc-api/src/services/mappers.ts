@@ -744,6 +744,11 @@ export function orderTrackingOf(
 	order: OrderRow,
 	events: OrderEventRow[],
 	prepTimeMinutes: number | null,
+	options?: {
+		pickedUpAt: Date | null;
+		deliveryEtaEnabled: boolean;
+		now?: Date;
+	},
 ): OrderTracking {
 	// The step's timestamp comes from the event that reached it, so the tracker shows
 	// when each step actually happened rather than inferring it from the next one.
@@ -780,10 +785,21 @@ export function orderTrackingOf(
 					}
 				: null,
 		estimatedReadyAt: estimatedReadyAtOf(order, prepTimeMinutes),
-		// No delivery-leg estimate is offered: the only honest inputs would be a courier
-		// position and a routing service, and neither exists yet. A number here would be
-		// a promise the product cannot keep.
-		estimatedDeliveryAt: null,
+		// Pickup is a real transition, and the road duration was locked in the order quote.
+		// Never turn a pre-pickup status or an overdue prediction into an arrival claim.
+		estimatedDeliveryAt:
+			options?.deliveryEtaEnabled &&
+			order.status === "OUT_FOR_DELIVERY" &&
+			options.pickedUpAt &&
+			order.routeDurationSeconds != null &&
+			Number.isFinite(order.routeDurationSeconds) &&
+			order.routeDurationSeconds >= 0 &&
+			options.pickedUpAt.getTime() + order.routeDurationSeconds * 1000 >
+				(options.now ?? new Date()).getTime()
+				? new Date(
+						options.pickedUpAt.getTime() + order.routeDurationSeconds * 1000,
+					)
+				: null,
 	};
 }
 

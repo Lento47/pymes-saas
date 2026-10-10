@@ -129,13 +129,9 @@ import {
  *
  * Under `DELIVERY` the same number is drawn with `store.prepTime` ("{count} min de
  * preparación") instead, because under delivery a prep time is not the time of anything the
- * customer experiences: the order is also carried across town, and `apps/api` offers no
- * delivery-leg estimate at all — `services/mappers.ts:657` hardcodes `estimatedDeliveryAt:
- * null` with the reason spelled out beside it ("the only honest inputs would be a courier
- * position and a routing service, and neither exists yet. A number here would be a promise the
- * product cannot keep"). "Estimated time: 25 min" over a delivery would be this screen making
- * the promise the API refused to make. What the shop actually said is how long its food takes
- * to make.
+ * customer experiences: the order is also carried across town. Checkout presents road
+ * driving time separately when a route is quoted; an arrival clock appears only after
+ * courier pickup, when that road duration has an actual start time.
  *
  * The read is allowed to fail, like every optional read in this app: no slug, a failed
  * `bySlug` or a prep time of zero and the chip is simply absent, with no branch anywhere that

@@ -58,7 +58,7 @@ export function EditorialHero({
 		CAMPAIGN_SLIDE,
 		...promotions.map((promotion) => promotion.id),
 	];
-	const bowlWidth = pageWidth * 0.62;
+	const bowlWidth = Math.max(pageWidth - space.xxl * 2, 0) * 0.62;
 
 	const onSettle = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		if (pageWidth <= 0) return;
@@ -157,21 +157,23 @@ function CampaignSlide({ bowlWidth }: { bowlWidth: number }) {
 	return (
 		<>
 			<View style={styles.copy}>
-				<Text
-					bold
-					style={[styles.headline, { color: colors.foreground }]}
-					maxFontSizeMultiplier={1.35}
-				>
-					{`${t("home.editorial.line1")}\n${t("home.editorial.line2")}\n${t("home.editorial.line3")}`}
-				</Text>
-				<Text
-					variant="label"
-					tone="muted"
-					style={styles.lede}
-					maxFontSizeMultiplier={1.35}
-				>
-					{`${t("home.editorial.lede1")}\n${t("home.editorial.lede2")}\n${t("home.editorial.lede3")}`}
-				</Text>
+				<View>
+					<Text
+						bold
+						style={[styles.headline, { color: colors.foreground }]}
+						maxFontSizeMultiplier={1.35}
+					>
+						{`${t("home.editorial.line1")}\n${t("home.editorial.line2")}\n${t("home.editorial.line3")}`}
+					</Text>
+					<Text
+						variant="label"
+						tone="muted"
+						style={styles.lede}
+						maxFontSizeMultiplier={1.35}
+					>
+						{`${t("home.editorial.lede1")}\n${t("home.editorial.lede2")}\n${t("home.editorial.lede3")}`}
+					</Text>
+				</View>
 				<Pressable
 					onPress={() => router.push("/featured")}
 					accessibilityRole="button"
@@ -203,7 +205,7 @@ function CampaignSlide({ bowlWidth }: { bowlWidth: number }) {
 				accessibilityLabel={t("home.editorial.photo")}
 				style={[
 					styles.photoHit,
-					{ width: bowlWidth, height: bowlWidth * 0.92, right: -28 },
+					{ width: bowlWidth, height: bowlWidth * 0.92 },
 				]}
 			>
 				<Image
@@ -268,27 +270,29 @@ function PromotionSlide({
 	return (
 		<>
 			<View style={[styles.copy, photo ? null : styles.copyWide]}>
-				<Text
-					bold
-					style={[
-						styles.headline,
-						styles.promoHeadline,
-						{ color: colors.foreground },
-					]}
-					maxFontSizeMultiplier={1.35}
-					numberOfLines={3}
-				>
-					{benefit}
-				</Text>
-				<Text
-					variant="label"
-					tone="muted"
-					style={styles.lede}
-					maxFontSizeMultiplier={1.35}
-				>
-					{promotion.business.name}
-					{condition ? `\n${condition}` : ""}
-				</Text>
+				<View>
+					<Text
+						bold
+						style={[
+							styles.headline,
+							styles.promoHeadline,
+							{ color: colors.foreground },
+						]}
+						maxFontSizeMultiplier={1.35}
+						numberOfLines={3}
+					>
+						{benefit}
+					</Text>
+					<Text
+						variant="label"
+						tone="muted"
+						style={styles.lede}
+						maxFontSizeMultiplier={1.35}
+					>
+						{promotion.business.name}
+						{condition ? `\n${condition}` : ""}
+					</Text>
+				</View>
 				<Pressable
 					onPress={openShop}
 					accessibilityRole="button"
@@ -322,7 +326,7 @@ function PromotionSlide({
 					accessibilityHint={t("home.promotion.help")}
 					style={[
 						styles.photoHit,
-						{ width: bowlWidth, height: bowlWidth * 0.92, right: -28 },
+						{ width: bowlWidth, height: bowlWidth * 0.92 },
 					]}
 				>
 					<RemoteImage
@@ -366,12 +370,18 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	copy: {
-		paddingHorizontal: space.xxl,
+		flex: 1,
+		justifyContent: "space-between",
+		paddingTop: space.xl,
+		paddingBottom: space.xl,
+		paddingLeft: space.xl,
+		paddingRight: space.sm,
 		zIndex: 2,
-		maxWidth: "58%",
+		maxWidth: "56%",
 	},
 	copyWide: {
-		maxWidth: "86%",
+		maxWidth: "100%",
+		paddingRight: space.xl,
 	},
 	headline: {
 		fontSize: 56,
@@ -385,13 +395,12 @@ const styles = StyleSheet.create({
 		letterSpacing: -1.4,
 	},
 	lede: {
-		marginTop: 10,
+		marginTop: space.md,
 		width: 168,
 		fontSize: 13,
 		lineHeight: 18,
 	},
 	cta: {
-		marginTop: 14,
 		borderRadius: radius.full,
 		alignItems: "center",
 		justifyContent: "center",
@@ -401,7 +410,8 @@ const styles = StyleSheet.create({
 	},
 	photoHit: {
 		position: "absolute",
-		top: 8,
+		right: -20,
+		bottom: -18,
 		zIndex: 1,
 	},
 	photo: {
@@ -410,8 +420,8 @@ const styles = StyleSheet.create({
 	},
 	sticker: {
 		position: "absolute",
-		right: 18,
-		bottom: 52,
+		right: space.lg,
+		bottom: space.lg,
 		width: 103,
 		height: 72,
 		borderRadius: 18,

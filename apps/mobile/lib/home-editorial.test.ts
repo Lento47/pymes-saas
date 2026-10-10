@@ -72,6 +72,8 @@ describe("editorial hero copy", () => {
 		expect(hero).toContain("CAKE[index % CAKE.length]");
 		expect(hero).toContain("radius.xl");
 		expect(hero).toContain("<SlidePlate");
+		expect(hero).toContain('justifyContent: "space-between"');
+		expect(hero).toContain("paddingTop: space.xl");
 	});
 
 	test("pages horizontally through the campaign and live promotions", () => {

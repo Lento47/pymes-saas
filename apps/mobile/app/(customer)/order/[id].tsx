@@ -82,26 +82,16 @@ import {
  * same fact the API's state machine is enforcing. An order the customer could place in three
  * taps must not be one they cannot stop without a phone call.
  *
- * ## The status is the headline, and the estimate is a readiness
+ * ## The status is the headline, with the estimate that applies now
  *
  * The largest thing on the screen is the status word, drawn in that status's own ink above
  * the rail it names. That is the question the screen exists to answer, and the answer used to
  * be a small pill beside the order number — the same size as the order's reference, and
  * smaller than the business's name.
  *
- * Under it, when the API has one, is the estimate: `order.estimatedReadyAt`, computed
- * server-side from the business's stored `prepTimeMinutes` and anchored at the moment the
- * order was accepted. It is a **readiness**, and the sentence says so — the delivery-leg
- * estimate is deliberately null in `apps/api/src/services/mappers.ts`, because the honest
- * inputs to one are a courier position and a routing service, and a position on its own is a
- * distance rather than a time — which is why this screen draws the position (below) and still
- * says nothing about when the doorbell rings.
- * `order.track.eta` ("Llega alrededor de las {time}") is therefore *not* the key for this
- * line: it promises an arrival that this field does not know. So the line reads "Listo
- * alrededor de las 2:30 p. m." with the honesty caption under it, and nothing here is
- * compared against the clock on the device — a countdown is the one thing
- * `docs/design-mobile.md` rules out by name, and a device clock in a sentence about
- * somebody else's kitchen is how a customer is told their food is late when it is not.
+ * Preparation shows the shop's estimated ready time. Once the courier confirms pickup,
+ * `orders.track` can return an arrival estimate from the road duration locked at checkout.
+ * The screen never turns either estimate into a countdown.
  *
  * ## Why the screen does not use `Screen`'s `scroll`
  *
@@ -408,10 +398,18 @@ function OrderDetail() {
 	 * noise. The comparison is between two *stored* values and never against `Date.now()`, so
 	 * the sentence the customer reads does not depend on when they opened the screen.
 	 */
-	const estimate = order.estimatedReadyAt;
+	const estimate =
+		order.status === "OUT_FOR_DELIVERY" ? null : order.estimatedReadyAt;
 	const estimateKey: MessageKey = sameDay(estimate, order.placedAt)
 		? "tracking.estimate.ready.sameDay"
 		: "tracking.estimate.ready.otherDay";
+	const arrival =
+		order.status === "OUT_FOR_DELIVERY" && !track.isError
+			? (track.data?.estimatedDeliveryAt ?? null)
+			: null;
+	const arrivalKey: MessageKey = sameDay(arrival, order.placedAt)
+		? "tracking.estimate.delivery.sameDay"
+		: "tracking.estimate.delivery.otherDay";
 
 	/**
 	 * Which bar this order gets, and the two facts that pick it.
@@ -543,7 +541,15 @@ function OrderDetail() {
 								})}
 							</Text>
 						) : null}
-						{estimate ? (
+						{arrival ? (
+							<Text variant="body">
+								{t(arrivalKey, {
+									time: formatClock(arrival, intlLocale),
+									date: formatDay(arrival, intlLocale),
+								})}
+							</Text>
+						) : null}
+						{estimate || arrival ? (
 							<Text variant="caption" tone="muted">
 								{t("tracking.estimate.help")}
 							</Text>

@@ -174,11 +174,8 @@ import {
  * `REJECTED`), so the line below the headline draws itself on the active segment and nowhere
  * else. That is the same value and the same two sentences `app/order/[id].tsx` draws, at
  * `caption` instead of `body` because a row is a summary and the detail page is the page.
- * It is a **readiness** and never an arrival: `order.track.eta` says "llega", the delivery leg
- * has no estimate at all (`estimatedDeliveryAt` is hardcoded null in
- * `apps/api/src/services/mappers.ts`), and a list row inventing an arrival time from a
- * readiness is the exact sentence `packages/i18n/src/messages/es/tracking.ts` was written to
- * prevent. Nothing here counts down.
+ * It is a **readiness** and never an arrival. The detail screen may show a separate arrival
+ * estimate after courier pickup, when the server has a road duration and a start time.
  *
  * ## Pedir otra vez, and what it does *not* do
  *
@@ -553,7 +550,8 @@ export default function OrdersScreen() {
 						// Non-null for exactly the statuses `terminal` is false for, so the
 						// estimate line is the active segment's by construction rather than by a
 						// second condition that could disagree with the first.
-						const ready = item.estimatedReadyAt;
+						const ready =
+							item.status === "OUT_FOR_DELIVERY" ? null : item.estimatedReadyAt;
 						// Whether this row is the one that asked. `variables` is the request in
 						// flight and `data` is the answer to the last one that landed, so the
 						// spinner and the report both belong to a row rather than to the screen:

@@ -78,6 +78,8 @@ export type Env = {
 	ROUTE_FEE_ENABLED?: string;
 	/** ETA-first courier ranking; absent keeps the legacy ordering. */
 	AFFINITY_V2_ENABLED?: string;
+	/** Show a quoted-road arrival estimate only after courier pickup. */
+	DELIVERY_ETA_ENABLED?: string;
 
 	AUTH_SECRET?: string;
 	AUTH_URL?: string;

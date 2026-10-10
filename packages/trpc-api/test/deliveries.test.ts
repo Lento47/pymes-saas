@@ -942,6 +942,7 @@ describe("delivery offer authorization", () => {
 describe("accepted delivery lifecycle and ratings", () => {
 	test("an assigned courier can finish a delivery placed by the same account", async () => {
 		const test = world();
+		test.env.DELIVERY_ETA_ENABLED = "true";
 		const ready = await orderReadyToPlace(test, "dual_role");
 		const owner = await seedOwner(test, ready.businessId, "dual_role");
 		const order = await placeDelivery(ready, "dual_role");
@@ -955,7 +956,7 @@ describe("accepted delivery lifecycle and ratings", () => {
 		if (!run) throw new Error("The order has no delivery");
 		await test.db
 			.update(orderTable)
-			.set({ courierUserId: ready.customer.id })
+			.set({ courierUserId: ready.customer.id, routeDurationSeconds: 1800 })
 			.where(eq(orderTable.id, order.id));
 		await test.db
 			.update(deliveryTable)
@@ -965,6 +966,9 @@ describe("accepted delivery lifecycle and ratings", () => {
 				arrivedPickupAt: new Date(),
 			})
 			.where(eq(deliveryTable.id, run.id));
+		expect(
+			(await ready.buyer.orders.track({ id: order.id })).estimatedDeliveryAt,
+		).toBeNull();
 
 		const pickedUp = await ready.buyer.deliveries.advance({
 			deliveryId: run.id,
@@ -972,12 +976,30 @@ describe("accepted delivery lifecycle and ratings", () => {
 		});
 		expect(pickedUp.status).toBe("PICKED_UP");
 		expect(pickedUp.orderStatus).toBe("OUT_FOR_DELIVERY");
+		const arrival = (await ready.buyer.orders.track({ id: order.id }))
+			.estimatedDeliveryAt;
+		expect(arrival?.getTime()).toBeGreaterThan(Date.now() + 29 * 60_000);
+		test.env.DELIVERY_ETA_ENABLED = "false";
+		expect(
+			(await ready.buyer.orders.track({ id: order.id })).estimatedDeliveryAt,
+		).toBeNull();
+		test.env.DELIVERY_ETA_ENABLED = "true";
+		await test.db
+			.update(deliveryTable)
+			.set({ pickedUpAt: new Date(Date.now() - 60 * 60_000) })
+			.where(eq(deliveryTable.id, run.id));
+		expect(
+			(await ready.buyer.orders.track({ id: order.id })).estimatedDeliveryAt,
+		).toBeNull();
 		const delivered = await ready.buyer.deliveries.advance({
 			deliveryId: run.id,
 			action: "COMPLETE",
 		});
 		expect(delivered.status).toBe("DELIVERED");
 		expect(delivered.orderStatus).toBe("COMPLETED");
+		expect(
+			(await ready.buyer.orders.track({ id: order.id })).estimatedDeliveryAt,
+		).toBeNull();
 		test.close();
 	});
 
