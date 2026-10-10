@@ -1,3 +1,5 @@
+import { haversineKm } from "@pymeshub/db/geo";
+
 /** A road-routing boundary. No caller may treat a straight-line distance as a priced route. */
 export type GeoPoint = { lat: number; lng: number };
 export type TravelProfile = "car" | "motorcycle" | "bicycle";
@@ -35,6 +37,8 @@ export class RoutingUnavailableError extends Error {
 
 const MAX_MATRIX_POINTS = 16;
 const MAX_ROUTE_POINTS = 10_000;
+// A pin can be off-road, but a route snapped farther away is not the requested trip.
+const MAX_ENDPOINT_SNAP_METERS = 5_000;
 const DEFAULT_TIMEOUT_MS = 3_000;
 
 function validPoint(point: GeoPoint): boolean {
@@ -79,6 +83,33 @@ function geometryOf(value: unknown): RouteGeometry | null {
 		coordinates.push([lng, lat]);
 	}
 	return { type: "LineString", coordinates };
+}
+
+function routeGeometryMatches(
+	geometry: RouteGeometry,
+	origin: GeoPoint,
+	destination: GeoPoint,
+	distanceMeters: number,
+): boolean {
+	const points = geometry.coordinates;
+	const first = points[0];
+	const last = points[points.length - 1];
+	if (!first || !last) return false;
+	const pointOf = ([lng, lat]: [number, number]) => ({ lat, lng });
+	if (
+		haversineKm(origin, pointOf(first)) * 1_000 > MAX_ENDPOINT_SNAP_METERS ||
+		haversineKm(destination, pointOf(last)) * 1_000 > MAX_ENDPOINT_SNAP_METERS
+	)
+		return false;
+	let shapeMeters = 0;
+	for (let index = 1; index < points.length; index++) {
+		const previous = points[index - 1];
+		const current = points[index];
+		if (!previous || !current) return false;
+		shapeMeters += haversineKm(pointOf(previous), pointOf(current)) * 1_000;
+	}
+	// Road distance can exceed its simplified line, never fall far below it.
+	return distanceMeters + 100 >= shapeMeters * 0.9;
 }
 
 /**
@@ -150,7 +181,9 @@ export function createOsrmRouting(input: {
 				!first ||
 				!metric(first.distance) ||
 				!metric(first.duration) ||
-				!geometry
+				!geometry ||
+				!routeGeometryMatches(geometry, origin, destination, first.distance) ||
+				(first.distance > 100 && first.duration === 0)
 			)
 				throw new RoutingUnavailableError("Invalid road route");
 			return {

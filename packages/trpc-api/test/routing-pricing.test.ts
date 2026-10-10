@@ -95,6 +95,57 @@ describe("OSRM road routing boundary", () => {
 		).rejects.toThrow(RoutingUnavailableError);
 	});
 
+	test("rejects geometry for the wrong stops and a distance shorter than its line", async () => {
+		const farDestination = { lat: 10.1, lng: -84.25 };
+		const wrongStops = createOsrmRouting({
+			baseUrl: endpoint,
+			fetcher: async () =>
+				response({
+					code: "Ok",
+					routes: [
+						{
+							distance: 30_000,
+							duration: 1_800,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[farDestination.lng, farDestination.lat],
+									[origin.lng, origin.lat],
+								],
+							},
+						},
+					],
+				}),
+		});
+		await expect(
+			wrongStops.route({ origin, destination: farDestination, profile: "car" }),
+		).rejects.toThrow(RoutingUnavailableError);
+
+		const understated = createOsrmRouting({
+			baseUrl: endpoint,
+			fetcher: async () =>
+				response({
+					code: "Ok",
+					routes: [
+						{
+							distance: 10,
+							duration: 0,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[origin.lng, origin.lat],
+									[destination.lng, destination.lat],
+								],
+							},
+						},
+					],
+				}),
+		});
+		await expect(
+			understated.route({ origin, destination, profile: "car" }),
+		).rejects.toThrow(RoutingUnavailableError);
+	});
+
 	test("fails closed on timeout, provider failure and malformed matrix", async () => {
 		const timeout = createOsrmRouting({
 			baseUrl: endpoint,
