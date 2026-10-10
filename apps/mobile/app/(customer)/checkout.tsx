@@ -273,7 +273,7 @@ function CheckoutForm({
 				locationId: selectedLocation?.id,
 				addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
 			},
-			{ refetchInterval: 15000 },
+			{ enabled: Boolean(selectedLocation), refetchInterval: 15000 },
 		),
 	);
 	const quoting = useSkeletonHold(quote.isPending);
@@ -735,7 +735,9 @@ function CheckoutForm({
 										/>
 									) : null}
 								</View>
-							) : null}
+							) : (
+								<Text variant="body" tone="muted">{t("checkout.location.none")}</Text>
+							)}
 							{quote.isError && quoteless && hasItems ? (
 								<ErrorState
 									error={quote.error}

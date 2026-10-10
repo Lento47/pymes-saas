@@ -279,6 +279,7 @@ export const customer = {
 	"checkout.delivery": "Deliver to my address",
 	"checkout.pickup": "Pick up in store",
 	"checkout.location": "Pickup location",
+	"checkout.location.none": "This shop has no pickup location available yet.",
 	"checkout.address": "Delivery address",
 	"checkout.address.add": "Add address",
 	"checkout.address.none": "You need an address to have it delivered",

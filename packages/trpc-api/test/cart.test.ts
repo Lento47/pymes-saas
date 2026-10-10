@@ -165,6 +165,50 @@ describe("the cart's one-business rule", () => {
 });
 
 describe("checkout quote", () => {
+	test("requires an explicit branch when the shop has more than one", async () => {
+		const test = world();
+		const { first, caller, coffee } = await twoShops(test);
+		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+		const [original] = await test.db
+			.select({ id: locationTable.id })
+			.from(locationTable)
+			.where(eq(locationTable.businessId, first));
+		if (!original) throw new Error("The shop has no branch");
+		await test.db.insert(locationTable).values({
+			id: "loc_cart_alternate",
+			businessId: first,
+			name: "Alternate pickup",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		const error = await refused(caller.cart.quote({ fulfilment: "PICKUP" }));
+		expect(error.message).toBe("checkout.refusal.locationNotFound");
+		const quote = await caller.cart.quote({
+			fulfilment: "PICKUP",
+			locationId: original.id,
+		});
+		expect(quote.totalMinor).toBe(1_500);
+		test.close();
+	});
+
+	test("refuses a paused branch before showing an order total", async () => {
+		const test = world();
+		const { first, caller, coffee } = await twoShops(test);
+		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+		const [location] = await test.db
+			.select({ id: locationTable.id })
+			.from(locationTable)
+			.where(eq(locationTable.businessId, first));
+		if (!location) throw new Error("The shop has no branch");
+		await test.db
+			.update(locationTable)
+			.set({ isOffline: true })
+			.where(eq(locationTable.id, location.id));
+		const error = await refused(caller.cart.quote({ fulfilment: "PICKUP" }));
+		expect(error.message).toBe("checkout.businessClosed");
+		test.close();
+	});
+
 	test("lists only the current cart shop's pickup locations", async () => {
 		const test = world();
 		const { first, second, caller, coffee } = await twoShops(test);

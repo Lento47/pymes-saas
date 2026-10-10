@@ -540,6 +540,7 @@ export const customer = {
 	"checkout.delivery": "Entrega a domicilio",
 	"checkout.pickup": "Retiro en el local",
 	"checkout.location": "Local de retiro",
+	"checkout.location.none": "Este comercio aún no tiene un local de retiro disponible.",
 	"checkout.address": "Dirección de entrega",
 	"checkout.address.add": "Agregar dirección",
 	"checkout.address.none": "Necesitas una dirección para que te lo entreguen",

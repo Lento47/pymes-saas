@@ -35,6 +35,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
 import type { UserContext } from "./helpers";
 import { batchOf, isPublicBusiness, orNotFound } from "./helpers";
+import { operationalStatus } from "./locations";
 import { cartItemOf } from "./mappers";
 
 /**
@@ -93,27 +94,30 @@ export async function quote(
 		.where(eq(businessTable.id, row.businessId))
 		.limit(1);
 	if (!business) throw new NotFoundError();
+	if (business.status !== "ACTIVE")
+		throw new ValidationError("checkout.refusal.shopInactive");
 	if (
 		(input.fulfilment === "DELIVERY" && !business.deliveryEnabled) ||
 		(input.fulfilment === "PICKUP" && !business.pickupEnabled)
 	)
 		throw new ValidationError("Esta forma de entrega no está disponible");
-	if (input.locationId) {
-		const [location] = await ctx.db
-			.select({ id: locationTable.id })
+	const locations = await ctx.db
+		.select()
 			.from(locationTable)
-			.where(
-				and(
-					eq(locationTable.id, input.locationId),
-					eq(locationTable.businessId, business.id),
-				),
-			)
-			.limit(1);
-		if (!location)
-			throw new ValidationError("checkout.refusal.locationNotFound", {
-				field: "locationId",
-			});
-	}
+		.where(eq(locationTable.businessId, business.id));
+	const location = input.locationId
+		? locations.find((entry) => entry.id === input.locationId)
+		: locations.length === 1
+			? locations[0]
+			: undefined;
+	if (!location)
+		throw new ValidationError("checkout.refusal.locationNotFound", {
+			field: "locationId",
+		});
+	if (operationalStatus(location, business, new Date()) !== "open")
+		throw new ValidationError("checkout.businessClosed", {
+			field: "locationId",
+		});
 	if (input.fulfilment === "DELIVERY" && input.addressId) {
 		const [address] = await ctx.db
 			.select({ id: addressTable.id })
