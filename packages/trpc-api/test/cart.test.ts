@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	business as businessTable,
 	merchantLocation as locationTable,
+	order as orderTable,
 	product as productTable,
 } from "@pymeshub/db";
 import { addToCartInput } from "@pymeshub/shared";
@@ -165,6 +166,148 @@ describe("the cart's one-business rule", () => {
 });
 
 describe("checkout quote", () => {
+	test("does not fall back to the fixed fee when road routing is unavailable", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		globalThis.fetch = Object.assign(
+			async () => Response.json({ code: "NoRoute" }),
+			{ preconnect: previousFetch.preconnect },
+		);
+		try {
+			const { first, caller, coffee } = await twoShops(test);
+			test.env.ROUTE_FEE_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			await test.db
+				.update(locationTable)
+				.set({ lat: 9.93, lng: -84.08 })
+				.where(eq(locationTable.businessId, first));
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			const address = await caller.users.saveAddress({
+				label: "Home",
+				line1: "Street",
+				city: "San José",
+				region: "San José",
+				lat: 9.94,
+				lng: -84.07,
+			});
+			const error = await refused(
+				caller.cart.quote({
+					fulfilment: "DELIVERY",
+					locationId: `loc_${first}`,
+					addressId: address.id,
+				}),
+			);
+			expect(error.message).toBe("checkout.refusal.deliveryQuoteUnavailable");
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
+	test("locks a road fee to the selected pins and stores its order snapshot", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		let routeCalls = 0;
+		globalThis.fetch = Object.assign(
+			async () => {
+				routeCalls += 1;
+				return Response.json({
+					code: "Ok",
+					routes: [
+						{
+							distance: 4_000,
+							duration: 720,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[-84.08, 9.93],
+									[-84.07, 9.94],
+								],
+							},
+						},
+					],
+				});
+			},
+			{ preconnect: previousFetch.preconnect },
+		);
+		try {
+			const { first, caller, coffee } = await twoShops(test);
+			test.env.ROUTE_FEE_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			await test.db
+				.update(locationTable)
+				.set({ lat: 9.93, lng: -84.08 })
+				.where(eq(locationTable.businessId, first));
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			const address = await caller.users.saveAddress({
+				label: "Home",
+				line1: "Street",
+				city: "San José",
+				region: "San José",
+				lat: 9.94,
+				lng: -84.07,
+			});
+			const locationId = `loc_${first}`;
+			const input = {
+				fulfilment: "DELIVERY" as const,
+				locationId,
+				addressId: address.id,
+			};
+			const quote = await caller.cart.quote(input);
+			expect(quote.deliveryFeeMinor).toBe(2_310);
+			expect(quote.totalMinor).toBe(3_810);
+			expect(quote.roadQuote?.distanceMeters).toBe(4_000);
+			const repeated = await caller.cart.quote(input);
+			expect(repeated.roadQuote?.quoteId).toBe(quote.roadQuote?.quoteId);
+			expect(routeCalls).toBe(1);
+			const missing = await refused(
+				caller.orders.place({
+					...input,
+					paymentMethod: "CASH",
+					clientRequestId: "cart-road-missing-quote",
+					expectedTotalMinor: quote.totalMinor,
+				}),
+			);
+			expect(missing.message).toBe("checkout.refusal.totalChanged");
+			await test.db
+				.update(productTable)
+				.set({ priceMinor: 1_600 })
+				.where(eq(productTable.id, coffee.id));
+			const stale = await refused(
+				caller.orders.place({
+					...input,
+					quoteId: quote.roadQuote?.quoteId,
+					paymentMethod: "CASH",
+					clientRequestId: "cart-road-stale-quote",
+					expectedTotalMinor: quote.totalMinor,
+				}),
+			);
+			expect(stale.message).toBe("checkout.refusal.totalChanged");
+			await test.db
+				.update(productTable)
+				.set({ priceMinor: 1_500 })
+				.where(eq(productTable.id, coffee.id));
+			const order = await caller.orders.place({
+				...input,
+				quoteId: quote.roadQuote?.quoteId,
+				paymentMethod: "CASH",
+				clientRequestId: "cart-road-price-place",
+				expectedTotalMinor: quote.totalMinor,
+			});
+			expect(order.totals.totalMinor).toBe(3_810);
+			const [stored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, order.id));
+			expect(stored?.deliveryPricingVersion).toBe("express-v1");
+			expect(stored?.routeDistanceMeters).toBe(4_000);
+			expect(stored?.deliveryFeeBaseMinor).toBe(2_310);
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
 	test("requires an explicit branch when the shop has more than one", async () => {
 		const test = world();
 		const { first, caller, coffee } = await twoShops(test);

@@ -376,7 +376,11 @@ function OrderDetail() {
 			: null;
 	const deliveryRoute =
 		pickupPoint && destinationPoint
-			? { pickup: pickupPoint, destination: destinationPoint }
+			? {
+					pickup: pickupPoint,
+					destination: destinationPoint,
+					geometry: order.routeGeometry,
+				}
 			: null;
 
 	/**

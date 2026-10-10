@@ -56,10 +56,22 @@ describe("editorial hero copy", () => {
 		expect(hero).toContain('t("home.editorial.lede1")');
 		expect(hero).toContain('t("home.editorial.sticker1")');
 		expect(hero).toContain('router.push("/featured")');
-		expect(hero).toContain("hero-bowl.jpg");
+		expect(hero).toContain("hero-bowl.png");
 		expect(hero).toContain('rotate: "-8deg"');
 		expect(hero).toContain("fontSize: 56");
 		expect(hero).not.toContain("PymesHub");
+	});
+
+	test("pages sit on rounded cake-palette plates", () => {
+		expect(hero).toContain("#F4C9D4");
+		expect(hero).toContain("#F6E3B4");
+		expect(hero).toContain("#CDE5C8");
+		expect(hero).toContain("#C9D4F0");
+		expect(hero).toContain("#F6D3B8");
+		expect(hero).toContain("#DDD0F0");
+		expect(hero).toContain("CAKE[index % CAKE.length]");
+		expect(hero).toContain("radius.xl");
+		expect(hero).toContain("<SlidePlate");
 	});
 
 	test("pages horizontally through the campaign and live promotions", () => {

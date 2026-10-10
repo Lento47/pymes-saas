@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 import { EmptyState, ErrorState, money } from "@/components/marketplace/cards";
@@ -10,7 +10,9 @@ import {
   cartErrorMessage,
   useAddresses,
   useCart,
+  useCartQuote,
   useMarketplaceSession,
+  usePickupLocations,
   usePlaceOrder,
   useSaveAddress,
 } from "@/lib/marketplace";
@@ -18,8 +20,7 @@ import { cn } from "@/lib/utils";
 
 const PAYMENT_METHODS = [
   { value: "CASH", label: "Efectivo al recibir" },
-  { value: "CARD", label: "Tarjeta" },
-  { value: "TRANSFER", label: "Transferencia" },
+  { value: "SINPE_MOVIL", label: "SINPE Móvil" },
 ] as const;
 
 type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
@@ -35,13 +36,20 @@ export default function MarketplaceCheckoutPage() {
 
   const [fulfilment, setFulfilment] = useState<"PICKUP" | "DELIVERY">("DELIVERY");
   const [addressId, setAddressId] = useState<string | undefined>(undefined);
+  const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [notes, setNotes] = useState("");
   const [showAddressForm, setShowAddressForm] = useState(false);
 
-  const clientRequestId = useMemo(
-    () => `web_${crypto.randomUUID()}`,
-    [],
+  const clientRequestId = useRef<string | null>(null);
+  const locations = usePickupLocations(Boolean(session && cart.data?.items.length));
+  const selectedLocation = locations.data?.find((location) => location.id === locationId)
+    ?? locations.data?.find((location) => location.isDefault)
+    ?? locations.data?.[0];
+  const selectedAddress = addressId ?? addresses.data?.find((address) => address.isDefault)?.id ?? addresses.data?.[0]?.id;
+  const quote = useCartQuote(
+    { fulfilment, locationId: selectedLocation?.id, addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined },
+    Boolean(session && cart.data?.items.length && selectedLocation && (fulfilment === "PICKUP" || selectedAddress)),
   );
 
   if (loadingSession || (session && cart.isLoading)) {
@@ -80,26 +88,34 @@ export default function MarketplaceCheckoutPage() {
     );
   }
 
-  const deliveryEnabled = data.totals.deliveryFeeMinor >= 0;
-  const effectiveFulfilment = deliveryEnabled ? fulfilment : "PICKUP";
-  const canPlace = effectiveFulfilment === "PICKUP" || Boolean(addressId);
+  const effectiveFulfilment = fulfilment;
+  const canPlace = Boolean(selectedLocation && quote.data && !quote.isError && (effectiveFulfilment === "PICKUP" || selectedAddress));
 
   const onPlace = () => {
+    if (!canPlace || !quote.data) return;
+    clientRequestId.current ??= `web_${crypto.randomUUID()}`;
     placeOrder.mutate(
       {
         fulfilment: effectiveFulfilment,
-        addressId: effectiveFulfilment === "DELIVERY" ? addressId : undefined,
+        locationId: selectedLocation?.id,
+        addressId: effectiveFulfilment === "DELIVERY" ? selectedAddress : undefined,
+        quoteId: quote.data.roadQuote?.quoteId,
+        expectedTotalMinor: quote.data.totalMinor,
         paymentMethod,
         customerNotes: notes.trim() || undefined,
         promotionCode: data.promotionCode ?? undefined,
-        clientRequestId,
+        clientRequestId: clientRequestId.current,
       },
       {
         onSuccess: (order) => {
           toast({ title: "¡Pedido enviado!" });
           navigate(order?.id ? `/order/${order.id}` : "/orders");
         },
-        onError: (error) => toast({ title: cartErrorMessage(error), variant: "destructive" }),
+        onError: (error) => {
+          clientRequestId.current = null;
+          void quote.refetch();
+          toast({ title: cartErrorMessage(error), variant: "destructive" });
+        },
       },
     );
   };
@@ -130,6 +146,40 @@ export default function MarketplaceCheckoutPage() {
               ))}
             </div>
 
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold text-foreground">Local de retiro</p>
+              {locations.isError ? (
+                <ErrorState message="No pudimos cargar los locales." onRetry={() => void locations.refetch()} />
+              ) : locations.isLoading ? (
+                <Skeleton className="h-12 w-full rounded-md" />
+              ) : locations.data?.length ? (
+                <div className="grid gap-2" role="radiogroup" aria-label="Local de retiro">
+                  {locations.data.map((location) => (
+                    <label
+                      key={location.id}
+                      className={cn(
+                        "min-h-12 cursor-pointer rounded-md border px-4 py-2 text-left text-sm transition focus-within:ring-2 focus-within:ring-primary",
+                        selectedLocation?.id === location.id
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                      )}
+                    >
+                      <input
+                        className="sr-only"
+                        type="radio"
+                        name="pickup-location"
+                        value={location.id}
+                        checked={selectedLocation?.id === location.id}
+                        onChange={() => setLocationId(location.id)}
+                      />
+                      <span className="font-medium">{location.name}</span>
+                      {location.line1 ? <span className="ml-2 text-xs">{location.line1}{location.city ? `, ${location.city}` : ""}</span> : null}
+                    </label>
+                  ))}
+                </div>
+              ) : <p className="text-sm text-muted-foreground">Esta tienda aún no tiene un local disponible.</p>}
+            </div>
+
             {effectiveFulfilment === "DELIVERY" ? (
               <div className="mt-4">
                 {addresses.data && addresses.data.length > 0 ? (
@@ -141,7 +191,7 @@ export default function MarketplaceCheckoutPage() {
                         onClick={() => setAddressId(address.id)}
                         className={cn(
                           "min-h-12 rounded-md border px-4 text-left text-sm transition",
-                          addressId === address.id
+                          selectedAddress === address.id
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                         )}
@@ -238,15 +288,31 @@ export default function MarketplaceCheckoutPage() {
               </li>
             ))}
           </ul>
+          {quote.isError ? (
+            <div className="mb-3 space-y-2">
+              <ErrorState message="No pudimos cotizar esta entrega. Reintentá o elegí retiro en tienda." onRetry={() => void quote.refetch()} />
+              {fulfilment === "DELIVERY" ? <AmberButton onClick={() => setFulfilment("PICKUP")}>Elegir retiro</AmberButton> : null}
+            </div>
+          ) : null}
+          {quote.data && fulfilment === "DELIVERY" ? (
+            <div className="flex justify-between gap-3 border-t border-border py-2 text-sm text-muted-foreground">
+              <span>Envío</span><span>{money(quote.data.deliveryFeeMinor, quote.data.currency)}</span>
+            </div>
+          ) : null}
+          {quote.data?.roadQuote && !quote.isError ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              {new Intl.NumberFormat("es-CR", { maximumFractionDigits: 1 }).format(quote.data.roadQuote.distanceMeters / 1000)} km por carretera · aprox. {Math.ceil(quote.data.roadQuote.durationSeconds / 60)} min de manejo
+            </p>
+          ) : null}
           <div className="flex items-center justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
             <span>Total</span>
-            <span>{money(data.totals.totalMinor, data.currency)}</span>
+            <span>{quote.data && !quote.isError ? money(quote.data.totalMinor, quote.data.currency) : "—"}</span>
           </div>
 
           <AmberButton className="mt-4 w-full" disabled={!canPlace || placeOrder.isPending} onClick={onPlace}>
             {placeOrder.isPending ? "Enviando…" : "Confirmar pedido"}
           </AmberButton>
-          {!canPlace ? (
+          {!canPlace && effectiveFulfilment === "DELIVERY" && !selectedAddress ? (
             <p className="mt-2 text-xs text-link">Elegí una dirección para entrega a domicilio.</p>
           ) : null}
         </aside>

@@ -704,6 +704,7 @@ export function orderDetailOf(input: {
 		deliveryAddress: input.deliveryAddress
 			? orderDeliveryAddressOf(input.deliveryAddress)
 			: null,
+		routeGeometry: order.routeGeometry,
 		pickupLocation: input.pickupLocation
 			? {
 					id: input.pickupLocation.id,

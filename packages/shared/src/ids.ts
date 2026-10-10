@@ -32,6 +32,7 @@ export const ID_PREFIXES = {
 	inventory: "inv",
 	cart: "crt",
 	cartItem: "cit",
+	deliveryQuote: "dqt",
 	order: "ord",
 	orderItem: "oit",
 	orderEvent: "oev",

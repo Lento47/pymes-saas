@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { PromotionCard } from "@pymeshub/shared";
 import { router } from "expo-router";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
 	Image,
 	type NativeScrollEvent,
@@ -21,9 +21,19 @@ import { Image as RemoteImage } from "./image";
 import { hitSlopFor, Pressable } from "./pressable";
 import { Text } from "./text";
 
-const BOWL = require("../assets/home/hero-bowl.jpg") as number;
+const BOWL = require("../assets/home/hero-bowl.png") as number;
 const CTA_SIZE = 40;
 const CAMPAIGN_SLIDE = "campaign";
+
+/** Frosting fills for the carousel plates. Local to this hero — not the app palette. */
+const CAKE = [
+	"#F4C9D4",
+	"#F6E3B4",
+	"#CDE5C8",
+	"#C9D4F0",
+	"#F6D3B8",
+	"#DDD0F0",
+] as const;
 
 /**
  * Editorial home composition: stacked headline, lede, circular CTA, oversized bowl,
@@ -31,7 +41,7 @@ const CAMPAIGN_SLIDE = "campaign";
  *
  * Slide 0 is the campaign. Later slides are `catalog.feed` promotions — the same
  * objects the feed used to draw as a second banner, so a code is not advertised twice.
- * Copy line-breaks are load-bearing. No card, no banner rectangle, no extra fill.
+ * Copy line-breaks are load-bearing. Each page sits on a rounded cake-palette plate.
  */
 export function EditorialHero({
 	promotions = [],
@@ -84,13 +94,13 @@ export function EditorialHero({
 					slides > 1 ? t("home.editorial.carousel.hint") : undefined
 				}
 			>
-				<View style={[styles.slide, { width: pageWidth }]}>
+				<SlidePlate width={pageWidth} index={0}>
 					<CampaignSlide bowlWidth={bowlWidth} />
-				</View>
-				{promotions.map((promotion) => (
-					<View key={promotion.id} style={[styles.slide, { width: pageWidth }]}>
+				</SlidePlate>
+				{promotions.map((promotion, index) => (
+					<SlidePlate key={promotion.id} width={pageWidth} index={index + 1}>
 						<PromotionSlide promotion={promotion} bowlWidth={bowlWidth} />
-					</View>
+					</SlidePlate>
 				))}
 			</ScrollView>
 
@@ -114,6 +124,28 @@ export function EditorialHero({
 					))}
 				</View>
 			) : null}
+		</View>
+	);
+}
+
+function cakeFill(index: number) {
+	return CAKE[index % CAKE.length];
+}
+
+function SlidePlate({
+	width,
+	index,
+	children,
+}: {
+	width: number;
+	index: number;
+	children: ReactNode;
+}) {
+	return (
+		<View style={[styles.slide, { width }]}>
+			<View style={[styles.card, { backgroundColor: cakeFill(index) }]}>
+				{children}
+			</View>
 		</View>
 	);
 }
@@ -325,6 +357,12 @@ const styles = StyleSheet.create({
 	},
 	slide: {
 		height: 365,
+		paddingHorizontal: space.xxl,
+		paddingBottom: 28,
+	},
+	card: {
+		flex: 1,
+		borderRadius: radius.xl,
 		overflow: "hidden",
 	},
 	copy: {

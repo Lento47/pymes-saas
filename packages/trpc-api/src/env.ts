@@ -72,6 +72,10 @@ export type Env = {
 	API_VERSION: string;
 	/** Comma-separated origins allowed to call this API from a browser. */
 	CORS_ORIGINS?: string;
+	/** Operator-controlled HTTPS OSRM endpoint; never a public demo server. */
+	ROUTING_BASE_URL?: string;
+	/** Road-priced CRC deliveries are opt-in; absent or false keeps the legacy fee. */
+	ROUTE_FEE_ENABLED?: string;
 
 	AUTH_SECRET?: string;
 	AUTH_URL?: string;

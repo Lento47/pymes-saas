@@ -15,6 +15,7 @@ import {
 	sweepExpiredOffers,
 	sweepWaitingDeliveries,
 } from "./services/delivery-dispatch";
+import { sweepExpiredRoadQuotes } from "./services/delivery-quote";
 import { sweepLapsed } from "./services/subscription";
 
 /**
@@ -133,6 +134,14 @@ const handler = {
 			await sweepWaitingDeliveries(createDb(env.DB));
 		} catch (error) {
 			logger.error("waiting delivery sweep failed", {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		try {
+			await sweepExpiredRoadQuotes(createDb(env.DB));
+		} catch (error) {
+			logger.error("delivery quote sweep failed", {
 				cause: error instanceof Error ? error.message : String(error),
 			});
 		}

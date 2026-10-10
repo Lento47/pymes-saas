@@ -134,6 +134,7 @@ export const CHECKOUT_REFUSAL_KEYS = [
 	// No branch this shop can take the order at, and no `locationId` that names one.
 	"checkout.refusal.locationNotFound",
 	"checkout.refusal.addressNotFound",
+	"checkout.refusal.deliveryQuoteUnavailable",
 	"checkout.refusal.emptyCart",
 	"checkout.refusal.minOrder",
 	"checkout.refusal.totalChanged",
@@ -195,6 +196,19 @@ export const cartTotalsSchema = z.object({
 	currency: currencySchema,
 	/** What the customer still needs to add to reach the business's minimum. */
 	missingForMinOrderMinor: z.number().int().min(0),
+	roadQuote: z
+		.object({
+			quoteId: z.string(),
+			expiresAt: z.date(),
+			distanceMeters: z.number().nonnegative(),
+			durationSeconds: z.number().nonnegative(),
+			baseFeeMinor: z.number().int().nonnegative(),
+			geometry: z.object({
+				type: z.literal("LineString"),
+				coordinates: z.array(z.tuple([z.number(), z.number()])),
+			}),
+		})
+		.optional(),
 });
 export type CartTotals = z.infer<typeof cartTotalsSchema>;
 

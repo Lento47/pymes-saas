@@ -22,33 +22,33 @@
  */
 
 import { createMarketplaceAuthClient } from "@pymeshub/auth/marketplace-client";
-import { reportClientError } from "@/lib/error-reporting";
 import {
+  type Address,
   addressSchema,
+  type BusinessCard,
+  type BusinessStorefront,
   businessCardSchema,
   businessStorefrontSchema,
-  cartSchema,
-  categorySchema,
-  newRequestId,
-  orderDetailSchema,
-  orderSummarySchema,
-  productCardSchema,
-  productDetailSchema,
-  productSearchResultSchema,
-  promotionCardSchema,
-  reviewSchema,
-  type BusinessCard,
-  type Address,
-  type BusinessStorefront,
   type Cart,
   type Category,
+  cartSchema,
+  cartTotalsSchema,
+  categorySchema,
+  newRequestId,
   type OrderDetail,
   type OrderSummary,
+  orderDetailSchema,
+  orderSummarySchema,
   type ProductCard,
   type ProductDetail,
   type ProductSearchResult,
   type PromotionCard,
+  productCardSchema,
+  productDetailSchema,
+  productSearchResultSchema,
+  promotionCardSchema,
   type Review,
+  reviewSchema,
 } from "@pymeshub/shared";
 import {
   keepPreviousData,
@@ -59,6 +59,8 @@ import {
 } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
+import { z } from "zod";
+import { reportClientError } from "@/lib/error-reporting";
 
 /**
  * Where the Worker lives.
@@ -226,6 +228,8 @@ export const marketplaceKeys = {
   search: (q: string, lat?: number, lng?: number) =>
     ["marketplace", "search", q, lat ?? null, lng ?? null] as const,
   cart: () => ["marketplace", "cart"] as const,
+  pickupLocations: () => ["marketplace", "cart", "pickup-locations"] as const,
+  quote: (input: { fulfilment: "PICKUP" | "DELIVERY"; locationId?: string; addressId?: string }) => ["marketplace", "cart", "quote", input] as const,
   orders: (role: "CUSTOMER" | "BUSINESS") => ["marketplace", "orders", role] as const,
   order: (id: string) => ["marketplace", "order", id] as const,
   favorites: () => ["marketplace", "favorites"] as const,
@@ -488,6 +492,32 @@ export function useCart(enabled = true) {
   });
 }
 
+const pickupLocationSchema = z.object({
+  id: z.string(), name: z.string(), isDefault: z.boolean(),
+  line1: z.string().nullable(), city: z.string().nullable(),
+  lat: z.number().nullable(), lng: z.number().nullable(),
+});
+
+export function usePickupLocations(enabled = true) {
+  return useQuery({
+    queryKey: marketplaceKeys.pickupLocations(),
+    enabled,
+    queryFn: async () => z.array(pickupLocationSchema).parse(await trpc.cart.pickupLocations.query()),
+  });
+}
+
+export function useCartQuote(
+  input: { fulfilment: "PICKUP" | "DELIVERY"; locationId?: string; addressId?: string },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: marketplaceKeys.quote(input),
+    enabled,
+    refetchInterval: 15_000,
+    queryFn: async () => cartTotalsSchema.parse(await trpc.cart.quote.query(input)),
+  });
+}
+
 export function useAddToCart() {
   const qc = useQueryClient();
   return useMutation({
@@ -605,8 +635,11 @@ export function usePlaceOrder() {
   return useMutation({
     mutationFn: async (input: {
       fulfilment: "PICKUP" | "DELIVERY";
+      locationId?: string;
       addressId?: string;
-      paymentMethod: "CASH" | "CARD" | "TRANSFER";
+      quoteId?: string;
+      expectedTotalMinor?: number;
+      paymentMethod: "CASH" | "SINPE_MOVIL";
       tipMinor?: number;
       customerNotes?: string;
       promotionCode?: string;

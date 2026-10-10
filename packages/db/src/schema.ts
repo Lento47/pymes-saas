@@ -786,6 +786,50 @@ export const address = sqliteTable(
 	(table) => [index("address_user_idx").on(table.userId)],
 );
 
+/** A short-lived, server-priced road route bound to one customer's checkout inputs. */
+export const deliveryQuote = sqliteTable(
+	"delivery_quote",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		cartId: text("cart_id")
+			.notNull()
+			.references(() => cart.id, { onDelete: "cascade" }),
+		locationId: text("location_id")
+			.notNull()
+			.references(() => merchantLocation.id, { onDelete: "cascade" }),
+		addressId: text("address_id")
+			.notNull()
+			.references(() => address.id, { onDelete: "cascade" }),
+		cartUpdatedAt: integer("cart_updated_at", {
+			mode: "timestamp_ms",
+		}).notNull(),
+		cartFingerprint: text("cart_fingerprint").notNull(),
+		promotionCode: text("promotion_code"),
+		routeInputKey: text("route_input_key").notNull(),
+		pricingVersion: text("pricing_version").notNull(),
+		currency: text("currency").$type<Currency>().notNull(),
+		subtotalMinor: integer("subtotal_minor").notNull(),
+		discountMinor: integer("discount_minor").notNull(),
+		baseFeeMinor: integer("base_fee_minor").notNull(),
+		feeMinor: integer("fee_minor").notNull(),
+		totalMinor: integer("total_minor").notNull(),
+		distanceMeters: real("distance_meters").notNull(),
+		durationSeconds: real("duration_seconds").notNull(),
+		geometry: text("geometry", { mode: "json" })
+			.$type<{ type: "LineString"; coordinates: [number, number][] }>()
+			.notNull(),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("delivery_quote_cart_expiry_idx").on(table.cartId, table.expiresAt),
+		index("delivery_quote_user_expiry_idx").on(table.userId, table.expiresAt),
+	],
+);
+
 export const order = sqliteTable(
 	"order",
 	{
@@ -848,6 +892,18 @@ export const order = sqliteTable(
 		subtotalMinor: integer("subtotal_minor").notNull(),
 		discountMinor: integer("discount_minor").notNull().default(0),
 		deliveryFeeMinor: integer("delivery_fee_minor").notNull().default(0),
+		deliveryPricingVersion: text("delivery_pricing_version"),
+		deliveryQuoteId: text("delivery_quote_id"),
+		routeDistanceMeters: real("route_distance_meters"),
+		routeDurationSeconds: real("route_duration_seconds"),
+		routeGeometry: text("route_geometry", { mode: "json" }).$type<{
+			type: "LineString";
+			coordinates: [number, number][];
+		}>(),
+		deliveryFeeBaseMinor: integer("delivery_fee_base_minor"),
+		deliveryOperationalDiscountMinor: integer(
+			"delivery_operational_discount_minor",
+		),
 		taxMinor: integer("tax_minor").notNull().default(0),
 		tipMinor: integer("tip_minor").notNull().default(0),
 		totalMinor: integer("total_minor").notNull(),

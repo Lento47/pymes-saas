@@ -46,6 +46,8 @@ export const placeOrderInput = z
 		locationId: z.string().optional(),
 		/** Required for DELIVERY, ignored for PICKUP. Enforced below. */
 		addressId: z.string().optional(),
+		/** Required for road-priced deliveries; binds the accepted price to the route. */
+		quoteId: z.string().optional(),
 		paymentMethod: paymentMethodSchema,
 		tipMinor: z.number().int().min(0).max(MAX_TIP_MINOR).default(0),
 		customerNotes: z.string().trim().max(500).optional(),
@@ -236,6 +238,14 @@ export const orderDetailSchema = orderSummarySchema.extend({
 		})
 		.nullable(),
 	deliveryAddress: orderAddressSchema.nullable(),
+	/** Road geometry exists only for an order placed with a validated route quote. */
+	routeGeometry: z
+		.object({
+			type: z.literal("LineString"),
+			coordinates: z.array(z.tuple([z.number(), z.number()])),
+		})
+		.nullable()
+		.optional(),
 	pickupCode: z.string().nullable(),
 	courier: z
 		.object({ name: z.string().nullable(), phone: z.string().nullable() })

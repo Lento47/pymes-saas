@@ -98,6 +98,11 @@ import { type OrderEventEnvelope, orderEvent, outboxRowOf } from "../events";
 import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
 import { dispatchNext, prepareDeliveryForOrder } from "./delivery-dispatch";
+import {
+	cartPriceFingerprint,
+	roadFeeEnabled,
+	roadQuoteForOrder,
+} from "./delivery-quote";
 import type { BillingPlan, BusinessContext, UserContext } from "./helpers";
 import {
 	batchOf,
@@ -339,11 +344,51 @@ export async function place(
 	const discountMinor = promotion.discount
 		? discountAmountOf(subtotalMinor, promotion.discount)
 		: 0;
+	const roadPricingEnabled =
+		input.fulfilment === "DELIVERY" &&
+		roadFeeEnabled(ctx.env, business.currency);
+	if (!roadPricingEnabled && input.quoteId)
+		throw new ConflictError("checkout.refusal.totalChanged");
+	let roadPricing: Awaited<ReturnType<typeof roadQuoteForOrder>> | null = null;
+	if (roadPricingEnabled) {
+		if (
+			!deliveryAddress ||
+			location.lat == null ||
+			location.lng == null ||
+			deliveryAddress.lat == null ||
+			deliveryAddress.lng == null
+		)
+			throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
+		roadPricing = await roadQuoteForOrder(ctx, input.quoteId, {
+			userId: ctx.user.id,
+			cartId: cart.id,
+			cartUpdatedAt: cart.updatedAt,
+			cartFingerprint: cartPriceFingerprint(
+				priced.map((line) => ({
+					id: line.line.id,
+					quantity: line.quantity,
+					unitPriceMinor: line.unitPriceMinor,
+				})),
+			),
+			locationId: location.id,
+			addressId: deliveryAddress.id,
+			consistentOrigin: { lat: location.lat, lng: location.lng },
+			consistentDestination: {
+				lat: deliveryAddress.lat,
+				lng: deliveryAddress.lng,
+			},
+			promotionCode: input.promotionCode ?? cart.promotionCode,
+			currency: business.currency,
+			subtotalMinor,
+			discountMinor,
+		});
+	}
 
 	// Charged only when it is being delivered. A pickup carrying a delivery fee is the most
 	// ordinary way an order total goes wrong.
-	const deliveryFeeMinor =
-		input.fulfilment === "DELIVERY" && !promotion.freeDelivery
+	const deliveryFeeMinor = roadPricing
+		? roadPricing.feeMinor
+		: input.fulfilment === "DELIVERY" && !promotion.freeDelivery
 			? business.deliveryFeeMinor
 			: 0;
 	// No tax engine: the ADR says so, and a rate nobody configured would be invented here.
@@ -358,6 +403,8 @@ export async function place(
 			taxMinor +
 			input.tipMinor,
 	);
+	if (roadPricing && totalMinor - input.tipMinor !== roadPricing.totalMinor)
+		throw new ConflictError("checkout.refusal.totalChanged");
 
 	// The claim is taken last, and that is deliberate: it is the gate on the *writes*, so a
 	if (
@@ -427,6 +474,13 @@ export async function place(
 			subtotalMinor,
 			discountMinor,
 			deliveryFeeMinor,
+			deliveryPricingVersion: roadPricing?.pricingVersion ?? null,
+			deliveryQuoteId: roadPricing?.id ?? null,
+			routeDistanceMeters: roadPricing?.distanceMeters ?? null,
+			routeDurationSeconds: roadPricing?.durationSeconds ?? null,
+			routeGeometry: roadPricing?.geometry ?? null,
+			deliveryFeeBaseMinor: roadPricing?.baseFeeMinor ?? null,
+			deliveryOperationalDiscountMinor: roadPricing ? 0 : null,
 			taxMinor,
 			tipMinor: input.tipMinor,
 			totalMinor,

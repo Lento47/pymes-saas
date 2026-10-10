@@ -33,6 +33,11 @@ import {
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
+import {
+	cartPriceFingerprint,
+	createRoadQuote,
+	roadFeeEnabled,
+} from "./delivery-quote";
 import type { UserContext } from "./helpers";
 import { batchOf, isPublicBusiness, orNotFound } from "./helpers";
 import { operationalStatus } from "./locations";
@@ -103,7 +108,7 @@ export async function quote(
 		throw new ValidationError("Esta forma de entrega no está disponible");
 	const locations = await ctx.db
 		.select()
-			.from(locationTable)
+		.from(locationTable)
 		.where(eq(locationTable.businessId, business.id));
 	const location = input.locationId
 		? locations.find((entry) => entry.id === input.locationId)
@@ -118,9 +123,10 @@ export async function quote(
 		throw new ValidationError("checkout.businessClosed", {
 			field: "locationId",
 		});
+	let address: typeof addressTable.$inferSelect | undefined;
 	if (input.fulfilment === "DELIVERY" && input.addressId) {
-		const [address] = await ctx.db
-			.select({ id: addressTable.id })
+		[address] = await ctx.db
+			.select()
 			.from(addressTable)
 			.where(
 				and(
@@ -141,6 +147,46 @@ export async function quote(
 		row,
 		cart.totals.subtotalMinor,
 	);
+	if (promotion.error) throw new ValidationError(promotion.error);
+	if (
+		input.fulfilment === "DELIVERY" &&
+		roadFeeEnabled(ctx.env, business.currency)
+	) {
+		if (!address)
+			throw new ValidationError("checkout.refusal.addressNotFound", {
+				field: "addressId",
+			});
+		if (
+			location.lat == null ||
+			location.lng == null ||
+			address.lat == null ||
+			address.lng == null
+		)
+			throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
+		const road = await createRoadQuote(ctx, {
+			userId: ctx.user.id,
+			cartId: row.id,
+			cartUpdatedAt: row.updatedAt,
+			cartFingerprint: cartPriceFingerprint(
+				cart.items.map((item) => ({
+					id: item.id,
+					quantity: item.quantity,
+					unitPriceMinor: item.effectiveUnitPriceMinor,
+				})),
+			),
+			locationId: location.id,
+			addressId: address.id,
+			consistentOrigin: { lat: location.lat, lng: location.lng },
+			consistentDestination: { lat: address.lat, lng: address.lng },
+			promotionCode: row.promotionCode,
+			currency: business.currency,
+			subtotalMinor: cart.totals.subtotalMinor,
+			discountMinor: cart.totals.discountMinor,
+			baseTotalMinor: cart.totals.totalMinor,
+			freeDelivery: Boolean(promotion.freeDelivery),
+		});
+		return { ...cart.totals, ...road };
+	}
 	const deliveryFeeMinor =
 		input.fulfilment === "DELIVERY" && !promotion.freeDelivery
 			? business.deliveryFeeMinor

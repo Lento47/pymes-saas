@@ -33,8 +33,8 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Fact, Facts } from "@/components/facts";
 import { Field } from "@/components/field";
-import { MoneyLine } from "@/components/money-line";
 import { MapView } from "@/components/map";
+import { MoneyLine } from "@/components/money-line";
 import { OrderPlaced } from "@/components/order-placed";
 import { Pressable } from "@/components/pressable";
 import { Price } from "@/components/price";
@@ -273,7 +273,12 @@ function CheckoutForm({
 				locationId: selectedLocation?.id,
 				addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
 			},
-			{ enabled: Boolean(selectedLocation), refetchInterval: 15000 },
+			{
+				enabled:
+					Boolean(selectedLocation) &&
+					(fulfilment !== "DELIVERY" || Boolean(selectedAddress)),
+				refetchInterval: 15000,
+			},
 		),
 	);
 	const quoting = useSkeletonHold(quote.isPending);
@@ -376,8 +381,12 @@ function CheckoutForm({
 			 * race genuinely lost is answered with the order itself rather than an error, so
 			 * this cannot discard a real order.
 			 */
-			onError: () => {
+			onError: (error) => {
 				requestId.current = null;
+				if (
+					toApiFailure(error).serverMessage === "checkout.refusal.totalChanged"
+				)
+					void quote.refetch();
 			},
 		}),
 	);
@@ -390,7 +399,7 @@ function CheckoutForm({
 	// sentence on screen saying why — `blockedReason()` below returns null exactly then. Waiting
 	// bought nothing: `submit()` sends `expectedTotalMinor`, so a quote that moved is refused
 	// rather than charged, and the tap that arrives mid-poll is answered by the API either way.
-	const quoteless = !quote.data;
+	const quoteless = !quote.data || quote.isError;
 	const hasItems = Boolean(cart.data?.items.length);
 	const businessSlug = cart.data?.businessSlug;
 	const last = step === STEPS.length - 1;
@@ -407,6 +416,26 @@ function CheckoutForm({
 	const chosenAddress = addresses.data?.find(
 		(address) => address.id === selectedAddress,
 	);
+	const quoteFailure = toApiFailure(quote.error);
+	const quoteErrorBody = isCheckoutRefusalKey(quoteFailure.serverMessage)
+		? t(quoteFailure.serverMessage)
+		: undefined;
+	const roadUnavailable =
+		quoteFailure.serverMessage === "checkout.refusal.deliveryQuoteUnavailable";
+	const roadRoute =
+		fulfilment === "DELIVERY" &&
+		!quote.isError &&
+		quote.data?.roadQuote &&
+		selectedLocation?.lat != null &&
+		selectedLocation.lng != null &&
+		chosenAddress?.lat != null &&
+		chosenAddress.lng != null
+			? {
+					pickup: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+					destination: { lat: chosenAddress.lat, lng: chosenAddress.lng },
+					geometry: quote.data.roadQuote.geometry,
+				}
+			: null;
 	const prepTime = business.data?.card.prepTimeMinutes ?? 0;
 
 	if (step > 0) {
@@ -496,10 +525,11 @@ function CheckoutForm({
 	}
 
 	function submit() {
-		if (place.isPending || !quote.data) return;
+		if (place.isPending || quote.isError || !quote.data) return;
 		requestId.current ??= newClientRequestId();
 		place.mutate({
 			fulfilment,
+			quoteId: quote.data.roadQuote?.quoteId,
 			locationId: selectedLocation?.id,
 			paymentMethod,
 			addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
@@ -725,10 +755,15 @@ function CheckoutForm({
 												lat: selectedLocation.lat,
 												lng: selectedLocation.lng,
 											}}
-											marker={{
-												lat: selectedLocation.lat,
-												lng: selectedLocation.lng,
-											}}
+											marker={
+												roadRoute
+													? null
+													: {
+															lat: selectedLocation.lat,
+															lng: selectedLocation.lng,
+														}
+											}
+											route={roadRoute}
 											showUserLocation={false}
 											accessibilityLabel={t("checkout.location")}
 											style={styles.locationMap}
@@ -736,13 +771,25 @@ function CheckoutForm({
 									) : null}
 								</View>
 							) : (
-								<Text variant="body" tone="muted">{t("checkout.location.none")}</Text>
+								<Text variant="body" tone="muted">
+									{t("checkout.location.none")}
+								</Text>
 							)}
 							{quote.isError && quoteless && hasItems ? (
-								<ErrorState
-									error={quote.error}
-									onRetry={() => void quote.refetch()}
-								/>
+								<View style={styles.group}>
+									<ErrorState
+										error={quote.error}
+										body={quoteErrorBody}
+										onRetry={() => void quote.refetch()}
+									/>
+									{roadUnavailable && collects ? (
+										<Button
+											variant="secondary"
+											label={t("checkout.pickup")}
+											onPress={() => setFulfilment("PICKUP")}
+										/>
+									) : null}
+								</View>
 							) : null}
 
 							{/* The fee, directly under the control that decides it — see the docblock.
@@ -750,12 +797,26 @@ function CheckoutForm({
 							    loading branch, because an amount the quote has not answered yet draws
 							    `MoneyLine`'s own skeleton, so the switch shows the shape of the row
 							    rather than the previous kind's number or none at all. */}
-							{fulfilment === "DELIVERY" && (!quote.isError || quote.data) ? (
-								<MoneyLine
-									label={t("cart.delivery")}
-									amountMinor={quote.data?.deliveryFeeMinor}
-									currency={quote.data?.currency}
-								/>
+							{fulfilment === "DELIVERY" && !needsAddress && !quote.isError ? (
+								<View style={styles.group}>
+									<MoneyLine
+										label={t("cart.delivery")}
+										amountMinor={quote.data?.deliveryFeeMinor}
+										currency={quote.data?.currency}
+									/>
+									{quote.data?.roadQuote ? (
+										<Text variant="caption" tone="muted">
+											{t("checkout.roadRoute", {
+												distance: new Intl.NumberFormat(intlLocale, {
+													maximumFractionDigits: 1,
+												}).format(quote.data.roadQuote.distanceMeters / 1000),
+												minutes: Math.ceil(
+													quote.data.roadQuote.durationSeconds / 60,
+												),
+											})}
+										</Text>
+									) : null}
+								</View>
 							) : null}
 
 							{fulfilment === "DELIVERY" ? (
