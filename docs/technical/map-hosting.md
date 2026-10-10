@@ -3,9 +3,9 @@
 | Campo | Valor |
 | --- | --- |
 | Owner | Ingeniería |
-| Estado | Pendiente de pasos de cuenta |
+| Estado | Bucket creado; archivo PMTiles y recursos pendientes |
 | Versión | 1.0 |
-| Última revisión | 2026-09-25 |
+| Última revisión | 2026-10-10 |
 | Próxima revisión | 2026-12-25 |
 
 ## Propósito
@@ -93,22 +93,22 @@ cuando el caché de directorio expulsa una entrada que sigue en uso.
 Por eso el extract se mantiene acotado: Costa Rica y `--maxzoom=14` (la banda del mapa en
 móvil usa `STREET_ZOOM = 14`).
 
-## Requisitos previos (pasos de cuenta, no de código)
+## Requisitos previos
 
-1. **Crear el bucket R2 `pymeshub-map-assets`.**
-   El binding ya está en `wrangler.toml`:
+1. **Bucket R2 `pymeshub-map-assets`: creado.** Verificado con
+   `wrangler r2 bucket list` el 2026-10-10. El binding está en `wrangler.toml`:
    ```toml
    [[r2_buckets]]
    binding = "MAP_ASSETS"
    bucket_name = "pymeshub-map-assets"
    ```
-2. **Añadir permiso de objeto R2 al token de `CLOUDFLARE_API_TOKEN`** usado por
-   `.github/workflows/deploy-cloudflare.yml`.
-   **Bloqueante.** `packages/trpc-api/wrangler.toml` registra que ese token hoy **no tiene
-   alcance R2**. Sin esto el deploy falla.
+2. **Verificar permiso de escritura de objetos R2** en la credencial que se use
+   para la carga. No hay un workflow `deploy-cloudflare.yml` en el repositorio
+   actual; no asumir que un token de CI antiguo tiene ese alcance.
 
-Hasta que los dos pasos caigan, `/api/map/*` devuelve `404` y la app conserva el
-comportamiento de "capacidad ausente" que ya tiene: sin mapa, sin error.
+El estilo `/api/map/style.json` ya responde 200, pero el archivo PMTiles sigue
+respondiendo 404. Ningún cliente debe seleccionar ese estilo antes de completar
+la carga y verificar la respuesta 206 a las peticiones de rango.
 
 ## 1. Conseguir y recortar el archivo
 
@@ -131,6 +131,13 @@ pmtiles show basemap.pmtiles
 
 `internal_compression` debe ser **distinto de `2` (gzip)**. Si es `2`, **no subir**: el mapa
 quedará vacío y sin error (defecto 2).
+
+El build público de Protomaps del 2026-10-09 declara `internal_compression = 2`.
+La implementación actual de `go-pmtiles extract` reconstruye sus directorios con
+`Gzip`, por lo que recortar ese build no elimina el problema. Antes de cargarlo,
+obtener un archivo con directorios sin compresión mediante una herramienta probada,
+o verificar una corrección de MapLibre Native en los binarios usados por la app.
+El estilo R2 existente permanece activo hasta superar esta puerta y la prueba visual.
 
 ## 3. Subir
 
