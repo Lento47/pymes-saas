@@ -539,6 +539,7 @@ export const customer = {
 	"checkout.fulfilment": "¿Cómo lo quieres?",
 	"checkout.delivery": "Entrega a domicilio",
 	"checkout.pickup": "Retiro en el local",
+	"checkout.location": "Local de retiro",
 	"checkout.address": "Dirección de entrega",
 	"checkout.address.add": "Agregar dirección",
 	"checkout.address.none": "Necesitas una dirección para que te lo entreguen",

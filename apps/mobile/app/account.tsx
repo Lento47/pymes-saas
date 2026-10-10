@@ -9,7 +9,6 @@ import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
-import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Fact, Facts } from "@/components/facts";
@@ -17,6 +16,7 @@ import { Image } from "@/components/image";
 import { ListRow } from "@/components/list-row";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
+import { SignOutSheet } from "@/components/sign-out-sheet";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
@@ -26,9 +26,10 @@ import {
 	initDevicePrefs,
 	setAccountProfile,
 } from "@/lib/device-prefs";
-import { warning } from "@/lib/haptics";
+import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { NO_VALUE } from "@/lib/no-value";
+import { requestSignOutNavigation } from "@/lib/sign-out-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
@@ -146,7 +147,6 @@ export default function AccountScreen() {
 	const { t } = useT();
 	const { colors } = useTheme();
 	const { status: sessionStatus, signOut } = useSession();
-	const [signingOut, setSigningOut] = useState(false);
 	const [signOutOpen, setSignOutOpen] = useState(false);
 	const [profile, setProfile] = useState<AccountProfile>("customer");
 
@@ -239,15 +239,15 @@ export default function AccountScreen() {
 	const done = setup.length - missing.length;
 
 	/**
-	 * Signing out asks once, in `./confirm-sheet`, and the confirm carries the warning haptic.
-	 * The session lives in the device keychain, so this changes the *device* rather than a
-	 * screen — both buttons say what they do, and the button that opens the question is a quiet
-	 * one: the destructive weight belongs on the answer, not on the row that asks.
+	 * Signing out, the same three-part path `(business)/account` and `(delivery)/account`
+	 * already use. The note lands before `signOut()` because that call unmounts this
+	 * screen; the haptic is `light` because a session ending destroys nothing; the
+	 * promise stays in `./sign-out-sheet` so a refusal is reported in the panel.
 	 */
 	const confirmSignOut = () => {
-		warning();
-		setSigningOut(true);
-		void signOut().finally(() => setSigningOut(false));
+		light();
+		requestSignOutNavigation("authenticate");
+		return signOut();
 	};
 
 	const initials = (me.data?.name ?? me.data?.email ?? "?")
@@ -665,21 +665,22 @@ export default function AccountScreen() {
 						variant="secondary"
 						fullWidth
 						style={styles.signOut}
-						loading={signingOut}
-						disabled={signingOut}
 						onPress={() => setSignOutOpen(true)}
 					/>
 				</AnimateIn>
 			</Screen>
 			{/* Last in the screen's root and a sibling of the scroller: `./sheet` has no portal,
 		    so inside the `Screen` it would scroll away with the content. */}
-			<ConfirmSheet
+			<SignOutSheet
 				open={signOutOpen}
 				onClose={() => setSignOutOpen(false)}
 				title={t("auth.signOut.confirm")}
 				body={t("auth.signOut.body")}
 				confirmLabel={t("action.signOut")}
-				onConfirm={confirmSignOut}
+				busyLabel={t("auth.signOut.busy")}
+				cancelLabel={t("action.cancel")}
+				errorLabel={t("auth.signOut.failed")}
+				onSignOut={confirmSignOut}
 			/>
 		</>
 	);

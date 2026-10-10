@@ -165,6 +165,32 @@ describe("the cart's one-business rule", () => {
 });
 
 describe("checkout quote", () => {
+	test("lists only the current cart shop's pickup locations", async () => {
+		const test = world();
+		const { first, second, caller, coffee } = await twoShops(test);
+		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+		const locations = await caller.cart.pickupLocations();
+		expect(locations.length).toBeGreaterThan(0);
+		const shopLocations = await test.db
+			.select({ id: locationTable.id, businessId: locationTable.businessId })
+			.from(locationTable);
+		expect(
+			locations.every((location) =>
+				shopLocations.some(
+					(row) => row.id === location.id && row.businessId === first,
+				),
+			),
+		).toBe(true);
+		expect(
+			locations.some((location) =>
+				shopLocations.some(
+					(row) => row.id === location.id && row.businessId === second,
+				),
+			),
+		).toBe(false);
+		test.close();
+	});
+
 	test("quotes current product prices, matching the placed order", async () => {
 		const test = world();
 		const { caller, coffee } = await twoShops(test);

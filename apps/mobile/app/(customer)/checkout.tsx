@@ -34,6 +34,7 @@ import { ErrorState } from "@/components/error-state";
 import { Fact, Facts } from "@/components/facts";
 import { Field } from "@/components/field";
 import { MoneyLine } from "@/components/money-line";
+import { MapView } from "@/components/map";
 import { OrderPlaced } from "@/components/order-placed";
 import { Pressable } from "@/components/pressable";
 import { Price } from "@/components/price";
@@ -238,6 +239,7 @@ function CheckoutForm({
 	const [fulfilment, setFulfilment] = useState<FulfilmentKind>("PICKUP");
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
 	const [addressId, setAddressId] = useState<string>();
+	const [locationId, setLocationId] = useState<string>();
 	const [notes, setNotes] = useState("");
 	const [notesOpen, setNotesOpen] = useState(false);
 
@@ -254,7 +256,12 @@ function CheckoutForm({
 	}, []);
 
 	const cart = useQuery(trpc.cart.get.queryOptions());
+	const locations = useQuery(trpc.cart.pickupLocations.queryOptions());
 	const addresses = useQuery(trpc.users.addresses.queryOptions());
+	const selectedLocation =
+		locations.data?.find((location) => location.id === locationId) ??
+		locations.data?.find((location) => location.isDefault) ??
+		locations.data?.[0];
 	const selectedAddress =
 		addressId ??
 		addresses.data?.find((address) => address.isDefault)?.id ??
@@ -263,6 +270,7 @@ function CheckoutForm({
 		trpc.cart.quote.queryOptions(
 			{
 				fulfilment,
+				locationId: selectedLocation?.id,
 				addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
 			},
 			{ refetchInterval: 15000 },
@@ -375,6 +383,7 @@ function CheckoutForm({
 	);
 
 	const needsAddress = fulfilment === "DELIVERY" && !selectedAddress;
+	const needsLocation = !selectedLocation;
 	const short = (quote.data?.missingForMinOrderMinor ?? 0) > 0;
 	// `!quote.data` alone, with no term for TanStack's fetching flag. The quote polls every 15s
 	// and that flag disabled the Place button for the length of every round trip, with no
@@ -474,6 +483,12 @@ function CheckoutForm({
 		setAddressId(next);
 	}
 
+	function pickLocation(next: string) {
+		if (next === selectedLocation?.id) return;
+		selection();
+		setLocationId(next);
+	}
+
 	function pickFulfilment(next: string) {
 		// Narrowed rather than cast: the segmented control hands back its option's `value` as a
 		// string, and the set it offers is this function's to know.
@@ -485,6 +500,7 @@ function CheckoutForm({
 		requestId.current ??= newClientRequestId();
 		place.mutate({
 			fulfilment,
+			locationId: selectedLocation?.id,
 			paymentMethod,
 			addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
 			customerNotes: notes.trim() || undefined,
@@ -682,6 +698,40 @@ function CheckoutForm({
 										: []),
 								]}
 							/>
+							{locations.isError ? (
+								<ErrorState
+									error={locations.error}
+									onRetry={() => void locations.refetch()}
+								/>
+							) : locations.isPending ? (
+								<Skeleton
+									style={styles.blockSkeleton}
+									label={t("state.loading")}
+								/>
+							) : locations.data?.length ? (
+								<View style={styles.group}>
+									<Text variant="body" bold>
+										{t("checkout.location")}
+									</Text>
+									<PickupLocationPicker
+										locations={locations.data}
+										value={selectedLocation?.id}
+										onPick={pickLocation}
+									/>
+									{selectedLocation?.lat != null &&
+									selectedLocation.lng != null ? (
+										<MapView
+											coords={{
+												lat: selectedLocation.lat,
+												lng: selectedLocation.lng,
+											}}
+											showUserLocation={false}
+											accessibilityLabel={t("checkout.location")}
+											style={styles.locationMap}
+										/>
+									) : null}
+								</View>
+							) : null}
 							{quote.isError && quoteless && hasItems ? (
 								<ErrorState
 									error={quote.error}
@@ -984,7 +1034,12 @@ function CheckoutForm({
 									: t("checkout.place"),
 								onPress: submit,
 								loading: place.isPending,
-								disabled: !hasItems || quoteless || short || needsAddress,
+								disabled:
+									!hasItems ||
+									quoteless ||
+									short ||
+									needsAddress ||
+									needsLocation,
 								// The same sentence the strip carries, for a reader who reached the
 								// button without passing it.
 								accessibilityHint: blocked ?? undefined,
@@ -992,7 +1047,12 @@ function CheckoutForm({
 						: {
 								label: t("action.continue"),
 								onPress: () => goToStep(step + 1),
-								disabled: !hasItems || quoteless || short || needsAddress,
+								disabled:
+									!hasItems ||
+									quoteless ||
+									short ||
+									needsAddress ||
+									needsLocation,
 								accessibilityHint:
 									blocked ??
 									(quoteless
@@ -1029,6 +1089,74 @@ function CheckoutForm({
  * cannot read at all. The card shape is a `Pressable` and not `./card`'s own `onPress` for
  * that reason — a card's press is a `button`, which would take the radio state away.
  */
+function PickupLocationPicker({
+	locations,
+	value,
+	onPick,
+}: {
+	locations: Array<{
+		id: string;
+		name: string;
+		line1: string | null;
+		city: string | null;
+	}>;
+	value?: string;
+	onPick: (id: string) => void;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+	return (
+		<View
+			style={styles.choice}
+			accessibilityRole="radiogroup"
+			accessibilityLabel={t("checkout.location")}
+		>
+			{locations.map((location) => {
+				const chosen = value === location.id;
+				const address = [location.line1, location.city]
+					.filter(Boolean)
+					.join(", ");
+				return (
+					<Pressable
+						key={location.id}
+						onPress={() => onPick(location.id)}
+						accessibilityRole="radio"
+						accessibilityState={{ checked: chosen }}
+						accessibilityLabel={[location.name, address]
+							.filter(Boolean)
+							.join(", ")}
+						style={styles.option}
+					>
+						<Card style={chosen ? { borderColor: colors.primary } : undefined}>
+							<View style={styles.optionRow}>
+								<View style={styles.optionText}>
+									<Text variant="body" bold={chosen}>
+										{location.name}
+									</Text>
+									{address ? (
+										<Text variant="caption" tone="muted">
+											{address}
+										</Text>
+									) : null}
+								</View>
+								{chosen ? (
+									<Ionicons
+										name="checkmark"
+										size={icon.control}
+										color={colors.primary}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								) : null}
+							</View>
+						</Card>
+					</Pressable>
+				);
+			})}
+		</View>
+	);
+}
+
 function AddressPicker({
 	addresses,
 	value,
@@ -1158,6 +1286,7 @@ const styles = StyleSheet.create({
 	// `app/addresses`'s `AddressSkeleton` does for its one known row, and there is more than
 	// one shape to match.
 	blockSkeleton: { height: MIN_TOUCH_TARGET },
+	locationMap: { height: 180, borderRadius: radius.md, overflow: "hidden" },
 	// The strip above the bar, for the sentences that explain why its button is off.
 	why: { paddingHorizontal: space.lg, paddingBottom: space.sm, gap: space.xs },
 	above: { paddingHorizontal: space.lg },

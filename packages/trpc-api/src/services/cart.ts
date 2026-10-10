@@ -61,6 +61,25 @@ export async function get(ctx: UserContext): Promise<Cart> {
 	return buildCart(ctx.db, cart);
 }
 
+/** Pickup branches for the caller's current cart, never another shop's locations. */
+export async function pickupLocations(ctx: UserContext) {
+	const cart = await openCartOf(ctx.db, ctx.user.id);
+	if (!cart) return [];
+	return ctx.db
+		.select({
+			id: locationTable.id,
+			name: locationTable.name,
+			isDefault: locationTable.isDefault,
+			line1: locationTable.line1,
+			city: locationTable.city,
+			lat: locationTable.lat,
+			lng: locationTable.lng,
+		})
+		.from(locationTable)
+		.where(eq(locationTable.businessId, cart.businessId))
+		.orderBy(locationTable.name);
+}
+
 /** Checkout quote, calculated by the same server that accepts the order. */
 export async function quote(
 	ctx: UserContext,

@@ -91,12 +91,17 @@ export function ConfirmSheet({
 		<Sheet
 			open={open}
 			onClose={onClose}
+			variant="dialog"
 			title={title}
 			closeLabel={t("action.close")}
 			// `[1]` is the fraction that resolves to no translation on a panel shorter than the
 			// screen — which this one is, and which is what keeps it drawn where it is. The
 			// reading is `./filter-sheet`'s and `./promo-input`'s; a fraction below it would ask
 			// for an offset this panel's own height cannot reach.
+			//
+			// `dialog` is the SignOutSheet entrance: a timing curve, not a spring. A spring
+			// overshoots the rest position and reads as a bounce on a question the reader
+			// already opened on purpose.
 			snapPoints={[1]}
 			footer={
 				<View
