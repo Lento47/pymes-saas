@@ -522,6 +522,8 @@ export const business = {
 	"biz.courier.displayName": "Name businesses see",
 	"biz.courier.serviceArea": "Where you deliver",
 	"biz.courier.zone.title": "Delivery zone",
+	"biz.courier.zone.map.label":
+		"Map for choosing the centre of your delivery zone",
 	"biz.courier.zone.unset": "No zone selected",
 	"biz.courier.zone.choose": "Choose on map",
 	"biz.courier.zone.edit": "Edit on map",
@@ -732,6 +734,7 @@ export const business = {
 	"biz.location.body":
 		"Where your shop is on the map. Orders are offered to couriers near this point.",
 	"biz.location.map": "Pickup point",
+	"biz.location.map.label": "Map for choosing the shop pickup pin",
 	"biz.location.subtitle": "Pickup point set on the map",
 	"biz.location.unset": "Not set — no courier can be offered your orders",
 	"biz.location.radius":

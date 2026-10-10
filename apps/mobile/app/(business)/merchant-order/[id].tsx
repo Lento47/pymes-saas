@@ -540,6 +540,9 @@ export default function MerchantOrderDetail() {
 										coords={courierPosition ?? route.pickup}
 										marker={courierPosition}
 										route={route}
+										accessibilityLabel={t(
+											courierPosition ? "order.map.courier" : "order.map.pins",
+										)}
 									/>
 									<View style={styles.routeLegend}>
 										<View style={styles.routeLegendItem}>

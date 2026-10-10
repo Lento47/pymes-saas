@@ -761,7 +761,11 @@ function CheckoutForm({
 											}
 											route={roadRoute}
 											showUserLocation={false}
-											accessibilityLabel={t("checkout.location")}
+											accessibilityLabel={t(
+												roadRoute
+													? "checkout.location.routeMap"
+													: "checkout.location.pickupMap",
+											)}
 											style={styles.locationMap}
 										/>
 									) : null}

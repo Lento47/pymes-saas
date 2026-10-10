@@ -861,6 +861,7 @@ function ProfileForm({
 									zonePin ?? device.coords ?? { lat: 9.9281, lng: -84.0907 }
 								}
 								marker={zonePin}
+								accessibilityLabel={t("biz.courier.zone.map.label")}
 								radiusKm={zonePin ? zoneRadius : null}
 								fitRadius
 								zoom={zonePin || device.coords ? 11 : 7}

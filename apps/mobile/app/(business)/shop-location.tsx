@@ -253,6 +253,7 @@ export default function ShopLocation() {
 							<MapView
 								coords={centre}
 								marker={pin}
+								accessibilityLabel={t("biz.location.map.label")}
 								radiusKm={OFFER_RADIUS_KM}
 								style={{ height: mapHeight }}
 								onPick={(point) => {

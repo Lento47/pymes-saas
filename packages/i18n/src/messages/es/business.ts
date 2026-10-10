@@ -570,6 +570,8 @@ export const business = {
 	"biz.courier.displayName": "Nombre que ven los negocios",
 	"biz.courier.serviceArea": "Dónde repartes",
 	"biz.courier.zone.title": "Zona de reparto",
+	"biz.courier.zone.map.label":
+		"Mapa para elegir el centro de tu zona de reparto",
 	"biz.courier.zone.unset": "Sin zona seleccionada",
 	"biz.courier.zone.choose": "Elegir en el mapa",
 	"biz.courier.zone.edit": "Editar en el mapa",
@@ -795,6 +797,8 @@ export const business = {
 	"biz.location.body":
 		"Dónde está tu tienda en el mapa. Los pedidos se ofrecen a repartidores cercanos a este punto.",
 	"biz.location.map": "Punto de recogida",
+	"biz.location.map.label":
+		"Mapa para elegir el punto de recogida del comercio",
 	"biz.location.subtitle": "Punto de recogida definido en el mapa",
 	"biz.location.unset":
 		"Sin definir — ningún repartidor puede recibir tus pedidos",

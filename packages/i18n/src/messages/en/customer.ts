@@ -280,6 +280,8 @@ export const customer = {
 	"checkout.delivery": "Deliver to my address",
 	"checkout.pickup": "Pick up in store",
 	"checkout.location": "Pickup location",
+	"checkout.location.pickupMap": "Map showing the shop pickup pin",
+	"checkout.location.routeMap": "Map showing the shop pickup and delivery pins",
 	"checkout.location.none": "This shop has no pickup location available yet.",
 	"checkout.roadRoute": "{distance} km by road · about {minutes} min driving",
 	"checkout.deliveryCoveredByMerchant":
@@ -351,6 +353,10 @@ export const customer = {
 	"order.track.updated": "Updated {time}",
 	/* A marker rather than a time — see the Spanish file's note before rendering it. */
 	"order.track.live": "Live",
+	"order.map.pins": "Map showing the pickup and delivery pins",
+	"order.map.courier":
+		"Map showing the pickup, delivery, and courier's last reported location",
+	"order.map.courierOnly": "Map showing the courier's last reported location",
 	"order.track.reconnecting": "Reconnecting…",
 	/* The caption under a step that did not happen, drawn for a state no producer sends yet — see the Spanish file's note. */
 	"order.track.skipped": "Skipped",

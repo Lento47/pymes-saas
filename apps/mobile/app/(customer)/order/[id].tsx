@@ -785,6 +785,13 @@ function OrderDetail() {
 									coords={ping ?? pickupPoint ?? destinationPoint}
 									marker={ping}
 									route={deliveryRoute}
+									accessibilityLabel={t(
+										ping
+											? deliveryRoute
+												? "order.map.courier"
+												: "order.map.courierOnly"
+											: "order.map.pins",
+									)}
 								/>
 								{deliveryRoute ? (
 									<View style={styles.routeLegend}>

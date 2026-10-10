@@ -256,7 +256,9 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 							}}
 							marker={courierPosition}
 							showUserLocation={false}
-							accessibilityLabel={t("delivery.map.label")}
+							accessibilityLabel={t(
+								courierPosition ? "order.map.courier" : "delivery.map.label",
+							)}
 							style={styles.map}
 						/>
 						<Text variant="caption" tone="muted">

@@ -541,6 +541,8 @@ export const customer = {
 	"checkout.delivery": "Entrega a domicilio",
 	"checkout.pickup": "Retiro en el local",
 	"checkout.location": "Local de retiro",
+	"checkout.location.pickupMap": "Mapa con el punto de recogida del comercio",
+	"checkout.location.routeMap": "Mapa con los puntos de recogida y entrega",
 	"checkout.location.none":
 		"Este comercio aún no tiene un local de retiro disponible.",
 	"checkout.roadRoute":
@@ -625,6 +627,10 @@ export const customer = {
 	 * only ever labels *that* — never a `{time}`, never a `{count}`, never a `{name}`.
 	 */
 	"order.track.live": "En vivo",
+	"order.map.pins": "Mapa con los puntos de recogida y entrega",
+	"order.map.courier":
+		"Mapa con los puntos de recogida, entrega y la última ubicación del repartidor",
+	"order.map.courierOnly": "Mapa con la última ubicación del repartidor",
 	"order.track.reconnecting": "Reconectando…",
 	/*
 	 * The caption under a timeline step that did not happen.
