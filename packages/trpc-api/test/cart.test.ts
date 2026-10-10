@@ -4,6 +4,7 @@ import {
 	merchantLocation as locationTable,
 	order as orderTable,
 	product as productTable,
+	promotion as promotionTable,
 } from "@pymeshub/db";
 import { addToCartInput } from "@pymeshub/shared";
 import { eq } from "drizzle-orm";
@@ -483,6 +484,88 @@ describe("checkout quote", () => {
 			expect(stored?.deliveryFeeMinor).toBe(0);
 			expect(stored?.deliveryFeeBaseMinor).toBe(2_310);
 			expect(stored?.courierFeeMinor).toBe(850);
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
+	test("a changed promotion cannot reuse a road quote with the old delivery charge", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		globalThis.fetch = Object.assign(
+			async () =>
+				Response.json({
+					code: "Ok",
+					routes: [
+						{
+							distance: 4_000,
+							duration: 720,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[-84.08, 9.93],
+									[-84.07, 9.94],
+								],
+							},
+						},
+					],
+				}),
+			{ preconnect: previousFetch.preconnect },
+		);
+		try {
+			const { first, caller, coffee } = await twoShops(test);
+			test.env.ROUTE_FEE_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			await test.db
+				.update(productTable)
+				.set({ priceMinor: 1 })
+				.where(eq(productTable.id, coffee.id));
+			await test.db
+				.update(locationTable)
+				.set({ lat: 9.93, lng: -84.08 })
+				.where(eq(locationTable.businessId, first));
+			await test.db.insert(promotionTable).values({
+				id: "promo_cart_switch",
+				businessId: first,
+				code: "SWITCH",
+				kind: "PERCENT",
+				value: 1,
+			});
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			await caller.cart.applyPromotion({ code: "SWITCH" });
+			const address = await caller.users.saveAddress({
+				label: "Home",
+				line1: "Street",
+				city: "San José",
+				region: "San José",
+				lat: 9.94,
+				lng: -84.07,
+			});
+			const input = {
+				fulfilment: "DELIVERY" as const,
+				locationId: `loc_${first}`,
+				addressId: address.id,
+			};
+			const quote = await caller.cart.quote(input);
+			expect(quote.deliveryFeeMinor).toBe(2_310);
+			await test.db
+				.update(promotionTable)
+				.set({ kind: "FREE_DELIVERY" })
+				.where(eq(promotionTable.id, "promo_cart_switch"));
+			const changed = await refused(
+				caller.orders.place({
+					...input,
+					quoteId: quote.roadQuote?.quoteId,
+					paymentMethod: "CASH",
+					clientRequestId: "promotion-switched-delivery",
+					expectedTotalMinor: quote.totalMinor,
+				}),
+			);
+			expect(changed.message).toBe("checkout.refusal.totalChanged");
+			const fresh = await caller.cart.quote(input);
+			expect(fresh.deliveryFeeMinor).toBe(0);
+			expect(fresh.roadQuote?.quoteId).not.toBe(quote.roadQuote?.quoteId);
 		} finally {
 			globalThis.fetch = previousFetch;
 			test.close();

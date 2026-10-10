@@ -375,6 +375,10 @@ export async function place(
 					courierFeeMinor: business.deliveryFeeMinor,
 					merchantCoversDelivery: business.merchantCoversDelivery,
 				},
+				{
+					discount: promotion.discount,
+					freeDelivery: Boolean(promotion.freeDelivery),
+				},
 			),
 			locationId: location.id,
 			addressId: deliveryAddress.id,

@@ -1,5 +1,5 @@
 import { type Db, deliveryQuote as quoteTable } from "@pymeshub/db";
-import { type Currency, newId } from "@pymeshub/shared";
+import { type Currency, type Discount, newId } from "@pymeshub/shared";
 import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
 
 import { rateLimit } from "../context";
@@ -27,6 +27,7 @@ export function routeInputKey(origin: GeoPoint, destination: GeoPoint): string {
 export function checkoutPriceFingerprint(
 	lines: readonly { id: string; quantity: number; unitPriceMinor: number }[],
 	deliveryPolicy: { courierFeeMinor: number; merchantCoversDelivery: boolean },
+	promotion: { discount: Discount | null; freeDelivery: boolean },
 ): string {
 	return JSON.stringify({
 		lines: lines
@@ -34,6 +35,7 @@ export function checkoutPriceFingerprint(
 			.sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
 		courierFeeMinor: deliveryPolicy.courierFeeMinor,
 		merchantCoversDelivery: deliveryPolicy.merchantCoversDelivery,
+		promotion,
 	});
 }
 

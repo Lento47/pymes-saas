@@ -179,6 +179,10 @@ export async function quote(
 					courierFeeMinor: business.deliveryFeeMinor,
 					merchantCoversDelivery: business.merchantCoversDelivery,
 				},
+				{
+					discount: promotion.discount,
+					freeDelivery: Boolean(promotion.freeDelivery),
+				},
 			),
 			locationId: location.id,
 			addressId: address.id,
