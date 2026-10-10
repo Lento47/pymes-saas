@@ -12,6 +12,10 @@ The Worker needs an operator-controlled HTTPS OSRM driving endpoint in
 2. Check real Costa Rican routes, including coastal, rural, one-way, and long trips.
    Compare pickup and destination pins with the road shape, check latency and failure
    rate, and verify the customer, merchant, and courier maps on native devices.
+   Set staging `LOG_LEVEL=info` to observe `routing.quote.ok` latency and
+   `routing.quote.unavailable` failures, plus `routing.matrix.ok` and
+   `routing.matrix.degraded` during affinity testing. These events contain counts and
+   timing, never route coordinates or customer addresses.
 3. Only after the tariff and client rollout are approved, enable
    `ROUTE_FEE_ENABLED=true` for CRC delivery. This mode requires a current quote and
    fails closed if routing is unavailable. The order stores the accepted price and

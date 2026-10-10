@@ -21,7 +21,7 @@ import type { RateLimitRoom } from "./durable/rate-limit-room";
 import type { Env } from "./env";
 import { rateLimitRoomFor } from "./env";
 import { ForbiddenError, RateLimitError, UnauthorizedError } from "./errors";
-import { createLogger, LogLevel, type Logger } from "./logging";
+import { createLogger, type Logger } from "./logging";
 
 /**
  * Who is calling, and what they are allowed to touch.
@@ -151,7 +151,11 @@ export async function loadBilling(
 	db: Db,
 	businessId: string,
 	now: Date,
-): Promise<{ plan: Plan; cadence: Cadence | null; status: SubscriptionStatus }> {
+): Promise<{
+	plan: Plan;
+	cadence: Cadence | null;
+	status: SubscriptionStatus;
+}> {
 	const rows = await db
 		.select({
 			plan: businessTable.plan,
@@ -271,13 +275,15 @@ export async function createContext({
 	requestId,
 }: CreateContextOptions): Promise<Context> {
 	const client = clientFrom(request.headers.get("x-client"));
-	const logger = createLogger({
-		requestId,
-		client,
-		environment: env.ENVIRONMENT,
-		version: env.API_VERSION,
-		minLevel: env.LOG_LEVEL as LogLevel | undefined,
-	});
+	const logger = createLogger(
+		{
+			requestId,
+			client,
+			environment: env.ENVIRONMENT,
+			version: env.API_VERSION,
+		},
+		env.LOG_LEVEL,
+	);
 	const db = createDb(env.DB);
 
 	const resolved = await resolveUser(env, db, request);

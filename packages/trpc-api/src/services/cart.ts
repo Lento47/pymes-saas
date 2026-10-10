@@ -182,6 +182,10 @@ export async function quote(
 		) {
 			if (dynamicPricing)
 				throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
+			ctx.logger.warn("routing.quote.fallback", {
+				reason: "missing_pin",
+				pricingVersion,
+			});
 			return { ...fixedTotals, routingStatus: "UNAVAILABLE" as const };
 		}
 		try {

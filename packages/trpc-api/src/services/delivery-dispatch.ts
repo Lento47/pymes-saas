@@ -31,6 +31,7 @@ import {
 import type { BatchItem } from "drizzle-orm/batch";
 
 import type { Env } from "../env";
+import { createLogger } from "../logging";
 import { batchOf } from "./helpers";
 import { createOsrmRouting, type GeoPoint } from "./routing";
 
@@ -412,10 +413,15 @@ async function candidateFor(
 			];
 		});
 	if (env?.AFFINITY_V2_ENABLED === "true") {
+		const routingLog = createLogger(
+			{ component: "delivery-dispatch" },
+			env.LOG_LEVEL,
+		);
 		const closest = rankByAffinityV2(candidates)
 			.filter((candidate) => candidate.livePoint)
 			.slice(0, 15);
 		if (env.ROUTING_BASE_URL && closest.length > 0) {
+			const startedAt = Date.now();
 			try {
 				const durations = await createOsrmRouting({
 					baseUrl: env.ROUTING_BASE_URL,
@@ -432,9 +438,30 @@ async function candidateFor(
 				);
 				for (const candidate of candidates)
 					candidate.pickupEtaSeconds = etaByUser.get(candidate.userId) ?? null;
+				routingLog.info("routing.matrix.ok", {
+					latencyMs: Date.now() - startedAt,
+					candidateCount: closest.length,
+					reachableCount: [...etaByUser.values()].filter((eta) => eta != null)
+						.length,
+				});
 			} catch {
 				// Routing is advisory for offers: keep matching by distance without inventing an ETA.
+				routingLog.warn("routing.matrix.degraded", {
+					reason: "provider_failure",
+					latencyMs: Date.now() - startedAt,
+					candidateCount: closest.length,
+				});
 			}
+		} else if (!env.ROUTING_BASE_URL && closest.length > 0) {
+			routingLog.warn("routing.matrix.degraded", {
+				reason: "unconfigured",
+				candidateCount: closest.length,
+			});
+		} else if (closest.length === 0 && candidates.length > 0) {
+			routingLog.warn("routing.matrix.degraded", {
+				reason: "no_live_candidates",
+				candidateCount: candidates.length,
+			});
 		}
 		return rankByAffinityV2(candidates)[0] ?? null;
 	}

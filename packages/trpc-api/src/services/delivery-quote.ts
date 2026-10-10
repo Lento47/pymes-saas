@@ -132,10 +132,20 @@ export async function createRoadQuote(
 			roadQuote: payload(cached),
 		};
 
-	if (!ctx.env.ROUTING_BASE_URL)
+	const logFailure =
+		input.pricingVersion === EXPRESS_V1.version
+			? ctx.logger.error
+			: ctx.logger.warn;
+	if (!ctx.env.ROUTING_BASE_URL) {
+		logFailure("routing.quote.unavailable", {
+			reason: "unconfigured",
+			pricingVersion: input.pricingVersion,
+		});
 		throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
+	}
 	await rateLimit(ctx.env, "cart:road-quote", ctx.user.id, 10, 60);
 	let route: RouteResult;
+	const startedAt = Date.now();
 	try {
 		route = await createOsrmRouting({
 			baseUrl: ctx.env.ROUTING_BASE_URL,
@@ -145,8 +155,14 @@ export async function createRoadQuote(
 			profile: "car",
 		});
 	} catch {
+		logFailure("routing.quote.unavailable", {
+			reason: "provider_failure",
+			pricingVersion: input.pricingVersion,
+			latencyMs: Date.now() - startedAt,
+		});
 		throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
 	}
+	const providerLatencyMs = Date.now() - startedAt;
 	const baseFeeMinor =
 		input.pricingVersion === EXPRESS_V1.version
 			? routeFeeMinor(route.distanceMeters, route.durationSeconds)
@@ -179,6 +195,12 @@ export async function createRoadQuote(
 		createdAt: now,
 	};
 	await ctx.db.insert(quoteTable).values(row);
+	ctx.logger.info("routing.quote.ok", {
+		pricingVersion: input.pricingVersion,
+		providerLatencyMs,
+		distanceMeters: route.distanceMeters,
+		durationSeconds: route.durationSeconds,
+	});
 	return {
 		deliveryFeeMinor: feeMinor,
 		totalMinor: row.totalMinor,
