@@ -15,6 +15,7 @@ import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { isMapAvailable, MapView } from "@/components/map";
 import { MerchantModule } from "@/components/merchant-module";
 import { MerchantOrderHero } from "@/components/merchant-order-hero";
 import { MerchantRejectSheet } from "@/components/merchant-reject-sheet";
@@ -114,6 +115,8 @@ import {
 
 /** An unavailable hand-off, dimmed rather than removed — see `styles.hands`. */
 const DISABLED_ALPHA = 0.4;
+const TRACK_POLL_MS = 15_000;
+const LIVE_LOCATION_MS = 60_000;
 
 export default function MerchantOrderDetail() {
 	const { id } = useLocalSearchParams<{ id: string }>();
@@ -122,6 +125,7 @@ export default function MerchantOrderDetail() {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
+	const mapAvailable = isMapAvailable();
 	const [rejectOpen, setRejectOpen] = useState(false);
 	const order = useQuery(
 		trpc.orders.byId.queryOptions(
@@ -141,6 +145,24 @@ export default function MerchantOrderDetail() {
 			{
 				enabled: !!id && order.data?.fulfilment === "DELIVERY",
 				refetchInterval: 5_000,
+			},
+		),
+	);
+	const tracking = useQuery(
+		trpc.orders.track.queryOptions(
+			{ id: id ?? "" },
+			{
+				enabled:
+					!!id &&
+					mapAvailable &&
+					order.data?.fulfilment === "DELIVERY" &&
+					order.data.pickupLocation?.lat != null &&
+					order.data.pickupLocation.lng != null &&
+					order.data.deliveryAddress?.lat != null &&
+					order.data.deliveryAddress.lng != null &&
+					(order.data.status === "READY" ||
+						order.data.status === "OUT_FOR_DELIVERY"),
+				refetchInterval: TRACK_POLL_MS,
 			},
 		),
 	);
@@ -220,6 +242,33 @@ export default function MerchantOrderDetail() {
 	 */
 	const advance = next[0];
 	const run = delivery.data;
+	const pickupPoint =
+		detail?.pickupLocation?.lat != null && detail.pickupLocation.lng != null
+			? { lat: detail.pickupLocation.lat, lng: detail.pickupLocation.lng }
+			: null;
+	const dropoffPoint =
+		detail?.deliveryAddress?.lat != null && detail.deliveryAddress.lng != null
+			? { lat: detail.deliveryAddress.lat, lng: detail.deliveryAddress.lng }
+			: null;
+	const route =
+		pickupPoint && dropoffPoint
+			? {
+					pickup: pickupPoint,
+					destination: dropoffPoint,
+					geometry: detail?.routeGeometry,
+				}
+			: null;
+	const courierPing = tracking.data?.courier;
+	const courierPosition =
+		courierPing?.lat != null &&
+		courierPing.lng != null &&
+		courierPing.updatedAt != null
+			? {
+					lat: courierPing.lat,
+					lng: courierPing.lng,
+					at: courierPing.updatedAt,
+				}
+			: null;
 	const selfDelivering =
 		detail?.fulfilment === "DELIVERY" &&
 		detail.status === "OUT_FOR_DELIVERY" &&
@@ -266,19 +315,21 @@ export default function MerchantOrderDetail() {
 	);
 
 	/**
-	 * The map, and why it is a web URL rather than a scheme.
+	 * External directions use the stored pin when available.
 	 *
-	 * `app/(customer)/order/[id]` opens directions with the same `google.com/maps/dir` URL and
-	 * the same guard, so a shop and a courier are sent to the same place for the same address.
-	 * The address is the **two lines and the city** rather than the first line alone: a
-	 * one-line destination in Limón is a street somewhere in the country.
+	 * The courier's directions use the same pin-first choice, so both actors navigate to
+	 * the saved location rather than relying on an address string.
+	 * The address is only a fallback for an older order without coordinates.
 	 */
 	const openMap = useCallback(() => {
 		const address = detail?.deliveryAddress;
 		if (!address) return;
-		const destination = [address.line1, address.line2, address.city]
-			.filter((line): line is string => Boolean(line))
-			.join(", ");
+		const destination =
+			address.lat != null && address.lng != null
+				? `${address.lat},${address.lng}`
+				: [address.line1, address.line2, address.city]
+						.filter((line): line is string => Boolean(line))
+						.join(", ");
 		const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 		return Linking.canOpenURL(url)
 			.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
@@ -481,6 +532,51 @@ export default function MerchantOrderDetail() {
 									</View>
 								) : null}
 							</MerchantModule>
+
+							{route && mapAvailable ? (
+								<MerchantModule style={styles.routeModule}>
+									<ModuleHeading>{t("biz.order.map")}</ModuleHeading>
+									<MapView
+										coords={courierPosition ?? route.pickup}
+										marker={courierPosition}
+										route={route}
+									/>
+									<View style={styles.routeLegend}>
+										<View style={styles.routeLegendItem}>
+											<View
+												style={[
+													styles.routeDot,
+													{ backgroundColor: colors.success },
+												]}
+											/>
+											<Text variant="caption" tone="muted">
+												{t("order.pickupAt")}
+											</Text>
+										</View>
+										<View style={styles.routeLegendItem}>
+											<View
+												style={[
+													styles.routeDot,
+													{ backgroundColor: colors.destructive },
+												]}
+											/>
+											<Text variant="caption" tone="muted">
+												{t("order.deliveryTo")}
+											</Text>
+										</View>
+									</View>
+									{courierPosition ? (
+										<Text variant="caption" tone="muted">
+											{Date.now() - courierPosition.at.getTime() <
+											LIVE_LOCATION_MS
+												? t("order.track.live")
+												: t("order.track.updated", {
+														time: formatClock(courierPosition.at, intlLocale),
+													})}
+										</Text>
+									) : null}
+								</MerchantModule>
+							) : null}
 
 							{detail.customerNotes ? (
 								<MerchantModule>
@@ -1045,6 +1141,18 @@ const styles = StyleSheet.create({
 	// the same number for two different jobs, which is why `gap` carries the rhythm and the
 	// padding carries the margin. The design's "major vertical gap 16-20" is this gap.
 	content: { paddingHorizontal: space.lg, gap: space.lg },
+	routeModule: { gap: space.md },
+	routeLegend: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.md,
+	},
+	routeLegendItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+	},
+	routeDot: { width: 8, height: 8, borderRadius: 4 },
 	/**
 	 * The one hairline on the screen, and it is a `View` rather than a `borderTopWidth` on
 	 * a row because the two places that need it are a *row* and a *module's* last child and

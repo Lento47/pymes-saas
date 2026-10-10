@@ -153,6 +153,7 @@ export const business = {
 	"biz.order.customer": "Cliente",
 	"biz.order.title": "Pedido #{reference}",
 	"biz.order.address": "Dirección de entrega",
+	"biz.order.map": "Mapa de entrega",
 	// Las tres puertas bajo el bloque del cliente. Cada una se dibuja sólo cuando existen los
 	// datos sobre los que actúa - `biz.order.call` y `biz.order.message` necesitan un
 	// teléfono, `biz.order.openMap` una dirección con línea que señalar - así que las claves

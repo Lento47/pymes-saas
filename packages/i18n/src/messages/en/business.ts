@@ -134,6 +134,7 @@ export const business = {
 	"biz.order.customer": "Customer",
 	"biz.order.title": "Order #{reference}",
 	"biz.order.address": "Delivery address",
+	"biz.order.map": "Delivery map",
 	// The three doors under the customer block. Each is drawn only when the data it acts on
 	// is there - `action.call` and `action.message` need a customer phone, `biz.order.openMap`
 	// needs a delivery address with a line to point at - so the keys are shared with every
