@@ -147,6 +147,8 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
               {card.deliveryEnabled
                 ? card.merchantCoversDelivery
                   ? "El comercio cubre el envío"
+                  : card.deliveryPriceAtCheckout
+                    ? "Envío calculado al pagar"
                   : `Envío ${money(card.deliveryFeeMinor, card.currency)}`
                 : "Sin entrega"}
             </span>

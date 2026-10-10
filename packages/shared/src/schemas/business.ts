@@ -197,6 +197,7 @@ export const businessCardSchema = z.object({
 	pickupEnabled: z.boolean(),
 	deliveryFeeMinor: z.number().int(),
 	merchantCoversDelivery: z.boolean().optional(),
+	deliveryPriceAtCheckout: z.boolean().optional(),
 	prepTimeMinutes: z.number().int(),
 	minOrderMinor: z.number().int(),
 	isVerified: z.boolean(),

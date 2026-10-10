@@ -214,6 +214,7 @@ export async function bySlug(
 		card: businessCardOf(row.business, {
 			categoryName: row.categoryName,
 			categoryNameEn: row.categoryNameEn,
+			roadFeeEnabled: ctx.env.ROUTE_FEE_ENABLED === "true",
 			now,
 		}),
 		hours: row.business.hours ?? [],
@@ -365,6 +366,7 @@ export async function list(
 		const card = businessCardOf(row.business, {
 			categoryName: row.categoryName,
 			categoryNameEn: row.categoryNameEn,
+			roadFeeEnabled: ctx.env.ROUTE_FEE_ENABLED === "true",
 			distanceKm,
 			now,
 		});

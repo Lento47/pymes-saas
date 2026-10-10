@@ -288,7 +288,11 @@ export async function feed(
 				asc(productTable.id),
 			)
 			.limit(FEED_OFFER_LIMIT),
-		publicBusinesses(ctx.db, { origin, limit: nearbyLimit }),
+		publicBusinesses(ctx.db, {
+			origin,
+			limit: nearbyLimit,
+			roadFeeEnabled: ctx.env.ROUTE_FEE_ENABLED === "true",
+		}),
 		ctx.db
 			.select({ promotion: promotionTable, business: businessTable })
 			.from(promotionTable)
@@ -421,6 +425,7 @@ export async function search(
 			businessCardOf(row.business, {
 				categoryName: row.categoryName,
 				categoryNameEn: row.categoryNameEn,
+				roadFeeEnabled: ctx.env.ROUTE_FEE_ENABLED === "true",
 				distanceKm: distanceTo(origin, row.business.lat, row.business.lng),
 				now,
 			}),
@@ -488,6 +493,7 @@ export async function listFavorites(
 				businessCardOf(row.business, {
 					categoryName: row.categoryName,
 					categoryNameEn: row.categoryNameEn,
+					roadFeeEnabled: ctx.env.ROUTE_FEE_ENABLED === "true",
 					now,
 				}),
 			);
@@ -632,7 +638,11 @@ export async function toggleFavorite(
  */
 async function publicBusinesses(
 	db: Db,
-	input: { origin: { lat: number; lng: number } | null; limit: number },
+	input: {
+		origin: { lat: number; lng: number } | null;
+		limit: number;
+		roadFeeEnabled: boolean;
+	},
 ): Promise<BusinessCard[]> {
 	const rows = await db
 		.select({
@@ -659,6 +669,7 @@ async function publicBusinesses(
 		businessCardOf(row.business, {
 			categoryName: row.categoryName,
 			categoryNameEn: row.categoryNameEn,
+			roadFeeEnabled: input.roadFeeEnabled,
 			distanceKm: distanceTo(input.origin, row.business.lat, row.business.lng),
 			now,
 		}),

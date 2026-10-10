@@ -304,11 +304,13 @@ function StoreFacts({ card }: { card: BusinessCard }) {
 	const delivery = card.deliveryEnabled
 		? card.merchantCoversDelivery
 			? t("store.delivery.covered")
-			: t("store.delivery.fee", {
-					amount: formatMoney(card.deliveryFeeMinor, card.currency, {
-						locale: intlLocale,
-					}),
-				})
+			: card.deliveryPriceAtCheckout
+				? t("store.delivery.quoted")
+				: t("store.delivery.fee", {
+						amount: formatMoney(card.deliveryFeeMinor, card.currency, {
+							locale: intlLocale,
+						}),
+					})
 		: card.pickupEnabled
 			? t("store.pickup.short")
 			: null;

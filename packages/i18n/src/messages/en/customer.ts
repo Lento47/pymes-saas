@@ -150,6 +150,7 @@ export const customer = {
 	"store.topRated": "Top rated",
 	"store.delivery": "Delivery",
 	"store.delivery.fee": "Delivery {amount}",
+	"store.delivery.quoted": "Delivery calculated at checkout",
 	"store.delivery.free": "Free delivery",
 	"store.delivery.covered": "Shop covers delivery",
 	"store.pickup": "Pick up in store",

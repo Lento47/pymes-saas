@@ -273,6 +273,7 @@ export const customer = {
 	"store.topRated": "Mejor valorado",
 	"store.delivery": "Entrega",
 	"store.delivery.fee": "Envío {amount}",
+	"store.delivery.quoted": "Envío calculado al pagar",
 	"store.delivery.free": "Envío gratis",
 	"store.delivery.covered": "El comercio cubre el envío",
 	"store.pickup": "Retiro en el local",

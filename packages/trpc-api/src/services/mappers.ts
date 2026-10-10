@@ -138,6 +138,7 @@ export function businessCardOf(
 		/** Null when the customer sent no coordinates, or the business has none. */
 		distanceKm?: number | null;
 		now?: Date;
+		roadFeeEnabled?: boolean;
 	} = {},
 ): BusinessCard {
 	const now = options.now ?? new Date();
@@ -162,6 +163,8 @@ export function businessCardOf(
 		pickupEnabled: row.pickupEnabled,
 		deliveryFeeMinor: row.deliveryFeeMinor,
 		merchantCoversDelivery: row.merchantCoversDelivery,
+		deliveryPriceAtCheckout:
+			Boolean(options.roadFeeEnabled) && row.currency === "CRC",
 		prepTimeMinutes: row.prepTimeMinutes ?? DEFAULT_PREP_MINUTES,
 		minOrderMinor: row.minOrderMinor,
 		isVerified: row.isVerified,

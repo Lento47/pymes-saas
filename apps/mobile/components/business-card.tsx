@@ -199,11 +199,13 @@ export function BusinessCard({
 	const delivery = business.deliveryEnabled
 		? business.merchantCoversDelivery
 			? t("store.delivery.covered")
-			: t("store.delivery.fee", {
-					amount: formatMoney(business.deliveryFeeMinor, business.currency, {
-						locale: intlLocale,
-					}),
-				})
+			: business.deliveryPriceAtCheckout
+				? t("store.delivery.quoted")
+				: t("store.delivery.fee", {
+						amount: formatMoney(business.deliveryFeeMinor, business.currency, {
+							locale: intlLocale,
+						}),
+					})
 		: business.pickupEnabled
 			? t("store.pickup.short")
 			: null;
