@@ -76,6 +76,8 @@ export type Env = {
 	ROUTING_BASE_URL?: string;
 	/** Road-priced CRC deliveries are opt-in; absent or false keeps the legacy fee. */
 	ROUTE_FEE_ENABLED?: string;
+	/** ETA-first courier ranking; absent keeps the legacy ordering. */
+	AFFINITY_V2_ENABLED?: string;
 
 	AUTH_SECRET?: string;
 	AUTH_URL?: string;

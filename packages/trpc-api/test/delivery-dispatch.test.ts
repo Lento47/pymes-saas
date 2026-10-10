@@ -9,7 +9,10 @@ import {
 import { addToCartInput } from "@pymeshub/shared";
 import { eq } from "drizzle-orm";
 import { appRouter } from "../src/routers";
-import { sweepExpiredOffers } from "../src/services/delivery-dispatch";
+import {
+	rankByAffinityV2,
+	sweepExpiredOffers,
+} from "../src/services/delivery-dispatch";
 import {
 	authed,
 	seedBusiness,
@@ -63,6 +66,42 @@ type TestWorld = ReturnType<typeof world>;
  */
 
 const MINUTE = 60 * 1000;
+
+test("affinity V2 favors a competitive shop courier but never a distant one", () => {
+	const candidate = (
+		userId: string,
+		eta: number | null,
+		distance: number,
+		preferred: boolean,
+	) => ({
+		userId,
+		displayName: userId,
+		phone: null,
+		distanceToPickupKm: distance,
+		activeRuns: 0,
+		recentOffers: 0,
+		rating: null,
+		lastOfferedAt: null,
+		preferred,
+		pickupEtaSeconds: eta,
+	});
+	const nearest = candidate("nearest", 120, 1, false);
+	const competitive = candidate("competitive", 160, 1.3, true);
+	const distant = candidate("distant", 400, 4, true);
+	expect(rankByAffinityV2([distant, nearest, competitive])[0]?.userId).toBe(
+		"competitive",
+	);
+	expect(rankByAffinityV2([distant, nearest])[0]?.userId).toBe("nearest");
+	expect(
+		rankByAffinityV2(
+			[distant, nearest].map((row) => ({ ...row, pickupEtaSeconds: null })),
+		)[0]?.userId,
+	).toBe("nearest");
+	expect(
+		rankByAffinityV2([candidate("zone-only", null, 0, true), nearest])[0]
+			?.userId,
+	).toBe("nearest");
+});
 
 /** A shop with a stocked product, a located customer, and a cart ready to place. */
 async function shopWithBasket(test: TestWorld, tag: string) {

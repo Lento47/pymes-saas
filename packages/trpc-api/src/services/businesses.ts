@@ -707,7 +707,7 @@ export async function update(
 	]);
 	for (const { id } of waiting) {
 		try {
-			await dispatchNext(ctx.db, id);
+			await dispatchNext(ctx.db, id, ctx.env);
 		} catch (error) {
 			// The pin and the waiting delivery were committed above. A transient offer
 			// failure must not tell the merchant the pin failed to save; opening the

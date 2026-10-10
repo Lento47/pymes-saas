@@ -425,28 +425,32 @@ export async function place(
 	const orderId = newId("order");
 	const reference = newOrderReference();
 	const preparedDelivery = deliveryAddress
-		? await prepareDeliveryForOrder(ctx.db, {
-				orderId,
-				businessId: business.id,
-				businessName: business.name,
-				businessPhone: business.phone,
-				customerId: ctx.user.id,
-				customerName: ctx.user.name,
-				location,
-				dropoff: {
-					name: deliveryAddress.label || ctx.user.name || "",
-					line1: deliveryAddress.line1,
-					line2: deliveryAddress.line2,
-					city: deliveryAddress.city,
-					region: deliveryAddress.region ?? "",
-					postalCode: deliveryAddress.postalCode,
-					lat: deliveryAddress.lat,
-					lng: deliveryAddress.lng,
-					phone: deliveryAddress.phone ?? ctx.user.phone,
-					instructions: deliveryAddress.instructions,
+		? await prepareDeliveryForOrder(
+				ctx.db,
+				{
+					orderId,
+					businessId: business.id,
+					businessName: business.name,
+					businessPhone: business.phone,
+					customerId: ctx.user.id,
+					customerName: ctx.user.name,
+					location,
+					dropoff: {
+						name: deliveryAddress.label || ctx.user.name || "",
+						line1: deliveryAddress.line1,
+						line2: deliveryAddress.line2,
+						city: deliveryAddress.city,
+						region: deliveryAddress.region ?? "",
+						postalCode: deliveryAddress.postalCode,
+						lat: deliveryAddress.lat,
+						lng: deliveryAddress.lng,
+						phone: deliveryAddress.phone ?? ctx.user.phone,
+						instructions: deliveryAddress.instructions,
+					},
+					now,
 				},
-				now,
-			})
+				ctx.env,
+			)
 		: null;
 
 	const claimRow = await claim(ctx, input.clientRequestId);
@@ -1111,7 +1115,7 @@ export async function startSelfDelivery(
 							eq(deliveryOfferTable.status, "PENDING"),
 						),
 					);
-				await dispatchNext(ctx.db, claimed[0].id);
+				await dispatchNext(ctx.db, claimed[0].id, ctx.env);
 			}
 		}
 		throw error;
@@ -1689,7 +1693,7 @@ async function applyMove(
 			// and anything past that has a courier in hand — re-running either would
 			// race `acceptOffer`'s own transitions.
 			if (deliveryRow?.status === "SEARCHING") {
-				await dispatchNext(ctx.db, deliveryRow.id);
+				await dispatchNext(ctx.db, deliveryRow.id, ctx.env);
 			}
 		} catch (error) {
 			ctx.logger?.warn("ready delivery dispatch failed", {

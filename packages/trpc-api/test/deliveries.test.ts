@@ -311,6 +311,50 @@ describe("delivery creation and dispatch", () => {
 		test.close();
 	});
 
+	test("affinity V2 uses road ETA before shop membership", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		try {
+			const ready = await orderReadyToPlace(test, "affinity_v2");
+			const otherShop = await seedBusiness(test.db, {
+				id: "biz_affinity_other",
+				name: "Otra Tienda",
+			});
+			const near = await seedCourier(test, {
+				businessId: otherShop,
+				id: "usr_affinity_near",
+				lat: 9.9301,
+				lng: -84.0801,
+			});
+			await seedCourier(test, {
+				businessId: ready.businessId,
+				id: "usr_affinity_far",
+				lat: 9.98,
+				lng: -84.13,
+			});
+			test.env.AFFINITY_V2_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			globalThis.fetch = Object.assign(
+				async () => Response.json({ code: "Ok", durations: [[120], [600]] }),
+				{ preconnect: previousFetch.preconnect },
+			);
+			const order = await placeDelivery(ready, "affinity_v2");
+			const [delivery] = await test.db
+				.select()
+				.from(deliveryTable)
+				.where(eq(deliveryTable.orderId, order.id));
+			if (!delivery) throw new Error("Delivery was not created");
+			const [offer] = await test.db
+				.select()
+				.from(offerTable)
+				.where(eq(offerTable.deliveryId, delivery.id));
+			expect(offer?.courierUserId).toBe(near.user.id);
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
 	/**
 	 * The radius is the gate the membership used to provide for free.
 	 *

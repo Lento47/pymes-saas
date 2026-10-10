@@ -30,7 +30,9 @@ import {
 } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
+import type { Env } from "../env";
 import { batchOf } from "./helpers";
+import { createOsrmRouting, type GeoPoint } from "./routing";
 
 const PRESENCE_FRESH_MS = 2 * 60 * 1000;
 const OFFER_TTL_MS = 2 * 60 * 1000;
@@ -85,7 +87,52 @@ type RankedCandidate = {
 	 * accept an offer reads this — see `deliveries.ts`, where the gate is the profile.
 	 */
 	preferred: boolean;
+	/** Fresh device position only; a pinned work zone is never a courier position. */
+	livePoint?: GeoPoint | null;
+	pickupEtaSeconds?: number | null;
 };
+
+const MAX_AFFINITY_EXTRA_PICKUP_SECONDS = 240;
+
+/** ETA is the primary measure; affinity only breaks a competitive ETA gap. */
+export function rankByAffinityV2(
+	candidates: readonly RankedCandidate[],
+): RankedCandidate[] {
+	const viable = candidates.filter(
+		(candidate) =>
+			candidate.pickupEtaSeconds != null &&
+			Number.isFinite(candidate.pickupEtaSeconds),
+	);
+	if (viable.length === 0) {
+		return [...candidates].sort(
+			(left, right) =>
+				(left.distanceToPickupKm ?? Infinity) -
+					(right.distanceToPickupKm ?? Infinity) ||
+				left.recentOffers - right.recentOffers ||
+				left.userId.localeCompare(right.userId),
+		);
+	}
+	const bestEta = Math.min(
+		...viable.map((candidate) => candidate.pickupEtaSeconds as number),
+	);
+	const score = (candidate: RankedCandidate) => {
+		if (candidate.pickupEtaSeconds == null) return -Infinity;
+		const extra = candidate.pickupEtaSeconds - bestEta;
+		const affinity =
+			candidate.preferred && extra <= MAX_AFFINITY_EXTRA_PICKUP_SECONDS
+				? 12 * (1 - extra / MAX_AFFINITY_EXTRA_PICKUP_SECONDS)
+				: 0;
+		return (
+			-candidate.pickupEtaSeconds / 20 +
+			affinity -
+			Math.min(3, candidate.recentOffers * 0.15)
+		);
+	};
+	return [...candidates].sort(
+		(left, right) =>
+			score(right) - score(left) || left.userId.localeCompare(right.userId),
+	);
+}
 
 /**
  * The dispatch order is deterministic and uses facts the platform owns: an existing
@@ -150,6 +197,7 @@ async function candidateFor(
 		dropoffLng: number | null;
 		now: Date;
 	},
+	env?: Env,
 ): Promise<RankedCandidate | null> {
 	// Destructured rather than read off `input` twice: the null check below is what makes
 	// these `number`s, and a property access does not carry that narrowing into the closure
@@ -295,72 +343,102 @@ async function candidateFor(
 	const fairness = new Map(lastOffers.map((row) => [row.userId, row]));
 	const preferred = new Set(shopCouriers.map((row) => row.userId));
 
-	const ranked = rankCourierCandidates(
-		rows
-			.filter(
-				(row) =>
-					!excluded.has(row.userId) &&
-					(active.get(row.userId) ?? 0) === 0 &&
-					(pending.get(row.userId) ?? 0) === 0,
-			)
-			.flatMap((row) => {
-				const zone =
-					row.zoneLat != null && row.zoneLng != null && row.zoneRadiusKm != null
-						? {
-								center: { lat: row.zoneLat, lng: row.zoneLng },
-								radiusKm: row.zoneRadiusKm,
-							}
-						: null;
-				if (zone) {
-					if (input.dropoffLat == null || input.dropoffLng == null) return [];
-					if (
-						haversineKm(zone.center, origin) > zone.radiusKm ||
-						haversineKm(zone.center, {
-							lat: input.dropoffLat,
-							lng: input.dropoffLng,
-						}) > zone.radiusKm
-					)
-						return [];
-				}
-				const liveDistance =
-					row.lat != null &&
-					row.lng != null &&
-					row.presenceAt != null &&
-					row.presenceAt.getTime() >= input.now.getTime() - PRESENCE_FRESH_MS
-						? haversineKm(origin, { lat: row.lat, lng: row.lng })
-						: null;
-				const distanceToPickupKm =
-					liveDistance != null && liveDistance <= OFFER_RADIUS_KM
-						? liveDistance
-						: zone
-							? null
-							: liveDistance;
-				// The circle, after the square. `boundingBox` above is a square and its
-				// corner sits `OFFER_RADIUS_KM * 1.41` from the pickup, so without this the
-				// radius is a suggestion rather than a limit. Rejecting here rather than in
-				// SQL is what `businesses.ts` does, and for the same reason: D1 has no
-				// spatial index, so the exact test is a function call over the handful of
-				// rows the box let through.
+	const candidates: RankedCandidate[] = rows
+		.filter(
+			(row) =>
+				!excluded.has(row.userId) &&
+				(active.get(row.userId) ?? 0) === 0 &&
+				(pending.get(row.userId) ?? 0) === 0,
+		)
+		.flatMap((row) => {
+			const zone =
+				row.zoneLat != null && row.zoneLng != null && row.zoneRadiusKm != null
+					? {
+							center: { lat: row.zoneLat, lng: row.zoneLng },
+							radiusKm: row.zoneRadiusKm,
+						}
+					: null;
+			if (zone) {
+				if (input.dropoffLat == null || input.dropoffLng == null) return [];
 				if (
-					!zone &&
-					(distanceToPickupKm == null || distanceToPickupKm > OFFER_RADIUS_KM)
+					haversineKm(zone.center, origin) > zone.radiusKm ||
+					haversineKm(zone.center, {
+						lat: input.dropoffLat,
+						lng: input.dropoffLng,
+					}) > zone.radiusKm
 				)
 					return [];
-				return [
-					{
-						userId: row.userId,
-						displayName: row.displayName,
-						phone: row.phone,
-						distanceToPickupKm,
-						activeRuns: active.get(row.userId) ?? 0,
-						recentOffers: Number(fairness.get(row.userId)?.recentOffers ?? 0),
-						rating: ratings.get(row.userId) ?? null,
-						lastOfferedAt: fairness.get(row.userId)?.lastOfferedAt ?? null,
-						preferred: preferred.has(row.userId),
-					},
-				];
-			}),
-	);
+			}
+			const liveDistance =
+				row.lat != null &&
+				row.lng != null &&
+				row.presenceAt != null &&
+				row.presenceAt.getTime() >= input.now.getTime() - PRESENCE_FRESH_MS
+					? haversineKm(origin, { lat: row.lat, lng: row.lng })
+					: null;
+			const distanceToPickupKm =
+				liveDistance != null && liveDistance <= OFFER_RADIUS_KM
+					? liveDistance
+					: zone
+						? null
+						: liveDistance;
+			// The circle, after the square. `boundingBox` above is a square and its
+			// corner sits `OFFER_RADIUS_KM * 1.41` from the pickup, so without this the
+			// radius is a suggestion rather than a limit. Rejecting here rather than in
+			// SQL is what `businesses.ts` does, and for the same reason: D1 has no
+			// spatial index, so the exact test is a function call over the handful of
+			// rows the box let through.
+			if (
+				!zone &&
+				(distanceToPickupKm == null || distanceToPickupKm > OFFER_RADIUS_KM)
+			)
+				return [];
+			return [
+				{
+					userId: row.userId,
+					displayName: row.displayName,
+					phone: row.phone,
+					distanceToPickupKm,
+					activeRuns: active.get(row.userId) ?? 0,
+					recentOffers: Number(fairness.get(row.userId)?.recentOffers ?? 0),
+					rating: ratings.get(row.userId) ?? null,
+					lastOfferedAt: fairness.get(row.userId)?.lastOfferedAt ?? null,
+					preferred: preferred.has(row.userId),
+					livePoint:
+						liveDistance != null && liveDistance <= OFFER_RADIUS_KM
+							? { lat: row.lat as number, lng: row.lng as number }
+							: null,
+				},
+			];
+		});
+	if (env?.AFFINITY_V2_ENABLED === "true") {
+		const closest = rankByAffinityV2(candidates)
+			.filter((candidate) => candidate.livePoint)
+			.slice(0, 15);
+		if (env.ROUTING_BASE_URL && closest.length > 0) {
+			try {
+				const durations = await createOsrmRouting({
+					baseUrl: env.ROUTING_BASE_URL,
+				}).matrix({
+					origins: closest.map((candidate) => candidate.livePoint as GeoPoint),
+					destinations: [origin],
+					profile: "car",
+				});
+				const etaByUser = new Map(
+					closest.map((candidate, index) => [
+						candidate.userId,
+						durations[index]?.[0] ?? null,
+					]),
+				);
+				for (const candidate of candidates)
+					candidate.pickupEtaSeconds = etaByUser.get(candidate.userId) ?? null;
+			} catch {
+				// Routing is advisory for offers: keep matching by distance without inventing an ETA.
+			}
+		}
+		return rankByAffinityV2(candidates)[0] ?? null;
+	}
+	const ranked = rankCourierCandidates(candidates);
 
 	return ranked[0] ?? null;
 }
@@ -432,17 +510,22 @@ export async function prepareDeliveryForOrder(
 		dropoff: StopInput;
 		now: Date;
 	},
+	env?: Env,
 ): Promise<{ deliveryId: string; statements: BatchItem<"sqlite">[] }> {
 	const deliveryId = newId("delivery");
-	const candidate = await candidateFor(db, {
-		deliveryId,
-		businessId: input.businessId,
-		pickupLat: input.location.lat,
-		pickupLng: input.location.lng,
-		dropoffLat: input.dropoff.lat,
-		dropoffLng: input.dropoff.lng,
-		now: input.now,
-	});
+	const candidate = await candidateFor(
+		db,
+		{
+			deliveryId,
+			businessId: input.businessId,
+			pickupLat: input.location.lat,
+			pickupLng: input.location.lng,
+			dropoffLat: input.dropoff.lat,
+			dropoffLng: input.dropoff.lng,
+			now: input.now,
+		},
+		env,
+	);
 	const offer = candidate
 		? offerStatements(db, {
 				deliveryId,
@@ -491,7 +574,11 @@ export async function prepareDeliveryForOrder(
 }
 
 /** Offer the next eligible courier after a decline or expiry. */
-export async function dispatchNext(db: Db, deliveryId: string): Promise<void> {
+export async function dispatchNext(
+	db: Db,
+	deliveryId: string,
+	env?: Env,
+): Promise<void> {
 	const row = (
 		await db
 			.select({ delivery: deliveryTable, order: orderTable })
@@ -502,15 +589,19 @@ export async function dispatchNext(db: Db, deliveryId: string): Promise<void> {
 	)[0];
 	if (row?.delivery.status !== "SEARCHING") return;
 
-	const candidate = await candidateFor(db, {
-		deliveryId,
-		businessId: row.delivery.businessId,
-		pickupLat: row.delivery.pickupLat,
-		pickupLng: row.delivery.pickupLng,
-		dropoffLat: row.delivery.dropoffLat,
-		dropoffLng: row.delivery.dropoffLng,
-		now: new Date(),
-	});
+	const candidate = await candidateFor(
+		db,
+		{
+			deliveryId,
+			businessId: row.delivery.businessId,
+			pickupLat: row.delivery.pickupLat,
+			pickupLng: row.delivery.pickupLng,
+			dropoffLat: row.delivery.dropoffLat,
+			dropoffLng: row.delivery.dropoffLng,
+			now: new Date(),
+		},
+		env,
+	);
 	if (!candidate) return;
 
 	const businessName = (
@@ -554,6 +645,7 @@ export async function sweepExpiredOffers(
 	db: Db,
 	limit = 50,
 	near?: { lat: number; lng: number },
+	env?: Env,
 ): Promise<void> {
 	const now = new Date();
 	const box = near ? boundingBox(near.lat, near.lng, OFFER_RADIUS_KM) : null;
@@ -598,7 +690,7 @@ export async function sweepExpiredOffers(
 					),
 			]),
 		);
-		await dispatchNext(db, row.deliveryId);
+		await dispatchNext(db, row.deliveryId, env);
 	}
 }
 
@@ -623,6 +715,7 @@ export async function sweepExpiredOffers(
 export async function sweepWaitingDeliveries(
 	db: Db,
 	limit = 10,
+	env?: Env,
 ): Promise<void> {
 	const waiting = await db
 		.select({ id: deliveryTable.id })
@@ -641,6 +734,6 @@ export async function sweepWaitingDeliveries(
 		.limit(limit);
 
 	for (const row of waiting) {
-		await dispatchNext(db, row.id);
+		await dispatchNext(db, row.id, env);
 	}
 }

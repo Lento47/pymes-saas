@@ -139,7 +139,12 @@ export async function reportPresence(
 	const nearby = boundingBox(input.lat, input.lng, OFFER_RADIUS_KM);
 	// Local development has no automatic scheduled tick. A bounded nearby sweep
 	// lets a fresh courier ping recover offers that expired while nobody was online.
-	await sweepExpiredOffers(ctx.db, 10, { lat: input.lat, lng: input.lng });
+	await sweepExpiredOffers(
+		ctx.db,
+		10,
+		{ lat: input.lat, lng: input.lng },
+		ctx.env,
+	);
 	const waiting = await ctx.db
 		.select({ id: deliveryTable.id })
 		.from(deliveryTable)
@@ -161,7 +166,7 @@ export async function reportPresence(
 	for (const delivery of waiting) {
 		// `dispatchNext` re-reads the delivery and re-ranks, so this costs a query per row
 		// and the limit is what bounds it. Ten is the same bound the old version used.
-		await dispatchNext(ctx.db, delivery.id);
+		await dispatchNext(ctx.db, delivery.id, ctx.env);
 	}
 	return { updatedAt };
 }
@@ -194,7 +199,7 @@ export async function requestOffers(
 	}
 	const center = { lat: profile.zoneLat, lng: profile.zoneLng };
 	const box = boundingBox(center.lat, center.lng, profile.zoneRadiusKm);
-	await sweepExpiredOffers(ctx.db, 10, center);
+	await sweepExpiredOffers(ctx.db, 10, center, ctx.env);
 	const waiting = await ctx.db
 		.select({
 			id: deliveryTable.id,
@@ -236,7 +241,7 @@ export async function requestOffers(
 			}) > profile.zoneRadiusKm
 		)
 			continue;
-		await dispatchNext(ctx.db, delivery.id);
+		await dispatchNext(ctx.db, delivery.id, ctx.env);
 		checked += 1;
 		if (checked === 10) break;
 	}
@@ -487,7 +492,7 @@ export async function declineOffer(
 				),
 		]),
 	);
-	await dispatchNext(ctx.db, offer.deliveryId);
+	await dispatchNext(ctx.db, offer.deliveryId, ctx.env);
 	return { ok: true };
 }
 

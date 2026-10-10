@@ -117,7 +117,7 @@ const handler = {
 		}
 
 		try {
-			await sweepExpiredOffers(createDb(env.DB));
+			await sweepExpiredOffers(createDb(env.DB), 50, undefined, env);
 		} catch (error) {
 			logger.error("delivery offer sweep failed", {
 				cause: error instanceof Error ? error.message : String(error),
@@ -131,7 +131,7 @@ const handler = {
 		// offered again within the same tick rather than the next one, and it is
 		// bounded (`limit = 10`) so it cannot spend the whole tick on a busy day.
 		try {
-			await sweepWaitingDeliveries(createDb(env.DB));
+			await sweepWaitingDeliveries(createDb(env.DB), 10, env);
 		} catch (error) {
 			logger.error("waiting delivery sweep failed", {
 				cause: error instanceof Error ? error.message : String(error),
