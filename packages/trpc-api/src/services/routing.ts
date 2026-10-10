@@ -11,7 +11,7 @@ export type RouteResult = {
 	distanceMeters: number;
 	durationSeconds: number;
 	geometry: RouteGeometry;
-	provider: "osrm";
+	provider: "osrm" | "valhalla";
 	calculatedAt: Date;
 };
 
@@ -112,6 +112,61 @@ function routeGeometryMatches(
 	return distanceMeters + 100 >= shapeMeters * 0.9;
 }
 
+function routeOf(
+	data: Record<string, unknown>,
+	origin: GeoPoint,
+	destination: GeoPoint,
+	provider: RouteResult["provider"],
+): RouteResult {
+	const routes = data.routes;
+	const first = Array.isArray(routes) ? record(routes[0]) : null;
+	const geometry = geometryOf(first?.geometry);
+	if (
+		!first ||
+		!metric(first.distance) ||
+		!metric(first.duration) ||
+		!geometry ||
+		!routeGeometryMatches(geometry, origin, destination, first.distance) ||
+		(first.distance > 100 && first.duration === 0)
+	)
+		throw new RoutingUnavailableError("Invalid road route");
+	return {
+		distanceMeters: first.distance,
+		durationSeconds: first.duration,
+		geometry,
+		provider,
+		calculatedAt: new Date(),
+	};
+}
+
+function durationsOf(
+	value: unknown,
+	origins: number,
+	destinations: number,
+): Array<Array<number | null>> {
+	if (!Array.isArray(value) || value.length !== origins)
+		throw new RoutingUnavailableError("Invalid routing matrix");
+	return value.map((row) => {
+		if (
+			!Array.isArray(row) ||
+			row.length !== destinations ||
+			row.some((duration) => duration !== null && !metric(duration))
+		)
+			throw new RoutingUnavailableError("Invalid routing matrix");
+		return row as Array<number | null>;
+	});
+}
+
+function assertMatrixPoints(
+	origins: GeoPoint[],
+	destinations: GeoPoint[],
+): void {
+	assertPoints(origins);
+	assertPoints(destinations);
+	if (origins.length + destinations.length > MAX_MATRIX_POINTS)
+		throw new RangeError("Routing matrix is too large");
+}
+
 /**
  * OSRM's graph is compiled for one vehicle profile. This adapter only promises car routes;
  * passing a motorcycle or bicycle request to a driving graph would invent road access.
@@ -174,32 +229,11 @@ export function createOsrmRouting(input: {
 			const data = await request(
 				`route/v1/driving/${pair(origin)};${pair(destination)}?overview=full&geometries=geojson&steps=false`,
 			);
-			const routes = data.routes;
-			const first = Array.isArray(routes) ? record(routes[0]) : null;
-			const geometry = geometryOf(first?.geometry);
-			if (
-				!first ||
-				!metric(first.distance) ||
-				!metric(first.duration) ||
-				!geometry ||
-				!routeGeometryMatches(geometry, origin, destination, first.distance) ||
-				(first.distance > 100 && first.duration === 0)
-			)
-				throw new RoutingUnavailableError("Invalid road route");
-			return {
-				distanceMeters: first.distance,
-				durationSeconds: first.duration,
-				geometry,
-				provider: "osrm",
-				calculatedAt: new Date(),
-			};
+			return routeOf(data, origin, destination, "osrm");
 		},
 		async matrix({ origins, destinations, profile }) {
 			assertProfile(profile);
-			assertPoints(origins);
-			assertPoints(destinations);
-			if (origins.length + destinations.length > MAX_MATRIX_POINTS)
-				throw new RangeError("Routing matrix is too large");
+			assertMatrixPoints(origins, destinations);
 			const points = [...origins, ...destinations];
 			const sources = origins.map((_, index) => index).join(";");
 			const targets = destinations
@@ -208,20 +242,102 @@ export function createOsrmRouting(input: {
 			const data = await request(
 				`table/v1/driving/${points.map(pair).join(";")}?sources=${sources}&destinations=${targets}`,
 			);
-			if (
-				!Array.isArray(data.durations) ||
-				data.durations.length !== origins.length
-			)
-				throw new RoutingUnavailableError("Invalid routing matrix");
-			return data.durations.map((row) => {
-				if (
-					!Array.isArray(row) ||
-					row.length !== destinations.length ||
-					row.some((value) => value !== null && !metric(value))
-				)
-					throw new RoutingUnavailableError("Invalid routing matrix");
-				return row as Array<number | null>;
-			});
+			return durationsOf(data.durations, origins.length, destinations.length);
 		},
 	};
+}
+
+/** Valhalla keeps vehicle access in its graph and chooses costing per request. */
+export function createValhallaRouting(input: {
+	baseUrl: string;
+	fetcher?: (url: URL, init: RequestInit) => Promise<Response>;
+	timeoutMs?: number;
+}): RoutingPort {
+	const base = new URL(input.baseUrl);
+	if (
+		base.protocol !== "https:" ||
+		base.username ||
+		base.password ||
+		base.search ||
+		base.hash
+	)
+		throw new Error("Routing endpoint must be an HTTPS origin");
+	const fetcher = input.fetcher ?? fetch;
+	const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
+		throw new RangeError("Invalid routing timeout");
+
+	async function request(
+		path: string,
+		payload: Record<string, unknown>,
+	): Promise<Record<string, unknown>> {
+		let response: Response;
+		try {
+			response = await fetcher(new URL(path, base), {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload),
+				signal: AbortSignal.timeout(timeoutMs),
+				redirect: "error",
+			});
+		} catch {
+			throw new RoutingUnavailableError();
+		}
+		if (!response.ok) throw new RoutingUnavailableError();
+		let body: unknown;
+		try {
+			body = await response.json();
+		} catch {
+			throw new RoutingUnavailableError("Invalid routing response");
+		}
+		const data = record(body);
+		if (!data) throw new RoutingUnavailableError("Invalid routing response");
+		return data;
+	}
+
+	const costing = (profile: TravelProfile): string =>
+		profile === "car" ? "auto" : profile;
+	const location = (point: GeoPoint) => ({ lat: point.lat, lon: point.lng });
+
+	return {
+		async route({ origin, destination, profile }) {
+			assertPoints([origin, destination]);
+			const data = await request("route", {
+				locations: [location(origin), location(destination)],
+				costing: costing(profile),
+				format: "osrm",
+				shape_format: "geojson",
+				directions_type: "none",
+			});
+			if (data.code !== "Ok") throw new RoutingUnavailableError();
+			return routeOf(data, origin, destination, "valhalla");
+		},
+		async matrix({ origins, destinations, profile }) {
+			assertMatrixPoints(origins, destinations);
+			const data = await request("sources_to_targets", {
+				sources: origins.map(location),
+				targets: destinations.map(location),
+				costing: costing(profile),
+				verbose: false,
+			});
+			return durationsOf(
+				record(data.sources_to_targets)?.durations,
+				origins.length,
+				destinations.length,
+			);
+		},
+	};
+}
+
+/** Misconfigured providers fail closed rather than silently using a different graph. */
+export function createRouting(input: {
+	baseUrl: string;
+	provider?: string;
+	fetcher?: (url: URL, init: RequestInit) => Promise<Response>;
+	timeoutMs?: number;
+}): RoutingPort {
+	if (input.provider === undefined || input.provider === "osrm")
+		return createOsrmRouting(input);
+	if (input.provider === "valhalla") return createValhallaRouting(input);
+	throw new RoutingUnavailableError("Unsupported routing provider");
 }

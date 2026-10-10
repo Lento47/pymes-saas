@@ -7,7 +7,7 @@ import type { Env } from "../env";
 import { ConflictError, ValidationError } from "../errors";
 import { EXPRESS_V1, routeFeeMinor } from "./delivery-pricing";
 import type { UserContext } from "./helpers";
-import { createOsrmRouting, type GeoPoint, type RouteResult } from "./routing";
+import { createRouting, type GeoPoint, type RouteResult } from "./routing";
 
 const QUOTE_TTL_MS = 2 * 60 * 1000;
 type QuoteRow = typeof quoteTable.$inferSelect;
@@ -147,8 +147,9 @@ export async function createRoadQuote(
 	let route: RouteResult;
 	const startedAt = Date.now();
 	try {
-		route = await createOsrmRouting({
+		route = await createRouting({
 			baseUrl: ctx.env.ROUTING_BASE_URL,
+			provider: ctx.env.ROUTING_PROVIDER,
 		}).route({
 			origin: input.consistentOrigin,
 			destination: input.consistentDestination,
@@ -197,6 +198,7 @@ export async function createRoadQuote(
 	await ctx.db.insert(quoteTable).values(row);
 	ctx.logger.info("routing.quote.ok", {
 		pricingVersion: input.pricingVersion,
+		provider: route.provider,
 		providerLatencyMs,
 		distanceMeters: route.distanceMeters,
 		durationSeconds: route.durationSeconds,

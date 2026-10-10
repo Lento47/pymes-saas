@@ -1,6 +1,6 @@
 import { haversineKm } from "@pymeshub/db/geo";
 
-import { createOsrmRouting, type GeoPoint } from "../src/services/routing";
+import { createRouting, type GeoPoint } from "../src/services/routing";
 
 // Public city-centre samples only. Replace these with locally checked street pins
 // before making a pricing decision; never put customer addresses in this file.
@@ -30,7 +30,19 @@ if (!baseUrl) {
 	process.exit(2);
 }
 
-const routing = createOsrmRouting({ baseUrl });
+const routing = createRouting({
+	baseUrl,
+	provider: process.env.ROUTING_PROVIDER,
+	fetcher: (url, init) => {
+		const headers = new Headers(init.headers);
+		headers.set(
+			"User-Agent",
+			"PymesHub-routing-evaluation/1.0 (github.com/Lento47/pymes-saas)",
+		);
+		headers.set("X-Client-Id", "PymesHub-routing-evaluation");
+		return fetch(url, { ...init, headers });
+	},
+});
 let failures = 0;
 const latencies: number[] = [];
 const routeDurations = new Map<string, number>();
@@ -74,22 +86,22 @@ for (const trip of trips) {
 
 const matrixStartedAt = performance.now();
 try {
+	const urbanTrip = trips[0];
+	if (!urbanTrip) throw new Error("No urban sample trip configured");
 	const durations = await routing.matrix({
-		origins: trips.map((trip) => trip.origin),
-		destinations: trips.map((trip) => trip.destination),
+		origins: [urbanTrip.origin],
+		destinations: [urbanTrip.destination, { lat: 9.939, lng: -84.051 }],
 		profile: "car",
 	});
-	const diagonal = durations.map((row, index) => row[index]);
+	const nearby = durations[0];
+	const routeDuration = routeDurations.get(urbanTrip.name);
 	if (
-		diagonal.some((duration, index) => {
-			const routeDuration = routeDurations.get(trips[index]?.name ?? "");
-			return (
-				duration == null ||
-				(routeDuration !== undefined &&
-					Math.abs(duration - routeDuration) >
-						Math.max(60, routeDuration * 0.2))
-			);
-		})
+		nearby?.length !== 2 ||
+		nearby.some((duration) => duration === null) ||
+		(routeDuration !== undefined &&
+			nearby[0] !== null &&
+			nearby[0] !== undefined &&
+			Math.abs(nearby[0] - routeDuration) > Math.max(60, routeDuration * 0.2))
 	) {
 		throw new Error("Unreachable or inconsistent sample trip in matrix");
 	}
@@ -98,7 +110,7 @@ try {
 			check: "matrix",
 			status: "ok",
 			latencyMs: Math.round(performance.now() - matrixStartedAt),
-			matchedTrips: diagonal.length,
+			reachableTargets: nearby.length,
 		}),
 	);
 } catch (error) {

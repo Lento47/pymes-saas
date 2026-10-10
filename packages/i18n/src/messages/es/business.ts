@@ -841,6 +841,8 @@ export const business = {
 	"biz.promotions.kind.PERCENT": "Porcentaje",
 	"biz.promotions.kind.FIXED": "Monto fijo",
 	"biz.promotions.kind.FREE_DELIVERY": "Envío gratis",
+	"biz.promotions.freeDelivery.payer":
+		"Tu negocio cubre el pago al repartidor cuando los clientes usan este código.",
 	"biz.promotions.value": "Descuento",
 	"biz.promotions.value.percent": "Del 1 al 100",
 	"biz.promotions.value.fixed": "En la moneda de tu negocio",

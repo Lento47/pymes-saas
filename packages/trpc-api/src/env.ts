@@ -78,8 +78,10 @@ export type Env = {
 	LOG_LEVEL?: LogLevel;
 	/** Comma-separated origins allowed to call this API from a browser. */
 	CORS_ORIGINS?: string;
-	/** Operator-controlled HTTPS OSRM endpoint; never a public demo server. */
+	/** Operator-controlled HTTPS routing endpoint; never a public demo server. */
 	ROUTING_BASE_URL?: string;
+	/** `osrm` (default) or `valhalla`; a typo fails closed when routing is used. */
+	ROUTING_PROVIDER?: string;
 	/** Fetch road geometry without changing the legacy delivery fee. */
 	ROUTING_ENABLED?: string;
 	/** Road-priced CRC deliveries are opt-in; absent or false keeps the legacy fee. */

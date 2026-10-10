@@ -33,7 +33,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import type { Env } from "../env";
 import { createLogger } from "../logging";
 import { batchOf } from "./helpers";
-import { createOsrmRouting, type GeoPoint } from "./routing";
+import { createRouting, type GeoPoint } from "./routing";
 
 const PRESENCE_FRESH_MS = 2 * 60 * 1000;
 const OFFER_TTL_MS = 2 * 60 * 1000;
@@ -423,8 +423,9 @@ async function candidateFor(
 		if (env.ROUTING_BASE_URL && closest.length > 0) {
 			const startedAt = Date.now();
 			try {
-				const durations = await createOsrmRouting({
+				const durations = await createRouting({
 					baseUrl: env.ROUTING_BASE_URL,
+					provider: env.ROUTING_PROVIDER,
 				}).matrix({
 					origins: closest.map((candidate) => candidate.livePoint as GeoPoint),
 					destinations: [origin],

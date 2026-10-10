@@ -421,7 +421,11 @@ function Fields({
 
 						{/* Hidden rather than disabled when the kind has no number to give:
 						    a box that cannot be filled is a question the form should not ask. */}
-						{draft.kind !== "FREE_DELIVERY" ? (
+						{draft.kind === "FREE_DELIVERY" ? (
+							<Text variant="caption" tone="muted">
+								{t("biz.promotions.freeDelivery.payer")}
+							</Text>
+						) : (
 							<Field
 								label={t("biz.promotions.value")}
 								value={draft.value}
@@ -445,7 +449,7 @@ function Fields({
 								}
 								inputMode={draft.kind === "PERCENT" ? "numeric" : "decimal"}
 							/>
-						) : null}
+						)}
 
 						<Field
 							label={t("biz.promotions.minOrder")}
@@ -483,9 +487,7 @@ function Fields({
 							label={t("biz.promotions.description")}
 							value={draft.description}
 							onChangeText={(next) =>
-								edited(() =>
-									setDraft((was) => ({ ...was, description: next })),
-								)
+								edited(() => setDraft((was) => ({ ...was, description: next })))
 							}
 							error={submitted ? (problems.description ?? null) : null}
 							help={t("biz.promotions.description.help", {

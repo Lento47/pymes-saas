@@ -340,6 +340,7 @@ routes = [{ pattern = "api-staging.pymeshub.lat", custom_domain = true }]
 [env.staging.vars]
 ENVIRONMENT = "staging"
 API_VERSION = "0.2.0"
+LOG_LEVEL = "info"
 AUTH_URL = "https://api-staging.pymeshub.lat"
 CORS_ORIGINS = "https://staging.pymeshub.lat"
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
@@ -397,6 +398,7 @@ routes = [{ pattern = "api.pymeshub.lat/*", zone_name = "pymeshub.lat" }]
 [env.production.vars]
 ENVIRONMENT = "production"
 API_VERSION = "0.2.0"
+LOG_LEVEL = "error"
 AUTH_URL = "https://api.pymeshub.lat"
 CORS_ORIGINS = "https://pymeshub.lat,https://www.pymeshub.lat"
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"

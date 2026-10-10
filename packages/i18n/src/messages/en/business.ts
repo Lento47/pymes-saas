@@ -776,6 +776,8 @@ export const business = {
 	"biz.promotions.kind.PERCENT": "Percentage",
 	"biz.promotions.kind.FIXED": "Fixed amount",
 	"biz.promotions.kind.FREE_DELIVERY": "Free delivery",
+	"biz.promotions.freeDelivery.payer":
+		"Your shop covers the courier fee when customers use this code.",
 	"biz.promotions.value": "Discount",
 	"biz.promotions.value.percent": "1 to 100",
 	"biz.promotions.value.fixed": "In your shop's currency",
