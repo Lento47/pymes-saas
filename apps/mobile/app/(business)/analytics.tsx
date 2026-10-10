@@ -47,9 +47,11 @@ import {
  * hero — and everything else takes its structure from type, alignment and hairlines:
  *
  * - the nine figures sit in a 3×3 matrix divided by internal rules, not nine tiles;
+ * - a mix strip reads completed / cancelled / in-progress from the same payload;
  * - the plot is bare: three gridlines, bars, axis labels, and no container around it;
- * - best sellers are a bordered list, and an empty section takes *less* height than a
- *   populated one, so a quiet shop's dashboard reads as quiet rather than broken.
+ * - the busiest bucket is named under the plot, derived from `ordersByDay`;
+ * - best sellers are a bordered list with a share bar, and an empty section takes *less*
+ *   height than a populated one, so a quiet shop's dashboard reads as quiet rather than broken.
  *
  * The period control is one button that opens a sheet of the four units the API buckets
  * at — hours, days, months, years — rather than three hardcoded day pills. There is no
@@ -277,6 +279,7 @@ export default function AnalyticsScreen() {
 
 	const money = (minor: number): string =>
 		formatMoney(minor, data.currency, { locale: intlLocale });
+	const peakQuantity = data.topProducts[0]?.quantity ?? 0;
 	// The figures' identity, for entrance purposes: when a fresh window lands, each block
 	// remounts under `AnimateIn` and crossfades where it stands. The chrome above — the
 	// picker and the period button — is outside every keyed block, so a period change is
@@ -302,7 +305,14 @@ export default function AnalyticsScreen() {
 		{
 			key: "repeat",
 			label: t("biz.analytics.repeat"),
-			value: String(data.customers.repeat),
+			value:
+				data.customers.total === 0
+					? String(data.customers.repeat)
+					: `${data.customers.repeat} · ${t("biz.analytics.repeatShare", {
+							percent: Math.round(
+								(data.customers.repeat / data.customers.total) * 100,
+							),
+						})}`,
 		},
 		{
 			key: "accepted",
@@ -442,9 +452,36 @@ export default function AnalyticsScreen() {
 					</View>
 				</AnimateIn>
 
+				<AnimateIn key={`${figuresKey}:mix`} index={2}>
+					<SectionHeader
+						title={t("biz.analytics.mix")}
+						style={styles.sectionToContent}
+					/>
+					<StatRow
+						cells={[
+							{
+								key: "completed",
+								label: t("biz.analytics.completed"),
+								value: String(data.orders.completed),
+							},
+							{
+								key: "cancelled",
+								label: t("biz.analytics.cancelled"),
+								value: String(data.orders.cancelled),
+							},
+							{
+								key: "active",
+								label: t("biz.analytics.active"),
+								value: String(data.orders.active),
+							},
+						]}
+						borderColor={colors.border}
+					/>
+				</AnimateIn>
+
 				<AnimateIn
 					key={`${figuresKey}:chart`}
-					index={2}
+					index={3}
 					style={styles.chartSection}
 				>
 					<SectionHeader
@@ -460,9 +497,14 @@ export default function AnalyticsScreen() {
 							granularity={granularity}
 						/>
 					)}
+					<PeakBucket
+						buckets={data.ordersByDay}
+						currency={data.currency}
+						granularity={granularity}
+					/>
 				</AnimateIn>
 
-				<AnimateIn key={`${figuresKey}:products`} index={3}>
+				<AnimateIn key={`${figuresKey}:products`} index={4}>
 					<SectionHeader
 						title={t("biz.insight.topProduct")}
 						style={styles.sectionToContent}
@@ -485,28 +527,50 @@ export default function AnalyticsScreen() {
 								</Text>
 							</View>
 						) : (
-							data.topProducts.map((product, index) => (
-								<View
-									key={product.productId}
-									style={[
-										styles.product,
-										index > 0 && {
-											borderTopWidth: StyleSheet.hairlineWidth,
-											borderTopColor: colors.border,
-										},
-									]}
-								>
-									<View style={styles.productCopy}>
-										<Text bold>{product.name}</Text>
-										<Text variant="caption" tone="muted">
-											{tp("biz.analytics.sold", product.quantity)}
+							data.topProducts.map((product, index) => {
+								const share =
+									peakQuantity === 0
+										? 0
+										: Math.round((product.quantity / peakQuantity) * 100);
+								return (
+									<View
+										key={product.productId}
+										style={[
+											styles.product,
+											index > 0 && {
+												borderTopWidth: StyleSheet.hairlineWidth,
+												borderTopColor: colors.border,
+											},
+										]}
+									>
+										<View style={styles.productCopy}>
+											<Text bold>{product.name}</Text>
+											<Text variant="caption" tone="muted">
+												{tp("biz.analytics.sold", product.quantity)}
+											</Text>
+											<View
+												style={[
+													styles.shareTrack,
+													{ backgroundColor: colors.muted },
+												]}
+											>
+												<View
+													style={[
+														styles.shareFill,
+														{
+															width: `${share}%`,
+															backgroundColor: colors.foreground,
+														},
+													]}
+												/>
+											</View>
+										</View>
+										<Text tabular bold style={styles.productRevenue}>
+											{money(product.revenueMinor)}
 										</Text>
 									</View>
-									<Text tabular bold>
-										{money(product.revenueMinor)}
-									</Text>
-								</View>
-							))
+								);
+							})
 						)}
 					</View>
 				</AnimateIn>
@@ -581,7 +645,7 @@ function RevenueBars({
 	currency: BusinessAnalytics["currency"];
 	granularity: Granularity;
 }) {
-	const { t, intlLocale } = useT();
+	const { t, tp, intlLocale } = useT();
 	const { colors } = useTheme();
 	const [width, setWidth] = useState(0);
 	const [selected, setSelected] = useState<number | null>(null);
@@ -639,6 +703,7 @@ function RevenueBars({
 										amount: formatMoney(bucket.revenueMinor, currency, {
 											locale: intlLocale,
 										}),
+										orders: tp("biz.analytics.chartOrders", bucket.orderCount),
 									})}
 									accessibilityRole="button"
 									accessibilityState={{ selected: isSelected }}
@@ -699,6 +764,9 @@ function RevenueBars({
 								{formatMoney(active.revenueMinor, currency, {
 									locale: intlLocale,
 								})}
+							</Text>
+							<Text variant="caption" tone="muted">
+								{tp("biz.analytics.chartOrders", active.orderCount)}
 							</Text>
 						</View>
 					</>
@@ -859,6 +927,98 @@ function metricRules(column: number, row: number, borderColor: string) {
 	];
 }
 
+/**
+ * The bucket with the most orders. Ties keep the earlier column, which is the first
+ * time that load happened in the window rather than a later repeat of the same count.
+ */
+function peakBucketOf(
+	buckets: BusinessAnalytics["ordersByDay"],
+): BusinessAnalytics["ordersByDay"][number] | null {
+	if (buckets.length === 0) return null;
+	return buckets.reduce((best, bucket) =>
+		bucket.orderCount > best.orderCount ? bucket : best,
+	);
+}
+
+function PeakBucket({
+	buckets,
+	currency,
+	granularity,
+}: {
+	buckets: BusinessAnalytics["ordersByDay"];
+	currency: BusinessAnalytics["currency"];
+	granularity: Granularity;
+}) {
+	const { t, tp, intlLocale } = useT();
+	const peak = peakBucketOf(buckets);
+	if (peak === null || peak.orderCount === 0) return null;
+
+	return (
+		<View style={styles.peak}>
+			<Text variant="caption" tone="muted">
+				{t("biz.analytics.peak")}
+			</Text>
+			<Text variant="label" bold>
+				{bucketLabel(peak.day, "long", granularity, intlLocale)}
+			</Text>
+			<Text variant="caption" tone="muted">
+				{`${tp("biz.analytics.chartOrders", peak.orderCount)} · ${formatMoney(
+					peak.revenueMinor,
+					currency,
+					{ locale: intlLocale },
+				)}`}
+			</Text>
+		</View>
+	);
+}
+
+function StatRow({
+	cells,
+	borderColor,
+}: {
+	cells: { key: string; label: string; value: string }[];
+	borderColor: string;
+}) {
+	return (
+		<View
+			style={[
+				styles.statRow,
+				{ borderTopColor: borderColor, borderBottomColor: borderColor },
+			]}
+		>
+			{cells.map((cell, index) => (
+				<View
+					key={cell.key}
+					style={[
+						styles.metric,
+						index > 0 && styles.metricIndented,
+						index < cells.length - 1
+							? {
+									borderRightWidth: StyleSheet.hairlineWidth,
+									borderRightColor: borderColor,
+								}
+							: null,
+					]}
+				>
+					<Text variant="caption" tone="muted">
+						{cell.label}
+					</Text>
+					<Text
+						variant="heading"
+						bold
+						tabular
+						numberOfLines={1}
+						adjustsFontSizeToFit
+						minimumFontScale={0.75}
+					>
+						{cell.value}
+					</Text>
+				</View>
+			))}
+		</View>
+	);
+}
+
 /** One cell: the muted caption over the figure — the anatomy every stat in the app uses. */
 function Metric({
 	label,
@@ -1017,6 +1177,42 @@ function AnalyticsSkeleton({
 					</View>
 				))}
 			</View>
+			<SectionHeader
+				title={t("biz.analytics.mix")}
+				style={styles.sectionToContent}
+			/>
+			<View
+				style={[
+					styles.statRow,
+					{
+						borderTopColor: colors.border,
+						borderBottomColor: colors.border,
+					},
+				]}
+			>
+				{(["completed", "cancelled", "active"] as const).map((cell, index) => (
+					<View
+						key={cell}
+						style={[
+							styles.metric,
+							index > 0 && styles.metricIndented,
+							index < 2
+								? {
+										borderRightWidth: StyleSheet.hairlineWidth,
+										borderRightColor: colors.border,
+									}
+								: null,
+						]}
+					>
+						<Skeleton
+							style={[styles.skeletonMeta, line("caption", fontScale)]}
+						/>
+						<Skeleton
+							style={[styles.skeletonValue, line("heading", fontScale)]}
+						/>
+					</View>
+				))}
+			</View>
 			<SectionHeader title={chartTitle} style={styles.sectionToContent} />
 			<View style={styles.plot}>
 				{GRID_RATIOS.map((ratio) => (
@@ -1114,6 +1310,26 @@ const styles = StyleSheet.create({
 		gap: space.xs,
 	},
 	metricIndented: { paddingLeft: space.md },
+	statRow: {
+		flexDirection: "row",
+		marginBottom: space.xxl,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	peak: {
+		marginTop: space.md,
+		gap: TEXT_STACK_GAP,
+	},
+	shareTrack: {
+		height: 4,
+		borderRadius: radius.full,
+		overflow: "hidden",
+		marginTop: space.xs,
+	},
+	shareFill: {
+		height: "100%",
+		borderRadius: radius.full,
+	},
 	// 24 points before the chart section: the rhythm spec §26 states between major
 	// sections, kept by the block rather than by a parent gap so each section can move
 	// without renegotiating its neighbours.
@@ -1201,10 +1417,11 @@ const styles = StyleSheet.create({
 	},
 	product: {
 		flexDirection: "row",
-		alignItems: "center",
+		alignItems: "flex-start",
 		paddingVertical: space.md,
 		paddingHorizontal: space.xs,
 		gap: space.md,
 	},
-	productCopy: { flex: 1, gap: TEXT_STACK_GAP },
+	productCopy: { flex: 1, minWidth: 0, gap: TEXT_STACK_GAP },
+	productRevenue: { flexShrink: 0 },
 });

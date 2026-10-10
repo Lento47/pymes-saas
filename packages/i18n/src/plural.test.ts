@@ -116,6 +116,18 @@ describe("on a runtime without the Intl members Hermes is missing", () => {
 		expect(en.tp("store.rating.count", 128)).toBe("128 reviews");
 	});
 
+	test("analytics sold copy fills the count, not a leftover {quantity}", () => {
+		const es = createTranslator("es");
+		expect(es.tp("biz.analytics.sold", 1)).toBe("1 vendido");
+		expect(es.tp("biz.analytics.sold", 12)).toBe("12 vendidos");
+		expect(es.tp("biz.analytics.sold", 12)).not.toContain("{quantity}");
+		expect(es.tp("biz.analytics.sold", 12)).not.toContain("{count}");
+
+		const en = createTranslator("en");
+		expect(en.tp("biz.analytics.sold", 1)).toBe("1 sold");
+		expect(en.tp("biz.analytics.sold", 12)).toBe("12 sold");
+	});
+
 	test("every locale renders a count with no Intl at all", () => {
 		// Both locales, not just the default: the locale that is not the developer's is
 		// the one that gets exercised least, and it is the same code path either way.

@@ -937,7 +937,12 @@ export default function MerchantHome() {
 								items={[
 									{
 										label: t("biz.dashboard.topProducts"),
-										value: analytics.data.topProducts[0]?.name ?? null,
+										value: analytics.data.topProducts[0]
+											? `${analytics.data.topProducts[0].name} · ${tp(
+													"biz.analytics.sold",
+													analytics.data.topProducts[0].quantity,
+												)}`
+											: null,
 									},
 									{
 										label: t("biz.insight.avgPreparation"),
