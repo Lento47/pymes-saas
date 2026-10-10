@@ -12,6 +12,11 @@ The Worker needs an operator-controlled HTTPS OSRM driving endpoint in
 2. Check real Costa Rican routes, including coastal, rural, one-way, and long trips.
    Compare pickup and destination pins with the road shape, check latency and failure
    rate, and verify the customer, merchant, and courier maps on native devices.
+   From `packages/trpc-api`, run `bun run audit:routing` with `ROUTING_BASE_URL` set
+   in the environment. Its public sample pins exercise routes and a matrix through
+   the production adapter; inspect the output and replace the sample pins with
+   locally verified street pins before judging coverage. It reports no private
+   addresses or endpoint URL. A passing audit does not replace on-map inspection.
    Set staging `LOG_LEVEL=info` to observe `routing.quote.ok` latency and
    `routing.quote.unavailable` failures, plus `routing.matrix.ok` and
    `routing.matrix.degraded` during affinity testing. These events contain counts and

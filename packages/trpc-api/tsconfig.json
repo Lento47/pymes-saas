@@ -5,6 +5,11 @@
 		"types": ["@cloudflare/workers-types", "bun"],
 		"noEmit": true
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts", "wrangler.toml"],
+	"include": [
+		"src/**/*.ts",
+		"test/**/*.ts",
+		"scripts/**/*.ts",
+		"wrangler.toml"
+	],
 	"exclude": ["node_modules", "dist"]
 }

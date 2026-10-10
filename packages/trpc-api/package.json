@@ -9,6 +9,7 @@
 	},
 	"scripts": {
 		"build": "wrangler deploy --dry-run --env production --outdir dist",
+		"audit:routing": "bun scripts/audit-routing.ts",
 		"check-types": "tsc --noEmit",
 		"deploy": "wrangler deploy --env production",
 		"deploy:staging": "wrangler deploy --env staging",
