@@ -99,6 +99,14 @@ export const deliveryDetailSchema = z.object({
 		.nullable(),
 	pickup: deliveryStopSchema,
 	dropoff: deliveryStopSchema,
+	/** Present only when checkout stored a validated road route. */
+	routeGeometry: z
+		.object({
+			type: z.literal("LineString"),
+			coordinates: z.array(z.tuple([z.number(), z.number()])),
+		})
+		.nullable()
+		.optional(),
 	orderStatus: z.enum([
 		"PENDING",
 		"ACCEPTED",

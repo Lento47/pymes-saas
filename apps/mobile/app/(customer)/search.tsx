@@ -6,6 +6,7 @@ import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
 import { BusinessCard } from "@/components/business-card";
+import { CategoryGrid } from "@/components/category-grid";
 import { CategoryRail } from "@/components/category-rail";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -16,7 +17,10 @@ import { Screen } from "@/components/screen";
 import { SearchInput } from "@/components/search-input";
 import { Segmented } from "@/components/segmented";
 import { useSkeletonHold } from "@/components/skeleton";
-import { SearchResultsSkeleton } from "@/components/skeletons";
+import {
+	CategoryGridSkeleton,
+	SearchResultsSkeleton,
+} from "@/components/skeletons";
 import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
@@ -63,7 +67,7 @@ import { radius, space, type } from "@/theme";
  * no count.) The running one is `SearchResultsSkeleton` — the count, the switcher and one
  * headed group of product rows, in grey — because the shape of a result list is not a question,
  * and because the field above it stays mounted and usable while it is there. The idle one is
- * the field, the categories heading and the rail under it. Of the four that remain, two are
+ * the field, the categories heading and the 2-up sector grid under it. Of the four that remain, two are
  * sentences with a way out of each — a search the API refused, and a search that matched
  * nothing — and the other two are the list itself, in grey and then in full. (It was five
  * states with four sentences until the idle state stopped being one of them; see the section
@@ -99,12 +103,11 @@ import { radius, space, type } from "@/theme";
  * because the decision belongs to a screen rather than to a store, and Rule 7's table in
  * `docs/design-mobile.md` names the module; that file's entry says where it is read from today.
  *
- * What the state draws instead is the category rail — the same `Group` and the same
- * `./category-rail` the results branch draws, so the two states offer the same way out. It is
- * the right content for *this* state rather than a generic "browse" consolation: the rail is
- * "the one row that says what this marketplace sells" in its own words, it is the entry point
- * the feed already puts first, and every chip is a real page (`/category/[slug]`) with a real
- * list behind it rather than a second empty state.
+ * What the state draws instead is the 2-up sector grid — the same tiles `/categories`
+ * draws, under the same `Group` heading, so the tab is an index rather than a one-row
+ * rail over empty canvas. Every tile is a real page (`/category/[slug]`). The results
+ * branch still draws `./category-rail` for the categories a *query* matched: that set is
+ * capped and sits under products, so a strip is the right shape there.
  *
  * It costs no new endpoint: `catalog.categories` is a public query that already exists and is
  * already read by a client, and `app/category/[slug]` reads it under the same key, so those
@@ -235,23 +238,21 @@ export default function SearchScreen() {
 	 * fetch per time the reader empties the box, in exchange for nothing.
 	 *
 	 * `rail` is every active *sector* — the taxonomy's first level, and only that. The read
-	 * returns both levels (18 sectors and their 224 children), and this state's rail is a
-	 * strip: 242 chips is a row nobody reaches the end of, and the second level sitting
-	 * among the first reads as more of the same. The children are one tap in, on the
-	 * sector's own page. Filtering here rather than in `./category-rail` is deliberate: the
-	 * *results* rail below draws the categories a query matched, and a child that matched a
-	 * typed word is a real answer — see that component's docblock. Filtering here also
-	 * keeps the heading's count equal to the chips under it.
+	 * returns both levels (18 sectors and their 224 children), and this state's grid is
+	 * that first level: 242 tiles two-up would mix children among sectors. The children
+	 * are one tap in, on the sector's own page. Filtering here rather than in
+	 * `./category-grid` keeps the heading's count equal to the tiles under it. The
+	 * *results* rail below still draws the categories a query matched, and a child that
+	 * matched a typed word is a real answer.
 	 *
 	 * The `categories` this screen later takes from the search response are the ones a
 	 * *query* matched, which is a different set with a different meaning, so the two are
 	 * named apart.
 	 *
-	 * A failure draws no rail rather than an error state, and that is the honest rendering of
-	 * it: the rail is an addition to a screen that was already complete without it, and
-	 * `./category-rail` returns `null` for an empty list so there is no heading left over a
-	 * shrug. `app/category/[slug].tsx` draws the failure because there the same read *is* the
-	 * page — it is the authority on whether the slug exists at all.
+	 * A failure on idle is an `ErrorState`: the grid is now the page under the field, so a
+	 * silent fail is an empty tab. `./category-grid` returns `null` for an empty list so
+	 * there is no heading left over a shrug. `app/category/[slug].tsx` still draws the
+	 * failure for a slug that does not exist.
 	 */
 	const allCategories = useQuery(trpc.catalog.categories.queryOptions());
 	const rail = (allCategories.data ?? []).filter(
@@ -262,6 +263,7 @@ export default function SearchScreen() {
 	// which on this screen is the common case, because the second search for the same word
 	// is a cache hit.
 	const waiting = useSkeletonHold(results.isPending);
+	const taxonomyWaiting = useSkeletonHold(allCategories.isPending);
 
 	const products = results.data?.products ?? [];
 	const businesses = results.data?.businesses ?? [];
@@ -372,58 +374,28 @@ export default function SearchScreen() {
 					]}
 					keyboardShouldPersistTaps="handled"
 					scrollIndicatorInsets={{ bottom: 0 }}
-					// The rail scrolls rather than sitting under a keyboard-anchored list: with
-					// the keyboard open, `automaticallyAdjustKeyboardInsets` is what keeps the
-					// chips above it on iOS, and Android's resized window does the same without
-					// being asked (`components/screen.tsx` has the evidence).
+					// The grid scrolls under the keyboard: with it open,
+					// `automaticallyAdjustKeyboardInsets` keeps the tiles above it on iOS, and
+					// Android's resized window does the same without being asked
+					// (`components/screen.tsx` has the evidence).
 					automaticallyAdjustKeyboardInsets={
 						Platform.OS === "ios" ? true : undefined
 					}
 				>
-					{/* The whole of this state, which is the whole of this screen on a fresh
-					    install: the same `Group` and the same rail the results branch draws,
-					    because it is the same set of categories — this branch reads them from
-					    `catalog.categories` rather than from a search response it does not have.
-
-					    Nothing is drawn when the categories are empty or still on the way —
-					    `./category-rail` returns `null` for the empty list, and a heading over a
-					    rail that is not there is a heading with a shrug under it. Nothing is
-					    drawn when the read *fails* either, which is the honest rendering: the
-					    rail is an addition to a screen that is complete without it, and
-					    `app/category/[slug]` is where the same read *is* the page and therefore
-					    where its failure is drawn.
-
-					    No wrapper and no inset of its own: the rail pays `space.lg` on its own
-					    scroll's content (`./category-rail`'s `rail` style), and this screen is
-					    `padded={false}`, so a wrapper here would double it. `Group`'s head pays
-					    the same step, which is what `Group` exists for on this screen.
-
-					    ## The action, and why this branch is the only place it belongs
-
-					    A rail is a shortcut, not an index: it shows the first categories the
-					    taxonomy has and hides the rest behind a gesture nobody is told about.
-					    `app/categories` is the index — every active category as a 2-up grid —
-					    and this head is its way in, in the same `{label, onPress}` shape and
-					    under the same `action.viewAll` label the feed's own category heading
-					    carries for the same jump. So the label is a landed key and not a
-					    sentence written here (Rule 8).
-
-					    The results branch's categories `Group` deliberately has none, and the
-					    difference is the whole reason: those are the categories a *query*
-					    matched, and a "Ver todo" beside them would promise every one of them
-					    and deliver a different set — the taxonomy. A link whose count and
-					    whose destination disagree is worse than no link. The matched-business
-					    group likewise offers no link to the unrelated nearby list. */}
-					{rail.length > 0 ? (
-						<Group
-							title={t("search.categories")}
-							count={rail.length}
-							action={{
-								label: t("action.viewAll"),
-								onPress: () => router.push("/categories"),
-							}}
-						>
-							<CategoryRail categories={rail} />
+					{allCategories.isError ? (
+						<View style={styles.stateWrap}>
+							<ErrorState
+								error={allCategories.error}
+								onRetry={() => void allCategories.refetch()}
+							/>
+						</View>
+					) : taxonomyWaiting || !allCategories.data ? (
+						<Group title={t("search.categories")}>
+							<CategoryGridSkeleton />
+						</Group>
+					) : rail.length > 0 ? (
+						<Group title={t("search.categories")} count={rail.length}>
+							<CategoryGrid items={rail} />
 						</Group>
 					) : null}
 				</ScrollView>

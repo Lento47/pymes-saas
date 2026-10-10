@@ -32,6 +32,13 @@ describe("search purchase focus", () => {
 		expect(search).not.toContain("shopsAction");
 	});
 
+	test("idle search fills with the sector grid, not a one-row rail", () => {
+		expect(search).toContain("<CategoryGrid items={rail}");
+		expect(search).toContain("<CategoryRail categories={categories}");
+		expect(search).not.toContain("<CategoryRail categories={rail}");
+		expect(search).not.toContain('router.push("/categories")');
+	});
+
 	test("the loading state begins with product rows too", () => {
 		expect(resultsSkeleton).toContain("<RowBlock key={index} />");
 		expect(resultsSkeleton).not.toContain("<CardBlock key={index} />");

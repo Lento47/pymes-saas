@@ -705,6 +705,7 @@ async function readDetail(
 				order: {
 					reference: orderTable.reference,
 					status: orderTable.status,
+					routeGeometry: orderTable.routeGeometry,
 					totalMinor: orderTable.totalMinor,
 					currency: orderTable.currency,
 				},
@@ -777,6 +778,7 @@ async function readDetail(
 		courier: courier[0] ?? null,
 		pickup: pickupOf(row.delivery),
 		dropoff: dropoffOf(row.delivery),
+		routeGeometry: row.order.routeGeometry,
 		orderStatus: row.order.status,
 		totalMinor: row.order.totalMinor,
 		currency: row.order.currency,

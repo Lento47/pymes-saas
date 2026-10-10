@@ -325,6 +325,7 @@ export function MapView({
 	// `return null` sits under it and the order has to be the same on every render.
 	const focused = useIsFocused();
 	const cameraRef = useRef<CameraRef>(null);
+	const lastFittedBounds = useRef<string | null>(null);
 	const [mapReady, setMapReady] = useState(false);
 	const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
 	const radiusLat = marker?.lat ?? coords?.lat;
@@ -340,17 +341,52 @@ export function MapView({
 		[radiusLat, radiusLng, radiusKm],
 	);
 	const radiusBounds = useMemo(() => radiusPolygonBounds(radius), [radius]);
+	const pickupLat = route?.pickup.lat;
+	const pickupLng = route?.pickup.lng;
+	const destinationLat = route?.destination.lat;
+	const destinationLng = route?.destination.lng;
+	const routeGeometry = route?.geometry;
+	const routeBounds = useMemo(() => {
+		if (
+			pickupLat === undefined ||
+			pickupLng === undefined ||
+			destinationLat === undefined ||
+			destinationLng === undefined
+		)
+			return null;
+		const endpoints: [number, number][] = [
+			[pickupLng, pickupLat],
+			[destinationLng, destinationLat],
+		];
+		const points = routeGeometry?.coordinates.length
+			? [...endpoints, ...routeGeometry.coordinates]
+			: endpoints;
+		const longitudes = points.map(([lng]) => lng);
+		const latitudes = points.map(([, lat]) => lat);
+		const bounds = [
+			Math.min(...longitudes),
+			Math.min(...latitudes),
+			Math.max(...longitudes),
+			Math.max(...latitudes),
+		] as [number, number, number, number];
+		return bounds.every(Number.isFinite) &&
+			(bounds[0] !== bounds[2] || bounds[1] !== bounds[3])
+			? bounds
+			: null;
+	}, [pickupLat, pickupLng, destinationLat, destinationLng, routeGeometry]);
+	const visibleBounds = (fitRadius && radiusBounds) || routeBounds;
 
 	useEffect(() => {
-		if (
-			!fitRadius ||
-			!mapReady ||
-			!mapSize.width ||
-			!mapSize.height ||
-			!radiusBounds
-		)
+		if (!mapReady || !mapSize.width || !mapSize.height || !visibleBounds)
 			return;
-		cameraRef.current?.fitBounds(radiusBounds, {
+		// Polling can return a new geometry object with the same extent. Preserve the
+		// reader's pan/zoom unless the actual route extent or map size changed.
+		const fitKey = `${mapSize.width}:${mapSize.height}:${visibleBounds.join(":")}`;
+		if (lastFittedBounds.current === fitKey) return;
+		const camera = cameraRef.current;
+		if (!camera) return;
+		lastFittedBounds.current = fitKey;
+		camera.fitBounds(visibleBounds, {
 			padding: {
 				top: RADIUS_CAMERA_PADDING,
 				right: RADIUS_CAMERA_PADDING,
@@ -360,33 +396,11 @@ export function MapView({
 			duration: 250,
 			easing: "ease",
 		});
-	}, [fitRadius, mapReady, mapSize.width, mapSize.height, radiusBounds]);
+	}, [mapReady, mapSize.width, mapSize.height, visibleBounds]);
 
 	// Read before the guard rather than after it, so the three reasons to draw nothing are one
 	// `if`: no style, no coordinate, or no MapLibre in this binary.
 	const MapLibre = loadMapLibre();
-	const routeBounds = route
-		? (() => {
-				const endpoints: [number, number][] = [
-					[route.pickup.lng, route.pickup.lat],
-					[route.destination.lng, route.destination.lat],
-				];
-				const points: [number, number][] = route.geometry?.coordinates.length
-					? route.geometry.coordinates
-					: endpoints;
-				const longitudes = points.map(([lng]) => lng);
-				const latitudes = points.map(([, lat]) => lat);
-				const west = Math.min(...longitudes);
-				const south = Math.min(...latitudes);
-				const east = Math.max(...longitudes);
-				const north = Math.max(...latitudes);
-				return [west, south, east, north].every(Number.isFinite) &&
-					(west !== east || south !== north)
-					? ([west, south, east, north] as [number, number, number, number])
-					: null;
-			})()
-		: null;
-	const visibleBounds = (fitRadius && radiusBounds) || routeBounds;
 	const mapCenter = route
 		? {
 				lat: (route.pickup.lat + route.destination.lat) / 2,
@@ -419,7 +433,7 @@ export function MapView({
 		<View
 			style={[styles.band, { borderColor: colors.border }, style]}
 			onLayout={
-				fitRadius
+				fitRadius || route
 					? (event) => {
 							const { width, height } = event.nativeEvent.layout;
 							setMapSize((previous) =>
@@ -433,7 +447,9 @@ export function MapView({
 		>
 			<MapLibreMap
 				mapStyle={mapStyleUrl}
-				onDidFinishLoadingMap={fitRadius ? () => setMapReady(true) : undefined}
+				onDidFinishLoadingMap={
+					fitRadius || route ? () => setMapReady(true) : undefined
+				}
 				// Android draws into a `SurfaceView` by default, and a `SurfaceView` is
 				// composited *below* the window rather than into it — so the band's
 				// `overflow: "hidden"` cannot clip it and the corners would come out square

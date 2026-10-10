@@ -633,6 +633,40 @@ describe("a courier the shop never added", () => {
 		test.close();
 	});
 
+	test("shows the stored road route to the courier carrying the delivery", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "courier_route");
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_delivery_courier_route",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		const order = await placeDelivery(ready, "courier_route");
+		const geometry = {
+			type: "LineString" as const,
+			coordinates: [
+				[-84.08, 9.93],
+				[-84.079, 9.931],
+			] as [number, number][],
+		};
+		await test.db
+			.update(orderTable)
+			.set({ routeGeometry: geometry })
+			.where(eq(orderTable.id, order.id));
+		const caller = appRouter.createCaller(
+			await authed(test, courier.user),
+		) as Caller;
+		const [offer] = await caller.deliveries.offers();
+		if (!offer) throw new Error("Courier received no offer");
+		const accepted = await caller.deliveries.acceptOffer({ offerId: offer.id });
+		expect(accepted.routeGeometry).toEqual(geometry);
+		expect(
+			(await caller.deliveries.byId({ deliveryId: accepted.id })).routeGeometry,
+		).toEqual(geometry);
+		test.close();
+	});
+
 	/**
 	 * The security property, and the reason the membership could not simply be deleted from
 	 * `actorFor` instead of replaced.

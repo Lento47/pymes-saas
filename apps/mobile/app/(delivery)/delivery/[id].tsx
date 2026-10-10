@@ -217,7 +217,11 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 					<View style={styles.mapGroup}>
 						<MapView
 							coords={pickupPoint}
-							route={{ pickup: pickupPoint, destination: dropoffPoint }}
+							route={{
+								pickup: pickupPoint,
+								destination: dropoffPoint,
+								geometry: delivery.routeGeometry,
+							}}
 							marker={courierPosition}
 							showUserLocation={false}
 							accessibilityLabel={t("delivery.map.label")}
