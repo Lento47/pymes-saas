@@ -83,6 +83,7 @@ describe("editorial hero copy", () => {
 		expect(hero).toContain("promotions.map");
 		expect(hero).toContain("onMomentumScrollEnd");
 		expect(hero).toContain("rememberOfferSelection");
+		expect(hero).toContain("promotion.description");
 	});
 });
 

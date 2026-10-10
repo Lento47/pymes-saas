@@ -21,7 +21,7 @@ import type { RateLimitRoom } from "./durable/rate-limit-room";
 import type { Env } from "./env";
 import { rateLimitRoomFor } from "./env";
 import { ForbiddenError, RateLimitError, UnauthorizedError } from "./errors";
-import { createLogger, type Logger } from "./logging";
+import { createLogger, LogLevel, type Logger } from "./logging";
 
 /**
  * Who is calling, and what they are allowed to touch.
@@ -276,6 +276,7 @@ export async function createContext({
 		client,
 		environment: env.ENVIRONMENT,
 		version: env.API_VERSION,
+		minLevel: env.LOG_LEVEL as LogLevel | undefined,
 	});
 	const db = createDb(env.DB);
 

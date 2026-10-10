@@ -5,6 +5,7 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { radius, shadow, space, type, useTheme } from "@/theme";
@@ -251,6 +252,11 @@ export function ActionBar({
 	const { colors } = useTheme();
 	const { fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
+	const keyboardHeight = useKeyboardState((state) => state.height);
+	// Keyboard height is measured from the screen floor, so it already covers the home
+	// indicator. Taking the max keeps the closed-keyboard inset and lifts the action
+	// above an open keyboard instead of sitting behind it.
+	const floor = Math.max(insets.bottom, keyboardHeight);
 	// Whatever else is floating at this screen's foot. `bottomInsetPaid: false` because the
 	// inset is spent *twice* when it is: once by the capsule the caller is lifting above and
 	// once by the bar's own `paddingBottom` below. The lift takes it; the padding drops it.
@@ -295,7 +301,7 @@ export function ActionBar({
 				// **And dropped entirely once `lift` is non-zero**, because `lift` already
 				// contains it. Keeping both would push the bar up by the home indicator twice:
 				// once as margin and once as padding, for the same 34 points.
-				{ paddingBottom: lift > 0 ? space.md : space.md + insets.bottom },
+				{ paddingBottom: lift > 0 ? space.md : space.md + floor },
 				docked
 					? {
 							backgroundColor: colors.card,

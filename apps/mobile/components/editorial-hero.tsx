@@ -264,7 +264,13 @@ function PromotionSlide({
 		});
 	};
 
-	const spoken = [promotion.business.name, benefit, code, condition]
+	const spoken = [
+		promotion.business.name,
+		benefit,
+		promotion.description,
+		code,
+		condition,
+	]
 		.filter(Boolean)
 		.join(" · ");
 
@@ -289,9 +295,14 @@ function PromotionSlide({
 						tone="muted"
 						style={styles.lede}
 						maxFontSizeMultiplier={1.35}
+						numberOfLines={4}
 					>
 						{promotion.business.name}
-						{condition ? `\n${condition}` : ""}
+						{promotion.description
+							? `\n${promotion.description}`
+							: condition
+								? `\n${condition}`
+								: ""}
 					</Text>
 				</View>
 				<Pressable

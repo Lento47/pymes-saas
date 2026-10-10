@@ -281,7 +281,10 @@ function moneyOrNothing(
 	intlLocale: string,
 ): string {
 	if (minor === null || !isCurrency(currency)) return NO_VALUE;
-	return formatMoney(minor, currency, { locale: intlLocale });
+	return formatMoney(minor, currency, {
+		locale: intlLocale,
+		currencyDisplay: "narrowSymbol",
+	});
 }
 
 /**
@@ -293,7 +296,10 @@ function signedMoney(
 	intlLocale: string,
 ): string | null {
 	if (!isCurrency(currency)) return null;
-	const body = formatMoney(delta, currency, { locale: intlLocale });
+	const body = formatMoney(delta, currency, {
+		locale: intlLocale,
+		currencyDisplay: "narrowSymbol",
+	});
 	return delta > 0 ? `+${body}` : body;
 }
 
@@ -349,16 +355,28 @@ function PulseMetric({
 
 	const content = (
 		<>
-			<Text style={[styles.metricValue, { color: colors.background }]}>
+			<Text
+				tabular
+				numberOfLines={1}
+				adjustsFontSizeToFit
+				minimumFontScale={0.6}
+				style={[styles.metricValue, { color: colors.background }]}
+			>
 				{value}
 			</Text>
-			<Text style={[styles.metricLabel, { color: colors.background }]}>
+			<Text
+				numberOfLines={2}
+				style={[styles.metricLabel, { color: colors.background }]}
+			>
 				{label}
 			</Text>
 			{delta === null ? null : (
 				<Text
 					variant="caption"
 					tabular
+					numberOfLines={1}
+					adjustsFontSizeToFit
+					minimumFontScale={0.6}
 					style={[styles.metricDelta, { color: colors.background }]}
 				>
 					{delta}
@@ -367,10 +385,12 @@ function PulseMetric({
 		</>
 	);
 
+	const columnStyle = [styles.column, { flex }];
+
 	if (reduceMotion) {
 		return (
 			<View
-				style={{ flex }}
+				style={columnStyle}
 				accessible
 				accessibilityRole="text"
 				accessibilityLabel={spoken}
@@ -383,7 +403,7 @@ function PulseMetric({
 	return (
 		<Animated.View
 			entering={FadeInUp.duration(duration.standard).delay(staggerDelay(index))}
-			style={{ flex }}
+			style={columnStyle}
 			accessible
 			accessibilityRole="text"
 			accessibilityLabel={spoken}
@@ -429,7 +449,7 @@ export function MerchantPulse({
 										]}
 									/>
 								) : null}
-								<View style={{ flex: column.flex }}>
+								<View style={[styles.column, { flex: column.flex }]}>
 									<Skeleton
 										style={[
 											styles.metricSkeleton,
@@ -490,7 +510,13 @@ const styles = StyleSheet.create({
 		textTransform: "uppercase",
 	},
 	/** `space.md` of air between the header and the figures — the step that lands the band's natural height inside §14's 136–152 at 1×, where `space.sm` would set it below the range. */
-	metrics: { flexDirection: "row", marginTop: space.md },
+	metrics: {
+		flexDirection: "row",
+		alignItems: "flex-start",
+		marginTop: space.md,
+		gap: space.sm,
+	},
+	column: { flexShrink: 1, minWidth: 0 },
 	/** The separator: hairline wide, `RULE_HEIGHT` tall, centred on the row. Its colour is `mutedForeground` — see the constant's note about the ivory-at-20% register. */
 	rule: {
 		width: StyleSheet.hairlineWidth,

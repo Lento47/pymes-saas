@@ -110,6 +110,7 @@ API_VERSION = "0.1.0"
 # already be wrong for a second reason — `AUTH_URL` on the next line is localhost too.
 CORS_ORIGINS = "http://localhost:3000,http://localhost:4173"
 AUTH_URL = "http://localhost:8787"
+LOG_LEVEL = "error"
 # Supabase is an additional identity provider. The publishable key is public by design;
 # no Supabase secret/service-role key belongs in this file.
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"

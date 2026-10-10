@@ -2,9 +2,12 @@ import {
 	type Currency,
 	currencyExponent,
 	formatMoney,
+	PROMOTION_DESCRIPTION_MAX_CHARS,
+	PROMOTION_DESCRIPTION_MAX_WORDS,
 	type PromotionDetail,
 	type PromotionKind,
 	parseMoney,
+	promotionDescriptionWordCount,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
@@ -16,6 +19,7 @@ import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
+import { PhotoPicker } from "@/components/photo-picker";
 import { Screen } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
 import { Text } from "@/components/text";
@@ -35,10 +39,13 @@ import { space } from "@/theme";
  * small-sheet tier is for choosing one thing. So this is a pushed route with its own
  * title and its own `ActionBar`, the same shape as `./product-form`.
  *
- * ## Five things written, and two that are not
+ * ## Seven things written, and two that are not
  *
- * The form writes **code, kind, value, a minimum order and a maximum number of uses** —
- * the whole of `promotionFields` except the two date columns.
+ * The form writes **code, kind, value, a minimum order, a maximum number of uses, a
+ * short description and an optional banner picture** — the whole of `promotionFields`
+ * except the two date columns. The picture is `uploads.create` then `imageUrl`, the
+ * same path `./product-form` already uses; the crop is 16:9 because that is the
+ * banner the customer hero draws. The description is at most 40 words.
  *
  * - **`startsAt` / `endsAt` are never written here, and the form does not show them.**
  *   There is no date picker in `apps/mobile/package.json` and inventing one for this
@@ -171,6 +178,9 @@ type Draft = {
 	value: string;
 	minOrder: string;
 	maxRedemptions: string;
+	/** Stored `/files/:id`, or null when the code uses the brand fill. */
+	photo: string | null;
+	description: string;
 };
 
 function Fields({
@@ -212,6 +222,7 @@ function Fields({
 		// the form just wrote is the other, and `promotions` is small enough that naming
 		// the two separately would be naming the same subtree twice.
 		void cache.invalidateQueries({ queryKey: trpc.promotions.pathKey() });
+		void cache.invalidateQueries({ queryKey: trpc.catalog.pathKey() });
 		toast.show(message);
 		router.back();
 	};
@@ -266,11 +277,18 @@ function Fields({
 		) {
 			found.maxRedemptions = t("biz.promotions.number.rule");
 		}
+		if (
+			promotionDescriptionWordCount(draft.description) >
+			PROMOTION_DESCRIPTION_MAX_WORDS
+		) {
+			found.description = t("biz.promotions.description.rule");
+		}
 		return found;
 	}, [
 		code,
 		refusedField,
 		draft.kind,
+		draft.description,
 		valueText,
 		minOrderBlank,
 		minOrderMinor,
@@ -319,6 +337,9 @@ function Fields({
 			// between "any order" and "leave the stored minimum alone".
 			minOrderMinor,
 			maxRedemptions: maxBlank ? null : maxParsed,
+			imageUrl: draft.photo,
+			description:
+				draft.description.trim() === "" ? null : draft.description.trim(),
 		};
 
 		if (promotionId === undefined) {
@@ -457,6 +478,41 @@ function Fields({
 							keyboardType="number-pad"
 							inputMode="numeric"
 						/>
+
+						<Field
+							label={t("biz.promotions.description")}
+							value={draft.description}
+							onChangeText={(next) =>
+								edited(() =>
+									setDraft((was) => ({ ...was, description: next })),
+								)
+							}
+							error={submitted ? (problems.description ?? null) : null}
+							help={t("biz.promotions.description.help", {
+								remaining: Math.max(
+									0,
+									PROMOTION_DESCRIPTION_MAX_WORDS -
+										promotionDescriptionWordCount(draft.description),
+								),
+								max: PROMOTION_DESCRIPTION_MAX_WORDS,
+							})}
+							placeholder={t("biz.promotions.description.placeholder")}
+							multiline
+							maxLength={PROMOTION_DESCRIPTION_MAX_CHARS}
+						/>
+
+						<PhotoPicker
+							layout="module"
+							aspect={[16, 9]}
+							label={t("biz.promotions.photo.module")}
+							value={draft.photo}
+							onChange={(next) =>
+								edited(() => setDraft((was) => ({ ...was, photo: next })))
+							}
+							uploadLabel={t("biz.products.photo.upload")}
+							cameraLabel={t("biz.products.photo.camera")}
+							help={t("biz.promotions.photo.help")}
+						/>
 					</View>
 				</AnimateIn>
 
@@ -547,6 +603,8 @@ function draftOf(detail: PromotionDetail | null, currency: Currency): Draft {
 			value: "",
 			minOrder: "",
 			maxRedemptions: "",
+			photo: null,
+			description: "",
 		};
 	}
 	return {
@@ -564,6 +622,8 @@ function draftOf(detail: PromotionDetail | null, currency: Currency): Draft {
 				: editableOf(detail.minOrderMinor, currency),
 		maxRedemptions:
 			detail.maxRedemptions === null ? "" : String(detail.maxRedemptions),
+		photo: detail.imageUrl,
+		description: detail.description ?? "",
 	};
 }
 

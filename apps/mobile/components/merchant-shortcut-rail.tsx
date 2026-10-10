@@ -69,11 +69,19 @@ export function MerchantShortcutRail({
 					    behind `accentForeground` ink, the palette's quiet tinted pair —
 					    the same one `./category-rail`'s tiles wear. A filled tile here
 					    would compete with the command rail's lime moment below. */}
-					<View style={[styles.disc, { backgroundColor: colors.accent }]}>
+					<View
+						style={[
+							styles.disc,
+							{
+								backgroundColor: colors.muted,
+								borderColor: colors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name={item.icon}
-							size={icon.action}
-							color={colors.accentForeground}
+							size={icon.back}
+							color={colors.foreground}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
 						/>
@@ -108,9 +116,9 @@ const styles = StyleSheet.create({
 		width: TILE,
 		height: TILE,
 		borderRadius: radius.lg,
+		borderWidth: 1,
 		alignItems: "center",
 		justifyContent: "center",
-		overflow: "hidden",
 	},
 	tileLabel: { textAlign: "center" },
 });

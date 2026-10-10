@@ -97,14 +97,16 @@ function formatterFor(
 	currency: Currency,
 	exponent: number,
 	signed: boolean,
+	currencyDisplay: "symbol" | "narrowSymbol",
 ): Intl.NumberFormat {
-	const key = `${locale}|${currency}|${exponent}|${signed ? "signed" : "plain"}`;
+	const key = `${locale}|${currency}|${exponent}|${signed ? "signed" : "plain"}|${currencyDisplay}`;
 	const cached = FORMATTERS.get(key);
 	if (cached !== undefined) return cached;
 
 	const built = new Intl.NumberFormat(locale, {
 		style: "currency",
 		currency,
+		currencyDisplay,
 		minimumFractionDigits: exponent,
 		maximumFractionDigits: exponent,
 		signDisplay: signed ? "exceptZero" : "auto",
@@ -129,7 +131,12 @@ function formatterFor(
 export function formatMoney(
 	amountMinor: number,
 	currency: Currency,
-	options: { locale?: string; signed?: boolean } = {},
+	options: {
+		locale?: string;
+		signed?: boolean;
+		/** `narrowSymbol` is ₡ on English CRC, where `symbol` prints `CRC 7,100`. */
+		currencyDisplay?: "symbol" | "narrowSymbol";
+	} = {},
 ): string {
 	const exponent = currencyExponent(currency);
 	const major = amountMinor / 10 ** exponent;
@@ -140,6 +147,7 @@ export function formatMoney(
 		currency,
 		exponent,
 		signed,
+		options.currencyDisplay ?? "symbol",
 	).format(major);
 }
 

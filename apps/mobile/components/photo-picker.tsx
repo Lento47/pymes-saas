@@ -106,6 +106,11 @@ type PhotoPickerProps = {
 	 */
 	uploadLabel?: string;
 	cameraLabel?: string;
+	/**
+	 * Crop ratio for the system editor. Product thumbnails are square; a
+	 * promotion banner is 16:9.
+	 */
+	aspect?: [number, number];
 };
 
 /**
@@ -143,6 +148,7 @@ export function PhotoPicker({
 	layout = "compact",
 	uploadLabel,
 	cameraLabel,
+	aspect = [1, 1],
 }: PhotoPickerProps) {
 	const { t } = useT();
 	const { colors } = useTheme();
@@ -238,12 +244,17 @@ export function PhotoPicker({
 		onChange(null);
 	};
 
+	const pickerOptions: ImagePicker.ImagePickerOptions = {
+		...PICKER_OPTIONS,
+		aspect,
+	};
+
 	const fromGallery = (
 		<Button
 			label={uploadLabel ?? t("action.uploadPhoto")}
 			onPress={() =>
 				void pick("gallery", () =>
-					ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS),
+					ImagePicker.launchImageLibraryAsync(pickerOptions),
 				)
 			}
 			variant="secondary"
@@ -264,7 +275,7 @@ export function PhotoPicker({
 		<Button
 			label={cameraLabel ?? t("action.takePhoto")}
 			onPress={() =>
-				void pick("camera", () => ImagePicker.launchCameraAsync(PICKER_OPTIONS))
+				void pick("camera", () => ImagePicker.launchCameraAsync(pickerOptions))
 			}
 			variant="secondary"
 			size="sm"
@@ -339,7 +350,10 @@ export function PhotoPicker({
 						<Image
 							uri={uri}
 							radiusToken="lg"
-							style={styles.moduleImage}
+							style={[
+								styles.moduleImage,
+								{ aspectRatio: aspect[0] / aspect[1] },
+							]}
 							accessibilityElementsHidden
 							importantForAccessibility="no"
 						/>
@@ -438,7 +452,7 @@ function acceptedMime(reported: string | undefined): UploadMimeType {
  * The decoded size of a base64 string, from its length.
  *
  * Close enough to refuse on and deliberately not a decode: the API measures the real bytes
- * after `atob`, and this is only the pre-flight that saves a 2 MiB upload from being sent
+ * after `atob`, and this is only the pre-flight that saves a 5 MiB upload from being sent
  * to be refused. Padding is subtracted so a file that is exactly at the ceiling is not
  * rejected by rounding.
  */
@@ -477,7 +491,7 @@ const styles = StyleSheet.create({
 		borderWidth: StyleSheet.hairlineWidth,
 		overflow: "hidden",
 	},
-	moduleImage: { width: "100%", aspectRatio: 4 / 3 },
+	moduleImage: { width: "100%" },
 	moduleEmpty: {
 		height: PHOTO_MODULE_HEIGHT,
 		alignItems: "center",

@@ -51,13 +51,18 @@ async function owner(test: ReturnType<typeof world>) {
 }
 
 /** A live `PERCENT` code, which is the minimum the feed's four conditions accept. */
-function codeInput(businessId: string, imageUrl?: string | null) {
+function codeInput(
+	businessId: string,
+	imageUrl?: string | null,
+	description?: string | null,
+) {
 	return {
 		businessId,
 		code: "SAVE10",
 		kind: "PERCENT" as const,
 		value: 10,
 		...(imageUrl === undefined ? {} : { imageUrl }),
+		...(description === undefined ? {} : { description }),
 	};
 }
 
@@ -197,6 +202,69 @@ describe("a promotion's banner", () => {
 			.prepare("select count(*) as n from promotion")
 			.get() as { n: number };
 		expect(stored.n).toBe(0);
+
+		test.close();
+	});
+
+	test("carries a short description on the card and the detail", async () => {
+		const test = world();
+		const { caller, businessId } = await owner(test);
+
+		const created = await caller.promotions.create(
+			codeInput(businessId, undefined, "Half off lunch on weekdays"),
+		);
+		expect(created.description).toBe("Half off lunch on weekdays");
+
+		const listed = await caller.promotions.list({ businessId });
+		expect(listed[0]?.description).toBe("Half off lunch on weekdays");
+
+		const feed = await caller.catalog.feed({ limit: 20 });
+		const card = feed.promotions.find(
+			(promotion) => promotion.code === "SAVE10",
+		);
+		expect(card?.description).toBe("Half off lunch on weekdays");
+
+		test.close();
+	});
+
+	test("refuses a description longer than forty words", async () => {
+		const test = world();
+		const { caller, businessId } = await owner(test);
+		const tooLong = Array.from({ length: 41 }, () => "word").join(" ");
+
+		await expect(
+			caller.promotions.create(codeInput(businessId, undefined, tooLong)),
+		).rejects.toThrow();
+
+		const stored = test.sqlite
+			.prepare("select count(*) as n from promotion")
+			.get() as { n: number };
+		expect(stored.n).toBe(0);
+
+		test.close();
+	});
+
+	test("an update that omits the description keeps it, and an empty one clears it", async () => {
+		const test = world();
+		const { caller, businessId } = await owner(test);
+
+		const created = await caller.promotions.create(
+			codeInput(businessId, undefined, "Weekday lunch"),
+		);
+
+		const renamed = await caller.promotions.update({
+			businessId,
+			id: created.id,
+			value: 20,
+		});
+		expect(renamed.description).toBe("Weekday lunch");
+
+		const cleared = await caller.promotions.update({
+			businessId,
+			id: created.id,
+			description: null,
+		});
+		expect(cleared.description).toBeNull();
 
 		test.close();
 	});

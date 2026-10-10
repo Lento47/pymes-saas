@@ -61,6 +61,15 @@ describe("formatMoney", () => {
 		});
 		expect(formatted).toContain("+");
 	});
+
+	test("narrowSymbol keeps the colon on English CRC", () => {
+		const formatted = formatMoney(7100, "CRC", {
+			locale: "en",
+			currencyDisplay: "narrowSymbol",
+		});
+		expect(formatted).toContain("₡");
+		expect(formatted).not.toContain("CRC");
+	});
 });
 
 describe("parseMoney", () => {

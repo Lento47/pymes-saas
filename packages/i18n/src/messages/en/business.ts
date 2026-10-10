@@ -217,7 +217,7 @@ export const business = {
 	/* Teaches the two controls now, not a pasted link — see the Spanish file's note. */
 	"biz.products.photo.help":
 		"Pick one from your gallery or take one with the camera.",
-	"biz.products.photo.rule": "Choose a JPEG, PNG or WebP image up to 2 MB.",
+	"biz.products.photo.rule": "Choose a JPEG, PNG or WebP image up to 5 MB.",
 	"biz.products.sku": "Internal code",
 	"biz.products.prepTime": "Preparation time",
 	"biz.products.trackStock": "Track inventory",
@@ -530,7 +530,7 @@ export const business = {
 	"biz.courier.vehiclePhoto.add": "Add photo",
 	"biz.courier.vehiclePhoto.change": "Change photo",
 	"biz.courier.vehiclePhoto.remove": "Remove photo",
-	"biz.courier.vehiclePhoto.tooLarge": "Use a smaller photo, up to 2 MB.",
+	"biz.courier.vehiclePhoto.tooLarge": "Use a smaller photo, up to 5 MB.",
 	"biz.courier.availability": "Availability",
 	/*
 	 * Availability does not wait for the save, and this is the sentence that says so.
@@ -786,6 +786,14 @@ export const business = {
 	"biz.promotions.value.fixed.rule": "The discount must be greater than zero.",
 	"biz.promotions.number.rule": "Enter a valid number.",
 	"biz.promotions.code.taken": "A promotion with that code already exists.",
+	"biz.promotions.description": "Description",
+	"biz.promotions.description.placeholder":
+		"What this offer is, in a few words",
+	"biz.promotions.description.help": "{remaining} of {max} words left",
+	"biz.promotions.description.rule": "Keep the description under 40 words.",
+	"biz.promotions.photo.module": "Add a banner photo",
+	"biz.promotions.photo.help":
+		"JPEG, PNG or WebP, up to 5 MB. Cropped 16:9 for the banner.",
 	"biz.more.empty.title": "No business to manage yet",
 	"biz.more.empty.body":
 		"Create a business to manage its settings, team, payouts and reviews.",

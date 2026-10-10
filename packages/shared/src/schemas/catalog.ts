@@ -422,6 +422,8 @@ export const promotionCardSchema = z.object({
 	currency: currencySchema,
 	minOrderMinor: moneyMinorSchema.nullable().optional(),
 	art: promotionArtSchema,
+	/** Shop blurb, or null when the code has none. */
+	description: z.string().nullable(),
 	business: sellerSummarySchema,
 });
 export type PromotionCard = z.infer<typeof promotionCardSchema>;

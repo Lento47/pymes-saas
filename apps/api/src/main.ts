@@ -13,6 +13,14 @@ import { PrismaService } from "./common/prisma/prisma.service";
 import { AiTriageService } from "./ai/ai-triage.service";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
+// Temporary observability throttle — errors only ("solo por el momento").
+// Set LOG_LEVEL to "warn" or "info" in the Railway environment to restore
+// the previous verbosity, or remove the env var and redeploy to revert.
+const MIN_LOG_LEVEL = process.env.LOG_LEVEL ?? "error";
+const LOG_LEVELS = ["verbose", "debug", "log", "warn", "error", "fatal"];
+const minIndex = LOG_LEVELS.indexOf(MIN_LOG_LEVEL as any);
+Logger.overrideLogger((minIndex >= 0 ? LOG_LEVELS.slice(minIndex) : ["error", "fatal"]) as any);
+
 const logger = new Logger("Bootstrap");
 
 // ── Startup env validation ─────────────────────────────────────────────────

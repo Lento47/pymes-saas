@@ -45,6 +45,30 @@ import { z } from "zod";
 import { PROMOTION_KINDS, type PromotionKind } from "./catalog";
 import { currencySchema, imageUrlSchema, moneyMinorSchema } from "./common";
 
+/** A short blurb on the customer card. Counted as whitespace-separated tokens. */
+export const PROMOTION_DESCRIPTION_MAX_WORDS = 40;
+export const PROMOTION_DESCRIPTION_MAX_CHARS = 280;
+
+export function promotionDescriptionWordCount(text: string): number {
+	const trimmed = text.trim();
+	if (trimmed.length === 0) return 0;
+	return trimmed.split(/\s+/).length;
+}
+
+const promotionDescriptionSchema = z
+	.string()
+	.trim()
+	.max(PROMOTION_DESCRIPTION_MAX_CHARS)
+	.refine(
+		(value) =>
+			value === "" ||
+			promotionDescriptionWordCount(value) <= PROMOTION_DESCRIPTION_MAX_WORDS,
+		{ message: "La descripción no puede superar las 40 palabras" },
+	)
+	.transform((value) => (value === "" ? null : value))
+	.or(z.null())
+	.optional();
+
 /**
  * The code a customer types at checkout.
  *
@@ -114,6 +138,7 @@ const promotionFields = z.object({
 	 * makes.
 	 */
 	imageUrl: imageUrlSchema.nullable().optional(),
+	description: promotionDescriptionSchema,
 });
 
 /**
@@ -203,6 +228,7 @@ export const promotionDetailSchema = z.object({
 	currency: currencySchema,
 	/** The banner picture the shop chose, or null for the composed brand fill. */
 	imageUrl: imageUrlSchema.nullable(),
+	description: z.string().nullable(),
 	minOrderMinor: z.number().int().nullable(),
 	maxRedemptions: z.number().int().nullable(),
 	redemptions: z.number().int(),

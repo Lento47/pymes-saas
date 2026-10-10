@@ -64,7 +64,7 @@ export function BusinessProductRow({
 				/>
 				<View style={styles.featuredCopy}>
 					<Pressable onPress={onPress} style={styles.featuredText}>
-						<Text variant="heading" bold numberOfLines={2}>
+						<Text variant="heading" bold>
 							{product.title}
 						</Text>
 						<Text variant="caption" tone={available ? "muted" : "destructive"}>
@@ -93,36 +93,36 @@ export function BusinessProductRow({
 
 	return (
 		<View style={[styles.row, { borderColor: colors.border }]}>
-			<Pressable onPress={onPress} style={styles.rowPressable}>
-				<Image
-					uri={product.imageUrl}
-					style={styles.thumbnail}
-					accessibilityElementsHidden
-					importantForAccessibility="no"
-				/>
-				<View style={styles.rowCopy}>
-					<Text bold numberOfLines={1}>
-						{product.title}
-					</Text>
+			<Image
+				uri={product.imageUrl}
+				style={styles.thumbnail}
+				accessibilityElementsHidden
+				importantForAccessibility="no"
+			/>
+			<View style={styles.rowCopy}>
+				<Pressable onPress={onPress} style={styles.rowPressable}>
+					<Text bold>{product.title}</Text>
 					<Text variant="caption" tone={available ? "muted" : "destructive"}>
 						{stockText}
 					</Text>
+				</Pressable>
+				<View style={styles.rowActions}>
+					<View style={styles.rowPrice}>
+						<Price
+							amountMinor={product.priceMinor}
+							currency={product.currency}
+							variant="body"
+						/>
+					</View>
+					<Button
+						label={t("biz.products.edit")}
+						icon={<Ionicons name="create-outline" size={18} />}
+						variant="secondary"
+						size="sm"
+						onPress={onPress}
+					/>
+					{availabilityControl}
 				</View>
-				<Price
-					amountMinor={product.priceMinor}
-					currency={product.currency}
-					variant="body"
-				/>
-			</Pressable>
-			<View style={styles.rowActions}>
-				<Button
-					label={t("biz.products.edit")}
-					icon={<Ionicons name="create-outline" size={18} />}
-					variant="secondary"
-					size="sm"
-					onPress={onPress}
-				/>
-				{availabilityControl}
 			</View>
 		</View>
 	);
@@ -131,8 +131,6 @@ export function BusinessProductRow({
 const styles = StyleSheet.create({
 	featured: {
 		minHeight: 144,
-		maxHeight: 170,
-		height: 156,
 		flexDirection: "row",
 		gap: space.md,
 		padding: space.md,
@@ -141,10 +139,11 @@ const styles = StyleSheet.create({
 	},
 	featuredImage: {
 		width: "45%",
-		height: "100%",
+		minHeight: 144,
+		alignSelf: "stretch",
 		borderRadius: radius.sm,
 	},
-	featuredCopy: { flex: 1, justifyContent: "space-between" },
+	featuredCopy: { flex: 1, minWidth: 0, justifyContent: "space-between" },
 	featuredText: { gap: space.xs },
 	featuredActions: {
 		flexDirection: "row",
@@ -154,24 +153,27 @@ const styles = StyleSheet.create({
 	},
 	row: {
 		minHeight: 72,
-		height: 78,
 		flexDirection: "row",
-		alignItems: "center",
-		gap: space.sm,
+		alignItems: "flex-start",
+		gap: space.md,
+		paddingVertical: space.sm,
 		borderBottomWidth: 1,
 	},
 	rowPressable: {
-		flex: 1,
 		minHeight: MIN_TOUCH_TARGET,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.md,
+		gap: space.xs,
 	},
 	thumbnail: {
 		width: 52,
 		height: 52,
 		borderRadius: radius.sm,
 	},
-	rowCopy: { flex: 1, gap: space.xs },
-	rowActions: { flexDirection: "row", alignItems: "center", gap: space.sm },
+	rowCopy: { flex: 1, minWidth: 0, gap: space.sm },
+	rowPrice: { flexShrink: 0, marginRight: "auto" },
+	rowActions: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		alignItems: "center",
+		gap: space.sm,
+	},
 });

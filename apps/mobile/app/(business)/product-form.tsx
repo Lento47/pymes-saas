@@ -74,7 +74,7 @@ import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
  *   than a field in a form that saves once.
  * - **The photo is a picker, and the bytes land in the API.** `uploads.create`
  *   takes base64 and a mime type, refuses anything that is not JPEG/PNG/WebP
- *   under 2 MB, and answers with `/files/:id`, which is what `imageUrlSchema`
+ *   under 5 MB, and answers with `/files/:id`, which is what `imageUrlSchema`
  *   already accepts, so the path is stored on `imageUrl` unchanged and `./image`
  *   draws it. `components/photo-picker` is the two controls - "Subir foto" and
  *   "Tomar foto", because they are two acts - and this screen only owns where the
@@ -721,6 +721,7 @@ function Fields({
 					>
 						<PhotoPicker
 							layout="module"
+							aspect={[1, 1]}
 							label={t("biz.products.photo.module")}
 							value={draft.photo.trim() || null}
 							onChange={(next) =>

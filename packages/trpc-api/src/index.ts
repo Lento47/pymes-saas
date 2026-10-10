@@ -6,7 +6,7 @@ import { withSentry } from "@sentry/cloudflare";
 import { createApp } from "./app";
 import type { Env } from "./env";
 import type { OrderEventEnvelope } from "./events";
-import { createLogger } from "./logging";
+import { createLogger, LogLevel } from "./logging";
 import { publishPending } from "./outbox";
 import { deliverPendingPushes, processPushReceipts } from "./push";
 import { handleQueue } from "./queue";
@@ -67,6 +67,7 @@ const handler = {
 			environment: env.ENVIRONMENT,
 			version: env.API_VERSION,
 			queue: "outbox",
+			minLevel: env.LOG_LEVEL as LogLevel | undefined,
 		});
 		try {
 			await publishPending(env, logger);

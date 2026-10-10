@@ -342,6 +342,7 @@ export function promotionCardOf(
 		currency: currencyOf(business.currency),
 		minOrderMinor: row.minOrderMinor,
 		art: promotionArtOf(row.imageUrl),
+		description: row.description,
 		business: sellerSummaryOf(business),
 	};
 }
@@ -386,6 +387,7 @@ export function promotionDetailOf(
 		value: row.value,
 		currency,
 		imageUrl: row.imageUrl,
+		description: row.description,
 		minOrderMinor: row.minOrderMinor,
 		maxRedemptions: row.maxRedemptions,
 		redemptions: row.redemptions,

@@ -280,8 +280,7 @@ export default function MerchantHome() {
 				(shops.isPending ||
 					(!!businessId && (locations.isPending || home.isPending)))),
 	);
-	const failed =
-		shops.error ?? locations.error ?? home.error ?? analytics.error;
+	const failed = shops.error ?? locations.error ?? home.error;
 
 	const dateLabel = formatDayMonth(new Date(), intlLocale);
 	const dashboardQueries = [shops, locations, home, analytics];
@@ -800,11 +799,9 @@ export default function MerchantHome() {
 								</Pressable>
 							</View>
 						</View>
-						{/* The destinations, as icon tiles that scroll sideways: orders,
-						    catalogue, promotions, analytics, team, payouts. The command
-						    rail below holds the *moment's* actions; this holds where the
-						    reader goes, so none of its tiles takes the lime fill — a
-						    destination is not asking to be pressed now. */}
+						{/* Destination carousel: the More doors a thumb reaches by sliding.
+						    None of these tiles takes the lime fill — the command rail below
+						    holds the moment's action. */}
 						<MerchantShortcutRail
 							shortcuts={[
 								{
@@ -828,7 +825,7 @@ export default function MerchantHome() {
 								{
 									key: "analytics",
 									label: t("biz.analytics.title"),
-									icon: "bar-chart-outline",
+									icon: "stats-chart-outline",
 									onPress: () => router.push("/(business)/analytics"),
 								},
 								{
@@ -848,6 +845,36 @@ export default function MerchantHome() {
 									onPress: () =>
 										router.push({
 											pathname: "/(business)/payouts",
+											params: { businessId },
+										}),
+								},
+								{
+									key: "hours",
+									label: t("biz.settings.hours"),
+									icon: "time-outline",
+									onPress: () =>
+										router.push({
+											pathname: "/(business)/shop-hours",
+											params: { businessId },
+										}),
+								},
+								{
+									key: "locations",
+									label: t("biz.locations.title"),
+									icon: "location-outline",
+									onPress: () =>
+										router.push({
+											pathname: "/(business)/locations",
+											params: { businessId },
+										}),
+								},
+								{
+									key: "reviews",
+									label: t("biz.reviews.title"),
+									icon: "star-outline",
+									onPress: () =>
+										router.push({
+											pathname: "/(business)/reviews",
 											params: { businessId },
 										}),
 								},
@@ -900,37 +927,44 @@ export default function MerchantHome() {
 					    screen's `padded={false}` is what lets it. */}
 						<MerchantPulse data={pulse} dateLabel={dateLabel} />
 
-						<MerchantInsight
-							items={[
-								{
-									label: t("biz.dashboard.topProducts"),
-									value: analytics.data?.topProducts[0]?.name ?? null,
-								},
-								{
-									label: t("biz.insight.avgPreparation"),
-									value:
-										analytics.data?.operations.avg_preparation_seconds == null
-											? null
-											: t("unit.minutes", {
-													count: Math.round(
-														analytics.data.operations.avg_preparation_seconds /
-															60,
+						{analytics.error ? (
+							<ErrorState
+								error={analytics.error}
+								onRetry={() => void analytics.refetch()}
+							/>
+						) : analytics.data ? (
+							<MerchantInsight
+								items={[
+									{
+										label: t("biz.dashboard.topProducts"),
+										value: analytics.data.topProducts[0]?.name ?? null,
+									},
+									{
+										label: t("biz.insight.avgPreparation"),
+										value:
+											analytics.data.operations.avg_preparation_seconds == null
+												? null
+												: t("unit.minutes", {
+														count: Math.round(
+															analytics.data.operations
+																.avg_preparation_seconds / 60,
+														),
+													}),
+									},
+									{
+										label: t("biz.insight.avgOrder"),
+										value:
+											analytics.data.averageOrderMinor == null
+												? null
+												: formatMoney(
+														analytics.data.averageOrderMinor,
+														analytics.data.currency,
+														{ locale: intlLocale },
 													),
-												}),
-								},
-								{
-									label: t("biz.insight.avgOrder"),
-									value:
-										analytics.data?.averageOrderMinor == null
-											? null
-											: formatMoney(
-													analytics.data.averageOrderMinor,
-													analytics.data.currency,
-													{ locale: intlLocale },
-												),
-								},
-							]}
-						/>
+									},
+								]}
+							/>
+						) : null}
 
 						{attention.length > 0 ? (
 							<View style={styles.pad}>
@@ -1303,10 +1337,10 @@ function MerchantInsight({
 					accessibilityRole="text"
 					accessibilityLabel={`${item.label}: ${item.value ?? NO_VALUE}`}
 				>
-					<Text variant="caption" tone="muted">
+					<Text variant="caption" tone="muted" numberOfLines={2}>
 						{item.label}
 					</Text>
-					<Text variant="body" bold>
+					<Text variant="body" bold numberOfLines={2}>
 						{item.value ?? NO_VALUE}
 					</Text>
 				</View>
@@ -1520,7 +1554,7 @@ const styles = StyleSheet.create({
 		borderTopWidth: StyleSheet.hairlineWidth,
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
-	insightItem: { flex: 1, gap: space.xs },
+	insightItem: { flex: 1, minWidth: 0, gap: space.xs },
 	attentionRow: {
 		minHeight: 52,
 		flexDirection: "row",

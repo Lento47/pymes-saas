@@ -115,6 +115,7 @@ export async function create(
 		// Absent is the brand fill, which is the same as an explicit null here: a create
 		// has no previous picture to keep, so there is nothing for the field to preserve.
 		imageUrl: input.imageUrl ?? null,
+		description: input.description ?? null,
 		// Born open. Closing it is the `setActive` procedure, never a create-time
 		// option: a code the shop has to switch on after saving it is a code nobody
 		// remembers to.
@@ -168,6 +169,7 @@ export async function update(
 	// and an explicit `null` takes it off. A form that saves without touching the field
 	// therefore cannot quietly strip a banner the shop uploaded last month.
 	assign(patch, "imageUrl", input.imageUrl);
+	assign(patch, "description", input.description);
 
 	const [written] = await ctx.db
 		.update(promotionTable)

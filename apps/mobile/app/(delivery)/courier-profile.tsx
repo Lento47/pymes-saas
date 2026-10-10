@@ -495,7 +495,7 @@ function ProfileForm({
 	/**
 	 * Pick, then upload - two steps because the picker holds bytes and the upload row
 	 * holds the path, and the profile only ever stores the second. Quality 0.8 keeps a
-	 * camera's original under the 2 MiB ceiling; over it is a sentence the reader can
+	 * camera's original under the 5 MiB ceiling; over it is a sentence the reader can
 	 * act on, not a silent failure, and the profile keeps the photo it already had.
 	 */
 	const pickVehiclePhoto = async () => {

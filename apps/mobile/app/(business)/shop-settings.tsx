@@ -369,6 +369,7 @@ export default function ShopSettings() {
 										onChange={(next) => edited(() => setLogo(next))}
 										help={t("biz.settings.photo.help")}
 										radiusToken="full"
+										aspect={[1, 1]}
 									>
 										{/*
 										    `action`, not `primary`, and the difference is whether this letter is
@@ -396,6 +397,7 @@ export default function ShopSettings() {
 										onChange={(next) => edited(() => setCover(next))}
 										help={t("biz.settings.photo.help")}
 										radiusToken="md"
+										aspect={[16, 9]}
 										previewStyle={styles.coverPreview}
 									>
 										<Ionicons

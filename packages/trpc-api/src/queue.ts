@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 
 import type { Env } from "./env";
 import type { OrderEventEnvelope, OrderEventMessage } from "./events";
-import { createLogger } from "./logging";
+import { createLogger, LogLevel } from "./logging";
 import { deliverPendingPushes, enqueuePushes } from "./push";
 
 /**
@@ -219,6 +219,7 @@ export async function handleQueue(
 		environment: env.ENVIRONMENT,
 		version: env.API_VERSION,
 		queue: batch.queue,
+		minLevel: env.LOG_LEVEL as LogLevel | undefined,
 	});
 	const db = createDb(env.DB);
 

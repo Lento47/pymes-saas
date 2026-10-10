@@ -11,11 +11,8 @@
  * The bytes travel as base64 because the write is a tRPC mutation and a mutation
  * takes JSON. That is a deliberate ceiling rather than an oversight: the path is for
  * a phone camera roll, not for a video, and `MAX_UPLOAD_BYTES` is what says so in the
- * same place the UI reads it. It is also well clear of the limits it used to sit
- * against — R2 accepts objects up to 5 GB, so 2 MiB is a product decision rather
- * than a platform one. (It was *not* clear of the limit it sat against before: D1's
- * maximum row is 2,000,000 bytes and `2 * 1024 * 1024` is 2,097,152, so a file
- * between those two passed this schema and then failed at insert.)
+ * same place the UI reads it. R2 accepts objects up to 5 GB; 5 MiB is the product
+ * ceiling a merchant form advertises.
  */
 
 import { z } from "zod";
@@ -30,11 +27,10 @@ export const UPLOAD_MIME_TYPES = [
 export type UploadMimeType = (typeof UPLOAD_MIME_TYPES)[number];
 
 /**
- * 2 MiB of decoded bytes — the same ceiling `apps/web`'s avatar upload enforces, so
- * the two surfaces refuse the same file rather than one accepting what the other
- * rejects.
+ * 5 MiB of decoded bytes — JPEG, PNG or WebP for a product photo, a shop logo,
+ * a promotion banner or a profile picture.
  */
-export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 /** Base64 of `MAX_UPLOAD_BYTES`, rounded up to a whole group, plus padding slack. */
 export const MAX_UPLOAD_BASE64_CHARS = Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 4;

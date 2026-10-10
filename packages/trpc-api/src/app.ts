@@ -13,7 +13,7 @@ import { createAuth, parseSignUpConsent, withoutConsentFlags } from "./auth";
 import { createContext } from "./context";
 import { corsOrigins, type Env, orderRoomFor } from "./env";
 import { DomainError, InternalError } from "./errors";
-import { createLogger, requestIdFrom } from "./logging";
+import { createLogger, LogLevel, requestIdFrom } from "./logging";
 import { appRouter } from "./routers";
 import * as uploads from "./services/uploads";
 import { exchangeSupabaseSession } from "./supabase-exchange";
@@ -156,6 +156,7 @@ export function createApp() {
 			requestId: c.get("requestId"),
 			environment: c.env.ENVIRONMENT,
 			version: c.env.API_VERSION,
+			minLevel: c.env.LOG_LEVEL as LogLevel | undefined,
 		});
 		await next();
 		const fields = {
@@ -486,7 +487,11 @@ export function createApp() {
 
 	app.onError((error, c) => {
 		const requestId = c.get("requestId") ?? "unknown";
-		const logger = createLogger({ requestId, environment: c.env?.ENVIRONMENT });
+		const logger = createLogger({
+			requestId,
+			environment: c.env?.ENVIRONMENT,
+			minLevel: c.env.LOG_LEVEL as LogLevel | undefined,
+		});
 
 		if (error instanceof DomainError) {
 			logger.warn("domain error escaped a handler", {

@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import type { LogLevel } from "./logging";
 import type { OrderEventEnvelope } from "./events";
 
 /**
@@ -70,6 +71,11 @@ export type Env = {
 	ENVIRONMENT: string;
 	/** Reported by `health.check` and on every log line, so a deploy is identifiable. */
 	API_VERSION: string;
+	/**
+	 * Temporary observability threshold — errors only until an operator sets it
+	 * to `"warn"` or `"info"`. See `logging.ts` for the implementation.
+	 */
+	LOG_LEVEL?: LogLevel;
 	/** Comma-separated origins allowed to call this API from a browser. */
 	CORS_ORIGINS?: string;
 	/** Operator-controlled HTTPS OSRM endpoint; never a public demo server. */

@@ -25,7 +25,7 @@ import { authed, refused, seedUser, world } from "./harness";
  *    they are. Both halves, because either alone is a broken storefront.
  * 2. The allow-list still decides what may be stored, measured on the *decoded*
  *    length rather than the base64 string's — the one property that keeps a
- *    2 MiB ceiling from meaning "3 MiB of JPEG".
+ *    5 MiB ceiling from meaning "6.67 MiB of JPEG".
  * 3. A row whose object is gone answers like an id that never existed, so a caller
  *    cannot learn which ids are real by the difference.
  */
@@ -148,8 +148,8 @@ describe("a stored picture", () => {
 		// service adds is the check on the *decoded* length, which is the only place a
 		// boundary can actually be crossed. `MAX_UPLOAD_BYTES` is asserted here rather
 		// than recomputed so this keeps holding if the ceiling ever moves: R2 accepts
-		// 5 GB objects, so 2 MiB is now a product decision, and a test that hard-coded
-		// 2 MiB would be asserting the number instead of the rule.
+		// 5 GB objects, so 5 MiB is now a product decision, and a test that hard-coded
+		// 5 MiB would be asserting the number instead of the rule.
 		expect(MAX_UPLOAD_BYTES).toBeGreaterThan(0);
 
 		// One byte over the ceiling, base64-encoded. The schema's char bound does not

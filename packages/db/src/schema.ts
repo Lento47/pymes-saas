@@ -1358,6 +1358,8 @@ export const promotion = sqliteTable(
 		 * asked for.
 		 */
 		imageUrl: text("image_url"),
+		/** Shop-written blurb for the customer card. Null is no copy beyond the code. */
+		description: text("description"),
 	},
 	(table) => [
 		uniqueIndex("promotion_business_code_unique").on(

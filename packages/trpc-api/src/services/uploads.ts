@@ -49,8 +49,8 @@ export async function create(
 	// Measured after decode, not from the string's length: base64 of an empty input
 	// and base64 of a truncated one both look like "a short string", and the ceiling
 	// is about the picture rather than about the envelope carrying it. The schema
-	// bounds `base64` in characters, which is a looser thing — it cannot tell 2 MiB
-	// from 2.67 MiB — so this is the only check that means what the constant says.
+	// bounds `base64` in characters, which is a looser thing — it cannot tell 5 MiB
+	// from 6.67 MiB — so this is the only check that means what the constant says.
 	if (bytes.byteLength === 0 || bytes.byteLength > MAX_UPLOAD_BYTES) {
 		throw new ValidationError(PHOTO_RULE, { field: "base64" });
 	}

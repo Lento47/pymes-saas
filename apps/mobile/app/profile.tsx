@@ -519,6 +519,7 @@ function ProfileFields({ form }: { form: ProfileForm }) {
 					onChange={(next) => form.edited(() => form.setImage(next))}
 					help={t("account.profile.photo.help")}
 					radiusToken="full"
+					aspect={[1, 1]}
 				>
 					{form.nameValue.trim() ? (
 						<Text variant="title" tone="action" bold>

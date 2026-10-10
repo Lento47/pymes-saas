@@ -239,7 +239,7 @@ export const business = {
 	 */
 	"biz.products.photo.help":
 		"Elige una de tu galería o toma una con la cámara.",
-	"biz.products.photo.rule": "Elige una imagen JPEG, PNG o WebP de hasta 2 MB.",
+	"biz.products.photo.rule": "Elige una imagen JPEG, PNG o WebP de hasta 5 MB.",
 	"biz.products.sku": "Código interno",
 	"biz.products.prepTime": "Tiempo de preparación",
 	"biz.products.trackStock": "Llevar inventario",
@@ -579,7 +579,7 @@ export const business = {
 	"biz.courier.vehiclePhoto.change": "Cambiar foto",
 	"biz.courier.vehiclePhoto.remove": "Quitar foto",
 	"biz.courier.vehiclePhoto.tooLarge":
-		"Usa una foto más pequeña, de hasta 2 MB.",
+		"Usa una foto más pequeña, de hasta 5 MB.",
 	"biz.courier.availability": "Disponibilidad",
 	/*
 	 * La disponibilidad no espera al guardado, y esta es la frase que lo dice. `isAvailable`
@@ -849,6 +849,15 @@ export const business = {
 	"biz.promotions.value.fixed.rule": "El descuento debe ser mayor que cero.",
 	"biz.promotions.number.rule": "Escribe un número válido.",
 	"biz.promotions.code.taken": "Ya existe una promoción con ese código.",
+	"biz.promotions.description": "Descripción",
+	"biz.promotions.description.placeholder":
+		"De qué trata esta oferta, en pocas palabras",
+	"biz.promotions.description.help": "{remaining} de {max} palabras",
+	"biz.promotions.description.rule":
+		"La descripción no puede superar las 40 palabras.",
+	"biz.promotions.photo.module": "Agrega una foto al anuncio",
+	"biz.promotions.photo.help":
+		"JPEG, PNG o WebP de hasta 5 MB. Recorte 16:9 para el anuncio.",
 	"biz.more.empty.title": "Todavía no tienes un negocio",
 	"biz.more.empty.body":
 		"Crea un negocio para gestionar su configuración, equipo, pagos y reseñas.",

@@ -75,7 +75,20 @@ function redact(value: unknown, depth = 0): unknown {
 	return value;
 }
 
-function emit(level: LogLevel, message: string, fields: LogFields): void {
+const LEVELS = {
+	debug: 0,
+	info: 1,
+	warn: 2,
+	error: 3,
+} as const;
+
+function emit(
+	level: LogLevel,
+	message: string,
+	fields: LogFields,
+	minLevel: LogLevel,
+): void {
+	if (LEVELS[level] < LEVELS[minLevel]) return;
 	const line = { level, message, ...(redact(fields) as LogFields) };
 	const serialised = JSON.stringify(line);
 	if (level === "error") console.error(serialised);
@@ -83,18 +96,19 @@ function emit(level: LogLevel, message: string, fields: LogFields): void {
 	else console.log(serialised);
 }
 
-function makeLogger(base: LogFields): Logger {
+function makeLogger(base: LogFields, minLevel: LogLevel = "error"): Logger {
 	return {
-		debug: (message, fields) => emit("debug", message, { ...base, ...fields }),
-		info: (message, fields) => emit("info", message, { ...base, ...fields }),
-		warn: (message, fields) => emit("warn", message, { ...base, ...fields }),
-		error: (message, fields) => emit("error", message, { ...base, ...fields }),
-		child: (fields) => makeLogger({ ...base, ...fields }),
+		debug: (message, fields) =>
+			emit("debug", message, { ...base, ...fields }, minLevel),
+		info: (message, fields) => emit("info", message, { ...base, ...fields }, minLevel),
+		warn: (message, fields) => emit("warn", message, { ...base, ...fields }, minLevel),
+		error: (message, fields) => emit("error", message, { ...base, ...fields }, minLevel),
+		child: (fields) => makeLogger({ ...base, ...fields }, minLevel),
 	};
 }
 
-export function createLogger(fields: LogFields = {}): Logger {
-	return makeLogger(fields);
+export function createLogger(fields: LogFields = {}, minLevel?: LogLevel): Logger {
+	return makeLogger(fields, minLevel ?? "error");
 }
 
 /**

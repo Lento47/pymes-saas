@@ -9,7 +9,6 @@ import {
 	type TextInput,
 	View,
 } from "react-native";
-import { useKeyboardState } from "react-native-keyboard-controller";
 import { ActionBar } from "@/components/action-bar";
 import { AuthIdentity } from "@/components/auth-identity";
 import { BackButton } from "@/components/back-button";
@@ -187,9 +186,8 @@ import {
  * ## The keyboard
  *
  * `keyboardInsets` lets the scroller keep the focused input above the keyboard. The docked
- * action bar yields that space while the keyboard is visible; otherwise it would cover the
- * input even after the scroller moves it above the keyboard. The password IME action still
- * submits the form, and dismissing the keyboard restores the persistent action.
+ * action bar stays on screen and `ActionBar` lifts itself by the keyboard height, so Sign in
+ * remains the one tap while typing. The password IME action still submits the form.
  *
  * ## The failure is the API's sentence, in the one slot, and only while it is true
  *
@@ -270,7 +268,6 @@ export default function SignIn() {
 }
 
 export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
-	const keyboardVisible = useKeyboardState((state) => state.isVisible);
 	const { t } = useT();
 	const { colors } = useTheme();
 	const auth = useSession();
@@ -864,20 +861,20 @@ export function SignInForm({ signingUp = false }: { signingUp?: boolean }) {
 				</Pressable>
 			</Screen>
 
-			{/* The action rests below the form until the keyboard needs that space for the focused
-		    field. `waiting` lasts through session confirmation so a second credential cannot be
-		    submitted while sign-in is still resolving. */}
-			{!keyboardVisible ? (
-				<ActionBar
-					docked
-					primary={{
-						label: t(signingUp ? "auth.signUp.submit" : "auth.signIn.submit"),
-						onPress: () => void submit(),
-						loading: waiting,
-						disabled: waiting,
-					}}
-				/>
-			) : null}
+			{/* Always mounted. Hiding this while the keyboard was open made Sign in vanish
+			    mid-type; the first tap dismissed the keyboard and only the second submitted.
+			    `ActionBar` lifts by keyboard height so the pill stays tappable. `waiting`
+			    lasts through session confirmation so a second credential cannot be submitted
+			    while sign-in is still resolving. */}
+			<ActionBar
+				docked
+				primary={{
+					label: t(signingUp ? "auth.signUp.submit" : "auth.signIn.submit"),
+					onPress: () => void submit(),
+					loading: waiting,
+					disabled: waiting,
+				}}
+			/>
 		</View>
 	);
 }
