@@ -735,7 +735,11 @@ export function useSaveAddress() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Record<string, unknown>) => await trpc.users.saveAddress.mutate(input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["marketplace", "addresses"] }),
+    onSuccess: async (_address, input) => {
+      await qc.invalidateQueries({ queryKey: ["marketplace", "addresses"] });
+      if (typeof input.id === "string")
+        await qc.invalidateQueries({ queryKey: ["marketplace", "cart", "quote"] });
+    },
   });
 }
 

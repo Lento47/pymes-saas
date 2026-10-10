@@ -133,11 +133,11 @@ export default function CheckoutPinMap({
           ·{" "}
           <a
             className="underline"
-            href="https://protomaps.com"
+            href="https://openfreemap.org"
             target="_blank"
             rel="noreferrer"
           >
-            Protomaps
+          OpenFreeMap
           </a>
         </p>
       </div>

@@ -1,3 +1,4 @@
+import type { Address } from "@pymeshub/shared";
 import { lazy, Suspense, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -43,6 +44,7 @@ export default function MarketplaceCheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [notes, setNotes] = useState("");
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   const clientRequestId = useRef<string | null>(null);
   const locations = usePickupLocations(Boolean(session && cart.data?.items.length));
@@ -51,6 +53,7 @@ export default function MarketplaceCheckoutPage() {
     ?? locations.data?.[0];
   const selectedAddress = addressId ?? addresses.data?.find((address) => address.isDefault)?.id ?? addresses.data?.[0]?.id;
   const selectedAddressRow = addresses.data?.find((address) => address.id === selectedAddress);
+  const editingAddress = addresses.data?.find((address) => address.id === editingAddressId);
   const quote = useCartQuote(
     { fulfilment, locationId: selectedLocation?.id, addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined },
     Boolean(session && cart.data?.items.length && selectedLocation && (fulfilment === "PICKUP" || selectedAddress)),
@@ -216,14 +219,20 @@ export default function MarketplaceCheckoutPage() {
 
                 {showAddressForm ? (
                   <AddressForm
+                    key={editingAddressId ?? "new"}
+                    existing={editingAddress}
                     saving={saveAddress.isPending}
                     center={selectedLocation?.lat != null && selectedLocation.lng != null ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : null}
-                    onCancel={() => setShowAddressForm(false)}
+                    onCancel={() => {
+                      setShowAddressForm(false);
+                      setEditingAddressId(null);
+                    }}
                     onSave={(input) =>
                       saveAddress.mutate(input, {
                         onSuccess: (address) => {
                           setAddressId(address.id);
                           setShowAddressForm(false);
+                          setEditingAddressId(null);
                           toast({ title: "Dirección guardada" });
                         },
                         onError: () => toast({ title: "No pudimos guardar la dirección", variant: "destructive" }),
@@ -231,13 +240,24 @@ export default function MarketplaceCheckoutPage() {
                     }
                   />
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddressForm(true)}
-                    className="mt-3 text-sm font-semibold text-link hover:text-link/80"
-                  >
-                    + Agregar dirección
-                  </button>
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingAddressId(null); setShowAddressForm(true); }}
+                      className="min-h-11 text-sm font-semibold text-link hover:text-link/80"
+                    >
+                      + Agregar dirección
+                    </button>
+                    {selectedAddressRow ? (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingAddressId(selectedAddressRow.id); setShowAddressForm(true); }}
+                        className="min-h-11 text-sm font-semibold text-link hover:text-link/80"
+                      >
+                        Editar dirección y pin
+                      </button>
+                    ) : null}
+                  </div>
                 )}
 
                 {quote.data?.roadQuote && !quote.isError && selectedLocation?.lat != null && selectedLocation.lng != null && selectedAddressRow?.lat != null && selectedAddressRow.lng != null ? (
@@ -352,21 +372,25 @@ export default function MarketplaceCheckoutPage() {
 }
 
 function AddressForm({
+  existing,
   onSave,
   onCancel,
   saving,
   center,
 }: {
+  existing?: Address;
   onSave: (input: Record<string, unknown>) => void;
   onCancel: () => void;
   saving: boolean;
   center: { lat: number; lng: number } | null;
 }) {
-  const [label, setLabel] = useState("Casa");
-  const [line1, setLine1] = useState("");
-  const [city, setCity] = useState("");
-  const [region, setRegion] = useState("");
-  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [label, setLabel] = useState(existing?.label ?? "Casa");
+  const [line1, setLine1] = useState(existing?.line1 ?? "");
+  const [city, setCity] = useState(existing?.city ?? "");
+  const [region, setRegion] = useState(existing?.region ?? "");
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(
+    existing?.lat != null && existing.lng != null ? { lat: existing.lat, lng: existing.lng } : null,
+  );
 
   return (
     <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
@@ -405,6 +429,15 @@ function AddressForm({
           disabled={saving || !line1.trim() || !city.trim() || !region.trim()}
           onClick={() =>
             onSave({
+              ...(existing ? {
+                id: existing.id,
+                country: existing.country,
+                line2: existing.line2,
+                postalCode: existing.postalCode,
+                phone: existing.phone,
+                instructions: existing.instructions,
+                isDefault: existing.isDefault,
+              } : {}),
               label: label.trim() || "Casa",
               line1: line1.trim(),
               city: city.trim(),

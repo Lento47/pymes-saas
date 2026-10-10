@@ -128,11 +128,11 @@ export default function CheckoutRouteMap({
           {" · "}
           <a
             className="underline"
-            href="https://protomaps.com"
+            href="https://openfreemap.org"
             target="_blank"
             rel="noreferrer"
           >
-            Protomaps
+            OpenFreeMap
           </a>
         </span>
       </div>

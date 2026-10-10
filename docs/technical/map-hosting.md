@@ -32,6 +32,13 @@ cambio separado y con el estilo ya validado.
 
 ## Qué hay hoy (comprobado 2026-09-25)
 
+**Comprobación del 2026-10-10:** `/api/map/style.json` responde 200, pero
+`/api/map/basemap.pmtiles` responde 404 incluso a `Range: bytes=0-16383`.
+No seleccionar ese estilo en ningún mapa hasta que el archivo y sus recursos
+estén cargados y esta ruta responda 206. La web usa mientras tanto el estilo
+R2 existente en producción y el estilo público CORS de OpenFreeMap en orígenes
+de desarrollo/staging; la app móvil conserva el estilo R2 existente.
+
 ```text
 maps.pymeshub.lat  →  R2 pymeshub-maps (dominio personalizado)
    styles/pymeshub/style.json          →  200, 43.160 bytes, actualizado 2026-09-25

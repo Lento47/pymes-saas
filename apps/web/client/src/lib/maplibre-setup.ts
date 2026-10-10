@@ -3,7 +3,16 @@ import mapLibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-export const MAP_STYLE_URL = "https://pymeshub.lat/api/map/style.json";
+// The self-hosted style still points at an absent PMTiles archive. Production uses
+// the existing R2 style; other origins use its CORS-enabled tile provider directly.
+const productionOrigin =
+  typeof window !== "undefined" &&
+  ["https://pymeshub.lat", "https://www.pymeshub.lat"].includes(
+    window.location.origin,
+  );
+export const MAP_STYLE_URL = productionOrigin
+  ? "https://maps.pymeshub.lat/styles/pymeshub/style.json"
+  : "https://tiles.openfreemap.org/styles/liberty";
 
 let configured = false;
 

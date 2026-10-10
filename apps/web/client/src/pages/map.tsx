@@ -3,17 +3,10 @@ import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
 import { configureMapLibre, MAP_STYLE_URL } from "@/lib/maplibre-setup";
 
 /**
- * The style the mobile app uses too — one document, served by the Worker that hosts this
- * page, with `{BASE}` resolved to the request origin on the way out.
- *
- * Host is `pymeshub.lat` because that is the hostname the `pymeshubsaas` Worker actually
- * answers on. `app.pymeshub.lat` was the first choice and it does not resolve at all —
- * no DNS record — so a URL there is a dead letter in every build.
- *
- * The previous style lived at `https://maps.pymeshub.lat/styles/pymeshub/style.json`, which
- * does work: it is a public R2 custom domain serving a style whose tiles come from a
- * third-party tile host. Replacing it is the point of this route — see
- * `docs/technical/architecture/cloudflare-and-maps.md`.
+ * Production uses the same live R2 style as the mobile app. The self-hosted style at
+ * `/api/map/style.json` is held back until its PMTiles archive and assets are uploaded:
+ * the style itself responds, but its archive currently returns 404. Other web origins
+ * use the CORS-enabled source style until R2 allows those origins too.
  */
 configureMapLibre();
 
@@ -97,16 +90,15 @@ export default function MapPage() {
         </section>
 
         <p className="text-xs text-slate-400">
-          {/* ODbL §4.3 attaches the credit to the produced work, so self-hosting the
-              archive discharges none of it. Protomaps is named because their build is
-              what the archive is derived from. This is the legal notice, not branding. */}
+          {/* The active style obtains tiles from OpenFreeMap; the map also keeps its
+              built-in attribution control for the complete source terms. */}
           <a
             className="underline-offset-2 hover:underline"
-            href="https://protomaps.com"
+            href="https://openfreemap.org"
             rel="noreferrer"
             target="_blank"
           >
-            Protomaps
+            OpenFreeMap
           </a>{" "}
           ©{" "}
           <a
