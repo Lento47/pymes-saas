@@ -299,6 +299,11 @@ export default function MarketplaceCheckoutPage() {
               <span>Envío</span><span>{money(quote.data.deliveryFeeMinor, quote.data.currency)}</span>
             </div>
           ) : null}
+          {quote.data?.merchantCoversDelivery && fulfilment === "DELIVERY" ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              El comercio cubre tu envío y sigue debiendo el pago al repartidor por la entrega.
+            </p>
+          ) : null}
           {quote.data?.roadQuote && !quote.isError ? (
             <p className="mb-2 text-xs text-muted-foreground">
               {new Intl.NumberFormat("es-CR", { maximumFractionDigits: 1 }).format(quote.data.roadQuote.distanceMeters / 1000)} km por carretera · aprox. {Math.ceil(quote.data.roadQuote.durationSeconds / 60)} min de manejo

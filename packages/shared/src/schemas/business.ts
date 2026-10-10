@@ -130,7 +130,15 @@ export const businessUpdateInput = businessCreateInput
 		phone: phoneSchema.nullable().optional(),
 		email: z.string().email().max(200).nullable().optional(),
 		hours: businessHoursSchema.optional(),
+		// Zod keeps create defaults through .partial(); patches must omit untouched fields.
+		country: z.string().trim().length(2).optional(),
+		deliveryEnabled: z.boolean().optional(),
 		pickupEnabled: z.boolean().optional(),
+		deliveryFeeMinor: z.number().int().min(0).max(10_000_000).optional(),
+		merchantCoversDelivery: z.boolean().optional(),
+		deliveryRadiusKm: z.number().min(0).max(80).optional(),
+		prepTimeMinutes: z.number().int().min(0).max(600).optional(),
+		minOrderMinor: z.number().int().min(0).max(100_000_000).optional(),
 	});
 export type BusinessUpdateInput = z.infer<typeof businessUpdateInput>;
 

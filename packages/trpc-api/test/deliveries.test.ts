@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	address as addressTable,
+	business as businessTable,
 	delivery as deliveryTable,
 	merchantLocation as locationTable,
 	membership as membershipTable,
@@ -619,11 +620,14 @@ describe("a courier the shop never added", () => {
 		const offers = await caller.deliveries.offers();
 		expect(offers).toHaveLength(1);
 		if (!offers[0]) throw new Error("The unadded courier received no offer");
+		expect(offers[0].courierFeeMinor).toBe(850);
+		expect(offers[0].customerDeliveryFeeMinor).toBe(850);
 
 		const accepted = await caller.deliveries.acceptOffer({
 			offerId: offers[0].id,
 		});
 		expect(accepted.courier?.id).toBe(courier.user.id);
+		expect(accepted.courierFeeMinor).toBe(850);
 		// The customer's order carries the courier, which is what makes them a courier for
 		// every other read on this run — see `actorFor`.
 		const carried = (
@@ -664,6 +668,29 @@ describe("a courier the shop never added", () => {
 		expect(
 			(await caller.deliveries.byId({ deliveryId: accepted.id })).routeGeometry,
 		).toEqual(geometry);
+		test.close();
+	});
+
+	test("a merchant-covered offer still shows the courier's pay", async () => {
+		const test = world();
+		const ready = await orderReadyToPlace(test, "merchant_covers");
+		await test.db
+			.update(businessTable)
+			.set({ merchantCoversDelivery: true })
+			.where(eq(businessTable.id, ready.businessId));
+		const courier = await seedCourier(test, {
+			businessId: ready.businessId,
+			id: "usr_merchant_covers_courier",
+			lat: 9.9301,
+			lng: -84.0801,
+		});
+		await placeDelivery(ready, "merchant_covers");
+		const [offer] = await courier.caller.deliveries.offers();
+		expect(offer).toMatchObject({
+			courierFeeMinor: 850,
+			customerDeliveryFeeMinor: 0,
+			merchantCoversDelivery: true,
+		});
 		test.close();
 	});
 

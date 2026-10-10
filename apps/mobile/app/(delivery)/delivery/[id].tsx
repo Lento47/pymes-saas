@@ -5,6 +5,7 @@ import type {
 	DeliveryStatus,
 	DeliveryStop,
 } from "@pymeshub/shared";
+import { formatMoney } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -219,6 +220,29 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 					<Text variant="heading" bold>
 						{t(STATUS_KEYS[delivery.status])}
 					</Text>
+					{delivery.courierFeeMinor != null && delivery.courierFeeMinor > 0 ? (
+						<>
+							<Text variant="body" bold>
+								{t("delivery.offer.courierFee", {
+									amount: formatMoney(
+										delivery.courierFeeMinor,
+										delivery.currency,
+										{ locale: intlLocale },
+									),
+								})}
+							</Text>
+							{delivery.merchantCoversDelivery ||
+							delivery.customerDeliveryFeeMinor === 0 ? (
+								<Text variant="caption" tone="muted">
+									{t(
+										delivery.merchantCoversDelivery
+											? "delivery.offer.payerMerchant"
+											: "delivery.offer.payerPromotion",
+									)}
+								</Text>
+							) : null}
+						</>
+					) : null}
 				</Card>
 
 				{mapAvailable && pickupPoint && dropoffPoint ? (

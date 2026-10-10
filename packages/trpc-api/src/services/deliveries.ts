@@ -280,6 +280,10 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 			offer: offerTable,
 			delivery: deliveryTable,
 			orderReference: orderTable.reference,
+			currency: orderTable.currency,
+			courierFeeMinor: orderTable.courierFeeMinor,
+			customerDeliveryFeeMinor: orderTable.deliveryFeeMinor,
+			merchantCoversDelivery: orderTable.merchantCoversDelivery,
 			businessName: businessTable.name,
 		})
 		.from(offerTable)
@@ -296,21 +300,36 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 		)
 		.orderBy(desc(offerTable.createdAt));
 
-	return rows.map(({ offer, delivery, orderReference, businessName }) => ({
-		id: offer.id,
-		deliveryId: delivery.id,
-		orderId: delivery.orderId,
-		orderReference,
-		businessName,
-		status: offer.status,
-		pickup: pickupOf(delivery),
-		dropoffArea: [delivery.dropoffCity, delivery.dropoffRegion]
-			.filter(Boolean)
-			.join(", "),
-		distanceToPickupKm: offer.distanceToPickupKm,
-		expiresAt: offer.expiresAt,
-		createdAt: offer.createdAt,
-	}));
+	return rows.map(
+		({
+			offer,
+			delivery,
+			orderReference,
+			businessName,
+			currency,
+			courierFeeMinor,
+			customerDeliveryFeeMinor,
+			merchantCoversDelivery,
+		}) => ({
+			id: offer.id,
+			deliveryId: delivery.id,
+			orderId: delivery.orderId,
+			orderReference,
+			businessName,
+			currency,
+			status: offer.status,
+			pickup: pickupOf(delivery),
+			dropoffArea: [delivery.dropoffCity, delivery.dropoffRegion]
+				.filter(Boolean)
+				.join(", "),
+			distanceToPickupKm: offer.distanceToPickupKm,
+			courierFeeMinor,
+			customerDeliveryFeeMinor,
+			merchantCoversDelivery,
+			expiresAt: offer.expiresAt,
+			createdAt: offer.createdAt,
+		}),
+	);
 }
 
 export async function acceptOffer(
@@ -708,6 +727,9 @@ async function readDetail(
 					routeGeometry: orderTable.routeGeometry,
 					totalMinor: orderTable.totalMinor,
 					currency: orderTable.currency,
+					courierFeeMinor: orderTable.courierFeeMinor,
+					customerDeliveryFeeMinor: orderTable.deliveryFeeMinor,
+					merchantCoversDelivery: orderTable.merchantCoversDelivery,
 				},
 				business: {
 					id: businessTable.id,
@@ -782,6 +804,9 @@ async function readDetail(
 		orderStatus: row.order.status,
 		totalMinor: row.order.totalMinor,
 		currency: row.order.currency,
+		courierFeeMinor: row.order.courierFeeMinor,
+		customerDeliveryFeeMinor: row.order.customerDeliveryFeeMinor,
+		merchantCoversDelivery: row.order.merchantCoversDelivery,
 		acceptedAt: row.delivery.acceptedAt,
 		arrivedPickupAt: row.delivery.arrivedPickupAt,
 		pickedUpAt: row.delivery.pickedUpAt,

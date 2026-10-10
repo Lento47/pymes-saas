@@ -158,7 +158,7 @@ export function businessCardOf(
 		currency: currencyOf(row.currency),
 		ratingAvg: row.ratingAvg,
 		ratingCount: row.ratingCount,
-		deliveryEnabled: row.deliveryEnabled,
+		deliveryEnabled: row.deliveryEnabled && row.deliveryFeeMinor > 0,
 		pickupEnabled: row.pickupEnabled,
 		deliveryFeeMinor: row.deliveryFeeMinor,
 		merchantCoversDelivery: row.merchantCoversDelivery,
@@ -180,6 +180,9 @@ export function businessSettingsOf(
 ): BusinessSettings {
 	return {
 		...businessCardOf(row, options),
+		// Owners must see the switch they actually saved, even while the courier fee
+		// still needs configuring before customers can request delivery.
+		deliveryEnabled: row.deliveryEnabled,
 		status: row.status,
 		phone: row.phone,
 		email: row.email,
@@ -699,6 +702,7 @@ export function orderDetailOf(input: {
 			subtotalMinor: order.subtotalMinor,
 			discountMinor: order.discountMinor,
 			deliveryFeeMinor: order.deliveryFeeMinor,
+			merchantCoversDelivery: order.merchantCoversDelivery,
 			taxMinor: order.taxMinor,
 			tipMinor: order.tipMinor,
 			totalMinor: order.totalMinor,

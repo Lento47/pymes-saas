@@ -151,6 +151,7 @@ export const customer = {
 	"store.delivery": "Delivery",
 	"store.delivery.fee": "Delivery {amount}",
 	"store.delivery.free": "Free delivery",
+	"store.delivery.covered": "Shop covers delivery",
 	"store.pickup": "Pick up in store",
 	/* The chip forms of `store.pickup` and `store.minOrder` — see the Spanish file's note on why both forms exist. */
 	"store.pickup.short": "Pickup",
@@ -281,6 +282,8 @@ export const customer = {
 	"checkout.location": "Pickup location",
 	"checkout.location.none": "This shop has no pickup location available yet.",
 	"checkout.roadRoute": "{distance} km by road · about {minutes} min driving",
+	"checkout.deliveryCoveredByMerchant":
+		"The shop covers your delivery charge and still owes the courier for the trip.",
 	"checkout.address": "Delivery address",
 	"checkout.address.add": "Add address",
 	"checkout.address.none": "You need an address to have it delivered",
@@ -320,6 +323,8 @@ export const customer = {
 		"Choose one of your saved delivery addresses.",
 	"checkout.refusal.deliveryQuoteUnavailable":
 		"We couldn't price a road route right now. Try again or choose pickup.",
+	"checkout.refusal.courierFeeUnavailable":
+		"This shop hasn't set a courier fee yet. Choose pickup or ask the shop to finish delivery setup.",
 	"checkout.refusal.emptyCart": "Your cart is empty.",
 	"checkout.refusal.minOrder": "This order hasn't reached the shop's minimum.",
 	"checkout.refusal.totalChanged":

@@ -190,6 +190,8 @@ export const cartTotalsSchema = z.object({
 	subtotalMinor: z.number().int(),
 	discountMinor: z.number().int(),
 	deliveryFeeMinor: z.number().int(),
+	/** The customer fee may be zero while the shop still owes the courier. */
+	merchantCoversDelivery: z.boolean().optional(),
 	taxMinor: z.number().int(),
 	tipMinor: z.number().int(),
 	totalMinor: z.number().int(),

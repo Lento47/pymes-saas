@@ -166,6 +166,64 @@ describe("the cart's one-business rule", () => {
 });
 
 describe("checkout quote", () => {
+	test("merchant-covered delivery charges the customer zero but preserves courier pay", async () => {
+		const test = world();
+		const { first, caller, coffee } = await twoShops(test);
+		await test.db
+			.update(businessTable)
+			.set({ merchantCoversDelivery: true })
+			.where(eq(businessTable.id, first));
+		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+		const address = await caller.users.saveAddress({
+			label: "Home",
+			line1: "Street",
+			city: "San José",
+			region: "San José",
+		});
+		const quote = await caller.cart.quote({
+			fulfilment: "DELIVERY",
+			locationId: `loc_${first}`,
+			addressId: address.id,
+		});
+		expect(quote.deliveryFeeMinor).toBe(0);
+		expect(quote.merchantCoversDelivery).toBe(true);
+		const placed = await caller.orders.place({
+			fulfilment: "DELIVERY",
+			locationId: `loc_${first}`,
+			addressId: address.id,
+			paymentMethod: "CASH",
+			clientRequestId: "merchant-covered-delivery",
+			expectedTotalMinor: quote.totalMinor,
+		});
+		const [stored] = await test.db
+			.select({
+				customerFee: orderTable.deliveryFeeMinor,
+				courierFee: orderTable.courierFeeMinor,
+				merchantCovers: orderTable.merchantCoversDelivery,
+			})
+			.from(orderTable)
+			.where(eq(orderTable.id, placed.id));
+		expect(stored).toEqual({
+			customerFee: 0,
+			courierFee: 850,
+			merchantCovers: true,
+		});
+		test.close();
+	});
+
+	test("delivery is unavailable until the shop sets a courier fee", async () => {
+		const test = world();
+		const { first, caller, coffee } = await twoShops(test);
+		await test.db
+			.update(businessTable)
+			.set({ deliveryFeeMinor: 0 })
+			.where(eq(businessTable.id, first));
+		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+		const error = await refused(caller.cart.quote({ fulfilment: "DELIVERY" }));
+		expect(error.message).toBe("checkout.refusal.courierFeeUnavailable");
+		test.close();
+	});
+
 	test("does not fall back to the fixed fee when road routing is unavailable", async () => {
 		const test = world();
 		const previousFetch = globalThis.fetch;
@@ -302,6 +360,78 @@ describe("checkout quote", () => {
 			expect(stored?.deliveryPricingVersion).toBe("express-v1");
 			expect(stored?.routeDistanceMeters).toBe(4_000);
 			expect(stored?.deliveryFeeBaseMinor).toBe(2_310);
+		} finally {
+			globalThis.fetch = previousFetch;
+			test.close();
+		}
+	});
+
+	test("merchant sponsorship does not erase the road fee or courier pay", async () => {
+		const test = world();
+		const previousFetch = globalThis.fetch;
+		globalThis.fetch = Object.assign(
+			async () =>
+				Response.json({
+					code: "Ok",
+					routes: [
+						{
+							distance: 4_000,
+							duration: 720,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[-84.08, 9.93],
+									[-84.07, 9.94],
+								],
+							},
+						},
+					],
+				}),
+			{ preconnect: previousFetch.preconnect },
+		);
+		try {
+			const { first, caller, coffee } = await twoShops(test);
+			test.env.ROUTE_FEE_ENABLED = "true";
+			test.env.ROUTING_BASE_URL = "https://routing.test/";
+			await test.db
+				.update(businessTable)
+				.set({ merchantCoversDelivery: true })
+				.where(eq(businessTable.id, first));
+			await test.db
+				.update(locationTable)
+				.set({ lat: 9.93, lng: -84.08 })
+				.where(eq(locationTable.businessId, first));
+			await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
+			const address = await caller.users.saveAddress({
+				label: "Home",
+				line1: "Street",
+				city: "San José",
+				region: "San José",
+				lat: 9.94,
+				lng: -84.07,
+			});
+			const input = {
+				fulfilment: "DELIVERY" as const,
+				locationId: `loc_${first}`,
+				addressId: address.id,
+			};
+			const quote = await caller.cart.quote(input);
+			expect(quote.deliveryFeeMinor).toBe(0);
+			expect(quote.roadQuote?.baseFeeMinor).toBe(2_310);
+			const placed = await caller.orders.place({
+				...input,
+				quoteId: quote.roadQuote?.quoteId,
+				paymentMethod: "CASH",
+				clientRequestId: "merchant-covered-road",
+				expectedTotalMinor: quote.totalMinor,
+			});
+			const [stored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, placed.id));
+			expect(stored?.deliveryFeeMinor).toBe(0);
+			expect(stored?.deliveryFeeBaseMinor).toBe(2_310);
+			expect(stored?.courierFeeMinor).toBe(850);
 		} finally {
 			globalThis.fetch = previousFetch;
 			test.close();

@@ -169,6 +169,7 @@ export const orderTotalsSchema = z.object({
 	subtotalMinor: z.number().int(),
 	discountMinor: z.number().int(),
 	deliveryFeeMinor: z.number().int(),
+	merchantCoversDelivery: z.boolean().optional(),
 	taxMinor: z.number().int(),
 	tipMinor: z.number().int(),
 	totalMinor: z.number().int(),

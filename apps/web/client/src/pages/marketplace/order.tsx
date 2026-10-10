@@ -134,11 +134,14 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
                 <dt>Subtotal</dt>
                 <dd>{money(data.totals.subtotalMinor, data.currency)}</dd>
               </div>
-              {data.totals.deliveryFeeMinor > 0 ? (
+              {data.fulfilment === "DELIVERY" ? (
                 <div className="flex justify-between">
                   <dt>Envío</dt>
                   <dd>{money(data.totals.deliveryFeeMinor, data.currency)}</dd>
                 </div>
+              ) : null}
+              {data.totals.merchantCoversDelivery ? (
+                <p className="text-xs text-muted-foreground">El comercio cubrió tu envío y debe pagar al repartidor.</p>
               ) : null}
               {data.totals.discountMinor > 0 ? (
                 <div className="flex justify-between">

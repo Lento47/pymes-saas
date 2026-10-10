@@ -15,8 +15,8 @@ import {
 	productOptionGroup as optionGroupTable,
 	productOption as optionTable,
 	order as orderTable,
-	priceBook as priceBookTable,
 	priceBookPrice as priceBookPriceTable,
+	priceBook as priceBookTable,
 	product as productTable,
 	review as reviewTable,
 	session as sessionTable,
@@ -41,9 +41,9 @@ import {
 	DEFAULT_PLAN,
 	effectivePlan,
 	LAUNCH_PRICE_BOOK,
-	periodDaysFor,
-	type Plan,
 	PLANS,
+	type Plan,
+	periodDaysFor,
 	priceMinorFor,
 	STATUS_IS_LISTED,
 	subscriptionStatusAt,
@@ -100,7 +100,9 @@ function toBindable(value: unknown): unknown {
 	if (value === undefined) return null;
 	if (typeof value === "boolean") return value ? 1 : 0;
 	if (value instanceof Date) {
-		throw new TypeError("D1 cannot bind a Date; bind epoch milliseconds instead");
+		throw new TypeError(
+			"D1 cannot bind a Date; bind epoch milliseconds instead",
+		);
 	}
 	return value;
 }
@@ -314,7 +316,11 @@ function kv(): KVNamespace {
  * A leaked override would make a later spec pass for the wrong reason, so the docblock
  * on `seedBusiness`'s `raiseLimits` makes restoring the caller's job.
  */
-function raiseLimit(plan: Plan, limit: CountablePlanLimit, value: number): void {
+function raiseLimit(
+	plan: Plan,
+	limit: CountablePlanLimit,
+	value: number,
+): void {
 	PLAN_LIMITS[plan][limit] = value;
 }
 
@@ -597,7 +603,10 @@ export async function seedSubscription(
 	const plan = input.plan ?? "BUSINESS";
 	// A free subscription has no period at all — see `PLAN_PERIOD_DAYS`, where it is
 	// `null` and not zero precisely so nothing can bill it.
-	const cadence = input.cadence === undefined && plan === "FREE" ? null : input.cadence ?? "MONTHLY";
+	const cadence =
+		input.cadence === undefined && plan === "FREE"
+			? null
+			: (input.cadence ?? "MONTHLY");
 	const days = input.daysUntilDue ?? 5;
 	const periodLength = periodDaysFor(plan, cadence ?? "MONTHLY") ?? 0;
 	const periodStart = new Date(Date.now() + (days - periodLength) * 86_400_000);
@@ -899,7 +908,9 @@ export async function seedBusiness(
 		status: overrides.status ?? "ACTIVE",
 		deliveryEnabled: true,
 		pickupEnabled: true,
-		deliveryFeeMinor: 0,
+		// Deliveries in ordinary fixtures have a real courier fee. A zero-fee shop
+		// belongs in an explicit test of unfinished merchant setup.
+		deliveryFeeMinor: 850,
 		deliveryRadiusKm: 6,
 		prepTimeMinutes: 25,
 		minOrderMinor: 0,

@@ -110,6 +110,7 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	);
 
 	const [fee, setFee] = useState("");
+	const [merchantCoversDelivery, setMerchantCoversDelivery] = useState(false);
 	const [radius, setRadius] = useState("");
 	const [prep, setPrep] = useState("");
 	const [courierEmail, setCourierEmail] = useState("");
@@ -147,6 +148,7 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 		if (prefilled.current || !settings.data) return;
 		prefilled.current = true;
 		setFee(String(settings.data.deliveryFeeMinor));
+		setMerchantCoversDelivery(settings.data.merchantCoversDelivery ?? false);
 		setRadius(String(settings.data.deliveryRadiusKm));
 		setPrep(String(settings.data.prepTimeMinutes));
 		setMinOrder(String(settings.data.minOrderMinor));
@@ -185,6 +187,7 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 	const emailOk = !courierEmail.trim() || EMAIL_SHAPE.test(courierEmail.trim());
 	const numbersOk =
 		parseFee() !== null &&
+		(!deliveryOn || (parseFee() ?? 0) > 0) &&
 		parseRadius() !== null &&
 		parsePrep() !== null &&
 		parseMinOrder() !== null;
@@ -230,6 +233,7 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 				pickupEnabled: pickupOn,
 				minOrderMinor,
 				deliveryFeeMinor: feeMinor,
+				merchantCoversDelivery,
 				deliveryRadiusKm: radiusKm,
 				prepTimeMinutes: prepMinutes,
 			},
@@ -374,7 +378,9 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 												error={
 													submitted && parseFee() === null
 														? t("biz.new.amount.unreadable")
-														: null
+														: submitted && (parseFee() ?? 0) <= 0
+															? t("biz.settings.delivery.courierFeeRequired")
+															: null
 												}
 												// The one field whose unit is not obvious: minor units is a
 												// rule for programmers, so the dictionary states it with
@@ -383,6 +389,21 @@ function DeliveryForm({ businessId }: { businessId: string }) {
 												keyboardType="number-pad"
 												placeholder="0"
 											/>
+											<View style={formStyles.switchRow}>
+												<Switch
+													checked={merchantCoversDelivery}
+													onChange={(next) =>
+														edited(() => setMerchantCoversDelivery(next))
+													}
+													label={t("biz.settings.delivery.cover")}
+												/>
+												<Text variant="label">
+													{t("biz.settings.delivery.cover")}
+												</Text>
+											</View>
+											<Text variant="caption" tone="muted">
+												{t("biz.settings.delivery.cover.help")}
+											</Text>
 											<Field
 												label={t("biz.settings.delivery.radius")}
 												value={radius}

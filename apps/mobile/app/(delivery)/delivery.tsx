@@ -1,6 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { MOVE_LABELS } from "@pymeshub/i18n";
-import type { CourierProfile, OrderStatus } from "@pymeshub/shared";
+import {
+	type CourierProfile,
+	formatMoney,
+	type OrderStatus,
+} from "@pymeshub/shared";
 import {
 	useInfiniteQuery,
 	useMutation,
@@ -439,7 +443,7 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 		profile.zoneLat != null &&
 		profile.zoneLng != null &&
 		profile.zoneRadiusKm != null;
-	const { t, tp } = useT();
+	const { t, tp, intlLocale } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { colors } = useTheme();
@@ -734,6 +738,30 @@ function Dispatch({ profile }: { profile: CourierProfile }) {
 												: null}
 										</Text>
 									</View>
+									{offer.courierFeeMinor != null &&
+									offer.courierFeeMinor > 0 ? (
+										<>
+											<Text variant="body" bold>
+												{t("delivery.offer.courierFee", {
+													amount: formatMoney(
+														offer.courierFeeMinor,
+														offer.currency ?? "CRC",
+														{ locale: intlLocale },
+													),
+												})}
+											</Text>
+											{offer.merchantCoversDelivery ||
+											offer.customerDeliveryFeeMinor === 0 ? (
+												<Text variant="caption" tone="muted">
+													{t(
+														offer.merchantCoversDelivery
+															? "delivery.offer.payerMerchant"
+															: "delivery.offer.payerPromotion",
+													)}
+												</Text>
+											) : null}
+										</>
+									) : null}
 									<View style={styles.orderActions}>
 										<Button
 											label={t("delivery.offer.accept")}

@@ -800,6 +800,11 @@ function CheckoutForm({
 										amountMinor={quote.data?.deliveryFeeMinor}
 										currency={quote.data?.currency}
 									/>
+									{quote.data?.merchantCoversDelivery ? (
+										<Text variant="caption" tone="muted">
+											{t("checkout.deliveryCoveredByMerchant")}
+										</Text>
+									) : null}
 									{quote.data?.roadQuote ? (
 										<Text variant="caption" tone="muted">
 											{t("checkout.roadRoute", {

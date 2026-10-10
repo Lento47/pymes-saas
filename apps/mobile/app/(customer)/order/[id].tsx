@@ -686,6 +686,11 @@ function OrderDetail() {
 								amountMinor={order.totals.deliveryFeeMinor}
 								currency={order.currency}
 							/>
+							{order.totals.merchantCoversDelivery ? (
+								<Text variant="caption" tone="muted">
+									{t("checkout.deliveryCoveredByMerchant")}
+								</Text>
+							) : null}
 							{order.totals.discountMinor > 0 ? (
 								<MoneyLine
 									label={t("cart.discount")}

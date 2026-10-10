@@ -274,6 +274,7 @@ export const customer = {
 	"store.delivery": "Entrega",
 	"store.delivery.fee": "Envío {amount}",
 	"store.delivery.free": "Envío gratis",
+	"store.delivery.covered": "El comercio cubre el envío",
 	"store.pickup": "Retiro en el local",
 	/*
 	 * The chip pair beside the two sentences above. A card's fact row is four chips wide, and
@@ -540,8 +541,12 @@ export const customer = {
 	"checkout.delivery": "Entrega a domicilio",
 	"checkout.pickup": "Retiro en el local",
 	"checkout.location": "Local de retiro",
-	"checkout.location.none": "Este comercio aún no tiene un local de retiro disponible.",
-	"checkout.roadRoute": "{distance} km por carretera · aprox. {minutes} min de manejo",
+	"checkout.location.none":
+		"Este comercio aún no tiene un local de retiro disponible.",
+	"checkout.roadRoute":
+		"{distance} km por carretera · aprox. {minutes} min de manejo",
+	"checkout.deliveryCoveredByMerchant":
+		"El comercio cubre tu envío y sigue debiendo el pago al repartidor por la entrega.",
 	"checkout.address": "Dirección de entrega",
 	"checkout.address.add": "Agregar dirección",
 	"checkout.address.none": "Necesitas una dirección para que te lo entreguen",
@@ -584,6 +589,8 @@ export const customer = {
 		"Elige una de tus direcciones de entrega guardadas.",
 	"checkout.refusal.deliveryQuoteUnavailable":
 		"No pudimos cotizar una ruta por carretera. Inténtalo de nuevo o elige retiro.",
+	"checkout.refusal.courierFeeUnavailable":
+		"Este comercio aún no define el pago al repartidor. Elige retiro o pídele que complete la configuración de entregas.",
 	"checkout.refusal.emptyCart": "Tu carrito está vacío.",
 	"checkout.refusal.minOrder": "Este pedido no alcanza el mínimo de la tienda.",
 	"checkout.refusal.totalChanged":

@@ -302,8 +302,8 @@ function StoreFacts({ card }: { card: BusinessCard }) {
 	// refuses. See the card's docblock for the whole of it — the two files must agree, and a
 	// shop that offers neither draws no fulfilment chip on either.
 	const delivery = card.deliveryEnabled
-		? card.deliveryFeeMinor === 0
-			? t("store.delivery.free")
+		? card.merchantCoversDelivery
+			? t("store.delivery.covered")
 			: t("store.delivery.fee", {
 					amount: formatMoney(card.deliveryFeeMinor, card.currency, {
 						locale: intlLocale,

@@ -5,15 +5,14 @@ import { Link, useLocation } from "wouter";
 import {
   EmptyState,
   ErrorState,
-  LoadMore,
+  imageSrc,
   LoadingGrid,
+  LoadMore,
+  money,
   ProductCardView,
   ProductGrid,
-  imageSrc,
-  money,
 } from "@/components/marketplace/cards";
 import { MarketplaceShell } from "@/components/marketplace/public-shell";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   cartErrorMessage,
@@ -22,6 +21,7 @@ import {
   useProductListInfinite,
   useStorefront,
 } from "@/lib/marketplace";
+import { cn } from "@/lib/utils";
 
 export default function MarketplaceStorePage({ slug }: { slug: string }) {
   const { data, isLoading, isError, refetch } = useStorefront(slug);
@@ -145,8 +145,8 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
             <span className="inline-flex items-center gap-1">
               <Bike aria-hidden="true" className="h-3.5 w-3.5" />
               {card.deliveryEnabled
-                ? card.deliveryFeeMinor === 0
-                  ? "Envío gratis"
+                ? card.merchantCoversDelivery
+                  ? "El comercio cubre el envío"
                   : `Envío ${money(card.deliveryFeeMinor, card.currency)}`
                 : "Sin entrega"}
             </span>

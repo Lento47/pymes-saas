@@ -49,6 +49,7 @@ type SettingsForm = {
 	deliveryEnabled: boolean;
 	pickupEnabled: boolean;
 	deliveryFeeMinor: string;
+	merchantCoversDelivery: boolean;
 	deliveryRadiusKm: string;
 	prepTimeMinutes: string;
 	minOrderMinor: string;
@@ -118,6 +119,7 @@ function initialForm(settings: BusinessSettings): SettingsForm {
 		deliveryEnabled: settings.deliveryEnabled,
 		pickupEnabled: settings.pickupEnabled,
 		deliveryFeeMinor: moneyInput(settings.deliveryFeeMinor, settings.currency),
+		merchantCoversDelivery: settings.merchantCoversDelivery ?? false,
 		deliveryRadiusKm: settings.deliveryRadiusKm?.toString() ?? "",
 		prepTimeMinutes: settings.prepTimeMinutes.toString(),
 		minOrderMinor: moneyInput(settings.minOrderMinor, settings.currency),
@@ -148,6 +150,13 @@ function validate(
 		if (parsed === null || parsed < 0 || parsed > max) {
 			errors[key] = t("biz.new.amount.unreadable");
 		}
+	}
+	if (
+		!errors.deliveryFeeMinor &&
+		form.deliveryEnabled &&
+		moneyValue(form.deliveryFeeMinor, currency) <= 0
+	) {
+		errors.deliveryFeeMinor = t("biz.settings.delivery.courierFeeRequired");
 	}
 	if (
 		form.deliveryRadiusKm.trim() &&
@@ -195,6 +204,7 @@ function asSettingsUpdate(
 		deliveryEnabled: form.deliveryEnabled,
 		pickupEnabled: form.pickupEnabled,
 		deliveryFeeMinor: moneyValue(form.deliveryFeeMinor, currency),
+		merchantCoversDelivery: form.merchantCoversDelivery,
 		deliveryRadiusKm: numberValue(form.deliveryRadiusKm),
 		prepTimeMinutes: numberValue(form.prepTimeMinutes) ?? 0,
 		minOrderMinor: moneyValue(form.minOrderMinor, currency),
@@ -537,6 +547,34 @@ function SettingsForm({
 								keyboardType="decimal-pad"
 								editable={canEdit}
 							/>
+							{form.deliveryEnabled ? (
+								<>
+									<Text variant="label" bold>
+										{t("biz.settings.delivery.cover")}
+									</Text>
+									<Segmented
+										label={t("biz.settings.delivery.cover")}
+										value={form.merchantCoversDelivery ? "on" : "off"}
+										onChange={(value) =>
+											change("merchantCoversDelivery", value === "on")
+										}
+										options={[
+											{
+												value: "off",
+												label: t("biz.settings.delivery.cover.off"),
+											},
+											{
+												value: "on",
+												label: t("biz.settings.delivery.cover.on"),
+											},
+										]}
+										disabled={!canEdit}
+									/>
+									<Text variant="caption" tone="muted">
+										{t("biz.settings.delivery.cover.help")}
+									</Text>
+								</>
+							) : null}
 							<Field
 								label={t("biz.settings.delivery.radius")}
 								value={form.deliveryRadiusKm}

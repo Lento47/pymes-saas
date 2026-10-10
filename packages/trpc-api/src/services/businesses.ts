@@ -44,6 +44,7 @@ import {
 	desc,
 	eq,
 	exists,
+	gt,
 	gte,
 	inArray,
 	isNotNull,
@@ -304,7 +305,10 @@ export async function list(
 	if (input.categoryId)
 		conditions.push(inCategory(businessTable.categoryId, input.categoryId));
 	if (input.deliveryOnly)
-		conditions.push(eq(businessTable.deliveryEnabled, true));
+		conditions.push(
+			eq(businessTable.deliveryEnabled, true),
+			gt(businessTable.deliveryFeeMinor, 0),
+		);
 	if (input.search)
 		conditions.push(like(businessTable.name, likePattern(input.search)));
 
@@ -593,7 +597,11 @@ export async function update(
 	assignIfPresent(patch, "deliveryEnabled", input.deliveryEnabled);
 	assignIfPresent(patch, "pickupEnabled", input.pickupEnabled);
 	assignIfPresent(patch, "deliveryFeeMinor", input.deliveryFeeMinor);
-	assignIfPresent(patch, "merchantCoversDelivery", input.merchantCoversDelivery);
+	assignIfPresent(
+		patch,
+		"merchantCoversDelivery",
+		input.merchantCoversDelivery,
+	);
 	assignIfPresent(patch, "deliveryRadiusKm", input.deliveryRadiusKm);
 	assignIfPresent(patch, "prepTimeMinutes", input.prepTimeMinutes);
 	assignIfPresent(patch, "minOrderMinor", input.minOrderMinor);
@@ -607,19 +615,20 @@ export async function update(
 		await assertLeafCategory(ctx, input.categoryId);
 	if (
 		input.merchantCoversDelivery !== undefined ||
-		input.deliveryFeeMinor !== undefined
+		input.deliveryFeeMinor !== undefined ||
+		input.deliveryEnabled !== undefined
 	) {
 		const [current] = await ctx.db
 			.select({
 				fee: businessTable.deliveryFeeMinor,
-				covers: businessTable.merchantCoversDelivery,
+				deliveryEnabled: businessTable.deliveryEnabled,
 			})
 			.from(businessTable)
 			.where(eq(businessTable.id, businessId))
 			.limit(1);
 		const existing = orNotFound(current);
 		if (
-			(input.merchantCoversDelivery ?? existing.covers) &&
+			(input.deliveryEnabled ?? existing.deliveryEnabled) &&
 			(input.deliveryFeeMinor ?? existing.fee) === 0
 		)
 			throw new ValidationError("biz.settings.delivery.courierFeeRequired", {

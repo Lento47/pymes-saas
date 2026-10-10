@@ -197,8 +197,8 @@ export function BusinessCard({
 	// storefront's *sentence* — "Retiro en el local" — and a sentence in a chip row is
 	// four chips where three would fit.
 	const delivery = business.deliveryEnabled
-		? business.deliveryFeeMinor === 0
-			? t("store.delivery.free")
+		? business.merchantCoversDelivery
+			? t("store.delivery.covered")
 			: t("store.delivery.fee", {
 					amount: formatMoney(business.deliveryFeeMinor, business.currency, {
 						locale: intlLocale,

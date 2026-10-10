@@ -1,6 +1,6 @@
-import { formatMoney, type BusinessCard, type ProductCard, type PromotionCard } from "@pymeshub/shared";
+import { type BusinessCard, formatMoney, type ProductCard, type PromotionCard } from "@pymeshub/shared";
 import { AlertCircle, Bike, Clock, MapPin, Plus, Star, Store, Tag } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Link } from "wouter";
 
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,11 @@ export function BusinessCardView({ card }: { card: BusinessCard }) {
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Bike aria-hidden="true" className="h-3.5 w-3.5" />
-            {card.deliveryFeeMinor === 0 ? "Envío gratis" : `Envío ${money(card.deliveryFeeMinor, card.currency)}`}
+            {!card.deliveryEnabled
+              ? "Sin entrega"
+              : card.merchantCoversDelivery
+                ? "El comercio cubre el envío"
+                : `Envío ${money(card.deliveryFeeMinor, card.currency)}`}
           </span>
           <span className="inline-flex items-center gap-1 tabular-nums">
             <Clock aria-hidden="true" className="h-3.5 w-3.5" />

@@ -338,10 +338,17 @@ export const business = {
 	"biz.settings.hours.overnight": "Cierra después de medianoche",
 	"biz.settings.delivery": "Entrega",
 	"biz.settings.delivery.enabled": "Ofrezco entrega a domicilio",
-	"biz.settings.delivery.fee": "Costo de envío",
+	"biz.settings.delivery.fee": "Pago al repartidor por entrega",
 	/** La unidad es la que el API cobra: la menor de la moneda, donde ₡ va y $ lleva dos más. */
 	"biz.settings.delivery.fee.help":
-		"En la unidad menor de tu moneda: ₡1 500 se escribe 1500, $25 se escribe 2500.",
+		"Define cuánto recibe el repartidor por entrega. El cargo al cliente puede variar según la ruta. ₡1 500 se escribe 1500; $25, 2500.",
+	"biz.settings.delivery.cover": "Cubriré el envío para mis clientes",
+	"biz.settings.delivery.cover.on": "Paga el comercio",
+	"biz.settings.delivery.cover.off": "Paga el cliente",
+	"biz.settings.delivery.cover.help":
+		"El cliente no paga envío. Tu negocio sigue debiendo al repartidor el monto indicado por cada entrega.",
+	"biz.settings.delivery.courierFeeRequired":
+		"Define un pago al repartidor mayor que cero antes de ofrecer entregas.",
 	"biz.settings.delivery.freeOver": "Envío gratis desde",
 	"biz.settings.delivery.radius": "Radio de entrega",
 	"biz.settings.delivery.minOrder": "Pedido mínimo",
@@ -1200,6 +1207,11 @@ export const business = {
 	"delivery.board.record.rating": "{value} de 5, según {count} clientes",
 
 	"delivery.offer.accept": "Aceptar entrega",
+	"delivery.offer.courierFee": "Pago al repartidor: {amount}",
+	"delivery.offer.payerMerchant":
+		"El comercio debe pagar este monto al repartidor.",
+	"delivery.offer.payerPromotion":
+		"Una promoción cubre el cobro al cliente; el pago al repartidor sigue pendiente.",
 	"delivery.offer.decline": "Rechazar",
 	"delivery.offer.distance": "A {value} km del negocio",
 	"delivery.offer.unavailable": "Esta oferta ya no está disponible.",

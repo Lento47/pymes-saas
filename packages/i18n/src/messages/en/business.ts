@@ -309,10 +309,17 @@ export const business = {
 	"biz.settings.hours.overnight": "Closes after midnight",
 	"biz.settings.delivery": "Delivery",
 	"biz.settings.delivery.enabled": "I offer delivery",
-	"biz.settings.delivery.fee": "Delivery fee",
+	"biz.settings.delivery.fee": "Courier fee per delivery",
 	/* The unit is the one the API charges: the currency's minor unit, where ₡ goes bare and $ carries two more. */
 	"biz.settings.delivery.fee.help":
-		"In the minor unit of your currency: ₡1 500 is written 1500, $25 is written 2500.",
+		"Set what the courier earns per delivery. The customer charge may vary by route. ₡1 500 is entered as 1500; $25 as 2500.",
+	"biz.settings.delivery.cover": "I will cover delivery for customers",
+	"biz.settings.delivery.cover.on": "Shop pays",
+	"biz.settings.delivery.cover.off": "Customer pays",
+	"biz.settings.delivery.cover.help":
+		"Customers pay no delivery fee. Your shop still owes the courier the amount above for each delivery.",
+	"biz.settings.delivery.courierFeeRequired":
+		"Set a courier fee above zero before offering delivery.",
 	"biz.settings.delivery.freeOver": "Free delivery over",
 	"biz.settings.delivery.radius": "Delivery radius",
 	"biz.settings.delivery.minOrder": "Minimum order",
@@ -1128,6 +1135,10 @@ export const business = {
 	"delivery.board.record.rating": "{value} out of 5, from {count} customers",
 
 	"delivery.offer.accept": "Accept delivery",
+	"delivery.offer.courierFee": "Courier fee: {amount}",
+	"delivery.offer.payerMerchant": "The shop owes this fee to the courier.",
+	"delivery.offer.payerPromotion":
+		"A promotion covers the customer's charge; the courier fee is still owed.",
 	"delivery.offer.decline": "Decline",
 	"delivery.offer.distance": "{value} km from the business",
 	"delivery.offer.unavailable": "This offer is no longer available.",

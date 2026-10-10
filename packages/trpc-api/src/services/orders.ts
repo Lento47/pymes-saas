@@ -344,6 +344,8 @@ export async function place(
 	const discountMinor = promotion.discount
 		? discountAmountOf(subtotalMinor, promotion.discount)
 		: 0;
+	if (input.fulfilment === "DELIVERY" && business.deliveryFeeMinor <= 0)
+		throw new ValidationError("checkout.refusal.courierFeeUnavailable");
 	const roadPricingEnabled =
 		input.fulfilment === "DELIVERY" &&
 		roadFeeEnabled(ctx.env, business.currency);

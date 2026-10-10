@@ -148,6 +148,8 @@ export async function quote(
 		cart.totals.subtotalMinor,
 	);
 	if (promotion.error) throw new ValidationError(promotion.error);
+	if (input.fulfilment === "DELIVERY" && business.deliveryFeeMinor <= 0)
+		throw new ValidationError("checkout.refusal.courierFeeUnavailable");
 	if (
 		input.fulfilment === "DELIVERY" &&
 		roadFeeEnabled(ctx.env, business.currency)
@@ -186,7 +188,11 @@ export async function quote(
 			freeDelivery:
 				Boolean(promotion.freeDelivery) || business.merchantCoversDelivery,
 		});
-		return { ...cart.totals, ...road };
+		return {
+			...cart.totals,
+			...road,
+			merchantCoversDelivery: business.merchantCoversDelivery,
+		};
 	}
 	const deliveryFeeMinor =
 		input.fulfilment === "DELIVERY" &&
@@ -197,6 +203,7 @@ export async function quote(
 	return {
 		...cart.totals,
 		deliveryFeeMinor,
+		merchantCoversDelivery: business.merchantCoversDelivery,
 		totalMinor: cart.totals.totalMinor + deliveryFeeMinor,
 	};
 }

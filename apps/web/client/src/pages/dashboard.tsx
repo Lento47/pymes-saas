@@ -9,6 +9,7 @@ import {
   Inbox,
   Loader2,
   RefreshCw,
+  Receipt,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
