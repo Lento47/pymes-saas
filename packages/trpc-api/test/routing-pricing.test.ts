@@ -141,13 +141,13 @@ describe("OSRM road routing boundary", () => {
 
 describe("express road fee", () => {
 	test("prices four road kilometres and twelve driving minutes at ₡2,310", () => {
-		expect(routeFeeMinor(4_000, 720)).toBe(231_000);
+		expect(routeFeeMinor(4_000, 720)).toBe(2_310);
 	});
 
 	test("caps discounts by eligibility and actual contribution margin", () => {
 		const base = {
-			feeMinor: 231_000,
-			availableMarginMinor: 100_000,
+			feeMinor: 2_310,
+			availableMarginMinor: 1_000,
 		};
 		expect(
 			operationalDiscountMinor({
@@ -162,21 +162,21 @@ describe("express road fee", () => {
 				nearbyCourierEligible: true,
 				orderAlreadyReady: false,
 			}),
-		).toBe(23_100);
+		).toBe(231);
 		expect(
 			operationalDiscountMinor({
 				...base,
 				nearbyCourierEligible: true,
 				orderAlreadyReady: true,
 			}),
-		).toBe(34_650);
+		).toBe(347);
 		expect(
 			operationalDiscountMinor({
 				...base,
-				availableMarginMinor: 2_000,
+				availableMarginMinor: 200,
 				nearbyCourierEligible: true,
 				orderAlreadyReady: true,
 			}),
-		).toBe(2_000);
+		).toBe(200);
 	});
 });

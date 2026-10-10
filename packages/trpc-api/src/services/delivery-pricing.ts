@@ -1,9 +1,9 @@
-/** CRC amounts are stored in minor units (one colón is 100 minor units). */
+/** This app stores CRC as whole colones; see @pymeshub/shared/money. */
 export const EXPRESS_V1 = {
 	version: "express-v1",
-	baseMinor: 85_000,
-	perKmMinor: 23_000,
-	perMinuteMinor: 4_500,
+	baseMinor: 850,
+	perKmMinor: 230,
+	perMinuteMinor: 45,
 	nearbyPct: 10,
 	readyPct: 5,
 	maxDiscountPct: 15,

@@ -725,6 +725,10 @@ function CheckoutForm({
 												lat: selectedLocation.lat,
 												lng: selectedLocation.lng,
 											}}
+											marker={{
+												lat: selectedLocation.lat,
+												lng: selectedLocation.lng,
+											}}
 											showUserLocation={false}
 											accessibilityLabel={t("checkout.location")}
 											style={styles.locationMap}
