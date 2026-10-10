@@ -13,6 +13,7 @@ import {
 	authed,
 	refused,
 	seedBusiness,
+	seedMembership,
 	seedProduct,
 	seedUser,
 	world,
@@ -207,6 +208,19 @@ describe("checkout quote", () => {
 			customerFee: 0,
 			courierFee: 850,
 			merchantCovers: true,
+		});
+		const customerDetail = await caller.orders.byId({ id: placed.id });
+		expect(customerDetail.totals.courierFeeMinor).toBeUndefined();
+		const merchant = await seedUser(test.db, { id: "usr_cart_merchant" });
+		await seedMembership(test.db, merchant.id, first, "OWNER");
+		const merchantCaller = appRouter.createCaller(
+			await authed(test, merchant),
+		) as Caller;
+		const merchantDetail = await merchantCaller.orders.byId({ id: placed.id });
+		expect(merchantDetail.totals).toMatchObject({
+			deliveryFeeMinor: 0,
+			courierFeeMinor: 850,
+			merchantCoversDelivery: true,
 		});
 		test.close();
 	});

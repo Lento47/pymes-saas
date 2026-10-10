@@ -170,6 +170,8 @@ export const orderTotalsSchema = z.object({
 	discountMinor: z.number().int(),
 	deliveryFeeMinor: z.number().int(),
 	merchantCoversDelivery: z.boolean().optional(),
+	/** Shop-funded courier obligation; omitted for customers and couriers. */
+	courierFeeMinor: z.number().int().nonnegative().nullable().optional(),
 	taxMinor: z.number().int(),
 	tipMinor: z.number().int(),
 	totalMinor: z.number().int(),

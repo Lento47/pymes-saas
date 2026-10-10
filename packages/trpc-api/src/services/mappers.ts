@@ -703,6 +703,10 @@ export function orderDetailOf(input: {
 			discountMinor: order.discountMinor,
 			deliveryFeeMinor: order.deliveryFeeMinor,
 			merchantCoversDelivery: order.merchantCoversDelivery,
+			courierFeeMinor:
+				input.actor === "BUSINESS" || input.actor === "ADMIN"
+					? order.courierFeeMinor
+					: undefined,
 			taxMinor: order.taxMinor,
 			tipMinor: order.tipMinor,
 			totalMinor: order.totalMinor,

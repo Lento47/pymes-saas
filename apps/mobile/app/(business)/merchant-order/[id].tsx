@@ -564,16 +564,16 @@ export default function MerchantOrderDetail() {
 										)}
 									/>
 								) : null}
-								<TotalRow
-									label={t("cart.delivery")}
-									amount={formatMoney(
-										detail.totals.deliveryFeeMinor,
-										detail.currency,
-										{
-											locale: intlLocale,
-										},
-									)}
-								/>
+								{detail.fulfilment === "DELIVERY" ? (
+									<TotalRow
+										label={t("biz.order.customerDeliveryCharge")}
+										amount={formatMoney(
+											detail.totals.deliveryFeeMinor,
+											detail.currency,
+											{ locale: intlLocale },
+										)}
+									/>
+								) : null}
 								{detail.totals.taxMinor > 0 ? (
 									<TotalRow
 										label={t("cart.tax")}
@@ -612,6 +612,22 @@ export default function MerchantOrderDetail() {
 										})}
 									</Text>
 								</View>
+								{detail.totals.merchantCoversDelivery &&
+								(detail.totals.courierFeeMinor ?? 0) > 0 ? (
+									<>
+										<TotalRow
+											label={t("biz.order.courierFeeOwed")}
+											amount={formatMoney(
+												detail.totals.courierFeeMinor ?? 0,
+												detail.currency,
+												{ locale: intlLocale },
+											)}
+										/>
+										<Text variant="caption" tone="muted">
+											{t("biz.order.courierFeeNote")}
+										</Text>
+									</>
+								) : null}
 							</MerchantModule>
 
 							{/* The rail, not a list of cards: `./order-timeline`'s merchant
