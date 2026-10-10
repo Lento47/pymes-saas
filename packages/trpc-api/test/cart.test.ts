@@ -432,6 +432,43 @@ describe("checkout quote", () => {
 			const quote = await caller.cart.quote(input);
 			expect(quote.deliveryFeeMinor).toBe(0);
 			expect(quote.roadQuote?.baseFeeMinor).toBe(2_310);
+			await test.db
+				.update(businessTable)
+				.set({ deliveryFeeMinor: 950 })
+				.where(eq(businessTable.id, first));
+			const changedCourierFee = await refused(
+				caller.orders.place({
+					...input,
+					quoteId: quote.roadQuote?.quoteId,
+					paymentMethod: "CASH",
+					clientRequestId: "merchant-covered-fee-changed",
+					expectedTotalMinor: quote.totalMinor,
+				}),
+			);
+			expect(changedCourierFee.message).toBe("checkout.refusal.totalChanged");
+			await test.db
+				.update(businessTable)
+				.set({ deliveryFeeMinor: 850, merchantCoversDelivery: false })
+				.where(eq(businessTable.id, first));
+			const changedPayer = await refused(
+				caller.orders.place({
+					...input,
+					quoteId: quote.roadQuote?.quoteId,
+					paymentMethod: "CASH",
+					clientRequestId: "merchant-covered-payer-changed",
+					expectedTotalMinor: quote.totalMinor,
+				}),
+			);
+			expect(changedPayer.message).toBe("checkout.refusal.totalChanged");
+			const customerPaidQuote = await caller.cart.quote(input);
+			expect(customerPaidQuote.deliveryFeeMinor).toBe(2_310);
+			expect(customerPaidQuote.roadQuote?.quoteId).not.toBe(
+				quote.roadQuote?.quoteId,
+			);
+			await test.db
+				.update(businessTable)
+				.set({ merchantCoversDelivery: true })
+				.where(eq(businessTable.id, first));
 			const placed = await caller.orders.place({
 				...input,
 				quoteId: quote.roadQuote?.quoteId,

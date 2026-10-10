@@ -99,7 +99,7 @@ import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
 import { dispatchNext, prepareDeliveryForOrder } from "./delivery-dispatch";
 import {
-	cartPriceFingerprint,
+	checkoutPriceFingerprint,
 	roadFeeEnabled,
 	roadQuoteForOrder,
 } from "./delivery-quote";
@@ -365,12 +365,16 @@ export async function place(
 			userId: ctx.user.id,
 			cartId: cart.id,
 			cartUpdatedAt: cart.updatedAt,
-			cartFingerprint: cartPriceFingerprint(
+			cartFingerprint: checkoutPriceFingerprint(
 				priced.map((line) => ({
 					id: line.line.id,
 					quantity: line.quantity,
 					unitPriceMinor: line.unitPriceMinor,
 				})),
+				{
+					courierFeeMinor: business.deliveryFeeMinor,
+					merchantCoversDelivery: business.merchantCoversDelivery,
+				},
 			),
 			locationId: location.id,
 			addressId: deliveryAddress.id,

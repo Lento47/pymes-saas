@@ -24,14 +24,17 @@ export function routeInputKey(origin: GeoPoint, destination: GeoPoint): string {
 		.join(":");
 }
 
-export function cartPriceFingerprint(
+export function checkoutPriceFingerprint(
 	lines: readonly { id: string; quantity: number; unitPriceMinor: number }[],
+	deliveryPolicy: { courierFeeMinor: number; merchantCoversDelivery: boolean },
 ): string {
-	return JSON.stringify(
-		lines
+	return JSON.stringify({
+		lines: lines
 			.map((line) => [line.id, line.quantity, line.unitPriceMinor])
 			.sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
-	);
+		courierFeeMinor: deliveryPolicy.courierFeeMinor,
+		merchantCoversDelivery: deliveryPolicy.merchantCoversDelivery,
+	});
 }
 
 type RoadInputs = {

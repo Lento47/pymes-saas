@@ -34,7 +34,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
 import {
-	cartPriceFingerprint,
+	checkoutPriceFingerprint,
 	createRoadQuote,
 	roadFeeEnabled,
 } from "./delivery-quote";
@@ -169,12 +169,16 @@ export async function quote(
 			userId: ctx.user.id,
 			cartId: row.id,
 			cartUpdatedAt: row.updatedAt,
-			cartFingerprint: cartPriceFingerprint(
+			cartFingerprint: checkoutPriceFingerprint(
 				cart.items.map((item) => ({
 					id: item.id,
 					quantity: item.quantity,
 					unitPriceMinor: item.effectiveUnitPriceMinor,
 				})),
+				{
+					courierFeeMinor: business.deliveryFeeMinor,
+					merchantCoversDelivery: business.merchantCoversDelivery,
+				},
 			),
 			locationId: location.id,
 			addressId: address.id,
