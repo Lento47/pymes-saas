@@ -551,6 +551,15 @@ export function MapView({
 						}}
 					>
 						<Layer
+							id="deliveryRoadRouteOutline"
+							type="line"
+							paint={{
+								"line-color": colors.card,
+								"line-width": 8,
+								"line-opacity": 0.9,
+							}}
+						/>
+						<Layer
 							id="deliveryRoadRouteLine"
 							type="line"
 							paint={{
