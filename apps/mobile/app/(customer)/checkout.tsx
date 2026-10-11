@@ -418,10 +418,16 @@ function CheckoutForm({
 		: undefined;
 	const roadUnavailable =
 		quoteFailure.serverMessage === "checkout.refusal.deliveryQuoteUnavailable";
-	const addressNeedsPin =
-		roadUnavailable &&
-		chosenAddress &&
-		(chosenAddress.lat == null || chosenAddress.lng == null);
+	const addressMissingPin =
+		chosenAddress && (chosenAddress.lat == null || chosenAddress.lng == null);
+	const addressNeedsPin = roadUnavailable && addressMissingPin;
+	const editAddressPin = () => {
+		if (!chosenAddress) return;
+		router.push({
+			pathname: "/addresses",
+			params: { edit: chosenAddress.id },
+		});
+	};
 	const roadRoute =
 		fulfilment === "DELIVERY" &&
 		!quote.isError &&
@@ -794,12 +800,7 @@ function CheckoutForm({
 										<Button
 											variant="secondary"
 											label={t("checkout.address.editPin")}
-											onPress={() =>
-												router.push({
-													pathname: "/addresses",
-													params: { edit: chosenAddress.id },
-												})
-											}
+											onPress={editAddressPin}
 										/>
 									) : null}
 									{roadUnavailable && collects ? (
@@ -842,9 +843,22 @@ function CheckoutForm({
 										</Text>
 									) : null}
 									{quote.data?.routingStatus === "UNAVAILABLE" ? (
-										<Text variant="caption" tone="muted">
-											{t("checkout.roadRouteUnavailable")}
-										</Text>
+										<>
+											<Text variant="caption" tone="muted">
+												{t(
+													addressMissingPin
+														? "checkout.address.pinRequired"
+														: "checkout.roadRouteUnavailable",
+												)}
+											</Text>
+											{addressMissingPin ? (
+												<Button
+													variant="secondary"
+													label={t("checkout.address.editPin")}
+													onPress={editAddressPin}
+												/>
+											) : null}
+										</>
 									) : null}
 								</View>
 							) : null}
