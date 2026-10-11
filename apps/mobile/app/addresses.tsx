@@ -132,10 +132,12 @@ function AddressBook() {
 	const [mapTouching, setMapTouching] = useState(false);
 	const params = useLocalSearchParams<{
 		create?: string;
+		edit?: string;
 		lat?: string;
 		lng?: string;
 	}>();
 	const handledHandoff = useRef(false);
+	const handledEdit = useRef(false);
 	// The address the question is about, or `null` while none is being asked about: the panel's
 	// body is that address's first line, so the state has to hold the row and not just a boolean.
 	const [removing, setRemoving] = useState<Address | null>(null);
@@ -163,12 +165,12 @@ function AddressBook() {
 	// while `data` was still undefined in that window.
 	const list = query.data;
 
-	function openForm(address: Address | null) {
+	const openForm = useCallback((address: Address | null) => {
 		setEditing(address);
 		setDraftCoordinates(null);
 		setMapTouching(false);
 		setShow(true);
-	}
+	}, []);
 
 	useEffect(() => {
 		if (handledHandoff.current || params.create !== "1") return;
@@ -191,6 +193,15 @@ function AddressBook() {
 		setShow(true);
 		router.setParams({ create: undefined, lat: undefined, lng: undefined });
 	}, [params.create, params.lat, params.lng]);
+
+	useEffect(() => {
+		if (handledEdit.current || !params.edit || !query.data) return;
+		const address = query.data.find((entry) => entry.id === params.edit);
+		if (!address) return;
+		handledEdit.current = true;
+		openForm(address);
+		router.setParams({ edit: undefined });
+	}, [params.edit, query.data, openForm]);
 
 	/**
 	 * The row asks through `./confirm-sheet` and names itself in the panel's body, because

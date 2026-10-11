@@ -555,6 +555,9 @@ export const customer = {
 	"checkout.address": "Dirección de entrega",
 	"checkout.address.add": "Agregar dirección",
 	"checkout.address.none": "Necesitas una dirección para que te lo entreguen",
+	"checkout.address.pinRequired":
+		"Esta dirección necesita un pin en el mapa para cotizar la entrega por carretera.",
+	"checkout.address.editPin": "Marcar esta dirección",
 	"checkout.payment": "Forma de pago",
 	"checkout.payment.cash": "Efectivo",
 	"checkout.payment.sinpe": "SINPE Móvil",

@@ -292,6 +292,9 @@ export const customer = {
 	"checkout.address": "Delivery address",
 	"checkout.address.add": "Add address",
 	"checkout.address.none": "You need an address to have it delivered",
+	"checkout.address.pinRequired":
+		"This address needs a map pin before we can quote the road delivery price.",
+	"checkout.address.editPin": "Pin this address",
 	"checkout.payment": "Payment method",
 	"checkout.payment.cash": "Cash",
 	"checkout.payment.sinpe": "SINPE Móvil",

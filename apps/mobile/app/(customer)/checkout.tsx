@@ -418,6 +418,10 @@ function CheckoutForm({
 		: undefined;
 	const roadUnavailable =
 		quoteFailure.serverMessage === "checkout.refusal.deliveryQuoteUnavailable";
+	const addressNeedsPin =
+		roadUnavailable &&
+		chosenAddress &&
+		(chosenAddress.lat == null || chosenAddress.lng == null);
 	const roadRoute =
 		fulfilment === "DELIVERY" &&
 		!quote.isError &&
@@ -779,9 +783,25 @@ function CheckoutForm({
 								<View style={styles.group}>
 									<ErrorState
 										error={quote.error}
-										body={quoteErrorBody}
+										body={
+											addressNeedsPin
+												? t("checkout.address.pinRequired")
+												: quoteErrorBody
+										}
 										onRetry={() => void quote.refetch()}
 									/>
+									{addressNeedsPin ? (
+										<Button
+											variant="secondary"
+											label={t("checkout.address.editPin")}
+											onPress={() =>
+												router.push({
+													pathname: "/addresses",
+													params: { edit: chosenAddress.id },
+												})
+											}
+										/>
+									) : null}
 									{roadUnavailable && collects ? (
 										<Button
 											variant="secondary"
