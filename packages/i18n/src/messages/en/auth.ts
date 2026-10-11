@@ -158,6 +158,9 @@ export const auth = {
 	"account.addresses.form.title": "New address",
 	"account.addresses.form.editTitle": "Edit address",
 	"account.addresses.homeLabel": "Home",
+	"account.addresses.mapInstruction":
+		"Tap the map to pin the delivery entrance. We'll fill the address when available.",
+	"account.addresses.mapLabel": "Map for pinning your delivery address",
 	"account.addresses.findingAddress": "Finding the address from your pin…",
 	"account.addresses.checkAddress":
 		"Check the address and fill in any missing details.",

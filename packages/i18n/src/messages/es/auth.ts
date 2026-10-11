@@ -179,6 +179,9 @@ export const auth = {
 	"account.addresses.form.title": "Nueva dirección",
 	"account.addresses.form.editTitle": "Editar dirección",
 	"account.addresses.homeLabel": "Casa",
+	"account.addresses.mapInstruction":
+		"Toca el mapa para marcar la entrada de entrega. Completaremos la dirección cuando esté disponible.",
+	"account.addresses.mapLabel": "Mapa para marcar tu dirección de entrega",
 	"account.addresses.findingAddress": "Buscando la dirección del pin…",
 	"account.addresses.checkAddress":
 		"Revisa la dirección y completa los datos que falten.",

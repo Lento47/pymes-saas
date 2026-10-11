@@ -3,8 +3,14 @@ import type { Address } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Platform, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	Platform,
+	ScrollView,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AnimateIn } from "@/components/animate-in";
@@ -14,6 +20,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
+import { isMapAvailable, MapView } from "@/components/map";
 import { Pressable } from "@/components/pressable";
 import { useRefreshControl } from "@/components/pull-refresh";
 import { RollbackNotice } from "@/components/rollback-notice";
@@ -25,6 +32,7 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	icon,
@@ -121,6 +129,7 @@ function AddressBook() {
 		lng: number;
 	} | null>(null);
 	const [show, setShow] = useState(false);
+	const [mapTouching, setMapTouching] = useState(false);
 	const params = useLocalSearchParams<{
 		create?: string;
 		lat?: string;
@@ -157,6 +166,7 @@ function AddressBook() {
 	function openForm(address: Address | null) {
 		setEditing(address);
 		setDraftCoordinates(null);
+		setMapTouching(false);
 		setShow(true);
 	}
 
@@ -177,6 +187,7 @@ function AddressBook() {
 		handledHandoff.current = true;
 		setEditing(null);
 		setDraftCoordinates({ lat, lng });
+		setMapTouching(false);
 		setShow(true);
 		router.setParams({ create: undefined, lat: undefined, lng: undefined });
 	}, [params.create, params.lat, params.lng]);
@@ -354,7 +365,10 @@ function AddressBook() {
 			    customer has to change in them. */}
 			<Sheet
 				open={show}
-				onClose={() => setShow(false)}
+				onClose={() => {
+					setMapTouching(false);
+					setShow(false);
+				}}
 				title={t(
 					editing
 						? "account.addresses.form.editTitle"
@@ -366,6 +380,7 @@ function AddressBook() {
 				// which parks the form's own buttons past the bottom edge with nothing left to
 				// bring them back. `maxHeight` is what stops the panel growing past the screen.
 				snapPoints={[1]}
+				scrollEnabled={!mapTouching}
 				// The one sheet in the app with a field in it, and `./sheet` asks for this
 				// explicitly: on iOS the body lifts with the keyboard, and without it the field
 				// being typed into sits under the keyboard.
@@ -380,7 +395,11 @@ function AddressBook() {
 					}
 					address={editing}
 					coordinates={draftCoordinates}
-					onDone={() => setShow(false)}
+					onMapTouching={setMapTouching}
+					onDone={() => {
+						setMapTouching(false);
+						setShow(false);
+					}}
 				/>
 			</Sheet>
 
@@ -401,16 +420,35 @@ function AddressBook() {
 function AddressForm({
 	address,
 	coordinates,
+	onMapTouching,
 	onDone,
 }: {
 	address: Address | null;
 	coordinates: { lat: number; lng: number } | null;
+	onMapTouching: (touching: boolean) => void;
 	onDone: () => void;
 }) {
 	const { t } = useT();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { show } = useToast();
+	const { height, fontScale } = useWindowDimensions();
+	const device = useDeviceLocation();
+	const mapHeight = Math.min(
+		380,
+		Math.max(220, height * (0.36 - 0.08 * Math.max(0, fontScale - 1))),
+	);
+	const [pin, setPin] = useState<{ lat: number; lng: number } | null>(
+		coordinates ??
+			(address?.lat != null && address.lng != null
+				? { lat: address.lat, lng: address.lng }
+				: null),
+	);
+	const [lookupPoint, setLookupPoint] = useState<{
+		lat: number;
+		lng: number;
+	} | null>(coordinates && !address ? coordinates : null);
+	const [useDeviceWhenReady, setUseDeviceWhenReady] = useState(false);
 	const [label, setLabel] = useState(
 		address?.label ?? (coordinates ? t("account.addresses.homeLabel") : ""),
 	);
@@ -421,24 +459,49 @@ function AddressForm({
 		"loading" | "failed" | "done"
 	>(coordinates && !address ? "loading" : "done");
 	const edited = useRef({ line1: false, city: false, region: false });
-	const latitude = coordinates?.lat;
-	const longitude = coordinates?.lng;
+	const choosePin = useCallback((point: { lat: number; lng: number }) => {
+		setPin(point);
+		setLine1("");
+		setCity("");
+		setRegion("");
+		edited.current = { line1: false, city: false, region: false };
+		setLookupStatus("loading");
+		setLookupPoint(point);
+	}, []);
 
 	useEffect(() => {
-		if (latitude === undefined || longitude === undefined || address) return;
+		if (!useDeviceWhenReady) return;
+		if (device.coords) {
+			choosePin(device.coords);
+			setUseDeviceWhenReady(false);
+		} else if (device.status === "denied" || device.status === "unavailable") {
+			setUseDeviceWhenReady(false);
+		}
+	}, [choosePin, device.coords, device.status, useDeviceWhenReady]);
+
+	useEffect(() => {
+		if (!lookupPoint) return;
 		let active = true;
 		setLookupStatus("loading");
-		Location.reverseGeocodeAsync({
-			latitude,
-			longitude,
-		})
+		void (async () => {
+			if (Platform.OS === "android") {
+				let permission = await Location.getForegroundPermissionsAsync();
+				if (!permission.granted && permission.canAskAgain)
+					permission = await Location.requestForegroundPermissionsAsync();
+				if (!permission.granted) return [];
+			}
+			return Location.reverseGeocodeAsync({
+				latitude: lookupPoint.lat,
+				longitude: lookupPoint.lng,
+			});
+		})()
 			.then(([place]) => {
 				if (!active) return;
 				if (!place) {
 					setLookupStatus("failed");
 					return;
 				}
-				const street = [place.street, place.streetNumber]
+				const street = [place.street ?? place.name, place.streetNumber]
 					.filter(Boolean)
 					.join(" ");
 				const cityName = place.city ?? place.district ?? place.subregion;
@@ -454,7 +517,7 @@ function AddressForm({
 		return () => {
 			active = false;
 		};
-	}, [address, latitude, longitude]);
+	}, [lookupPoint]);
 	/**
 	 * Seeded from the address, so the control renders the value the save will write.
 	 *
@@ -490,7 +553,47 @@ function AddressForm({
 	);
 	return (
 		<View style={styles.formFields}>
-			{coordinates ? (
+			{isMapAvailable() ? (
+				<View style={styles.mapGroup}>
+					<Text variant="caption" tone="muted">
+						{t("account.addresses.mapInstruction")}
+					</Text>
+					<View
+						onTouchStart={() => onMapTouching(true)}
+						onTouchEnd={(event) => {
+							if (event.nativeEvent.touches.length === 0) onMapTouching(false);
+						}}
+						onTouchCancel={() => onMapTouching(false)}
+					>
+						<MapView
+							coords={pin ?? device.coords ?? { lat: 9.9281, lng: -84.0907 }}
+							marker={pin}
+							zoom={pin || device.coords ? 14 : 7}
+							showUserLocation={device.status === "granted" && !!device.coords}
+							accessibilityLabel={t("account.addresses.mapLabel")}
+							style={{ height: mapHeight }}
+							onPick={choosePin}
+						/>
+					</View>
+					<Button
+						label={t("location.use")}
+						variant="secondary"
+						fullWidth
+						onPress={() => {
+							if (device.coords) choosePin(device.coords);
+							else {
+								setUseDeviceWhenReady(true);
+								device.request();
+							}
+						}}
+					/>
+				</View>
+			) : (
+				<Text variant="caption" tone="muted">
+					{t("location.mapUnavailable")}
+				</Text>
+			)}
+			{pin ? (
 				<Text variant="caption" tone="muted" accessibilityLiveRegion="polite">
 					{t(
 						lookupStatus === "loading"
@@ -573,8 +676,8 @@ function AddressForm({
 						city: city.trim(),
 						region: region.trim(),
 						country: address?.country ?? "CR",
-						lat: coordinates?.lat ?? address?.lat,
-						lng: coordinates?.lng ?? address?.lng,
+						lat: pin?.lat,
+						lng: pin?.lng,
 						// The `||` restates the seed above rather than replacing it: the address
 						// that is already the default stays the default, written at the point that
 						// decides. It is what keeps an edit that never touched the control from
@@ -657,6 +760,7 @@ const styles = StyleSheet.create({
 	// `app/change-password`'s `content` are both `space.lg` — because a form is a form
 	// wherever it is drawn.
 	formFields: { gap: space.lg },
+	mapGroup: { gap: space.md },
 	skeletonRow: {
 		flexDirection: "row",
 		alignItems: "center",
