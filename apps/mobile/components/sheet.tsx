@@ -708,6 +708,7 @@ export function Sheet({
 				) : null}
 				{avoidKeyboard ? (
 					<KeyboardAvoidingView
+						style={styles.keyboardBody}
 						behavior={Platform.OS === "ios" ? "padding" : undefined}
 					>
 						{body}
@@ -782,6 +783,7 @@ const styles = StyleSheet.create({
 	// handle, the title and the footer keep their heights, so the whole of the overflow
 	// lands here.
 	scroll: { flexShrink: 1 },
+	keyboardBody: { flexShrink: 1 },
 	// The gutter is the variant's and is applied at the call site; this object is kept rather
 	// than deleted so the `styles.body` reference above still has a name, and so the next
 	// shared property has somewhere to go.
