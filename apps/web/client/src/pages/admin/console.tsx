@@ -98,6 +98,7 @@ import {
 import { CatalogueTab } from "./console-catalogue";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { ConsoleEnvBadge } from "./console-env-badge";
+import { money, toMinor } from "./console-money";
 import {
   ActivityPanel,
   OperatorPanel,
@@ -189,18 +190,6 @@ function StatusBadge({ status }: { status: string }) {
       {STATUS_LABEL[status] ?? status}
     </Badge>
   );
-}
-
-function money(minor: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("es-CR", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(minor / 100);
-  } catch {
-    return `${minor} ${currency}`;
-  }
 }
 
 function shortDate(value: Date | string) {
@@ -2735,24 +2724,6 @@ const SUBSCRIPTION_STATUS_TONE: Record<string, BadgeTone> = {
   SUSPENDED: "neutral",
 };
 
-/**
- * Colones as an operator types them, to the minor units the API takes.
- *
- * The round trip matters more than it looks: the wire is integer minor units because
- * money cannot be a float, and a figure typed as `1234.56` has to become `123456` and not
- * `123456.00000001`. `Math.round` is what makes that exact. A blank or unparseable field
- * returns `null` rather than `0` — **zero is a real amount** (a merchant who paid nothing
- * off an arrears balance is a fact worth recording) and must not be what an empty form
- * sends.
- */
-function toMinor(typed: string): number | null {
-  const cleaned = typed.replace(/[^\d.,-]/g, "").replace(",", ".");
-  if (cleaned.trim() === "") return null;
-  const value = Number.parseFloat(cleaned);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return Math.round(value * 100);
-}
-
 /** Recording a payment: the dialog an arrears row opens. */
 function RecordPaymentDialog({
   subscriptionId,
@@ -2853,7 +2824,7 @@ function RecordPaymentDialog({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
-                placeholder={String(invoicedMinor / 100)}
+                placeholder={money(invoicedMinor, currency)}
               />
               {/*
                 The period's own price, not the arrears total. The old placeholder was
@@ -2861,6 +2832,13 @@ function RecordPaymentDialog({
                 defaulted a figure that would be read as a single overpayment. One payment
                 settles one period; the debt beside it is what the write-off line accounts
                 for.
+
+                It now goes through `money` rather than `String(x / 100)`. That `/100` was
+                the same hundred-fold assumption `toMinor` and the price column carried,
+                and it was the one that reached a payment: an operator typing the hint saw
+                `₡109` above a field that was about to send `109`. `parseMoney` reads what
+                `money` prints back, so the hint is now round-trippable — `₡10 900` types
+                to the invoice exactly, which `₡10.900,00` on the old hint would not have.
               */}
               <p className="mt-1 text-xs text-muted-foreground">
                 Un pago cubre un periodo: {money(invoicedMinor, currency)}.

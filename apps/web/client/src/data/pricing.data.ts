@@ -22,6 +22,7 @@
  *   never bills them.
  */
 import {
+	formatMoney,
 	GRACE_DAYS,
 	HIDDEN_AFTER_DAYS,
 	LAUNCH_PRICE_BOOK,
@@ -59,17 +60,32 @@ export type PricingTier = {
 };
 
 /**
- * Colones, whole, without the cents a merchant will never see.
+ * Colones, whole, and grouped the way every other price in the product is.
  *
- * `Intl` would render "₡2.000,00" and this product charges whole colones, so the
- * fraction is noise that makes two prices look like they differ. Grouped the Costa
- * Rican way — every three digits — which is what `es-CR` does and what a reader
- * checking the figure against a bank transfer expects to see.
+ * **It delegates to `formatMoney`, and it used not to.** This function divided the
+ * amount by 100 and grouped the digits itself:
+ *
+ *     formatColones(10_900) -> "₡109"
+ *
+ * which is wrong by a factor of a hundred, on the one page whose entire job is to
+ * state a price. The cause is the assumption baked into the `/100`: a plan amount is
+ * **whole colones**, because the colón has no minor unit — `LAUNCH_PRICE_BOOK`'s
+ * `EMPRENDE: MONTHLY` is `10_900`, meaning ₡10 900, and `formatMoney` asks
+ * `currencyExponent("CRC")`, which is `0`. `packages/shared/src/money.ts` is where
+ * that fact lives and where every other client already reads it; the storefront cards
+ * were migrated and this page was not, so the marketing site and the storefront
+ * disagreed about what a plan costs by 100×.
+ *
+ * The hand-rolled grouping went with the division. `Intl`'s `es-CR` groups with a
+ * thin space, which is what the storefront, the cart and the order pages already print
+ * — a second grouping convention on one product is a second thing to keep right, and
+ * this one was right about neither the magnitude nor the separator.
+ *
+ * `Intl` is passed the digits explicitly by `formatMoney`, so this returns `₡10 900`
+ * rather than the `₡10.900,00` a bare currency style would produce.
  */
 export function formatColones(minor: number): string {
-	const digits = Math.trunc(minor / 100).toString();
-	const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-	return `₡${grouped}`;
+	return formatMoney(minor, "CRC");
 }
 
 /** Storage in the units a merchant reasons in — gigabytes, not bytes. */

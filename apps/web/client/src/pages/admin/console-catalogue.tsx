@@ -1,3 +1,4 @@
+import { formatMoney } from "@pymeshub/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -170,10 +171,19 @@ function ProductsList() {
               </div>
 
               <div className="text-right text-sm tabular-nums">
-                {new Intl.NumberFormat("es-CR", {
-                  style: "currency",
-                  currency: product.currency,
-                }).format(product.priceMinor / 100)}
+                {/*
+                  `formatMoney`, not a local `Intl` call with a `/100`.
+
+                  This was `format(product.priceMinor / 100)`, which is the reference
+                  implementation `@pymeshub/shared` replaced: the exponent belongs to
+                  the currency and CRC's is **zero**, because the colón has no minor
+                  unit. A ₡5 500 plate was listed here as ₡55.00 while the storefront —
+                  which reads the same column through `formatMoney` — charged ₡5 500,
+                  and this tab exists to catch a mispriced product. The no-cast call is
+                  available because `adminProductRowSchema.currency` is already
+                  `currencySchema`, unlike `AdminSubscription.currency`.
+                */}
+                {formatMoney(product.priceMinor, product.currency)}
                 <div className="text-xs text-muted-foreground">{product.soldCount} vendidos</div>
               </div>
 
