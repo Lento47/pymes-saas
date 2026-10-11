@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { formatMoney } from "./money";
 import {
 	CADENCES,
 	type Cadence,
@@ -85,10 +86,10 @@ describe("what a merchant pays", () => {
 		// the headline numbers a merchant reads and an invoice charges, and the seed, the
 		// pricing page and this file all read the same object — so a figure that moved
 		// without anyone deciding it did would otherwise be invisible until an invoice.
-		expect(priceMinorFor("EMPRENDE", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(1_090_000);
-		expect(priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(1_990_000);
-		expect(priceMinorFor("GROWTH", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(2_990_000);
-		expect(priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(5_990_000);
+		expect(priceMinorFor("EMPRENDE", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(10_900);
+		expect(priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(19_900);
+		expect(priceMinorFor("GROWTH", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(29_900);
+		expect(priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(59_900);
 
 		// The ladder stays strictly increasing, which the top two tiers being unchanged and
 		// the bottom two rising is exactly the kind of edit that can quietly break.
@@ -97,6 +98,21 @@ describe("what a merchant pays", () => {
 		);
 		expect(monthly).toEqual([...monthly].sort((a, b) => a - b));
 		expect(new Set(monthly).size).toBe(monthly.length);
+
+		// CRC has no céntimos: ₡59 900 is stored as 59900. The 100× book (5 990 000)
+		// formatted as millions, which is the bug this pin exists to catch.
+		expect(
+			formatMoney(
+				priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK),
+				"CRC",
+			).replace(/\D/g, ""),
+		).toBe("59900");
+		expect(
+			formatMoney(
+				priceMinorFor("EMPRENDE", "YEARLY", LAUNCH_PRICE_BOOK),
+				"CRC",
+			).replace(/\D/g, ""),
+		).toBe("109000");
 	});
 
 	test("the launch book is the one the seed and a fresh install run on", () => {

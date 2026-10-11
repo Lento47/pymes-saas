@@ -56,7 +56,11 @@ export const subscriptionRouter = router({
 			// A stranger gets an empty list rather than a 403: the price list is public
 			// information, and refusing to show it to somebody who has not signed up yet is
 			// a worse answer than showing it to everybody.
-			if (!membership) return { options: [] };
+			if (!membership)
+				return {
+					options: [],
+					sinpePhone: subscriptions.platformSinpePhone(ctx.env),
+				};
 
 			// Resolved through `loadBilling` rather than assembled by hand, so the picker
 			// cannot disagree with the rest of the product about which plan a merchant is
@@ -70,15 +74,23 @@ export const subscriptionRouter = router({
 				subscriptionStatus: billing.status,
 				subscriptionCadence: billing.cadence,
 			});
-			return { options };
+			return {
+				options,
+				sinpePhone: subscriptions.platformSinpePhone(ctx.env),
+			};
 		}),
 
 	/**
 	 * Moving between tiers, or between cadences on one tier.
 	 *
-	 * The limits apply **immediately**; the new price is captured at the next period. A
-	 * merchant who upgrades on day 29 gets the bigger catalogue today and is not charged a
-	 * second time four weeks early.
+	 * A paid pair starts a **new period now**: the limits apply immediately, `priceMinor`
+	 * is captured from the book in force, and `lastPaidAt` is this instant. The merchant
+	 * proves the transfer with a SINPE reference (4–80 characters), the same key an
+	 * operator already uses to reconcile. There is no gateway; the honour system is the
+	 * product, and the audit row is what finance reads later.
+	 *
+	 * `FREE` is the one move that involves no money: `cadence` is `null` and there is no
+	 * `reference`.
 	 *
 	 * **Both axes are in the input, and `cadence` is required — nullable, not optional.**
 	 * The distinction is the whole contract: `null` is "this shop is on `FREE`, the one tier
@@ -99,18 +111,35 @@ export const subscriptionRouter = router({
 					businessId: z.string(),
 					plan: z.enum(PLANS),
 					cadence: cadenceSchema.nullable(),
+					/** Required on a paid pair; refused on `FREE`. */
+					reference: z.string().trim().min(4).max(80).optional(),
 				})
 				.refine(
 					(data) =>
-						data.plan === "FREE" ? data.cadence === null : data.cadence !== null,
+						data.plan === "FREE"
+							? data.cadence === null
+							: data.cadence !== null,
 					{
 						message:
 							"El plan gratis no tiene periodicidad, y un plan pagado necesita una.",
 						path: ["cadence"],
 					},
+				)
+				.refine(
+					(data) =>
+						data.plan === "FREE"
+							? data.reference === undefined
+							: data.reference !== undefined,
+					{
+						message:
+							"Un plan pagado necesita la referencia SINPE, y el plan gratis no se paga.",
+						path: ["reference"],
+					},
 				),
 		)
 		.mutation(({ ctx, input }) =>
-			subscriptions.changePlan(ctx, input.plan, input.cadence, new Date()),
+			subscriptions.changePlan(ctx, input.plan, input.cadence, new Date(), {
+				reference: input.reference,
+			}),
 		),
 });

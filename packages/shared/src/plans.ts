@@ -136,10 +136,10 @@ export const LAUNCH_PRICE_BOOK: {
 	 * is never charged" becomes checkable — could not write that assertion at all.
 	 */
 	prices: {
-		EMPRENDE: { MONTHLY: 1_090_000, YEARLY: 10_900_000 },
-		STARTER: { MONTHLY: 1_990_000, YEARLY: 19_900_000 },
-		GROWTH: { MONTHLY: 2_990_000, YEARLY: 29_900_000 },
-		BUSINESS: { MONTHLY: 5_990_000, YEARLY: 59_900_000 },
+		EMPRENDE: { MONTHLY: 10_900, YEARLY: 109_000 },
+		STARTER: { MONTHLY: 19_900, YEARLY: 199_000 },
+		GROWTH: { MONTHLY: 29_900, YEARLY: 299_000 },
+		BUSINESS: { MONTHLY: 59_900, YEARLY: 599_000 },
 	},
 };
 

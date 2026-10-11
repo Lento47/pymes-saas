@@ -512,7 +512,18 @@ function AddressForm({
 					setLookupStatus("failed");
 					return;
 				}
-				const street = [place.street ?? place.name, place.streetNumber]
+				// Android may return an Open Location Code as `name`. It locates the
+				// pin, but it is not a street address a courier can read.
+				const placeName = place.name?.trim();
+				const streetName =
+					place.street ??
+					(placeName &&
+					!/^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,}$/i.test(
+						placeName,
+					)
+						? placeName
+						: null);
+				const street = [streetName, place.streetNumber]
 					.filter(Boolean)
 					.join(" ");
 				const cityName = place.city ?? place.district ?? place.subregion;
@@ -571,9 +582,7 @@ function AddressForm({
 					</Text>
 					<View
 						onTouchStart={() => onMapTouching(true)}
-						onTouchEnd={(event) => {
-							if (event.nativeEvent.touches.length === 0) onMapTouching(false);
-						}}
+						onTouchEnd={() => onMapTouching(false)}
 						onTouchCancel={() => onMapTouching(false)}
 					>
 						<MapView

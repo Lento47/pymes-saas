@@ -107,6 +107,15 @@ export type Env = {
 	SUPABASE_PUBLISHABLE_KEY?: string;
 	SUPABASE_JWKS_URL?: string;
 
+	/**
+	 * Public SINPE Móvil destination for merchant platform fees.
+	 *
+	 * This is a phone number the merchant transfers to, not a credential: it is safe in
+	 * `[vars]` and on the `subscription.options` wire. Absent or blank, a paid plan
+	 * change is refused in the app until an operator names the real Costa Rican number.
+	 */
+	PLATFORM_SINPE_PHONE?: string;
+
 	/** Optional when Expo push security is disabled; otherwise a Worker secret. */
 	EXPO_ACCESS_TOKEN?: string;
 	/** Sentry ingestion DSN. Store as a Worker secret; absent disables the SDK. */

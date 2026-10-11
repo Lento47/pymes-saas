@@ -98,6 +98,7 @@ export type SpringConfig = {
 	damping: number;
 	stiffness: number;
 	mass?: number;
+	overshootClamping?: boolean;
 };
 
 /**
@@ -109,7 +110,7 @@ export type SpringConfig = {
  */
 export const spring = {
 	press: { damping: 18, stiffness: 220, mass: 0.9 },
-	sheet: { damping: 22, stiffness: 180 },
+	sheet: { damping: 22, stiffness: 180, overshootClamping: true },
 	layout: { damping: 20, stiffness: 200 },
 } as const satisfies Record<string, SpringConfig>;
 

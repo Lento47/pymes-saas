@@ -496,6 +496,7 @@ describe("price", () => {
 			businessId: earlyId,
 			plan: "STARTER",
 			cadence: "MONTHLY",
+			reference: "SINPE-PRICE-001",
 		});
 		expect(
 			(await earlyCaller.subscription.current({ businessId: earlyId }))

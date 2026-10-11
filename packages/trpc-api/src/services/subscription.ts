@@ -1,4 +1,5 @@
 import {
+	auditLog as auditLogTable,
 	business as businessTable,
 	type Db,
 	priceBookPrice as priceBookPriceTable,
@@ -31,6 +32,7 @@ import {
 } from "@pymeshub/shared/plans";
 import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 
+import type { Env } from "../env";
 import { ValidationError } from "../errors";
 import { auditStatement, requireReason } from "./audit";
 import {
@@ -68,6 +70,49 @@ import {
 const DAY_MS = 86_400_000;
 
 export { DAY_MS };
+
+/**
+ * The phone a merchant transfers the platform fee to.
+ *
+ * Blank is a real answer: production has not named the number yet, and showing a
+ * placeholder would send money to the wrong SINPE. The picker reads this and refuses
+ * a paid submit until it is a number.
+ */
+export function platformSinpePhone(
+	env: Pick<Env, "PLATFORM_SINPE_PHONE">,
+): string | null {
+	const phone = env.PLATFORM_SINPE_PHONE?.trim() ?? "";
+	return phone.length > 0 ? phone : null;
+}
+
+const SINPE_REFERENCE_MIN = 4;
+const SINPE_REFERENCE_MAX = 80;
+
+function requireSinpeReference(
+	plan: Plan,
+	reference: string | undefined,
+): string | null {
+	const trimmed = reference?.trim() ?? "";
+	if (plan === "FREE") {
+		if (trimmed.length > 0) {
+			throw new ValidationError(
+				"El plan gratuito no se cobra: no hay referencia que registrar.",
+				{ field: "reference" },
+			);
+		}
+		return null;
+	}
+	if (
+		trimmed.length < SINPE_REFERENCE_MIN ||
+		trimmed.length > SINPE_REFERENCE_MAX
+	) {
+		throw new ValidationError(
+			"La referencia SINPE es obligatoria para un plan pagado.",
+			{ field: "reference" },
+		);
+	}
+	return trimmed;
+}
 
 /**
  * The price book in force at an instant: the latest one already effective.
@@ -345,15 +390,14 @@ function hasAnyHeadroomAbove(plan: Plan): boolean {
 /**
  * Changing a merchant's plan.
  *
- * Two cases, and the difference is whether they have been charged yet:
+ * A paid pair is a payment: the merchant sends a SINPE reference, the period starts
+ * **now**, `priceMinor` is captured from the book in force, and `lastPaidAt` is this
+ * instant. Mid-period used to keep the old price until the next invoice; that let a
+ * shop switch into a paid tier without money. The honour system still trusts the
+ * reference, and the audit row is what an operator reconciles later.
  *
- * - **Never charged** (no period, or a `priceMinor` of null) — the new plan and the
- *   current price book are written together, and `periodStart` is set. This is a
- *   signup, not a change.
- * - **Mid-period** — the plan moves **now** and the new price is captured from the
- *   next period, so a merchant who upgrades on day 29 of a month is not charged a
- *   second time four weeks early. `priceMinor` keeps the figure they are currently
- *   paying until their period ends.
+ * `FREE` is the one move that involves no money: no reference, no period, `priceMinor`
+ * cleared.
  *
  * `business.plan` is written in the **same batch** as the subscription. That is the
  * only thing keeping the denormalised copy honest, and it is why this is a batch
@@ -366,6 +410,7 @@ export async function changePlan(
 	plan: Plan,
 	cadence: Cadence | null,
 	now: Date,
+	payment: { reference?: string } = {},
 ): Promise<Subscription> {
 	const db = ctx.db;
 	const existing = await dbSubscription(db, ctx.membership.businessId);
@@ -381,6 +426,10 @@ export async function changePlan(
 	 */
 	const price =
 		plan === "FREE" ? null : priceMinorFor(plan, cadence ?? "MONTHLY", book);
+	const periodDays = periodDaysFor(plan, cadence ?? "MONTHLY");
+	const periodStart = periodDays === null ? null : now;
+	const periodEnd =
+		periodDays === null ? null : new Date(now.getTime() + periodDays * DAY_MS);
 
 	/**
 	 * Rewrite the denormalised pair on `business`, from the status as of `now`.
@@ -405,13 +454,9 @@ export async function changePlan(
 			.where(eq(businessTable.id, ctx.membership.businessId));
 
 	if (existing.length === 0) {
-		// No subscription row: sign them up. The floor plan is what they get for free,
-		// so a signup is never a downgrade past it.
+		const reference = requireSinpeReference(plan, payment.reference);
 		const id = newId("subscription");
-		// **A free signup has no period at all** — not a zero-length one. `periodStart` and
-		// `periodEnd` stay null, which is what `subscriptionStatusAt` reads to know nothing
-		// was ever charged, and what `PLAN_PERIOD_DAYS`'s `null` exists to express.
-		const periodDays = periodDaysFor(plan, cadence ?? "MONTHLY");
+		const lastPaidAt = plan === "FREE" ? null : now;
 		await db.batch(
 			batchOf([
 				db.insert(subscriptionTable).values({
@@ -422,17 +467,28 @@ export async function changePlan(
 					priceBookId: book.id,
 					priceMinor: price,
 					status: "ACTIVE",
-					periodStart: periodDays === null ? null : now,
-					periodEnd:
-						periodDays === null
-							? null
-							: new Date(now.getTime() + periodDays * DAY_MS),
+					periodStart,
+					periodEnd,
 					gracedUntil: null,
-					lastPaidAt: null,
+					lastPaidAt,
 					createdAt: now,
 					updatedAt: now,
 				}),
 				syncBusiness(plan, "ACTIVE"),
+				merchantPlanAudit(ctx, {
+					subscriptionId: id,
+					before: null,
+					after: {
+						plan,
+						cadence,
+						priceMinor: price,
+						periodStart: periodStart?.toISOString() ?? null,
+						periodEnd: periodEnd?.toISOString() ?? null,
+						lastPaidAt: lastPaidAt?.toISOString() ?? null,
+					},
+					reference,
+					now,
+				}),
 			]),
 		);
 		const created = await dbSubscription(db, ctx.membership.businessId);
@@ -440,31 +496,22 @@ export async function changePlan(
 	}
 
 	const row = orNotFound(existing[0]);
-	const charged = row.priceMinor !== null;
-	const periodEnd = row.periodEnd;
-
+	const samePosition = row.plan === plan && row.cadence === cadence;
+	const statusNow = subscriptionStatusAt(row, now);
 	/**
 	 * A change with nothing to settle either way is not a change.
 	 *
 	 * Both axes, because with two of them "same plan" is no longer sufficient: a merchant
-	 * moving from monthly to annual **is** changing something, and one moving from monthly
-	 * to monthly is not. `charged` is what separates them — a `FREE` row is never charged,
-	 * so re-selecting `FREE` on it is the no-op.
+	 * moving from monthly to annual **is** changing something. An `ACTIVE` shop already on
+	 * this pair is the no-op; a shop in `GRACE` / `PAST_DUE` / `SUSPENDED` on the same
+	 * pair is paying to restart the period, and that is a change.
 	 */
-	const samePosition = row.plan === plan && row.cadence === cadence;
-	if (samePosition && charged) {
+	if (samePosition && (plan === "FREE" || statusNow === "ACTIVE")) {
 		return shapeSubscription(row, now);
 	}
 
-	// Mid-period upgrade: the new limits apply now, the new price at the next period.
-	// `priceMinor` is left alone deliberately — see the docblock.
-	const periodEnded =
-		periodEnd !== null && periodEnd.getTime() <= now.getTime();
-	const nextPrice = charged && !periodEnded ? row.priceMinor : price;
-	// The cadence moves **with the plan, immediately** even mid-period: it says when the
-	// *next* invoice falls, and holding the old one while the new price is already captured
-	// would show a merchant "next charge in 30 days" on a plan billed yearly.
-	const nextPeriodDays = periodDaysFor(plan, cadence ?? "MONTHLY");
+	const reference = requireSinpeReference(plan, payment.reference);
+	const lastPaidAt = plan === "FREE" ? row.lastPaidAt : now;
 
 	await db.batch(
 		batchOf([
@@ -473,25 +520,69 @@ export async function changePlan(
 				.set({
 					plan,
 					cadence,
-					priceMinor: nextPrice,
-					priceBookId: periodEnded ? book.id : row.priceBookId,
+					priceMinor: price,
+					priceBookId: book.id,
+					status: "ACTIVE",
+					periodStart,
+					periodEnd,
+					gracedUntil: null,
+					lastPaidAt,
 					updatedAt: now,
 				})
 				.where(eq(subscriptionTable.id, row.id)),
-			syncBusiness(plan, subscriptionStatusAt(row, now)),
+			syncBusiness(plan, "ACTIVE"),
+			merchantPlanAudit(ctx, {
+				subscriptionId: row.id,
+				before: {
+					plan: row.plan,
+					cadence: row.cadence,
+					priceMinor: row.priceMinor,
+					periodStart: row.periodStart?.toISOString() ?? null,
+					periodEnd: row.periodEnd?.toISOString() ?? null,
+					lastPaidAt: row.lastPaidAt?.toISOString() ?? null,
+				},
+				after: {
+					plan,
+					cadence,
+					priceMinor: price,
+					periodStart: periodStart?.toISOString() ?? null,
+					periodEnd: periodEnd?.toISOString() ?? null,
+					lastPaidAt: lastPaidAt?.toISOString() ?? null,
+				},
+				reference,
+				now,
+			}),
 		]),
 	);
-	// A move to `FREE` clears the period rather than leaving a stale one behind, so the
-	// row's dates cannot describe a period the merchant was never charged for.
-	if (nextPeriodDays === null && !periodEnded) {
-		await db
-			.update(subscriptionTable)
-			.set({ periodStart: null, periodEnd: null, gracedUntil: null })
-			.where(eq(subscriptionTable.id, row.id));
-	}
 
 	const updated = await dbSubscription(db, ctx.membership.businessId);
 	return shapeSubscription(orNotFound(updated[0]), now);
+}
+
+function merchantPlanAudit(
+	ctx: BusinessContext,
+	input: {
+		subscriptionId: string;
+		before: unknown;
+		after: unknown;
+		reference: string | null;
+		now: Date;
+	},
+) {
+	return ctx.db.insert(auditLogTable).values({
+		id: newId("auditLog"),
+		actorUserId: ctx.user.id,
+		action: "SUBSCRIPTION_PLAN_CHANGED",
+		targetType: "subscription",
+		targetId: input.subscriptionId,
+		meta: {
+			businessId: ctx.membership.businessId,
+			before: input.before,
+			after: input.after,
+			...(input.reference === null ? {} : { reference: input.reference }),
+		},
+		createdAt: input.now,
+	});
 }
 
 /**

@@ -116,6 +116,9 @@ LOG_LEVEL = "error"
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
 SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
+# Public destination for merchant subscription fees. Empty until the real Costa Rican
+# SINPE Móvil number is named — a placeholder here would send money to the wrong phone.
+PLATFORM_SINPE_PHONE = ""
 
 # ---------------------------------------------------------------------------
 # D1 — the only durable store. Migrations live in packages/db/migrations and are
@@ -346,6 +349,7 @@ CORS_ORIGINS = "https://staging.pymeshub.lat"
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
 SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
+PLATFORM_SINPE_PHONE = ""
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "pymeshub-staging"
@@ -404,6 +408,7 @@ CORS_ORIGINS = "https://pymeshub.lat,https://www.pymeshub.lat"
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mTZbGzT65UaPxM3n2oC60w_NSLB7--g"
 SUPABASE_JWKS_URL = "https://vnrhkxruvfffkumsnode.supabase.co/auth/v1/.well-known/jwks.json"
+PLATFORM_SINPE_PHONE = ""
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "pymhubdb"
