@@ -31,6 +31,7 @@ export default function CheckoutRouteMap({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [mapRevision, setMapRevision] = useState(0);
 
   useEffect(() => {
     if (!container.current) return;
@@ -92,14 +93,25 @@ export default function CheckoutRouteMap({
       }
     });
     return dispose;
-  }, [pickup.lat, pickup.lng, destination.lat, destination.lng, geometry]);
+  }, [pickup.lat, pickup.lng, destination.lat, destination.lng, geometry, mapRevision]);
 
   if (failed)
     return (
-      <p className="text-xs text-muted-foreground">
-        El mapa no está disponible. La distancia y el precio siguen en el
-        resumen.
-      </p>
+      <div className="space-y-2 rounded-lg border border-border bg-card p-4">
+        <p role="alert" className="text-sm text-muted-foreground">
+          No se pudo cargar el mapa. La distancia y el precio siguen en el resumen.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setFailed(false);
+            setMapRevision((revision) => revision + 1);
+          }}
+          className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:border-primary/50"
+        >
+          Reintentar mapa
+        </button>
+      </div>
     );
 
   return (

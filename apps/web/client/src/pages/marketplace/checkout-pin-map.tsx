@@ -20,6 +20,7 @@ export default function CheckoutPinMap({
   const markerRef = useRef<Marker | null>(null);
   const onPickRef = useRef(onPick);
   const [failed, setFailed] = useState(false);
+  const [mapRevision, setMapRevision] = useState(0);
   const [geoError, setGeoError] = useState(false);
   const centerLat = center?.lat;
   const centerLng = center?.lng;
@@ -68,7 +69,7 @@ export default function CheckoutPinMap({
       }
     });
     return dispose;
-  }, [centerLat, centerLng]);
+  }, [centerLat, centerLng, mapRevision]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -104,10 +105,32 @@ export default function CheckoutPinMap({
 
   if (failed)
     return (
-      <p className="text-xs text-muted-foreground">
-        El mapa no está disponible. Podés guardar la dirección escrita; una
-        tarifa por carretera requiere un pin.
-      </p>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <p role="alert" className="text-sm text-muted-foreground">
+          No se pudo cargar el mapa. Podés reintentarlo o fijar el punto con tu ubicación.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFailed(false);
+              setMapRevision((revision) => revision + 1);
+            }}
+            className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:border-primary/50"
+          >
+            Reintentar mapa
+          </button>
+          <button
+            type="button"
+            onClick={useDevice}
+            className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:border-primary/50"
+          >
+            Usar mi ubicación
+          </button>
+        </div>
+        {point ? <p role="status" className="text-xs text-muted-foreground">Punto de entrega marcado.</p> : null}
+        {geoError ? <p role="alert" className="text-xs text-muted-foreground">No pudimos obtener tu ubicación. Reintentá el mapa para marcar el punto.</p> : null}
+      </div>
     );
 
   return (
