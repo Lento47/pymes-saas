@@ -213,8 +213,8 @@ export default function MarketplaceCheckoutPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">Todavía no tenés direcciones guardadas.</p>
                 )}
-                {quote.isError && selectedAddressRow && (selectedAddressRow.lat == null || selectedAddressRow.lng == null) ? (
-                  <p className="mt-3 text-xs text-muted-foreground">Esta dirección no tiene un punto guardado. Agregá una dirección con un pin para obtener una cotización por carretera.</p>
+                {(quote.isError || quote.data?.routingStatus === "UNAVAILABLE") && selectedAddressRow && (selectedAddressRow.lat == null || selectedAddressRow.lng == null) ? (
+                  <p className="mt-3 text-xs text-muted-foreground">Marcá esta dirección en el mapa para obtener una cotización por carretera.</p>
                 ) : null}
 
                 {showAddressForm ? (
