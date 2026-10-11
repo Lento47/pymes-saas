@@ -441,6 +441,12 @@ function ProfileForm({
 		setZoneLabel(fallback);
 		if (!profile.data) setServiceArea(fallback);
 		try {
+			if (Platform.OS === "android") {
+				let permission = await Location.getForegroundPermissionsAsync();
+				if (!permission.granted && permission.canAskAgain)
+					permission = await Location.requestForegroundPermissionsAsync();
+				if (!permission.granted) return;
+			}
 			const [place] = await Location.reverseGeocodeAsync({
 				latitude: pin.lat,
 				longitude: pin.lng,
