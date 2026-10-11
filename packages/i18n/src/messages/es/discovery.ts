@@ -64,6 +64,7 @@ export const discovery = {
 	 * and "ODbL" are spelled exactly as the guidelines spell them.
 	 */
 	"discovery.map.label": "Mapa de tu zona",
+	"discovery.map.loadFailed": "No se pudo cargar el mapa.",
 	"discovery.map.attribution": "© OpenStreetMap contributors · ODbL",
 
 	/*

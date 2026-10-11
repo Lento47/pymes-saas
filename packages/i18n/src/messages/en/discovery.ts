@@ -52,6 +52,7 @@ export const discovery = {
 	 * the full reasoning, and `apps/mobile/components/map.tsx` for where it is drawn.
 	 */
 	"discovery.map.label": "Map of your area",
+	"discovery.map.loadFailed": "The map couldn't load.",
 	"discovery.map.attribution": "© OpenStreetMap contributors · ODbL",
 
 	/*

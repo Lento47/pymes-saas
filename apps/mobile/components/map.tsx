@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n";
 import { radiusPolygon, radiusPolygonBounds } from "@/lib/radius-polygon";
 import { radius, space, useTheme } from "@/theme";
 
+import { Button } from "./button";
 import { Text } from "./text";
 
 /**
@@ -327,6 +328,8 @@ export function MapView({
 	const cameraRef = useRef<CameraRef>(null);
 	const lastFittedBounds = useRef<string | null>(null);
 	const [mapReady, setMapReady] = useState(false);
+	const [mapFailed, setMapFailed] = useState(false);
+	const [mapRevision, setMapRevision] = useState(0);
 	const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
 	const radiusLat = marker?.lat ?? coords?.lat;
 	const radiusLng = marker?.lng ?? coords?.lng;
@@ -446,10 +449,16 @@ export function MapView({
 			}
 		>
 			<MapLibreMap
+				key={mapRevision}
 				mapStyle={mapStyleUrl}
-				onDidFinishLoadingMap={
-					fitRadius || route ? () => setMapReady(true) : undefined
-				}
+				onDidFinishLoadingMap={() => {
+					setMapReady(true);
+					setMapFailed(false);
+				}}
+				onDidFailLoadingMap={() => {
+					setMapReady(false);
+					setMapFailed(true);
+				}}
 				// Android draws into a `SurfaceView` by default, and a `SurfaceView` is
 				// composited *below* the window rather than into it — so the band's
 				// `overflow: "hidden"` cannot clip it and the corners would come out square
@@ -658,6 +667,23 @@ export function MapView({
 					{t("discovery.map.attribution")}
 				</Text>
 			</View>
+			{mapFailed ? (
+				<View style={[styles.loadFailure, { backgroundColor: colors.card }]}>
+					<Text variant="body" bold style={styles.loadFailureText}>
+						{t("discovery.map.loadFailed")}
+					</Text>
+					<Button
+						label={t("action.retry")}
+						size="sm"
+						onPress={() => {
+							lastFittedBounds.current = null;
+							setMapReady(false);
+							setMapFailed(false);
+							setMapRevision((revision) => revision + 1);
+						}}
+					/>
+				</View>
+			) : null}
 		</View>
 	);
 }
@@ -695,5 +721,19 @@ const styles = StyleSheet.create({
 		// is a filter.
 		borderRadius: radius.sm,
 		borderWidth: 1,
+	},
+	loadFailure: {
+		position: "absolute",
+		top: 0,
+		right: 0,
+		bottom: 0,
+		left: 0,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.sm,
+		padding: space.md,
+	},
+	loadFailureText: {
+		textAlign: "center",
 	},
 });
