@@ -1020,11 +1020,28 @@ export default function MerchantHome() {
 						</View>
 						{orders.length === 0 ? (
 							<View style={styles.pad}>
-								<EmptyState
-									icon="receipt-outline"
-									title={t("biz.board.caughtUp")}
-									body={t("biz.board.empty.body")}
-								/>
+								<View
+									style={[
+										styles.emptyOrders,
+										{ backgroundColor: colors.muted },
+									]}
+								>
+									<Ionicons
+										name="checkmark-circle-outline"
+										size={icon.back}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									<View style={styles.emptyOrdersCopy}>
+										<Text variant="body" bold>
+											{t("biz.board.caughtUp")}
+										</Text>
+										<Text variant="caption" tone="muted">
+											{t("biz.board.empty.body")}
+										</Text>
+									</View>
+								</View>
 							</View>
 						) : (
 							<View>
@@ -1475,6 +1492,14 @@ const styles = StyleSheet.create({
 	refreshTarget: { alignItems: "center", justifyContent: "center" },
 	body: { gap: space.lg },
 	pad: { paddingHorizontal: space.lg },
+	emptyOrders: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		padding: space.md,
+		borderRadius: radius.md,
+	},
+	emptyOrdersCopy: { flex: 1, gap: space.xs },
 	// Ten points of air under the safe area, then the rail: no header
 	// card, no background container — the controls are the hierarchy.
 	merchantHeader: { paddingTop: 10 },
