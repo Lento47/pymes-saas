@@ -397,6 +397,10 @@ class_name = "RateLimitRoom"
 [env.production]
 name = "pymeshub-api"
 
+[[env.production.services]]
+binding = "ROUTING_SERVICE"
+service = "pymeshub-routing"
+
 # Production's own hostname, bound for the reasons the staging block above gives and one
 # more: `apps/web/wrangler.jsonc` compiles this origin into the browser bundle as `API_URL`,
 # so a deploy with no route would ship a web app whose every request, and the documented

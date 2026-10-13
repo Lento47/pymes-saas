@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "check-types": "tsc --noEmit",
+    "deploy:production": "wrangler deploy --config wrangler.production.toml",
     "deploy:staging": "wrangler deploy",
     "build": "wrangler deploy --dry-run --outdir dist"
   },

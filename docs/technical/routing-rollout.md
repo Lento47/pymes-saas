@@ -1,7 +1,8 @@
 # Road routing rollout
 
-Staging uses the private `ROUTING_SERVICE` Worker binding to the OSRM container
-in `apps/routing`. It has no public hostname. Other environments can use an
+Staging and production each use a private `ROUTING_SERVICE` Worker binding to
+their own OSRM container in `apps/routing`. Neither has a public hostname.
+Other environments can use an
 operator-controlled HTTPS endpoint in `ROUTING_BASE_URL`.
 `ROUTING_PROVIDER` selects `osrm` (the default) or `valhalla` for that URL;
 an unknown value fails closed. The public demo servers are evaluation tools, never
@@ -10,16 +11,18 @@ routing flag. Checkout and dispatch currently request a **car** route from eithe
 provider; Valhalla's motorcycle profile is available through the adapter but is not
 yet used to set customer prices or courier ETA.
 
-The staging image pins OSRM v26.10.0 and Geofabrik's dated Costa Rica extract
+Both images pin OSRM v26.10.0 and Geofabrik's dated Costa Rica extract
 `costa-rica-261009.osm.pbf`, verified by SHA-256 in the Dockerfile. Rebuild the
 graph with a newly dated extract and checksum when roads change; do not silently
-download a moving `latest` source. Deploy `apps/routing` first, wait for the
-container to become ready, then deploy `packages/trpc-api --env staging` so its
+download a moving `latest` source. Deploy the chosen `apps/routing` environment
+first (`deploy:staging` or `deploy:production`), wait for the container to become
+ready, then deploy the corresponding `packages/trpc-api` environment so its
 service binding can resolve. Docker must be running for the routing deploy.
 The `standard-1` container is limited to one instance and sleeps after ten
 idle minutes; cold requests can take longer. This is a paid Cloudflare
 Containers service, so check account billing and measure active hours before
-leaving it enabled. Production has no routing binding or flag changes.
+leaving it enabled. The binding alone does not enable road quotes or pricing;
+both routing flags remain off until route quality and latency pass acceptance.
 
 1. Enable `ROUTING_ENABLED=true` in staging with `ROUTE_FEE_ENABLED` unset. Checkout
    keeps the shop's fixed delivery charge, but a successful route supplies road

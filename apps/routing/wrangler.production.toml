@@ -1,0 +1,19 @@
+name = "pymeshub-routing"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+
+[[containers]]
+class_name = "OsrmContainer"
+image = "./Dockerfile"
+instance_type = "standard-1"
+max_instances = 1
+
+[[durable_objects.bindings]]
+name = "OSRM"
+class_name = "OsrmContainer"
+
+[exports.OsrmContainer]
+type = "durable-object"
+storage = "sqlite"
