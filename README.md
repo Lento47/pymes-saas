@@ -201,18 +201,39 @@ flowchart LR
 
 ## Planes
 
-El comercio paga **una tarifa plana** por la app — sin comisión por pedido y con IVA incluido. El precio vive en la tabla `price_book`; subirlo es insertar una fila, no publicar una versión, y una suscripción conserva el libro con el que entró, así que un aumento nunca alcanza a un comercio que ya está dentro.
+El comercio paga **una tarifa plana** por la app — sin comisión por pedido y con IVA incluido (el 13% lo absorbe la plataforma). El consumidor le paga **al comercio** por los productos y **al repartidor** por el envío; no hay pasarela en medio y el pago es **contra entrega**.
 
-| Plan | Precio (libro de lanzamiento, IVA incluido) | Alcance |
-|------|---------------------------------------------|---------|
-| **WEEKLY** | ₡2 000 / semana | 1 local · 1 cuenta de staff · 25 productos · 250 MB · 1 promoción · 90 días de historial |
-| **MONTHLY** | ₡10 000 / mes | 1 local · 3 cuentas · 150 productos · 2 GB · 5 promociones · inventario · 730 días de historial |
+Hay cinco niveles (`FREE`, `EMPRENDE`, `STARTER`, `GROWTH`, `BUSINESS`) y dos cadencias (`MONTHLY`, `YEARLY` — el año son diez meses del precio mensual). `FREE` no tiene precio: es permanente y nunca genera mora.
 
-Estados de suscripción: `ACTIVE` (acceso completo) → `GRACE` (pago atrasado, conserva el plan) → `PAST_DUE` (degrada a los límites del `WEEKLY`, **sigue visible en el feed**) → `SUSPENDED` (sin listar, último recurso).
+| Plan | Mensual (IVA incl.) | Anual (IVA incl.) |
+|------|---------------------|-------------------|
+| **FREE** | ₡0 | ₡0 |
+| **EMPRENDE** | ₡10 900 | ₡109 000 |
+| **STARTER** | ₡19 900 | ₡199 000 |
+| **GROWTH** | ₡29 900 | ₡299 000 |
+| **BUSINESS** | ₡59 900 | ₡599 000 |
+
+Precios del libro de lanzamiento (`launch-2026`). Subir un precio es insertar un libro nuevo, no publicar una versión: la suscripción conserva el libro con el que entró, así que un aumento nunca alcanza a un comercio que ya está dentro. Los límites dependen solo del nivel, nunca de la cadencia: un anual tiene exactamente los mismos números que un mensual.
+
+| Límite | FREE | EMPRENDE | STARTER | GROWTH | BUSINESS |
+|--------|------|----------|---------|--------|----------|
+| Locales | 1 | 1 | 1 | 2 | 5 |
+| Cuentas de staff | 1 | 2 | 3 | 5 | 15 |
+| Productos | 15 | 60 | 250 | 600 | 1 000 |
+| Grupos de opciones / producto | 1 | 2 | 4 | 5 | 6 |
+| Opciones / grupo | 5 | 8 | 12 | 16 | 20 |
+| Imágenes / producto | 2 | 3 | 6 | 8 | 10 |
+| Almacenamiento | 150 MB | 600 MB | 3 GB | 6 GB | 10 GB |
+| Promociones activas | 0 | 2 | 8 | 15 | 25 |
+| Analítica / auditoría | 30 / 30 días | 90 / 180 días | 730 / 730 días | 1 095 / 1 095 días | 1 095 / 1 095 días |
+| Control de inventario | No | No | Sí | Sí | Sí |
+| Express aceptados / semana | 10 | 30 | 90 | 250 | Ilimitado |
+
+Estados de suscripción: `ACTIVE` (acceso completo) → `GRACE` (30 días de gracia con límites completos) → `PAST_DUE` (cae a los límites de `FREE`, **sigue visible en el feed**) → `SUSPENDED` (sin listar, a los 90 días).
 
 **Nunca se limita, en ningún plan:** tomar y avanzar pedidos, horarios y pausar el local, reseñas en ambas direcciones, ver pagos y eliminar la cuenta.
 
-> La tabla anterior es el modelo canónico de `packages/shared/src/plans.ts` (lo que el código aplica en tiempo real). Si la página de precios del sitio muestra otro esquema, trátala como copy y reconciliala con este módulo.
+> La tabla anterior resume el modelo canónico de `packages/shared/src/plans.ts` (lo que el código aplica en tiempo real). Si la página de precios del sitio muestra otro esquema, trátala como copy y reconciliala con este módulo.
 
 ---
 
