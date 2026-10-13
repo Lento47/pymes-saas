@@ -277,12 +277,11 @@ describe("checkout quote", () => {
 		}
 	});
 
-	test("routing-only quotes draw the road while charging the fixed shop fee", async () => {
+	test("private staging routing quotes draw the road while charging the fixed shop fee", async () => {
 		const test = world();
-		const previousFetch = globalThis.fetch;
 		let routeCalls = 0;
-		globalThis.fetch = Object.assign(
-			async () => {
+		test.env.ROUTING_SERVICE = {
+			fetch: async () => {
 				routeCalls += 1;
 				return Response.json({
 					code: "Ok",
@@ -301,12 +300,10 @@ describe("checkout quote", () => {
 					],
 				});
 			},
-			{ preconnect: previousFetch.preconnect },
-		);
+		} as unknown as Fetcher;
 		try {
 			const { first, caller, coffee } = await twoShops(test);
 			test.env.ROUTING_ENABLED = "true";
-			test.env.ROUTING_BASE_URL = "https://routing.test/";
 			await test.db
 				.update(locationTable)
 				.set({ lat: 9.93, lng: -84.08 })
@@ -361,7 +358,6 @@ describe("checkout quote", () => {
 				.where(eq(orderTable.id, olderClientOrder.id));
 			expect(olderStored?.deliveryPricingVersion).toBe("legacy-fixed");
 		} finally {
-			globalThis.fetch = previousFetch;
 			test.close();
 		}
 	});
