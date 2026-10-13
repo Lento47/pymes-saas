@@ -39,13 +39,24 @@ not the coverage, map display, or tariff acceptance below.
 
 Staging deployment check (2026-10-12): the routing Worker version
 `2559353d-ba73-4073-bffa-bb1080178da0` uses production image tag `38ab4861`.
-The staging API version `f85836fd-0b3f-4f76-97e5-80dc10ecb5c9` has
+The staging API version `a3c60974-0658-4c9e-a8a1-340686ded939` has
 `ROUTING_ENABLED=true` and leaves `ROUTE_FEE_ENABLED` unset. The staging API
 health check returned `db: ok`. A temporary remote service-binding probe returned
 a San José road route of 1,652.8 m / 243.5 s with 32 geometry points, a matching
 one-to-one matrix duration, and HTTP 400 for an unsupported path. The probe was
 stopped afterward. These checks establish binding and route availability, not
 native map display, coverage, or tariff acceptance.
+
+The next staging audit used a 250 m maximum road-snap radius for both routes
+and matrices. Public approximate pins returned San José 2.63 km / 6.6 min,
+Limón 2.41 km / 6.5 min, and Liberia–Tamarindo 76.96 km / 100.4 min; the
+matrix matched the San José route. The old Limón destination snapped 320 m
+away and correctly returned `NoSegment` under this limit. The audit now uses
+a public road-aligned point for that sample. These samples test the private
+graph and refusal behavior; they are not verified customer or shop entrances.
+`packages/trpc-api` rejects even a malformed provider response that reports
+a route farther than 250 m from either selected pin. Staging API version above
+contains that check; production road pricing remains disabled.
 
 1. Staging has `ROUTING_ENABLED=true` with `ROUTE_FEE_ENABLED` unset. Checkout
    keeps the shop's fixed delivery charge, but a successful route supplies road
