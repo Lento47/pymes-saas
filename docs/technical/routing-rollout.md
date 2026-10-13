@@ -14,15 +14,19 @@ yet used to set customer prices or courier ETA.
 Both images pin OSRM v26.10.0 and Geofabrik's dated Costa Rica extract
 `costa-rica-261009.osm.pbf`, verified by SHA-256 in the Dockerfile. Rebuild the
 graph with a newly dated extract and checksum when roads change; do not silently
-download a moving `latest` source. Deploy the chosen `apps/routing` environment
+download a moving `latest` source. Staging currently uses the exact production
+image from the private Cloudflare Registry, so deploying it does not require a
+local Docker engine. Deploy the chosen `apps/routing` environment
 first (`deploy:staging` or `deploy:production`), wait for the container to become
 ready, then deploy the corresponding `packages/trpc-api` environment so its
-service binding can resolve. Docker must be running for the routing deploy.
+service binding can resolve. Docker must be running when deploying a routing
+configuration that builds from the Dockerfile.
 The `standard-1` container is limited to one instance and sleeps after ten
 idle minutes; cold requests can take longer. This is a paid Cloudflare
 Containers service, so check account billing and measure active hours before
 leaving it enabled. The binding alone does not enable road quotes or pricing;
-both routing flags remain off until route quality and latency pass acceptance.
+production routing and route-fee flags remain off until route quality and latency
+pass acceptance. Staging has route-only quotes enabled with the fixed-fee policy.
 
 Production deployment check (2026-10-12): routing Worker version
 `38ab4861-72df-48b5-b71e-bfe1bf5a9a3c` and API version
@@ -33,7 +37,17 @@ and an unsupported path returned HTTP 400. `/health` on the production API
 returned `db: ok`. The probe was removed afterward. This checks connectivity,
 not the coverage, map display, or tariff acceptance below.
 
-1. Enable `ROUTING_ENABLED=true` in staging with `ROUTE_FEE_ENABLED` unset. Checkout
+Staging deployment check (2026-10-12): the routing Worker version
+`2559353d-ba73-4073-bffa-bb1080178da0` uses production image tag `38ab4861`.
+The staging API version `f85836fd-0b3f-4f76-97e5-80dc10ecb5c9` has
+`ROUTING_ENABLED=true` and leaves `ROUTE_FEE_ENABLED` unset. The staging API
+health check returned `db: ok`. A temporary remote service-binding probe returned
+a San José road route of 1,652.8 m / 243.5 s with 32 geometry points, a matching
+one-to-one matrix duration, and HTTP 400 for an unsupported path. The probe was
+stopped afterward. These checks establish binding and route availability, not
+native map display, coverage, or tariff acceptance.
+
+1. Staging has `ROUTING_ENABLED=true` with `ROUTE_FEE_ENABLED` unset. Checkout
    keeps the shop's fixed delivery charge, but a successful route supplies road
    distance, driving time, and geometry. If the provider fails or a saved pin lacks
    coordinates, checkout keeps the fixed fee and reports `routingStatus: UNAVAILABLE`. Older

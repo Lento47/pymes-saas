@@ -6,7 +6,9 @@ preview_urls = false
 
 [[containers]]
 class_name = "OsrmContainer"
-image = "./Dockerfile"
+# Reuse the verified production image for the staging route trial. A registry
+# reference deploys without a local Docker engine and pins the same road graph.
+image = "registry.cloudflare.com/a0880a963b36e3bb7150104a0fa1a613/pymeshub-routing-osrmcontainer:38ab4861"
 instance_type = "standard-1"
 max_instances = 1
 
