@@ -225,7 +225,7 @@ Precios del libro de lanzamiento (`launch-2026`). Subir un precio es insertar un
 | Imágenes / producto | 2 | 3 | 6 | 8 | 10 |
 | Almacenamiento | 150 MB | 600 MB | 3 GB | 6 GB | 10 GB |
 | Promociones activas | 0 | 2 | 8 | 15 | 25 |
-| Analítica / auditoría | 30 / 30 días | 90 / 180 días | 730 / 730 días | 1 095 / 1 095 días | 1 095 / 1 095 días |
+| Analítica (días) | 30 | 90 | 730 | 1 095 | 1 095 |
 | Control de inventario | No | No | Sí | Sí | Sí |
 | Express aceptados / semana | 10 | 30 | 90 | 250 | Ilimitado |
 

@@ -323,9 +323,9 @@ export const STATUS_IS_LISTED: Record<SubscriptionStatus, boolean> = {
  *   the caps that keep a tenant from growing without limit.
  * - `storageBytes` is money: R2 bills $0.015/GB-month, so a plan with no storage cap
  *   is a plan whose cost the merchant sets.
- * - `analyticsDays` and `auditRetentionDays` are window clamps, and `auditRetentionDays`
- *   is also a deletion schedule — it says how long rows are *kept*, not just how far
- *   back a merchant may ask.
+ * - `analyticsDays` is a window clamp on how far back a merchant may look. There is
+ *   deliberately no retention half: audit rows are never pruned by plan, so no tier
+ *   sells a deletion schedule for logs nobody reviewed.
  * - `inventoryTracking` is the one boolean, and it is a real Pro feature: the column
  *   already exists on `product`, so this is a switch rather than a subsystem.
  *
@@ -342,7 +342,6 @@ export interface PlanLimits {
 	storageBytes: number;
 	activePromotions: number;
 	analyticsDays: number;
-	auditRetentionDays: number;
 	inventoryTracking: boolean;
 	/**
 	 * Express deliveries a business may **accept** in one week.
@@ -412,7 +411,6 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		storageBytes: 150 * MEGABYTE,
 		activePromotions: 0,
 		analyticsDays: 30,
-		auditRetentionDays: 30,
 		inventoryTracking: false,
 		// Ten a week is about one busy lunch and one busy dinner. Enough that a shop can
 		// run a week on it, and small enough that ten express deliveries a week for a year
@@ -429,7 +427,6 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		storageBytes: 600 * MEGABYTE,
 		activePromotions: 2,
 		analyticsDays: 90,
-		auditRetentionDays: 180,
 		inventoryTracking: false,
 		// Thirty a week: a shop taking express on most days and still short on Sundays.
 		expressPerWeek: 30,
@@ -444,7 +441,6 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		storageBytes: 3 * 1024 * MEGABYTE,
 		activePromotions: 8,
 		analyticsDays: 730,
-		auditRetentionDays: 730,
 		inventoryTracking: true,
 		expressPerWeek: 90,
 	},
@@ -458,7 +454,6 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		storageBytes: 6 * 1024 * MEGABYTE,
 		activePromotions: 15,
 		analyticsDays: 1095,
-		auditRetentionDays: 1095,
 		inventoryTracking: true,
 		expressPerWeek: 250,
 	},
@@ -472,7 +467,6 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		storageBytes: 10 * 1024 * MEGABYTE,
 		activePromotions: 25,
 		analyticsDays: 1095,
-		auditRetentionDays: 1095,
 		inventoryTracking: true,
 		// Not a constraint. A shop paying for the top tier has bought out of being told no,
 		// and a number here would be one that gets raised by a support ticket anyway.
