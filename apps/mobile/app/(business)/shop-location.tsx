@@ -122,10 +122,11 @@ export default function ShopLocation() {
 
 	// The pin: what the reader has chosen, falling back to what the server has.
 	const pin = picked ?? saved;
-	// The camera prefers the chosen pin, then the shop address, then the device.
-	// A country centre keeps the map pannable with denied location permission;
-	// only an explicit tap can turn any camera position into a saved pin.
-	const centre = pin ??
+	// Keep the camera anchored while an unsaved pin follows a map tap. Using `pin`
+	// here would recenter the map on every choice and move the point out from under
+	// the merchant's finger. A country centre keeps the map pannable with denied
+	// location permission; only an explicit tap can turn it into a saved pin.
+	const centre = saved ??
 		addressCentre ??
 		device.coords ?? { lat: 9.7489, lng: -83.7534 };
 	useEffect(() => {
