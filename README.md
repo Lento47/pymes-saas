@@ -90,6 +90,65 @@ Consumidor / Comercio
               └── Durable Object      — sala en vivo por pedido (`/orders/:id/live`)
 ```
 
+### Mapa del sistema
+
+```mermaid
+flowchart TB
+    subgraph clients["Clientes — tres apps, un solo escritor"]
+        WEB["Web · Vite SPA<br/>pymeshub.lat"]
+        MOB["Mobile · Expo 57 + React Native<br/>iOS / Android"]
+        DESK["Desktop · Tauri 2 · Windows"]
+    end
+    subgraph edge["Borde — api.pymeshub.lat"]
+        API["Worker pymeshub-api<br/>Hono 4 + tRPC 11 + Better Auth"]
+    end
+    subgraph state["Estado y trabajo"]
+        D1[("D1 pymhubdb<br/>única fuente de verdad")]
+        KV[("KV CACHE<br/>caché + rate-limit<br/>recomputable")]
+        R2[("R2 pymeshub-media<br/>fotos, servidas por /files/:id")]
+        Q["Queues<br/>order-events + DLQ"]
+        DO["Durable Objects<br/>OrderRoom · RateLimitRoom"]
+        CRON["Cron cada minuto<br/>barridos y expiraciones"]
+    end
+    subgraph ext["Servicios externos"]
+        SUP["Supabase<br/>proveedor de identidad"]
+        PUSH["FCM / APNs<br/>push vía Expo"]
+        ROUTE["Worker pymeshub-routing<br/>OSRM privado"]
+        LEGACY["LEGADO · NestJS en Railway + Postgres<br/>etapa SaaS, no sirve el marketplace"]
+    end
+    WEB --> API
+    MOB --> API
+    DESK --> API
+    API --> D1
+    API --> KV
+    API --> R2
+    API --> Q
+    API --> DO
+    API --> ROUTE
+    API -.-> SUP
+    API -.-> PUSH
+```
+
+### Despliegue y release
+
+```mermaid
+flowchart LR
+    PUSH["push a master"] --> BW["Builds web<br/>proyecto independiente"]
+    PUSH --> BA["Builds API<br/>dueño de prod: pymeshub-api"]
+    PUSH --> RW["Railway · solo paths legados<br/>apps/api + Dockerfile"]
+    BW --> WEBP["Web prod<br/>pymeshub.lat"]
+    BA --> APIP["Worker prod<br/>api.pymeshub.lat"]
+    MIGS["Migrar staging<br/>db:migrate:staging"] --> TESTS["Probar en staging<br/>borrado, push, tracking"]
+    TESTS --> MIGP["Migrar prod en ventana aprobada<br/>db:migrate:remote"]
+    MIGP --> APIP
+    EAS["EAS · perfiles mobile"] --> PREV["preview / apk<br/>distribución interna"]
+    EAS --> PROD["production<br/>AAB + App Store + canal OTA"]
+    PREV --> PILOT["Piloto de campo<br/>mobile-field-pilot.md"]
+    PILOT --> ROLL["Rollout 10 → 25 → 50 → 100%"]
+    APIP -.->|retroceso| RBW["wrangler rollback"]
+    MIGP -.->|retroceso solo con aprobación| TT["D1 Time Travel"]
+```
+
 ---
 
 ## Stack
@@ -126,7 +185,12 @@ Consumidor / Comercio
 | `reviews` | Reseñas de consumidores y respuestas del comercio |
 | `promotions` | Promociones activas del comercio |
 | `subscription` | Plan del comercio, estado y límites |
-| `couriers` | Repartidores |
+| `couriers` | Repartidores: perfil, invitaciones, directorio |
+| `deliveries` | Despacho: ofertas, aceptar/rechazar, avance del reparto, ratings |
+| `devices` | Registro de push tokens por dispositivo |
+| `support` | Tickets de soporte |
+| `crashReport` | Reportes de crash del cliente |
+| `idea` | Buzón de ideas: crear, cola del operador, resolver |
 | `notifications` | Avisos in-app |
 | `uploads` | Subida de media a R2 |
 | `users` | Identidad y perfil |
