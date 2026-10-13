@@ -89,9 +89,15 @@ export default function Help() {
 				<ListRow
 					title={t("help.safety")}
 					chevron
-					divider={false}
 					accessibilityHint={t("help.safety.help")}
 					onPress={() => router.push("/safety")}
+				/>
+				<ListRow
+					title={t("ideas.title")}
+					chevron
+					divider={false}
+					accessibilityHint={t("ideas.help")}
+					onPress={() => router.push("/ideas")}
 				/>
 			</Card>
 		</Screen>

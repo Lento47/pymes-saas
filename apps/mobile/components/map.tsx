@@ -222,6 +222,18 @@ export type MapViewProps = {
 	 */
 	style?: StyleProp<ViewStyle>;
 	/**
+	 * Extra camera padding when fitting a route, so overlays (editorial headline, task
+	 * sheet) do not cover the courier or the destination.
+	 */
+	fitPadding?: {
+		top: number;
+		right: number;
+		bottom: number;
+		left: number;
+	};
+	/** Increment to re-run `fitBounds` even when the route extent is unchanged. */
+	refitNonce?: number;
+	/**
 	 * Report the point the reader tapped, or `null`/`undefined` for a map you cannot touch.
 	 *
 	 * This is what makes the band a **picker**, and it is the reason a shop can ever have a
@@ -319,6 +331,8 @@ export function MapView({
 	zoom,
 	showUserLocation = true,
 	accessibilityLabel,
+	fitPadding,
+	refitNonce = 0,
 }: MapViewProps) {
 	const { colors } = useTheme();
 	const { t } = useT();
@@ -379,27 +393,42 @@ export function MapView({
 	}, [pickupLat, pickupLng, destinationLat, destinationLng, routeGeometry]);
 	const visibleBounds = (fitRadius && radiusBounds) || routeBounds;
 
+	const padTop = fitPadding?.top ?? RADIUS_CAMERA_PADDING;
+	const padRight = fitPadding?.right ?? RADIUS_CAMERA_PADDING;
+	const padBottom = fitPadding?.bottom ?? RADIUS_CAMERA_PADDING;
+	const padLeft = fitPadding?.left ?? RADIUS_CAMERA_PADDING;
+
 	useEffect(() => {
 		if (!mapReady || !mapSize.width || !mapSize.height || !visibleBounds)
 			return;
 		// Polling can return a new geometry object with the same extent. Preserve the
 		// reader's pan/zoom unless the actual route extent or map size changed.
-		const fitKey = `${mapSize.width}:${mapSize.height}:${visibleBounds.join(":")}`;
+		const fitKey = `${mapSize.width}:${mapSize.height}:${visibleBounds.join(":")}:${padTop}:${padRight}:${padBottom}:${padLeft}:${refitNonce}`;
 		if (lastFittedBounds.current === fitKey) return;
 		const camera = cameraRef.current;
 		if (!camera) return;
 		lastFittedBounds.current = fitKey;
 		camera.fitBounds(visibleBounds, {
 			padding: {
-				top: RADIUS_CAMERA_PADDING,
-				right: RADIUS_CAMERA_PADDING,
-				bottom: RADIUS_CAMERA_PADDING,
-				left: RADIUS_CAMERA_PADDING,
+				top: padTop,
+				right: padRight,
+				bottom: padBottom,
+				left: padLeft,
 			},
 			duration: 250,
 			easing: "ease",
 		});
-	}, [mapReady, mapSize.width, mapSize.height, visibleBounds]);
+	}, [
+		mapReady,
+		mapSize.width,
+		mapSize.height,
+		visibleBounds,
+		padTop,
+		padRight,
+		padBottom,
+		padLeft,
+		refitNonce,
+	]);
 
 	// Read before the guard rather than after it, so the three reasons to draw nothing are one
 	// `if`: no style, no coordinate, or no MapLibre in this binary.
@@ -502,10 +531,10 @@ export function MapView({
 								initialViewState: {
 									bounds: visibleBounds,
 									padding: {
-										top: RADIUS_CAMERA_PADDING,
-										right: RADIUS_CAMERA_PADDING,
-										bottom: RADIUS_CAMERA_PADDING,
-										left: RADIUS_CAMERA_PADDING,
+										top: padTop,
+										right: padRight,
+										bottom: padBottom,
+										left: padLeft,
 									},
 								},
 							}
@@ -562,6 +591,10 @@ export function MapView({
 						<Layer
 							id="deliveryRoadRouteOutline"
 							type="line"
+							layout={{
+								"line-cap": "round",
+								"line-join": "round",
+							}}
 							paint={{
 								"line-color": colors.card,
 								"line-width": 8,
@@ -571,6 +604,10 @@ export function MapView({
 						<Layer
 							id="deliveryRoadRouteLine"
 							type="line"
+							layout={{
+								"line-cap": "round",
+								"line-join": "round",
+							}}
 							paint={{
 								"line-color": colors.primary,
 								"line-width": 4,

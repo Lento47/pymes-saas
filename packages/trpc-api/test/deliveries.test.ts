@@ -656,7 +656,11 @@ describe("a courier the shop never added", () => {
 		};
 		await test.db
 			.update(orderTable)
-			.set({ routeGeometry: geometry })
+			.set({
+				routeGeometry: geometry,
+				routeDistanceMeters: 2_400,
+				routeDurationSeconds: 480,
+			})
 			.where(eq(orderTable.id, order.id));
 		const caller = appRouter.createCaller(
 			await authed(test, courier.user),
@@ -665,9 +669,12 @@ describe("a courier the shop never added", () => {
 		if (!offer) throw new Error("Courier received no offer");
 		const accepted = await caller.deliveries.acceptOffer({ offerId: offer.id });
 		expect(accepted.routeGeometry).toEqual(geometry);
-		expect(
-			(await caller.deliveries.byId({ deliveryId: accepted.id })).routeGeometry,
-		).toEqual(geometry);
+		expect(accepted.routeDistanceMeters).toBe(2_400);
+		expect(accepted.routeDurationSeconds).toBe(480);
+		const detail = await caller.deliveries.byId({ deliveryId: accepted.id });
+		expect(detail.routeGeometry).toEqual(geometry);
+		expect(detail.routeDistanceMeters).toBe(2_400);
+		expect(detail.routeDurationSeconds).toBe(480);
 		test.close();
 	});
 

@@ -641,6 +641,22 @@ export default function AccountScreen() {
 								onPress={() => router.push("/help" as Href)}
 							/>
 							<ListRow
+								title={t("ideas.title")}
+								chevron
+								leading={
+									<Ionicons
+										name="bulb-outline"
+										size={icon.control}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								}
+								divider
+								accessibilityHint={t("ideas.help")}
+								onPress={() => router.push("/ideas" as Href)}
+							/>
+							<ListRow
 								title={t("account.safety")}
 								chevron
 								leading={

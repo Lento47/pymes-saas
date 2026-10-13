@@ -95,7 +95,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	owner: "otnel",
 	name: "PymesHub",
 	slug: "pymeshub",
-	version: "0.1.0",
+	version: "0.2.0",
 	orientation: "portrait",
 	userInterfaceStyle: "automatic",
 	scheme: "pymeshub",

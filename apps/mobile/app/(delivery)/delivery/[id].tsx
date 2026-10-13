@@ -2,63 +2,69 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import type {
 	DeliveryAction,
+	DeliveryDetail,
 	DeliveryStatus,
 	DeliveryStop,
 } from "@pymeshub/shared";
 import { formatMoney } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { type Href, router, useLocalSearchParams } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef, useState } from "react";
 import {
+	AccessibilityInfo,
 	Linking,
-	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
+import {
+	SafeAreaView,
+	useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
-import { Card } from "@/components/card";
-import { ConfirmSheet } from "@/components/confirm-sheet";
+import {
+	CircleIconButton,
+	CourierWordmark,
+	MerchantMark,
+	SheetHandle,
+} from "@/components/courier-motion";
+import { DeliveryConfirmationSlider } from "@/components/delivery-confirmation-slider";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { isMapAvailable, MapView } from "@/components/map";
 import { Pressable } from "@/components/pressable";
-import { useRefreshControl } from "@/components/pull-refresh";
 import { RatingInput, type RatingValue } from "@/components/rating-input";
-import { Screen } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
 import {
+	actionFor,
+	currentStop,
+	etaMinutes,
+	headlineKind,
+	kmFromMeters,
+} from "@/lib/courier-motion";
+import {
 	startCourierTracking,
 	stopCourierTracking,
 } from "@/lib/courier-tracking";
-import { formatClock } from "@/lib/format";
+import { formatAtMostOneDecimal, formatClock } from "@/lib/format";
 import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 import {
+	courierMotionSpace,
+	courierMotionTokens,
 	icon,
 	MIN_TOUCH_TARGET,
+	radius,
 	space,
-	TEXT_STACK_GAP,
 	type,
 	useTheme,
 } from "@/theme";
-
-const STATUS_KEYS: Record<DeliveryStatus, MessageKey> = {
-	SEARCHING: "delivery.status.SEARCHING",
-	OFFERED: "delivery.status.OFFERED",
-	ACCEPTED: "delivery.status.ACCEPTED",
-	TO_PICKUP: "delivery.status.TO_PICKUP",
-	AT_PICKUP: "delivery.status.AT_PICKUP",
-	PICKED_UP: "delivery.status.PICKED_UP",
-	DELIVERED: "delivery.status.DELIVERED",
-	CANCELLED: "delivery.status.CANCELLED",
-};
 
 const ACTION_KEYS: Record<DeliveryAction, MessageKey> = {
 	START_TO_PICKUP: "delivery.action.startPickup",
@@ -70,37 +76,37 @@ const ACTION_KEYS: Record<DeliveryAction, MessageKey> = {
 const POLL_MS = 5_000;
 
 export default function CourierDeliveryDetailScreen() {
-	const { t } = useT();
 	const { id } = useLocalSearchParams<{ id: string }>();
-
 	return (
-		<Screen
-			title={t("delivery.detail.title")}
-			leading={<BackButton to="/delivery" />}
-			bottomInset
-			padded={false}
-			contentStyle={styles.screenBody}
-		>
-			<SignedIn>
-				<DeliveryDetail deliveryId={id} />
-			</SignedIn>
-		</Screen>
+		<SignedIn>
+			<CourierRun deliveryId={id} />
+		</SignedIn>
 	);
 }
 
-function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
+function CourierRun({ deliveryId }: { deliveryId: string }) {
 	const { t, intlLocale } = useT();
+	const { colors } = useTheme();
+	const motion = courierMotionTokens("active", colors);
+	const insets = useSafeAreaInsets();
+	const { height } = useWindowDimensions();
 	const trpc = useTRPC();
 	const { session } = useSession();
 	const cache = useQueryClient();
-	const [completeOpen, setCompleteOpen] = useState(false);
 	const [rating, setRating] = useState<RatingValue>(0);
 	const [comment, setComment] = useState("");
+	const [refitNonce, setRefitNonce] = useState(0);
+	const [offerDismissed, setOfferDismissed] = useState<string | null>(null);
 	const query = useQuery(
 		trpc.deliveries.byId.queryOptions(
 			{ deliveryId },
 			{ refetchInterval: POLL_MS },
 		),
+	);
+	const offers = useQuery(
+		trpc.deliveries.offers.queryOptions(undefined, {
+			refetchInterval: POLL_MS,
+		}),
 	);
 	const mapAvailable = Boolean(
 		query.data?.pickup.lat != null &&
@@ -118,11 +124,27 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 			},
 		),
 	);
-	const refreshControl = useRefreshControl(async () => {
-		await query.refetch();
-		if (query.data?.orderId && mapAvailable) await tracking.refetch();
-	});
 	const waiting = useSkeletonHold(query.isPending);
+	const announcedStatus = useRef<DeliveryStatus | null>(null);
+	useEffect(() => {
+		const status = query.data?.status;
+		if (!status || announcedStatus.current === status) return;
+		announcedStatus.current = status;
+		const kind = headlineKind(status);
+		const lead =
+			kind === "pickup"
+				? t("delivery.motion.headline.pickup")
+				: t("delivery.motion.headline.dropoff");
+		const trail =
+			kind === "done"
+				? t("delivery.motion.headline.done")
+				: kind === "cancelled"
+					? t("delivery.motion.headline.cancelled")
+					: status === "AT_PICKUP"
+						? t("delivery.motion.headline.atMerchant")
+						: t("delivery.motion.headline.enRoute");
+		AccessibilityInfo.announceForAccessibility(`${lead} ${trail}`);
+	}, [query.data?.status, t]);
 	const advance = useMutation(
 		trpc.deliveries.advance.mutationOptions({
 			onSuccess: async (updated, input) => {
@@ -158,16 +180,27 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 
 	if (query.isError) {
 		return (
-			<ErrorState error={query.error} onRetry={() => void query.refetch()} />
+			<SafeAreaView
+				edges={["top", "bottom"]}
+				style={[styles.fill, { backgroundColor: motion.canvas }]}
+			>
+				<ErrorState error={query.error} onRetry={() => void query.refetch()} />
+			</SafeAreaView>
 		);
 	}
-	if (waiting || !query.data)
-		return <DeliverySkeleton label={t("state.loading")} />;
+	if (waiting || !query.data) {
+		return (
+			<SafeAreaView
+				edges={["top", "bottom"]}
+				style={[styles.fill, { backgroundColor: motion.canvas }]}
+			>
+				<DeliverySkeleton label={t("state.loading")} />
+			</SafeAreaView>
+		);
+	}
 
 	const delivery = query.data;
 	const action = actionFor(delivery.status);
-	// A move can commit on the server and still lose its response. Once polling sees a
-	// later step, the old mutation error no longer describes the delivery on screen.
 	const actionError =
 		advance.variables?.action === action ? advance.error : null;
 	const waitingReady =
@@ -188,198 +221,475 @@ function DeliveryDetail({ deliveryId }: { deliveryId: string }) {
 		courier?.lat != null && courier.lng != null && courier.updatedAt != null
 			? { lat: courier.lat, lng: courier.lng, at: courier.updatedAt }
 			: null;
-	const positionStatus = tracking.isError
-		? t("delivery.map.locationUnavailable")
-		: courierPosition
-			? Date.now() - courierPosition.at.getTime() < 60_000
-				? t("order.track.live")
-				: t("order.track.updated", {
-						time: formatClock(courierPosition.at, intlLocale),
-					})
-			: t("delivery.map.locationWaiting");
+	const minutes = etaMinutes(delivery.routeDurationSeconds);
+	const distanceKm = kmFromMeters(delivery.routeDistanceMeters);
+	const kind = headlineKind(delivery.status);
+	const destinationName =
+		kind === "pickup" ? delivery.pickup.name : delivery.dropoff.name;
+	const destinationArea =
+		kind === "pickup"
+			? [delivery.pickup.city, delivery.pickup.region]
+					.filter(Boolean)
+					.join(", ")
+			: [delivery.dropoff.city, delivery.dropoff.region]
+					.filter(Boolean)
+					.join(", ");
+	const concurrent = (offers.data ?? []).find(
+		(row) => row.deliveryId !== delivery.id,
+	);
+	const showConcurrent =
+		concurrent != null &&
+		offerDismissed !== concurrent.id &&
+		delivery.status !== "DELIVERED" &&
+		delivery.status !== "CANCELLED";
+	const sheetReserve = Math.round(height * 0.38);
+	const contactPhone =
+		kind === "pickup" ? delivery.business.phone : delivery.customer.phone;
 
 	function runAction(next: DeliveryAction) {
-		if (next === "COMPLETE") {
-			setCompleteOpen(true);
-			return;
-		}
 		advance.mutate({ deliveryId, action: next });
 	}
 
 	return (
-		<View style={styles.screenBody}>
-			<ScrollView
-				contentContainerStyle={styles.scrollContent}
-				refreshControl={refreshControl}
-				scrollIndicatorInsets={{ bottom: 0 }}
+		<View style={[styles.fill, { backgroundColor: motion.canvas }]}>
+			<StatusBar style="dark" />
+			{mapAvailable && pickupPoint && dropoffPoint ? (
+				<MapView
+					coords={pickupPoint}
+					route={{
+						pickup: pickupPoint,
+						destination: dropoffPoint,
+						geometry: delivery.routeGeometry,
+					}}
+					marker={courierPosition}
+					showUserLocation={false}
+					fitPadding={{
+						top: insets.top + 128,
+						right: 56,
+						bottom: sheetReserve,
+						left: 24,
+					}}
+					refitNonce={refitNonce}
+					accessibilityLabel={t(
+						courierPosition ? "order.map.courier" : "delivery.map.label",
+					)}
+					style={styles.mapBleed}
+				/>
+			) : (
+				<View style={[styles.mapBleed, { backgroundColor: motion.canvas }]} />
+			)}
+
+			<SafeAreaView
+				edges={["top"]}
+				style={[styles.overlay, { paddingBottom: sheetReserve }]}
+				pointerEvents="box-none"
 			>
-				<Card style={styles.card}>
-					<Text variant="label" tone="muted" tabular>
-						{t("order.number", { code: delivery.orderReference })}
+				<View style={styles.header} pointerEvents="box-none">
+					<CourierWordmark color={motion.ink} />
+					<CircleIconButton
+						name="close-outline"
+						label={t("delivery.board.title")}
+						color={motion.ink}
+						background={motion.sheet}
+						border={motion.border}
+						onPress={() => router.push("/delivery" as Href)}
+					/>
+				</View>
+
+				<View style={styles.headline}>
+					<Text
+						variant="display"
+						bold
+						style={[styles.display, { color: motion.ink }]}
+					>
+						{kind === "pickup"
+							? t("delivery.motion.headline.pickup")
+							: t("delivery.motion.headline.dropoff")}
 					</Text>
-					<Text variant="heading" bold>
-						{t(STATUS_KEYS[delivery.status])}
+					<Text
+						variant="display"
+						style={[styles.displaySoft, { color: motion.muted }]}
+					>
+						{kind === "done"
+							? t("delivery.motion.headline.done")
+							: kind === "cancelled"
+								? t("delivery.motion.headline.cancelled")
+								: delivery.status === "AT_PICKUP"
+									? t("delivery.motion.headline.atMerchant")
+									: t("delivery.motion.headline.enRoute")}
 					</Text>
-					{delivery.courierFeeMinor != null && delivery.courierFeeMinor > 0 ? (
-						<>
-							<Text variant="body" bold>
-								{t("delivery.offer.courierFee", {
-									amount: formatMoney(
-										delivery.courierFeeMinor,
-										delivery.currency,
-										{ locale: intlLocale },
-									),
-								})}
+					<View style={styles.metaRow}>
+						<View style={styles.metaCopy}>
+							<Text variant="heading" bold style={{ color: motion.ink }}>
+								{destinationArea || destinationName}
 							</Text>
-							{delivery.merchantCoversDelivery ||
-							delivery.customerDeliveryFeeMinor === 0 ? (
-								<Text variant="caption" tone="muted">
-									{t(
-										delivery.merchantCoversDelivery
-											? "delivery.offer.payerMerchant"
-											: "delivery.offer.payerPromotion",
+							{minutes != null || distanceKm != null ? (
+								<Text variant="caption" style={{ color: motion.muted }}>
+									{[
+										minutes != null
+											? t("delivery.motion.eta.minutes", { count: minutes })
+											: null,
+										distanceKm != null
+											? t("delivery.motion.distance.km", {
+													value: formatAtMostOneDecimal(distanceKm, intlLocale),
+												})
+											: null,
+									]
+										.filter(Boolean)
+										.join(" · ")}
+								</Text>
+							) : null}
+						</View>
+						<CircleIconButton
+							name="arrow-forward"
+							label={t("delivery.navigate")}
+							color={motion.brandInk}
+							background={motion.brand}
+							border={motion.brand}
+							onPress={() =>
+								openDirections(
+									kind === "pickup" ? delivery.pickup : delivery.dropoff,
+								)
+							}
+						/>
+					</View>
+				</View>
+
+				<View style={styles.mapGap} pointerEvents="box-none">
+					<View style={styles.mapTools} pointerEvents="box-none">
+						<CircleIconButton
+							name="locate-outline"
+							label={t("delivery.motion.recenter")}
+							color={motion.ink}
+							background={motion.sheet}
+							border={motion.border}
+							onPress={() => setRefitNonce((n) => n + 1)}
+						/>
+					</View>
+					{minutes != null ? (
+						<View
+							style={[
+								styles.etaChip,
+								{ backgroundColor: motion.sheet, borderColor: motion.border },
+							]}
+						>
+							<Text variant="caption" style={{ color: motion.muted }}>
+								{t("delivery.motion.eta")}
+							</Text>
+							<Text variant="heading" bold style={{ color: motion.ink }}>
+								{t("delivery.motion.eta.minutes", { count: minutes })}
+							</Text>
+						</View>
+					) : null}
+				</View>
+
+				{showConcurrent && concurrent ? (
+					<Pressable
+						onPress={() => router.push("/delivery" as Href)}
+						accessibilityRole="button"
+						accessibilityLabel={t("delivery.motion.offer.concurrent")}
+						style={[
+							styles.concurrent,
+							{ backgroundColor: motion.sheet, borderColor: motion.border },
+						]}
+					>
+						<View style={styles.concurrentCopy}>
+							<Text variant="body" bold style={{ color: motion.ink }}>
+								{t("delivery.motion.offer.concurrent")}
+							</Text>
+							{concurrent.courierFeeMinor != null &&
+							concurrent.courierFeeMinor > 0 ? (
+								<Text variant="caption" tabular style={{ color: motion.muted }}>
+									{formatMoney(
+										concurrent.courierFeeMinor,
+										concurrent.currency ?? "CRC",
+										{ locale: intlLocale },
 									)}
 								</Text>
 							) : null}
-						</>
-					) : null}
-				</Card>
-
-				{mapAvailable && pickupPoint && dropoffPoint ? (
-					<View style={styles.mapGroup}>
-						<MapView
-							coords={pickupPoint}
-							route={{
-								pickup: pickupPoint,
-								destination: dropoffPoint,
-								geometry: delivery.routeGeometry,
-							}}
-							marker={courierPosition}
-							showUserLocation={false}
-							accessibilityLabel={t(
-								courierPosition ? "order.map.courier" : "delivery.map.label",
-							)}
-							style={styles.map}
-						/>
-						<Text variant="caption" tone="muted">
-							{t("delivery.map.courierLocation", { status: positionStatus })}
-						</Text>
-					</View>
+						</View>
+						<Pressable
+							onPress={() => setOfferDismissed(concurrent.id)}
+							accessibilityRole="button"
+							accessibilityLabel={t("action.close")}
+						>
+							<Ionicons
+								name="close"
+								size={icon.control}
+								color={motion.muted}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</Pressable>
+					</Pressable>
 				) : null}
+			</SafeAreaView>
 
-				<RouteStops
-					pickup={delivery.pickup}
-					dropoff={delivery.dropoff}
-					status={delivery.status}
+			<View
+				style={[
+					styles.sheet,
+					{
+						backgroundColor: motion.sheet,
+						paddingBottom: insets.bottom + space.md,
+					},
+				]}
+			>
+				<SheetHandle color={motion.handle} />
+				<TaskSheet
+					delivery={delivery}
+					motion={motion}
+					intlLocale={intlLocale}
+					contactPhone={contactPhone}
+					action={action}
+					waitingReady={waitingReady}
+					actionError={actionError}
+					advancePending={advance.isPending}
+					onAdvance={runAction}
+					onRetry={() => {
+						advance.reset();
+						return query.refetch();
+					}}
+					rated={Boolean(rated)}
+					rating={rating}
+					comment={comment}
+					onRating={setRating}
+					onComment={setComment}
+					ratePending={rate.isPending}
+					rateError={rate.error}
+					onRate={() => {
+						if (rating === 0) return;
+						rate.mutate({
+							deliveryId,
+							rating,
+							comment: comment.trim() || undefined,
+						});
+					}}
 				/>
-
-				{actionError ? (
-					<ErrorState
-						error={actionError}
-						onRetry={() => {
-							advance.reset();
-							return query.refetch();
-						}}
-					/>
-				) : null}
-
-				{action ? (
-					<Card style={styles.card}>
-						{waitingReady ? (
-							<Text variant="body" tone="muted">
-								{t("delivery.waitingReady")}
-							</Text>
-						) : null}
-						<Button
-							label={t(ACTION_KEYS[action])}
-							fullWidth
-							loading={advance.isPending}
-							disabled={advance.isPending || waitingReady}
-							onPress={() => runAction(action)}
-						/>
-					</Card>
-				) : null}
-
-				{delivery.status === "DELIVERED" ? (
-					<Card style={styles.card}>
-						<Text variant="heading" bold>
-							{t("delivery.rateCustomer.title")}
-						</Text>
-						{rated ? (
-							<Text variant="body" tone="muted">
-								{t("delivery.rateCustomer.thanks")}
-							</Text>
-						) : (
-							<>
-								<Text variant="body" tone="muted">
-									{t("delivery.rateCustomer.subtitle")}
-								</Text>
-								<RatingInput
-									value={rating}
-									onChange={setRating}
-									label={t("delivery.rateCustomer.title")}
-									optionLabel={(value) =>
-										t("review.stars", { count: value, stars: 5 })
-									}
-									disabled={rate.isPending}
-								/>
-								<Field
-									label={t("review.comment")}
-									value={comment}
-									onChangeText={setComment}
-									multiline
-									maxLength={500}
-									editable={!rate.isPending}
-								/>
-								{rate.error ? (
-									<ErrorState
-										error={rate.error}
-										onRetry={() => {
-											if (rating === 0) return;
-											rate.mutate({
-												deliveryId,
-												rating,
-												comment: comment.trim() || undefined,
-											});
-										}}
-									/>
-								) : null}
-								<Button
-									label={t("delivery.rateCustomer.submit")}
-									fullWidth
-									loading={rate.isPending}
-									disabled={rating === 0 || rate.isPending}
-									onPress={() => {
-										if (rating === 0) return;
-										rate.mutate({
-											deliveryId,
-											rating,
-											comment: comment.trim() || undefined,
-										});
-									}}
-								/>
-							</>
-						)}
-					</Card>
-				) : null}
-			</ScrollView>
-
-			<ConfirmSheet
-				open={completeOpen}
-				onClose={() => setCompleteOpen(false)}
-				title={t("delivery.complete.confirm")}
-				body={t("delivery.complete.body")}
-				confirmLabel={t("delivery.action.complete")}
-				onConfirm={() => advance.mutate({ deliveryId, action: "COMPLETE" })}
-			/>
+			</View>
 		</View>
 	);
 }
 
-function currentStop(status: DeliveryStatus): "pickup" | "dropoff" | null {
-	if (status === "DELIVERED" || status === "CANCELLED") return null;
-	if (status === "PICKED_UP") return "dropoff";
-	return "pickup";
+function TaskSheet({
+	delivery,
+	motion,
+	intlLocale,
+	contactPhone,
+	action,
+	waitingReady,
+	actionError,
+	advancePending,
+	onAdvance,
+	onRetry,
+	rated,
+	rating,
+	comment,
+	onRating,
+	onComment,
+	ratePending,
+	rateError,
+	onRate,
+}: {
+	delivery: DeliveryDetail;
+	motion: ReturnType<typeof courierMotionTokens>;
+	intlLocale: string;
+	contactPhone: string | null;
+	action: DeliveryAction | null;
+	waitingReady: boolean;
+	actionError: unknown;
+	advancePending: boolean;
+	onAdvance: (action: DeliveryAction) => void;
+	onRetry: () => unknown;
+	rated: boolean;
+	rating: RatingValue;
+	comment: string;
+	onRating: (value: RatingValue) => void;
+	onComment: (value: string) => void;
+	ratePending: boolean;
+	rateError: unknown;
+	onRate: () => void;
+}) {
+	const { t } = useT();
+	const picked =
+		delivery.pickedUpAt != null
+			? `${t("delivery.motion.picked")} · ${formatClock(delivery.pickedUpAt, intlLocale)}`
+			: t("delivery.stop.pickup");
+
+	return (
+		<View style={styles.task}>
+			<View style={styles.merchantRow}>
+				<MerchantMark name={delivery.business.name} color={motion.sheetInk} />
+				<View style={styles.merchantCopy}>
+					<Text variant="heading" bold style={{ color: motion.sheetInk }}>
+						{delivery.business.name}
+					</Text>
+					<Text variant="caption" style={{ color: motion.sheetMuted }}>
+						{picked}
+					</Text>
+				</View>
+				{delivery.courierFeeMinor != null && delivery.courierFeeMinor > 0 ? (
+					<Text variant="label" bold tabular style={{ color: motion.sheetInk }}>
+						{formatMoney(delivery.courierFeeMinor, delivery.currency, {
+							locale: intlLocale,
+						})}
+					</Text>
+				) : null}
+			</View>
+
+			{delivery.status === "CANCELLED" ? (
+				<Text variant="body" style={{ color: motion.sheetMuted }}>
+					{t("delivery.status.CANCELLED")}
+				</Text>
+			) : null}
+
+			<RouteStops
+				pickup={delivery.pickup}
+				dropoff={delivery.dropoff}
+				status={delivery.status}
+				motion={motion}
+			/>
+
+			<View style={styles.contacts}>
+				<ContactButton
+					label={t("delivery.motion.call")}
+					icon="call-outline"
+					disabled={!contactPhone}
+					motion={motion}
+					onPress={() => {
+						if (!contactPhone) return;
+						void Linking.openURL(`tel:${contactPhone}`);
+					}}
+				/>
+				<ContactButton
+					label={t("delivery.motion.message")}
+					icon="chatbubble-outline"
+					disabled={!contactPhone}
+					motion={motion}
+					onPress={() => {
+						if (!contactPhone) return;
+						void Linking.openURL(`sms:${contactPhone}`);
+					}}
+				/>
+			</View>
+
+			{actionError ? (
+				<ErrorState error={actionError} onRetry={onRetry} />
+			) : null}
+
+			{waitingReady ? (
+				<Text variant="body" style={{ color: motion.sheetMuted }}>
+					{t("delivery.waitingReady")}
+				</Text>
+			) : null}
+
+			{action === "COMPLETE" ? (
+				<DeliveryConfirmationSlider
+					label={t("delivery.motion.slide")}
+					accessibleLabel={t("delivery.motion.slide.a11y")}
+					motion={motion}
+					disabled={advancePending || waitingReady}
+					loading={advancePending}
+					onComplete={() => onAdvance("COMPLETE")}
+				/>
+			) : action ? (
+				<Button
+					label={t(ACTION_KEYS[action])}
+					fullWidth
+					size="lg"
+					shape="pill"
+					loading={advancePending}
+					disabled={advancePending || waitingReady}
+					onPress={() => onAdvance(action)}
+				/>
+			) : null}
+
+			{delivery.status === "DELIVERED" ? (
+				rated ? (
+					<Text variant="body" style={{ color: motion.sheetMuted }}>
+						{t("delivery.rateCustomer.thanks")}
+					</Text>
+				) : (
+					<View style={styles.rate}>
+						<Text variant="heading" bold style={{ color: motion.sheetInk }}>
+							{t("delivery.rateCustomer.title")}
+						</Text>
+						<RatingInput
+							value={rating}
+							onChange={onRating}
+							label={t("delivery.rateCustomer.title")}
+							optionLabel={(value) =>
+								t("review.stars", { count: value, stars: 5 })
+							}
+							disabled={ratePending}
+						/>
+						<Field
+							label={t("review.comment")}
+							value={comment}
+							onChangeText={onComment}
+							multiline
+							maxLength={500}
+							editable={!ratePending}
+						/>
+						{rateError ? (
+							<ErrorState error={rateError} onRetry={onRate} />
+						) : null}
+						<Button
+							label={t("delivery.rateCustomer.submit")}
+							fullWidth
+							loading={ratePending}
+							disabled={rating === 0 || ratePending}
+							onPress={onRate}
+						/>
+					</View>
+				)
+			) : null}
+		</View>
+	);
+}
+
+function ContactButton({
+	label,
+	icon: glyph,
+	disabled,
+	motion,
+	onPress,
+}: {
+	label: string;
+	icon: React.ComponentProps<typeof Ionicons>["name"];
+	disabled: boolean;
+	motion: ReturnType<typeof courierMotionTokens>;
+	onPress: () => void;
+}) {
+	const { t } = useT();
+	return (
+		<Pressable
+			onPress={onPress}
+			disabled={disabled}
+			accessibilityRole="button"
+			accessibilityLabel={label}
+			accessibilityHint={
+				disabled ? t("delivery.motion.contact.unavailable") : undefined
+			}
+			style={[
+				styles.contact,
+				{
+					backgroundColor: motion.sheetControl,
+					borderColor: motion.sheetBorder,
+				},
+			]}
+		>
+			<Ionicons
+				name={glyph}
+				size={icon.control}
+				color={motion.sheetInk}
+				accessibilityElementsHidden
+				importantForAccessibility="no"
+			/>
+			<Text variant="label" bold style={{ color: motion.sheetInk }}>
+				{label}
+			</Text>
+		</Pressable>
+	);
 }
 
 function stopStreet(stop: DeliveryStop) {
@@ -401,22 +711,30 @@ export function RouteStops({
 	pickup,
 	dropoff,
 	status,
+	motion,
 }: {
 	pickup: DeliveryStop;
 	dropoff: DeliveryStop;
 	status: DeliveryStatus;
+	motion: ReturnType<typeof courierMotionTokens>;
 }) {
 	const active = currentStop(status);
 	return (
-		<Card style={styles.route}>
+		<View style={styles.route}>
 			<StopRow
 				kind="pickup"
 				stop={pickup}
 				active={active === "pickup"}
 				connect
+				motion={motion}
 			/>
-			<StopRow kind="dropoff" stop={dropoff} active={active === "dropoff"} />
-		</Card>
+			<StopRow
+				kind="dropoff"
+				stop={dropoff}
+				active={active === "dropoff"}
+				motion={motion}
+			/>
+		</View>
 	);
 }
 
@@ -425,11 +743,13 @@ function StopRow({
 	stop,
 	active,
 	connect = false,
+	motion,
 }: {
 	kind: "pickup" | "dropoff";
 	stop: DeliveryStop;
 	active: boolean;
 	connect?: boolean;
+	motion: ReturnType<typeof courierMotionTokens>;
 }) {
 	const { t } = useT();
 	const { colors } = useTheme();
@@ -438,8 +758,8 @@ function StopRow({
 	const spokenTitle =
 		kind === "pickup" ? t("delivery.pickup") : t("delivery.dropoff");
 	const street = stopStreet(stop);
-	const markColor = active ? colors.primary : colors.muted;
-	const glyphColor = active ? colors.primaryForeground : colors.mutedForeground;
+	const markColor = active ? colors.primary : motion.sheetMuted;
+	const glyphColor = active ? colors.primaryForeground : motion.sheet;
 
 	return (
 		<View style={styles.stop}>
@@ -455,24 +775,24 @@ function StopRow({
 				</View>
 				{connect ? (
 					<View
-						style={[styles.connector, { backgroundColor: colors.border }]}
+						style={[styles.connector, { backgroundColor: motion.border }]}
 					/>
 				) : null}
 			</View>
 			<View style={[styles.stopBody, connect ? styles.stopGap : null]}>
-				<Text variant="caption" tone="muted">
+				<Text variant="caption" style={{ color: motion.sheetMuted }}>
 					{label}
 				</Text>
-				<Text variant="body" bold>
-					{stop.name}
+				<Text variant="body" bold style={{ color: motion.sheetInk }}>
+					{kind === "dropoff" ? stop.city || stop.name : stop.name}
 				</Text>
-				{street ? <Text variant="caption">{street}</Text> : null}
-				<Text variant="caption" tone="muted">
-					{stop.city}
-				</Text>
-				{stop.instructions ? (
-					<Text variant="caption" tone="muted">
-						{stop.instructions}
+				{kind === "dropoff" ? (
+					<Text variant="caption" style={{ color: motion.sheetMuted }}>
+						{t("delivery.motion.customer")}
+					</Text>
+				) : street ? (
+					<Text variant="caption" style={{ color: motion.sheetMuted }}>
+						{street}
 					</Text>
 				) : null}
 			</View>
@@ -486,7 +806,7 @@ function StopRow({
 				<Ionicons
 					name="navigate-outline"
 					size={icon.control}
-					color={colors.foreground}
+					color={motion.sheetInk}
 					accessibilityElementsHidden
 					importantForAccessibility="no"
 				/>
@@ -495,42 +815,115 @@ function StopRow({
 	);
 }
 
-function actionFor(status: DeliveryStatus): DeliveryAction | null {
-	if (status === "ACCEPTED") return "START_TO_PICKUP";
-	if (status === "TO_PICKUP") return "ARRIVE_PICKUP";
-	if (status === "AT_PICKUP") return "CONFIRM_PICKUP";
-	if (status === "PICKED_UP") return "COMPLETE";
-	return null;
-}
-
 function DeliverySkeleton({ label }: { label: string }) {
 	const { fontScale } = useWindowDimensions();
 	const line = (variant: keyof typeof type) => ({
 		height: Math.round(type[variant].lineHeight * fontScale),
 	});
 	return (
-		<View style={styles.scrollContent}>
-			<Skeleton
-				label={label}
-				style={[styles.skeletonStatus, line("heading")]}
-			/>
-			<Skeleton style={[styles.skeletonCard, line("body")]} />
-			<Skeleton style={[styles.skeletonCard, line("body")]} />
-			<Skeleton style={[styles.skeletonAction, line("body")]} />
+		<View style={styles.skeleton}>
+			<Skeleton label={label} style={[styles.skeletonHero, line("display")]} />
+			<Skeleton style={[styles.skeletonSheet, line("body")]} />
 		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	screenBody: { flex: 1 },
-	content: { gap: space.lg },
-	scrollContent: {
-		gap: space.lg,
-		paddingHorizontal: space.lg,
-		paddingBottom: space.huge,
+	fill: { flex: 1 },
+	mapBleed: {
+		...StyleSheet.absoluteFill,
+		height: "100%",
+		borderRadius: 0,
+		borderWidth: 0,
 	},
-	card: { gap: space.sm },
-	route: { gap: 0, paddingVertical: space.sm },
+	overlay: {
+		...StyleSheet.absoluteFill,
+		paddingHorizontal: courierMotionSpace.gutter,
+	},
+	header: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+	},
+	headline: { marginTop: space.lg, gap: 0 },
+	mapGap: { flex: 1, justifyContent: "flex-end" },
+	mapTools: {
+		position: "absolute",
+		right: 0,
+		top: space.lg,
+		gap: space.sm,
+	},
+	display: {
+		fontSize: 34,
+		lineHeight: 38,
+		letterSpacing: -1,
+	},
+	displaySoft: {
+		fontSize: 34,
+		lineHeight: 38,
+		letterSpacing: -1,
+		fontWeight: "600",
+	},
+	metaRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		marginTop: space.md,
+	},
+	metaCopy: { flex: 1, gap: 2 },
+	etaChip: {
+		alignSelf: "flex-end",
+		marginBottom: space.md,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		borderRadius: radius.lg,
+		borderWidth: StyleSheet.hairlineWidth,
+	},
+	concurrentCopy: { flex: 1, gap: 2 },
+	concurrent: {
+		marginTop: space.md,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: space.md,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		minHeight: MIN_TOUCH_TARGET,
+		borderRadius: radius.lg,
+		borderWidth: StyleSheet.hairlineWidth,
+	},
+	sheet: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		borderTopLeftRadius: courierMotionSpace.sheetRadius,
+		borderTopRightRadius: courierMotionSpace.sheetRadius,
+		paddingHorizontal: courierMotionSpace.gutter,
+		paddingTop: space.lg,
+		elevation: 12,
+		shadowColor: "#101827",
+		shadowOffset: { width: 0, height: -4 },
+		shadowOpacity: 0.08,
+		shadowRadius: 16,
+	},
+	task: { gap: space.md },
+	merchantRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+	merchantCopy: { flex: 1, gap: 2 },
+	contacts: { flexDirection: "row", gap: space.sm },
+	contact: {
+		flex: 1,
+		minHeight: MIN_TOUCH_TARGET,
+		borderRadius: radius.md,
+		borderWidth: StyleSheet.hairlineWidth,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.sm,
+		paddingVertical: space.md,
+	},
+	rate: { gap: space.md },
+	route: { gap: 0 },
 	stop: { flexDirection: "row", alignItems: "stretch", gap: space.md },
 	rail: { width: 28, alignItems: "center" },
 	marker: {
@@ -541,7 +934,7 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	connector: { width: 2, flex: 1, minHeight: 12, marginVertical: 4 },
-	stopBody: { flex: 1, gap: TEXT_STACK_GAP },
+	stopBody: { flex: 1, gap: 2 },
 	stopGap: { paddingBottom: space.lg },
 	navigate: {
 		width: MIN_TOUCH_TARGET,
@@ -549,9 +942,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	mapGroup: { gap: space.sm },
-	map: { height: space.huge * 8 },
-	skeletonStatus: { height: space.xl * 2 },
-	skeletonCard: { height: space.huge * 3 },
-	skeletonAction: { height: space.huge },
+	skeleton: { flex: 1, padding: space.xxl, justifyContent: "space-between" },
+	skeletonHero: { height: space.huge * 3 },
+	skeletonSheet: { height: space.huge * 6 },
 });

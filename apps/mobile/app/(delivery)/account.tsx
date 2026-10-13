@@ -219,6 +219,13 @@ export default function CourierAccountScreen() {
 									onPress={() => router.push("/help" as Href)}
 								/>
 								<ListRow
+									title={t("ideas.title")}
+									accessibilityHint={t("ideas.help")}
+									chevron
+									divider
+									onPress={() => router.push("/ideas" as Href)}
+								/>
+								<ListRow
 									title={t("account.safety")}
 									accessibilityHint={t("account.safety.help")}
 									chevron

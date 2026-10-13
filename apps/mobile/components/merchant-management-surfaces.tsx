@@ -521,39 +521,51 @@ function SupportSurface({ scope }: { scope: ManagementScope }) {
 
 	const rows = tickets.data ?? [];
 	return (
-		<ManagementSection
-			title={t("biz.support.queue")}
-			action={
-				<Button
-					label={t("biz.support.newTicket")}
-					size="sm"
-					onPress={() => router.push("/(business)/support/new")}
-				/>
-			}
-		>
-			{rows.map((ticket, index) => (
+		<>
+			<ManagementSection title={t("ideas.title")}>
 				<ListRow
-					key={ticket.id}
-					title={ticket.subject}
-					subtitle={`${t(`biz.support.category.${ticket.category}`)} · ${tp("biz.support.messages", ticket.messageCount)}`}
-					// A word rather than a chip: `ListRow.state` exists because colour must
-					// never be the only signal, and the status is the one fact about a ticket
-					// that decides whether it wants an answer.
-					state={t(`biz.support.status.${ticket.status}`)}
+					title={t("ideas.new")}
+					subtitle={t("ideas.empty.body")}
 					chevron
-					// Univided last, as everywhere else: a hairline under the final row
-					// delimits nothing.
-					divider={index < rows.length - 1}
-					onPress={() => router.push(`/(business)/support/${ticket.id}`)}
+					divider={false}
+					accessibilityHint={t("ideas.help")}
+					onPress={() => router.push("/ideas")}
 				/>
-			))}
-			{rows.length === 0 ? (
-				<ManagementEmpty
-					title={t("biz.support.emptyTitle")}
-					body={t("biz.support.emptyBody")}
-				/>
-			) : null}
-		</ManagementSection>
+			</ManagementSection>
+			<ManagementSection
+				title={t("biz.support.queue")}
+				action={
+					<Button
+						label={t("biz.support.newTicket")}
+						size="sm"
+						onPress={() => router.push("/(business)/support/new")}
+					/>
+				}
+			>
+				{rows.map((ticket, index) => (
+					<ListRow
+						key={ticket.id}
+						title={ticket.subject}
+						subtitle={`${t(`biz.support.category.${ticket.category}`)} · ${tp("biz.support.messages", ticket.messageCount)}`}
+						// A word rather than a chip: `ListRow.state` exists because colour must
+						// never be the only signal, and the status is the one fact about a ticket
+						// that decides whether it wants an answer.
+						state={t(`biz.support.status.${ticket.status}`)}
+						chevron
+						// Univided last, as everywhere else: a hairline under the final row
+						// delimits nothing.
+						divider={index < rows.length - 1}
+						onPress={() => router.push(`/(business)/support/${ticket.id}`)}
+					/>
+				))}
+				{rows.length === 0 ? (
+					<ManagementEmpty
+						title={t("biz.support.emptyTitle")}
+						body={t("biz.support.emptyBody")}
+					/>
+				) : null}
+			</ManagementSection>
+		</>
 	);
 }
 

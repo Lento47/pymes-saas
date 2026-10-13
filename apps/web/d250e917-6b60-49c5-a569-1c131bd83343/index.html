@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="es" class="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PymesHub — Lo que necesitás, de negocios cerca de ti</title>
+    <meta
+      name="description"
+      content="Pedí de los comercios de tu barrio y seguí tu pedido en vivo. Restaurantes, farmacias, ferreterías y más, con entrega a domicilio o retiro en tienda."
+    />
+    <meta name="theme-color" content="#05091d" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }
+        .od-nowrap  { white-space: nowrap; }
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; }
+
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ── Tokens ─────────────────────────────────────────────────────────────
+         Tier 1: the only literals. Everything else resolves to a role token, so
+         the palette and the type scale change in exactly one place. */
+      :root {
+        --font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+        --amber: #f59e0b;
+        --amber-600: hsl(30 92% 36%);   /* amber as text on a light ground */
+        --amber-300: hsl(38 92% 60%);   /* amber as text on the navy canvas */
+        --navy: #05091d;
+
+        --radius-sm: 8px;
+        --radius: 1rem;
+        --radius-lg: 1.625rem;
+
+        --dur-fast: 150ms;
+        --dur: 250ms;
+        --dur-plate: 700ms;
+        --ease: cubic-bezier(0.2, 0, 0, 1);
+        --ease-plate: cubic-bezier(0.33, 0, 0, 1);
+
+        --maxw: 1200px;
+        --gutter: 16px;
+      }
+
+      /* The storefront's own theme. The market is the one surface a signed-out
+         stranger sees, so it ships light by default and flips here. */
+      html.light {
+        color-scheme: light;
+        --bg: hsl(220 25% 98%);
+        --card: #ffffff;
+        --elevated: #ffffff;
+        --border: hsl(220 16% 87%);
+        --border-subtle: hsl(220 16% 92%);
+        --fg: hsl(228 30% 10%);
+        --fg2: hsl(228 10% 40%);
+        --hover: hsl(220 20% 95%);
+        --active: hsl(220 20% 92%);
+        --link: var(--amber-600);
+      }
+      html.dark {
+        color-scheme: dark;
+        --bg: hsl(230 71% 7%);
+        --card: hsl(230 50% 10%);
+        --elevated: hsl(230 45% 12%);
+        --border: hsl(230 30% 19%);
+        --border-subtle: hsl(230 30% 15%);
+        --fg: hsl(220 20% 97%);
+        --fg2: hsl(220 12% 66%);
+        --hover: hsl(230 40% 14%);
+        --active: hsl(230 38% 17%);
+        --link: var(--amber-300);
+      }
+
+      /* ── Reset & base ───────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      img { max-width: 100%; }
+      [hidden] { display: none !important; }
+      a { color: inherit; text-decoration: none; }
+      h1, h2, h3, p, ul, ol, figure { margin: 0; }
+      ul, ol { padding: 0; list-style: none; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+
+      .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--gutter); }
+      @media (min-width: 640px) { .wrap { padding-inline: 24px; } }
+      @media (min-width: 1024px) { .wrap { padding-inline: 32px; } }
+
+      .skip {
+        position: absolute; left: 8px; top: -60px; z-index: 100;
+        background: var(--card); color: var(--fg); border: 1px solid var(--border);
+        border-radius: var(--radius-sm); padding: 10px 16px; font-weight: 600;
+        transition: top var(--dur) var(--ease);
+      }
+      .skip:focus { top: 8px; }
+
+      .sr-only {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+      }
+
+      /* ── The art-directed showcase surface ──────────────────────────────── */
+      .showcase {
+        --sc-navy: #05091d;
+        --sc-navy-card: hsl(230 50% 10%);
+        --sc-panel-line: hsl(230 30% 19%);
+        --sc-paper: hsl(220 25% 98%);
+        --sc-paper-card: #ffffff;
+        --sc-hairline: hsl(220 16% 87%);
+        --sc-ink: hsl(228 30% 10%);
+        --sc-ink-muted: hsl(228 10% 40%);
+        --sc-on-dark: hsl(220 20% 97%);
+        --sc-on-dark-muted: hsl(220 12% 66%);
+        --sc-amber: #f59e0b;
+        --sc-amber-300: hsl(38 92% 60%);
+        font-family: var(--font-sans);
+      }
+
+      .contour { position: absolute; inset: 0; width: 100%; height: 100%; color: currentColor; opacity: 0.07; pointer-events: none; }
+
+      .eyebrow {
+        font-size: 0.75rem; font-weight: 800; letter-spacing: 0.22em;
+        text-transform: uppercase; line-height: 0.9;
+      }
+      .display {
+        font-weight: 700; letter-spacing: -0.055em; line-height: 0.98;
+        text-wrap: balance;
+      }
+      .h-impact { font-size: clamp(2.25rem, 7vw, 4.25rem); }
+      .h-section { font-size: clamp(1.75rem, 4.4vw, 3rem); }
+
+      /* ── Amber icon tile: the brand's own icon treatment ────────────────── */
+      .tile {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 44px; height: 44px; flex: none;
+        border-radius: 14px; background: var(--amber); color: var(--navy);
+      }
+      .tile svg { width: 20px; height: 20px; }
+
+      /* ── Buttons ────────────────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        min-height: 44px; padding: 0 20px; border-radius: var(--radius-sm);
+        font-weight: 700; font-size: 0.9375rem; border: 1px solid transparent;
+        transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+      }
+      .btn:active { transform: translateY(1px); }
+      .btn-primary { background: var(--amber); color: var(--navy); }
+      .btn-primary:hover { background: hsl(38 96% 52%); }
+      .btn-outline { background: transparent; color: currentColor; border-color: var(--sc-hairline); }
+      .btn-outline:hover { border-color: var(--amber); }
+      .btn-ghost { background: transparent; border-color: var(--border); color: var(--fg); }
+      .btn-ghost:hover { background: var(--hover); }
+
+      /* ── Header ─────────────────────────────────────────────────────────── */
+      .topbar {
+        position: sticky; top: 0; z-index: 40;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar-row { display: flex; align-items: center; gap: 12px; padding-block: 12px; }
+      .brand { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+      .brand-mark {
+        width: 36px; height: 36px; border-radius: 10px; flex: none;
+        background: var(--amber); color: var(--navy);
+        display: grid; place-items: center; font-weight: 800; font-size: 1.05rem;
+      }
+      .brand-name { font-weight: 700; letter-spacing: -0.02em; font-size: 0.95rem; }
+      @media (max-width: 480px) { .brand-name { display: none; } }
+
+      .search { position: relative; flex: 1 1 0; min-width: 0; }
+      .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--fg2); pointer-events: none; }
+      .search input {
+        width: 100%; height: 44px; padding: 0 14px 0 40px;
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        background: var(--card); color: var(--fg); font: inherit; font-size: 0.9375rem;
+      }
+      .search input::placeholder { color: var(--fg2); }
+      .search input:focus-visible { border-color: var(--amber); }
+
+      .actions { display: flex; align-items: center; gap: 4px; flex: none; }
+      .icon-btn {
+        position: relative; display: inline-grid; place-items: center;
+        width: 44px; height: 44px; border-radius: var(--radius-sm);
+        background: transparent; border: 1px solid transparent; color: var(--fg2);
+        transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+      }
+      .icon-btn:hover { background: var(--hover); color: var(--fg); }
+      .cart-count {
+        position: absolute; top: 4px; right: 4px; min-width: 20px; height: 20px; padding: 0 5px;
+        display: grid; place-items: center; border-radius: 999px;
+        background: var(--amber); color: var(--navy);
+        font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+      }
+      .cart-count[hidden] { display: none; }
+
+      .desktop-nav { display: none; border-top: 1px solid var(--border); }
+      @media (min-width: 640px) { .desktop-nav { display: block; } }
+      .desktop-nav ul { display: flex; align-items: center; gap: 4px; }
+      .nav-link {
+        display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 12px;
+        border-bottom: 2px solid transparent; color: var(--fg2);
+        font-size: 0.9375rem; font-weight: 600;
+        transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+      }
+      .nav-link svg { width: 18px; height: 18px; }
+      .nav-link:hover { color: var(--fg); }
+      .nav-link[aria-current="page"] { color: var(--fg); border-bottom-color: var(--amber); }
+
+      /* ── Hero ───────────────────────────────────────────────────────────── */
+      .sc-hero { position: relative; overflow: hidden; background: var(--sc-paper); color: var(--sc-ink); }
+      .sc-hero .contour { color: var(--sc-ink); opacity: 0.06; }
+      .sc-hero-inner {
+        position: relative; z-index: 1;
+        display: grid; gap: 40px;
+        padding-block: 64px 72px;
+      }
+      @media (min-width: 1024px) {
+        .sc-hero-inner { grid-template-columns: minmax(0, 1fr) 20rem; gap: 56px; align-items: end; padding-block: 96px; }
+      }
+      .hero-eyebrow { color: var(--amber-600); margin-bottom: 18px; }
+      .hero-title { max-width: 15ch; }
+      .hero-sub { margin-top: 22px; max-width: 34rem; font-size: 1.0625rem; color: var(--sc-ink-muted); text-wrap: pretty; }
+      @media (min-width: 640px) { .hero-sub { font-size: 1.125rem; } }
+      .hero-cta { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; }
+      .hero-note { margin-top: 16px; max-width: 30rem; font-size: 0.8125rem; color: var(--amber-600); }
+
+      .hero-panels { display: flex; flex-direction: column; gap: 12px; }
+      .panel {
+        border: 1px solid var(--sc-hairline); border-radius: var(--radius-lg);
+        background: var(--sc-paper-card); padding: 18px;
+      }
+      .panel-label { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sc-ink-muted); }
+      .panel-value { margin-top: 12px; display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 0.9375rem; }
+      .panel-figure { margin-top: 8px; font-size: 2.25rem; font-weight: 700; letter-spacing: -0.055em; line-height: 1; }
+      .panel-sub { margin-top: 8px; font-size: 0.9375rem; color: var(--sc-ink-muted); }
+
+      /* ── Delivery zone ──────────────────────────────────────────────────── */
+      .sc-zone { position: relative; overflow: hidden; background: var(--sc-navy); color: var(--sc-on-dark); }
+      .sc-zone .contour { color: var(--sc-on-dark); opacity: 0.05; }
+      .seam {
+        position: absolute; inset-inline: 0; top: 0; height: 56px; pointer-events: none;
+        background-image:
+          linear-gradient(45deg, var(--sc-paper) 25%, transparent 25%, transparent 75%, var(--sc-paper) 75%),
+          linear-gradient(45deg, var(--sc-paper) 25%, transparent 25%, transparent 75%, var(--sc-paper) 75%);
+        background-size: 32px 32px; background-position: 0 0, 16px 16px;
+        opacity: 0.5;
+        -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+        mask-image: linear-gradient(to bottom, #000, transparent);
+      }
+      .zone-inner { position: relative; padding-block: 80px 88px; display: grid; gap: 40px; }
+      @media (min-width: 1024px) { .zone-inner { grid-template-columns: minmax(0, 1fr) 20rem; gap: 56px; align-items: center; } }
+      .zone-eyebrow { color: var(--amber-300); margin-bottom: 18px; }
+      .zone-sub { margin-top: 18px; max-width: 32rem; color: var(--sc-on-dark-muted); text-wrap: pretty; }
+      .zone-panel { border: 1px solid var(--sc-panel-line); border-radius: var(--radius); padding: 18px; color: var(--sc-on-dark-muted); font-size: 1rem; }
+      .zone-panel .btn { margin-top: 16px; }
+      .rings { width: 100%; max-width: 19rem; height: auto; }
+      .zone-caption { margin-top: 10px; font-size: 0.75rem; color: var(--sc-on-dark-muted); }
+      .zone-list { margin-top: 40px; display: grid; gap: 8px 32px; font-size: 0.9375rem; color: var(--sc-on-dark-muted); }
+      @media (min-width: 640px) { .zone-list { grid-template-columns: 1fr 1fr; } }
+      @media (min-width: 1024px) { .zone-list { grid-template-columns: repeat(3, 1fr); } }
+      .zone-list li { display: flex; align-items: center; gap: 10px; }
+      .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--amber-300); flex: none; }
+
+      /* ── Order journey ──────────────────────────────────────────────────── */
+      .sc-journey { background: var(--sc-navy-card); color: var(--sc-on-dark); }
+      .journey-inner { padding-block: 80px 88px; }
+      .journey-head { max-width: 40rem; }
+      .journey-eyebrow { color: var(--amber-300); margin-bottom: 18px; }
+      .journey-sub { margin-top: 18px; color: var(--sc-on-dark-muted); text-wrap: pretty; }
+      .steps { position: relative; margin-top: 56px; border-left: 1px solid var(--sc-panel-line); padding-left: 24px; }
+      @media (min-width: 640px) { .steps { border-left: 0; padding-left: 0; margin-left: 8px; } }
+      .step { position: relative; padding-bottom: 32px; }
+      .step:last-child { padding-bottom: 0; }
+      @media (min-width: 640px) { .step { padding-left: 48px; margin-left: 8px; } }
+      .step-marker {
+        position: absolute; left: -30px; top: 6px; width: 10px; height: 10px; border-radius: 999px;
+        border: 2px solid var(--amber-300); background: var(--sc-navy-card);
+      }
+      @media (min-width: 640px) { .step-marker { left: 0; } }
+      .step-row { display: flex; align-items: flex-start; gap: 16px; }
+      .step-title { font-weight: 700; letter-spacing: -0.02em; }
+      .step-body { margin-top: 6px; max-width: 46rem; font-size: 1rem; color: var(--sc-on-dark-muted); }
+
+      /* ── Offers ─────────────────────────────────────────────────────────── */
+      .sc-offers { background: var(--sc-paper); color: var(--sc-ink); }
+      .offers-inner { padding-block: 80px 88px; }
+      .offers-head { max-width: 40rem; }
+      .offers-eyebrow { color: var(--amber-600); margin-bottom: 18px; }
+      .offers-sub { margin-top: 18px; color: var(--sc-ink-muted); text-wrap: pretty; }
+      .offer-grid { margin-top: 40px; display: grid; gap: 12px; }
+      @media (min-width: 640px) { .offer-grid { grid-template-columns: 1fr 1fr; } }
+      @media (min-width: 1024px) { .offer-grid { grid-template-columns: repeat(3, 1fr); } }
+      .offer {
+        border: 1px solid var(--sc-hairline); border-radius: var(--radius-lg);
+        background: var(--sc-paper-card); padding: 20px;
+      }
+      .offer-code-label { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sc-ink-muted); }
+      .offer-code { margin-top: 12px; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--amber-600); }
+      .offer-value { margin-top: 12px; font-weight: 700; font-size: 0.9375rem; }
+      .offer-shop { margin-top: 4px; font-size: 0.9375rem; color: var(--sc-ink-muted); }
+      .offers-empty { margin-top: 40px; max-width: 30rem; color: var(--sc-ink-muted); }
+
+      /* ── Commerce (the part the redesign unifies with the art direction) ─── */
+      .sc-commerce { background: var(--bg); color: var(--fg); padding-block: 72px 88px; }
+      .section + .section { margin-top: 56px; }
+      .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+      .section-title { font-size: clamp(1.25rem, 3vw, 1.6rem); font-weight: 700; letter-spacing: -0.03em; }
+      .section-action { color: var(--link); font-weight: 700; font-size: 0.875rem; white-space: nowrap; }
+      .section-action:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+      .chip-rail { --od-rail-pad: 0; }
+      @media (min-width: 640px) { .chip-rail { flex-wrap: wrap; overflow: visible; padding-inline: 0; } }
+      .chip {
+        display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px;
+        border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+        color: var(--fg2); font-size: 0.9375rem; font-weight: 600;
+        transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease);
+      }
+      .chip:hover { color: var(--fg); border-color: var(--amber); }
+      .chip[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--navy); }
+
+      .product-rail { --od-rail-pad: 0; }
+      @media (min-width: 640px) { .product-rail { padding-inline: 0; } }
+      .product-rail > * { width: 16rem; }
+
+      .grid-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      @media (min-width: 768px) { .grid-products { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      @media (min-width: 1024px) { .grid-products { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+      .pcard, .bcard {
+        display: flex; flex-direction: column; overflow: hidden;
+        border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+        transition: border-color var(--dur) var(--ease);
+      }
+      .pcard:hover, .bcard:hover { border-color: var(--amber); }
+      .pcard-media, .bcard-media { position: relative; display: block; background: var(--elevated); }
+      .badge {
+        position: absolute; top: 8px; left: 8px;
+        display: inline-flex; align-items: center; padding: 3px 8px; border-radius: var(--radius-sm);
+        background: var(--amber); color: var(--navy); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+      }
+      .badge-closed {
+        position: absolute; top: 8px; right: 8px;
+        padding: 3px 8px; border-radius: var(--radius-sm);
+        background: var(--card); color: var(--fg); border: 1px solid var(--border);
+        font-size: 11px; font-weight: 600;
+      }
+      .pcard-body { display: flex; flex-direction: column; gap: 6px; padding: 14px; flex: 1 1 auto; }
+      .pcard-title { font-weight: 600; font-size: 0.9375rem; color: var(--fg); }
+      .pcard-seller { font-size: 0.8125rem; color: var(--fg2); }
+      .pcard-foot { margin-top: auto; padding-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .price { font-weight: 700; font-variant-numeric: tabular-nums; }
+      .price-old { font-size: 0.8125rem; color: var(--fg2); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+      .add-btn {
+        display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none;
+        border-radius: var(--radius-sm); border: 1px solid transparent;
+        background: var(--amber); color: var(--navy);
+        transition: background var(--dur) var(--ease);
+      }
+      .add-btn:hover { background: hsl(38 96% 52%); }
+      .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .add-btn svg { width: 20px; height: 20px; }
+
+      .rating { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--fg2); font-variant-numeric: tabular-nums; }
+      .rating svg { width: 14px; height: 14px; color: var(--amber); }
+
+      .grid-biz { display: grid; gap: 12px; }
+      @media (min-width: 640px) { .grid-biz { grid-template-columns: 1fr 1fr; } }
+      @media (min-width: 1024px) { .grid-biz { grid-template-columns: repeat(3, 1fr); } }
+      .bcard-body { display: flex; align-items: flex-start; gap: 12px; padding: 14px; }
+      .bcard-logo {
+        width: 40px; height: 40px; border-radius: var(--radius-sm); flex: none;
+        background: var(--amber); color: var(--navy); display: grid; place-items: center; font-weight: 800;
+      }
+      .bcard-name { font-weight: 700; font-size: 0.9375rem; letter-spacing: -0.01em; }
+      .bcard-meta { margin-top: 2px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 0.8125rem; color: var(--fg2); }
+      .bcard-foot {
+        margin-top: auto; display: flex; flex-wrap: wrap; gap: 4px 16px;
+        padding: 10px 14px 14px; border-top: 1px solid var(--border);
+        font-size: 0.8125rem; color: var(--fg2);
+      }
+      .bcard-foot span { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+      .bcard-foot svg { width: 15px; height: 15px; }
+
+      .empty {
+        display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+        border: 1px dashed var(--border); border-radius: var(--radius); padding: 48px 24px;
+      }
+      .empty-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 999px; background: var(--hover); color: var(--fg2); }
+      .empty-title { font-weight: 700; }
+      .empty-text { max-width: 30rem; font-size: 0.875rem; color: var(--fg2); }
+
+      .error {
+        display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+        border: 1px solid hsl(0 72% 51% / 0.35); background: hsl(0 72% 51% / 0.07);
+        border-radius: var(--radius); padding: 32px 24px;
+      }
+      .error-title { font-weight: 600; }
+
+      [data-location="none"] .only-granted,
+      [data-location="granted"] .only-none { display: none !important; }
+
+      /* ── Sign-off ───────────────────────────────────────────────────────── */
+      .sc-signoff { position: relative; overflow: hidden; background: var(--sc-navy); color: var(--sc-on-dark); }
+      .sc-signoff .contour { color: var(--sc-on-dark); opacity: 0.05; }
+      .signoff-rule { height: 1px; background: var(--amber); }
+      .signoff-inner { position: relative; padding-block: 64px 72px; }
+      .signoff-sub { margin-top: 18px; max-width: 36rem; color: var(--sc-on-dark-muted); text-wrap: pretty; }
+      .signoff-cols { margin-top: 48px; display: grid; gap: 32px; max-width: 32rem; }
+      @media (min-width: 640px) { .signoff-cols { grid-template-columns: 1fr 1fr; } }
+      .signoff-col h3 { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber-300); }
+      .signoff-col ul { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+      .signoff-col a { color: var(--sc-on-dark-muted); font-size: 0.9375rem; transition: color var(--dur) var(--ease); }
+      .signoff-col a:hover { color: var(--sc-on-dark); }
+      .signoff-legal {
+        margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--sc-panel-line);
+        font-size: 0.75rem; color: hsl(220 12% 66% / 0.7);
+      }
+
+      /* ── Footer ─────────────────────────────────────────────────────────── */
+      .site-footer { display: none; border-top: 1px solid var(--border); padding-block: 32px; font-size: 0.75rem; color: var(--fg2); }
+      @media (min-width: 640px) { .site-footer { display: block; } }
+      .footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+      .footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+      .footer-links a:hover { color: var(--fg); }
+
+      /* ── Mobile bottom navigation ───────────────────────────────────────── */
+      .bottom-nav {
+        position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
+        background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(14px);
+        border-top: 1px solid var(--border);
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+      }
+      @media (min-width: 640px) { .bottom-nav { display: none; } }
+      .bottom-nav ul { display: grid; grid-template-columns: repeat(5, 1fr); }
+      .bottom-nav a {
+        position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+        min-height: 56px; font-size: 11px; font-weight: 600; color: var(--fg2);
+      }
+      .bottom-nav a svg { width: 20px; height: 20px; }
+      .bottom-nav a[aria-current="page"] { color: var(--fg); }
+      .bottom-nav a[aria-current="page"]::before {
+        content: ""; position: absolute; top: 0; left: 20%; right: 20%; height: 2px; border-radius: 999px; background: var(--amber);
+      }
+      main { padding-bottom: 88px; }
+      @media (min-width: 640px) { main { padding-bottom: 0; } }
+
+      /* ── Cart sheet ─────────────────────────────────────────────────────── */
+      .scrim {
+        position: fixed; inset: 0; z-index: 50; background: rgb(5 9 29 / 0.55);
+        opacity: 0; visibility: hidden; transition: opacity var(--dur) var(--ease), visibility var(--dur);
+      }
+      .scrim.open { opacity: 1; visibility: visible; }
+      .sheet {
+        position: fixed; z-index: 51; inset-inline: 0; bottom: 0; max-height: 85vh;
+        background: var(--card); color: var(--fg);
+        border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg);
+        border: 1px solid var(--border); border-bottom: 0;
+        transform: translateY(101%); transition: transform var(--dur) var(--ease);
+        display: flex; flex-direction: column;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .sheet.open { transform: translateY(0); }
+      @media (min-width: 640px) {
+        .sheet { left: 50%; right: auto; bottom: 0; width: 24rem; transform: translate(-50%, 101%); }
+        .sheet.open { transform: translate(-50%, 0); }
+      }
+      .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+      .sheet-title { font-weight: 700; letter-spacing: -0.02em; }
+      .sheet-body { padding: 8px 20px; overflow-y: auto; }
+      .sheet-empty { padding: 40px 20px; text-align: center; color: var(--fg2); }
+      .cart-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); }
+      .cart-line-name { font-weight: 600; font-size: 0.9375rem; }
+      .cart-line-sub { font-size: 0.8125rem; color: var(--fg2); }
+      .qty { display: inline-flex; align-items: center; gap: 8px; }
+      .qty button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+      .qty button:hover { background: var(--hover); }
+      .sheet-foot { padding: 16px 20px 20px; border-top: 1px solid var(--border); }
+      .cart-total { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+      .cart-total .price { font-size: 1.25rem; }
+      .sheet-foot .btn { width: 100%; }
+
+      .toast {
+        position: fixed; z-index: 60; left: 50%; bottom: 96px; transform: translate(-50%, 12px);
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 18px; border-radius: var(--radius-sm);
+        background: var(--navy); color: var(--sc-on-dark); border: 1px solid hsl(230 30% 24%);
+        font-size: 0.875rem; font-weight: 600;
+        opacity: 0; visibility: hidden; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility var(--dur);
+      }
+      @media (min-width: 640px) { .toast { bottom: 24px; } }
+      .toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+      .toast svg { width: 18px; height: 18px; color: var(--amber); }
+
+      /* ── Reveal motion ──────────────────────────────────────────────────── */
+      .reveal { opacity: 0; transform: translateY(12px); }
+      .reveal.in { opacity: 1; transform: none; transition: opacity var(--dur-plate) var(--ease-plate), transform var(--dur-plate) var(--ease-plate); }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+        .reveal { opacity: 1; transform: none; }
+        .scrim, .sheet, .toast { transition: none; }
+      }
+    </style>
+    <noscript>
+      <style>
+        .reveal { opacity: 1; transform: none; }
+      </style>
+    </noscript>
+  </head>
+  <body>
+    <a class="skip" href="#contenido">Saltar al contenido</a>
+
+    <div class="storefront">
+      <!-- ── Header ──────────────────────────────────────────────────────── -->
+      <header class="topbar">
+        <div class="wrap">
+          <div class="topbar-row">
+            <a class="brand" href="#" aria-label="PymesHub, ir al inicio">
+              <span class="brand-mark" aria-hidden="true">P</span>
+              <span class="brand-name">PymesHub</span>
+            </a>
+
+            <form class="search" role="search" id="search-form">
+              <label class="sr-only" for="q">Buscar tiendas y productos</label>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="q" name="q" type="search" placeholder="¿Qué querés pedir hoy?" autocomplete="off" />
+            </form>
+
+            <div class="actions">
+              <button class="icon-btn" type="button" id="theme-toggle" aria-label="Cambiar a apariencia oscura" title="Cambiar a apariencia oscura">
+                <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" width="20" height="20"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+              </button>
+
+              <button class="icon-btn" type="button" id="cart-open" aria-label="Carrito" aria-haspopup="dialog">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" width="20" height="20"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <span class="cart-count" id="cart-count" hidden>0</span>
+              </button>
+
+              <a class="btn btn-primary" href="#" style="min-height:44px;padding:0 16px;font-size:0.8125rem">Ingresar</a>
+            </div>
+          </div>
+
+          <nav class="desktop-nav" aria-label="Navegación principal">
+            <ul>
+              <li><a class="nav-link" href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2Z"/></svg>Inicio</a></li>
+              <li><a class="nav-link" href="#categorias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-4 1-1 4 4-1z"/></svg>Categorías</a></li>
+              <li><a class="nav-link" href="#buscar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar</a></li>
+              <li><a class="nav-link" href="#pedidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Pedidos</a></li>
+              <li><a class="nav-link" href="#favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 21s-7-4.5-9.5-8A5 5 0 0 1 12 6a5 5 0 0 1 9.5 7C19 16.5 12 21 12 21Z"/></svg>Favoritos</a></li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+      <main id="contenido">
+        <div class="showcase">
+          <!-- ── Hero ────────────────────────────────────────────────────── -->
+          <section class="sc-hero" aria-labelledby="hero-title">
+            <svg class="contour" viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-width="1.1">
+                <ellipse cx="1120" cy="380" rx="120" ry="100"/>
+                <ellipse cx="1120" cy="380" rx="200" ry="164"/>
+                <ellipse cx="1120" cy="380" rx="290" ry="238"/>
+                <ellipse cx="1120" cy="380" rx="390" ry="320"/>
+                <ellipse cx="1120" cy="380" rx="500" ry="410"/>
+                <ellipse cx="1120" cy="380" rx="620" ry="510"/>
+                <ellipse cx="1120" cy="380" rx="750" ry="620"/>
+                <ellipse cx="1120" cy="380" rx="890" ry="740"/>
+              </g>
+            </svg>
+
+            <div class="wrap sc-hero-inner">
+              <div>
+                <p class="eyebrow hero-eyebrow reveal">Pedidos a domicilio</p>
+                <h1 id="hero-title" class="display h-impact hero-title reveal">Pedí de los comercios de tu barrio.</h1>
+                <p class="hero-sub reveal">Restaurantes, farmacias, ferreterías y más. Comparás, pedís y seguís tu entrega hasta la puerta.</p>
+                <div class="hero-cta reveal">
+                  <a class="btn btn-primary" href="#categorias">Explorar categorías
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </a>
+                  <button class="btn btn-outline" type="button" data-request-location>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="18" height="18"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Usar mi ubicación
+                  </button>
+                </div>
+                <p class="hero-note reveal only-none">Activá tu ubicación para ver qué está lo bastante cerca para entregar.</p>
+              </div>
+
+              <div class="hero-panels">
+                <div class="panel reveal">
+                  <p class="panel-label">Ubicación</p>
+                  <p class="panel-value">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                    <span data-location-label>Sin compartir</span>
+                  </p>
+                </div>
+                <div class="panel reveal">
+                  <p class="panel-label">Pago</p>
+                  <p class="panel-value" style="display:block">Efectivo, tarjeta o transferencia</p>
+                </div>
+                <div class="panel reveal">
+                  <p class="panel-label">Comercios</p>
+                  <p class="panel-figure" id="shops-figure">5</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── Delivery zone ───────────────────────────────────────────── -->
+          <section class="sc-zone" aria-labelledby="zone-title">
+            <div class="seam" aria-hidden="true"></div>
+            <svg class="contour" viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-width="1.1">
+                <ellipse cx="380" cy="380" rx="200" ry="180"/>
+                <ellipse cx="380" cy="380" rx="340" ry="300"/>
+                <ellipse cx="380" cy="380" rx="500" ry="440"/>
+                <ellipse cx="380" cy="380" rx="680" ry="600"/>
+              </g>
+            </svg>
+
+            <div class="wrap zone-inner">
+              <div>
+                <p class="eyebrow zone-eyebrow reveal">Zona de entrega</p>
+                <h2 id="zone-title" class="display h-section reveal">Qué está al alcance</h2>
+                <p class="zone-sub reveal">Cada marca es un comercio real, en su distancia real desde vos. Los anillos son kilómetros.</p>
+              </div>
+
+              <div class="reveal">
+                <div class="zone-panel only-none">
+                  <p>Compartí tu ubicación para ver qué está lo bastante cerca para entregar.</p>
+                  <button class="btn btn-primary" type="button" data-request-location>Usar mi ubicación</button>
+                </div>
+
+                <figure class="only-granted" style="margin:0">
+                  <svg class="rings" viewBox="0 0 320 320" role="img" aria-label="Diagrama de distancia a los comercios cercanos, en anillos de un kilómetro">
+                    <g fill="none" stroke="var(--sc-panel-line)" stroke-width="1">
+                      <circle cx="160" cy="160" r="38"/>
+                      <circle cx="160" cy="160" r="76"/>
+                      <circle cx="160" cy="160" r="114"/>
+                      <circle cx="160" cy="160" r="152"/>
+                    </g>
+                    <g fill="var(--sc-on-dark-muted)" font-size="9" font-family="Manrope, sans-serif">
+                      <text x="164" y="128">1 km</text>
+                      <text x="164" y="90">2 km</text>
+                      <text x="164" y="52">3 km</text>
+                      <text x="164" y="14">4 km</text>
+                    </g>
+                    <circle cx="160" cy="160" r="4" fill="var(--sc-amber-300)"/>
+                    <text x="160" y="180" text-anchor="middle" fill="var(--sc-amber-300)" font-size="10" font-family="Manrope, sans-serif">Vos</text>
+                    <circle cx="185" cy="130" r="3.5" fill="var(--sc-on-dark)" opacity="0.95"><title>Restaurante La Casona — 1.2 km</title></circle>
+                    <circle cx="130" cy="140" r="3.5" fill="var(--sc-on-dark)" opacity="0.95"><title>Supermercado El Barrio — 0.8 km</title></circle>
+                    <circle cx="215" cy="200" r="3.5" fill="var(--sc-on-dark)" opacity="0.95"><title>Farmacia Vida — 2.1 km</title></circle>
+                    <circle cx="100" cy="230" r="3.5" fill="var(--sc-on-dark)" opacity="0.4"><title>Ferretería Central — 3.4 km</title></circle>
+                    <circle cx="205" cy="95" r="3.5" fill="var(--sc-on-dark)" opacity="0.95"><title>Panadería La Espiga — 1.7 km</title></circle>
+                  </svg>
+                  <figcaption class="zone-caption">5 comercios con distancia conocida.</figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="wrap">
+              <ul class="zone-list only-granted" aria-label="Comercios sin distancia registrada">
+                <li><span class="dot" aria-hidden="true"></span>Más comercios se suman a medida que abren en tu zona.</li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- ── Order journey ───────────────────────────────────────────── -->
+          <section class="sc-journey" aria-labelledby="journey-title">
+            <div class="wrap journey-inner">
+              <div class="journey-head">
+                <p class="eyebrow journey-eyebrow reveal">Cómo funciona un pedido</p>
+                <h2 id="journey-title" class="display h-section reveal">De la cocina a tu puerta</h2>
+                <p class="journey-sub reveal">Siete pasos, y en todo momento podés ver en cuál va el tuyo.</p>
+              </div>
+
+              <ol class="steps">
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 2 2v4a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6v-1"/></svg></span>
+                    <div><h3 class="step-title">Elegís</h3><p class="step-body">Elegís un comercio y sumás al carrito lo que necesitás.</p></div>
+                  </div>
+                </li>
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12l2 2 4-4"/></svg></span>
+                    <div><h3 class="step-title">Confirmás</h3><p class="step-body">Entrega o retiro, dirección y cómo querés pagar.</p></div>
+                  </div>
+                </li>
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 13a6 6 0 0 1 12 0v5H8a2 2 0 0 0-2 2Z"/><path d="M6 13H4v3"/><path d="M8 21h12"/></svg></span>
+                    <div><h3 class="step-title">Preparan</h3><p class="step-body">El comercio recibe el pedido y se pone con él.</p></div>
+                  </div>
+                </li>
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 18h6M6 15l3-8h5l3 8"/></svg></span>
+                    <div><h3 class="step-title">Sale</h3><p class="step-body">El pedido sale para la entrega.</p></div>
+                  </div>
+                </li>
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+                    <div><h3 class="step-title">Te avisamos</h3><p class="step-body">Lo seguís sin tener que llamar a nadie.</p></div>
+                  </div>
+                </li>
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg></span>
+                    <div><h3 class="step-title">Llega</h3><p class="step-body">A tu puerta, con el pago registrado junto al pedido.</p></div>
+                  </div>
+                </li>
+                <li class="step reveal">
+                  <span class="step-marker" aria-hidden="true"></span>
+                  <div class="step-row">
+                    <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 3 6.5 7 .9-5 4.8 1.3 7L12 18l-6.3 3.5L7 14.2 2 9.4l7-.9Z"/></svg></span>
+                    <div><h3 class="step-title">Calificás</h3><p class="step-body">Tu reseña va al comercio, no a un call center.</p></div>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </section>
+
+          <!-- ── Offers ──────────────────────────────────────────────────── -->
+          <section class="sc-offers" aria-labelledby="offers-title">
+            <div class="wrap offers-inner">
+              <div class="offers-head">
+                <p class="eyebrow offers-eyebrow reveal">Esta semana</p>
+                <h2 id="offers-title" class="display h-section reveal">Ofertas vigentes</h2>
+                <p class="offers-sub reveal">Códigos que podés usar ahora, de comercios que ya están en el mapa.</p>
+              </div>
+
+              <ul class="offer-grid">
+                <li class="offer reveal">
+                  <p class="offer-code-label">Código</p>
+                  <p class="offer-code">BARRIO10</p>
+                  <p class="offer-value">10% de descuento</p>
+                  <p class="offer-shop">Restaurante La Casona</p>
+                </li>
+                <li class="offer reveal">
+                  <p class="offer-code-label">Código</p>
+                  <p class="offer-code">ENVIOGRATIS</p>
+                  <p class="offer-value">Envío gratis</p>
+                  <p class="offer-shop">Supermercado El Barrio</p>
+                </li>
+                <li class="offer reveal">
+                  <p class="offer-code-label">Código</p>
+                  <p class="offer-code">DULCE15</p>
+                  <p class="offer-value">15% de descuento</p>
+                  <p class="offer-shop">Repostería Dulce</p>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <!-- ── Commerce ──────────────────────────────────────────────────── -->
+        <section class="sc-commerce" aria-labelledby="comercio-title">
+          <div class="wrap">
+            <h2 id="comercio-title" class="sr-only">Comercios y productos del barrio</h2>
+
+            <div class="section" id="categorias">
+              <div class="section-head">
+                <h3 class="section-title">Categorías</h3>
+                <a class="section-action" href="#destacados">Ver todas</a>
+              </div>
+              <div class="od-rail chip-rail" role="group" aria-label="Filtrar por categoría">
+                <button class="chip" type="button" data-category="todas" aria-pressed="true">Todas</button>
+                <button class="chip" type="button" data-category="Comida" aria-pressed="false">Comida</button>
+                <button class="chip" type="button" data-category="Abarrotes" aria-pressed="false">Abarrotes</button>
+                <button class="chip" type="button" data-category="Farmacia" aria-pressed="false">Farmacia</button>
+                <button class="chip" type="button" data-category="Ferretería" aria-pressed="false">Ferretería</button>
+                <button class="chip" type="button" data-category="Bebidas" aria-pressed="false">Bebidas</button>
+                <button class="chip" type="button" data-category="Panadería" aria-pressed="false">Panadería</button>
+                <button class="chip" type="button" data-category="Café" aria-pressed="false">Café</button>
+                <button class="chip" type="button" data-category="Postres" aria-pressed="false">Postres</button>
+              </div>
+            </div>
+
+            <div class="section" id="destacados">
+              <div class="section-head">
+                <h3 class="section-title">Destacados</h3>
+                <a class="section-action" href="#destacados">Ver todos</a>
+              </div>
+
+              <div class="od-rail product-rail" id="offers-rail" aria-label="Ofertas del día"></div>
+
+              <div class="grid-products" id="featured-grid" style="margin-top:12px"></div>
+
+              <div class="empty" id="featured-empty" hidden>
+                <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="22" height="22"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                <p class="empty-title">No hay productos en esta categoría.</p>
+                <p class="empty-text">Probá con otra categoría o quitá el filtro para ver todo.</p>
+              </div>
+            </div>
+
+            <div class="section" id="pedidos">
+              <div class="section-head">
+                <h3 class="section-title">Cerca de ti</h3>
+              </div>
+
+              <div class="grid-biz only-none">
+                <div class="empty" style="grid-column:1/-1">
+                  <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="22" height="22"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                  <p class="empty-title">No encontramos negocios cerca.</p>
+                  <p class="empty-text">Activá tu ubicación para ver los negocios más cercanos, o explorá por categorías.</p>
+                  <button class="btn btn-primary" type="button" data-request-location>Usar mi ubicación</button>
+                </div>
+              </div>
+
+              <div class="grid-biz only-granted" id="biz-grid"></div>
+            </div>
+
+            <div class="section" id="favoritos">
+              <div class="section-head">
+                <h3 class="section-title">Ofertas cerca</h3>
+              </div>
+              <div class="empty" id="error-demo" hidden>
+                <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="22" height="22"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg></span>
+                <p class="empty-title">No pudimos cargar las ofertas.</p>
+                <button class="btn btn-ghost" type="button" id="retry-demo">Reintentar</button>
+              </div>
+              <div class="od-rail product-rail" id="near-rail" aria-label="Ofertas de comercios cercanos"></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="showcase">
+          <!-- ── Sign-off ────────────────────────────────────────────────── -->
+          <section class="sc-signoff" aria-labelledby="signoff-title">
+            <div class="signoff-rule" aria-hidden="true"></div>
+            <svg class="contour" viewBox="0 0 1440 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-width="1.1">
+                <ellipse cx="1150" cy="300" rx="180" ry="150"/>
+                <ellipse cx="1150" cy="300" rx="320" ry="270"/>
+                <ellipse cx="1150" cy="300" rx="480" ry="410"/>
+                <ellipse cx="1150" cy="300" rx="660" ry="560"/>
+              </g>
+            </svg>
+            <div class="wrap signoff-inner">
+              <h2 id="signoff-title" class="display h-section reveal" style="max-width:18ch">Seguí avanzando</h2>
+              <p class="signoff-sub reveal">PymesHub se ocupa de la tienda, el catálogo y el registro del pago. Tu negocio conserva su nombre, sus precios y sus clientes.</p>
+
+              <div class="signoff-cols reveal">
+                <nav class="signoff-col" aria-label="Mercado">
+                  <h3>Mercado</h3>
+                  <ul>
+                    <li><a href="#categorias">Categorías</a></li>
+                    <li><a href="#buscar">Buscar</a></li>
+                    <li><a href="#pedidos">Mis pedidos</a></li>
+                    <li><a href="#favoritos">Favoritos</a></li>
+                  </ul>
+                </nav>
+                <nav class="signoff-col" aria-label="Para un negocio">
+                  <h3>Para un negocio</h3>
+                  <ul>
+                    <li><a href="#">Vendé en PymesHub</a></li>
+                    <li><a href="#">Precios</a></li>
+                    <li><a href="#">Iniciar sesión</a></li>
+                  </ul>
+                </nav>
+              </div>
+
+              <p class="signoff-legal">PymesHub. Todos los derechos reservados.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <!-- ── Footer ──────────────────────────────────────────────────────── -->
+      <footer class="site-footer">
+        <div class="wrap footer-row">
+          <p>© <span id="year">2026</span> PymesHub · Pedidos a domicilio en Costa Rica</p>
+          <nav class="footer-links" aria-label="Enlaces">
+            <a href="#categorias">Categorías</a>
+            <a href="#pedidos">Mis pedidos</a>
+            <a href="#">Legal</a>
+            <a href="#">Accesibilidad</a>
+            <a href="#">Panel de negocios</a>
+          </nav>
+        </div>
+      </footer>
+
+      <!-- ── Mobile bottom navigation ────────────────────────────────────── -->
+      <nav class="bottom-nav" aria-label="Navegación principal">
+        <ul>
+          <li><a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2Z"/></svg>Inicio</a></li>
+          <li><a href="#categorias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-4 1-1 4 4-1z"/></svg>Categorías</a></li>
+          <li><a href="#buscar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar</a></li>
+          <li><a href="#pedidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Pedidos</a></li>
+          <li><a href="#favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 21s-7-4.5-9.5-8A5 5 0 0 1 12 6a5 5 0 0 1 9.5 7C19 16.5 12 21 12 21Z"/></svg>Favoritos</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- ── Cart sheet ────────────────────────────────────────────────────── -->
+    <div class="scrim" id="scrim" hidden></div>
+    <section class="sheet" id="cart-sheet" role="dialog" aria-modal="true" aria-labelledby="cart-title" aria-hidden="true">
+      <div class="sheet-head">
+        <h2 class="sheet-title" id="cart-title">Tu carrito</h2>
+        <button class="icon-btn" type="button" id="cart-close" aria-label="Cerrar carrito">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="cart-body"></div>
+      <div class="sheet-foot" id="cart-foot" hidden>
+        <div class="cart-total">
+          <span>Total</span>
+          <span class="price" id="cart-total">₡0</span>
+        </div>
+        <button class="btn btn-primary" type="button" id="checkout">Ir al checkout</button>
+      </div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <span id="toast-text">Agregado al carrito</span>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+        var doc = document;
+        var root = doc.documentElement;
+
+        var money = function (minor) {
+          return "₡" + Math.round(minor).toLocaleString("es-CR");
+        };
+
+        /* ── Theme ─────────────────────────────────────────────────────── */
+        var themeBtn = doc.getElementById("theme-toggle");
+        function setTheme(theme) {
+          var light = theme === "light";
+          root.classList.toggle("light", light);
+          root.classList.toggle("dark", !light);
+          themeBtn.setAttribute("aria-label", "Cambiar a apariencia " + (light ? "oscura" : "clara"));
+          themeBtn.setAttribute("title", themeBtn.getAttribute("aria-label"));
+        }
+        themeBtn.addEventListener("click", function () {
+          setTheme(root.classList.contains("light") ? "dark" : "light");
+        });
+
+        /* ── Location (simulated permission) ─────────────────────────────── */
+        var locationState = "none";
+        function requestLocation() {
+          locationState = "granted";
+          doc.body.setAttribute("data-location", "granted");
+          var label = doc.querySelector("[data-location-label]");
+          if (label) { label.textContent = "San José, Costa Rica"; }
+        }
+        doc.body.setAttribute("data-location", "none");
+        Array.prototype.forEach.call(doc.querySelectorAll("[data-request-location]"), function (btn) {
+          btn.addEventListener("click", requestLocation);
+        });
+
+        /* ── Data ─────────────────────────────────────────────────────── */
+        var products = [
+          { id: "p1", title: "Pan de masa madre", seller: "Panadería La Espiga", cat: "Panadería", price: 2500, old: 2950, rating: 4.8, reviews: 124, img: "assets/product-bread.jpg", w: 960, h: 690, alt: "Pan de masa madre recién horneado" },
+          { id: "p2", title: "Café chorreado", seller: "Café del Valle", cat: "Café", price: 1200, old: 0, rating: 4.9, reviews: 88, img: "assets/product-coffee.jpg", w: 960, h: 640, alt: "Taza de café chorreado" },
+          { id: "p3", title: "Fresco de frutas", seller: "Frutería El Paraíso", cat: "Bebidas", price: 1500, old: 0, rating: 4.7, reviews: 63, img: "assets/product-juice.jpg", w: 960, h: 641, alt: "Vaso de fresco de frutas naturales" },
+          { id: "p4", title: "Pizza margarita", seller: "Pizzería Bella", cat: "Comida", price: 6800, old: 8000, rating: 4.6, reviews: 201, img: "assets/product-pizza.jpg", w: 960, h: 720, alt: "Pizza margarita recién salida del horno" },
+          { id: "p5", title: "Tres leches", seller: "Repostería Dulce", cat: "Postres", price: 2200, old: 0, rating: 4.9, reviews: 156, img: "assets/product-pastry.jpg", w: 960, h: 639, alt: "Porción de pastel tres leches" },
+          { id: "p6", title: "Canasta de frutas", seller: "Frutería El Paraíso", cat: "Abarrotes", price: 3900, old: 0, rating: 4.5, reviews: 42, img: "assets/product-fruit.jpg", w: 960, h: 540, alt: "Canasta con frutas frescas" }
+        ];
+
+        var businesses = [
+          { id: "b1", name: "Restaurante La Casona", cat: "Comida", rating: 4.7, reviews: 210, dist: 1.2, prep: 25, fee: 1000, cover: "assets/business-restaurant.jpg", w: 960, h: 720, open: true },
+          { id: "b2", name: "Supermercado El Barrio", cat: "Abarrotes", rating: 4.4, reviews: 98, dist: 0.8, prep: 40, fee: 0, cover: "assets/business-grocery.jpg", w: 960, h: 966, open: true },
+          { id: "b3", name: "Farmacia Vida", cat: "Farmacia", rating: 4.8, reviews: 134, dist: 2.1, prep: 20, fee: 1200, cover: "assets/business-pharmacy.jpg", w: 960, h: 720, open: true },
+          { id: "b4", name: "Ferretería Central", cat: "Ferretería", rating: 4.3, reviews: 57, dist: 3.4, prep: 35, fee: 1500, cover: "assets/business-hardware.jpg", w: 960, h: 591, open: false },
+          { id: "b5", name: "Panadería La Espiga", cat: "Panadería", rating: 4.9, reviews: 302, dist: 1.7, prep: 15, fee: 800, cover: "assets/business-bakery.jpg", w: 960, h: 663, open: true }
+        ];
+
+        function starSvg() {
+          return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.5 7 .9-5 4.8 1.3 7L12 18l-6.3 3.5L7 14.2 2 9.4l7-.9Z"/></svg>';
+        }
+
+        function productCard(p) {
+          var discount = p.old > 0 ? Math.round((1 - p.price / p.old) * 100) : 0;
+          return '' +
+            '<article class="pcard" data-category="' + p.cat + '">' +
+              '<a class="pcard-media" href="#" aria-label="Ver ' + p.title + '">' +
+                '<img class="od-media" src="' + p.img + '" width="' + p.w + '" height="' + p.h + '" alt="' + p.alt + '" loading="lazy" decoding="async">' +
+                (discount ? '<span class="badge">-' + discount + '%</span>' : '') +
+              '</a>' +
+              '<div class="pcard-body">' +
+                '<a class="pcard-title od-clamp-2" href="#">' + p.title + '</a>' +
+                '<p class="pcard-seller od-truncate">' + p.seller + '</p>' +
+                '<div class="pcard-foot">' +
+                  '<span class="od-row" style="gap:8px"><span class="price od-nowrap">' + money(p.price) + '</span>' +
+                    (p.old ? '<span class="price-old od-nowrap">' + money(p.old) + '</span>' : '') + '</span>' +
+                  '<button class="add-btn" type="button" data-add="' + p.id + '" aria-label="Agregar ' + p.title + '">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>' +
+                  '</button>' +
+                '</div>' +
+              '</div>' +
+            '</article>';
+        }
+
+        function businessCard(b) {
+          var rating = '<span class="rating">' + starSvg() + '<span>' + b.rating.toFixed(1) + '</span><span style="opacity:.7">(' + b.reviews + ')</span></span>';
+          var delivery = b.fee === 0 ? "El comercio cubre el envío" : "Envío " + money(b.fee);
+          return '' +
+            '<article class="bcard">' +
+              '<a class="bcard-media" href="#" aria-label="Ver ' + b.name + '">' +
+                '<img class="od-media" src="' + b.cover + '" width="' + b.w + '" height="' + b.h + '" alt="Fachada de ' + b.name + '" loading="lazy" decoding="async">' +
+                (b.open ? '' : '<span class="badge-closed">Cerrado</span>') +
+              '</a>' +
+              '<div class="bcard-body">' +
+                '<span class="bcard-logo" aria-hidden="true">' + b.name.charAt(0) + '</span>' +
+                '<div class="od-fill">' +
+                  '<h4 class="bcard-name od-truncate">' + b.name + '</h4>' +
+                  '<div class="bcard-meta"><span>' + b.cat + '</span>' + rating + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="bcard-foot">' +
+                '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 18h6M6 15l3-8h5l3 8"/></svg>' + delivery + '</span>' +
+                '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' + b.prep + ' min</span>' +
+                '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + b.dist.toFixed(1) + ' km</span>' +
+              '</div>' +
+            '</article>';
+        }
+
+        /* ── Render ────────────────────────────────────────────────────── */
+        var featuredGrid = doc.getElementById("featured-grid");
+        var featuredEmpty = doc.getElementById("featured-empty");
+        var offersRail = doc.getElementById("offers-rail");
+        var nearRail = doc.getElementById("near-rail");
+        var bizGrid = doc.getElementById("biz-grid");
+
+        function renderFeatured(filter) {
+          var list = filter && filter !== "todas" ? products.filter(function (p) { return p.cat === filter; }) : products;
+          featuredGrid.innerHTML = list.map(productCard).join("");
+          featuredEmpty.hidden = list.length !== 0;
+        }
+        renderFeatured("todas");
+
+        offersRail.innerHTML = ["Fresco de frutas", "Pan de masa madre", "Canasta de frutas"].map(function (t) {
+          var p = products.filter(function (x) { return x.title === t; })[0];
+          return productCard(p);
+        }).join("");
+
+        nearRail.innerHTML = products.slice(2, 6).map(productCard).join("");
+        bizGrid.innerHTML = businesses.map(businessCard).join("");
+
+        var shopsFigure = doc.getElementById("shops-figure");
+        if (shopsFigure) { shopsFigure.textContent = String(businesses.length); }
+
+        /* ── Category filter ───────────────────────────────────────────── */
+        var chips = doc.querySelectorAll(".chip");
+        Array.prototype.forEach.call(chips, function (chip) {
+          chip.addEventListener("click", function () {
+            Array.prototype.forEach.call(chips, function (c) { c.setAttribute("aria-pressed", "false"); });
+            chip.setAttribute("aria-pressed", "true");
+            renderFeatured(chip.getAttribute("data-category"));
+          });
+        });
+
+        /* ── Search ────────────────────────────────────────────────────── */
+        var searchForm = doc.getElementById("search-form");
+        searchForm.addEventListener("submit", function (event) {
+          event.preventDefault();
+          var value = (doc.getElementById("q").value || "").trim().toLowerCase();
+          if (!value) { renderFeatured("todas"); return; }
+          var list = products.filter(function (p) {
+            return p.title.toLowerCase().indexOf(value) !== -1 || p.seller.toLowerCase().indexOf(value) !== -1 || p.cat.toLowerCase().indexOf(value) !== -1;
+          });
+          featuredGrid.innerHTML = list.map(productCard).join("");
+          featuredEmpty.hidden = list.length !== 0;
+          Array.prototype.forEach.call(chips, function (c) { c.setAttribute("aria-pressed", c.getAttribute("data-category") === "todas" ? "true" : "false"); });
+          doc.getElementById("destacados").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        /* ── Cart ──────────────────────────────────────────────────────── */
+        var cart = [];
+        var cartCount = doc.getElementById("cart-count");
+        var cartBody = doc.getElementById("cart-body");
+        var cartFoot = doc.getElementById("cart-foot");
+        var cartTotal = doc.getElementById("cart-total");
+        var sheet = doc.getElementById("cart-sheet");
+        var scrim = doc.getElementById("scrim");
+        var lastFocus = null;
+
+        function cartItems() { return cart.reduce(function (n, line) { return n + line.qty; }, 0); }
+        function cartSum() { return cart.reduce(function (n, line) { return n + line.qty * line.price; }, 0); }
+
+        function renderCart() {
+          var count = cartItems();
+          cartCount.hidden = count === 0;
+          cartCount.textContent = count > 99 ? "99+" : String(count);
+          doc.getElementById("cart-open").setAttribute("aria-label", count > 0 ? "Carrito, " + count + " productos" : "Carrito");
+          if (cart.length === 0) {
+            cartBody.innerHTML = '<p class="sheet-empty">Tu carrito está vacío. Sumá algo del barrio y aparecerá acá.</p>';
+            cartFoot.hidden = true;
+            return;
+          }
+          cartBody.innerHTML = cart.map(function (line) {
+            return '<div class="cart-line">' +
+              '<div class="od-fill"><div class="cart-line-name od-truncate">' + line.title + '</div>' +
+              '<div class="cart-line-sub od-nowrap">' + money(line.price) + ' c/u</div></div>' +
+              '<div class="qty">' +
+                '<button type="button" data-dec="' + line.id + '" aria-label="Quitar uno de ' + line.title + '">−</button>' +
+                '<span class="od-nowrap" aria-live="polite">' + line.qty + '</span>' +
+                '<button type="button" data-inc="' + line.id + '" aria-label="Agregar uno de ' + line.title + '">+</button>' +
+              '</div>' +
+            '</div>';
+          }).join("");
+          cartFoot.hidden = false;
+          cartTotal.textContent = money(cartSum());
+        }
+
+        function addToCart(id) {
+          var p = products.filter(function (x) { return x.id === id; })[0];
+          if (!p) return;
+          var line = cart.filter(function (x) { return x.id === id; })[0];
+          if (line) { line.qty += 1; } else { cart.push({ id: p.id, title: p.title, price: p.price, qty: 1 }); }
+          renderCart();
+          showToast("Agregado: " + p.title);
+        }
+
+        doc.addEventListener("click", function (event) {
+          var add = event.target.closest("[data-add]");
+          if (add) { event.preventDefault(); addToCart(add.getAttribute("data-add")); return; }
+          var inc = event.target.closest("[data-inc]");
+          if (inc) { var li = cart.filter(function (x) { return x.id === inc.getAttribute("data-inc"); })[0]; if (li) { li.qty += 1; renderCart(); } return; }
+          var dec = event.target.closest("[data-dec]");
+          if (dec) {
+            var id = dec.getAttribute("data-dec");
+            var line = cart.filter(function (x) { return x.id === id; })[0];
+            if (line) { line.qty -= 1; if (line.qty <= 0) { cart = cart.filter(function (x) { return x.id !== id; }); } renderCart(); }
+            return;
+          }
+        });
+
+        function openCart() {
+          lastFocus = doc.activeElement;
+          renderCart();
+          scrim.hidden = false;
+          sheet.setAttribute("aria-hidden", "false");
+          requestAnimationFrame(function () { scrim.classList.add("open"); sheet.classList.add("open"); });
+          doc.getElementById("cart-close").focus();
+          doc.body.style.overflow = "hidden";
+        }
+        function closeCart() {
+          scrim.classList.remove("open");
+          sheet.classList.remove("open");
+          sheet.setAttribute("aria-hidden", "true");
+          doc.body.style.overflow = "";
+          window.setTimeout(function () { scrim.hidden = true; }, 250);
+          if (lastFocus && lastFocus.focus) { lastFocus.focus(); }
+        }
+        doc.getElementById("cart-open").addEventListener("click", openCart);
+        doc.getElementById("cart-close").addEventListener("click", closeCart);
+        scrim.addEventListener("click", closeCart);
+        doc.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && sheet.classList.contains("open")) { closeCart(); }
+        });
+        doc.getElementById("checkout").addEventListener("click", function () {
+          showToast("Demo: el checkout no está conectado.");
+        });
+
+        /* ── Toast ─────────────────────────────────────────────────────── */
+        var toast = doc.getElementById("toast");
+        var toastText = doc.getElementById("toast-text");
+        var toastTimer = null;
+        function showToast(message) {
+          toastText.textContent = message;
+          toast.classList.add("show");
+          window.clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(function () { toast.classList.remove("show"); }, 2600);
+        }
+
+        /* ── Demo retry state ──────────────────────────────────────────── */
+        doc.getElementById("retry-demo").addEventListener("click", function () {
+          doc.getElementById("error-demo").hidden = true;
+          showToast("Ofertas actualizadas.");
+        });
+
+        /* ── Reveal on scroll ──────────────────────────────────────────── */
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var reveals = doc.querySelectorAll(".reveal");
+        if (reduce || !("IntersectionObserver" in window)) {
+          Array.prototype.forEach.call(reveals, function (el) { el.classList.add("in"); });
+        } else {
+          var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) { entry.target.classList.add("in"); io.unobserve(entry.target); }
+            });
+          }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+          Array.prototype.forEach.call(reveals, function (el) { io.observe(el); });
+        }
+
+        doc.getElementById("year").textContent = String(new Date().getFullYear());
+        renderCart();
+      })();
+    </script>
+  </body>
+</html>

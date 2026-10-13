@@ -63,7 +63,9 @@ describe("the crash queue is a second queue, not a thirteenth tab", () => {
     );
     // One of them, not both stacked: two queues rendered at once on a 13-column-wide console
     // is not "grouping", it is two pages fighting for the fold.
-    expect(supportTab).toContain('queue === "tickets" ? <TicketQueue /> : <CrashQueue />');
+    expect(supportTab).toContain(
+      'queue === "tickets" ? <TicketQueue /> : queue === "crashes" ? <CrashQueue /> : <IdeaQueue />',
+    );
   });
 
   it("and the panel that hosts it is still the support panel", () => {

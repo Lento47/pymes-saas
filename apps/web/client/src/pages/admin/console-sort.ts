@@ -49,6 +49,9 @@ export type TicketSort = "newest" | "oldest" | "activity" | "messages";
  */
 export type CrashSort = "newest" | "oldest" | "build";
 
+/** The two the ideas queue supports. No `activity`: an idea has no thread. */
+export type IdeaSort = "newest" | "oldest";
+
 export type SortOption<T extends string> = { value: T; label: string };
 
 /**
@@ -87,6 +90,11 @@ export const CRASH_SORT_OPTIONS: readonly SortOption<CrashSort>[] = [
   { value: "newest", label: "Más recientes" },
   { value: "oldest", label: "Más antiguos" },
   { value: "build", label: "Por build" },
+];
+
+export const IDEA_SORT_OPTIONS: readonly SortOption<IdeaSort>[] = [
+  { value: "newest", label: "Más recientes" },
+  { value: "oldest", label: "Más antiguos" },
 ];
 
 /**

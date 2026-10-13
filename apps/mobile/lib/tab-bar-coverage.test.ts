@@ -199,13 +199,22 @@ describe("(delivery) floating bar coverage", () => {
 	});
 
 	test("both tabs are declared, and neither is on the barless list", () => {
-		// A tab hidden from the capsule is a screen with no way out — the argument
-		// `CUSTOMER_BARLESS_ROUTES` makes about the cart. Pinning it here is what stops the
-		// board or the account hub being added to the list by a later "just tidy this up".
+		// `href: null` would remove a tab. The waiting board hides the capsule while
+		// remaining a tab; the account hub still draws it. `DELIVERY_HIDDEN_TAB_ROUTES`
+		// is the clearance list for that hide, not this one.
 		const source = readFileSync(join(DELIVERY, "_layout.tsx"), "utf-8");
 		for (const tab of ["delivery", "account"]) {
 			expect(source).toContain(`name="${tab}"`);
 			expect(barless).not.toContain(tab);
 		}
+	});
+
+	test("the waiting board hides the capsule without dropping the tab", () => {
+		const source = readFileSync(join(DELIVERY, "_layout.tsx"), "utf-8");
+		const hidden = list("DELIVERY_HIDDEN_TAB_ROUTES");
+		expect(hidden).toEqual(["delivery"]);
+		expect(source).toContain('name="delivery"');
+		expect(source).toContain('tabBarStyle: { display: "none" }');
+		expect(source).not.toContain('deliveryBarlessOptions("delivery")');
 	});
 });

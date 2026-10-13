@@ -47,6 +47,12 @@ export const ID_PREFIXES = {
 	 * crash queue and not from a merchant waiting for an answer.
 	 */
 	crashReport: "crs",
+	/**
+	 * Product feedback, kept apart from ticket and crash ids for the same reason
+	 * the table is kept apart: a log line that reads `ida_` tells an operator it
+	 * came from the ideas queue, not from a merchant waiting or a stack trace.
+	 */
+	idea: "ida",
 	favorite: "fav",
 	promotion: "prm",
 	notification: "ntf",

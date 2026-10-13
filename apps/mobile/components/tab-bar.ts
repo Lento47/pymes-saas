@@ -127,6 +127,15 @@ export const DELIVERY_BARLESS_ROUTES = [
 	"delivery/[id]",
 ] as const;
 
+/**
+ * Courier tabs that keep their `href` (they remain tabs) and still hide the capsule.
+ *
+ * The waiting board is a MOTION UI canvas: a permanent bar would eat the offer sheet.
+ * The avatar on that screen is the way to the account hub, which still draws the capsule
+ * so there is a way back.
+ */
+export const DELIVERY_HIDDEN_TAB_ROUTES = ["delivery"] as const;
+
 /** Which tree's barless list answers for a route group, keyed by its first segment. */
 const BARLESS_BY_GROUP: Readonly<Record<string, readonly string[]>> = {
 	"(business)": MERCHANT_BARLESS_ROUTES,
@@ -251,5 +260,11 @@ function drawsTabBar(segments: readonly string[]): boolean {
 	if (barless === undefined) return false;
 	const route = segments[1];
 	if (route === undefined) return true;
-	return !barless.includes(route);
+	if (barless.includes(route)) return false;
+	if (
+		segments[0] === "(delivery)" &&
+		(DELIVERY_HIDDEN_TAB_ROUTES as readonly string[]).includes(route)
+	)
+		return false;
+	return true;
 }

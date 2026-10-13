@@ -14,6 +14,6 @@ describe("courier delivery itinerary", () => {
 		expect(detail).toContain("delivery.stop.pickup");
 		expect(detail).toContain("delivery.stop.dropoff");
 		expect(detail).not.toContain("<StopCard");
-		expect(detail).not.toContain('label={t("delivery.navigate")}');
+		expect(detail).toContain("delivery.motion.customer");
 	});
 });

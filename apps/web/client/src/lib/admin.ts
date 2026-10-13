@@ -54,6 +54,11 @@ import {
   crashReportListInput,
   crashReportRowSchema,
   createPriceBookInput,
+  type IdeaListInput,
+  type IdeaResolveInput,
+  type IdeaRow,
+  ideaListInput,
+  ideaRowSchema,
   PLANS,
   REASON_MIN_LENGTH,
   REASON_REQUIRED_ACTIONS,
@@ -193,6 +198,7 @@ const ticketList = pageOf(adminSupportTicketRowSchema);
  * a filter on this one.
  */
 const crashList = pageOf(crashReportRowSchema);
+const ideaList = pageOf(ideaRowSchema);
 const subscriptionList = pageOf(adminSubscriptionSchema);
 const productList = pageOf(adminProductRowSchema);
 const promotionList = pageOf(adminPromotionRowSchema);
@@ -442,6 +448,34 @@ export const adminApi = {
    */
   resolveCrash: async (input: CrashReportResolveInput): Promise<void> => {
     await trpc.crashReport.resolve.mutate(input);
+  },
+
+  // ── The ideas queue ──────────────────────────────────────────────────────
+  //
+  // A third queue **inside the support tab**, not a thirteenth tab. Same grouping
+  // argument as crashes: an operator opening Soporte should see a merchant waiting,
+  // a crash on build 13, and a piece of product feedback in the same place.
+
+  /**
+   * The ideas queue, live ideas by default.
+   *
+   * **`trpc.idea.*` and not `trpc.admin.*`**, for crashReport's reason: the write
+   * side is `protectedProcedure` and the router is not mounted under `admin`.
+   */
+  ideas: async (input: Partial<IdeaListInput> = {}): Promise<Page<IdeaRow>> =>
+    ideaList(await trpc.idea.list.query(ideaListInput.parse(input))),
+
+  idea: async (id: string): Promise<IdeaRow> =>
+    ideaRowSchema.parse(await trpc.idea.get.query({ id })),
+
+  /**
+   * Closing an idea, which is a note and a state change in one batch.
+   *
+   * The note is required by `ideaResolveInput`. There is no thread on `idea`, so
+   * the note is the only place the reasoning lives besides the audit entry.
+   */
+  resolveIdea: async (input: IdeaResolveInput): Promise<void> => {
+    await trpc.idea.resolve.mutate(input);
   },
 
   // ── Billing ──────────────────────────────────────────────────────────────
@@ -706,6 +740,9 @@ export type {
   CrashReportListInput,
   CrashReportResolveInput,
   CrashReportRow,
+  IdeaListInput,
+  IdeaResolveInput,
+  IdeaRow,
   SubscriptionStatus,
   TicketCategory,
   TicketStatus,

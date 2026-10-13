@@ -49,6 +49,13 @@ export function MapView(_props: {
 	} | null;
 	style?: StyleProp<ViewStyle>;
 	onPick?: ((coords: { lat: number; lng: number }) => void) | null;
+	fitPadding?: {
+		top: number;
+		right: number;
+		bottom: number;
+		left: number;
+	};
+	refitNonce?: number;
 }) {
 	return null;
 }

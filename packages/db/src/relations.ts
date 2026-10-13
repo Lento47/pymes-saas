@@ -34,6 +34,7 @@ import {
 	deliveryOffer,
 	deliveryRating,
 	favorite,
+	idea,
 	membership,
 	merchantLocation,
 	notification,
@@ -468,6 +469,20 @@ export const supportTicketMessageRelations = relations(
 export const crashReportRelations = relations(crashReport, ({ one }) => ({
 	reporter: one(user, {
 		fields: [crashReport.userId],
+		references: [user.id],
+	}),
+}));
+
+/**
+ * An idea, kept beside `crash_report` rather than inside `support_ticket`.
+ *
+ * `user_id` is `SET NULL`, so deleting the account leaves the idea standing with
+ * no submitter. There is deliberately **no `business` relation**, because
+ * `idea.business_id` carries no foreign key.
+ */
+export const ideaRelations = relations(idea, ({ one }) => ({
+	submitter: one(user, {
+		fields: [idea.userId],
 		references: [user.id],
 	}),
 }));

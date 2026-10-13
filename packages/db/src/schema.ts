@@ -35,6 +35,8 @@ import type {
 	CrashSeverity,
 	CrashSource,
 	CrashStatus,
+	IdeaRole,
+	IdeaStatus,
 	LocationPauseReason,
 	Plan,
 	SubscriptionStatus,
@@ -1882,6 +1884,34 @@ export const crashReport = sqliteTable(
 	],
 );
 
+/**
+ * Product feedback from any signed-in user.
+ *
+ * Kept beside `support_ticket` and `crash_report` rather than inside either: a ticket
+ * requires a shop and blocks deleting it, and a crash is a stack trace. `user_id` is
+ * nullable with `SET NULL` so the idea outlives the account. `business_id` has no FK
+ * so an idea never joins `REASON_REQUIRED_ACTIONS`.
+ */
+export const idea = sqliteTable(
+	"idea",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+		businessId: text("business_id"),
+		roleAtSubmit: text("role_at_submit").$type<IdeaRole>().notNull(),
+		subject: text("subject").notNull(),
+		body: text("body").notNull(),
+		status: text("status").$type<IdeaStatus>().notNull().default("OPEN"),
+		resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("idea_status_created").on(table.status, table.createdAt),
+		index("idea_user_created").on(table.userId, table.createdAt),
+	],
+);
+
 // ---------------------------------------------------------------------------
 // Inferred row types
 // ---------------------------------------------------------------------------
@@ -1983,3 +2013,6 @@ export type NewSupportTicketMessage = typeof supportTicketMessage.$inferInsert;
 
 export type CrashReport = typeof crashReport.$inferSelect;
 export type NewCrashReport = typeof crashReport.$inferInsert;
+
+export type Idea = typeof idea.$inferSelect;
+export type NewIdea = typeof idea.$inferInsert;

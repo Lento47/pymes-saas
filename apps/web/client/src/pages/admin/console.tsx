@@ -90,6 +90,7 @@ import {
   adminApi,
   BUSINESS_STATUSES,
   type CrashReportRow,
+  type IdeaRow,
   needsReason,
   type PriceBookRow,
   REASON_MIN_LENGTH,
@@ -114,6 +115,8 @@ import {
   type CrashSort,
   directionLabel,
   flipDirection,
+  IDEA_SORT_OPTIONS,
+  type IdeaSort,
   LIST_SORT_OPTIONS,
   nextSort,
   type SortState,
@@ -1943,6 +1946,17 @@ const CRASH_SEVERITY_TONE: Record<string, BadgeTone> = {
  */
 const CRASH_STATUS_LABEL: Record<string, string> = TICKET_STATUS_LABEL;
 
+const IDEA_STATUS_LABEL: Record<string, string> = {
+  OPEN: "Abierta",
+  CLOSED: "Cerrada",
+};
+
+const IDEA_ROLE_LABEL: Record<string, string> = {
+  CUSTOMER: "Cliente",
+  COURIER: "Repartidor",
+  MERCHANT: "Comercio",
+};
+
 function TicketThread({ ticketId }: { ticketId: string }) {
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
@@ -2655,33 +2669,261 @@ function CrashQueue() {
 }
 
 /**
- * The support tab: two queues, one operator.
+ * One idea, whole — the pane an operator works in.
  *
- * ## The grouping is the feature
+ * No composer, and that is the difference from `TicketThread`: there is nobody on the
+ * other end waiting for an answer. Closing is one button and a required note.
+ */
+function IdeaThread({ ideaId }: { ideaId: string }) {
+  const [note, setNote] = useState("");
+  const [closing, setClosing] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isPending, isError, isFetching, error, refetch } = useQuery({
+    queryKey: ["admin", "idea", ideaId],
+    queryFn: () => adminApi.idea(ideaId),
+  });
+
+  const resolve = useMutation({
+    mutationFn: () =>
+      adminApi.resolveIdea({ id: ideaId, status: "CLOSED", note: note.trim() }),
+    onSuccess: async () => {
+      setClosing(false);
+      setNote("");
+      toast({ title: "Cerrada" });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "idea", ideaId] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "ideas"] }),
+      ]);
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "No se pudo cerrar",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+  if (isError) {
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudo cargar la idea."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+  if (!data) return null;
+
+  const terminal = data.status === "CLOSED";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={STATUS_TONE[data.status] ?? STATUS_TONE.CLOSED}>
+          {IDEA_STATUS_LABEL[data.status] ?? data.status}
+        </Badge>
+        <Badge tone="neutral">{IDEA_ROLE_LABEL[data.roleAtSubmit] ?? data.roleAtSubmit}</Badge>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {shortDate(data.createdAt)}
+        </span>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {data.businessName ?? "Sin comercio"} · {data.userName ?? "Sin cuenta"}
+      </p>
+
+      <p className="text-sm font-medium">{data.subject}</p>
+      <p className="whitespace-pre-wrap text-sm">{data.body}</p>
+
+      {terminal ? (
+        <p className="text-xs text-muted-foreground">
+          Cerrada. La nota del cierre quedó en la auditoría: es el único lugar donde se puede
+          leer por qué se consideró lista.
+        </p>
+      ) : (
+        <div className="space-y-3 border-t pt-4">
+          <Button size="sm" onClick={() => setClosing(true)}>
+            Cerrar
+          </Button>
+        </div>
+      )}
+
+      <AlertDialog open={closing} onOpenChange={(o) => !o && setClosing(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cerrar: {data.subject}</AlertDialogTitle>
+            <AlertDialogDescription>
+              La nota es obligatoria. No hay conversación en esta idea, así que la nota y la
+              entrada de auditoría son los únicos lugares donde queda por qué se cerró.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <SearchTextarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Por qué se cierra (obligatorio)"
+            rows={4}
+            aria-label="Nota de cierre"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={note.trim().length === 0 || resolve.isPending}
+              onClick={() => resolve.mutate()}
+            >
+              Cerrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function IdeaQueue() {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [status, setStatus] = useState<"live" | "all">("live");
+  const [search, setSearch] = useState("");
+  const [order, setOrder] = useState<SortState<IdeaSort>>({
+    sort: "newest",
+    direction: "desc",
+  });
+
+  const page = useAdminPage<IdeaRow>({
+    queryKey: ["admin", "ideas", status, search, order],
+    queryFn: ({ cursor, limit }) =>
+      adminApi.ideas({
+        search: search || undefined,
+        status: status === "live" ? ["OPEN"] : ["OPEN", "CLOSED"],
+        sort: order.sort,
+        cursor,
+        limit,
+      }),
+  });
+
+  const { data, isPending, isSettling, isError, isFetching, error, refetch } = page;
+
+  if (isPending || isSettling) return <Skeleton className="h-72 w-full" />;
+  if (isError) {
+    return (
+      <QueryErrorState
+        error={error}
+        fallback="No se pudieron cargar las ideas."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            page.reset();
+          }}
+          placeholder="Buscar por asunto o descripción"
+          className="max-w-md"
+          aria-label="Buscar ideas"
+        />
+        <TableSort
+          options={IDEA_SORT_OPTIONS}
+          value={order}
+          onChange={(next) => {
+            setOrder(next);
+            page.reset();
+          }}
+          label="ideas"
+          showDirection={false}
+        />
+        <SegmentedControl
+          label="Estado de la idea"
+          value={status}
+          onValueChange={(next) => {
+            if (next === status) return;
+            setStatus(next as "live" | "all");
+            page.reset();
+          }}
+          options={[
+            { value: "live", label: "Abiertas" },
+            { value: "all", label: "Todas" },
+          ]}
+        />
+        <p className="text-xs text-muted-foreground">{data?.total ?? 0} en total</p>
+      </div>
+
+      <TablePager
+        offset={page.offset}
+        total={page.total}
+        pageSize={page.pageSize}
+        atFirstPage={page.atFirstPage}
+        atLastPage={page.atLastPage}
+        onPrevious={page.previous}
+        onNext={page.next}
+        label="ideas"
+      />
+
+      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <div className="space-y-2">
+          {data && data.rows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No hay ideas aquí.
+            </p>
+          ) : null}
+          {data?.rows.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setSelected(r.id)}
+              aria-pressed={selected === r.id}
+              className={`w-full rounded-md border p-3 text-left transition-colors ${
+                selected === r.id
+                  ? "border-amber-500/50 bg-amber-500/5"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              <p className="truncate text-sm font-medium">{r.subject}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {IDEA_ROLE_LABEL[r.roleAtSubmit] ?? r.roleAtSubmit}
+                {r.userName ? ` · ${r.userName}` : ""}
+              </p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {r.businessName ?? "Sin comercio"} · {shortDate(r.createdAt)}
+              </p>
+            </button>
+          ))}
+        </div>
+
+        <div className="min-h-[24rem] rounded-md border p-4">
+          {selected ? (
+            <IdeaThread key={selected} ideaId={selected} />
+          ) : (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              Elegí una idea para leerla.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The support tab: three queues, one operator.
  *
- * `routers/support.ts:39-45` refuses a fifth capability name *"because a fifth capability name
- * would not say anything the existing set does not"*, and a thirteenth tab called "Crashes"
- * would say exactly what the twelfth called "Soporte" does not — while putting the two things
- * that need the same person in two places. An operator opening the console with a merchant
- * waiting and a crash on build 13 is looking at one afternoon's work, and a crash that had to
- * be found in a different tab is a crash that does not get fixed this week.
+ * Tickets, crashes and ideas are one afternoon's work. A thirteenth tab for any of
+ * them is a queue that does not get opened this week. The choice between queues is
+ * component state, not a sub-route — see the crash queue's note on why.
  *
- * ## Component state, not a sub-route, and deliberately
- *
- * `AGENTS.md` requires pathname routing and forbids `#` fragments, and the rest of the console
- * follows it — every tab is a segment. **This is the exception, and the reason is what the two
- * halves have in common: they are not destinations.** There is no page to link to, nothing to
- * bookmark, and no URL worth having: an operator deep-linking to "the crash queue" would be
- * deep-linking to a *view of a tab*, and the moment the queue they wanted was empty the link
- * would carry a filter state nobody chose deliberately. The tabs stay addressable; the choice
- * between two queues inside one of them does not have to be.
- *
- * `tickets` is the default because the tab was called "Soporte" and had one queue, and opening
- * it on an empty crash queue to an operator who came to answer a merchant is the worse first
- * impression of the two.
+ * `tickets` is the default because the tab was called "Soporte" and had one queue.
  */
 function SupportTab() {
-  const [queue, setQueue] = useState<"tickets" | "crashes">("tickets");
+  const [queue, setQueue] = useState<"tickets" | "crashes" | "ideas">("tickets");
 
   return (
     <div className="space-y-4">
@@ -2690,14 +2932,15 @@ function SupportTab() {
         value={queue}
         onValueChange={(next) => {
           if (next === queue) return;
-          setQueue(next as "tickets" | "crashes");
+          setQueue(next as "tickets" | "crashes" | "ideas");
         }}
         options={[
           { value: "tickets", label: "Tickets de comercios" },
           { value: "crashes", label: "Reportes de la app" },
+          { value: "ideas", label: "Ideas" },
         ]}
       />
-      {queue === "tickets" ? <TicketQueue /> : <CrashQueue />}
+      {queue === "tickets" ? <TicketQueue /> : queue === "crashes" ? <CrashQueue /> : <IdeaQueue />}
     </div>
   );
 }

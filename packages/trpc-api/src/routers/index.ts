@@ -10,6 +10,7 @@ import { deliveriesRouter } from "./deliveries";
 import { devicesRouter } from "./devices";
 import { favoritesRouter } from "./favorites";
 import { healthRouter } from "./health";
+import { ideaRouter } from "./idea";
 import { notificationsRouter } from "./notifications";
 import { ordersRouter } from "./orders";
 import { productsRouter } from "./products";
@@ -62,6 +63,12 @@ export const appRouter = router({
 	 * business delete*, which a stack trace must not do. See `routers/crash-report.ts`.
 	 */
 	crashReport: crashReportRouter,
+	/**
+	 * Product feedback from any signed-in user. **Not** under `support`: a ticket is
+	 * a merchant asking about their shop, gated on a membership, and an idea belongs
+	 * to a person who may have no shop at all. See `routers/idea.ts`.
+	 */
+	idea: ideaRouter,
 	// Was `payouts`, a list of settlement runs. The consumer pays the merchant and the
 	// courier directly, so there is nothing to settle and the namespace now holds the
 	// merchant's own subscription. `payouts:read` survives as the capability name —

@@ -57,6 +57,7 @@ export default function DeliveryLayout() {
 				options={{
 					title: t("delivery.board.title"),
 					tabBarAccessibilityLabel: t("delivery.board.title"),
+					tabBarStyle: { display: "none" },
 					tabBarIcon: ({ focused, color }) => (
 						<TabMark focused={focused} name="bicycle-outline" color={color} />
 					),

@@ -111,6 +111,9 @@ export const deliveryDetailSchema = z.object({
 		})
 		.nullable()
 		.optional(),
+	/** Stored road quote. Absent when checkout never measured the trip. */
+	routeDistanceMeters: z.number().nonnegative().nullable().optional(),
+	routeDurationSeconds: z.number().nonnegative().nullable().optional(),
 	orderStatus: z.enum([
 		"PENDING",
 		"ACCEPTED",

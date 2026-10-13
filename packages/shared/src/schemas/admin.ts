@@ -72,6 +72,13 @@ export const ADMIN_ACTIONS = [
 	 */
 	"crash.report",
 	"crash.resolve",
+	/**
+	 * Closing an idea. Audited for the same reason `crash.resolve` is: there is no
+	 * thread on `idea`, so the audit entry plus the note are the entire record of
+	 * why the feedback was considered done. Submitting one is not here — a client
+	 * writing its own row is not an act an operator performed.
+	 */
+	"idea.resolve",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 export const adminActionSchema = z.enum(ADMIN_ACTIONS);

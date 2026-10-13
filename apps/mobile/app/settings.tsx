@@ -530,6 +530,21 @@ export default function Settings() {
 								onPress={() => router.push("/help")}
 							/>
 							<ListRow
+								title={t("ideas.title")}
+								chevron
+								leading={
+									<Ionicons
+										name="bulb-outline"
+										size={icon.control}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								}
+								accessibilityHint={t("ideas.help")}
+								onPress={() => router.push("/ideas")}
+							/>
+							<ListRow
 								title={t("account.safety")}
 								chevron
 								divider={false}
