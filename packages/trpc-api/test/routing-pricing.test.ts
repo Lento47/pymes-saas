@@ -46,15 +46,20 @@ describe("OSRM road routing boundary", () => {
 		const route = await routing.route({ origin, destination, profile: "car" });
 		expect(requested).toContain("/route/v1/driving/-84.08,9.93;-84.09,9.94");
 		expect(requested).toContain("geometries=geojson");
+		expect(requested).toContain("radiuses=250;250");
 		expect(route.distanceMeters).toBe(4_000);
 		expect(route.durationSeconds).toBe(720);
 		expect(route.geometry.coordinates[1]).toEqual([-84.085, 9.935]);
 	});
 
 	test("preserves unreachable matrix cells without inventing a straight-line ETA", async () => {
+		let requested = "";
 		const routing = createOsrmRouting({
 			baseUrl: endpoint,
-			fetcher: async () => response({ code: "Ok", durations: [[180, null]] }),
+			fetcher: async (url) => {
+				requested = String(url);
+				return response({ code: "Ok", durations: [[180, null]] });
+			},
 		});
 		await expect(
 			routing.matrix({
@@ -63,6 +68,33 @@ describe("OSRM road routing boundary", () => {
 				profile: "car",
 			}),
 		).resolves.toEqual([[180, null]]);
+		expect(requested).toContain("radiuses=250;250;250");
+	});
+
+	test("refuses a road route that starts far from the selected pin", async () => {
+		const routing = createOsrmRouting({
+			baseUrl: endpoint,
+			fetcher: async () =>
+				response({
+					code: "Ok",
+					routes: [
+						{
+							distance: 4_000,
+							duration: 720,
+							geometry: {
+								type: "LineString",
+								coordinates: [
+									[origin.lng, origin.lat + 0.003],
+									[destination.lng, destination.lat],
+								],
+							},
+						},
+					],
+				}),
+		});
+		await expect(
+			routing.route({ origin, destination, profile: "car" }),
+		).rejects.toThrow(RoutingUnavailableError);
 	});
 
 	test("rejects bad coordinates, unsupported vehicle graphs and provider output", async () => {

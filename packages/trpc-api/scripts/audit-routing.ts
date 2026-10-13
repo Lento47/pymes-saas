@@ -13,7 +13,10 @@ const trips: { name: string; origin: GeoPoint; destination: GeoPoint }[] = [
 	{
 		name: "Limón coastal",
 		origin: { lat: 9.9912, lng: -83.0355 },
-		destination: { lat: 9.9852, lng: -83.0247 },
+		// The earlier city-centre destination snapped 320 m to a road. This
+		// public, road-aligned point lets the audit check coverage without treating
+		// a route from the wrong endpoint as a valid delivery quote.
+		destination: { lat: 9.987202, lng: -83.026804 },
 	},
 	{
 		name: "Liberia to Tamarindo",

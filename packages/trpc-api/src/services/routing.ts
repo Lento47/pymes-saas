@@ -38,8 +38,9 @@ export class RoutingUnavailableError extends Error {
 
 const MAX_MATRIX_POINTS = 16;
 const MAX_ROUTE_POINTS = 10_000;
-// A pin can be off-road, but a route snapped farther away is not the requested trip.
-const MAX_ENDPOINT_SNAP_METERS = 5_000;
+// A pin can be inside a building, but a road hundreds of metres away is not
+// the selected pickup or drop-off. OSRM also applies this as its search radius.
+const MAX_ENDPOINT_SNAP_METERS = 250;
 const DEFAULT_TIMEOUT_MS = 3_000;
 
 function validPoint(point: GeoPoint): boolean {
@@ -228,7 +229,7 @@ export function createOsrmRouting(input: {
 			assertProfile(profile);
 			assertPoints([origin, destination]);
 			const data = await request(
-				`route/v1/driving/${pair(origin)};${pair(destination)}?overview=full&geometries=geojson&steps=false`,
+				`route/v1/driving/${pair(origin)};${pair(destination)}?overview=full&geometries=geojson&steps=false&radiuses=${MAX_ENDPOINT_SNAP_METERS};${MAX_ENDPOINT_SNAP_METERS}`,
 			);
 			return routeOf(data, origin, destination, "osrm");
 		},
@@ -240,8 +241,9 @@ export function createOsrmRouting(input: {
 			const targets = destinations
 				.map((_, index) => origins.length + index)
 				.join(";");
+			const radiuses = points.map(() => MAX_ENDPOINT_SNAP_METERS).join(";");
 			const data = await request(
-				`table/v1/driving/${points.map(pair).join(";")}?sources=${sources}&destinations=${targets}`,
+				`table/v1/driving/${points.map(pair).join(";")}?sources=${sources}&destinations=${targets}&radiuses=${radiuses}`,
 			);
 			return durationsOf(data.durations, origins.length, destinations.length);
 		},
