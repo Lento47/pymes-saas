@@ -24,6 +24,15 @@ Containers service, so check account billing and measure active hours before
 leaving it enabled. The binding alone does not enable road quotes or pricing;
 both routing flags remain off until route quality and latency pass acceptance.
 
+Production deployment check (2026-10-12): routing Worker version
+`38ab4861-72df-48b5-b71e-bfe1bf5a9a3c` and API version
+`41dc4203-64ab-41ba-bc00-4627eecd2f84` were deployed from commit
+`7461c6fd`. Through a temporary remote service-binding probe, a San José sample
+returned a 2,109 m / 277.2 s road route, the matching matrix returned 277.2 s,
+and an unsupported path returned HTTP 400. `/health` on the production API
+returned `db: ok`. The probe was removed afterward. This checks connectivity,
+not the coverage, map display, or tariff acceptance below.
+
 1. Enable `ROUTING_ENABLED=true` in staging with `ROUTE_FEE_ENABLED` unset. Checkout
    keeps the shop's fixed delivery charge, but a successful route supplies road
    distance, driving time, and geometry. If the provider fails or a saved pin lacks
