@@ -370,6 +370,8 @@ export default function ShopSettings() {
 										help={t("biz.settings.photo.help")}
 										radiusToken="full"
 										aspect={[1, 1]}
+										businessId={businessId || undefined}
+										purpose="business-logo"
 									>
 										{/*
 										    `action`, not `primary`, and the difference is whether this letter is
@@ -399,6 +401,8 @@ export default function ShopSettings() {
 										radiusToken="md"
 										aspect={[16, 9]}
 										previewStyle={styles.coverPreview}
+										businessId={businessId || undefined}
+										purpose="business-logo"
 									>
 										<Ionicons
 											name="image-outline"

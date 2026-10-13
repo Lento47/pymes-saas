@@ -159,6 +159,64 @@ function resolveMessage(
 }
 
 /**
+ * A plan-quota refusal, read off the error's own payload.
+ *
+ * `QuotaExceededError` travels with `code`/`domainCode` of plain `FORBIDDEN`
+ * (`trpc.ts` derives `domainCode` from `DomainError.code`), so no table entry can
+ * name it — and a generic "no tienes acceso" would be a lie told to a merchant who
+ * is simply full. The payload carries everything the sentence needs
+ * (`messageKey`, `limit`, `max`, `plan`, `upgradeTo`), so this recognises exactly
+ * that shape and nothing else: `details.error === "QUOTA_EXCEEDED"` with a known
+ * key and a labelled limit. Anything else falls through to the normal lookup, and
+ * a `messageKey` the dictionary does not know is refused here rather than passed
+ * to `t()`, which must never be handed a key that is not a `MessageKey`.
+ *
+ * Checked before the call site's overrides: a quota refusal is unambiguous — no
+ * screen's generic `FORBIDDEN` sentence says more than the quota's own.
+ */
+const QUOTA_MESSAGE_KEYS = [
+	"billing.quota.upgrade",
+	"billing.quota.contact",
+	"billing.quota.planRequired",
+] as const;
+
+const QUOTA_LIMIT_KEYS: Record<string, MessageKey> = {
+	products: "billing.quota.limit.products",
+	locations: "billing.quota.limit.locations",
+	staffAccounts: "billing.quota.limit.staffAccounts",
+	activePromotions: "billing.quota.limit.activePromotions",
+	storageBytes: "billing.quota.limit.storageBytes",
+	imagesPerProduct: "billing.quota.limit.imagesPerProduct",
+	optionGroupsPerProduct: "billing.quota.limit.optionGroupsPerProduct",
+	optionsPerGroup: "billing.quota.limit.optionsPerGroup",
+	analyticsDays: "billing.quota.limit.analyticsDays",
+	expressPerWeek: "billing.quota.limit.expressPerWeek",
+};
+
+function quotaRefusal(details: unknown): {
+	key: MessageKey;
+	params: TranslateParams;
+	limitKey: MessageKey;
+} | null {
+	if (!details || typeof details !== "object") return null;
+	const shaped = details as Record<string, unknown>;
+	if (shaped.error !== "QUOTA_EXCEEDED") return null;
+	if (
+		typeof shaped.messageKey !== "string" ||
+		!(QUOTA_MESSAGE_KEYS as readonly string[]).includes(shaped.messageKey)
+	)
+		return null;
+	if (typeof shaped.limit !== "string") return null;
+	const limitKey = QUOTA_LIMIT_KEYS[shaped.limit];
+	if (!limitKey) return null;
+	const params: TranslateParams = {};
+	if (typeof shaped.max === "number") params.max = shaped.max;
+	if (typeof shaped.plan === "string") params.plan = shaped.plan;
+	if (typeof shaped.upgradeTo === "string") params.upgradeTo = shaped.upgradeTo;
+	return { key: shaped.messageKey as MessageKey, params, limitKey };
+}
+
+/**
  * The sentence a screen renders, as a key plus the parameters that key needs.
  *
  * `t()` is called with both, which is what makes an override whose copy has a placeholder
@@ -207,6 +265,7 @@ export function useApiFailure(
 	// The key and the parameters its copy needs are resolved together, so the `t()` below
 	// cannot end up with a key whose placeholder has nothing to fill it with.
 	const sentence = messageFor(failure, overrides);
+	const quota = quotaRefusal(failure.details);
 
 	useEffect(() => {
 		if (unauthorized) void refresh();
@@ -214,7 +273,8 @@ export function useApiFailure(
 
 	return {
 		failure,
-		message: error ? t(sentence.key, sentence.params) : "",
+		message:
+			!error ? "" : quota ? t(quota.key, { ...quota.params, limit: t(quota.limitKey) }) : t(sentence.key, sentence.params),
 		supportLine: failure.requestId
 			? t("state.error.requestId", { requestId: failure.requestId })
 			: null,

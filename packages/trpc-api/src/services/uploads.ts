@@ -1,15 +1,21 @@
 import { createDb, upload as uploadTable } from "@pymeshub/db";
 import {
+	effectivePlan,
 	MAX_UPLOAD_BYTES,
 	newId,
+	PLAN_LIMITS,
+	roleCan,
 	type UploadCreateInput,
 	type UploadRef,
+	upgradeTarget,
 } from "@pymeshub/shared";
-import { eq } from "drizzle-orm";
+import { eq, sum } from "drizzle-orm";
 
 import type { Env } from "../env";
-import { ValidationError } from "../errors";
+import { loadBilling } from "../context";
+import { ForbiddenError, ValidationError } from "../errors";
 import type { UserContext } from "./helpers";
+import { QuotaExceededError } from "./plan-limits";
 
 /**
  * Storing a picture, and the one place that decides what a picture may be.
@@ -58,6 +64,47 @@ export async function create(
 		throw new ValidationError(PHOTO_RULE, { field: "mimeType" });
 	}
 
+	/**
+	 * The tenant this picture counts against, if any. A shop picture uploaded by
+	 * somebody who cannot write that shop's catalog is somebody else's storage bill,
+	 * so the membership and the `products:write` capability are checked before a byte
+	 * moves - the same gate product writes go through, minus the procedure wrapper,
+	 * because this router is `protectedProcedure` and names its tenant per upload.
+	 */
+	let businessId: string | null = null;
+	if (input.businessId) {
+		const membership = ctx.memberships.find(
+			(entry) => entry.businessId === input.businessId,
+		);
+		if (!membership || !roleCan(membership.role, "products:write")) {
+			throw new ForbiddenError();
+		}
+		const billing = await loadBilling(ctx.db, input.businessId, new Date());
+		const plan = effectivePlan(billing.plan, billing.status);
+		const [usage] = await ctx.db
+			.select({ total: sum(uploadTable.sizeBytes) })
+			.from(uploadTable)
+			.where(eq(uploadTable.businessId, input.businessId));
+		const used = Number(usage?.total ?? 0);
+		const cap = PLAN_LIMITS[plan].storageBytes;
+		// Bytes, not rows: the refusal is when the new total would exceed the cap, so
+		// a shop may fill exactly to it. `checkCount`'s `current >= cap` is the row
+		// version of the same boundary and does not apply to a running total.
+		if (used + bytes.byteLength > cap) {
+			throw new QuotaExceededError({
+				resourceType: "almacenamiento",
+				current: used,
+				limit: cap,
+				plan,
+				limitName: "storageBytes",
+				upgradeTo:
+					upgradeTarget(plan, "storageBytes", used + bytes.byteLength)?.plan ??
+					null,
+			});
+		}
+		businessId = input.businessId;
+	}
+
 	const id = newId("upload");
 	const path = `/files/${id}`;
 
@@ -87,6 +134,8 @@ export async function create(
 		mimeType: input.mimeType,
 		sizeBytes: bytes.byteLength,
 		ownerUserId: ctx.user.id,
+		businessId,
+		purpose: input.purpose ?? null,
 		createdAt: new Date(),
 	});
 

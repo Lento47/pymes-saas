@@ -35,10 +35,28 @@ export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 /** Base64 of `MAX_UPLOAD_BYTES`, rounded up to a whole group, plus padding slack. */
 export const MAX_UPLOAD_BASE64_CHARS = Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 4;
 
+export const UPLOAD_PURPOSES = [
+	"product",
+	"promotion",
+	"business-logo",
+	"category",
+	"profile",
+] as const;
+export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
+
 export const uploadCreateInput = z.object({
 	mimeType: z.enum(UPLOAD_MIME_TYPES),
-	/** Raw base64 — no `data:` prefix. The API decodes and measures the bytes. */
+	/** Raw base64 - no `data:` prefix. The API decodes and measures the bytes. */
 	base64: z.string().min(1).max(MAX_UPLOAD_BASE64_CHARS),
+	/**
+	 * The tenant this picture belongs to, when it belongs to one. The uploader sends
+	 * it because the upload happens on pick — before any product or promotion row
+	 * exists to resolve it from (`components/photo-picker.tsx`). Absent for avatars
+	 * and courier vehicle photos, which no plan counts.
+	 */
+	businessId: z.string().optional(),
+	/** What the picture is for. Stored, so the bytes stay attributable. */
+	purpose: z.enum(UPLOAD_PURPOSES).optional(),
 });
 export type UploadCreateInput = z.infer<typeof uploadCreateInput>;
 

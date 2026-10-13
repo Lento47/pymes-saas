@@ -514,6 +514,8 @@ function Fields({
 							uploadLabel={t("biz.products.photo.upload")}
 							cameraLabel={t("biz.products.photo.camera")}
 							help={t("biz.promotions.photo.help")}
+							businessId={businessId || undefined}
+							purpose="promotion"
 						/>
 					</View>
 				</AnimateIn>

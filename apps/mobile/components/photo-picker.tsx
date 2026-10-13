@@ -3,6 +3,7 @@ import {
 	MAX_UPLOAD_BYTES,
 	UPLOAD_MIME_TYPES,
 	type UploadMimeType,
+	type UploadPurpose,
 } from "@pymeshub/shared";
 import { useMutation } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
@@ -111,6 +112,14 @@ type PhotoPickerProps = {
 	 * promotion banner is 16:9.
 	 */
 	aspect?: [number, number];
+	/**
+	 * The tenant this picture counts against, when it belongs to one. Omitted for
+	 * avatars and courier vehicle photos, which no plan counts — the upload then
+	 * behaves exactly as it always did.
+	 */
+	businessId?: string;
+	/** What the picture is for. Stored, so the bytes stay attributable. */
+	purpose?: UploadPurpose;
 };
 
 /**
@@ -149,6 +158,8 @@ export function PhotoPicker({
 	uploadLabel,
 	cameraLabel,
 	aspect = [1, 1],
+	businessId,
+	purpose,
 }: PhotoPickerProps) {
 	const { t } = useT();
 	const { colors } = useTheme();
@@ -222,6 +233,8 @@ export function PhotoPicker({
 			const created = await create.mutateAsync({
 				mimeType,
 				base64: asset.base64,
+				...(businessId ? { businessId } : {}),
+				...(purpose ? { purpose } : {}),
 			});
 			setPendingUri(null);
 			onChange(created.path);

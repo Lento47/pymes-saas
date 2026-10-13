@@ -1383,4 +1383,19 @@ export const business = {
 	"delivery.motion.slice.expand": "Ver entregas recientes",
 	"delivery.motion.slice.collapse": "Ocultar entregas recientes",
 	"delivery.motion.slice.empty": "Todavía no hay entregas terminadas",
+	"billing.quota.upgrade":
+		"Tu plan {plan} permite un máximo de {max} {limit}. Actualiza a {upgradeTo} para agregar más.",
+	"billing.quota.contact":
+		"Tu plan {plan} permite un máximo de {max} {limit}. Comunícate con nosotros para ampliarlo.",
+	"billing.quota.planRequired": "Esta función necesita un plan de pago.",
+	"billing.quota.limit.products": "productos",
+	"billing.quota.limit.locations": "sucursales",
+	"billing.quota.limit.staffAccounts": "cuentas de equipo",
+	"billing.quota.limit.activePromotions": "promociones activas",
+	"billing.quota.limit.storageBytes": "almacenamiento",
+	"billing.quota.limit.imagesPerProduct": "imágenes por producto",
+	"billing.quota.limit.optionGroupsPerProduct": "grupos de opciones",
+	"billing.quota.limit.optionsPerGroup": "opciones por grupo",
+	"billing.quota.limit.analyticsDays": "días de analítica",
+	"billing.quota.limit.expressPerWeek": "entregas express por semana",
 } as const;

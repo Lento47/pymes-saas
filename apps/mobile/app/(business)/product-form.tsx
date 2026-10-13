@@ -730,6 +730,8 @@ function Fields({
 							uploadLabel={t("biz.products.photo.upload")}
 							cameraLabel={t("biz.products.photo.camera")}
 							help={t("biz.products.photo.module.help")}
+							businessId={businessId || undefined}
+							purpose="product"
 						/>
 					</ScreenSection>
 				</AnimateIn>

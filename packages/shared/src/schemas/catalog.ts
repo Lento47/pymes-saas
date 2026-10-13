@@ -66,7 +66,7 @@ export const productOptionGroupInput = z
 		minSelect: z.number().int().min(0).max(10).default(0),
 		maxSelect: z.number().int().min(1).max(10).default(1),
 		sortOrder: z.number().int().min(0).max(999).default(0),
-		options: z.array(productOptionInput).min(1).max(30),
+		options: z.array(productOptionInput).min(1).max(20),
 	})
 	.refine(
 		(group) => group.kind === "SINGLE" || group.maxSelect >= group.minSelect,
@@ -97,7 +97,7 @@ const productFields = z.object({
 	description: z.string().trim().max(600).optional(),
 	categoryId: z.string().optional(),
 	imageUrl: imageUrlSchema.optional(),
-	images: z.array(imageUrlSchema).max(8).default([]),
+	images: z.array(imageUrlSchema).max(10).default([]),
 	priceMinor: moneyMinorSchema,
 	compareAtPriceMinor: moneyMinorSchema.nullable().optional(),
 	sku: z.string().trim().max(60).optional(),
@@ -136,9 +136,29 @@ export type ProductCreateInput = z.infer<typeof productCreateInput>;
  * touching `compareAtPriceMinor` must not be refused because the *stored*
  * compare-at is now too low — a partial update is validated against itself, and the
  * API compares the result to the stored row before writing.
+ *
+ * The `.extend` below is load-bearing rather than tidy. `partial()` keeps a field's
+ * `.default()`: an absent `images`, `tags` or `optionGroups` parses to `[]`, an absent
+ * `status` to `"DRAFT"`, `stockQuantity` to `0`, `isFeatured`/`trackInventory` to
+ * `false` — and the service cannot tell "untouched" from "cleared". Every update that
+ * omitted those fields rewrote them: a price edit wiped the gallery, the tags and all
+ * option groups, and reset the product to `DRAFT` with zero stock. The override
+ * re-declares each defaulted field as a bare optional, so absent stays `undefined` and
+ * `assign` skips it, while an explicit `[]` still means "clear". The caps match the
+ * create side (`images` 10 and `options` 20 are the BUSINESS ceilings the plan, not
+ * zod, refuses under).
  */
 export const productUpdateInput = productFields
 	.partial()
+	.extend({
+		status: z.enum(PRODUCT_STATUSES).optional(),
+		isFeatured: z.boolean().optional(),
+		trackInventory: z.boolean().optional(),
+		stockQuantity: z.number().int().min(0).max(1_000_000).optional(),
+		images: z.array(imageUrlSchema).max(10).optional(),
+		tags: z.array(z.string().trim().max(30)).max(12).optional(),
+		optionGroups: z.array(productOptionGroupInput).max(6).optional(),
+	})
 	.refine(
 		(product) =>
 			product.compareAtPriceMinor == null ||

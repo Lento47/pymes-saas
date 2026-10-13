@@ -301,6 +301,36 @@ export async function create(
 	 */
 	if (input.trackInventory) checkFeature(ctx, "inventoryTracking");
 
+	/**
+	 * The plan's image and option caps, counted on the **result**: `imageUrl` plus the
+	 * gallery is the picture set the product will carry, and `optionGroups` is replaced
+	 * wholesale below. `checkCount` refuses `current >= cap` where `current` is "what is
+	 * already there", so the count passed is one below the result — a product landing
+	 * exactly on its cap is allowed, and the one over it reports the cap it hit.
+	 */
+	const imageCount =
+		(input.imageUrl ? 1 : 0) + input.images.length;
+	checkCount({
+		ctx,
+		limitName: "imagesPerProduct",
+		resourceType: "imágenes por producto",
+		current: imageCount - 1,
+	});
+	checkCount({
+		ctx,
+		limitName: "optionGroupsPerProduct",
+		resourceType: "grupos de opciones",
+		current: input.optionGroups.length - 1,
+	});
+	checkCount({
+		ctx,
+		limitName: "optionsPerGroup",
+		resourceType: "opciones por grupo",
+		current:
+			Math.max(...input.optionGroups.map((group) => group.options.length), 0) -
+			1,
+	});
+
 	const now = new Date();
 	const id = newId("product");
 
@@ -390,6 +420,43 @@ export async function update(
 	assign(patch, "stockQuantity", input.stockQuantity);
 	assign(patch, "prepTimeMinutes", input.prepTimeMinutes);
 	assign(patch, "tags", input.tags);
+
+	/**
+	 * The plan's image and option caps, against the **result** — the same boundary as
+	 * `create`, but only for the fields this write touches. A price-only edit on an
+	 * at-cap product is not refused, and neither is a legacy product that already sits
+	 * over its plan's cap until the merchant edits the pictures or the options. The
+	 * minus-one is the same "already there" framing `create` uses: landing exactly on
+	 * the cap is allowed.
+	 */
+	if (input.imageUrl !== undefined || input.images !== undefined) {
+		const nextImageUrl = input.imageUrl ?? before.imageUrl;
+		const nextImages = input.images ?? before.images ?? [];
+		checkCount({
+			ctx,
+			limitName: "imagesPerProduct",
+			resourceType: "imágenes por producto",
+			current: (nextImageUrl ? 1 : 0) + nextImages.length - 1,
+		});
+	}
+	if (input.optionGroups) {
+		checkCount({
+			ctx,
+			limitName: "optionGroupsPerProduct",
+			resourceType: "grupos de opciones",
+			current: input.optionGroups.length - 1,
+		});
+		checkCount({
+			ctx,
+			limitName: "optionsPerGroup",
+			resourceType: "opciones por grupo",
+			current:
+				Math.max(
+					...input.optionGroups.map((group) => group.options.length),
+					0,
+				) - 1,
+		});
+	}
 
 	const statements: BatchItem<"sqlite">[] = [
 		ctx.db

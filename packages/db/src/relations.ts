@@ -114,8 +114,10 @@ export const businessRelations = relations(business, ({ one, many }) => ({
 	}),
 	carts: many(cart),
 	deliveries: many(delivery),
-	/** The shop's support questions, newest first — the order the list screen reads. */
+	/** The shop's support questions, newest first - the order the list screen reads. */
 	supportTickets: many(supportTicket),
+	/** Stored objects attributed to this tenant for the storage cap. */
+	uploads: many(upload),
 }));
 
 /** A subscription's price history, kept so a raise can be explained after the fact. */
@@ -406,6 +408,10 @@ export const uploadRelations = relations(upload, ({ one }) => ({
 	owner: one(user, {
 		fields: [upload.ownerUserId],
 		references: [user.id],
+	}),
+	business: one(business, {
+		fields: [upload.businessId],
+		references: [business.id],
 	}),
 }));
 

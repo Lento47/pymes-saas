@@ -1687,9 +1687,24 @@ export const upload = sqliteTable(
 		ownerUserId: text("owner_user_id").references(() => user.id, {
 			onDelete: "set null",
 		}),
+		/**
+		 * The tenant whose plan counts these bytes, when there is one. Nullable because
+		 * the column postdates every existing row (backfilled in
+		 * `migrations/0029_upload_business.sql` where a path join can attribute it) and
+		 * because avatars and courier vehicle photos belong to no shop. `set null` on
+		 * business delete for the same reason the row outlives its uploader: the bytes
+		 * are still billed storage until the object itself is removed.
+		 */
+		businessId: text("business_id").references(() => business.id, {
+			onDelete: "set null",
+		}),
+		purpose: text("purpose"),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
-	(table) => [uniqueIndex("upload_key_unique").on(table.key)],
+	(table) => [
+		uniqueIndex("upload_key_unique").on(table.key),
+		index("upload_business_id").on(table.businessId),
+	],
 );
 
 /**
