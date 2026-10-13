@@ -322,6 +322,10 @@ enabled = true
 [env.staging]
 name = "pymeshub-api-staging"
 
+[[env.staging.services]]
+binding = "ROUTING_SERVICE"
+service = "pymeshub-routing-staging"
+
 # The hostname this Worker is reached at, bound as a Cloudflare **custom domain** so that
 # the deploy creates the DNS record and the route with it. `AUTH_URL` below names the same
 # origin, `CORS_ORIGINS` allows it as a browser origin, and the smoke test in

@@ -33,7 +33,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import type { Env } from "../env";
 import { createLogger } from "../logging";
 import { batchOf } from "./helpers";
-import { createRouting, type GeoPoint } from "./routing";
+import { createConfiguredRouting, type GeoPoint } from "./routing";
 
 const PRESENCE_FRESH_MS = 2 * 60 * 1000;
 const OFFER_TTL_MS = 2 * 60 * 1000;
@@ -420,13 +420,11 @@ async function candidateFor(
 		const closest = rankByAffinityV2(candidates)
 			.filter((candidate) => candidate.livePoint)
 			.slice(0, 15);
-		if (env.ROUTING_BASE_URL && closest.length > 0) {
+		const routing = createConfiguredRouting(env);
+		if (routing && closest.length > 0) {
 			const startedAt = Date.now();
 			try {
-				const durations = await createRouting({
-					baseUrl: env.ROUTING_BASE_URL,
-					provider: env.ROUTING_PROVIDER,
-				}).matrix({
+				const durations = await routing.matrix({
 					origins: closest.map((candidate) => candidate.livePoint as GeoPoint),
 					destinations: [origin],
 					profile: "car",
@@ -453,7 +451,7 @@ async function candidateFor(
 					candidateCount: closest.length,
 				});
 			}
-		} else if (!env.ROUTING_BASE_URL && closest.length > 0) {
+		} else if (!routing && closest.length > 0) {
 			routingLog.warn("routing.matrix.degraded", {
 				reason: "unconfigured",
 				candidateCount: closest.length,

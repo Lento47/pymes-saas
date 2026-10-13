@@ -7,7 +7,11 @@ import type { Env } from "../env";
 import { ConflictError, ValidationError } from "../errors";
 import { EXPRESS_V1, routeFeeMinor } from "./delivery-pricing";
 import type { UserContext } from "./helpers";
-import { createRouting, type GeoPoint, type RouteResult } from "./routing";
+import {
+	createConfiguredRouting,
+	type GeoPoint,
+	type RouteResult,
+} from "./routing";
 
 const QUOTE_TTL_MS = 2 * 60 * 1000;
 type QuoteRow = typeof quoteTable.$inferSelect;
@@ -136,7 +140,8 @@ export async function createRoadQuote(
 		input.pricingVersion === EXPRESS_V1.version
 			? ctx.logger.error
 			: ctx.logger.warn;
-	if (!ctx.env.ROUTING_BASE_URL) {
+	const routing = createConfiguredRouting(ctx.env);
+	if (!routing) {
 		logFailure("routing.quote.unavailable", {
 			reason: "unconfigured",
 			pricingVersion: input.pricingVersion,
@@ -147,10 +152,7 @@ export async function createRoadQuote(
 	let route: RouteResult;
 	const startedAt = Date.now();
 	try {
-		route = await createRouting({
-			baseUrl: ctx.env.ROUTING_BASE_URL,
-			provider: ctx.env.ROUTING_PROVIDER,
-		}).route({
+		route = await routing.route({
 			origin: input.consistentOrigin,
 			destination: input.consistentDestination,
 			profile: "car",

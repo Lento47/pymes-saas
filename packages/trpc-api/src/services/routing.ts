@@ -1,4 +1,5 @@
 import { haversineKm } from "@pymeshub/db/geo";
+import type { Env } from "../env";
 
 /** A road-routing boundary. No caller may treat a straight-line distance as a priced route. */
 export type GeoPoint = { lat: number; lng: number };
@@ -340,4 +341,22 @@ export function createRouting(input: {
 		return createOsrmRouting(input);
 	if (input.provider === "valhalla") return createValhallaRouting(input);
 	throw new RoutingUnavailableError("Unsupported routing provider");
+}
+
+/** Prefer the private service binding; retain the HTTPS origin for other environments. */
+export function createConfiguredRouting(env: Env): RoutingPort | null {
+	const service = env.ROUTING_SERVICE;
+	if (service) {
+		return createOsrmRouting({
+			baseUrl: "https://routing.internal/",
+			// Cold container starts can take longer than an already-warm route request.
+			timeoutMs: 10_000,
+			fetcher: (url, init) => service.fetch(new Request(url, init)),
+		});
+	}
+	if (!env.ROUTING_BASE_URL) return null;
+	return createRouting({
+		baseUrl: env.ROUTING_BASE_URL,
+		provider: env.ROUTING_PROVIDER,
+	});
 }

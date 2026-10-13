@@ -80,6 +80,8 @@ export type Env = {
 	CORS_ORIGINS?: string;
 	/** Operator-controlled HTTPS routing endpoint; never a public demo server. */
 	ROUTING_BASE_URL?: string;
+	/** Private, staging-only Worker service binding to the routing container. */
+	ROUTING_SERVICE?: Fetcher;
 	/** `osrm` (default) or `valhalla`; a typo fails closed when routing is used. */
 	ROUTING_PROVIDER?: string;
 	/** Fetch road geometry without changing the legacy delivery fee. */

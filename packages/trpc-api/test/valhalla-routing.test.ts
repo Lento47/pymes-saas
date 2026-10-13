@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-
+import type { Env } from "../src/env";
 import {
+	createConfiguredRouting,
 	createRouting,
 	createValhallaRouting,
 	RoutingUnavailableError,
@@ -8,6 +9,52 @@ import {
 
 const origin = { lat: 9.93, lng: -84.08 };
 const destination = { lat: 9.94, lng: -84.09 };
+
+test("private routing binding supplies road routes and matrices without a public URL", async () => {
+	const paths: string[] = [];
+	const service = {
+		fetch: async (request: Request) => {
+			const url = new URL(request.url);
+			paths.push(url.pathname);
+			if (url.pathname.startsWith("/table/"))
+				return Response.json({ code: "Ok", durations: [[120]] });
+			return Response.json({
+				code: "Ok",
+				routes: [
+					{
+						distance: 2_000,
+						duration: 120,
+						geometry: {
+							type: "LineString",
+							coordinates: [
+								[origin.lng, origin.lat],
+								[destination.lng, destination.lat],
+							],
+						},
+					},
+				],
+			});
+		},
+	};
+	const routing = createConfiguredRouting({
+		ROUTING_SERVICE: service,
+	} as unknown as Env);
+	if (!routing) throw new Error("Routing binding was ignored");
+	const route = await routing.route({ origin, destination, profile: "car" });
+	expect(route.provider).toBe("osrm");
+	expect(route.distanceMeters).toBe(2_000);
+	await expect(
+		routing.matrix({
+			origins: [origin],
+			destinations: [destination],
+			profile: "car",
+		}),
+	).resolves.toEqual([[120]]);
+	expect(paths).toEqual([
+		`/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}`,
+		`/table/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}`,
+	]);
+});
 
 test("Valhalla routes motorcycles and validates OSRM-format road geometry", async () => {
 	let routeRequest: { path: string; method: string; body: unknown } | null =

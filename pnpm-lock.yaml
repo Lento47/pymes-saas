@@ -531,6 +531,25 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  apps/routing:
+    dependencies:
+      '@cloudflare/containers':
+        specifier: ^0.1.0
+        version: 0.1.1
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^5.20260920.1
+        version: 5.20260924.1
+      '@pymeshub/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: ^4.135.0
+        version: 4.137.0(@cloudflare/workers-types@5.20260924.1)(@types/node@26.6.2)(bufferutil@4.1.0)
+
   apps/web:
     dependencies:
       '@hookform/resolvers':
@@ -1877,6 +1896,9 @@ packages:
     resolution: {integrity: sha512-2QMzmZje8wsp5Bdy8jgNtVdFxEZfz3V6wNY/zu6c1VU0Esqlex72m34lXKoR8fu9cdxvlYLLspkfzJGKH5ZGuw==}
     peerDependencies:
       react: '>=16'
+
+  '@cloudflare/containers@0.1.1':
+    resolution: {integrity: sha512-YTdobRTnTlUOUPMFemufH367A9Z8pDfZ+UboYMLbGpO0VlvEXZDiioSmXPQMHld2vRtkL31mcRii3bcbQU6fdw==}
 
   '@cloudflare/kv-asset-handler@0.5.0':
     resolution: {integrity: sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg==}
@@ -14776,6 +14798,8 @@ snapshots:
       '@ibm/telemetry-js': 1.11.0
       prop-types: 15.8.1
       react: 19.3.0
+
+  '@cloudflare/containers@0.1.1': {}
 
   '@cloudflare/kv-asset-handler@0.5.0': {}
 
