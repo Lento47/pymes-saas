@@ -348,6 +348,7 @@ routes = [{ pattern = "api-staging.pymeshub.lat", custom_domain = true }]
 ENVIRONMENT = "staging"
 API_VERSION = "0.2.0"
 LOG_LEVEL = "info"
+ROUTING_ENABLED = "true"
 AUTH_URL = "https://api-staging.pymeshub.lat"
 CORS_ORIGINS = "https://staging.pymeshub.lat"
 SUPABASE_URL = "https://vnrhkxruvfffkumsnode.supabase.co"
