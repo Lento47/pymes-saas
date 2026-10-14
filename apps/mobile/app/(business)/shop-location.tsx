@@ -1,6 +1,7 @@
 import { OFFER_RADIUS_KM } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Location from "expo-location";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Platform, useWindowDimensions, View } from "react-native";
 
@@ -54,6 +55,9 @@ export default function ShopLocation() {
 	const cache = useQueryClient();
 	const toast = useToast();
 	const scope = useMerchantScope();
+	const { businessId: requestedBusinessId } = useLocalSearchParams<{
+		businessId?: string;
+	}>();
 	const { height, fontScale } = useWindowDimensions();
 	const mapHeight = Math.min(
 		480,
@@ -64,8 +68,8 @@ export default function ShopLocation() {
 	);
 
 	/**
-	 * The shop, resolved the way `shop-settings.tsx` and `locations.tsx` both resolve it:
-	 * the operator's chosen branch, else the first shop they actually own.
+	 * The guide passes the business it is explaining. Otherwise use the selected
+	 * branch, then the first shop the operator actually owns.
 	 *
 	 * `scope.businessId` is optional by type, so it is used as a *preference* and not as the
 	 * answer. A merchant with the provider mounted but no branch selected would otherwise
@@ -74,7 +78,9 @@ export default function ShopLocation() {
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
 	const owned = (shops.data ?? []).filter((one) => one.role !== "COURIER");
 	const shop =
-		owned.find((one) => one.businessId === scope.businessId) ?? owned[0];
+		owned.find((one) => one.businessId === requestedBusinessId) ??
+		owned.find((one) => one.businessId === scope.businessId) ??
+		owned[0];
 	const businessId = shop?.businessId ?? "";
 
 	const settings = useQuery(

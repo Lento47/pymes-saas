@@ -386,10 +386,14 @@ export default function MerchantHome() {
 		status === "loading" ||
 			(signedIn &&
 				(shops.isPending ||
-					(!!businessId && (locations.isPending || home.isPending)))),
+					(!!businessId &&
+						(locations.isPending || (!!locationId && home.isPending))))),
 	);
 	const failed = shops.error ?? locations.error ?? home.error;
-	const guideReady = signedIn && !waiting && !failed && !!shop && !!home.data;
+	// A newly created shop can have no location yet, so the location-scoped home
+	// query cannot run. The loaded shell should still teach where to set its pin.
+	const guideReady =
+		signedIn && !waiting && !failed && !!shop && (!!home.data || !locationId);
 	useEffect(() => {
 		if (
 			!focused ||

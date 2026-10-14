@@ -5,8 +5,8 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
 	KeyboardAvoidingView,
 	Modal,
@@ -81,6 +81,9 @@ function Menu() {
 	const insets = useSafeAreaInsets();
 	const reducedMotion = useReducedMotion();
 	const merchantScope = useMerchantScope();
+	const { businessId: requestedBusinessId } = useLocalSearchParams<{
+		businessId?: string;
+	}>();
 
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
 
@@ -93,10 +96,15 @@ function Menu() {
 		[shops.data],
 	);
 
-	const [pickedId, setPickedId] = useState<string | null>(null);
+	const [pickedId, setPickedId] = useState<string | null>(
+		requestedBusinessId ?? null,
+	);
+	useEffect(() => {
+		if (requestedBusinessId) setPickedId(requestedBusinessId);
+	}, [requestedBusinessId]);
 	const shop =
-		owned.find((one) => one.businessId === merchantScope.businessId) ??
 		owned.find((one) => one.businessId === pickedId) ??
+		owned.find((one) => one.businessId === merchantScope.businessId) ??
 		owned[0];
 
 	const [categoryId, setCategoryId] = useState<string | null>(null);
