@@ -456,7 +456,14 @@ export default function CustomizeDashboard() {
 						<Button
 							variant="secondary"
 							label={t("customize.useSimple")}
-							onPress={() => setDraft({ ...SIMPLE_DASHBOARD_PREFERENCES })}
+							onPress={() =>
+								setDraft((current) => ({
+									...SIMPLE_DASHBOARD_PREFERENCES,
+									themeId: current.themeId,
+									widgetThemes: current.widgetThemes,
+									commandColors: current.commandColors,
+								}))
+							}
 						/>
 					</View>
 				</Card>

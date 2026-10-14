@@ -115,7 +115,12 @@ export default function CustomizeShop() {
 					<Button
 						variant="secondary"
 						label={t("customize.useSimple")}
-						onPress={() => setDraft({ ...SIMPLE_STOREFRONT_APPEARANCE })}
+						onPress={() =>
+							setDraft((current) => ({
+								...SIMPLE_STOREFRONT_APPEARANCE,
+								accentColor: current.accentColor,
+							}))
+						}
 					/>
 				</View>
 			</Card>
