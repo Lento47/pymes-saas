@@ -56,6 +56,7 @@ import { formatAtMostOneDecimal, formatClock } from "@/lib/format";
 import { light, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
+import { customerWhatsAppUrl } from "@/lib/whatsapp";
 import {
 	courierMotionSpace,
 	courierMotionTokens,
@@ -542,6 +543,9 @@ function TaskSheet({
 		delivery.pickedUpAt != null
 			? `${t("delivery.motion.picked")} · ${formatClock(delivery.pickedUpAt, intlLocale)}`
 			: t("delivery.stop.pickup");
+	const showCustomerWhatsApp =
+		delivery.status === "PICKED_UP" || delivery.status === "DELIVERED";
+	const whatsAppUrl = customerWhatsAppUrl(delivery.customer.phone);
 
 	return (
 		<View style={styles.task}>
@@ -585,6 +589,7 @@ function TaskSheet({
 				<ContactButton
 					label={t("delivery.motion.call")}
 					icon="call-outline"
+					compact={showCustomerWhatsApp}
 					disabled={!contactPhone}
 					motion={motion}
 					onPress={() => {
@@ -595,6 +600,7 @@ function TaskSheet({
 				<ContactButton
 					label={t("delivery.motion.message")}
 					icon="chatbubble-outline"
+					compact={showCustomerWhatsApp}
 					disabled={!contactPhone}
 					motion={motion}
 					onPress={() => {
@@ -602,6 +608,21 @@ function TaskSheet({
 						void Linking.openURL(`sms:${contactPhone}`);
 					}}
 				/>
+				{showCustomerWhatsApp ? (
+					<ContactButton
+						label={t("delivery.motion.whatsapp")}
+						icon="logo-whatsapp"
+						compact
+						disabled={!whatsAppUrl}
+						motion={motion}
+						onPress={() => {
+							if (!whatsAppUrl) return;
+							void Linking.openURL(whatsAppUrl).catch(() =>
+								Alert.alert(t("delivery.motion.whatsapp.unavailable")),
+							);
+						}}
+					/>
+				) : null}
 			</View>
 
 			{actionError ? (
@@ -682,12 +703,14 @@ function TaskSheet({
 function ContactButton({
 	label,
 	icon: glyph,
+	compact = false,
 	disabled,
 	motion,
 	onPress,
 }: {
 	label: string;
 	icon: React.ComponentProps<typeof Ionicons>["name"];
+	compact?: boolean;
 	disabled: boolean;
 	motion: ReturnType<typeof courierMotionTokens>;
 	onPress: () => void;
@@ -704,6 +727,7 @@ function ContactButton({
 			}
 			style={[
 				styles.contact,
+				compact ? styles.contactCompact : null,
 				{
 					backgroundColor: motion.sheetControl,
 					borderColor: motion.sheetBorder,
@@ -717,7 +741,11 @@ function ContactButton({
 				accessibilityElementsHidden
 				importantForAccessibility="no"
 			/>
-			<Text variant="label" bold style={{ color: motion.sheetInk }}>
+			<Text
+				variant="label"
+				bold
+				style={[styles.contactLabel, { color: motion.sheetInk }]}
+			>
 				{label}
 			</Text>
 		</Pressable>
@@ -957,6 +985,12 @@ const styles = StyleSheet.create({
 		gap: space.sm,
 		paddingVertical: space.md,
 	},
+	contactCompact: {
+		flexDirection: "column",
+		gap: space.xs,
+		paddingHorizontal: space.xs,
+	},
+	contactLabel: { textAlign: "center" },
 	rate: { gap: space.md },
 	route: { gap: 0 },
 	stop: { flexDirection: "row", alignItems: "stretch", gap: space.md },

@@ -1297,6 +1297,9 @@ export const business = {
 	"delivery.motion.customer": "Customer",
 	"delivery.motion.call": "Call",
 	"delivery.motion.message": "Message",
+	"delivery.motion.whatsapp": "WhatsApp",
+	"delivery.motion.whatsapp.unavailable":
+		"Could not open WhatsApp. Check your browser or WhatsApp app.",
 	"delivery.motion.slide": "Slide to mark as delivered",
 	"delivery.motion.slide.a11y": "Mark as delivered",
 	"delivery.motion.recenter": "Recenter map",
