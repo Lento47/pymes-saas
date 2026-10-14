@@ -28,6 +28,7 @@ import { useApiFailure } from "@/lib/api-error";
 import { formatDay } from "@/lib/format";
 import { selection, success, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { useMerchantScope } from "@/lib/merchant-scope";
 import {
 	optionForPlan,
 	PLAN_CARD_HEADER,
@@ -54,8 +55,11 @@ const SINPE_REFERENCE_MAX = 80;
 export default function SubscriptionScreen() {
 	const trpc = useTRPC();
 	const { t, intlLocale } = useT();
+	const scope = useMerchantScope();
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
-	const shop = (shops.data ?? []).find((one) => one.role !== "COURIER");
+	const owned = (shops.data ?? []).filter((one) => one.role !== "COURIER");
+	const shop =
+		owned.find((one) => one.businessId === scope.businessId) ?? owned[0];
 	const businessId = shop?.businessId ?? "";
 	const enabled = !!businessId;
 	const subscription = useQuery(

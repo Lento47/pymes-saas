@@ -156,6 +156,7 @@ export default function ShopSettings() {
 	const [city, setCity] = useState("");
 	const [region, setRegion] = useState("");
 	const [postalCode, setPostalCode] = useState("");
+	const [editingAddress, setEditingAddress] = useState(false);
 	const [logo, setLogo] = useState<string | null | undefined>(undefined);
 	const [cover, setCover] = useState<string | null | undefined>(undefined);
 	const [categoryOpen, setCategoryOpen] = useState(false);
@@ -241,9 +242,9 @@ export default function ShopSettings() {
 		> = {};
 		if (!name.trim()) found.name = t("form.required");
 		if (!categoryId) found.categoryId = t("form.required");
-		if (!line1.trim()) found.line1 = t("form.required");
-		if (!city.trim()) found.city = t("form.required");
-		if (!region.trim()) found.region = t("form.required");
+		if (editingAddress && !line1.trim()) found.line1 = t("form.required");
+		if (editingAddress && !city.trim()) found.city = t("form.required");
+		if (editingAddress && !region.trim()) found.region = t("form.required");
 		// The words count what the check counts: digits, so the phone pair is its
 		// own sentence and not the character-counting one the other fields borrow.
 		const digits = phone.replace(/\D/g, "");
@@ -256,7 +257,7 @@ export default function ShopSettings() {
 			found.email = t("form.invalidEmail");
 		}
 		return found;
-	}, [name, categoryId, line1, city, region, phone, email, t]);
+	}, [name, categoryId, line1, city, region, editingAddress, phone, email, t]);
 
 	const submit = () => {
 		if (update.isPending) return;
@@ -279,11 +280,15 @@ export default function ShopSettings() {
 				// no-op.
 				phone: phone.trim() || null,
 				email: email.trim() || null,
-				line1: line1.trim(),
-				line2: line2.trim(),
-				city: city.trim(),
-				region: region.trim(),
-				postalCode: postalCode.trim(),
+				...(editingAddress
+					? {
+							line1: line1.trim(),
+							line2: line2.trim(),
+							city: city.trim(),
+							region: region.trim(),
+							postalCode: postalCode.trim(),
+						}
+					: {}),
 				// Omitted when untouched, `null` when taken off, the stored path when
 				// picked — the three cases `assignIfPresent` distinguishes.
 				logoUrl: logo,
@@ -514,41 +519,74 @@ export default function ShopSettings() {
 										fullWidth
 										onPress={() => router.push("/(business)/shop-location")}
 									/>
-									<Field
-										label={t("biz.settings.line1")}
-										value={line1}
-										onChangeText={(value) => edited(() => setLine1(value))}
-										error={submitted ? (problems.line1 ?? null) : null}
-										maxLength={200}
+									{settings.data ? (
+										<Text variant="body" tone="muted">
+											{[
+												settings.data.line1,
+												settings.data.line2,
+												settings.data.city,
+												settings.data.region,
+											]
+												.filter(Boolean)
+												.join(", ")}
+										</Text>
+									) : null}
+									<Button
+										label={t("biz.settings.address.editManually")}
+										variant="ghost"
+										fullWidth
+										onPress={() => {
+											if (!editingAddress && settings.data) {
+												setLine1(settings.data.line1);
+												setLine2(settings.data.line2 ?? "");
+												setCity(settings.data.city);
+												setRegion(settings.data.region);
+												setPostalCode(settings.data.postalCode ?? "");
+											}
+											setEditingAddress(!editingAddress);
+										}}
 									/>
-									<Field
-										label={t("biz.settings.line2")}
-										value={line2}
-										onChangeText={(value) => edited(() => setLine2(value))}
-										help={t("form.optional")}
-										maxLength={200}
-									/>
-									<Field
-										label={t("biz.settings.city")}
-										value={city}
-										onChangeText={(value) => edited(() => setCity(value))}
-										error={submitted ? (problems.city ?? null) : null}
-										maxLength={80}
-									/>
-									<Field
-										label={t("biz.settings.region")}
-										value={region}
-										onChangeText={(value) => edited(() => setRegion(value))}
-										error={submitted ? (problems.region ?? null) : null}
-										maxLength={80}
-									/>
-									<Field
-										label={t("biz.settings.postalCode")}
-										value={postalCode}
-										onChangeText={(value) => edited(() => setPostalCode(value))}
-										help={t("form.optional")}
-										maxLength={16}
-									/>
+									{editingAddress ? (
+										<>
+											<Field
+												label={t("biz.settings.line1")}
+												value={line1}
+												onChangeText={(value) => edited(() => setLine1(value))}
+												error={submitted ? (problems.line1 ?? null) : null}
+												maxLength={200}
+											/>
+											<Field
+												label={t("biz.settings.line2")}
+												value={line2}
+												onChangeText={(value) => edited(() => setLine2(value))}
+												help={t("form.optional")}
+												maxLength={200}
+											/>
+											<Field
+												label={t("biz.settings.city")}
+												value={city}
+												onChangeText={(value) => edited(() => setCity(value))}
+												error={submitted ? (problems.city ?? null) : null}
+												maxLength={80}
+											/>
+											<Field
+												label={t("biz.settings.region")}
+												value={region}
+												onChangeText={(value) => edited(() => setRegion(value))}
+												error={submitted ? (problems.region ?? null) : null}
+												maxLength={80}
+											/>
+											<Field
+												label={t("biz.settings.postalCode")}
+												value={postalCode}
+												onChangeText={(value) =>
+													edited(() => setPostalCode(value))
+												}
+												help={t("form.optional")}
+												maxLength={16}
+											/>
+										</>
+									) : null}
 								</ScreenSection>
 							</AnimateIn>
 
@@ -745,15 +783,8 @@ function ShopSettingsSkeleton({ loadingLabel }: { loadingLabel: string }) {
 
 			<ScreenSection title={t("biz.settings.address")}>
 				<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				{[0, 1, 2, 3, 4].map((index) => (
-					<View key={index} style={formStyles.field}>
-						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-						<Skeleton style={formStyles.input} />
-						<Skeleton
-							style={[formStyles.message, line("caption", fontScale)]}
-						/>
-					</View>
-				))}
+				<Skeleton style={formStyles.input} />
+				<Skeleton style={[formStyles.message, line("body", fontScale)]} />
 			</ScreenSection>
 		</View>
 	);

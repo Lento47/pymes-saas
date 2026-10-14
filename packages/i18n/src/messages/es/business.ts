@@ -336,6 +336,7 @@ export const business = {
 	"biz.settings.address": "Dirección",
 	"biz.settings.address.help":
 		"La usamos para el retiro y para calcular la entrega.",
+	"biz.settings.address.editManually": "Editar dirección manualmente",
 	"biz.settings.hours": "Horario",
 	"biz.settings.hours.closed": "Cerrado",
 	"biz.settings.hours.copyToAll": "Copiar a todos los días",

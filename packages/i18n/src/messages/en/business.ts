@@ -307,6 +307,7 @@ export const business = {
 	"biz.settings.address": "Address",
 	"biz.settings.address.help":
 		"We use it for pickups and to work out delivery.",
+	"biz.settings.address.editManually": "Edit address manually",
 	"biz.settings.hours": "Hours",
 	"biz.settings.hours.closed": "Closed",
 	"biz.settings.hours.copyToAll": "Copy to every day",

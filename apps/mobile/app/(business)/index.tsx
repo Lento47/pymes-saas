@@ -227,6 +227,12 @@ export default function MerchantHome() {
 	const shop =
 		shopList.find((one) => one.businessId === scope.businessId) ?? shopList[0];
 	const businessId = shop?.businessId;
+	const subscription = useQuery(
+		trpc.subscription.current.queryOptions(
+			{ businessId: businessId ?? "" },
+			{ enabled: signedIn && !!businessId },
+		),
+	);
 	const analyticsRange = useMemo(() => {
 		const to = new Date();
 		const from = new Date(to);
@@ -591,9 +597,7 @@ export default function MerchantHome() {
 				) : (
 					<>
 						<View style={styles.merchantHeader}>
-							{/* Shop rail: identity, Open, location, bell — one 52pt row
-							    that scrolls instead of shrinking. The user is not here (the
-							    Account tab owns the person); the shop is, four controls wide. */}
+							{/* Shop controls scroll instead of shrinking at large text sizes. */}
 							<ScrollView
 								horizontal
 								showsHorizontalScrollIndicator={false}
@@ -616,6 +620,35 @@ export default function MerchantHome() {
 										</Text>
 									)}
 								</Image>
+								<Pressable
+									onPress={() =>
+										router.push({
+											pathname: "/(business)/payouts",
+											params: { businessId },
+										})
+									}
+									accessibilityRole="button"
+									accessibilityLabel={`${t("biz.subscription.title")}: ${subscription.data ? t(`biz.subscription.plan.${subscription.data.plan}`) : t("biz.more.subscriptionEmpty")}`}
+									accessibilityHint={t("biz.subscription.change")}
+									style={[styles.tierPill, { backgroundColor: colors.muted }]}
+								>
+									<Ionicons
+										name={
+											subscription.data?.plan === "FREE"
+												? "ribbon-outline"
+												: "diamond-outline"
+										}
+										size={18}
+										color={colors.primary}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									<Text variant="label" bold>
+										{subscription.data
+											? t(`biz.subscription.plan.${subscription.data.plan}`)
+											: t("biz.more.subscription")}
+									</Text>
+								</Pressable>
 								{/* Open pill: the location's availability as a control. */}
 								{selectedLocation ? (
 									<Pressable
@@ -1545,6 +1578,14 @@ const styles = StyleSheet.create({
 		borderRadius: radius.full,
 	},
 	openDot: { width: 7, height: 7, borderRadius: radius.full },
+	tierPill: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		minHeight: 44,
+		paddingHorizontal: 14,
+		borderRadius: radius.full,
+	},
 	// Location pill: 44 tall, fully round, muted fill, 130 wide at most
 	// with the name truncated to one line. Gap 7 is the spec's number,
 	// between the scale's xs and sm the way the 7pt dot sits between steps.
