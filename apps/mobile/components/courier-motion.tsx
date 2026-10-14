@@ -18,6 +18,7 @@ import {
 import { Image } from "./image";
 import { hitSlopFor, Pressable } from "./pressable";
 import { Spinner } from "./spinner";
+import { Switch } from "./switch";
 import { Text } from "./text";
 
 export function CourierWordmark({ color }: { color: string }) {
@@ -34,48 +35,34 @@ export function CourierWordmark({ color }: { color: string }) {
 	);
 }
 
-export function CourierStatusPill({
-	online,
+export function CourierAvailabilityControl({
+	available,
 	motion,
-	onPress,
+	onChange,
+	disabled,
 }: {
-	online: boolean;
+	available: boolean;
 	motion: CourierMotionTokens;
-	onPress: () => void;
+	onChange: (next: boolean) => void;
+	disabled: boolean;
 }) {
 	const { t } = useT();
-	const label = online
-		? t("delivery.motion.online")
-		: t("delivery.motion.offline");
+	const label = t("delivery.motion.acceptOffers");
 	return (
-		<Pressable
-			onPress={onPress}
-			accessibilityRole="button"
-			accessibilityLabel={label}
-			accessibilityHint={t("delivery.board.availability.change")}
-			hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-			style={[
-				styles.pill,
-				{
-					borderColor: online ? motion.online : motion.border,
-					backgroundColor: online ? motion.pillFill : motion.elevated,
-				},
-			]}
-		>
-			<View
-				style={[
-					styles.dot,
-					{ backgroundColor: online ? motion.online : motion.subtle },
-				]}
-			/>
+		<View style={styles.availability}>
 			<Text
-				variant="caption"
-				bold
-				style={[styles.pillLabel, { color: motion.ink }]}
+				variant="label"
+				style={[styles.availabilityLabel, { color: motion.muted }]}
 			>
 				{label}
 			</Text>
-		</Pressable>
+			<Switch
+				checked={available}
+				onChange={onChange}
+				label={label}
+				disabled={disabled}
+			/>
+		</View>
 	);
 }
 
@@ -459,25 +446,15 @@ const styles = StyleSheet.create({
 		textTransform: "lowercase",
 		fontWeight: weight.semibold,
 	},
-	pill: {
+	availability: {
 		flexDirection: "row",
 		alignItems: "center",
-		alignSelf: "flex-start",
-		gap: 6,
-		paddingHorizontal: 10,
-		paddingVertical: 5,
-		minHeight: 28,
-		borderRadius: radius.full,
-		borderWidth: StyleSheet.hairlineWidth,
+		justifyContent: "space-between",
+		gap: space.sm,
+		minHeight: MIN_TOUCH_TARGET,
 	},
-	pillLabel: {
-		...courierDisplay.eyebrow,
+	availabilityLabel: {
 		fontWeight: weight.semibold,
-	},
-	dot: {
-		width: 6,
-		height: 6,
-		borderRadius: 3,
 	},
 	avatar: {
 		width: 40,

@@ -38,8 +38,6 @@ export type CourierMotionTokens = {
 	brand: string;
 	brandInk: string;
 	brandSoft: string;
-	online: string;
-	pillFill: string;
 	geometry: string;
 	handle: string;
 	sliderTrack: string;
@@ -90,8 +88,6 @@ export function courierMotionTokens(
 		brand: colors.primary,
 		brandInk: colors.primaryForeground,
 		brandSoft: mixOklab(base.sheet, colors.primary, 0.88),
-		online: colors.success,
-		pillFill: mixOklab(base.canvas, colors.success, 0.86),
 		geometry: mixOklab(base.canvas, colors.primary, 0.9),
 	};
 }

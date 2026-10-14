@@ -1266,8 +1266,7 @@ export const business = {
 	"delivery.motion.hero.connect": "Connect",
 	"delivery.motion.hero.with": "with your ",
 	"delivery.motion.hero.city": "city",
-	"delivery.motion.online": "Online",
-	"delivery.motion.offline": "Offline",
+	"delivery.motion.acceptOffers": "Accept offers",
 	"delivery.motion.metric.month": "This month",
 	"delivery.motion.metric.rating": "Rating",
 	"delivery.motion.metric.deliveries": "Deliveries",
@@ -1299,7 +1298,8 @@ export const business = {
 	"delivery.motion.availability.title": "Availability",
 	"delivery.motion.availability.online.body":
 		"You are receiving offers in your zone.",
-	"delivery.motion.availability.offline.body": "Offers are paused.",
+	"delivery.motion.availability.offline.body":
+		"You won't receive new offers until you turn this back on.",
 	"delivery.motion.availability.goOffline": "Pause offers",
 	"delivery.motion.availability.goOnline": "Receive offers",
 	"delivery.motion.account": "Account",

@@ -34,10 +34,10 @@ import { Button } from "@/components/button";
 import { ConfirmSheet } from "@/components/confirm-sheet";
 import {
 	ActiveZoneControl,
+	CourierAvailabilityControl,
 	CourierAvatarButton,
 	CourierPerformanceMetrics,
 	CourierSheetSecondary,
-	CourierStatusPill,
 	CourierWordmark,
 	EditorialDispatchHero,
 	MerchantMark,
@@ -49,7 +49,6 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
-import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { Text } from "@/components/text";
@@ -166,7 +165,6 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { session } = useSession();
-	const [availabilityOpen, setAvailabilityOpen] = useState(false);
 	const [offlineOpen, setOfflineOpen] = useState(false);
 	const [busyId, setBusyId] = useState<string | null>(null);
 	const [peekHeight, setPeekHeight] = useState(188);
@@ -411,11 +409,24 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 				<View style={styles.header}>
 					<View style={styles.headerLead}>
 						<CourierWordmark color={motion.ink} />
-						<CourierStatusPill
-							online={available}
+						<CourierAvailabilityControl
+							available={available}
 							motion={motion}
-							onPress={() => setAvailabilityOpen(true)}
+							disabled={availability.isPending}
+							onChange={(next) => {
+								if (next) saveAvailability(true);
+								else setOfflineOpen(true);
+							}}
 						/>
+						{availabilityFailure.message ? (
+							<Text
+								variant="caption"
+								tone="destructive"
+								accessibilityRole="alert"
+							>
+								{availabilityFailure.message}
+							</Text>
+						) : null}
 					</View>
 					<CourierAvatarButton
 						name={me.data?.name ?? profile.displayName}
@@ -669,45 +680,6 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 				) : null}
 			</BoardSlice>
 
-			<Sheet
-				open={availabilityOpen}
-				onClose={() => setAvailabilityOpen(false)}
-				title={t("delivery.motion.availability.title")}
-				closeLabel={t("action.close")}
-			>
-				<View style={styles.availabilityBody}>
-					<Text variant="body">
-						{available
-							? t("delivery.motion.availability.online.body")
-							: t("delivery.motion.availability.offline.body")}
-					</Text>
-					{availabilityFailure.message ? (
-						<Text tone="destructive" accessibilityRole="alert">
-							{availabilityFailure.message}
-						</Text>
-					) : null}
-					<Button
-						label={
-							available
-								? t("delivery.motion.availability.goOffline")
-								: t("delivery.motion.availability.goOnline")
-						}
-						fullWidth
-						size="lg"
-						loading={availability.isPending}
-						disabled={availability.isPending}
-						onPress={() => {
-							if (available) {
-								setAvailabilityOpen(false);
-								setOfflineOpen(true);
-								return;
-							}
-							saveAvailability(true);
-							setAvailabilityOpen(false);
-						}}
-					/>
-				</View>
-			</Sheet>
 			<ConfirmSheet
 				open={offlineOpen}
 				onClose={() => setOfflineOpen(false)}
@@ -995,6 +967,5 @@ const styles = StyleSheet.create({
 		borderRadius: radius.lg,
 		borderWidth: StyleSheet.hairlineWidth,
 	},
-	availabilityBody: { gap: space.lg, paddingBottom: space.lg },
 	skeleton: { gap: space.lg },
 });

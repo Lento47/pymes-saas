@@ -1342,8 +1342,7 @@ export const business = {
 	"delivery.motion.hero.connect": "Conectá",
 	"delivery.motion.hero.with": "con tu ",
 	"delivery.motion.hero.city": "ciudad",
-	"delivery.motion.online": "En línea",
-	"delivery.motion.offline": "Fuera de línea",
+	"delivery.motion.acceptOffers": "Aceptar ofertas",
 	"delivery.motion.metric.month": "Este mes",
 	"delivery.motion.metric.rating": "Calificación",
 	"delivery.motion.metric.deliveries": "Entregas",
@@ -1375,7 +1374,8 @@ export const business = {
 	"delivery.motion.availability.title": "Disponibilidad",
 	"delivery.motion.availability.online.body":
 		"Estás recibiendo ofertas en tu zona.",
-	"delivery.motion.availability.offline.body": "Las ofertas están pausadas.",
+	"delivery.motion.availability.offline.body":
+		"No recibirás nuevas ofertas hasta que vuelvas a activarlo.",
 	"delivery.motion.availability.goOffline": "Pausar ofertas",
 	"delivery.motion.availability.goOnline": "Recibir ofertas",
 	"delivery.motion.account": "Cuenta",
