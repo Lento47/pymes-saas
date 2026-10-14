@@ -106,34 +106,16 @@ function hiddenInLayout(groupDir: string, helper: string): string[] {
 }
 
 describe("(business) floating bar coverage", () => {
-	const barless = list("MERCHANT_BARLESS_ROUTES");
-
-	test("every screen with an action bar hides the capsule", () => {
-		expect(screensWithActionBar(BUSINESS)).toEqual(barless);
-	});
-
-	test("the list and the layout agree, both ways", () => {
-		expect(hiddenInLayout(BUSINESS, "merchantBarlessOptions")).toEqual(barless);
+	test("tab screens do not draw an action bar — forms sit on the stack", () => {
+		expect(screensWithActionBar(join(BUSINESS, "(tabs)"))).toEqual([]);
 	});
 });
 
 describe("(customer) floating bar coverage", () => {
-	const hidden = list("CUSTOMER_BARLESS_ROUTES");
 	const lifted = list("CUSTOMER_LIFTED_ROUTES");
 
-	test("every screen with an action bar either hides the capsule or lifts it", () => {
-		const unaccounted = screensWithActionBar(CUSTOMER).filter(
-			(route) => !hidden.includes(route) && !lifted.includes(route),
-		);
-		expect(unaccounted).toEqual([]);
-	});
-
-	test("the hidden list and the layout agree, both ways", () => {
-		expect(hiddenInLayout(CUSTOMER, "customerBarlessOptions")).toEqual(hidden);
-	});
-
-	test("no screen is in both lists, because it cannot both hide and lift", () => {
-		expect(hidden.filter((route) => lifted.includes(route))).toEqual([]);
+	test("every tab screen with an action bar lifts the capsule", () => {
+		expect(screensWithActionBar(join(CUSTOMER, "(tabs)"))).toEqual(lifted);
 	});
 
 	/**
@@ -151,16 +133,15 @@ describe("(customer) floating bar coverage", () => {
 	 * the two docblocks that justify it. A rule derived from `BackButton` would have been one
 	 * more test and one more wrong answer.
 	 */
-	test("every action-bar screen is on exactly one list", () => {
-		const bars = screensWithActionBar(CUSTOMER);
-		for (const route of [...hidden, ...lifted]) {
+	test("lifted tab names still draw an action bar", () => {
+		const bars = screensWithActionBar(join(CUSTOMER, "(tabs)"));
+		for (const route of lifted) {
 			if (!bars.includes(route)) {
 				throw new Error(
 					`${route} is listed but draws no ActionBar — the list is stale`,
 				);
 			}
 		}
-		expect(bars).toHaveLength(hidden.length + lifted.length);
 	});
 });
 
@@ -187,22 +168,15 @@ describe("(customer) floating bar coverage", () => {
 describe("(delivery) floating bar coverage", () => {
 	const barless = list("DELIVERY_BARLESS_ROUTES");
 
-	test("every screen with an action bar hides the capsule", () => {
-		const unaccounted = screensWithActionBar(DELIVERY).filter(
+	test("tab screens with an action bar stay accounted for", () => {
+		const unaccounted = screensWithActionBar(join(DELIVERY, "(tabs)")).filter(
 			(route) => !barless.includes(route),
 		);
 		expect(unaccounted).toEqual([]);
 	});
 
-	test("the list and the layout agree, both ways", () => {
-		expect(hiddenInLayout(DELIVERY, "deliveryBarlessOptions")).toEqual(barless);
-	});
-
 	test("both tabs are declared, and neither is on the barless list", () => {
-		// `href: null` would remove a tab. The waiting board hides the capsule while
-		// remaining a tab; the account hub still draws it. `DELIVERY_HIDDEN_TAB_ROUTES`
-		// is the clearance list for that hide, not this one.
-		const source = readFileSync(join(DELIVERY, "_layout.tsx"), "utf-8");
+		const source = readFileSync(join(DELIVERY, "(tabs)", "_layout.tsx"), "utf-8");
 		for (const tab of ["delivery", "account"]) {
 			expect(source).toContain(`name="${tab}"`);
 			expect(barless).not.toContain(tab);
@@ -210,7 +184,7 @@ describe("(delivery) floating bar coverage", () => {
 	});
 
 	test("the waiting board hides the capsule without dropping the tab", () => {
-		const source = readFileSync(join(DELIVERY, "_layout.tsx"), "utf-8");
+		const source = readFileSync(join(DELIVERY, "(tabs)", "_layout.tsx"), "utf-8");
 		const hidden = list("DELIVERY_HIDDEN_TAB_ROUTES");
 		expect(hidden).toEqual(["delivery"]);
 		expect(source).toContain('name="delivery"');

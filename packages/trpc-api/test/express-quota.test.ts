@@ -17,7 +17,7 @@ import {
 type Caller = ReturnType<typeof appRouter.createCaller>;
 
 /**
- * The express quota: how many express orders a tier may **accept** in a week.
+ * The express quota: how many express orders a tier may **accept** in a day.
  *
  * This is a usage limit on the business, not a subsidy — the customer pays the courier and
  * always did, so nothing here touches who pays for a delivery. What the tier changes is how
@@ -27,8 +27,8 @@ type Caller = ReturnType<typeof appRouter.createCaller>;
  *
  * 1. **The count is on acceptance.** An order the shop declined costs it nothing, and an
  *    order it has not answered yet costs it nothing either.
- * 2. **The window is the week, not the billing period.** A monthly merchant gets ten a
- *    week, not ten a month divided by four.
+ * 2. **The window is the day, not the billing period.** A monthly merchant gets ten a
+ *    day, not ten a month divided by thirty.
  * 3. **Standard orders are never counted.** The quota is about speed; a shop must always be
  *    able to take an ordinary order, or the limit has become a cap on trading — which
  *    `NEVER_GATED` forbids.
@@ -70,7 +70,7 @@ describe("the express quota", () => {
 		const { w, businessId, caller } = await shop("FREE");
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerWeek, customer.id);
+		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay, customer.id);
 
 		// The order it cannot take. Seeded `PENDING` with no acceptance, so nothing but the
 		// quota stands between it and `ACCEPTED`.
@@ -97,9 +97,9 @@ describe("the express quota", () => {
 			upgradeTo: string;
 		};
 		expect(details.error).toBe("QUOTA_EXCEEDED");
-		expect(details.limit).toBe("expressPerWeek");
-		expect(details.current).toBe(PLAN_LIMITS.FREE.expressPerWeek);
-		expect(details.max).toBe(PLAN_LIMITS.FREE.expressPerWeek);
+		expect(details.limit).toBe("expressPerDay");
+		expect(details.current).toBe(PLAN_LIMITS.FREE.expressPerDay);
+		expect(details.max).toBe(PLAN_LIMITS.FREE.expressPerDay);
 		expect(details.plan).toBe("FREE");
 		// The tier that raises it — **not** a cadence, because an annual `FREE` is not a
 		// thing and an annual `EMPRENDE` holds the same ten.
@@ -113,7 +113,7 @@ describe("the express quota", () => {
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
 		// One fewer than the cap, so this acceptance is the one that *reaches* it.
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerWeek - 1, customer.id);
+		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay - 1, customer.id);
 
 		const pending = await seedOrder(w.db, {
 			id: "ord_express_last",
@@ -135,7 +135,7 @@ describe("the express quota", () => {
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
 		// The shop is at its express ceiling...
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerWeek, customer.id);
+		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay, customer.id);
 
 		// ...and an ordinary order still goes through. This is `NEVER_GATED` read literally:
 		// a shop must always be able to take the order a customer is waiting on, and the
@@ -155,25 +155,25 @@ describe("the express quota", () => {
 		w.close();
 	});
 
-	test("an express order accepted last week does not spend this week's quota", async () => {
+	test("an express order accepted yesterday does not spend today's quota", async () => {
 		const { w, businessId, caller } = await shop("FREE");
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
-		// Eight days back, which is a different 7-day window from now under any anchor.
-		const lastWeek = new Date(Date.now() - 8 * 86_400_000);
-		for (let index = 0; index < PLAN_LIMITS.FREE.expressPerWeek; index += 1) {
+		// Two days back, which is a different 1-day window from now under any anchor.
+		const yesterday = new Date(Date.now() - 2 * 86_400_000);
+		for (let index = 0; index < PLAN_LIMITS.FREE.expressPerDay; index += 1) {
 			await seedOrder(w.db, {
-				id: `ord_express_lastweek_${index}`,
+				id: `ord_express_yesterday_${index}`,
 				businessId,
 				customerId: customer.id,
 				status: "COMPLETED",
 				deliverySpeed: "EXPRESS",
-				acceptedAt: lastWeek,
+				acceptedAt: yesterday,
 			});
 		}
 
 		const pending = await seedOrder(w.db, {
-			id: "ord_express_new_week",
+			id: "ord_express_new_day",
 			businessId,
 			customerId: customer.id,
 			status: "PENDING",
@@ -181,9 +181,9 @@ describe("the express quota", () => {
 			acceptedAt: null,
 		});
 
-		// A full week of last week's express does not follow the shop into this one. The
-		// window is the week and **not** the billing period, so a monthly merchant is not
-		// working off a month's allowance divided by four.
+		// A full day of yesterday's express does not follow the shop into today. The
+		// window is the day and **not** the billing period, so a monthly merchant is not
+		// working off a month's allowance divided by thirty.
 		const moved = await caller.orders.advance({ orderId: pending, to: "ACCEPTED" });
 		expect(moved.status).toBe("ACCEPTED");
 
@@ -194,10 +194,10 @@ describe("the express quota", () => {
 		const { w, businessId, caller } = await shop("FREE");
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
-		// The shop said no, ten times, this week. A decline must not consume the quota it
+		// The shop said no, ten times, today. A decline must not consume the quota it
 		// declined to use — otherwise the cheapest way to run out of express is to be asked
 		// for it.
-		for (let index = 0; index < PLAN_LIMITS.FREE.expressPerWeek; index += 1) {
+		for (let index = 0; index < PLAN_LIMITS.FREE.expressPerDay; index += 1) {
 			await seedOrder(w.db, {
 				id: `ord_express_rejected_${index}`,
 				businessId,
@@ -242,7 +242,7 @@ describe("the express quota", () => {
 
 		const moved = await caller.orders.advance({ orderId: pending, to: "ACCEPTED" });
 		expect(moved.status).toBe("ACCEPTED");
-		expect(PLAN_LIMITS.BUSINESS.expressPerWeek).toBe(Infinity);
+		expect(PLAN_LIMITS.BUSINESS.expressPerDay).toBe(Infinity);
 
 		w.close();
 	});
@@ -259,7 +259,7 @@ describe("the express quota", () => {
 			cadence: "MONTHLY",
 			daysUntilDue: -45,
 		});
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerWeek, customer.id);
+		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay, customer.id);
 
 		const pending = await seedOrder(w.db, {
 			id: "ord_express_lapsed",

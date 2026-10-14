@@ -5,6 +5,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
+import { BackButton } from "@/components/back-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { ListEnd } from "@/components/list-end";
@@ -90,7 +91,10 @@ export default function AuditHistoryScreen() {
 
 	if (failed) {
 		return (
-			<Screen title={t("biz.more.auditHistory")}>
+			<Screen
+				title={t("biz.more.auditHistory")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<ErrorState
 					error={failed}
 					onRetry={() => {
@@ -103,7 +107,12 @@ export default function AuditHistoryScreen() {
 	}
 
 	return (
-		<Screen title={t("biz.more.auditHistory")} scroll bottomInset>
+		<Screen
+			title={t("biz.more.auditHistory")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 			{waiting ? (
 				<AuditHistorySkeleton />
 			) : entries.length === 0 ? (

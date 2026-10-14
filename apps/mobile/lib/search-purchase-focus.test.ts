@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const root = join(import.meta.dir, "..");
 const search = readFileSync(
-	join(root, "app", "(customer)", "search.tsx"),
+	join(root, "app", "(customer)", "(tabs)", "search.tsx"),
 	"utf8",
 );
 const skeletons = readFileSync(

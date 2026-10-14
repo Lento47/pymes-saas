@@ -4,7 +4,6 @@ import { type ReactNode, useState } from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
-import { BackButton } from "@/components/back-button";
 import { BusinessCard } from "@/components/business-card";
 import { CategoryGrid } from "@/components/category-grid";
 import { CategoryRail } from "@/components/category-rail";
@@ -348,11 +347,6 @@ export default function SearchScreen() {
 
 	return (
 		<Screen padded={false}>
-			{/* The stack header stays off, so the way back is drawn here whether
-			    search opened from Home or the tab bar. */}
-			<View style={styles.back}>
-				<BackButton to="/" />
-			</View>
 			{/* One search box, drawn by `components/search-input` — the 3:1 outline, the
 			    hidden glyphs and the clear button's hit slop are its contract, not this
 			    screen's. Only the outer margins are this screen's business. */}
@@ -649,7 +643,6 @@ function Group({
 }
 
 const styles = StyleSheet.create({
-	back: { paddingHorizontal: space.lg, paddingBottom: space.sm },
 	// The outer box only: `components/search-input` owns the skin, the outline token and
 	// the 44pt floor. What this screen owns is where the box sits in its column.
 	searchField: { marginHorizontal: space.lg, marginTop: space.md },

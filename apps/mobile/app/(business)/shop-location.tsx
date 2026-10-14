@@ -234,7 +234,7 @@ export default function ShopLocation() {
 			<Screen
 				title={t("biz.location.title")}
 				subtitle={t("biz.location.body")}
-				leading={<BackButton to="/more" />}
+				leading={<BackButton to="/(business)/menu" />}
 				scroll
 			>
 				{failed ? (

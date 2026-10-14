@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const home = readFileSync(
-	join(import.meta.dir, "..", "app", "(customer)", "index.tsx"),
+	join(import.meta.dir, "..", "app", "(customer)", "(tabs)", "index.tsx"),
 	"utf8",
 );
 const productRow = readFileSync(

@@ -11,7 +11,7 @@ const row = readFileSync(
 	"utf8",
 );
 const home = readFileSync(
-	join(import.meta.dir, "..", "app", "(business)", "index.tsx"),
+	join(import.meta.dir, "..", "app", "(business)", "(tabs)", "index.tsx"),
 	"utf8",
 );
 const rail = readFileSync(

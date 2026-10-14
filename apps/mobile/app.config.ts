@@ -122,10 +122,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	//   mark's own alpha rather than redrawn, so it can never drift from the artwork.
 	//
 	// All three are generated from `packages/ui/src/components/pymeshub-logo.png`, the
-	// one copy of the mark in the repo, on the app's own dark background (`#110e0b`,
-	// `theme/tokens.ts`) so the launcher and the first screen agree. Each is 1024px
-	// square, the mark at 700px for the legacy/iOS plate and 590px for the two masked
-	// layers; regenerating means resizing that source, not redrawing it.
+	// one copy of the mark in the repo, on a **white** plate — `#FFFFFF`, not the app's
+	// own `#110e0b`. A light plate is the default on purpose: a launcher's dark-mode
+	// wallpaper already supplies plenty of dark, and a white plate keeps the mark's
+	// contrast from collapsing into a dark background on the themed-icon launchers
+	// (Android 13+, and iOS's dark wallpaper tint) that recolour the icon for you. It
+	// also means the icon does not have to track `theme/tokens.ts` by hand any more.
+	// Each is 1024px square, the mark at 700px for the legacy/iOS plate and 590px for
+	// the two masked layers; regenerating means resizing that source, not redrawing it.
+	// The plate is baked into `icon.png` and is `adaptiveIcon.backgroundColor` below —
+	// change both together, or iOS and Android will disagree.
 	//
 	// Worth knowing before looking for this on a device: the icon is compiled into the
 	// APK/AAB, so it changes only on a **rebuild**. Expo Go keeps showing the Expo Go
@@ -225,11 +231,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 		...(googleServicesFile ? { googleServicesFile } : {}),
 		// The two-layer launcher icon. `backgroundColor` is the plate rather than a
 		// ninth image: a flat colour is what lets the launcher's own mask, parallax and
-		// themed-icon tint all work, and it is the one value here that has to agree with
-		// `theme/tokens.ts` by hand.
+		// themed-icon tint all work. White, to match the plate baked into
+		// `assets/icon.png` — see the note above the top-level `icon`.
 		adaptiveIcon: {
 			foregroundImage: "./assets/adaptive-icon.png",
-			backgroundColor: "#110e0b",
+			backgroundColor: "#FFFFFF",
 			monochromeImage: "./assets/monochrome-icon.png",
 		},
 	},

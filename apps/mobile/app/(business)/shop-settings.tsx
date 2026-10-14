@@ -129,7 +129,7 @@ export default function ShopSettings() {
 	// The same resolution `app/(business)/locations.tsx` makes: the branch the
 	// operator picked, falling back to the first shop they own. `businessId` is
 	// optional on the scope — nothing pins it until a tab has been switched — and
-	// this screen is reached from `./more`, which navigates without a parameter.
+	// this screen is reached from the menu tab, which navigates without a parameter.
 	// Reading a parameter instead would bounce a merchant straight back out of the
 	// screen they just asked for.
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
@@ -319,7 +319,7 @@ export default function ShopSettings() {
 		<View style={styles.root}>
 			<Screen
 				title={t("biz.settings.title")}
-				leading={<BackButton to="/more" />}
+				leading={<BackButton to="/(business)/menu" />}
 				scroll
 				keyboardInsets
 				contentStyle={styles.content}

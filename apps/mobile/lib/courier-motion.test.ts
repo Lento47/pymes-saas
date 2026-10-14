@@ -13,7 +13,7 @@ import {
 
 const root = join(import.meta.dir, "..");
 const board = readFileSync(
-	join(root, "app", "(delivery)", "delivery.tsx"),
+	join(root, "app", "(delivery)", "(tabs)", "delivery.tsx"),
 	"utf8",
 );
 const detail = readFileSync(

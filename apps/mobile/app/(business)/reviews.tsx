@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
@@ -57,7 +58,10 @@ export default function ReviewsScreen() {
 
 	if (failed) {
 		return (
-			<Screen title={t("biz.reviews.title")}>
+			<Screen
+				title={t("biz.reviews.title")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<ErrorState
 					error={failed}
 					onRetry={() => {
@@ -70,7 +74,12 @@ export default function ReviewsScreen() {
 	}
 
 	return (
-		<Screen title={t("biz.reviews.title")} scroll bottomInset>
+		<Screen
+			title={t("biz.reviews.title")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 			{waiting ? (
 				<ReviewsSkeleton />
 			) : reviews.length === 0 ? (

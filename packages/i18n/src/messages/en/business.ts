@@ -1440,4 +1440,12 @@ export const business = {
 		"Private draft. Customers see the published design until you publish.",
 	"customize.photos": "Edit logo and cover photo",
 	"customize.saveFirst": "Save your changes before publishing.",
+	"customize.holdToMove":
+		"Hold a block to move it. While editing, drag to reorder or tap × to remove.",
+	"customize.editing": "Editing. Drag to reorder, × to remove.",
+	"customize.add": "Add blocks",
+	"customize.addWidget": "Add {name}",
+	"customize.remove": "Remove",
+	"customize.done": "Done",
+	"customize.headerStyle": "Header style",
 } as const;

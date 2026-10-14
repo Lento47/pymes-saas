@@ -54,7 +54,7 @@ export function MerchantManagementFrame({
 
 	if (failed) {
 		return (
-			<Screen title={title} leading={<BackButton to="/more" />}>
+			<Screen title={title} leading={<BackButton to="/(business)/menu" />}>
 				<ErrorState
 					error={failed}
 					onRetry={() => {
@@ -68,7 +68,7 @@ export function MerchantManagementFrame({
 
 	if (shops.isPending || (!!businessId && locations.isPending)) {
 		return (
-			<Screen title={title} leading={<BackButton to="/more" />}>
+			<Screen title={title} leading={<BackButton to="/(business)/menu" />}>
 				<Text tone="muted">{t("biz.manage.loadingScope")}</Text>
 			</Screen>
 		);
@@ -76,7 +76,7 @@ export function MerchantManagementFrame({
 
 	if (!shop) {
 		return (
-			<Screen title={title} leading={<BackButton to="/more" />}>
+			<Screen title={title} leading={<BackButton to="/(business)/menu" />}>
 				<Text tone="muted">{t("state.empty")}</Text>
 			</Screen>
 		);
@@ -97,7 +97,7 @@ export function MerchantManagementFrame({
 		<Screen
 			title={title}
 			subtitle={`${businessName} · ${scope.locationName}`}
-			leading={<BackButton to="/more" />}
+			leading={<BackButton to="/(business)/menu" />}
 			scroll
 			bottomInset
 		>

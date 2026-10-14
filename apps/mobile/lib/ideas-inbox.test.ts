@@ -14,7 +14,7 @@ const read = (...parts: string[]) =>
 	readFileSync(join(import.meta.dir, "..", ...parts), "utf8");
 
 const account = read("app", "account.tsx");
-const courier = read("app", "(delivery)", "account.tsx");
+const courier = read("app", "(delivery)", "(tabs)", "account.tsx");
 const settings = read("app", "settings.tsx");
 const help = read("app", "help.tsx");
 const surfaces = read("components", "merchant-management-surfaces.tsx");

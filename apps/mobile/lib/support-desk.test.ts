@@ -29,8 +29,8 @@ import { join } from "node:path";
 const read = (...parts: string[]) =>
 	readFileSync(join(import.meta.dir, "..", ...parts), "utf8");
 
-const account = read("app", "(business)", "account.tsx");
-const menu = read("app", "(business)", "menu.tsx");
+const account = read("app", "(business)", "(tabs)", "account.tsx");
+const menu = read("app", "(business)", "(tabs)", "menu.tsx");
 const surfaces = read("components", "merchant-management-surfaces.tsx");
 const newTicket = read("app", "(business)", "support", "new.tsx");
 

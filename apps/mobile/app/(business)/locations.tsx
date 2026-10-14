@@ -93,7 +93,7 @@ export default function MerchantLocations() {
 		<>
 			<Screen
 				title={t("biz.locations.title")}
-				leading={<BackButton to="/more" />}
+				leading={<BackButton to="/(business)/menu" />}
 				scroll
 				bottomInset
 			>

@@ -16,7 +16,10 @@ const purchaseColors = readFileSync(
 	join(root, "lib", "purchase-colors.ts"),
 	"utf8",
 );
-const home = readFileSync(join(root, "app", "(customer)", "index.tsx"), "utf8");
+const home = readFileSync(
+	join(root, "app", "(customer)", "(tabs)", "index.tsx"),
+	"utf8",
+);
 const header = readFileSync(
 	join(root, "components", "home-header.tsx"),
 	"utf8",

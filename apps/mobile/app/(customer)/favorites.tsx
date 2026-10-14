@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
+import { BackButton } from "@/components/back-button";
 import { BusinessCard } from "@/components/business-card";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
@@ -101,7 +102,12 @@ export default function FavoritesScreen() {
 	// names do not appear at the moment the data does.
 	if (waiting) {
 		return (
-			<Screen title={t("favorites.title")} padded={false} scroll>
+			<Screen
+				title={t("favorites.title")}
+				leading={<BackButton to="/" />}
+				padded={false}
+				scroll
+			>
 				<Section title={t("favorites.businesses")} count={0}>
 					<BusinessCardsSkeleton />
 				</Section>
@@ -118,7 +124,11 @@ export default function FavoritesScreen() {
 	// offers for the same reason.
 	if (!signedIn) {
 		return (
-			<Screen title={t("favorites.title")} scroll>
+			<Screen
+				title={t("favorites.title")}
+				leading={<BackButton to="/" />}
+				scroll
+			>
 				<EmptyState
 					icon="heart-outline"
 					title={t("auth.signIn.title")}
@@ -139,7 +149,11 @@ export default function FavoritesScreen() {
 
 	if (list.isError) {
 		return (
-			<Screen title={t("favorites.title")} scroll>
+			<Screen
+				title={t("favorites.title")}
+				leading={<BackButton to="/" />}
+				scroll
+			>
 				<ErrorState error={list.error} onRetry={() => void list.refetch()} />
 			</Screen>
 		);
@@ -150,7 +164,11 @@ export default function FavoritesScreen() {
 
 	if (businesses.length === 0 && products.length === 0) {
 		return (
-			<Screen title={t("favorites.title")} scroll>
+			<Screen
+				title={t("favorites.title")}
+				leading={<BackButton to="/" />}
+				scroll
+			>
 				<EmptyState
 					icon="heart-outline"
 					title={t("favorites.empty.title")}
@@ -163,6 +181,7 @@ export default function FavoritesScreen() {
 	return (
 		<Screen
 			title={t("favorites.title")}
+			leading={<BackButton to="/" />}
 			padded={false}
 			scroll
 			// Rule 6, and this list is the case for it: a shop can close, a dish can sell out,

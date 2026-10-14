@@ -66,7 +66,7 @@ import {
 	type SelfDeliveryOrderInput,
 	startOfMarketDay,
 	upgradeTarget,
-	weekWindowStart,
+	expressWindowStart,
 } from "@pymeshub/shared";
 import {
 	and,
@@ -1013,7 +1013,7 @@ export async function advance(
 		const used = await countExpressAcceptedSince(
 			ctx.db,
 			order.businessId,
-			weekWindowStart(new Date()),
+			expressWindowStart(new Date()),
 		);
 		// Read the billing pair off the context **or** the business row, because `advance` is
 		// not a `businessProcedure` — it is reachable by the customer, the courier and an
@@ -1037,12 +1037,12 @@ export async function advance(
 
 		if (!canAcceptExpress(plan, used)) {
 			throw new QuotaExceededError({
-				resourceType: "entregas express esta semana",
+				resourceType: "entregas express al día",
 				current: used,
-				limit: PLAN_LIMITS[plan].expressPerWeek,
+				limit: PLAN_LIMITS[plan].expressPerDay,
 				plan,
-				limitName: "expressPerWeek",
-				upgradeTo: upgradeTarget(plan, "expressPerWeek", used)?.plan ?? null,
+				limitName: "expressPerDay",
+				upgradeTo: upgradeTarget(plan, "expressPerDay", used)?.plan ?? null,
 			});
 		}
 	}

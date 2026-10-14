@@ -43,11 +43,14 @@ function declaredScreens(layoutSource: string): string[] {
 function tabsGroups(): { group: string; dir: string; layout: string }[] {
 	return readdirSync(APP, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory() && entry.name.startsWith("("))
-		.map((entry) => ({
-			group: entry.name,
-			dir: join(APP, entry.name),
-			layout: join(APP, entry.name, "_layout.tsx"),
-		}))
+		.map((entry) => {
+			const dir = join(APP, entry.name, "(tabs)");
+			return {
+				group: `${entry.name}/(tabs)`,
+				dir,
+				layout: join(dir, "_layout.tsx"),
+			};
+		})
 		.filter(({ layout }) => {
 			try {
 				return readFileSync(layout, "utf-8").includes("<Tabs");

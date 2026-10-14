@@ -142,9 +142,9 @@ export function planFeatureRows(
 			key: "express",
 			label: t("biz.subscription.limit.express"),
 			value:
-				limits.expressPerWeek === Infinity
+				limits.expressPerDay === Infinity
 					? t("biz.subscription.limit.unlimited")
-					: String(limits.expressPerWeek),
+					: String(limits.expressPerDay),
 		},
 	];
 }

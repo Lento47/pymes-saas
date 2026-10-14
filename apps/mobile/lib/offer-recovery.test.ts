@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const root = join(import.meta.dir, "..", "..", "..");
 const cart = readFileSync(
-	join(root, "apps", "mobile", "app", "(customer)", "cart.tsx"),
+	join(root, "apps", "mobile", "app", "(customer)", "(tabs)", "cart.tsx"),
 	"utf8",
 );
 const en = readFileSync(

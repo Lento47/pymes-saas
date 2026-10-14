@@ -103,7 +103,7 @@ export default function MerchantPromotions() {
 		<Screen
 			title={t("biz.promotions.title")}
 			subtitle={t("biz.promotions.subtitle")}
-			leading={<BackButton to="/more" />}
+			leading={<BackButton to="/(business)/menu" />}
 			scroll
 			bottomInset
 		>

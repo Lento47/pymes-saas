@@ -190,7 +190,7 @@ const QUOTA_LIMIT_KEYS: Record<string, MessageKey> = {
 	optionGroupsPerProduct: "billing.quota.limit.optionGroupsPerProduct",
 	optionsPerGroup: "billing.quota.limit.optionsPerGroup",
 	analyticsDays: "billing.quota.limit.analyticsDays",
-	expressPerWeek: "billing.quota.limit.expressPerWeek",
+	expressPerDay: "billing.quota.limit.expressPerDay",
 };
 
 function quotaRefusal(details: unknown): {

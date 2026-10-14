@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { ConfirmSheet } from "@/components/confirm-sheet";
 import { EmptyState } from "@/components/empty-state";
@@ -117,7 +118,10 @@ export default function SubscriptionScreen() {
 
 	if (failed) {
 		return (
-			<Screen title={t("biz.subscription.title")}>
+			<Screen
+				title={t("biz.subscription.title")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<ErrorState
 					error={failed}
 					onRetry={() => {
@@ -131,7 +135,10 @@ export default function SubscriptionScreen() {
 
 	if (waiting) {
 		return (
-			<Screen title={t("biz.subscription.title")}>
+			<Screen
+				title={t("biz.subscription.title")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<SubscriptionSkeleton loadingLabel={t("state.loading")} />
 			</Screen>
 		);
@@ -144,6 +151,7 @@ export default function SubscriptionScreen() {
 		<>
 			<Screen
 				title={t("biz.subscription.title")}
+				leading={<BackButton to="/(business)/menu" />}
 				subtitle={shop?.businessName}
 				scroll
 				bottomInset

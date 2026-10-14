@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
+import { BackButton } from "@/components/back-button";
 import { Card } from "@/components/card";
 import { ListRow } from "@/components/list-row";
 import { Screen, ScreenSection } from "@/components/screen";
@@ -16,7 +17,12 @@ export default function Customize() {
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
 	const role = shops.data?.find((shop) => shop.businessId === businessId)?.role;
 	return (
-		<Screen title={t("customize.title")} scroll bottomInset>
+		<Screen
+			title={t("customize.title")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 			<ScreenSection title={t("customize.title")}>
 				<Card>
 					<ListRow

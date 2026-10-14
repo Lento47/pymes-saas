@@ -1520,4 +1520,12 @@ export const business = {
 		"Borrador privado. Los clientes verán el diseño publicado hasta que publiques.",
 	"customize.photos": "Editar logo y portada",
 	"customize.saveFirst": "Guarda tus cambios antes de publicar.",
+	"customize.holdToMove":
+		"Mantén un bloque para moverlo. En edición, arrástralo o toca × para quitarlo.",
+	"customize.editing": "Edición. Arrastra para reordenar, × para quitar.",
+	"customize.add": "Añadir bloques",
+	"customize.addWidget": "Añadir {name}",
+	"customize.remove": "Quitar",
+	"customize.done": "Listo",
+	"customize.headerStyle": "Estilo de portada",
 } as const;

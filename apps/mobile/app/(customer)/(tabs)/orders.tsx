@@ -19,7 +19,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
-import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -449,9 +448,6 @@ export default function OrdersScreen() {
 	if (sessionStatus === "loading") {
 		return (
 			<Screen padded={false}>
-				<View style={styles.back}>
-					<BackButton to="/" />
-				</View>
 				{filter}
 				<OrdersSkeleton label={t("state.loading")} segment={segment} />
 			</Screen>
@@ -461,9 +457,6 @@ export default function OrdersScreen() {
 	if (!signedIn) {
 		return (
 			<Screen>
-				<View style={styles.back}>
-					<BackButton to="/" />
-				</View>
 				<EmptyState
 					icon="receipt-outline"
 					title={t("order.empty.title")}
@@ -477,9 +470,6 @@ export default function OrdersScreen() {
 
 	return (
 		<Screen padded={false}>
-			<View style={styles.back}>
-				<BackButton to="/" />
-			</View>
 			{filter}
 
 			{orders.isError ? (
@@ -875,7 +865,7 @@ const styles = StyleSheet.create({
 	// padding — the safe-area inset is the top air, paid by `Screen` on every
 	// screen, so a back strip is the gutter and, when it wants one, a step
 	// below. Every back strip in the app draws the same way.
-	back: { paddingHorizontal: space.lg, paddingBottom: space.sm },
+
 	// The filter's own measure, because the screen is `padded={false}`: its rows run
 	// edge-to-edge and a filter cannot.
 	filter: {

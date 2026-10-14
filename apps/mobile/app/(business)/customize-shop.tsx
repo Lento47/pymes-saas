@@ -7,8 +7,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
-import { CustomizationRows } from "@/components/customization-rows";
+import {
+	CustomizationRows,
+	HeaderStylePicker,
+	ShopSectionPreview,
+} from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
@@ -82,7 +87,12 @@ export default function CustomizeShop() {
 		void task.then(refresh).catch(() => {});
 	};
 	return (
-		<Screen title={t("customize.shop")} scroll bottomInset>
+		<Screen
+			title={t("customize.shop")}
+			leading={<BackButton to="/(business)/customize" />}
+			scroll
+			bottomInset
+		>
 			{saved.error || storefront.error ? (
 				<ErrorState
 					error={saved.error ?? storefront.error}
@@ -107,17 +117,12 @@ export default function CustomizeShop() {
 							})
 						}
 					/>
-					<Button
-						variant="secondary"
-						label={t("customize.cover")}
-						selected={draft.header === "cover"}
-						onPress={() => setDraft({ ...draft, header: "cover" })}
-					/>
-					<Button
-						variant="secondary"
-						label={t("customize.compact")}
-						selected={draft.header === "compact"}
-						onPress={() => setDraft({ ...draft, header: "compact" })}
+					<Text variant="caption" tone="muted">
+						{t("customize.headerStyle")}
+					</Text>
+					<HeaderStylePicker
+						value={draft.header}
+						onChange={(header) => setDraft({ ...draft, header })}
 					/>
 					<Field
 						label={t("customize.color")}
@@ -154,6 +159,7 @@ export default function CustomizeShop() {
 								: [...draft.hidden, id],
 						})
 					}
+					renderPreview={(id) => <ShopSectionPreview id={id} />}
 				/>
 			</ScreenSection>
 			<ScreenSection title={t("customize.preview")}>

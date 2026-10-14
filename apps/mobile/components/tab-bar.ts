@@ -93,12 +93,7 @@ export const CUSTOMER_BARLESS_ROUTES = [
  * would have to infer the second answer from the absence of the first, and a screen that
  * hid its capsule by accident would read as deliberate.
  */
-export const CUSTOMER_LIFTED_ROUTES = [
-	"cart",
-	"index",
-	"product/[id]",
-	"store/[slug]",
-] as const;
+export const CUSTOMER_LIFTED_ROUTES = ["cart", "index"] as const;
 
 /**
  * The `(delivery)` routes that own the foot of their own screen.
@@ -245,11 +240,8 @@ export function useTabBarClearance({
 /**
  * Whether this route draws the capsule.
  *
- * The first segment names the tree and the second the screen inside it. A tree's
- * `href: null` routes are mounted in the same navigator as its tabs, which is why the
- * check has to reach the second segment at all: a route group adds no URL segment, so
- * every screen in the tree is a tab to the navigator whether or not it is a tab to the
- * reader.
+ * The first segment names the tree. Tabs live under `(tabs)`; a store, a product or a
+ * settings screen is a sibling stack route and has no capsule — Back is the way out.
  *
  * A group absent from `BARLESS_BY_GROUP` draws no bar — `(auth)` and the root routes. That
  * is the default rather than a list, so a new tree gets the inert answer and has to be
@@ -258,7 +250,8 @@ export function useTabBarClearance({
 function drawsTabBar(segments: readonly string[]): boolean {
 	const barless = BARLESS_BY_GROUP[segments[0] ?? ""];
 	if (barless === undefined) return false;
-	const route = segments[1];
+	if (segments[1] !== "(tabs)") return false;
+	const route = segments[2];
 	if (route === undefined) return true;
 	if (barless.includes(route)) return false;
 	if (

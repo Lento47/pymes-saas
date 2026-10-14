@@ -275,7 +275,7 @@ export default function ShopHours() {
 		<View style={styles.root}>
 			<Screen
 				title={t("biz.settings.hours")}
-				leading={<BackButton to="/more" />}
+				leading={<BackButton to="/(business)/menu" />}
 				scroll
 				keyboardInsets
 				contentStyle={styles.content}

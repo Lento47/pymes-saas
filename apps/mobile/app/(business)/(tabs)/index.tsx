@@ -296,6 +296,7 @@ function _withAvailability(
 export default function MerchantHome() {
 	const trpc = useTRPC();
 	const { t, tp, intlLocale } = useT();
+	const { fontScale } = useWindowDimensions();
 	const { status } = useSession();
 	const cache = useQueryClient();
 	const toast = useToast();
@@ -1003,6 +1004,7 @@ export default function MerchantHome() {
 											}
 											style={[
 												styles.statusRow,
+												fontScale >= 1.5 ? styles.statusRowLargeText : null,
 												{ borderTopColor: colors.border },
 											]}
 										>
@@ -1846,6 +1848,7 @@ const styles = StyleSheet.create({
 		borderTopWidth: StyleSheet.hairlineWidth,
 		paddingVertical: space.sm,
 	},
+	statusRowLargeText: { flexDirection: "column", alignItems: "flex-start" },
 	locationRow: {
 		width: "100%",
 		minHeight: 64,

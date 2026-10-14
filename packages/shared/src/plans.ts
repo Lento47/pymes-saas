@@ -344,7 +344,7 @@ export interface PlanLimits {
 	analyticsDays: number;
 	inventoryTracking: boolean;
 	/**
-	 * Express deliveries a business may **accept** in one week.
+	 * Express deliveries a business may **accept** in one day.
 	 *
 	 * Not a subsidy and not a discount: the customer pays the courier separately and always
 	 * did (`plans.ts`'s own model sentence), so this counts **how many express orders the
@@ -357,12 +357,12 @@ export interface PlanLimits {
 	 * number rather than as an absent cap so the shape of the table does not change when a
 	 * tier gains one.
 	 *
-	 * Weekly, and that is deliberately **not** the billing period: a monthly merchant gets
-	 * ten a week, not ten a month divided by four, because a shop that fills its week on
-	 * Sunday and its week on Monday is two full weeks of business. The reset is therefore a
-	 * rolling window from the last reset rather than a calendar week — see `weekWindowStart`.
+	 * Daily, and that is deliberately **not** the billing period: a monthly merchant gets
+	 * ten a day, not ten a month divided by thirty, because a shop that fills lunch and
+	 * dinner is one day's business. The reset is a rolling window from the last reset
+	 * rather than a calendar date — see `expressWindowStart`.
 	 */
-	expressPerWeek: number;
+	expressPerDay: number;
 }
 
 const MEGABYTE = 1024 * 1024;
@@ -412,10 +412,10 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		activePromotions: 0,
 		analyticsDays: 30,
 		inventoryTracking: false,
-		// Ten a week is about one busy lunch and one busy dinner. Enough that a shop can
-		// run a week on it, and small enough that ten express deliveries a week for a year
+		// Ten a day is a busy lunch and a busy dinner. Enough that a shop can run a
+		// service on it, and small enough that ten express deliveries a day for a year
 		// is a real number of customers turning away.
-		expressPerWeek: 10,
+		expressPerDay: 10,
 	},
 	EMPRENDE: {
 		locations: 1,
@@ -428,8 +428,8 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		activePromotions: 2,
 		analyticsDays: 90,
 		inventoryTracking: false,
-		// Thirty a week: a shop taking express on most days and still short on Sundays.
-		expressPerWeek: 30,
+		// Thirty a day: a shop taking express through lunch and dinner without a queue.
+		expressPerDay: 30,
 	},
 	STARTER: {
 		locations: 1,
@@ -442,7 +442,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		activePromotions: 8,
 		analyticsDays: 730,
 		inventoryTracking: true,
-		expressPerWeek: 90,
+		expressPerDay: 90,
 	},
 	GROWTH: {
 		locations: 2,
@@ -455,7 +455,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		activePromotions: 15,
 		analyticsDays: 1095,
 		inventoryTracking: true,
-		expressPerWeek: 250,
+		expressPerDay: 250,
 	},
 	BUSINESS: {
 		locations: 5,
@@ -470,23 +470,23 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 		inventoryTracking: true,
 		// Not a constraint. A shop paying for the top tier has bought out of being told no,
 		// and a number here would be one that gets raised by a support ticket anyway.
-		expressPerWeek: Infinity,
+		expressPerDay: Infinity,
 	},
 };
 
 /**
- * Seven days, as the express quota's window.
+ * One day, as the express quota's window.
  *
  * **Its own constant, not the billing period.** The cadence is monthly or yearly and the
- * quota is weekly, and deriving one from the other produces either "ten a month divided by
- * four" — which strands a shop on the two busiest days of the week — or a reset that lands
- * mid-service. A merchant reasons in weeks and is billed in months, so both numbers exist and
- * neither is derived from the other.
+ * quota is daily, and deriving one from the other produces either "ten a month divided by
+ * thirty" — which strands a shop on the two busiest services of the month — or a reset that
+ * lands mid-service. A merchant reasons in days and is billed in months, so both numbers
+ * exist and neither is derived from the other.
  */
-export const EXPRESS_WINDOW_DAYS = 7;
+export const EXPRESS_WINDOW_DAYS = 1;
 
-/** The start of the window containing `at`: `at` floored to a 7-day block from the epoch. */
-export function weekWindowStart(at: Date): Date {
+/** The start of the window containing `at`: `at` floored to a 1-day block from the epoch. */
+export function expressWindowStart(at: Date): Date {
 	return new Date(
 		Math.floor(at.getTime() / (EXPRESS_WINDOW_DAYS * 86_400_000)) *
 			EXPRESS_WINDOW_DAYS *
@@ -495,7 +495,7 @@ export function weekWindowStart(at: Date): Date {
 }
 
 /**
- * Whether this business may accept one more express order this week.
+ * Whether this business may accept one more express order today.
  *
  * A window **and** a count, rather than a stored counter, for the reason
  * `subscriptionStatusAt` derives its status: a counter is only as good as the process that
@@ -508,9 +508,9 @@ export function weekWindowStart(at: Date): Date {
  */
 export function canAcceptExpress(
 	plan: Plan,
-	usedThisWeek: number,
+	usedToday: number,
 ): boolean {
-	return usedThisWeek < PLAN_LIMITS[plan].expressPerWeek;
+	return usedToday < PLAN_LIMITS[plan].expressPerDay;
 }
 
 /**

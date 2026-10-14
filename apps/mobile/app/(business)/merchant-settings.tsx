@@ -13,6 +13,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
@@ -261,7 +262,12 @@ export default function MerchantSettingsScreen() {
 
 	if (shops.isPending || (shop && settings.isPending)) {
 		return (
-			<Screen title={t("biz.settings.title")} scroll bottomInset>
+			<Screen
+			title={t("biz.settings.title")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 				<View style={styles.loading}>
 					<Spinner />
 				</View>
@@ -270,7 +276,12 @@ export default function MerchantSettingsScreen() {
 	}
 	if (shops.error || settings.error) {
 		return (
-			<Screen title={t("biz.settings.title")} scroll bottomInset>
+			<Screen
+			title={t("biz.settings.title")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 				<ErrorState
 					error={shops.error ?? settings.error}
 					onRetry={() => {
@@ -283,7 +294,12 @@ export default function MerchantSettingsScreen() {
 	}
 	if (!shop || !settings.data) {
 		return (
-			<Screen title={t("biz.settings.title")} scroll bottomInset>
+			<Screen
+			title={t("biz.settings.title")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 				<View style={styles.loading}>
 					<Text>{t("state.empty")}</Text>
 				</View>
@@ -370,7 +386,12 @@ function SettingsForm({
 
 	return (
 		<>
-			<Screen title={t("biz.settings.title")} scroll bottomInset>
+			<Screen
+			title={t("biz.settings.title")}
+			leading={<BackButton to="/(business)/menu" />}
+			scroll
+			bottomInset
+		>
 				<View style={styles.content}>
 					{!canEdit ? (
 						<View style={styles.notice}>

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const board = readFileSync(
-	join(import.meta.dir, "..", "app", "(delivery)", "delivery.tsx"),
+	join(import.meta.dir, "..", "app", "(delivery)", "(tabs)", "delivery.tsx"),
 	"utf8",
 );
 

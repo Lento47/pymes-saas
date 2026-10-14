@@ -4,6 +4,7 @@ import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { ConfirmSheet } from "@/components/confirm-sheet";
@@ -219,7 +220,10 @@ export default function TeamScreen() {
 
 	if (failed) {
 		return (
-			<Screen title={t("biz.staff.title")}>
+			<Screen
+				title={t("biz.staff.title")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<ErrorState
 					error={failed}
 					onRetry={() => {
@@ -233,7 +237,10 @@ export default function TeamScreen() {
 
 	if (waiting) {
 		return (
-			<Screen title={t("biz.staff.title")}>
+			<Screen
+				title={t("biz.staff.title")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<TeamSkeleton loadingLabel={t("state.loading")} />
 			</Screen>
 		);
@@ -241,7 +248,10 @@ export default function TeamScreen() {
 
 	if (!shop) {
 		return (
-			<Screen title={t("biz.staff.title")}>
+			<Screen
+				title={t("biz.staff.title")}
+				leading={<BackButton to="/(business)/menu" />}
+			>
 				<Text tone="muted">{t("state.empty")}</Text>
 			</Screen>
 		);
@@ -249,7 +259,12 @@ export default function TeamScreen() {
 
 	if (!canManage) {
 		return (
-			<Screen title={t("biz.staff.title")} subtitle={shop.businessName} scroll>
+			<Screen
+				title={t("biz.staff.title")}
+				leading={<BackButton to="/(business)/menu" />}
+				subtitle={shop.businessName}
+				scroll
+			>
 				<EmptyState
 					icon="people-outline"
 					title={t("biz.permission.title")}
@@ -263,6 +278,7 @@ export default function TeamScreen() {
 		<>
 			<Screen
 				title={t("biz.staff.title")}
+				leading={<BackButton to="/(business)/menu" />}
 				subtitle={shop?.businessName}
 				scroll
 				bottomInset

@@ -260,7 +260,7 @@ moves to (`./switch`'s contract) instead of saying "search" in both.
 							    different empty state for a narrowed list — keeping the text while hiding
 							    the field would narrow the rows behind the reader's back. Clearing is the
 							    one rule that leaves no hidden state. */}
-							<BackButton to="/account" />
+							<BackButton to="/(business)/menu" />
 							{searchOpen ? (
 								<SearchInput
 									value={search}

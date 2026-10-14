@@ -8,9 +8,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
-import { CustomizationRows } from "@/components/customization-rows";
+import {
+	CustomizationRows,
+	DashboardWidgetPreview,
+} from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
 import { MerchantPulse } from "@/components/merchant-pulse";
 import { Screen, ScreenSection } from "@/components/screen";
@@ -97,7 +101,12 @@ export default function CustomizeDashboard() {
 		? businessThemeColors(draft.themeId, scheme)
 		: deviceColors;
 	return (
-		<Screen title={t("customize.dashboard")} scroll bottomInset>
+		<Screen
+			title={t("customize.dashboard")}
+			leading={<BackButton to="/(business)/customize" />}
+			scroll
+			bottomInset
+		>
 			{saved.error ? (
 				<ErrorState error={saved.error} onRetry={() => void saved.refetch()} />
 			) : null}
@@ -118,6 +127,7 @@ export default function CustomizeDashboard() {
 								: [...draft.hidden, id],
 						})
 					}
+					renderPreview={(id) => <DashboardWidgetPreview id={id} />}
 				/>
 			</ScreenSection>
 			<ScreenSection title={t("customize.metrics")}>

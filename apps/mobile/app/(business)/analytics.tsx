@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
@@ -229,7 +230,10 @@ export default function AnalyticsScreen() {
 
 	if (waiting) {
 		return (
-			<Screen title={t("biz.analytics.title")}>
+			<Screen
+			title={t("biz.analytics.title")}
+			leading={<BackButton to="/(business)/menu" />}
+		>
 				<AnalyticsSkeleton
 					loadingLabel={t("state.loading")}
 					chartTitle={t(chartTitleKey(granularity))}
@@ -239,7 +243,10 @@ export default function AnalyticsScreen() {
 	}
 	if (shop && !canReadAnalytics) {
 		return (
-			<Screen title={t("biz.analytics.title")}>
+			<Screen
+			title={t("biz.analytics.title")}
+			leading={<BackButton to="/(business)/menu" />}
+		>
 				<EmptyState
 					icon="lock-closed-outline"
 					title={t("biz.permission.title")}
@@ -251,7 +258,10 @@ export default function AnalyticsScreen() {
 
 	if (!failed && locations.data && locations.data.length === 0) {
 		return (
-			<Screen title={t("biz.analytics.title")}>
+			<Screen
+			title={t("biz.analytics.title")}
+			leading={<BackButton to="/(business)/menu" />}
+		>
 				<EmptyState
 					icon="location-outline"
 					title={t("biz.locations.title")}
@@ -263,7 +273,10 @@ export default function AnalyticsScreen() {
 
 	if (failed || !data) {
 		return (
-			<Screen title={t("biz.analytics.title")}>
+			<Screen
+			title={t("biz.analytics.title")}
+			leading={<BackButton to="/(business)/menu" />}
+		>
 				<ErrorState
 					error={failed}
 					title={t("biz.analytics.loadError")}
@@ -355,6 +368,7 @@ export default function AnalyticsScreen() {
 		<>
 			<Screen
 				title={t("biz.analytics.title")}
+				leading={<BackButton to="/(business)/menu" />}
 				subtitle={subtitle}
 				scroll
 				bottomInset

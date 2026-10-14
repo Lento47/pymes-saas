@@ -111,7 +111,7 @@ const TIER_COPY: Record<
 		cta: "Abrir mi tienda gratis",
 		features: [
 			"Tu tienda con catálogo, delivery y retiro en tienda",
-			"Diez entregas express por semana",
+			"Diez entregas express al día",
 			"Una persona con acceso a tu negocio",
 			"Historial de 30 días",
 		],
@@ -123,7 +123,7 @@ const TIER_COPY: Record<
 		features: [
 			"Todo lo del plan gratis",
 			"Hasta 60 productos y 600 MB de fotos",
-			"Treinta entregas express por semana",
+			"Treinta entregas express al día",
 			"Dos personas en tu equipo e historial de 90 días",
 		],
 	},
@@ -134,7 +134,7 @@ const TIER_COPY: Record<
 		features: [
 			"Todo lo de Emprende",
 			"Hasta 250 productos y control de inventario",
-			"Noventa entregas express por semana",
+			"Noventa entregas express al día",
 			"Promociones activas y dos años de historial",
 		],
 	},
@@ -170,8 +170,8 @@ function historyLabel(days: number): string {
 }
 
 /** `Infinity` is not a number a page can print, and "sin tope" is what it means. */
-function expressLabel(perWeek: number): string {
-	return perWeek === Infinity ? "Sin tope" : `${perWeek} por semana`;
+function expressLabel(perDay: number): string {
+	return perDay === Infinity ? "Sin tope" : `${perDay} al día`;
 }
 
 export const PRICING_TIERS: PricingTier[] = PLAN_ORDER.map((plan) => {
@@ -193,7 +193,7 @@ export const PRICING_TIERS: PricingTier[] = PLAN_ORDER.map((plan) => {
 			{ label: "Personas con acceso", value: String(limits.staffAccounts) },
 			{ label: "Sucursales", value: String(limits.locations) },
 			{ label: "Promociones activas", value: String(limits.activePromotions) },
-			{ label: "Entregas express", value: expressLabel(limits.expressPerWeek) },
+			{ label: "Entregas express", value: expressLabel(limits.expressPerDay) },
 			{ label: "Almacenamiento", value: gibibytes(limits.storageBytes) },
 			{ label: "Historial disponible", value: historyLabel(limits.analyticsDays) },
 			{
@@ -252,7 +252,7 @@ export const FAQS: FAQ[] = [
 	{
 		question: "¿El plan gratis tiene fecha de vencimiento?",
 		answer:
-			"No. El plan gratis no vence y no te pedimos tarjeta para usarlo. Incluye diez entregas express por semana; cuando se te acaban, tus clientes pueden seguir pidiendo con entrega normal o retiro en tienda.",
+			"No. El plan gratis no vence y no te pedimos tarjeta para usarlo. Incluye diez entregas express al día; cuando se te acaban, tus clientes pueden seguir pidiendo con entrega normal o retiro en tienda.",
 	},
 	{
 		question: "¿Suben los precios?",

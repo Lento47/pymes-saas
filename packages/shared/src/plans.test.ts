@@ -32,7 +32,7 @@ import {
 	SUBSCRIPTION_STATUSES,
 	upgradeTarget,
 	cadencesFor,
-	weekWindowStart,
+	expressWindowStart,
 } from "./plans";
 
 /**
@@ -197,7 +197,7 @@ describe("what a merchant pays", () => {
 		// free tier's are the same whichever cadence it is asked about (it has none).
 		const growth = PLAN_LIMITS.GROWTH;
 		expect(growth.products).toBe(600);
-		expect(growth.expressPerWeek).toBe(250);
+		expect(growth.expressPerDay).toBe(250);
 		expect(PLAN_LIMITS.FREE.products).toBe(15);
 	});
 });
@@ -264,25 +264,25 @@ describe("the plans", () => {
 		expect(PLAN_LIMITS[DEFAULT_PLAN].products).toBeGreaterThan(0);
 	});
 
-	test("the express quota rises with the tier and is weekly, not per period", () => {
+	test("the express quota rises with the tier and is daily, not per period", () => {
 		const ordered: Plan[] = [...PLAN_ORDER];
 		for (let i = 1; i < ordered.length; i += 1) {
-			expect(PLAN_LIMITS[ordered[i] as Plan].expressPerWeek).toBeGreaterThanOrEqual(
-				PLAN_LIMITS[ordered[i - 1] as Plan].expressPerWeek,
+			expect(PLAN_LIMITS[ordered[i] as Plan].expressPerDay).toBeGreaterThanOrEqual(
+				PLAN_LIMITS[ordered[i - 1] as Plan].expressPerDay,
 			);
 		}
-		// The rungs the tiers were set at. Ten a week on the free tier is about one busy
+		// The rungs the tiers were set at. Ten a day on the free tier is about one busy
 		// lunch and one busy dinner.
-		expect(PLAN_LIMITS.FREE.expressPerWeek).toBe(10);
-		expect(PLAN_LIMITS.EMPRENDE.expressPerWeek).toBe(30);
-		expect(PLAN_LIMITS.STARTER.expressPerWeek).toBe(90);
+		expect(PLAN_LIMITS.FREE.expressPerDay).toBe(10);
+		expect(PLAN_LIMITS.EMPRENDE.expressPerDay).toBe(30);
+		expect(PLAN_LIMITS.STARTER.expressPerDay).toBe(90);
 		// The top tier has bought out of being told no, and a number there would be one
 		// that gets raised by a support ticket anyway.
-		expect(PLAN_LIMITS.BUSINESS.expressPerWeek).toBe(Infinity);
-		// Weekly is its own window and is **not** the billing period. Deriving one from the
-		// other produces "ten a month divided by four", which strands a shop on the two
-		// busiest days of its week.
-		expect(EXPRESS_WINDOW_DAYS).toBe(7);
+		expect(PLAN_LIMITS.BUSINESS.expressPerDay).toBe(Infinity);
+		// Daily is its own window and is **not** the billing period. Deriving one from the
+		// other produces "ten a month divided by thirty", which strands a shop on the two
+		// busiest services of its month.
+		expect(EXPRESS_WINDOW_DAYS).toBe(1);
 	});
 
 	test("the express quota refuses the eleventh and not the tenth", () => {
@@ -295,20 +295,22 @@ describe("the plans", () => {
 		expect(canAcceptExpress("BUSINESS", 1_000_000)).toBe(true);
 	});
 
-	test("the express window is seven days from the epoch, not a calendar week", () => {
+	test("the express window is one day from the epoch, not a calendar date", () => {
 		const inside = new Date("2026-10-08T14:30:00.000Z");
-		const start = weekWindowStart(inside);
+		const start = expressWindowStart(inside);
 
 		expect(inside.getTime()).toBeGreaterThanOrEqual(start.getTime());
-		expect(inside.getTime() - start.getTime()).toBeLessThan(7 * 86_400_000);
+		expect(inside.getTime() - start.getTime()).toBeLessThan(86_400_000);
 		// The window's edge is what matters: one millisecond before the boundary is the
-		// previous window and has its own quota, so a shop cannot spend two weeks' worth
+		// previous window and has its own quota, so a shop cannot spend two days' worth
 		// in the space between two loads of the page.
-		expect(weekWindowStart(new Date(start.getTime() - 1)).getTime()).toBe(
-			start.getTime() - 7 * 86_400_000,
+		expect(expressWindowStart(new Date(start.getTime() - 1)).getTime()).toBe(
+			start.getTime() - 86_400_000,
 		);
 		// And it is stable within the window, or the count and the limit disagree.
-		expect(weekWindowStart(new Date(start.getTime() + 3_600_000))).toEqual(start);
+		expect(expressWindowStart(new Date(start.getTime() + 3_600_000))).toEqual(
+			start,
+		);
 	});
 });
 
@@ -399,11 +401,11 @@ describe("the limits", () => {
 		// A shop at its ceiling is told what to move to, and **not** that it could go
 		// annual: limits follow the tier alone, so an annual shop holds the same numbers
 		// and "go annual" would be selling it nothing.
-		expect(upgradeTarget("FREE", "expressPerWeek", 10)?.plan).toBe("EMPRENDE");
-		expect(upgradeTarget("EMPRENDE", "expressPerWeek", 30)?.plan).toBe("STARTER");
-		expect(upgradeTarget("STARTER", "expressPerWeek", 90)?.plan).toBe("GROWTH");
+		expect(upgradeTarget("FREE", "expressPerDay", 10)?.plan).toBe("EMPRENDE");
+		expect(upgradeTarget("EMPRENDE", "expressPerDay", 30)?.plan).toBe("STARTER");
+		expect(upgradeTarget("STARTER", "expressPerDay", 90)?.plan).toBe("GROWTH");
 		// The top tier is `Infinity`, so nothing is ever refused and nothing is offered.
-		expect(upgradeTarget("BUSINESS", "expressPerWeek", 1_000_000)).toBeNull();
+		expect(upgradeTarget("BUSINESS", "expressPerDay", 1_000_000)).toBeNull();
 	});
 });
 

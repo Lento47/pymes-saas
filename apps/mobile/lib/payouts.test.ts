@@ -48,6 +48,9 @@ describe("plan cards", () => {
 		expect(free.find((row) => row.key === "promotions")?.value).toBe(
 			"biz.subscription.limit.notIncluded",
 		);
+		expect(free.find((row) => row.key === "express")?.value).toBe(
+			String(PLAN_LIMITS.FREE.expressPerDay),
+		);
 		expect(business.find((row) => row.key === "express")?.value).toBe(
 			"biz.subscription.limit.unlimited",
 		);
