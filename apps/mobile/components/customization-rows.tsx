@@ -62,6 +62,7 @@ export function CustomizationRows<T extends string>({
 	onReorder,
 	onToggle,
 	canHide,
+	dense = false,
 	onPress,
 	selected,
 	renderPreview,
@@ -75,6 +76,7 @@ export function CustomizationRows<T extends string>({
 	onReorder: (next: T[]) => void;
 	onToggle: (item: T) => void;
 	canHide?: (item: T) => boolean;
+	dense?: boolean;
 	onPress?: (item: T) => void;
 	selected?: T | null;
 	renderPreview?: (item: T) => ReactNode;
@@ -101,14 +103,17 @@ export function CustomizationRows<T extends string>({
 
 	return (
 		<View style={styles.board}>
-			<Text variant="caption" tone="muted">
-				{editing ? t("customize.editing") : t("customize.holdToMove")}
-			</Text>
+			{dense ? null : (
+				<Text variant="caption" tone="muted">
+					{editing ? t("customize.editing") : t("customize.holdToMove")}
+				</Text>
+			)}
 			{visible.map((item, index) => (
 				<WidgetTile
 					key={item}
 					editing={editing}
 					reduced={reduced}
+					dense={dense}
 					selected={selected === item}
 					label={t(labels[item])}
 					onEnterEdit={enterEdit}
@@ -187,6 +192,7 @@ export function CustomizationRows<T extends string>({
 function WidgetTile({
 	editing,
 	reduced,
+	dense,
 	selected,
 	label,
 	chip,
@@ -200,6 +206,7 @@ function WidgetTile({
 }: {
 	editing: boolean;
 	reduced: boolean;
+	dense: boolean;
 	selected: boolean;
 	label: string;
 	chip?: ReactNode;
@@ -284,6 +291,7 @@ function WidgetTile({
 			<Animated.View
 				style={[
 					styles.tile,
+					dense ? styles.tileDense : null,
 					{
 						backgroundColor: colors.card,
 						borderColor: selected ? colors.primary : colors.border,
@@ -1140,6 +1148,11 @@ const styles = StyleSheet.create({
 		gap: space.sm,
 		minHeight: 88,
 		overflow: "visible",
+	},
+	tileDense: {
+		minHeight: MIN_TOUCH_TARGET,
+		padding: space.sm,
+		justifyContent: "center",
 	},
 	tileHead: {
 		flexDirection: "row",

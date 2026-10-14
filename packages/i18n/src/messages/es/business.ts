@@ -1495,9 +1495,9 @@ export const business = {
 	"customize.simple": "Diseño sencillo",
 	"customize.useSimple": "Usar diseño sencillo",
 	"customize.simpleDashboardHelp":
-		"Deja a la vista pedidos, avisos y acciones diarias. Oculta informes extra y la vista de productos. Puedes ajustar cada bloque abajo.",
+		"Deja pedidos y avisos a la vista, sin informes extra.",
 	"customize.simpleShopHelp":
-		"Muestra una portada compacta y el menú de productos. Puedes añadir ofertas o destacados abajo. Guarda y publica cuando quieras.",
+		"Usa una portada compacta y un menú de productos claro.",
 	"customize.show": "Mostrar",
 	"customize.hide": "Ocultar",
 	"customize.up": "Subir",
@@ -1532,7 +1532,7 @@ export const business = {
 		"Elige de uno a tres números. Mantén uno para cambiar el orden.",
 	"customize.metricsRange": "Elige de uno a tres números.",
 	"customize.canvasHint":
-		"Esta es tu pantalla de inicio. Toca un bloque para pintar o cambiar su forma. Mantén uno para moverlo.",
+		"Toca un bloque para cambiarlo. Mantén y arrastra para moverlo.",
 	"customize.paint": "Color de este bloque",
 	"customize.paintAll": "Pintar todo",
 	"customize.paintInherit": "Como el panel",

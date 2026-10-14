@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { BackButton } from "@/components/back-button";
 import { Card } from "@/components/card";
 import { ListRow } from "@/components/list-row";
-import { Screen, ScreenSection } from "@/components/screen";
+import { Screen } from "@/components/screen";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
@@ -23,34 +23,32 @@ export default function Customize() {
 			scroll
 			bottomInset
 		>
-			<ScreenSection title={t("customize.title")}>
-				<Card>
+			<Card>
+				<ListRow
+					title={t("customize.dashboard")}
+					subtitle={t("customize.saved")}
+					chevron
+					onPress={() =>
+						router.push({
+							pathname: "/(business)/customize-dashboard",
+							params: { businessId },
+						})
+					}
+				/>
+				{role === "OWNER" || role === "MANAGER" ? (
 					<ListRow
-						title={t("customize.dashboard")}
-						subtitle={t("customize.saved")}
+						title={t("customize.shop")}
+						subtitle={t("customize.draft")}
 						chevron
 						onPress={() =>
 							router.push({
-								pathname: "/(business)/customize-dashboard",
+								pathname: "/(business)/customize-shop",
 								params: { businessId },
 							})
 						}
 					/>
-					{role === "OWNER" || role === "MANAGER" ? (
-						<ListRow
-							title={t("customize.shop")}
-							subtitle={t("customize.draft")}
-							chevron
-							onPress={() =>
-								router.push({
-									pathname: "/(business)/customize-shop",
-									params: { businessId },
-								})
-							}
-						/>
-					) : null}
-				</Card>
-			</ScreenSection>
+				) : null}
+			</Card>
 		</Screen>
 	);
 }

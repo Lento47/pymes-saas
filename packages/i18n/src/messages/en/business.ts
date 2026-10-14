@@ -1415,9 +1415,8 @@ export const business = {
 	"customize.simple": "Simple layout",
 	"customize.useSimple": "Use simple layout",
 	"customize.simpleDashboardHelp":
-		"Keep orders, alerts and everyday actions in view. Hide extra reports and the product preview. You can still adjust any block below.",
-	"customize.simpleShopHelp":
-		"Show a compact shop header and the product menu. You can add offers or featured products below. Save, then publish when ready.",
+		"Keep orders and alerts in view, without extra reports.",
+	"customize.simpleShopHelp": "Use a compact header and a clear product menu.",
 	"customize.show": "Show",
 	"customize.hide": "Hide",
 	"customize.up": "Move up",
@@ -1451,8 +1450,7 @@ export const business = {
 	"customize.metricsHelp":
 		"Choose one to three numbers. Hold one to change the order.",
 	"customize.metricsRange": "Choose one to three numbers.",
-	"customize.canvasHint":
-		"This is your home screen. Tap a block to paint or restyle it. Hold one to move it.",
+	"customize.canvasHint": "Tap a block to change it. Hold and drag to move it.",
 	"customize.paint": "This block's color",
 	"customize.paintAll": "Paint everything",
 	"customize.paintInherit": "Match the panel",

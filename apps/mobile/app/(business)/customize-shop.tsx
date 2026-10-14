@@ -104,9 +104,6 @@ export default function CustomizeShop() {
 					}}
 				/>
 			) : null}
-			<Text variant="body" tone="muted">
-				{t("customize.draft")}
-			</Text>
 			<Card>
 				<View style={{ gap: space.sm }}>
 					<Text variant="label" bold>
@@ -122,46 +119,47 @@ export default function CustomizeShop() {
 					/>
 				</View>
 			</Card>
-			<ScreenSection title={t("customize.shop")}>
-				<View style={{ gap: space.sm }}>
-					<ListRow
-						title={t("customize.photos")}
-						chevron
+			<Text variant="caption" tone="muted">
+				{t("customize.draft")}
+			</Text>
+			<View style={{ gap: space.sm, marginTop: space.xxl }}>
+				<ListRow
+					title={t("customize.photos")}
+					chevron
+					onPress={() =>
+						router.push({
+							pathname: "/(business)/shop-settings",
+							params: { businessId },
+						})
+					}
+				/>
+				<Text variant="caption" tone="muted">
+					{t("customize.headerStyle")}
+				</Text>
+				<HeaderStylePicker
+					value={draft.header}
+					onChange={(header) => setDraft({ ...draft, header })}
+				/>
+				<Field
+					label={t("customize.color")}
+					value={draft.accentColor ?? ""}
+					autoCapitalize="characters"
+					maxLength={7}
+					onChangeText={(value) =>
+						setDraft({ ...draft, accentColor: value.trim() ? value : null })
+					}
+					error={accent && !accent.valid ? t("customize.colorError") : null}
+				/>
+				{accent && !accent.valid && accent.suggested ? (
+					<Button
+						variant="secondary"
+						label={accent.suggested}
 						onPress={() =>
-							router.push({
-								pathname: "/(business)/shop-settings",
-								params: { businessId },
-							})
+							setDraft({ ...draft, accentColor: accent.suggested })
 						}
 					/>
-					<Text variant="caption" tone="muted">
-						{t("customize.headerStyle")}
-					</Text>
-					<HeaderStylePicker
-						value={draft.header}
-						onChange={(header) => setDraft({ ...draft, header })}
-					/>
-					<Field
-						label={t("customize.color")}
-						value={draft.accentColor ?? ""}
-						autoCapitalize="characters"
-						maxLength={7}
-						onChangeText={(value) =>
-							setDraft({ ...draft, accentColor: value.trim() ? value : null })
-						}
-						error={accent && !accent.valid ? t("customize.colorError") : null}
-					/>
-					{accent && !accent.valid && accent.suggested ? (
-						<Button
-							variant="secondary"
-							label={accent.suggested}
-							onPress={() =>
-								setDraft({ ...draft, accentColor: accent.suggested })
-							}
-						/>
-					) : null}
-				</View>
-			</ScreenSection>
+				) : null}
+			</View>
 			<ScreenSection title={t("customize.shopInfo")}>
 				<CustomizationRows
 					items={draft.sections}

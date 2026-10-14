@@ -299,6 +299,7 @@ export default function CustomizeDashboard() {
 						{t("customize.shortcutsHelp")}
 					</Text>
 					<CustomizationRows
+						dense
 						items={shortcutItems}
 						hidden={dashboardShortcutIdSchema.options.filter(
 							(item) => !draft.shortcutIds.includes(item),
@@ -338,6 +339,7 @@ export default function CustomizeDashboard() {
 						{t("customize.metricsHelp")}
 					</Text>
 					<CustomizationRows
+						dense
 						items={metricItems}
 						hidden={dashboardMetricIdSchema.options.filter(
 							(item) => !draft.metrics.includes(item),
@@ -443,9 +445,6 @@ export default function CustomizeDashboard() {
 						onRetry={() => void saved.refetch()}
 					/>
 				) : null}
-				<Text variant="body" tone="muted">
-					{t("customize.canvasHint")}
-				</Text>
 				<Card>
 					<View style={styles.preset}>
 						<Text variant="label" bold>
@@ -461,6 +460,9 @@ export default function CustomizeDashboard() {
 						/>
 					</View>
 				</Card>
+				<Text variant="caption" tone="muted">
+					{t("customize.canvasHint")}
+				</Text>
 				<Card>
 					<ListRow
 						title={t("customize.theme")}
