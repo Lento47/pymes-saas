@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
+	Alert,
 	Linking,
 	StyleSheet,
 	useWindowDimensions,
@@ -364,18 +365,21 @@ function CourierRun({
 								</Text>
 							) : null}
 						</View>
-						<CircleIconButton
-							name="arrow-forward"
-							label={t("delivery.navigate")}
-							color={motion.brandInk}
-							background={motion.brand}
-							border={motion.brand}
-							onPress={() =>
-								openDirections(
-									kind === "pickup" ? delivery.pickup : delivery.dropoff,
-								)
-							}
-						/>
+						{kind !== "done" && kind !== "cancelled" ? (
+							<CircleIconButton
+								name="navigate-outline"
+								label={t("delivery.navigate")}
+								color={motion.brandInk}
+								background={motion.brand}
+								border={motion.brand}
+								onPress={() =>
+									openDirections(
+										kind === "pickup" ? delivery.pickup : delivery.dropoff,
+										t("delivery.navigate.unavailable"),
+									)
+								}
+							/>
+						) : null}
 					</View>
 				</View>
 
@@ -724,15 +728,17 @@ function stopStreet(stop: DeliveryStop) {
 	return [stop.line1, stop.line2].filter(Boolean).join(", ");
 }
 
-function openDirections(stop: DeliveryStop) {
+function openDirections(stop: DeliveryStop, unavailableMessage: string) {
 	const destination =
 		stop.lat != null && stop.lng != null
 			? `${stop.lat},${stop.lng}`
 			: stopStreet(stop) || stop.city;
+	if (!destination) {
+		Alert.alert(unavailableMessage);
+		return;
+	}
 	const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-	void Linking.canOpenURL(url)
-		.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
-		.catch(() => null);
+	void Linking.openURL(url).catch(() => Alert.alert(unavailableMessage));
 }
 
 export function RouteStops({
@@ -825,7 +831,7 @@ function StopRow({
 				) : null}
 			</View>
 			<Pressable
-				onPress={() => openDirections(stop)}
+				onPress={() => openDirections(stop, t("delivery.navigate.unavailable"))}
 				accessibilityRole="button"
 				accessibilityLabel={`${t("delivery.navigate")}. ${spokenTitle}. ${stop.name}`}
 				hitSlop={8}

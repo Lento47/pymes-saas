@@ -1241,6 +1241,8 @@ export const business = {
 	"delivery.stop.pickup": "Pickup",
 	"delivery.stop.dropoff": "Drop-off",
 	"delivery.navigate": "Open directions",
+	"delivery.navigate.unavailable":
+		"Could not open directions. Check your maps or browser app.",
 	"delivery.status.SEARCHING": "Finding a courier",
 	"delivery.status.OFFERED": "Offer sent",
 	"delivery.status.ACCEPTED": "Accepted",
