@@ -7,6 +7,7 @@ import { brandAccentCheck } from "@pymeshub/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { View } from "react-native";
+import { bandAnchor } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 import { space, useTheme } from "@/theme";
@@ -49,7 +50,7 @@ export function ShopCustomizationSections({
 	);
 	const accent =
 		appearance.accentColor && brandAccentCheck(appearance.accentColor).valid
-			? appearance.accentColor
+			? bandAnchor(appearance.accentColor, colors.background)
 			: colors.action;
 	return (
 		<View style={{ gap: space.lg }}>

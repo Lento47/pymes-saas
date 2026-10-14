@@ -406,7 +406,12 @@ function ratio(first: string, second: string): number {
 	return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-/** One accent must remain visible on both neutral mobile-shop surfaces. */
+// apps/mobile/theme/tokens.ts uses #FEFDFA for the customer light page; the
+// other light pages are white. #111111 is conservative for the dark pages.
+const LIGHT_SHOP_SURFACE = "#FEFDFA";
+const DARK_SHOP_SURFACE = "#111111";
+
+/** One accent must remain visible on both mobile-shop page surfaces. */
 export function brandAccentCheck(value: string): {
 	valid: boolean;
 	suggested: string | null;
@@ -417,8 +422,9 @@ export function brandAccentCheck(value: string): {
 	const hex = value.toUpperCase();
 	const ink = ratio(hex, "#000000") >= 4.5 ? "#000000" : "#FFFFFF";
 	const valid =
+		ratio(hex, LIGHT_SHOP_SURFACE) >= 3 &&
 		ratio(hex, "#FFFFFF") >= 3 &&
-		ratio(hex, "#111111") >= 3 &&
+		ratio(hex, DARK_SHOP_SURFACE) >= 3 &&
 		ratio(hex, ink) >= 4.5;
 	if (valid) return { valid: true, suggested: null, ink };
 	const rgb = [1, 3, 5].map((index) =>
@@ -436,7 +442,11 @@ export function brandAccentCheck(value: string): {
 						.padStart(2, "0"),
 				)
 				.join("")}`.toUpperCase();
-			if (ratio(candidate, "#FFFFFF") < 3 || ratio(candidate, "#111111") < 3)
+			if (
+				ratio(candidate, LIGHT_SHOP_SURFACE) < 3 ||
+				ratio(candidate, "#FFFFFF") < 3 ||
+				ratio(candidate, DARK_SHOP_SURFACE) < 3
+			)
 				continue;
 			if (fraction < distance) {
 				distance = fraction;

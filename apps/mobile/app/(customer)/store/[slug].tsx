@@ -611,16 +611,19 @@ export default function Store() {
 
 	const card = store.data?.card;
 	const appearance = store.data?.appearance ?? DEFAULT_STOREFRONT_APPEARANCE;
+	const accentCheck = appearance.accentColor
+		? brandAccentCheck(appearance.accentColor)
+		: null;
 	const brandAccent =
-		appearance.accentColor && brandAccentCheck(appearance.accentColor).valid
+		accentCheck?.valid && appearance.accentColor
 			? appearance.accentColor
 			: colors.accent;
-	const brandInk = appearance.accentColor
-		? brandAccentCheck(appearance.accentColor).ink
+	const brandInk = accentCheck?.valid
+		? accentCheck.ink
 		: contrastRatio(brandAccent, "#000000") >= 4.5
 			? "#000000"
 			: "#FFFFFF";
-	const brandColors = appearance.accentColor
+	const brandColors = accentCheck?.valid
 		? {
 				...colors,
 				primary: brandAccent,
@@ -906,7 +909,7 @@ export default function Store() {
 										</View>
 									</View>
 								)}
-								{appearance.header === "cover" && appearance.accentColor ? (
+								{appearance.header === "cover" && accentCheck?.valid ? (
 									<View style={{ height: 4, backgroundColor: brandAccent }} />
 								) : null}
 

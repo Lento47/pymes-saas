@@ -202,7 +202,7 @@ describe("saved customization compatibility", () => {
 	});
 
 	test("unreadable accents include a usable suggested shade", () => {
-		for (const color of ["#FFFFFF", "#111111", "#00FF00"]) {
+		for (const color of ["#FFFFFF", "#111111", "#00FF00", "#949494"]) {
 			const result = brandAccentCheck(color);
 			expect(result.valid).toBe(false);
 			expect(result.suggested).not.toBeNull();
