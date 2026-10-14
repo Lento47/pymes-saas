@@ -815,6 +815,7 @@ function BoardSlice({
 				<GestureDetector gesture={pan}>
 					<Pressable
 						onPress={() => settle(expanded)}
+						ripple={false}
 						accessibilityRole="button"
 						accessibilityLabel={expanded ? collapseLabel : expandLabel}
 						style={styles.sliceHandle}
@@ -954,11 +955,11 @@ const styles = StyleSheet.create({
 		paddingTop: space.md,
 		paddingBottom: space.xl,
 		overflow: "hidden",
-		elevation: 16,
+		elevation: 3,
 		shadowColor: "#101827",
-		shadowOffset: { width: 0, height: -8 },
-		shadowOpacity: 0.12,
-		shadowRadius: 24,
+		shadowOffset: { width: 0, height: -3 },
+		shadowOpacity: 0.06,
+		shadowRadius: 14,
 	},
 	sliceHandle: {
 		alignItems: "center",
