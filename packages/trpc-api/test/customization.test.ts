@@ -29,6 +29,7 @@ describe("mobile customization", () => {
 		await seedMembership(testWorld.db, owner.id, second, "OWNER");
 		await seedMembership(testWorld.db, staff.id, first, "STAFF");
 		const mine = appRouter.createCaller(await authed(testWorld, owner));
+		const secondDevice = appRouter.createCaller(await authed(testWorld, owner));
 		const coworker = appRouter.createCaller(await authed(testWorld, staff));
 		const configuration = {
 			...DEFAULT_DASHBOARD_PREFERENCES,
@@ -57,6 +58,10 @@ describe("mobile customization", () => {
 			(await coworker.business.dashboardPreferences({ businessId: first }))
 				.configuration,
 		).toEqual(DEFAULT_DASHBOARD_PREFERENCES);
+		expect(
+			(await secondDevice.business.dashboardPreferences({ businessId: first }))
+				.configuration,
+		).toEqual(configuration);
 		await expect(
 			mine.business.saveDashboardPreferences({
 				businessId: first,
@@ -151,7 +156,15 @@ describe("mobile customization", () => {
 				configuration: design,
 			}),
 		).rejects.toThrow();
-		await mine.business.publishShopDraft({ businessId, revision: 1 });
+		for (const operation of [
+			() => staffCaller.business.publishShopDraft({ businessId, revision: 1 }),
+			() => staffCaller.business.discardShopDraft({ businessId, revision: 1 }),
+			() =>
+				staffCaller.business.restoreShopDefault({ businessId, revision: 1 }),
+		]) {
+			await expect(operation()).rejects.toThrow();
+		}
+		await managerCaller.business.publishShopDraft({ businessId, revision: 1 });
 		expect(
 			(await mine.businesses.bySlug({ slug: "custom-shop" })).appearance,
 		).toEqual(design);
