@@ -63,6 +63,7 @@ export function ConfirmSheet({
 	confirmLabel,
 	confirmVariant = "destructive",
 	cancelLabel,
+	bottomClearance,
 	onConfirm,
 }: {
 	open: boolean;
@@ -77,6 +78,8 @@ export function ConfirmSheet({
 	confirmVariant?: ButtonVariant;
 	/** Defaults to `action.cancel`. The order screen says "Volver" and passes its own. */
 	cancelLabel?: string;
+	/** Space reserved for a floating bottom navigation control. */
+	bottomClearance?: number;
 	onConfirm: () => void;
 }) {
 	const { t } = useT();
@@ -105,7 +108,13 @@ export function ConfirmSheet({
 			snapPoints={[1]}
 			footer={
 				<View
-					style={[styles.actions, { paddingBottom: insets.bottom + space.md }]}
+					style={[
+						styles.actions,
+						{
+							paddingBottom:
+								Math.max(insets.bottom, bottomClearance ?? 0) + space.md,
+						},
+					]}
 				>
 					<Button
 						label={confirmLabel}

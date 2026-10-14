@@ -57,6 +57,7 @@ import { Sheet } from "@/components/sheet";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
 import { statusKey } from "@/components/status-badge";
+import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { messageFor, toApiFailure, useApiFailure } from "@/lib/api-error";
@@ -568,6 +569,7 @@ export default function MerchantHome() {
 		(locationPaused || selectedLocation.status === "open");
 	const selectedPauseDuration =
 		pauseDuration === undefined ? undefined : pauseDuration;
+	const tabClearance = useTabBarClearance();
 
 	return (
 		<>
@@ -1310,6 +1312,7 @@ export default function MerchantHome() {
 				}}
 				title={t("biz.locations.pause")}
 				closeLabel={t("action.close")}
+				footer={<View style={{ height: tabClearance }} />}
 			>
 				<Card>
 					{([15, 30, 60] as const).map((minutes) => (
@@ -1353,6 +1356,7 @@ export default function MerchantHome() {
 						: undefined
 				}
 				confirmLabel={t("biz.locations.pause")}
+				bottomClearance={tabClearance}
 				onConfirm={() => {
 					if (!businessId || !selectedLocation) return;
 					pause.mutate({
