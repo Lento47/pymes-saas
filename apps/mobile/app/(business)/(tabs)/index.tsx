@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
 	type DashboardPreferences,
-	resolveDashboardPreferences,
 	type FulfilmentKind,
 	formatMoney,
 	MARKET_TIME_ZONE,
@@ -14,10 +13,11 @@ import {
 	ORDER_STATUSES,
 	type OrderStatus,
 	type ProductCard,
+	resolveDashboardPreferences,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useIsFocused } from "expo-router";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
@@ -39,6 +39,7 @@ import {
 } from "@/components/merchant-command-rail";
 import { MerchantGuide } from "@/components/merchant-guide";
 import {
+	MerchantAction,
 	MerchantOrderRow,
 	type MerchantRowAction,
 	ROW_MIN_HEIGHT,
@@ -49,8 +50,8 @@ import {
 	pulseBandHeight,
 } from "@/components/merchant-pulse";
 import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
-import { Price } from "@/components/price";
 import { hitSlopFor, Pressable } from "@/components/pressable";
+import { Price } from "@/components/price";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
 import { Sheet } from "@/components/sheet";
@@ -796,9 +797,7 @@ export default function MerchantHome() {
 						dateLabel={dateLabel}
 						metrics={configuration.metrics}
 						layout={configuration.layouts.pulse}
-						paint={
-							configuration.widgetThemes.pulse ? "accent" : "invert"
-						}
+						paint={configuration.widgetThemes.pulse ? "accent" : "invert"}
 					/>
 				);
 			case "insights":
@@ -854,8 +853,7 @@ export default function MerchantHome() {
 			case "attention":
 				if (attention.length === 0) return null;
 				if (configuration.layouts.attention === "chips") {
-					const attentionPainted =
-						configuration.widgetThemes.attention != null;
+					const attentionPainted = configuration.widgetThemes.attention != null;
 					return (
 						<View style={[styles.pad, styles.attentionChips]}>
 							{attention.map((alert) => {
@@ -920,21 +918,34 @@ export default function MerchantHome() {
 								severity={alert.severity}
 								icon={ATTENTION_ICONS[alert.type]}
 								actionLabel={
-									alert.action
-										? t(ATTENTION_ACTION_KEYS[alert.action])
-										: null
+									alert.action ? t(ATTENTION_ACTION_KEYS[alert.action]) : null
 								}
 								last={index === attention.length - 1}
 								onPress={() => {
-									const route =
-										alert.action && ALERT_ROUTES[alert.action];
+									const route = alert.action && ALERT_ROUTES[alert.action];
 									if (route && businessId) router.push(route(businessId));
 								}}
 							/>
 						))}
 					</View>
 				);
-			case "queue":
+			case "queue": {
+				const orderActions = (
+					order: (typeof orders)[number],
+				): MerchantRowAction[] =>
+					nextStatuses(order.status, "BUSINESS", order.fulfilment)
+						.slice(0, 2)
+						.map((to, actionIndex) => ({
+							label: t(moveLabelKey(to, order.fulfilment)),
+							onPress: () =>
+								advance.mutate({
+									orderId: order.id,
+									to,
+									expectedStatus: order.status,
+								}),
+							pending: advance.variables?.orderId === order.id,
+							kind: actionIndex === 0 ? "primary" : "secondary",
+						}));
 				return (
 					<>
 						<View style={styles.pad}>
@@ -987,66 +998,71 @@ export default function MerchantHome() {
 							</View>
 						) : configuration.layouts.queue === "compact" ? (
 							<View style={styles.compactQueue}>
-								{orders.map((order) => (
-									<Pressable
-										key={order.id}
-										onPress={() =>
-											router.push({
-												pathname: "/merchant-order/[id]",
-												params: { id: order.id },
-											})
-										}
-										accessibilityRole="button"
-										accessibilityLabel={`#${order.reference}`}
-										style={[
-											styles.compactQueueRow,
-											{ borderBottomColor: colors.border },
-										]}
-									>
-										{configuration.widgetThemes.queue ? (
-											<View
-												style={[
-													styles.queuePaintMark,
-													{ backgroundColor: colors.primary },
-												]}
-											/>
-										) : null}
-										<View style={styles.compactQueueCopy}>
-											<Text variant="body" bold numberOfLines={1}>
-												#{order.reference}
-											</Text>
-											<Text variant="caption" tone="muted" numberOfLines={1}>
-												{t(statusKey(order.status))}
-											</Text>
+								{orders.map((order) => {
+									const actions = orderActions(order);
+									return (
+										<View
+											key={order.id}
+											style={[
+												styles.compactQueueItem,
+												{ borderBottomColor: colors.border },
+											]}
+										>
+											<Pressable
+												onPress={() =>
+													router.push({
+														pathname: "/merchant-order/[id]",
+														params: { id: order.id },
+													})
+												}
+												accessibilityRole="button"
+												accessibilityLabel={`#${order.reference}`}
+												style={styles.compactQueueRow}
+											>
+												{configuration.widgetThemes.queue ? (
+													<View
+														style={[
+															styles.queuePaintMark,
+															{ backgroundColor: colors.primary },
+														]}
+													/>
+												) : null}
+												<View style={styles.compactQueueCopy}>
+													<Text variant="body" bold numberOfLines={1}>
+														#{order.reference}
+													</Text>
+													<Text
+														variant="caption"
+														tone="muted"
+														numberOfLines={1}
+													>
+														{t(statusKey(order.status))}
+													</Text>
+												</View>
+												<Text variant="body" bold tabular>
+													{formatMoney(order.totalMinor, order.currency, {
+														locale: intlLocale,
+													})}
+												</Text>
+											</Pressable>
+											{actions.length > 0 ? (
+												<View style={styles.compactQueueActions}>
+													{actions.map((action) => (
+														<MerchantAction
+															key={`${action.kind}:${action.label}`}
+															action={action}
+														/>
+													))}
+												</View>
+											) : null}
 										</View>
-										<Text variant="body" bold tabular>
-											{formatMoney(order.totalMinor, order.currency, {
-												locale: intlLocale,
-											})}
-										</Text>
-									</Pressable>
-								))}
+									);
+								})}
 							</View>
 						) : (
 							<View>
 								{orders.map((order, index) => {
-									const actions: MerchantRowAction[] = nextStatuses(
-										order.status,
-										"BUSINESS",
-										order.fulfilment,
-									)
-										.slice(0, 2)
-										.map((to, actionIndex) => ({
-											label: t(moveLabelKey(to, order.fulfilment)),
-											onPress: () =>
-												advance.mutate({
-													orderId: order.id,
-													to,
-													expectedStatus: order.status,
-												}),
-											pending: advance.variables?.orderId === order.id,
-											kind: actionIndex === 0 ? "primary" : "secondary",
-										}));
+									const actions = orderActions(order);
 
 									return (
 										<MerchantOrderRow
@@ -1074,8 +1090,7 @@ export default function MerchantHome() {
 												},
 											)}
 											waitLabel={
-												formatRelative(order.placedAt, intlLocale) ??
-												undefined
+												formatRelative(order.placedAt, intlLocale) ?? undefined
 											}
 											urgent={order.status === "PENDING" ? "new" : null}
 											last={index === orders.length - 1}
@@ -1087,6 +1102,7 @@ export default function MerchantHome() {
 						)}
 					</>
 				);
+			}
 			case "commands":
 				return (
 					<MerchantCommandRail
@@ -1096,8 +1112,7 @@ export default function MerchantHome() {
 								key: "add-product",
 								label: t("biz.products.add"),
 								icon: "add-outline",
-								primary:
-									configuration.commandColors["add-product"] == null,
+								primary: configuration.commandColors["add-product"] == null,
 								accent: configuration.commandColors["add-product"],
 								onPress: () =>
 									router.push({
@@ -1577,10 +1592,7 @@ export default function MerchantHome() {
 										? businessThemeColors(widgetThemeId, scheme)
 										: colors;
 									return (
-										<ThemeColorsOverrideProvider
-											key={id}
-											colors={widgetColors}
-										>
+										<ThemeColorsOverrideProvider key={id} colors={widgetColors}>
 											{renderWidget(id)}
 										</ThemeColorsOverrideProvider>
 									);
@@ -1732,10 +1744,7 @@ function MerchantInsight({
 			{items.map((item) => (
 				<View
 					key={item.label}
-					style={[
-						styles.insightItem,
-						stacked && styles.insightStackItem,
-					]}
+					style={[styles.insightItem, stacked && styles.insightStackItem]}
 					accessible
 					accessibilityRole="text"
 					accessibilityLabel={`${item.label}: ${item.value ?? NO_VALUE}`}
@@ -2066,12 +2075,18 @@ const styles = StyleSheet.create({
 		borderRadius: radius.md,
 	},
 	compactQueue: { gap: space.xs, paddingHorizontal: space.lg },
+	compactQueueItem: { borderBottomWidth: StyleSheet.hairlineWidth },
+	compactQueueActions: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.sm,
+		paddingBottom: space.sm,
+	},
 	compactQueueRow: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: space.sm,
 		minHeight: MIN_TOUCH_TARGET,
-		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
 	compactQueueCopy: { flex: 1, minWidth: 0 },
 	queuePaintMark: {

@@ -400,16 +400,15 @@ export function MerchantOrderRow({
 /**
  * One of the row's controls, drawn by its `kind`.
  *
- * All three kinds are the same control at the same height — the queue's buttons are a set,
- * and a kind that also changed height would read as a hierarchy of importance that is really
- * a layout accident. The box is where the kinds disagree: `primary` takes the palette's own
+ * All three kinds share a 48-point height floor and grow with large text. The box is where
+ * the kinds disagree: `primary` takes the palette's own
  * pair, `secondary` takes the outlined box, `quiet` takes no box at all and keeps the row's
  * muted ink, so the row's own words stay louder than it. Each goes through `./pressable`,
  * which is what carries the press feedback and — for a `pending` action, through
  * `disabled` — the busy dim; a busy control shows nothing else, because a spinner beside a
  * dimmed label would be two answers to one press.
  */
-function MerchantAction({
+export function MerchantAction({
 	action,
 }: {
 	action: MerchantRowAction;
@@ -584,6 +583,8 @@ const styles = StyleSheet.create({
 	},
 	actions: {
 		flexDirection: "row",
+		flexWrap: "wrap",
+		justifyContent: "flex-end",
 		alignItems: "center",
 		gap: space.sm,
 	},
@@ -600,8 +601,10 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		// 48: the CTA floor — the header control's own 48, not a control squeezed
 		// to the 44 minimum on the screen whose whole job is moving orders.
-		height: 48,
+		minHeight: 48,
+		maxWidth: "100%",
 		paddingHorizontal: space.lg,
+		paddingVertical: space.sm,
 		borderRadius: radius.md,
 	},
 	/** The quiet action's air: narrower than a boxed one, since it draws no box to fill. */
