@@ -76,15 +76,24 @@ const ACTION_KEYS: Record<DeliveryAction, MessageKey> = {
 const POLL_MS = 5_000;
 
 export default function CourierDeliveryDetailScreen() {
-	const { id } = useLocalSearchParams<{ id: string }>();
+	const { id, completed } = useLocalSearchParams<{
+		id: string;
+		completed?: string;
+	}>();
 	return (
 		<SignedIn>
-			<CourierRun deliveryId={id} />
+			<CourierRun deliveryId={id} completedHint={completed === "1"} />
 		</SignedIn>
 	);
 }
 
-function CourierRun({ deliveryId }: { deliveryId: string }) {
+function CourierRun({
+	deliveryId,
+	completedHint,
+}: {
+	deliveryId: string;
+	completedHint: boolean;
+}) {
 	const { t, intlLocale } = useT();
 	const { colors, scheme } = useTheme();
 	const insets = useSafeAreaInsets();
@@ -102,12 +111,16 @@ function CourierRun({ deliveryId }: { deliveryId: string }) {
 			{ refetchInterval: POLL_MS },
 		),
 	);
-	const completedDark = scheme === "dark" && query.data?.status === "DELIVERED";
+	const completedDark =
+		scheme === "dark" &&
+		(query.data ? query.data.status === "DELIVERED" : completedHint);
 	const motion = courierMotionTokens(
 		completedDark ? "completed" : "active",
 		colors,
 		scheme,
 	);
+	const loadingBackground =
+		scheme === "dark" ? colors.background : motion.canvas;
 	const offers = useQuery(
 		trpc.deliveries.offers.queryOptions(undefined, {
 			refetchInterval: POLL_MS,
@@ -187,7 +200,7 @@ function CourierRun({ deliveryId }: { deliveryId: string }) {
 		return (
 			<SafeAreaView
 				edges={["top", "bottom"]}
-				style={[styles.fill, { backgroundColor: motion.canvas }]}
+				style={[styles.fill, { backgroundColor: loadingBackground }]}
 			>
 				<ErrorState error={query.error} onRetry={() => void query.refetch()} />
 			</SafeAreaView>
@@ -197,7 +210,7 @@ function CourierRun({ deliveryId }: { deliveryId: string }) {
 		return (
 			<SafeAreaView
 				edges={["top", "bottom"]}
-				style={[styles.fill, { backgroundColor: motion.canvas }]}
+				style={[styles.fill, { backgroundColor: loadingBackground }]}
 			>
 				<DeliverySkeleton label={t("state.loading")} />
 			</SafeAreaView>

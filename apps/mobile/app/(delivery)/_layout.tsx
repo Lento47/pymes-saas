@@ -3,6 +3,7 @@ import { Redirect, Tabs } from "expo-router";
 import { deliveryBarlessOptions } from "@/components/tab-bar";
 import { TabMark, useCapsuleScreenOptions } from "@/components/tab-capsule";
 import { useT } from "@/lib/i18n";
+import { useReducedMotion } from "@/lib/reduced-motion";
 import { useResolvedRole } from "@/lib/role";
 
 /**
@@ -35,6 +36,7 @@ import { useResolvedRole } from "@/lib/role";
 export default function DeliveryLayout() {
 	const { t } = useT();
 	const resolved = useResolvedRole();
+	const reduceMotion = useReducedMotion();
 
 	/**
 	 * Above the two early returns, not inside the JSX.
@@ -58,6 +60,7 @@ export default function DeliveryLayout() {
 					title: t("delivery.board.title"),
 					tabBarAccessibilityLabel: t("delivery.board.title"),
 					tabBarStyle: { display: "none" },
+					animation: reduceMotion ? "none" : "shift",
 					tabBarIcon: ({ focused, color }) => (
 						<TabMark focused={focused} name="bicycle-outline" color={color} />
 					),
@@ -91,7 +94,10 @@ export default function DeliveryLayout() {
 			/>
 			<Tabs.Screen
 				name="delivery/[id]"
-				options={deliveryBarlessOptions("delivery/[id]")}
+				options={{
+					...deliveryBarlessOptions("delivery/[id]"),
+					animation: reduceMotion ? "none" : "shift",
+				}}
 			/>
 		</Tabs>
 	);

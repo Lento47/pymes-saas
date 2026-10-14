@@ -507,7 +507,9 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 				expandLabel={t("delivery.motion.slice.expand")}
 				collapseLabel={t("delivery.motion.slice.collapse")}
 				emptyLabel={t("delivery.motion.slice.empty")}
-				onOpenDelivery={(id) => router.push(`/delivery/${id}` as Href)}
+				onOpenDelivery={(id) =>
+					router.push(`/delivery/${id}?completed=1` as Href)
+				}
 				orderLabel={(code) => t("order.number", { code })}
 			>
 				{offers.isError ? (
