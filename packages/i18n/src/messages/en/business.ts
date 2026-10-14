@@ -1426,6 +1426,7 @@ export const business = {
 	"customize.color": "Brand accent (#RRGGBB)",
 	"customize.colorError":
 		"This color is hard to see in light or dark mode. Try the suggested shade.",
+	"customize.useSuggestedShade": "Use suggested shade {color}",
 	"customize.shopInfo": "Shop information",
 	"customize.offers": "Offers",
 	"customize.featured": "Featured products",

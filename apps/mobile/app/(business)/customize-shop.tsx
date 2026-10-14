@@ -153,7 +153,9 @@ export default function CustomizeShop() {
 				{accent && !accent.valid && accent.suggested ? (
 					<Button
 						variant="secondary"
-						label={accent.suggested}
+						label={t("customize.useSuggestedShade", {
+							color: accent.suggested,
+						})}
 						onPress={() =>
 							setDraft({ ...draft, accentColor: accent.suggested })
 						}

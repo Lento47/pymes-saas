@@ -1507,6 +1507,7 @@ export const business = {
 	"customize.color": "Color de marca (#RRGGBB)",
 	"customize.colorError":
 		"Este color no se distingue bien en claro u oscuro. Prueba el tono sugerido.",
+	"customize.useSuggestedShade": "Usar tono sugerido {color}",
 	"customize.shopInfo": "Información de la tienda",
 	"customize.offers": "Ofertas",
 	"customize.featured": "Productos destacados",
