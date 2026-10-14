@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
 	type DashboardPreferences,
 	DEFAULT_DASHBOARD_PREFERENCES,
@@ -6,7 +7,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { CustomizationRows } from "@/components/customization-rows";
@@ -20,6 +21,7 @@ import { useTRPC } from "@/lib/trpc/context";
 import {
 	businessThemeColors,
 	businessThemeOrder,
+	radius,
 	space,
 	ThemeColorsOverrideProvider,
 	useTheme,
@@ -91,6 +93,9 @@ export default function CustomizeDashboard() {
 	};
 	const hidden = (id: DashboardPreferences["widgets"][number]) =>
 		draft.hidden.includes(id);
+	const previewColors = draft.themeId
+		? businessThemeColors(draft.themeId, scheme)
+		: deviceColors;
 	return (
 		<Screen title={t("customize.dashboard")} scroll bottomInset>
 			{saved.error ? (
@@ -184,39 +189,88 @@ export default function CustomizeDashboard() {
 				</View>
 			</ScreenSection>
 			<ScreenSection title={t("customize.preview")}>
-				<Card>
-					<Text variant="body" bold>
-						{t("biz.dashboard.today")}
-					</Text>
-					{!hidden("pulse") ? (
-						<ThemeColorsOverrideProvider
-							colors={
-								draft.themeId
-									? businessThemeColors(draft.themeId, scheme)
-									: deviceColors
-							}
-						>
-							<MerchantPulse
-								data={home.data?.pulse ?? null}
-								dateLabel={new Date().toLocaleDateString(intlLocale)}
-								metrics={
-									draft.metrics.length > 0
-										? draft.metrics.slice(0, 3)
-										: DEFAULT_DASHBOARD_PREFERENCES.metrics
-								}
-							/>
-						</ThemeColorsOverrideProvider>
-					) : null}
-					{!hidden("catalog")
-						? home.data?.catalog.products
-								.slice(0, draft.productPreviewCount)
-								.map((product) => (
-									<Text key={product.id} variant="body">
-										{product.title}
-									</Text>
-								))
-						: null}
-				</Card>
+				<ThemeColorsOverrideProvider colors={previewColors}>
+					<Card>
+						<Text variant="body" bold>
+							{t("biz.dashboard.today")}
+						</Text>
+						{draft.widgets
+							.filter((id) => !hidden(id))
+							.map((id) => {
+								if (id === "shortcuts")
+									return (
+										<View key={id} style={styles.shortcutRow}>
+											{[
+												{
+													icon: "receipt-outline" as const,
+													label: t("biz.nav.orders"),
+												},
+												{
+													icon: "fast-food-outline" as const,
+													label: t("biz.nav.products"),
+												},
+												{
+													icon: "ticket-outline" as const,
+													label: t("biz.promotions.title"),
+												},
+											].map((shortcut) => (
+												<View key={shortcut.icon} style={styles.shortcut}>
+													<Ionicons
+														name={shortcut.icon}
+														size={20}
+														color={previewColors.foreground}
+													/>
+													<Text variant="caption" numberOfLines={1}>
+														{shortcut.label}
+													</Text>
+												</View>
+											))}
+										</View>
+									);
+								if (id === "pulse")
+									return (
+										<MerchantPulse
+											key={id}
+											data={home.data?.pulse ?? null}
+											dateLabel={new Date().toLocaleDateString(intlLocale)}
+											metrics={
+												draft.metrics.length > 0
+													? draft.metrics.slice(0, 3)
+													: DEFAULT_DASHBOARD_PREFERENCES.metrics
+											}
+										/>
+									);
+								if (id === "insights")
+									return (
+										<View key={id} style={styles.widget}>
+											<Text variant="body" bold>
+												{t("customize.insights")}
+											</Text>
+											{home.data?.insights.topProduct ? (
+												<Text variant="body">
+													{t("biz.dashboard.topProducts")}:{" "}
+													{home.data.insights.topProduct}
+												</Text>
+											) : null}
+										</View>
+									);
+								return (
+									<View key={id} style={styles.widget}>
+										<Text variant="body" bold>
+											{t("biz.nav.menu")}
+										</Text>
+										{home.data?.catalog.products
+											.slice(0, draft.productPreviewCount)
+											.map((product) => (
+												<Text key={product.id} variant="body" numberOfLines={1}>
+													{product.title}
+												</Text>
+											))}
+									</View>
+								);
+							})}
+					</Card>
+				</ThemeColorsOverrideProvider>
 			</ScreenSection>
 			{save.error || restore.error ? (
 				<ErrorState
@@ -246,3 +300,14 @@ export default function CustomizeDashboard() {
 		</Screen>
 	);
 }
+
+const styles = StyleSheet.create({
+	shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+	shortcut: {
+		minWidth: 78,
+		maxWidth: 100,
+		alignItems: "center",
+		gap: space.xs,
+	},
+	widget: { gap: space.xs, borderRadius: radius.md, padding: space.sm },
+});

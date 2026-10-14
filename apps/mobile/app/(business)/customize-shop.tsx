@@ -6,21 +6,19 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, View } from "react-native";
+import { View } from "react-native";
 import { Button } from "@/components/button";
-import { Card } from "@/components/card";
 import { CustomizationRows } from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
 import { Screen, ScreenSection } from "@/components/screen";
-import { ShopCustomizationSections } from "@/components/shop-customization-sections";
+import { ShopCustomizationPreview } from "@/components/shop-customization-preview";
 import { Text } from "@/components/text";
-import { bandAnchor } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { space, useTheme } from "@/theme";
+import { space } from "@/theme";
 
 const LABELS = {
 	information: "customize.shopInfo",
@@ -30,7 +28,6 @@ const LABELS = {
 
 export default function CustomizeShop() {
 	const { t } = useT();
-	const { colors } = useTheme();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const scope = useMerchantScope();
@@ -160,60 +157,13 @@ export default function CustomizeShop() {
 				/>
 			</ScreenSection>
 			<ScreenSection title={t("customize.preview")}>
-				<Card>
-					{storefront.data ? (
-						<View style={{ gap: space.md }}>
-							{draft.header === "cover" && storefront.data.card.coverUrl ? (
-								<Image
-									source={{ uri: storefront.data.card.coverUrl }}
-									style={{ width: "100%", height: 150, borderRadius: 12 }}
-									accessibilityIgnoresInvertColors
-								/>
-							) : null}
-							<Text
-								variant="title"
-								bold
-								style={{
-									color:
-										draft.accentColor && accent?.valid
-											? bandAnchor(draft.accentColor, colors.card)
-											: colors.foreground,
-								}}
-							>
-								{storefront.data.card.name}
-							</Text>
-							<Text variant="body">
-								{storefront.data.isOpen ? t("store.open") : t("store.closed")}
-							</Text>
-							<Text variant="body" tone="muted">
-								{t("search.title")} · {t("nav.cart")}
-							</Text>
-							<ShopCustomizationSections
-								appearance={draft}
-								card={storefront.data.card}
-								hours={storefront.data.hours}
-								isOpen={storefront.data.isOpen}
-								preview
-							/>
-							<Text variant="body" bold>
-								{t("biz.nav.products")}
-							</Text>
-							{storefront.data.categories.map((category) => (
-								<Text key={category.id} variant="caption" tone="muted">
-									{category.name}
-								</Text>
-							))}
-							{products.data?.items.map((product) => (
-								<Text key={product.id} variant="body">
-									{product.title}
-								</Text>
-							))}
-							<Text variant="body" tone="muted">
-								{t("biz.reviews.title")} · {storefront.data.card.ratingCount}
-							</Text>
-						</View>
-					) : null}
-				</Card>
+				{storefront.data ? (
+					<ShopCustomizationPreview
+						storefront={storefront.data}
+						appearance={draft}
+						products={products.data?.items ?? []}
+					/>
+				) : null}
 			</ScreenSection>
 			{failure ? (
 				<ErrorState error={failure} onRetry={() => void saved.refetch()} />
