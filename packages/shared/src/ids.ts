@@ -17,6 +17,7 @@ export const ID_PREFIXES = {
 	business: "biz",
 	location: "loc",
 	membership: "mem",
+	dashboardPreference: "dbp",
 	courierProfile: "cpr",
 	courierInvite: "cin",
 	courierPresence: "cps",

@@ -35,10 +35,12 @@ import type {
 	CrashSeverity,
 	CrashSource,
 	CrashStatus,
+	DashboardPreferences,
 	IdeaRole,
 	IdeaStatus,
 	LocationPauseReason,
 	Plan,
+	StorefrontAppearance,
 	SubscriptionStatus,
 	TicketCategory,
 	TicketStatus,
@@ -486,6 +488,42 @@ export const membership = sqliteTable(
 		index("membership_user_idx").on(table.userId),
 	],
 );
+
+/** Private per-person dashboard layout, independent for each shop membership. */
+export const merchantDashboardPreference = sqliteTable(
+	"merchant_dashboard_preference",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id")
+			.notNull()
+			.references(() => business.id, { onDelete: "cascade" }),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		configuration: text("configuration", { mode: "json" })
+			.$type<DashboardPreferences>()
+			.notNull(),
+		revision: integer("revision").notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("merchant_dashboard_preference_user_business_unique").on(
+			table.userId,
+			table.businessId,
+		),
+	],
+);
+
+/** Only published is read by the public shop. Draft never leaves authenticated procedures. */
+export const mobileShopAppearance = sqliteTable("mobile_shop_appearance", {
+	businessId: text("business_id")
+		.primaryKey()
+		.references(() => business.id, { onDelete: "cascade" }),
+	published: text("published", { mode: "json" }).$type<StorefrontAppearance>(),
+	draft: text("draft", { mode: "json" }).$type<StorefrontAppearance>(),
+	revision: integer("revision").notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
 
 /**
  * A courier's public, opt-in profile. The account row is not enough: a

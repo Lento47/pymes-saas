@@ -150,3 +150,14 @@ export function useThemeColors(): ThemeColors {
 	}
 	return colors;
 }
+
+/** Limit a saved dashboard palette to its own screen without changing the device theme. */
+export function ThemeColorsOverrideProvider({
+	colors,
+	children,
+}: {
+	colors: ThemeColors;
+	children: ReactNode;
+}) {
+	return <ThemeColorsContext value={colors}>{children}</ThemeColorsContext>;
+}

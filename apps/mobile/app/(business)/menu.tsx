@@ -177,6 +177,16 @@ export default function MenuScreen() {
 						chevron
 						onPress={() => router.push("/(business)/analytics")}
 					/>
+					<ListRow
+						title={t("customize.title")}
+						chevron
+						onPress={() =>
+							router.push({
+								pathname: "/(business)/customize",
+								params: { businessId },
+							})
+						}
+					/>
 					{/* The shop's identity first, and the delivery numbers second: the
 					    name and the two pictures are what a customer sees before they
 					    see a fee. The identity row opens `./merchant-settings`, the one

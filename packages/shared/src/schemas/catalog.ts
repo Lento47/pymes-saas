@@ -18,6 +18,7 @@ import {
 	moneyMinorSchema,
 	shortText,
 } from "./common";
+import { storefrontAppearanceSchema } from "./customization";
 
 export const PRODUCT_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
@@ -528,6 +529,7 @@ export const businessStorefrontSchema = z.object({
 	isOpen: z.boolean(),
 	categories: z.array(categorySchema),
 	featured: z.array(productCardSchema),
+	appearance: storefrontAppearanceSchema.optional(),
 });
 export type BusinessStorefront = z.infer<typeof businessStorefrontSchema>;
 

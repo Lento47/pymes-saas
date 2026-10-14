@@ -130,6 +130,9 @@ export default function BusinessLayout() {
 					/>
 					<Tabs.Screen name="products" options={{ href: null }} />
 					<Tabs.Screen name="analytics" options={{ href: null }} />
+					<Tabs.Screen name="customize" options={{ href: null }} />
+					<Tabs.Screen name="customize-dashboard" options={{ href: null }} />
+					<Tabs.Screen name="customize-shop" options={{ href: null }} />
 					{/* Every route file in this group must be declared here: Tabs
 					    auto-registers undeclared files as visible tabs (file-name
 					    label, no icon), which is how six managed screens once

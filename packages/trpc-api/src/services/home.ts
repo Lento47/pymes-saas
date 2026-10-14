@@ -49,7 +49,7 @@ export async function home(
 				businessId,
 				status: ["ACTIVE"],
 				sort: "newest",
-				limit: 3,
+				limit: 9,
 			}),
 		),
 		ctx.db

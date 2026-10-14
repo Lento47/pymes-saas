@@ -1,5 +1,6 @@
 import type { Db } from "@pymeshub/db";
 import {
+	mobileShopAppearance as appearanceTable,
 	auditLog as auditLogTable,
 	boundingBox,
 	business as businessTable,
@@ -34,6 +35,7 @@ import {
 	type MembershipSummary,
 	newId,
 	ORDER_STATUSES,
+	resolveStorefrontAppearance,
 	type StaffMember,
 	type Subscription,
 	scoreCandidate,
@@ -198,9 +200,14 @@ export async function bySlug(
 	const row = orNotFound(rows[0]);
 	const now = new Date();
 
-	const [categories, featured] = await Promise.all([
+	const [categories, featured, appearanceRows] = await Promise.all([
 		storefrontCategories(ctx.db, row.business.id),
 		activeProductsOf(ctx.db, row.business.id, true),
+		ctx.db
+			.select({ published: appearanceTable.published })
+			.from(appearanceTable)
+			.where(eq(appearanceTable.businessId, row.business.id))
+			.limit(1),
 	]);
 
 	// A shop that has marked nothing featured still needs a grid: an empty product
@@ -222,6 +229,60 @@ export async function bySlug(
 		categories,
 		featured: shown.map((product) =>
 			productCardOf(product, row.business, { now }),
+		),
+		appearance: appearanceRows[0]?.published
+			? resolveStorefrontAppearance(appearanceRows[0].published)
+			: undefined,
+	};
+}
+
+/** Authenticated preview also admits an unopened shop; public bySlug never does. */
+export async function previewForBusiness(
+	ctx: BusinessContext,
+): Promise<BusinessStorefront> {
+	const businessId = ctx.membership.businessId;
+	const [row] = await ctx.db
+		.select({
+			business: businessTable,
+			categoryName: categoryTable.name,
+			categoryNameEn: categoryTable.nameEn,
+		})
+		.from(businessTable)
+		.leftJoin(categoryTable, eq(businessTable.categoryId, categoryTable.id))
+		.where(eq(businessTable.id, businessId))
+		.limit(1);
+	const found = orNotFound(row);
+	const now = new Date();
+	const [categories, featured, appearanceRows] = await Promise.all([
+		storefrontCategories(ctx.db, businessId),
+		activeProductsOf(ctx.db, businessId, true),
+		ctx.db
+			.select({
+				draft: appearanceTable.draft,
+				published: appearanceTable.published,
+			})
+			.from(appearanceTable)
+			.where(eq(appearanceTable.businessId, businessId))
+			.limit(1),
+	]);
+	const shown = featured.length
+		? featured
+		: await activeProductsOf(ctx.db, businessId, false);
+	return {
+		card: businessCardOf(found.business, {
+			categoryName: found.categoryName,
+			categoryNameEn: found.categoryNameEn,
+			roadFeeEnabled: ctx.env.ROUTE_FEE_ENABLED === "true",
+			now,
+		}),
+		hours: found.business.hours ?? [],
+		isOpen: isOpenAt(found.business.hours, now),
+		categories,
+		featured: shown.map((product) =>
+			productCardOf(product, found.business, { now }),
+		),
+		appearance: resolveStorefrontAppearance(
+			appearanceRows[0]?.draft ?? appearanceRows[0]?.published,
 		),
 	};
 }

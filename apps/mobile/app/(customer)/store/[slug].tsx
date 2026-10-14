@@ -2,7 +2,9 @@ import { localizedName } from "@pymeshub/i18n";
 import {
 	type BusinessCard,
 	type BusinessHoursEntry,
+	brandAccentCheck,
 	type Category,
+	DEFAULT_STOREFRONT_APPEARANCE,
 	formatMoney,
 } from "@pymeshub/shared";
 import {
@@ -13,7 +15,13 @@ import {
 } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { Platform, type ScrollView, StyleSheet, View } from "react-native";
+import {
+	Image,
+	Platform,
+	type ScrollView,
+	StyleSheet,
+	View,
+} from "react-native";
 import Animated, {
 	useAnimatedScrollHandler,
 	useSharedValue,
@@ -26,7 +34,6 @@ import { ErrorState } from "@/components/error-state";
 import { Fact, Facts } from "@/components/facts";
 import { FavoriteButton } from "@/components/favorite-button";
 import { Hero } from "@/components/hero";
-import { HoursTable } from "@/components/hours-table";
 import { ListEnd } from "@/components/list-end";
 import { Price } from "@/components/price";
 import { ProductRow } from "@/components/product-row";
@@ -36,6 +43,7 @@ import { ReviewList, reviewDistribution } from "@/components/review-list";
 import { ReviewSummary } from "@/components/review-summary";
 import { Screen } from "@/components/screen";
 import { SearchInput } from "@/components/search-input";
+import { ShopCustomizationSections } from "@/components/shop-customization-sections";
 import { useSkeletonHold } from "@/components/skeleton";
 import {
 	ProductRowsSkeleton,
@@ -46,6 +54,7 @@ import { useTabBarClearance } from "@/components/tab-bar";
 import { Text } from "@/components/text";
 import { toApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
+import { bandAnchor, contrastRatio } from "@/lib/color";
 import {
 	formatAtMostOneDecimal,
 	formatMinuteOfDay,
@@ -56,7 +65,14 @@ import { leaveScreen } from "@/lib/leave";
 import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
-import { radius, space, TEXT_STACK_GAP, type } from "@/theme";
+import {
+	radius,
+	space,
+	TEXT_STACK_GAP,
+	ThemeColorsOverrideProvider,
+	type,
+	useTheme,
+} from "@/theme";
 
 /**
  * A shop, and its menu.
@@ -560,6 +576,7 @@ const MenuSection = memo(function MenuSection({
 });
 
 export default function Store() {
+	const { colors } = useTheme();
 	const { slug } = useLocalSearchParams<{ slug: string }>();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
@@ -593,6 +610,24 @@ export default function Store() {
 	);
 
 	const card = store.data?.card;
+	const appearance = store.data?.appearance ?? DEFAULT_STOREFRONT_APPEARANCE;
+	const brandAccent =
+		appearance.accentColor && brandAccentCheck(appearance.accentColor).valid
+			? appearance.accentColor
+			: colors.accent;
+	const brandInk = appearance.accentColor
+		? brandAccentCheck(appearance.accentColor).ink
+		: contrastRatio(brandAccent, "#000000") >= 4.5
+			? "#000000"
+			: "#FFFFFF";
+	const brandColors = appearance.accentColor
+		? {
+				...colors,
+				primary: brandAccent,
+				primaryForeground: brandInk,
+				action: bandAnchor(brandAccent, colors.background),
+			}
+		: colors;
 	const selectedOffer = offerForBusiness(offerSelection, card?.id);
 
 	// The shop's category, in the reader's language — the same `localizedName` the menu's
@@ -741,168 +776,217 @@ export default function Store() {
 
 	return (
 		<View style={styles.root}>
-			<Screen padded={false} topInset={false} contentStyle={styles.fill}>
-				<Animated.ScrollView
-					ref={scrollRef}
-					onScroll={onScroll}
-					// The rail is child 1 and must stay child 1 — see the docblock. 16ms is one
-					// frame, which is as often as a highlight can change.
-					scrollEventThrottle={16}
-					stickyHeaderIndices={[1]}
-					keyboardShouldPersistTaps="handled"
-					// `./screen`'s two platform branches, transcribed — this scroll is not that
-					// component's, and both values are the ones it would have given.
-					keyboardDismissMode={
-						Platform.OS === "ios" ? "interactive" : "on-drag"
-					}
-					// iOS only, and `undefined` rather than `false` elsewhere: React drops an
-					// undefined prop, so Android never receives the key. Its window is resized by
-					// the keyboard rather than covered by it, so it needs nothing.
-					automaticallyAdjustKeyboardInsets={
-						Platform.OS === "ios" ? true : undefined
-					}
-					// The bar is inside the inset the tab bar already paid; a scroll indicator
-					// that runs under it reads as a rendering bug.
-					scrollIndicatorInsets={{ bottom: 0 }}
-					contentContainerStyle={{
-						// The room the bar floats over, plus the tail every screen pays — this
-						// scroll is not `Screen`'s, so its own `paddingBottom` is not here.
-						//
-						// The bar's number is measured, not predicted, and it already carries the
-						// bottom inset the bar pays for itself: see `useActionBarClearance`. The
-						// reason to measure is on this screen as much as any — at 200% text the
-						// menu row under the bar is the row the customer is reading.
-						paddingBottom:
-							(showCart ? bar.clearance : 0) + capsule + space.huge,
-					}}
-					refreshControl={refreshControl}
-				>
-					{store.isError ? (
-						// A slug we do not have is not a failure on our side, so it does not get the
-						// error state — no "it's on our side, not yours", no request id to quote, and a
-						// way out instead of a Retry that would ask the same dead slug again. That is
-						// the distinction `category/[slug].tsx` already draws by hand.
-						toApiFailure(store.error).code === "NOT_FOUND" ? (
-							<View style={styles.pad}>
-								<EmptyState
-									icon="storefront-outline"
-									title={t("store.notFound")}
-									body={t("store.notFound.body")}
-									actionLabel={t("action.back")}
-									onAction={() => leaveScreen("/")}
-								/>
-							</View>
+			<ThemeColorsOverrideProvider colors={brandColors}>
+				<Screen padded={false} topInset={false} contentStyle={styles.fill}>
+					<Animated.ScrollView
+						ref={scrollRef}
+						onScroll={onScroll}
+						// The rail is child 1 and must stay child 1 — see the docblock. 16ms is one
+						// frame, which is as often as a highlight can change.
+						scrollEventThrottle={16}
+						stickyHeaderIndices={[1]}
+						keyboardShouldPersistTaps="handled"
+						// `./screen`'s two platform branches, transcribed — this scroll is not that
+						// component's, and both values are the ones it would have given.
+						keyboardDismissMode={
+							Platform.OS === "ios" ? "interactive" : "on-drag"
+						}
+						// iOS only, and `undefined` rather than `false` elsewhere: React drops an
+						// undefined prop, so Android never receives the key. Its window is resized by
+						// the keyboard rather than covered by it, so it needs nothing.
+						automaticallyAdjustKeyboardInsets={
+							Platform.OS === "ios" ? true : undefined
+						}
+						// The bar is inside the inset the tab bar already paid; a scroll indicator
+						// that runs under it reads as a rendering bug.
+						scrollIndicatorInsets={{ bottom: 0 }}
+						contentContainerStyle={{
+							// The room the bar floats over, plus the tail every screen pays — this
+							// scroll is not `Screen`'s, so its own `paddingBottom` is not here.
+							//
+							// The bar's number is measured, not predicted, and it already carries the
+							// bottom inset the bar pays for itself: see `useActionBarClearance`. The
+							// reason to measure is on this screen as much as any — at 200% text the
+							// menu row under the bar is the row the customer is reading.
+							paddingBottom:
+								(showCart ? bar.clearance : 0) + capsule + space.huge,
+						}}
+						refreshControl={refreshControl}
+					>
+						{store.isError ? (
+							// A slug we do not have is not a failure on our side, so it does not get the
+							// error state — no "it's on our side, not yours", no request id to quote, and a
+							// way out instead of a Retry that would ask the same dead slug again. That is
+							// the distinction `category/[slug].tsx` already draws by hand.
+							toApiFailure(store.error).code === "NOT_FOUND" ? (
+								<View style={styles.pad}>
+									<EmptyState
+										icon="storefront-outline"
+										title={t("store.notFound")}
+										body={t("store.notFound.body")}
+										actionLabel={t("action.back")}
+										onAction={() => leaveScreen("/")}
+									/>
+								</View>
+							) : (
+								<View style={styles.pad}>
+									<ErrorState
+										error={store.error}
+										onRetry={() => void store.refetch()}
+									/>
+								</View>
+							)
+						) : waitingForStore || !store.data || !card ? (
+							<StorefrontSkeleton />
 						) : (
-							<View style={styles.pad}>
-								<ErrorState
-									error={store.error}
-									onRetry={() => void store.refetch()}
-								/>
-							</View>
-						)
-					) : waitingForStore || !store.data || !card ? (
-						<StorefrontSkeleton />
-					) : (
-						<View style={styles.head}>
-							{/* Edge-to-edge hero: a cover fills the top, and with no photo the
+							<View style={styles.head}>
+								{/* Edge-to-edge hero: a cover fills the top, and with no photo the
 							    accent block still bleeds so the fade into the page is one shape.
 							    Back rides in `leading` on the `card` pill. */}
-							<Hero
-								coverUrl={card.coverUrl}
-								name={card.name}
-								meta={
-									categoryName ? `${categoryName} · ${card.city}` : card.city
-								}
-								logoUrl={card.logoUrl}
-								verified={card.isVerified}
-								isOpen={isOpen}
-								facts={<StoreFacts card={card} />}
-								leading={<BackButton to="/" surface />}
-								action={<FavoriteButton target={{ kind: "business", card }} />}
-							/>
+								{appearance.header === "cover" ? (
+									<Hero
+										coverUrl={card.coverUrl}
+										name={card.name}
+										meta={
+											categoryName
+												? `${categoryName} · ${card.city}`
+												: card.city
+										}
+										logoUrl={card.logoUrl}
+										verified={card.isVerified}
+										isOpen={isOpen}
+										facts={<StoreFacts card={card} />}
+										leading={<BackButton to="/" surface />}
+										action={
+											<FavoriteButton target={{ kind: "business", card }} />
+										}
+									/>
+								) : (
+									<View
+										style={{
+											paddingHorizontal: space.lg,
+											paddingTop: space.lg,
+											paddingBottom: space.xxl,
+											backgroundColor: brandAccent,
+											gap: space.md,
+										}}
+									>
+										<View
+											style={{
+												flexDirection: "row",
+												justifyContent: "space-between",
+												alignItems: "center",
+											}}
+										>
+											<BackButton to="/" surface />
+											<FavoriteButton target={{ kind: "business", card }} />
+										</View>
+										<View
+											style={{
+												flexDirection: "row",
+												alignItems: "center",
+												gap: space.md,
+											}}
+										>
+											{card.logoUrl ? (
+												<Image
+													source={{ uri: card.logoUrl }}
+													style={{ width: 52, height: 52, borderRadius: 12 }}
+												/>
+											) : null}
+											<View style={{ flex: 1 }}>
+												<Text variant="title" bold style={{ color: brandInk }}>
+													{card.name}
+												</Text>
+												<Text variant="body" style={{ color: brandInk }}>
+													{isOpen ? t("store.open") : t("store.closed")} ·{" "}
+													{card.city}
+												</Text>
+											</View>
+										</View>
+									</View>
+								)}
+								{appearance.header === "cover" && appearance.accentColor ? (
+									<View style={{ height: 4, backgroundColor: brandAccent }} />
+								) : null}
 
-							{selectedOffer ? (
-								<View style={styles.pad}>
-									<PromoReminder offer={selectedOffer} />
-								</View>
-							) : null}
+								{selectedOffer ? (
+									<View style={styles.pad}>
+										<PromoReminder offer={selectedOffer} />
+									</View>
+								) : null}
 
-							{/* When the shut shop opens — the hero says "Cerrado" and this says
+								{/* When the shut shop opens — the hero says "Cerrado" and this says
 							    when that ends. A closed day draws nothing: the "Hoy" row in
 							    `./hours-table` below is its reason. */}
-							{opensAt === null ? null : (
-								<View style={styles.pad}>
-									<Text variant="body" tone="muted">
-										{t("store.closed.until", { time: opensAt })}
-									</Text>
-								</View>
-							)}
+								{opensAt === null ? null : (
+									<View style={styles.pad}>
+										<Text variant="body" tone="muted">
+											{t("store.closed.until", { time: opensAt })}
+										</Text>
+									</View>
+								)}
 
-							{card.description ? (
-								<View style={styles.pad}>
-									<Text variant="body" tone="muted">
-										{card.description}
-									</Text>
-								</View>
-							) : null}
+								<ShopCustomizationSections
+									appearance={appearance}
+									card={card}
+									hours={hours}
+									isOpen={isOpen}
+								/>
 
-							<View style={styles.pad}>
-								<HoursTable hours={hours} isOpen={isOpen} />
-							</View>
-
-							{/* The field sits last in the head, immediately above the menu it
+								{/* The field sits last in the head, immediately above the menu it
 							    searches, so the rail sticks directly under it. The box itself is
 							    `components/search-input` — same 3:1 outline, same hidden glyphs,
 							    same clear button, as `app/search.tsx`. Only the side inset is
 							    this screen's. */}
-							<SearchInput
-								value={query}
-								onChangeText={setQuery}
-								placeholder={t("store.search.placeholder")}
-								accessibilityLabel={t("search.title")}
-								clearLabel={t("search.clear")}
-								style={styles.searchField}
+								<SearchInput
+									value={query}
+									onChangeText={setQuery}
+									placeholder={t("store.search.placeholder")}
+									accessibilityLabel={t("search.title")}
+									clearLabel={t("search.clear")}
+									style={styles.searchField}
+								/>
+							</View>
+						)}
+
+						{/* Always a child, always index 1 — a conditional one would move the sticky
+					    index onto whatever followed it. */}
+						<View
+							onLayout={(event) => {
+								railHeight.current = event.nativeEvent.layout.height;
+							}}
+						>
+							<StoreNav
+								groups={groups}
+								offsets={offsets}
+								scrollY={scrollY}
+								onJump={onJump}
 							/>
 						</View>
-					)}
 
-					{/* Always a child, always index 1 — a conditional one would move the sticky
-					    index onto whatever followed it. */}
-					<View
-						onLayout={(event) => {
-							railHeight.current = event.nativeEvent.layout.height;
-						}}
-					>
-						<StoreNav
-							groups={groups}
-							offsets={offsets}
-							scrollY={scrollY}
-							onJump={onJump}
-						/>
-					</View>
+						{!card ? null : searching ? (
+							<MenuSection businessId={card.id} search={settled} />
+						) : categories.length > 0 ? (
+							categories.map((category) => (
+								<MenuSection
+									key={category.id}
+									businessId={card.id}
+									category={category}
+									onOffset={onOffset}
+									onEmpty={onEmpty}
+								/>
+							))
+						) : (
+							// A shop whose products carry no category at all: the menu still exists, it
+							// is simply not grouped. Without this the grouping rule would hide every
+							// product of every shop that never filled a category in — see the report.
+							<MenuSection businessId={card.id} onOffset={onOffset} />
+						)}
 
-					{!card ? null : searching ? (
-						<MenuSection businessId={card.id} search={settled} />
-					) : categories.length > 0 ? (
-						categories.map((category) => (
-							<MenuSection
-								key={category.id}
-								businessId={card.id}
-								category={category}
-								onOffset={onOffset}
-								onEmpty={onEmpty}
-							/>
-						))
-					) : (
-						// A shop whose products carry no category at all: the menu still exists, it
-						// is simply not grouped. Without this the grouping rule would hide every
-						// product of every shop that never filled a category in — see the report.
-						<MenuSection businessId={card.id} onOffset={onOffset} />
-					)}
-
-					{!card ? null : (
-						<View style={styles.reviews}>
-							{/* The score, the real count behind it and the spread when every row is
+						{!card ? null : (
+							<View style={styles.reviews}>
+								{/* The score, the real count behind it and the spread when every row is
 							    in hand — the facts that sit above the rows and are the page's,
 							    not the list's. They pay the gutter here rather than on the block,
 							    because `./review-list` draws its own rows and its own foot and
@@ -910,65 +994,66 @@ export default function Store() {
 							    heading above them: `./review-summary` already names the block —
 							    "212 reseñas", or its empty sentence — so a "Reseñas" heading was
 							    the same word twice. */}
-							<View style={styles.reviewsHead}>
-								<ReviewSummary
-									average={card.ratingAvg}
-									count={card.ratingCount}
-									distribution={distribution}
-								/>
-								{/* The list's own failure, below a summary that is real data from
+								<View style={styles.reviewsHead}>
+									<ReviewSummary
+										average={card.ratingAvg}
+										count={card.ratingCount}
+										distribution={distribution}
+									/>
+									{/* The list's own failure, below a summary that is real data from
 								    the store payload — a review read that failed must not remove
 								    the score. */}
-								{reviews.isError ? (
-									<ErrorState
-										error={reviews.error}
-										onRetry={() => void reviews.refetch()}
-									/>
-								) : null}
-							</View>
-							{/* The reviews, as far as the API can answer them: the rows, and the
+									{reviews.isError ? (
+										<ErrorState
+											error={reviews.error}
+											onRetry={() => void reviews.refetch()}
+										/>
+									) : null}
+								</View>
+								{/* The reviews, as far as the API can answer them: the rows, and the
 							    foot that says whether there are more. */}
-							<ReviewList
-								reviews={reviewItems}
-								hasMore={reviews.hasNextPage}
-								loadingMore={reviews.isFetchingNextPage}
-								onLoadMore={() => void reviews.fetchNextPage()}
-							/>
-						</View>
-					)}
-				</Animated.ScrollView>
-			</Screen>
-
-			{/*
-			 * Outside `Screen`, because the bar is a layer over the scroll rather than a row
-			 * that takes height from it — the room it needs is the `contentContainerStyle`
-			 * above. Absolute, so it is pinned to the bottom of this screen's own box.
-			 */}
-			{showCart && mine ? (
-				<View style={styles.bar}>
-					<ActionBar
-						onHeightChange={bar.onHeightChange}
-						summary={
-							<View style={styles.summary}>
-								{/* The count and the total, both `tabular`: they are figures a reader
-								    compares against the cart, not prose. */}
-								<Text variant="label" tone="muted" tabular>
-									{tp("order.itemCount", cartCount)}
-								</Text>
-								<Price
-									amountMinor={mine.totals.totalMinor}
-									currency={mine.currency}
-									variant="body"
+								<ReviewList
+									reviews={reviewItems}
+									hasMore={reviews.hasNextPage}
+									loadingMore={reviews.isFetchingNextPage}
+									onLoadMore={() => void reviews.fetchNextPage()}
 								/>
 							</View>
-						}
-						primary={{
-							label: t("nav.cart"),
-							onPress: () => router.push("/cart"),
-						}}
-					/>
-				</View>
-			) : null}
+						)}
+					</Animated.ScrollView>
+				</Screen>
+
+				{/*
+				 * Outside `Screen`, because the bar is a layer over the scroll rather than a row
+				 * that takes height from it — the room it needs is the `contentContainerStyle`
+				 * above. Absolute, so it is pinned to the bottom of this screen's own box.
+				 */}
+				{showCart && mine ? (
+					<View style={styles.bar}>
+						<ActionBar
+							onHeightChange={bar.onHeightChange}
+							summary={
+								<View style={styles.summary}>
+									{/* The count and the total, both `tabular`: they are figures a reader
+								    compares against the cart, not prose. */}
+									<Text variant="label" tone="muted" tabular>
+										{tp("order.itemCount", cartCount)}
+									</Text>
+									<Price
+										amountMinor={mine.totals.totalMinor}
+										currency={mine.currency}
+										variant="body"
+									/>
+								</View>
+							}
+							primary={{
+								label: t("nav.cart"),
+								onPress: () => router.push("/cart"),
+							}}
+						/>
+					</View>
+				) : null}
+			</ThemeColorsOverrideProvider>
 		</View>
 	);
 }

@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
+	type DashboardPreferences,
+	DEFAULT_DASHBOARD_PREFERENCES,
 	type FulfilmentKind,
 	formatMoney,
 	MARKET_TIME_ZONE,
@@ -15,7 +17,7 @@ import {
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useIsFocused } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
@@ -67,10 +69,12 @@ import { useMerchantScope } from "@/lib/merchant-scope";
 import { NO_VALUE } from "@/lib/no-value";
 import { useTRPC } from "@/lib/trpc/context";
 import {
+	businessThemeColors,
 	icon,
 	MIN_TOUCH_TARGET,
 	radius,
 	space,
+	ThemeColorsOverrideProvider,
 	type as typeScale,
 	useTheme,
 } from "@/theme";
@@ -295,7 +299,7 @@ export default function MerchantHome() {
 	const { status } = useSession();
 	const cache = useQueryClient();
 	const toast = useToast();
-	const { colors } = useTheme();
+	const { colors: deviceColors, scheme } = useTheme();
 	const scope = useMerchantScope();
 	const focused = useIsFocused();
 	const [locationPickerOpen, setLocationPickerOpen] = useState(false);
@@ -314,6 +318,17 @@ export default function MerchantHome() {
 	const shop =
 		shopList.find((one) => one.businessId === scope.businessId) ?? shopList[0];
 	const businessId = shop?.businessId;
+	const dashboardPreferences = useQuery(
+		trpc.business.dashboardPreferences.queryOptions(
+			{ businessId: businessId ?? "" },
+			{ enabled: signedIn && !!businessId },
+		),
+	);
+	const configuration =
+		dashboardPreferences.data?.configuration ?? DEFAULT_DASHBOARD_PREFERENCES;
+	const colors = configuration.themeId
+		? businessThemeColors(configuration.themeId, scheme)
+		: deviceColors;
 	const subscription = useQuery(
 		trpc.subscription.current.queryOptions(
 			{ businessId: businessId ?? "" },
@@ -482,7 +497,10 @@ export default function MerchantHome() {
 				0,
 				home.data.catalog.active +
 					home.data.catalog.draft -
-					home.data.catalog.products.length,
+					Math.min(
+						configuration.productPreviewCount,
+						home.data.catalog.products.length,
+					),
 			)
 		: null;
 
@@ -668,413 +686,100 @@ export default function MerchantHome() {
 		pauseDuration === undefined ? undefined : pauseDuration;
 	const tabClearance = useTabBarClearance();
 
-	return (
-		<>
-			<Screen
-				// Edge-to-edge body: the pulse band and the command rail are full-bleed by
-				// construction, so the padded blocks below pay their own `styles.pad`.
-				padded={false}
-				scroll
-				contentStyle={styles.body}
-				onRefresh={refreshDashboard}
-			>
-				{/* The failure, tested before the absence of data: a `myBusinesses` read that
-		    failed leaves no `shops.data` behind, so the skeleton branch would hold the
-		    screen forever with nothing to say. */}
-				{failed ? (
-					<ErrorState error={failed} onRetry={() => void refreshDashboard()} />
-				) : waiting || !shops.data ? (
-					<HomeSkeleton loadingLabel={t("state.loading")} />
-				) : !shop || !businessId ? (
-					<EmptyState
-						icon="storefront-outline"
-						title={t("biz.onboarding.title")}
-						body={t("biz.onboarding.notLive")}
-						actionLabel={t("biz.onboarding.create")}
-						onAction={() => router.push("/new-business")}
+	const renderWidget = (id: DashboardPreferences["widgets"][number]) => {
+		switch (id) {
+			case "shortcuts":
+				return (
+					<MerchantShortcutRail
+						shortcuts={[
+							{
+								key: "orders",
+								label: t("biz.nav.orders"),
+								icon: "receipt-outline",
+								onPress: () => router.push("/(business)/business"),
+							},
+							{
+								key: "catalog",
+								label: t("biz.nav.products"),
+								icon: "fast-food-outline",
+								onPress: () => router.push("/(business)/products"),
+							},
+							{
+								key: "promotions",
+								label: t("biz.promotions.title"),
+								icon: "ticket-outline",
+								onPress: () => router.push("/(business)/promotions"),
+							},
+							{
+								key: "analytics",
+								label: t("biz.analytics.title"),
+								icon: "stats-chart-outline",
+								onPress: () => router.push("/(business)/analytics"),
+							},
+							{
+								key: "team",
+								label: t("biz.more.team"),
+								icon: "people-outline",
+								onPress: () =>
+									router.push({
+										pathname: "/(business)/team",
+										params: { businessId },
+									}),
+							},
+							{
+								key: "payouts",
+								label: t("biz.more.payouts"),
+								icon: "cash-outline",
+								onPress: () =>
+									router.push({
+										pathname: "/(business)/payouts",
+										params: { businessId },
+									}),
+							},
+							{
+								key: "hours",
+								label: t("biz.settings.hours"),
+								icon: "time-outline",
+								onPress: () =>
+									router.push({
+										pathname: "/(business)/shop-hours",
+										params: { businessId },
+									}),
+							},
+							{
+								key: "locations",
+								label: t("biz.locations.title"),
+								icon: "location-outline",
+								onPress: () =>
+									router.push({
+										pathname: "/(business)/locations",
+										params: { businessId },
+									}),
+							},
+							{
+								key: "reviews",
+								label: t("biz.reviews.title"),
+								icon: "star-outline",
+								onPress: () =>
+									router.push({
+										pathname: "/(business)/reviews",
+										params: { businessId },
+									}),
+							},
+						]}
 					/>
-				) : (
+				);
+			case "pulse":
+				return (
+					<MerchantPulse
+						data={pulse}
+						dateLabel={dateLabel}
+						metrics={configuration.metrics}
+					/>
+				);
+			case "insights":
+				return (
 					<>
-						<View style={styles.merchantHeader}>
-							<View style={styles.headerContent}>
-								{/* 52 identity: the initial, or the photograph clipped to r16. */}
-								<Image
-									uri={home.data?.location.logoUrl}
-									radiusToken="full"
-									style={[
-										styles.identity,
-										{ borderColor: colors.border },
-										home.data?.location.logoUrl ? styles.identityPhoto : null,
-									]}
-									accessibilityElementsHidden
-								>
-									{home.data?.location.logoUrl ? null : (
-										<Text variant="title" bold>
-											{shop.businessName.trim().charAt(0).toUpperCase()}
-										</Text>
-									)}
-								</Image>
-								<View style={styles.identityCopy}>
-									<Text variant="title" bold numberOfLines={1}>
-										{shop.businessName}
-									</Text>
-									<Pressable
-										onPress={() =>
-											router.push({
-												pathname: "/(business)/payouts",
-												params: { businessId },
-											})
-										}
-										accessibilityRole="button"
-										accessibilityLabel={`${t("biz.subscription.title")}: ${subscription.data ? t(`biz.subscription.plan.${subscription.data.plan}`) : t("biz.more.subscriptionEmpty")}`}
-										accessibilityHint={t("biz.subscription.change")}
-										style={styles.planLink}
-									>
-										<Text variant="caption" tone="muted" numberOfLines={1}>
-											{t("biz.subscription.title")} ·{" "}
-											{subscription.data
-												? t(`biz.subscription.plan.${subscription.data.plan}`)
-												: t("biz.more.subscription")}
-										</Text>
-										<Ionicons
-											name="chevron-forward"
-											size={12}
-											color={colors.mutedForeground}
-										/>
-									</Pressable>
-								</View>
-							</View>
-							<View style={styles.headerRows}>
-								{/* Order-taking state and its next action stay together. */}
-								{selectedLocation ? (
-									<Pressable
-										onPress={() => {
-											if (locationPaused) {
-												resume.mutate({
-													businessId,
-													locationId: selectedLocation.id,
-												});
-												return;
-											}
-											setPauseDuration(undefined);
-											setPauseStage("duration");
-										}}
-										disabled={
-											!canManageOperatingState ||
-											pause.isPending ||
-											resume.isPending
-										}
-										disabledOpacity={1}
-										accessibilityRole="button"
-										accessibilityLabel={t(
-											`biz.locations.status.${selectedLocation.status}`,
-										)}
-										accessibilityHint={
-											canManageOperatingState
-												? t(
-														locationPaused
-															? "biz.locations.resume"
-															: "biz.locations.pause",
-													)
-												: undefined
-										}
-										style={[
-											styles.statusRow,
-											{ borderTopColor: colors.border },
-										]}
-									>
-										<View style={styles.headerRowCopy}>
-											<Text variant="caption" tone="muted">
-												{t("biz.nav.orders")}
-											</Text>
-											<Text variant="body" bold>
-												{t(`biz.locations.status.${selectedLocation.status}`)}
-											</Text>
-											{/* The pause's clock, and only while there is one. A third
-											    line in a row whose floor is 64 — it grows at 200%
-											    text rather than clipping, which is what the floor is
-											    for. This row is the only place on the screen that
-											    names the shop's operating state, so the state an
-											    owner may have to wait on belongs here, under the
-											    word that says there is one. */}
-											{pauseCaption ? (
-												<Text variant="caption" tone="muted" tabular>
-													{pauseCaption}
-												</Text>
-											) : null}
-										</View>
-										{canManageOperatingState ? (
-											<View style={styles.rowAction}>
-												<Text variant="label" tone="action" bold>
-													{t(
-														locationPaused
-															? "biz.locations.resume"
-															: "biz.locations.pause",
-													)}
-												</Text>
-												<Ionicons
-													name="chevron-forward"
-													size={16}
-													color={colors.action}
-												/>
-											</View>
-										) : null}
-									</Pressable>
-								) : null}
-								{/* One branch opens its pickup map; multiple branches keep the selector. */}
-								{selectedLocation ? (
-									<Pressable
-										onPress={() => {
-											if ((locations.data?.length ?? 0) > 1)
-												setLocationPickerOpen(true);
-											else if (canManage && selectedLocation.isDefault)
-												router.push("/(business)/shop-location");
-										}}
-										disabled={
-											(locations.data?.length ?? 0) < 2 &&
-											(!canManage || !selectedLocation.isDefault)
-										}
-										disabledOpacity={1}
-										accessibilityRole="button"
-										accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
-										accessibilityHint={
-											(locations.data?.length ?? 0) > 1
-												? t("biz.locations.select")
-												: canManage && selectedLocation.isDefault
-													? t("biz.order.dispatch.setPickupPin")
-													: undefined
-										}
-										style={[
-											styles.locationRow,
-											{ borderBottomColor: colors.border },
-										]}
-									>
-										<Ionicons
-											name="location-outline"
-											size={20}
-											color={colors.mutedForeground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
-										<View style={styles.headerRowCopy}>
-											<Text variant="caption" tone="muted">
-												{t("biz.locations.title")}
-											</Text>
-											<Text variant="body" bold numberOfLines={1}>
-												{selectedLocation.name}
-											</Text>
-										</View>
-										<Ionicons
-											name="chevron-forward"
-											size={16}
-											color={colors.mutedForeground}
-										/>
-									</Pressable>
-								) : null}
-							</View>
-							{/* Bell, with its count where the count belongs. */}
-							<Pressable
-								onPress={() => router.push("/inbox")}
-								accessibilityRole="button"
-								accessibilityLabel={
-									attentionTotal > 0
-										? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
-										: t("account.inbox")
-								}
-								accessibilityHint={t("account.inbox.help")}
-								style={styles.bell}
-							>
-								<Ionicons
-									name="notifications-outline"
-									size={icon.action}
-									color={colors.foreground}
-									accessibilityElementsHidden
-									importantForAccessibility="no"
-								/>
-								{attentionTotal > 0 ? (
-									<View
-										style={[
-											styles.bellBadge,
-											{ backgroundColor: colors.destructive },
-										]}
-									>
-										{/* The destructive pair, not `inverse`: the merchant
-									    palette spends `primaryForeground` on ink, which
-									    on this fill would be a dark-on-dark count. */}
-										<Text
-											variant="caption"
-											bold
-											tabular
-											style={{ color: colors.destructiveForeground }}
-										>
-											{attentionTotal > 99 ? "99+" : String(attentionTotal)}
-										</Text>
-									</View>
-								) : null}
-							</Pressable>
-							{/* Quiet metadata under the rail: cloud, sentence, refresh. No
-							    card, no rules — a 20pt line the eye crosses without stopping. */}
-							<View style={styles.syncMeta} accessibilityLiveRegion="polite">
-								<Ionicons
-									name={syncing ? "sync-outline" : "cloud-done-outline"}
-									size={14}
-									color={colors.mutedForeground}
-									accessibilityElementsHidden
-									importantForAccessibility="no"
-								/>
-								<Text
-									variant="caption"
-									tone="muted"
-									style={styles.syncMetaLabel}
-								>
-									{freshnessLabel}
-								</Text>
-								<Pressable
-									onPress={refreshDashboard}
-									accessibilityRole="button"
-									accessibilityLabel={t("biz.dashboard.refresh")}
-									accessibilityHint={t("biz.dashboard.refreshHelp")}
-									hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-									style={styles.refreshTarget}
-								>
-									<Ionicons
-										name="refresh"
-										size={18}
-										color={syncing ? colors.action : colors.mutedForeground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-								</Pressable>
-							</View>
-						</View>
-						{/* Destination carousel: the More doors a thumb reaches by sliding.
-						    None of these tiles takes the lime fill — the command rail below
-						    holds the moment's action. */}
-						<MerchantShortcutRail
-							shortcuts={[
-								{
-									key: "orders",
-									label: t("biz.nav.orders"),
-									icon: "receipt-outline",
-									onPress: () => router.push("/(business)/business"),
-								},
-								{
-									key: "catalog",
-									label: t("biz.nav.products"),
-									icon: "fast-food-outline",
-									onPress: () => router.push("/(business)/products"),
-								},
-								{
-									key: "promotions",
-									label: t("biz.promotions.title"),
-									icon: "ticket-outline",
-									onPress: () => router.push("/(business)/promotions"),
-								},
-								{
-									key: "analytics",
-									label: t("biz.analytics.title"),
-									icon: "stats-chart-outline",
-									onPress: () => router.push("/(business)/analytics"),
-								},
-								{
-									key: "team",
-									label: t("biz.more.team"),
-									icon: "people-outline",
-									onPress: () =>
-										router.push({
-											pathname: "/(business)/team",
-											params: { businessId },
-										}),
-								},
-								{
-									key: "payouts",
-									label: t("biz.more.payouts"),
-									icon: "cash-outline",
-									onPress: () =>
-										router.push({
-											pathname: "/(business)/payouts",
-											params: { businessId },
-										}),
-								},
-								{
-									key: "hours",
-									label: t("biz.settings.hours"),
-									icon: "time-outline",
-									onPress: () =>
-										router.push({
-											pathname: "/(business)/shop-hours",
-											params: { businessId },
-										}),
-								},
-								{
-									key: "locations",
-									label: t("biz.locations.title"),
-									icon: "location-outline",
-									onPress: () =>
-										router.push({
-											pathname: "/(business)/locations",
-											params: { businessId },
-										}),
-								},
-								{
-									key: "reviews",
-									label: t("biz.reviews.title"),
-									icon: "star-outline",
-									onPress: () =>
-										router.push({
-											pathname: "/(business)/reviews",
-											params: { businessId },
-										}),
-								},
-							]}
-						/>
-						{pause.error || resume.error ? (
-							<View style={styles.pad}>
-								<ErrorState error={pause.error ?? resume.error} />
-							</View>
-						) : null}
-
-						{/* A shop that has never opened: the word above says Borrador,
-					    and this is the way out of it. Above the pulse, because a
-					    closed shop's day has no figures worth leading with. */}
-						{canPublish ? (
-							<View style={styles.pad}>
-								<Card>
-									<Text variant="body" bold>
-										{t("biz.onboarding.notLive")}
-									</Text>
-									<Button
-										// Secondary, not the filled variant: the moment's one lime is
-										// the rail's item below, and a DRAFT shop would otherwise
-										// spend the accent twice on one view (┬º6).
-										variant="secondary"
-										label={t("biz.dashboard.openToggle")}
-										onPress={() => {
-											if (!businessId || publish.isPending) return;
-											publish.mutate({ businessId, status: "ACTIVE" });
-										}}
-										loading={publish.isPending}
-										disabled={publish.isPending}
-										accessibilityHint={t("biz.onboarding.notLive")}
-									/>
-									{publishFailure.message ? (
-										<Text
-											variant="body"
-											tone="destructive"
-											accessibilityRole="alert"
-											accessibilityLiveRegion="assertive"
-										>
-											{publishFailure.message}
-										</Text>
-									) : null}
-								</Card>
-							</View>
-						) : null}
-
-						{/* Full-bleed by construction: the band draws edge to edge, and the
-					    screen's `padded={false}` is what lets it. */}
-						<MerchantPulse data={pulse} dateLabel={dateLabel} />
-
 						{analytics.error ? (
 							<ErrorState
 								error={analytics.error}
@@ -1118,245 +823,11 @@ export default function MerchantHome() {
 								]}
 							/>
 						) : null}
-
-						{attention.length > 0 ? (
-							<View style={styles.pad}>
-								<SectionHeader title={t("biz.home.attention")} />
-								{/* All but the last row drop the trailing hairline the row's own
-						    default draws — the rhythm the board's rows keep with `last`, so
-						    a card of rows never ends in a line for nobody. */}
-								{attention.map((alert, index) => (
-									// The whole row opens the alert's destination, and the
-									// labelled button at the end says which one — see
-									// `AttentionRow` for why the row is a plain report
-									// rather than a button when the alert carries no
-									// action at all.
-									<AttentionRow
-										key={`${alert.type}:${alert.action ?? ""}`}
-										label={t(ATTENTION_LABEL_KEYS[alert.type])}
-										count={alert.count}
-										severity={alert.severity}
-										icon={ATTENTION_ICONS[alert.type]}
-										// `action` is optional on the wire, so this is a
-										// question with a real `undefined` behind it rather
-										// than a branch that cannot fail.
-										actionLabel={
-											alert.action
-												? t(ATTENTION_ACTION_KEYS[alert.action])
-												: null
-										}
-										last={index === attention.length - 1}
-										onPress={() => {
-											const route = alert.action && ALERT_ROUTES[alert.action];
-											// `businessId` is optional here. This JSX lives
-											// inside the branch that already proved one
-											// exists, but the closure does not know that,
-											// and an OWNER tapping an alert must not reach a
-											// screen with an empty shop id.
-											if (route && businessId) router.push(route(businessId));
-										}}
-									/>
-								))}
-							</View>
-						) : null}
-
-						<View style={styles.pad}>
-							<SectionHeader
-								title={t("biz.board.sectionTitle")}
-								action={{
-									label: t("action.viewAll"),
-									onPress: () => router.push("/business"),
-									accessibilityHint: t("biz.dashboard.viewBoard"),
-								}}
-							/>
-							{/* The preview holds at most five rows and the shop may
-							    hold far more, so the shortfall is said rather than
-							    implied — and only when the two numbers differ.
-							    "5 open · showing 5" is a fact about the screen
-							    rather than about the shop, and printing it would
-							    teach the reader that a number which changes with
-							    the preview's width is a business fact. */}
-							{queueIsTruncated && openOrders !== null ? (
-								<Text
-									variant="caption"
-									tone="muted"
-									tabular
-									style={styles.queueSummary}
-								>
-									{t("biz.board.queueSummary", {
-										open: openOrders,
-										shown: orders.length,
-									})}
-								</Text>
-							) : null}
-						</View>
-						{orders.length === 0 ? (
-							<View style={styles.pad}>
-								<View
-									style={[
-										styles.emptyOrders,
-										{ backgroundColor: colors.muted },
-									]}
-								>
-									<Ionicons
-										name="checkmark-circle-outline"
-										size={icon.back}
-										color={colors.mutedForeground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-									<View style={styles.emptyOrdersCopy}>
-										<Text variant="body" bold>
-											{t("biz.board.caughtUp")}
-										</Text>
-										<Text variant="caption" tone="muted">
-											{t("biz.board.empty.body")}
-										</Text>
-									</View>
-								</View>
-							</View>
-						) : (
-							<View>
-								{orders.map((order, index) => {
-									const actions: MerchantRowAction[] = nextStatuses(
-										order.status,
-										"BUSINESS",
-										order.fulfilment,
-									)
-										.slice(0, 2)
-										.map((to, actionIndex) => ({
-											label: t(moveLabelKey(to, order.fulfilment)),
-											onPress: () =>
-												advance.mutate({
-													orderId: order.id,
-													to,
-													expectedStatus: order.status,
-												}),
-											pending: advance.variables?.orderId === order.id,
-											kind: actionIndex === 0 ? "primary" : "secondary",
-										}));
-
-									return (
-										// Full-bleed, like the board's queue: the row pays its own
-										// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
-										// wrapper here would double them and put the ink at 48 points
-										// under a section title sitting at 24.
-										//
-										// `waitLabel` is how long this order has been standing. The
-										// row already had a slot for it and nothing was putting one
-										// there, which left the oldest order on the board drawn
-										// exactly like the newest — and age is the fact that
-										// decides which row to take first. Past a day
-										// `formatRelative` hands over to the clock, so this never
-										// reads as a count of days on a screen whose job is to
-										// say how far along it is.
-										<MerchantOrderRow
-											key={order.id}
-											onPress={() =>
-												router.push({
-													pathname: "/merchant-order/[id]",
-													params: { id: order.id },
-												})
-											}
-											reference={order.reference}
-											headline={order.headline}
-											fulfilmentLabel={t(
-												order.fulfilment === "PICKUP"
-													? "order.pickup"
-													: "order.delivery",
-											)}
-											status={order.status}
-											statusLabel={t(statusKey(order.status))}
-											totalLabel={formatMoney(
-												order.totalMinor,
-												order.currency,
-												{
-													locale: intlLocale,
-												},
-											)}
-											waitLabel={
-												formatRelative(order.placedAt, intlLocale) ?? undefined
-											}
-											urgent={order.status === "PENDING" ? "new" : null}
-											last={index === orders.length - 1}
-											actions={actions.length ? actions : undefined}
-										/>
-									);
-								})}
-							</View>
-						)}
-
-						{/* The doors, as the rail (┬º25) rather than the card it replaces:
-						    every destination is a route in this tree, so no action leads
-						    nowhere. Adding a product is the moment's one filled control.
-
-						    The five are ┬º25's own list. `orders` and `menu` used to sit here
-						    and were the tab bar's destinations said again in different words;
-						    ┬º25 names the *jobs* instead, which is why `Stock` opens the
-						    catalogue the steppers live on and `Pause` gives the order the
-						    header's status chip also gives. The label names the state the
-						    command moves to — `./switch`'s contract — so the same slot reads
-						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
-						<MerchantCommandRail
-							actions={[
-								{
-									key: "add-product",
-									label: t("biz.products.add"),
-									icon: "add-outline",
-									primary: true,
-									onPress: () =>
-										router.push({
-											pathname: "/product-form",
-											params: { businessId },
-										}),
-								},
-								{
-									key: "promo",
-									label: t("biz.promotions.title"),
-									icon: "ticket-outline",
-									onPress: () => router.push("/(business)/promotions"),
-								},
-								{
-									key: "stock",
-									label: t("biz.products.stock"),
-									icon: "cube-outline",
-									onPress: () => router.push("/products"),
-								},
-								{
-									key: "hours",
-									label: t("biz.settings.hours"),
-									icon: "time-outline",
-									onPress: () => router.push("/(business)/shop-hours"),
-								},
-								{
-									key: "pause",
-									label: locationPaused
-										? t("biz.locations.resume")
-										: t("biz.locations.pause"),
-									icon: locationPaused ? "play-outline" : "pause-outline",
-									disabled:
-										!canManageOperatingState ||
-										pause.isPending ||
-										resume.isPending,
-									onPress: () => {
-										if (!selectedLocation) return;
-										if (locationPaused) {
-											resume.mutate({
-												businessId,
-												locationId: selectedLocation.id,
-											});
-											return;
-										}
-										// ┬º47 names "pause all orders" as one of the writes that
-										// gets a confirmation, and `pauseStage`'s own flow is that
-										// confirmation — a duration, then a `ConfirmSheet`.
-										setPauseDuration(undefined);
-										setPauseStage("duration");
-									},
-								},
-							]}
-						/>
-
+					</>
+				);
+			case "catalog":
+				return (
+					<>
 						{home.data ? (
 							<View style={styles.pad}>
 								<SectionHeader
@@ -1390,24 +861,622 @@ export default function MerchantHome() {
 										{t("biz.products.empty.title")}
 									</Text>
 								) : (
-									home.data.catalog.products.map((product) => (
-										<BusinessProductRow
-											key={product.id}
-											product={product}
-											onPress={() =>
-												router.push({
-													pathname: "/product-form",
-													params: { businessId, id: product.id },
-												})
-											}
-										/>
-									))
+									home.data.catalog.products
+										.slice(0, configuration.productPreviewCount)
+										.map((product) => (
+											<BusinessProductRow
+												key={product.id}
+												product={product}
+												onPress={() =>
+													router.push({
+														pathname: "/product-form",
+														params: { businessId, id: product.id },
+													})
+												}
+											/>
+										))
 								)}
 							</View>
 						) : null}
 					</>
-				)}
-			</Screen>
+				);
+		}
+	};
+
+	return (
+		<>
+			<ThemeColorsOverrideProvider colors={colors}>
+				<Screen
+					// Edge-to-edge body: the pulse band and the command rail are full-bleed by
+					// construction, so the padded blocks below pay their own `styles.pad`.
+					padded={false}
+					scroll
+					contentStyle={styles.body}
+					onRefresh={refreshDashboard}
+				>
+					{/* The failure, tested before the absence of data: a `myBusinesses` read that
+		    failed leaves no `shops.data` behind, so the skeleton branch would hold the
+		    screen forever with nothing to say. */}
+					{failed ? (
+						<ErrorState
+							error={failed}
+							onRetry={() => void refreshDashboard()}
+						/>
+					) : waiting || !shops.data ? (
+						<HomeSkeleton loadingLabel={t("state.loading")} />
+					) : !shop || !businessId ? (
+						<EmptyState
+							icon="storefront-outline"
+							title={t("biz.onboarding.title")}
+							body={t("biz.onboarding.notLive")}
+							actionLabel={t("biz.onboarding.create")}
+							onAction={() => router.push("/new-business")}
+						/>
+					) : (
+						<>
+							<View style={styles.merchantHeader}>
+								<View style={styles.headerContent}>
+									{/* 52 identity: the initial, or the photograph clipped to r16. */}
+									<Image
+										uri={home.data?.location.logoUrl}
+										radiusToken="full"
+										style={[
+											styles.identity,
+											{ borderColor: colors.border },
+											home.data?.location.logoUrl ? styles.identityPhoto : null,
+										]}
+										accessibilityElementsHidden
+									>
+										{home.data?.location.logoUrl ? null : (
+											<Text variant="title" bold>
+												{shop.businessName.trim().charAt(0).toUpperCase()}
+											</Text>
+										)}
+									</Image>
+									<View style={styles.identityCopy}>
+										<Text variant="title" bold numberOfLines={1}>
+											{shop.businessName}
+										</Text>
+										<Pressable
+											onPress={() =>
+												router.push({
+													pathname: "/(business)/payouts",
+													params: { businessId },
+												})
+											}
+											accessibilityRole="button"
+											accessibilityLabel={`${t("biz.subscription.title")}: ${subscription.data ? t(`biz.subscription.plan.${subscription.data.plan}`) : t("biz.more.subscriptionEmpty")}`}
+											accessibilityHint={t("biz.subscription.change")}
+											style={styles.planLink}
+										>
+											<Text variant="caption" tone="muted" numberOfLines={1}>
+												{t("biz.subscription.title")} ·{" "}
+												{subscription.data
+													? t(`biz.subscription.plan.${subscription.data.plan}`)
+													: t("biz.more.subscription")}
+											</Text>
+											<Ionicons
+												name="chevron-forward"
+												size={12}
+												color={colors.mutedForeground}
+											/>
+										</Pressable>
+									</View>
+								</View>
+								<View style={styles.headerRows}>
+									{/* Order-taking state and its next action stay together. */}
+									{selectedLocation ? (
+										<Pressable
+											onPress={() => {
+												if (locationPaused) {
+													resume.mutate({
+														businessId,
+														locationId: selectedLocation.id,
+													});
+													return;
+												}
+												setPauseDuration(undefined);
+												setPauseStage("duration");
+											}}
+											disabled={
+												!canManageOperatingState ||
+												pause.isPending ||
+												resume.isPending
+											}
+											disabledOpacity={1}
+											accessibilityRole="button"
+											accessibilityLabel={t(
+												`biz.locations.status.${selectedLocation.status}`,
+											)}
+											accessibilityHint={
+												canManageOperatingState
+													? t(
+															locationPaused
+																? "biz.locations.resume"
+																: "biz.locations.pause",
+														)
+													: undefined
+											}
+											style={[
+												styles.statusRow,
+												{ borderTopColor: colors.border },
+											]}
+										>
+											<View style={styles.headerRowCopy}>
+												<Text variant="caption" tone="muted">
+													{t("biz.nav.orders")}
+												</Text>
+												<Text variant="body" bold>
+													{t(`biz.locations.status.${selectedLocation.status}`)}
+												</Text>
+												{/* The pause's clock, and only while there is one. A third
+											    line in a row whose floor is 64 — it grows at 200%
+											    text rather than clipping, which is what the floor is
+											    for. This row is the only place on the screen that
+											    names the shop's operating state, so the state an
+											    owner may have to wait on belongs here, under the
+											    word that says there is one. */}
+												{pauseCaption ? (
+													<Text variant="caption" tone="muted" tabular>
+														{pauseCaption}
+													</Text>
+												) : null}
+											</View>
+											{canManageOperatingState ? (
+												<View style={styles.rowAction}>
+													<Text variant="label" tone="action" bold>
+														{t(
+															locationPaused
+																? "biz.locations.resume"
+																: "biz.locations.pause",
+														)}
+													</Text>
+													<Ionicons
+														name="chevron-forward"
+														size={16}
+														color={colors.action}
+													/>
+												</View>
+											) : null}
+										</Pressable>
+									) : null}
+									{/* One branch opens its pickup map; multiple branches keep the selector. */}
+									{selectedLocation ? (
+										<Pressable
+											onPress={() => {
+												if ((locations.data?.length ?? 0) > 1)
+													setLocationPickerOpen(true);
+												else if (canManage && selectedLocation.isDefault)
+													router.push("/(business)/shop-location");
+											}}
+											disabled={
+												(locations.data?.length ?? 0) < 2 &&
+												(!canManage || !selectedLocation.isDefault)
+											}
+											disabledOpacity={1}
+											accessibilityRole="button"
+											accessibilityLabel={`${selectedLocation.name}, ${selectedLocation.city ?? ""}`}
+											accessibilityHint={
+												(locations.data?.length ?? 0) > 1
+													? t("biz.locations.select")
+													: canManage && selectedLocation.isDefault
+														? t("biz.order.dispatch.setPickupPin")
+														: undefined
+											}
+											style={[
+												styles.locationRow,
+												{ borderBottomColor: colors.border },
+											]}
+										>
+											<Ionicons
+												name="location-outline"
+												size={20}
+												color={colors.mutedForeground}
+												accessibilityElementsHidden
+												importantForAccessibility="no"
+											/>
+											<View style={styles.headerRowCopy}>
+												<Text variant="caption" tone="muted">
+													{t("biz.locations.title")}
+												</Text>
+												<Text variant="body" bold numberOfLines={1}>
+													{selectedLocation.name}
+												</Text>
+											</View>
+											<Ionicons
+												name="chevron-forward"
+												size={16}
+												color={colors.mutedForeground}
+											/>
+										</Pressable>
+									) : null}
+								</View>
+								{/* Bell, with its count where the count belongs. */}
+								<Pressable
+									onPress={() => router.push("/inbox")}
+									accessibilityRole="button"
+									accessibilityLabel={
+										attentionTotal > 0
+											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
+											: t("account.inbox")
+									}
+									accessibilityHint={t("account.inbox.help")}
+									style={styles.bell}
+								>
+									<Ionicons
+										name="notifications-outline"
+										size={icon.action}
+										color={colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									{attentionTotal > 0 ? (
+										<View
+											style={[
+												styles.bellBadge,
+												{ backgroundColor: colors.destructive },
+											]}
+										>
+											{/* The destructive pair, not `inverse`: the merchant
+									    palette spends `primaryForeground` on ink, which
+									    on this fill would be a dark-on-dark count. */}
+											<Text
+												variant="caption"
+												bold
+												tabular
+												style={{ color: colors.destructiveForeground }}
+											>
+												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
+											</Text>
+										</View>
+									) : null}
+								</Pressable>
+								{/* Quiet metadata under the rail: cloud, sentence, refresh. No
+							    card, no rules — a 20pt line the eye crosses without stopping. */}
+								<View style={styles.syncMeta} accessibilityLiveRegion="polite">
+									<Ionicons
+										name={syncing ? "sync-outline" : "cloud-done-outline"}
+										size={14}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									<Text
+										variant="caption"
+										tone="muted"
+										style={styles.syncMetaLabel}
+									>
+										{freshnessLabel}
+									</Text>
+									<Pressable
+										onPress={refreshDashboard}
+										accessibilityRole="button"
+										accessibilityLabel={t("biz.dashboard.refresh")}
+										accessibilityHint={t("biz.dashboard.refreshHelp")}
+										hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
+										style={styles.refreshTarget}
+									>
+										<Ionicons
+											name="refresh"
+											size={18}
+											color={syncing ? colors.action : colors.mutedForeground}
+											accessibilityElementsHidden
+											importantForAccessibility="no"
+										/>
+									</Pressable>
+								</View>
+							</View>
+							{/* Destination carousel: the More doors a thumb reaches by sliding.
+						    None of these tiles takes the lime fill — the command rail below
+						    holds the moment's action. */}
+							{configuration.widgets
+								.slice(0, 1)
+								.filter((id) => !configuration.hidden.includes(id))
+								.map((id) => (
+									<Fragment key={id}>{renderWidget(id)}</Fragment>
+								))}
+							{pause.error || resume.error ? (
+								<View style={styles.pad}>
+									<ErrorState error={pause.error ?? resume.error} />
+								</View>
+							) : null}
+
+							{/* A shop that has never opened: the word above says Borrador,
+					    and this is the way out of it. Above the pulse, because a
+					    closed shop's day has no figures worth leading with. */}
+							{canPublish ? (
+								<View style={styles.pad}>
+									<Card>
+										<Text variant="body" bold>
+											{t("biz.onboarding.notLive")}
+										</Text>
+										<Button
+											// Secondary, not the filled variant: the moment's one lime is
+											// the rail's item below, and a DRAFT shop would otherwise
+											// spend the accent twice on one view (┬º6).
+											variant="secondary"
+											label={t("biz.dashboard.openToggle")}
+											onPress={() => {
+												if (!businessId || publish.isPending) return;
+												publish.mutate({ businessId, status: "ACTIVE" });
+											}}
+											loading={publish.isPending}
+											disabled={publish.isPending}
+											accessibilityHint={t("biz.onboarding.notLive")}
+										/>
+										{publishFailure.message ? (
+											<Text
+												variant="body"
+												tone="destructive"
+												accessibilityRole="alert"
+												accessibilityLiveRegion="assertive"
+											>
+												{publishFailure.message}
+											</Text>
+										) : null}
+									</Card>
+								</View>
+							) : null}
+
+							{/* Full-bleed by construction: the band draws edge to edge, and the
+					    screen's `padded={false}` is what lets it. */}
+							{configuration.widgets
+								.slice(1, 3)
+								.filter((id) => !configuration.hidden.includes(id))
+								.map((id) => (
+									<Fragment key={id}>{renderWidget(id)}</Fragment>
+								))}
+
+							{attention.length > 0 ? (
+								<View style={styles.pad}>
+									<SectionHeader title={t("biz.home.attention")} />
+									{/* All but the last row drop the trailing hairline the row's own
+						    default draws — the rhythm the board's rows keep with `last`, so
+						    a card of rows never ends in a line for nobody. */}
+									{attention.map((alert, index) => (
+										// The whole row opens the alert's destination, and the
+										// labelled button at the end says which one — see
+										// `AttentionRow` for why the row is a plain report
+										// rather than a button when the alert carries no
+										// action at all.
+										<AttentionRow
+											key={`${alert.type}:${alert.action ?? ""}`}
+											label={t(ATTENTION_LABEL_KEYS[alert.type])}
+											count={alert.count}
+											severity={alert.severity}
+											icon={ATTENTION_ICONS[alert.type]}
+											// `action` is optional on the wire, so this is a
+											// question with a real `undefined` behind it rather
+											// than a branch that cannot fail.
+											actionLabel={
+												alert.action
+													? t(ATTENTION_ACTION_KEYS[alert.action])
+													: null
+											}
+											last={index === attention.length - 1}
+											onPress={() => {
+												const route =
+													alert.action && ALERT_ROUTES[alert.action];
+												// `businessId` is optional here. This JSX lives
+												// inside the branch that already proved one
+												// exists, but the closure does not know that,
+												// and an OWNER tapping an alert must not reach a
+												// screen with an empty shop id.
+												if (route && businessId) router.push(route(businessId));
+											}}
+										/>
+									))}
+								</View>
+							) : null}
+
+							<View style={styles.pad}>
+								<SectionHeader
+									title={t("biz.board.sectionTitle")}
+									action={{
+										label: t("action.viewAll"),
+										onPress: () => router.push("/business"),
+										accessibilityHint: t("biz.dashboard.viewBoard"),
+									}}
+								/>
+								{/* The preview holds at most five rows and the shop may
+							    hold far more, so the shortfall is said rather than
+							    implied — and only when the two numbers differ.
+							    "5 open · showing 5" is a fact about the screen
+							    rather than about the shop, and printing it would
+							    teach the reader that a number which changes with
+							    the preview's width is a business fact. */}
+								{queueIsTruncated && openOrders !== null ? (
+									<Text
+										variant="caption"
+										tone="muted"
+										tabular
+										style={styles.queueSummary}
+									>
+										{t("biz.board.queueSummary", {
+											open: openOrders,
+											shown: orders.length,
+										})}
+									</Text>
+								) : null}
+							</View>
+							{orders.length === 0 ? (
+								<View style={styles.pad}>
+									<View
+										style={[
+											styles.emptyOrders,
+											{ backgroundColor: colors.muted },
+										]}
+									>
+										<Ionicons
+											name="checkmark-circle-outline"
+											size={icon.back}
+											color={colors.mutedForeground}
+											accessibilityElementsHidden
+											importantForAccessibility="no"
+										/>
+										<View style={styles.emptyOrdersCopy}>
+											<Text variant="body" bold>
+												{t("biz.board.caughtUp")}
+											</Text>
+											<Text variant="caption" tone="muted">
+												{t("biz.board.empty.body")}
+											</Text>
+										</View>
+									</View>
+								</View>
+							) : (
+								<View>
+									{orders.map((order, index) => {
+										const actions: MerchantRowAction[] = nextStatuses(
+											order.status,
+											"BUSINESS",
+											order.fulfilment,
+										)
+											.slice(0, 2)
+											.map((to, actionIndex) => ({
+												label: t(moveLabelKey(to, order.fulfilment)),
+												onPress: () =>
+													advance.mutate({
+														orderId: order.id,
+														to,
+														expectedStatus: order.status,
+													}),
+												pending: advance.variables?.orderId === order.id,
+												kind: actionIndex === 0 ? "primary" : "secondary",
+											}));
+
+										return (
+											// Full-bleed, like the board's queue: the row pays its own
+											// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
+											// wrapper here would double them and put the ink at 48 points
+											// under a section title sitting at 24.
+											//
+											// `waitLabel` is how long this order has been standing. The
+											// row already had a slot for it and nothing was putting one
+											// there, which left the oldest order on the board drawn
+											// exactly like the newest — and age is the fact that
+											// decides which row to take first. Past a day
+											// `formatRelative` hands over to the clock, so this never
+											// reads as a count of days on a screen whose job is to
+											// say how far along it is.
+											<MerchantOrderRow
+												key={order.id}
+												onPress={() =>
+													router.push({
+														pathname: "/merchant-order/[id]",
+														params: { id: order.id },
+													})
+												}
+												reference={order.reference}
+												headline={order.headline}
+												fulfilmentLabel={t(
+													order.fulfilment === "PICKUP"
+														? "order.pickup"
+														: "order.delivery",
+												)}
+												status={order.status}
+												statusLabel={t(statusKey(order.status))}
+												totalLabel={formatMoney(
+													order.totalMinor,
+													order.currency,
+													{
+														locale: intlLocale,
+													},
+												)}
+												waitLabel={
+													formatRelative(order.placedAt, intlLocale) ??
+													undefined
+												}
+												urgent={order.status === "PENDING" ? "new" : null}
+												last={index === orders.length - 1}
+												actions={actions.length ? actions : undefined}
+											/>
+										);
+									})}
+								</View>
+							)}
+
+							{/* The doors, as the rail (┬º25) rather than the card it replaces:
+						    every destination is a route in this tree, so no action leads
+						    nowhere. Adding a product is the moment's one filled control.
+
+						    The five are ┬º25's own list. `orders` and `menu` used to sit here
+						    and were the tab bar's destinations said again in different words;
+						    ┬º25 names the *jobs* instead, which is why `Stock` opens the
+						    catalogue the steppers live on and `Pause` gives the order the
+						    header's status chip also gives. The label names the state the
+						    command moves to — `./switch`'s contract — so the same slot reads
+						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
+							<MerchantCommandRail
+								actions={[
+									{
+										key: "add-product",
+										label: t("biz.products.add"),
+										icon: "add-outline",
+										primary: true,
+										onPress: () =>
+											router.push({
+												pathname: "/product-form",
+												params: { businessId },
+											}),
+									},
+									{
+										key: "promo",
+										label: t("biz.promotions.title"),
+										icon: "ticket-outline",
+										onPress: () => router.push("/(business)/promotions"),
+									},
+									{
+										key: "stock",
+										label: t("biz.products.stock"),
+										icon: "cube-outline",
+										onPress: () => router.push("/products"),
+									},
+									{
+										key: "hours",
+										label: t("biz.settings.hours"),
+										icon: "time-outline",
+										onPress: () => router.push("/(business)/shop-hours"),
+									},
+									{
+										key: "pause",
+										label: locationPaused
+											? t("biz.locations.resume")
+											: t("biz.locations.pause"),
+										icon: locationPaused ? "play-outline" : "pause-outline",
+										disabled:
+											!canManageOperatingState ||
+											pause.isPending ||
+											resume.isPending,
+										onPress: () => {
+											if (!selectedLocation) return;
+											if (locationPaused) {
+												resume.mutate({
+													businessId,
+													locationId: selectedLocation.id,
+												});
+												return;
+											}
+											// ┬º47 names "pause all orders" as one of the writes that
+											// gets a confirmation, and `pauseStage`'s own flow is that
+											// confirmation — a duration, then a `ConfirmSheet`.
+											setPauseDuration(undefined);
+											setPauseStage("duration");
+										},
+									},
+								]}
+							/>
+
+							{configuration.widgets
+								.slice(3)
+								.filter((id) => !configuration.hidden.includes(id))
+								.map((id) => (
+									<Fragment key={id}>{renderWidget(id)}</Fragment>
+								))}
+						</>
+					)}
+				</Screen>
+			</ThemeColorsOverrideProvider>
 			{businessId ? (
 				<MerchantGuide
 					open={focused && guideBusinessId === businessId}

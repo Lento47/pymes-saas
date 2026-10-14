@@ -3,16 +3,19 @@ import {
 	businessAuditHistoryInput,
 	businessCreateInput,
 	businessUpdateInput,
+	dashboardPreferencesSchema,
 	locationCreateInput,
 	locationPauseInput,
 	locationScopeInput,
 	MARKET_TIME_ZONE,
 	membershipRoleSchema,
+	storefrontAppearanceSchema,
 } from "@pymeshub/shared";
 import { z } from "zod";
 
 import { rateLimit } from "../context";
 import * as businesses from "../services/businesses";
+import * as customization from "../services/customization";
 import { assertRole } from "../services/helpers";
 import * as merchantHome from "../services/home";
 import * as locations from "../services/locations";
@@ -47,6 +50,67 @@ export const businessRouter = router({
 	home: businessProcedure("orders:read")
 		.input(locationScopeInput)
 		.query(({ ctx, input }) => merchantHome.home(ctx, input.locationId)),
+
+	dashboardPreferences: businessProcedure("orders:read")
+		.input(z.object({ businessId: z.string() }))
+		.query(({ ctx }) => customization.readDashboard(ctx)),
+	saveDashboardPreferences: businessProcedure("orders:read")
+		.input(
+			z.object({
+				businessId: z.string(),
+				revision: z.number().int().min(0),
+				configuration: dashboardPreferencesSchema,
+			}),
+		)
+		.mutation(({ ctx, input }) =>
+			customization.saveDashboard(ctx, input.configuration, input.revision),
+		),
+	restoreDashboardPreferences: businessProcedure("orders:read")
+		.input(
+			z.object({ businessId: z.string(), revision: z.number().int().min(0) }),
+		)
+		.mutation(({ ctx, input }) =>
+			customization.restoreDashboardDefault(ctx, input.revision),
+		),
+
+	shopAppearance: businessProcedure("business:settings")
+		.input(z.object({ businessId: z.string() }))
+		.query(({ ctx }) => customization.readShop(ctx)),
+	shopPreview: businessProcedure("business:settings")
+		.input(z.object({ businessId: z.string() }))
+		.query(({ ctx }) => businesses.previewForBusiness(ctx)),
+	saveShopDraft: businessProcedure("business:settings")
+		.input(
+			z.object({
+				businessId: z.string(),
+				revision: z.number().int().min(0),
+				configuration: storefrontAppearanceSchema,
+			}),
+		)
+		.mutation(({ ctx, input }) =>
+			customization.saveShopDraft(ctx, input.configuration, input.revision),
+		),
+	publishShopDraft: businessProcedure("business:settings")
+		.input(
+			z.object({ businessId: z.string(), revision: z.number().int().min(0) }),
+		)
+		.mutation(({ ctx, input }) =>
+			customization.publishShop(ctx, input.revision),
+		),
+	discardShopDraft: businessProcedure("business:settings")
+		.input(
+			z.object({ businessId: z.string(), revision: z.number().int().min(0) }),
+		)
+		.mutation(({ ctx, input }) =>
+			customization.discardShopDraft(ctx, input.revision),
+		),
+	restoreShopDefault: businessProcedure("business:settings")
+		.input(
+			z.object({ businessId: z.string(), revision: z.number().int().min(0) }),
+		)
+		.mutation(({ ctx, input }) =>
+			customization.restoreShopDefault(ctx, input.revision),
+		),
 
 	settings: businessProcedure("orders:read")
 		.input(z.object({ businessId: z.string() }))

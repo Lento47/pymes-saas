@@ -1,5 +1,6 @@
 import type { MessageKey } from "@pymeshub/i18n";
 import {
+	type DashboardPreferences,
 	formatMoney,
 	isCurrency,
 	type OperationalPulse,
@@ -161,6 +162,7 @@ const PULSE_TRACKING = 1;
  * of the ratios.
  */
 type PulseColumn = {
+	id: DashboardPreferences["metrics"][number];
 	/** Flex ratio, not pixels — see above. */
 	flex: number;
 	/** The word under the figure, named in the dictionary. */
@@ -173,6 +175,7 @@ type PulseColumn = {
 
 const COLUMNS: ReadonlyArray<PulseColumn> = [
 	{
+		id: "net_sales",
 		flex: 44,
 		labelKey: "biz.pulse.netSales",
 		value: (data, intlLocale) =>
@@ -187,6 +190,7 @@ const COLUMNS: ReadonlyArray<PulseColumn> = [
 		},
 	},
 	{
+		id: "orders",
 		flex: 24,
 		labelKey: "biz.dashboard.ordersToday",
 		// `NO_VALUE` and not `String(data.orderCount)`, which was here and printed the
@@ -207,10 +211,18 @@ const COLUMNS: ReadonlyArray<PulseColumn> = [
 		},
 	},
 	{
+		id: "average_order",
 		flex: 32,
 		labelKey: "biz.pulse.avgTicket",
 		value: (data, intlLocale) =>
 			moneyOrNothing(data.averageOrderValueMinor, data.currency, intlLocale),
+		delta: () => null,
+	},
+	{
+		id: "active_orders",
+		flex: 32,
+		labelKey: "customize.activeOrders",
+		value: (data) => String(data.active),
 		delta: () => null,
 	},
 ];
@@ -348,12 +360,14 @@ function spokenColumn(
  */
 function PulseMetric({
 	flex,
+	stacked,
 	index,
 	label,
 	value,
 	delta,
 }: {
 	flex: number;
+	stacked?: boolean;
 	/** Position in the group. Drives the stagger and nothing else. */
 	index: number;
 	label: string;
@@ -369,15 +383,15 @@ function PulseMetric({
 		<>
 			<Text
 				tabular
-				numberOfLines={1}
-				adjustsFontSizeToFit
+				numberOfLines={stacked ? undefined : 1}
+				adjustsFontSizeToFit={!stacked}
 				minimumFontScale={0.6}
 				style={[styles.metricValue, { color: colors.background }]}
 			>
 				{value}
 			</Text>
 			<Text
-				numberOfLines={2}
+				numberOfLines={stacked ? undefined : 2}
 				style={[styles.metricLabel, { color: colors.background }]}
 			>
 				{label}
@@ -386,8 +400,8 @@ function PulseMetric({
 				<Text
 					variant="caption"
 					tabular
-					numberOfLines={1}
-					adjustsFontSizeToFit
+					numberOfLines={stacked ? undefined : 1}
+					adjustsFontSizeToFit={!stacked}
 					minimumFontScale={0.6}
 					style={[styles.metricDelta, { color: colors.background }]}
 				>
@@ -397,7 +411,10 @@ function PulseMetric({
 		</>
 	);
 
-	const columnStyle = [styles.column, { flex }];
+	const columnStyle = [
+		styles.column,
+		stacked ? { width: "100%" as const } : { flex },
+	];
 
 	if (reduceMotion) {
 		return (
@@ -431,17 +448,26 @@ function PulseMetric({
 export function MerchantPulse({
 	data,
 	dateLabel,
+	metrics = ["net_sales", "orders", "average_order"],
 }: {
 	data: MerchantPulseData | null;
 	dateLabel: string;
+	metrics?: DashboardPreferences["metrics"];
 }) {
 	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
 	const { fontScale } = useWindowDimensions();
+	const stacked = fontScale >= 1.8;
+	const columns = metrics.flatMap((id) => {
+		const found = COLUMNS.find((column) => column.id === id);
+		return found ? [found] : [];
+	});
 
 	return (
 		<View style={[styles.band, { backgroundColor: colors.foreground }]}>
-			<View style={styles.header}>
+			<View
+				style={[styles.header, stacked && { flexWrap: "wrap", gap: space.xs }]}
+			>
 				<Text style={[styles.bandTitle, { color: colors.background }]}>
 					{t("biz.dashboard.today")}
 				</Text>
@@ -449,19 +475,28 @@ export function MerchantPulse({
 					{dateLabel}
 				</Text>
 			</View>
-			<View style={styles.metrics}>
+			<View style={[styles.metrics, stacked && { flexDirection: "column" }]}>
 				{data === null
-					? COLUMNS.map((column, index) => (
+					? columns.map((column, index) => (
 							<Fragment key={column.labelKey}>
 								{index > 0 ? (
 									<View
 										style={[
 											styles.rule,
+											stacked && {
+												width: "100%",
+												height: StyleSheet.hairlineWidth,
+											},
 											{ backgroundColor: colors.mutedForeground },
 										]}
 									/>
 								) : null}
-								<View style={[styles.column, { flex: column.flex }]}>
+								<View
+									style={[
+										styles.column,
+										stacked ? { width: "100%" } : { flex: column.flex },
+									]}
+								>
 									<Skeleton
 										style={[
 											styles.metricSkeleton,
@@ -471,18 +506,23 @@ export function MerchantPulse({
 								</View>
 							</Fragment>
 						))
-					: COLUMNS.map((column, index) => (
+					: columns.map((column, index) => (
 							<Fragment key={column.labelKey}>
 								{index > 0 ? (
 									<View
 										style={[
 											styles.rule,
+											stacked && {
+												width: "100%",
+												height: StyleSheet.hairlineWidth,
+											},
 											{ backgroundColor: colors.mutedForeground },
 										]}
 									/>
 								) : null}
 								<PulseMetric
 									flex={column.flex}
+									stacked={stacked}
 									index={index}
 									label={t(column.labelKey)}
 									value={column.value(data, intlLocale)}
