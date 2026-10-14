@@ -153,6 +153,7 @@ export const advanceDeliveryInput = z.object({
 });
 export const rateDeliveryInput = z.object({
 	deliveryId: z.string(),
+	fromRole: z.enum(["CUSTOMER", "COURIER"]).optional(),
 	rating: z.number().int().min(1).max(5),
 	comment: z.string().trim().max(500).optional(),
 });

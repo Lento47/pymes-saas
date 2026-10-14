@@ -489,6 +489,7 @@ function CourierRun({
 						if (rating === 0) return;
 						rate.mutate({
 							deliveryId,
+							fromRole: "COURIER",
 							rating,
 							comment: comment.trim() || undefined,
 						});

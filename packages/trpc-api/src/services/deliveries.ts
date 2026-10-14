@@ -621,13 +621,32 @@ export async function rate(
 	if (delivery.status !== "DELIVERED") {
 		throw new ValidationError("Solo puedes calificar una entrega terminada");
 	}
-	const fromRole: "CUSTOMER" | "COURIER" | null =
-		delivery.customer.id === ctx.user.id
-			? "CUSTOMER"
-			: delivery.courier?.id === ctx.user.id
+	const isCustomer = delivery.customer.id === ctx.user.id;
+	const isCourier = delivery.courier?.id === ctx.user.id;
+	// One account can place and carry the same order. The screen supplies its role;
+	// older clients can still fill the remaining direction after their first rating.
+	const fromRole =
+		input.fromRole ??
+		(isCustomer && isCourier
+			? delivery.ratings.customerToCourier
 				? "COURIER"
-				: null;
+				: "CUSTOMER"
+			: isCustomer
+				? "CUSTOMER"
+				: isCourier
+					? "COURIER"
+					: null);
 	if (!fromRole || !delivery.courier) throw new NotFoundError();
+	if (fromRole === "CUSTOMER" ? !isCustomer : !isCourier) {
+		throw new NotFoundError();
+	}
+	if (
+		fromRole === "CUSTOMER"
+			? delivery.ratings.customerToCourier
+			: delivery.ratings.courierToCustomer
+	) {
+		throw new ConflictError("Ya calificaste esta entrega");
+	}
 	const toUserId =
 		fromRole === "CUSTOMER" ? delivery.courier.id : delivery.customer.id;
 	const row = {
@@ -643,8 +662,17 @@ export async function rate(
 	try {
 		await ctx.db.insert(ratingTable).values(row);
 	} catch (error) {
-		if (String(error).includes("delivery_rating_direction_unique")) {
-			throw new ConflictError("Ya calificaste esta entrega");
+		let cause: unknown = error;
+		for (let hop = 0; hop < 5 && cause instanceof Error; hop += 1) {
+			if (
+				cause.message.includes("delivery_rating_direction_unique") ||
+				cause.message.includes(
+					"UNIQUE constraint failed: delivery_rating.delivery_id, delivery_rating.from_role",
+				)
+			) {
+				throw new ConflictError("Ya calificaste esta entrega");
+			}
+			cause = cause.cause;
 		}
 		throw error;
 	}

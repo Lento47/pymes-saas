@@ -1068,6 +1068,25 @@ describe("accepted delivery lifecycle and ratings", () => {
 		expect(
 			(await ready.buyer.orders.track({ id: order.id })).estimatedDeliveryAt,
 		).toBeNull();
+		const customerRating = await ready.buyer.deliveries.rate({
+			deliveryId: run.id,
+			fromRole: "CUSTOMER",
+			rating: 5,
+		});
+		const courierRating = await ready.buyer.deliveries.rate({
+			deliveryId: run.id,
+			fromRole: "COURIER",
+			rating: 4,
+		});
+		expect(customerRating.fromRole).toBe("CUSTOMER");
+		expect(courierRating.fromRole).toBe("COURIER");
+		await expect(
+			ready.buyer.deliveries.rate({
+				deliveryId: run.id,
+				fromRole: "COURIER",
+				rating: 3,
+			}),
+		).rejects.toThrow("Ya calificaste esta entrega");
 		test.close();
 	});
 
@@ -1132,16 +1151,25 @@ describe("accepted delivery lifecycle and ratings", () => {
 
 		const customerRating = await ready.buyer.deliveries.rate({
 			deliveryId: accepted.id,
+			fromRole: "CUSTOMER",
 			rating: 5,
 			comment: "Entrega cuidadosa",
 		});
 		const courierRating = await courier.caller.deliveries.rate({
 			deliveryId: accepted.id,
+			fromRole: "COURIER",
 			rating: 4,
 			comment: "Cliente puntual",
 		});
 		expect(customerRating.fromRole).toBe("CUSTOMER");
 		expect(courierRating.fromRole).toBe("COURIER");
+		await expect(
+			ready.buyer.deliveries.rate({
+				deliveryId: accepted.id,
+				fromRole: "COURIER",
+				rating: 3,
+			}),
+		).rejects.toThrow();
 
 		await expect(
 			ready.buyer.deliveries.rate({ deliveryId: accepted.id, rating: 3 }),

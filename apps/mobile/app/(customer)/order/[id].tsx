@@ -1169,6 +1169,7 @@ function DeliveredFeedbackCard({
 										if (rating === 0 || !detail) return;
 										rate.mutate({
 											deliveryId: detail.id,
+											fromRole: "CUSTOMER",
 											rating,
 											comment: comment.trim() || undefined,
 										});
