@@ -5,18 +5,15 @@ import {
 	formatMoney,
 	MARKET_TIME_ZONE,
 	MAX_LINE_QUANTITY,
+	type MerchantAlertAction,
+	type MerchantAlertType,
 	type MerchantHome as MerchantHomeData,
 	nextStatuses,
 	ORDER_STATUSES,
 	type OrderStatus,
 	type ProductCard,
 } from "@pymeshub/shared";
-import {
-	type InfiniteData,
-	useMutation,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -102,13 +99,95 @@ import {
  * second truth about which shop is on screen.
  */
 
-type ProductListPage = {
-	items: ProductCard[];
-	nextCursor: string | null;
-};
-type ProductListData = InfiniteData<ProductListPage>;
 type Attention = MerchantHomeData["attention"][number];
 type AttentionGroup = Attention & { count: number };
+
+/**
+ * One label per alert type, over the closed union the API ships.
+ *
+ * `satisfies` rather than `as Record<…>` for the reason the comment repeats
+ * three times below: the table has to stay *complete*, and a cast would let a
+ * ninth type arrive labelled by whatever fell through. The two the Worker emits
+ * today (`new_order`, `inventory_zero`) reuse the keys this section has always
+ * used, so nothing that already read "Pedidos por confirmar" changes its words;
+ * the other six are here so the six are *right* rather than absent the day the
+ * API starts sending them.
+ */
+const ATTENTION_LABEL_KEYS = {
+	new_order: "biz.home.newOrders",
+	order_delay: "biz.home.alert.order_delay",
+	inventory_low: "biz.home.alert.inventory_low",
+	inventory_zero: "biz.home.outOfStock",
+	store_offline: "biz.home.alert.store_offline",
+	payment_issue: "biz.home.alert.payment_issue",
+	settlement_issue: "biz.home.alert.settlement_issue",
+	catalog_issue: "biz.home.alert.catalog_issue",
+} satisfies Record<MerchantAlertType, MessageKey>;
+
+/**
+ * The door each alert action offers, in words.
+ *
+ * The row used to decide this with a ternary chain that sent anything it did not
+ * recognise to `/more` — the catch-all, which is a real screen and the wrong
+ * answer for three of the seven. A chevron on its own asks the reader to infer
+ * the destination from the words, which is work the dictionary has already done.
+ */
+const ATTENTION_ACTION_KEYS = {
+	open_orders: "biz.home.alertAction.open_orders",
+	open_catalog: "biz.home.alertAction.open_catalog",
+	open_inventory: "biz.home.alertAction.open_inventory",
+	open_settings: "biz.home.alertAction.open_settings",
+	open_payouts: "biz.home.alertAction.open_payouts",
+	retry_payment: "biz.home.alertAction.retry_payment",
+	contact_support: "biz.home.alertAction.contact_support",
+} satisfies Record<MerchantAlertAction, MessageKey>;
+
+/** One glyph per kind of problem, so the rail of rows is scannable by shape. */
+const ATTENTION_ICONS = {
+	new_order: "receipt-outline",
+	order_delay: "time-outline",
+	inventory_low: "cube-outline",
+	inventory_zero: "alert-circle-outline",
+	store_offline: "cloud-offline-outline",
+	payment_issue: "card-outline",
+	settlement_issue: "cash-outline",
+	catalog_issue: "list-outline",
+} satisfies Record<
+	MerchantAlertType,
+	React.ComponentProps<typeof Ionicons>["name"]
+>;
+
+type RouterTarget =
+	| { pathname: string; params?: Record<string, string> }
+	| string;
+
+/**
+ * Where each alert action leads, as a thunk over the screen's own `businessId`.
+ *
+ * A thunk rather than a string because four of these routes take `businessId` as
+ * a param, and a flat table would have to drop it — sending an OWNER to a screen
+ * that cannot then name their shop.
+ */
+const ALERT_ROUTES = {
+	open_orders: () => ({ pathname: "/(business)/business" }),
+	open_catalog: () => ({ pathname: "/(business)/products" }),
+	// Stock is edited on each product's own form, so "inventory" opens the
+	// catalogue that lists them rather than a screen that does not exist.
+	open_inventory: () => ({ pathname: "/(business)/products" }),
+	open_settings: (businessId: string) => ({
+		pathname: "/(business)/locations",
+		params: { businessId },
+	}),
+	open_payouts: (businessId: string) => ({
+		pathname: "/(business)/payouts",
+		params: { businessId },
+	}),
+	// Neither of the last two is a destination in this tree: retrying a payment
+	// and contacting support are both jobs on the inbox, which is the one screen
+	// that lists each alert with its own retry and reply affordances.
+	retry_payment: () => ({ pathname: "/inbox" }),
+	contact_support: () => ({ pathname: "/inbox" }),
+} satisfies Record<MerchantAlertAction, (businessId: string) => RouterTarget>;
 type PauseDuration = 15 | 30 | 60 | undefined;
 type PauseStage = "duration" | "confirm" | null;
 type CachedOrder = MerchantHomeData["orders"][number];
@@ -193,7 +272,10 @@ function moveLabelKey(to: OrderStatus, fulfilment: FulfilmentKind): MessageKey {
 	return MOVE_LABELS[to];
 }
 
-function withAvailability(product: ProductCard, quantity: number): ProductCard {
+function _withAvailability(
+	product: ProductCard,
+	quantity: number,
+): ProductCard {
 	return {
 		...product,
 		availability: {
@@ -346,6 +428,40 @@ export default function MerchantHome() {
 
 	const orders = home.data?.orders ?? [];
 
+	/**
+	 * The queue's real size against the slice of it this screen draws.
+	 *
+	 * `business.home` asks `orders.queue` for **five** rows and that is all the
+	 * home carries, so `orders.length` is the preview's height rather than the
+	 * shop's backlog. `pulse.active` is the honest total: every order at this
+	 * location that has not reached COMPLETED, CANCELLED or REJECTED.
+	 *
+	 * The line this feeds is the one thing on this screen that reports a backlog.
+	 * A strip of counts above the pulse used to carry the same number, and it was
+	 * cut: four figures between the header and the day's figures read as a
+	 * dashboard, and on a shop with nothing pending it was a row of zeroes above
+	 * the only three numbers that matter.
+	 */
+	const openOrders = pulse?.active ?? null;
+	const queueIsTruncated = openOrders !== null && openOrders > orders.length;
+
+	/**
+	 * How much of the catalog the three-row preview left out.
+	 *
+	 * `home.catalog.products` is `limit: 3` of the ACTIVE products and `active` +
+	 * `draft` is every unarchived product the shop has. `outOfStock` is left out of
+	 * that sum on purpose: a sold-out product is already inside `active`, and the
+	 * preview would have drawn it.
+	 */
+	const catalogHidden = home.data
+		? Math.max(
+				0,
+				home.data.catalog.active +
+					home.data.catalog.draft -
+					home.data.catalog.products.length,
+			)
+		: null;
+
 	const advance = useMutation(
 		trpc.orders.advance.mutationOptions({
 			onMutate: async ({ orderId, to }) => {
@@ -401,78 +517,6 @@ export default function MerchantHome() {
 				await cache.invalidateQueries({
 					queryKey: trpc.orders.pathKey(),
 				});
-			},
-		}),
-	);
-
-	const setStock = useMutation(
-		trpc.products.setStock.mutationOptions({
-			onMutate: async ({ id, quantity }) => {
-				const listKey = trpc.products.list.pathKey();
-				const homeKey = trpc.business.home.pathKey();
-
-				await Promise.all([
-					cache.cancelQueries({ queryKey: listKey }),
-					cache.cancelQueries({ queryKey: homeKey }),
-				]);
-
-				const previousLists = cache.getQueriesData<ProductListData>({
-					queryKey: listKey,
-				});
-				const previousHome = cache.getQueriesData<MerchantHomeData>({
-					queryKey: homeKey,
-				});
-
-				cache.setQueriesData<ProductListData>(
-					{ queryKey: listKey },
-					(current) =>
-						current && {
-							...current,
-							pages: current.pages.map((page) => ({
-								...page,
-								items: page.items.map((product) =>
-									product.id === id
-										? withAvailability(product, quantity)
-										: product,
-								),
-							})),
-						},
-				);
-				cache.setQueriesData<MerchantHomeData>(
-					{ queryKey: homeKey },
-					(current) =>
-						current && {
-							...current,
-							catalog: {
-								...current.catalog,
-								products: current.catalog.products.map((product) =>
-									product.id === id
-										? withAvailability(product, quantity)
-										: product,
-								),
-							},
-						},
-				);
-
-				return { previousLists, previousHome };
-			},
-			onError: (_error, _input, context) => {
-				for (const [queryKey, data] of context?.previousLists ?? []) {
-					cache.setQueryData(queryKey, data);
-				}
-				for (const [queryKey, data] of context?.previousHome ?? []) {
-					cache.setQueryData(queryKey, data);
-				}
-			},
-			onSettled: async () => {
-				await Promise.all([
-					cache.invalidateQueries({
-						queryKey: trpc.products.pathKey(),
-					}),
-					cache.invalidateQueries({
-						queryKey: trpc.business.home.pathKey(),
-					}),
-				]);
 			},
 		}),
 	);
@@ -562,6 +606,36 @@ export default function MerchantHome() {
 	const locationPaused =
 		selectedLocation?.status === "paused_manual" ||
 		selectedLocation?.status === "paused_capacity";
+	/**
+	 * The pause's clock, as one caption line, or nothing.
+	 *
+	 * `paused_platform` is in this set and `locationPaused` is not, and the
+	 * difference is deliberate: `locationPaused` answers "can *this* merchant tap
+	 * Resume?", which is the OWNER's call and not the platform's. A platform pause
+	 * still has a start and often an end, and "Pausado por la plataforma" with no
+	 * second line leaves the reader unable to tell a five-minute capacity hold
+	 * from a suspension that lasts until someone else acts — so it shows the same
+	 * clock, and offers no button.
+	 *
+	 * Relative rather than a clock, because `formatRelative` already carries the
+	 * direction in both languages ("en 8 min" / "in 8 min") and "en 8 min" is the
+	 * actionable half: should this operator wait, or call someone?
+	 */
+	const pauseCaption = useMemo(() => {
+		const status = selectedLocation?.status;
+		if (!selectedLocation || !status?.startsWith("paused")) return null;
+		const { pausedAt, resumeAt } = selectedLocation;
+		// A pause with neither timestamp says only "Paused", which the status row
+		// above already says — no second line repeating the same words.
+		if (!pausedAt && !resumeAt) return null;
+		const stamp = resumeAt ?? pausedAt;
+		if (!stamp) return null;
+		const relative = formatRelative(stamp, intlLocale);
+		if (!relative) return null;
+		return resumeAt
+			? t("biz.home.pauseResumesIn", { relative })
+			: t("biz.home.pauseSince", { relative });
+	}, [selectedLocation, intlLocale, t]);
 	const canManageOperatingState =
 		!!selectedLocation &&
 		canManage &&
@@ -692,6 +766,18 @@ export default function MerchantHome() {
 											<Text variant="body" bold>
 												{t(`biz.locations.status.${selectedLocation.status}`)}
 											</Text>
+											{/* The pause's clock, and only while there is one. A third
+											    line in a row whose floor is 64 — it grows at 200%
+											    text rather than clipping, which is what the floor is
+											    for. This row is the only place on the screen that
+											    names the shop's operating state, so the state an
+											    owner may have to wait on belongs here, under the
+											    word that says there is one. */}
+											{pauseCaption ? (
+												<Text variant="caption" tone="muted" tabular>
+													{pauseCaption}
+												</Text>
+											) : null}
 										</View>
 										{canManageOperatingState ? (
 											<View style={styles.rowAction}>
@@ -1016,31 +1102,35 @@ export default function MerchantHome() {
 						    default draws — the rhythm the board's rows keep with `last`, so
 						    a card of rows never ends in a line for nobody. */}
 								{attention.map((alert, index) => (
+									// The whole row opens the alert's destination, and the
+									// labelled button at the end says which one — see
+									// `AttentionRow` for why the row is a plain report
+									// rather than a button when the alert carries no
+									// action at all.
 									<AttentionRow
 										key={`${alert.type}:${alert.action ?? ""}`}
-										label={t(
-											alert.type === "new_order"
-												? "biz.home.newOrders"
-												: "biz.home.outOfStock",
-										)}
+										label={t(ATTENTION_LABEL_KEYS[alert.type])}
 										count={alert.count}
 										severity={alert.severity}
-										icon={
-											alert.type === "new_order"
-												? "receipt-outline"
-												: "alert-circle-outline"
+										icon={ATTENTION_ICONS[alert.type]}
+										// `action` is optional on the wire, so this is a
+										// question with a real `undefined` behind it rather
+										// than a branch that cannot fail.
+										actionLabel={
+											alert.action
+												? t(ATTENTION_ACTION_KEYS[alert.action])
+												: null
 										}
 										last={index === attention.length - 1}
-										onPress={() =>
-											router.push(
-												alert.action === "open_orders"
-													? "/business"
-													: alert.action === "open_inventory" ||
-															alert.action === "open_catalog"
-														? "/products"
-														: "/more",
-											)
-										}
+										onPress={() => {
+											const route = alert.action && ALERT_ROUTES[alert.action];
+											// `businessId` is optional here. This JSX lives
+											// inside the branch that already proved one
+											// exists, but the closure does not know that,
+											// and an OWNER tapping an alert must not reach a
+											// screen with an empty shop id.
+											if (route && businessId) router.push(route(businessId));
+										}}
 									/>
 								))}
 							</View>
@@ -1055,6 +1145,26 @@ export default function MerchantHome() {
 									accessibilityHint: t("biz.dashboard.viewBoard"),
 								}}
 							/>
+							{/* The preview holds at most five rows and the shop may
+							    hold far more, so the shortfall is said rather than
+							    implied — and only when the two numbers differ.
+							    "5 open · showing 5" is a fact about the screen
+							    rather than about the shop, and printing it would
+							    teach the reader that a number which changes with
+							    the preview's width is a business fact. */}
+							{queueIsTruncated && openOrders !== null ? (
+								<Text
+									variant="caption"
+									tone="muted"
+									tabular
+									style={styles.queueSummary}
+								>
+									{t("biz.board.queueSummary", {
+										open: openOrders,
+										shown: orders.length,
+									})}
+								</Text>
+							) : null}
 						</View>
 						{orders.length === 0 ? (
 							<View style={styles.pad}>
@@ -1107,6 +1217,15 @@ export default function MerchantHome() {
 										// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
 										// wrapper here would double them and put the ink at 48 points
 										// under a section title sitting at 24.
+										//
+										// `waitLabel` is how long this order has been standing. The
+										// row already had a slot for it and nothing was putting one
+										// there, which left the oldest order on the board drawn
+										// exactly like the newest — and age is the fact that
+										// decides which row to take first. Past a day
+										// `formatRelative` hands over to the clock, so this never
+										// reads as a count of days on a screen whose job is to
+										// say how far along it is.
 										<MerchantOrderRow
 											key={order.id}
 											onPress={() =>
@@ -1131,6 +1250,9 @@ export default function MerchantHome() {
 													locale: intlLocale,
 												},
 											)}
+											waitLabel={
+												formatRelative(order.placedAt, intlLocale) ?? undefined
+											}
 											urgent={order.status === "PENDING" ? "new" : null}
 											last={index === orders.length - 1}
 											actions={actions.length ? actions : undefined}
@@ -1221,7 +1343,7 @@ export default function MerchantHome() {
 									}}
 								/>
 								<Text variant="caption" tone="muted">
-									{t("biz.locations.allBusiness")}
+									{t("biz.locations.sharedCatalog")}
 								</Text>
 								<Text variant="caption" tone="muted" tabular>
 									{t("biz.home.catalogSummary", {
@@ -1230,6 +1352,15 @@ export default function MerchantHome() {
 										outOfStock: home.data.catalog.outOfStock,
 									})}
 								</Text>
+								{/* What the three-row preview left out. Derived from the
+								    reads above, so it cannot disagree with the summary
+								    printed directly over it, and said as a count of
+								    products rather than of alerts. */}
+								{catalogHidden !== null && catalogHidden > 0 ? (
+									<Text variant="caption" tone="muted" tabular>
+										{t("biz.products.moreCount", { count: catalogHidden })}
+									</Text>
+								) : null}
 								{home.data.catalog.products.length === 0 ? (
 									<Text variant="body" tone="muted">
 										{t("biz.products.empty.title")}
@@ -1244,18 +1375,6 @@ export default function MerchantHome() {
 													pathname: "/product-form",
 													params: { businessId, id: product.id },
 												})
-											}
-											onAvailabilityChange={(quantity) => {
-												if (!businessId) return;
-												setStock.mutate({
-													businessId,
-													id: product.id,
-													quantity,
-												});
-											}}
-											availabilityPending={
-												setStock.isPending &&
-												setStock.variables?.id === product.id
 											}
 										/>
 									))
@@ -1411,47 +1530,91 @@ function MerchantInsight({
 	);
 }
 
+/**
+ * One attention item: the rail that says how urgent, the words that say what,
+ * and — when the alert knows where it wants to send this reader — the label that
+ * says where.
+ *
+ * ## The destination is written out, not drawn as a chevron
+ *
+ * This row used to end in a bare chevron, which asks the reader to work out where
+ * "Productos agotados 4" goes from the shape of an arrow. `actionLabel` is that
+ * same answer in words, in the merchant's `action` ink, so the row is legible at a
+ * glance and the one affordance on it is the one that matters.
+ *
+ * It is `action` tone rather than the pulse's lime on purpose: the merchant
+ * palette reserves its brightest ink for the single thing asking the operator to
+ * act right now, and the command rail below spends it on adding a product. Four
+ * rows each wearing it would spend it four times.
+ *
+ * ## A row with no action is a report, not a dead button
+ *
+ * `merchantAlertSchema.action` is optional, so `actionLabel` can be `null`. Then
+ * the row drops `accessibilityRole="button"`, stops taking the pressed fill, and
+ * draws no chevron: a reader who taps everything should be right to, and a row
+ * that looks pressable and goes nowhere is how a screen teaches distrust.
+ */
 function AttentionRow({
 	label,
 	count,
 	severity,
 	icon,
+	actionLabel,
 	last,
 	onPress,
 }: {
 	label: string;
 	count: number;
 	severity: Attention["severity"];
-	icon: "receipt-outline" | "alert-circle-outline";
+	icon: React.ComponentProps<typeof Ionicons>["name"];
+	actionLabel?: string | null;
 	last: boolean;
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
 	const semantic =
 		severity === "critical" ? colors.destructive : colors.warning;
+	const pressable = actionLabel !== null;
 
 	return (
 		<Pressable
-			accessibilityRole="button"
+			accessibilityRole={pressable ? "button" : undefined}
 			accessibilityLabel={`${label}: ${count}`}
+			accessibilityState={{ disabled: !pressable }}
+			disabled={!pressable}
 			onPress={onPress}
 			style={({ pressed }) => [
 				styles.attentionRow,
 				{ borderBottomColor: colors.border },
 				last ? null : styles.attentionDivider,
-				pressed ? { backgroundColor: colors.muted } : null,
+				pressed && pressable ? { backgroundColor: colors.muted } : null,
 			]}
 		>
 			<View style={[styles.attentionRail, { backgroundColor: semantic }]} />
-			<Ionicons name={icon} size={20} color={semantic} />
+			<Ionicons
+				name={icon}
+				size={20}
+				color={semantic}
+				accessibilityElementsHidden
+				importantForAccessibility="no"
+			/>
 			<Text style={styles.attentionCopy}>
 				{label} <Text bold>{count}</Text>
 			</Text>
-			<Ionicons
-				name="chevron-forward"
-				size={20}
-				color={colors.mutedForeground}
-			/>
+			{pressable && actionLabel ? (
+				<View style={styles.attentionAction}>
+					<Text variant="label" tone="action" bold numberOfLines={1}>
+						{actionLabel}
+					</Text>
+					<Ionicons
+						name="chevron-forward"
+						size={16}
+						color={colors.action}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+				</View>
+			) : null}
 		</Pressable>
 	);
 }
@@ -1656,4 +1819,28 @@ const styles = StyleSheet.create({
 	attentionDivider: { borderBottomWidth: StyleSheet.hairlineWidth },
 	attentionRail: { width: 4, alignSelf: "stretch" },
 	attentionCopy: { flex: 1 },
+	/**
+	 * The row's own affordance: the word plus the chevron, as one inseparable unit.
+	 *
+	 * `flexShrink: 0` because the *label* is what must give way, not this — the copy
+	 * above already carries `flex: 1` and shrinks first, so a long alert name at
+	 * 200% text pushes "Reponer stock" out rather than wrapping the chevron onto a
+	 * line of its own. `gap: space.xs` because the two are one thing said twice (the
+	 * destination, and the mark that means "go there") rather than two independent
+	 * items competing for the row's tail.
+	 */
+	attentionAction: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		flexShrink: 0,
+	},
+	/**
+	 * The queue's own size, under the section header.
+	 *
+	 * `marginTop: space.xs` rather than a `gap` from the header above: this line is a
+	 * caption attached to that header, not a section of its own, so the two belong
+	 * together at one step rather than at the page's `space.lg`.
+	 */
+	queueSummary: { marginTop: space.xs },
 });

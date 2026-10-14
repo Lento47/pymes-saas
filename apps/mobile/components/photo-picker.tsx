@@ -8,16 +8,32 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+	Modal,
+	type StyleProp,
+	StyleSheet,
+	View,
+	type ViewStyle,
+} from "react-native";
 
 import { useApiFailure } from "@/lib/api-error";
 import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { useReducedMotion } from "@/lib/reduced-motion";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, media, radius, space, type, useTheme } from "@/theme";
+import {
+	icon,
+	MIN_TOUCH_TARGET,
+	media,
+	radius,
+	space,
+	type,
+	useTheme,
+} from "@/theme";
 
 import { Button } from "./button";
 import { Image } from "./image";
+import { Pressable } from "./pressable";
 import { Text } from "./text";
 
 /**
@@ -85,20 +101,28 @@ type PhotoPickerProps = {
 	/** Drawn inside the preview when there is no picture — a letter, an icon. */
 	children?: React.ReactNode;
 	/**
-	 * How the control is arranged: the column it has always been, or one wide media surface.
+	 * How the control is arranged: a column of preview and buttons, one wide media
+	 * surface, or the picture alone with the two acts behind a tap.
 	 *
 	 * `"compact"` is the default and is the column — a preview box, a label and the two
 	 * controls stacked under it, which is right where the picture is a small part of a longer
-	 * form (`app/profile`'s avatar, `app/(business)/shop-settings`'s logo). `"module"` is the
+	 * form (`app/profile`'s avatar, `app/(business)/product-form`'s photo). `"module"` is the
 	 * commerce system's version: the media surface itself is the control, sized for the
 	 * photograph rather than for a thumbnail, with its own empty state, its own sentence and
 	 * the two acts side by side inside it.
 	 *
-	 * The two acts stay two acts in both layouts, and that is the reason this is a layout
+	 * **`"tap"` is for a block that is already a composition.** A shop's brand is one thing
+	 * made of a portada and a logo, drawn as a card; giving each half its own two stacked
+	 * buttons put four buttons and four labels under two pictures, and the buttons were the
+	 * loudest thing in a block whose whole job is to show a photograph. So the picture is the
+	 * control: press it, and the two acts arrive in a sheet. The picture still grows and the
+	 * message row still exists — what `"tap"` removes is only the duplicated chrome.
+	 *
+	 * The two acts stay two acts in every layout, and that is the reason this is a layout
 	 * prop rather than a redesign — see the note at the top of this file. A single "Add photo"
 	 * that does not say which picker it opens is the failure the two controls exist to prevent.
 	 */
-	layout?: "compact" | "module";
+	layout?: "compact" | "module" | "tap";
 	/**
 	 * The two acts' own labels, for `"module"`, where the buttons sit inside the surface and
 	 * a generic "Upload photo" reads as the name of the whole block. Omitted they fall back to
@@ -120,6 +144,20 @@ type PhotoPickerProps = {
 	businessId?: string;
 	/** What the picture is for. Stored, so the bytes stay attributable. */
 	purpose?: UploadPurpose;
+	/**
+	 * This control is on a screen the caller cannot edit — a MANAGER's read-only
+	 * view of an OWNER's settings, say.
+	 *
+	 * A separate prop rather than "pass no `onChange`", because a picker with no
+	 * callback still shows three live buttons, and a reader who taps "Take photo"
+	 * and gets no picker at all has been told something false. It locks all three:
+	 * both picks and the remove, since removing a logo is as much a write as
+	 * choosing one.
+	 *
+	 * Distinct from `busy`, which is this component's own upload in flight — the
+	 * two are added together internally, so a caller only ever states one.
+	 */
+	disabled?: boolean;
 };
 
 /**
@@ -128,6 +166,39 @@ type PhotoPickerProps = {
  * skeleton is a number that drifts the first time the module is retuned.
  */
 export const PHOTO_MODULE_HEIGHT = 190;
+
+/**
+ * `"tap"`'s badge glyph.
+ *
+ * `icon.action` and not a number typed here: this badge *is* the affordance on a
+ * block that has no other one, so it is sized like the app's other action glyphs
+ * rather than like a decoration. A badge smaller than the `moduleMark` it replaces
+ * reads as a demotion from a control to a hint.
+ */
+/**
+ * `"tap"`'s empty-state glyph: 36, the same mark `module`'s `moduleMark` uses.
+ *
+ * Named rather than the badge's size, and *different* on purpose: the mark that
+ * stands for "there is no picture yet" is the empty state's whole content and can
+ * be large, while the pencil that labels "there is a picture, press to change it"
+ * is an annotation and has to stay small enough not to cover the photograph.
+ */
+const TAP_EMPTY_MARK = 36;
+
+/**
+ * The acts dialog's two measures.
+ *
+ * `ACTS_DISC` is `merchant-shortcut-rail`'s own 64 rather than a new number: these
+ * tiles are that component's tile, at the size it already uses, and a dialog with
+ * slightly smaller discs would read as a different control than the destination
+ * tiles two screens away.
+ *
+ * `ACTS_MAX_WIDTH` is 340 — roughly a form's own measure. Without a ceiling this
+ * card is a pair of discs at opposite ends of a landscape phone, which is a dialog
+ * asking to be looked at rather than one being got out of the way.
+ */
+const ACTS_DISC = 64;
+const ACTS_MAX_WIDTH = 340;
 
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 	mediaTypes: ["images"],
@@ -160,6 +231,7 @@ export function PhotoPicker({
 	aspect = [1, 1],
 	businessId,
 	purpose,
+	disabled = false,
 }: PhotoPickerProps) {
 	const { t } = useT();
 	const { colors } = useTheme();
@@ -172,10 +244,25 @@ export function PhotoPicker({
 	// buttons beside each other is two things to look at for one write.
 	const [source, setSource] = useState<"gallery" | "camera" | null>(null);
 	const [localError, setLocalError] = useState<string | null>(null);
+	/**
+	 * `"tap"`'s sheet. Local rather than lifted, for the reason the two-act sheet in
+	 * `business-hours` keeps its own: the sheet is a property of *this* control, and two
+	 * pickers on one screen must be able to have their sheet open independently — which
+	 * is also why the parent's state is not involved. Held open by `locked` never: a
+	 * lock that arrives mid-tap is the upload's own, and the sheet is already closing.
+	 */
+	const [actsOpen, setActsOpen] = useState(false);
 
 	const create = useMutation(trpc.uploads.create.mutationOptions());
 	const failure = useApiFailure(create.error);
 	const busy = create.isPending;
+	/**
+	 * One flag for every control here. `busy` is this component's own write in
+	 * flight and `disabled` is the caller's read-only screen, and the buttons want
+	 * the same answer to both — so they are added once rather than at each of the
+	 * three buttons, which is how one of them ends up live during a lock.
+	 */
+	const locked = busy || disabled;
 
 	// Four sources, in order, and each one is the right sentence for what it knows.
 	// The caller's form validation wins: if the form says the picture is wrong, that is
@@ -194,7 +281,7 @@ export function PhotoPicker({
 		kind: "gallery" | "camera",
 		launch: () => Promise<ImagePicker.ImagePickerResult>,
 	) => {
-		if (busy) return;
+		if (locked) return;
 		setLocalError(null);
 		const needsCamera = kind === "camera";
 
@@ -251,6 +338,7 @@ export function PhotoPicker({
 	};
 
 	const removePhoto = () => {
+		if (locked) return;
 		selection();
 		setPendingUri(null);
 		setLocalError(null);
@@ -274,7 +362,7 @@ export function PhotoPicker({
 			size="sm"
 			fullWidth
 			loading={busy && source === "gallery"}
-			disabled={busy}
+			disabled={locked}
 			icon={
 				<Ionicons
 					name="image-outline"
@@ -294,7 +382,7 @@ export function PhotoPicker({
 			size="sm"
 			fullWidth
 			loading={busy && source === "camera"}
-			disabled={busy}
+			disabled={locked}
 			icon={
 				<Ionicons
 					name="camera-outline"
@@ -311,7 +399,7 @@ export function PhotoPicker({
 			variant="ghost"
 			size="sm"
 			fullWidth
-			disabled={busy}
+			disabled={locked}
 			icon={
 				<Ionicons
 					name="close-outline"
@@ -348,6 +436,94 @@ export function PhotoPicker({
 			) : null}
 		</View>
 	);
+
+	if (layout === "tap") {
+		const uri = pendingUri ?? value;
+		return (
+			<View style={styles.wrap}>
+				<Pressable
+					onPress={() => setActsOpen(true)}
+					disabled={locked}
+					accessibilityRole="button"
+					accessibilityLabel={
+						uri ? `${label}: ${t("action.changePhoto")}` : label
+					}
+					accessibilityHint={t("action.uploadPhotoHelp")}
+					style={styles.tapTarget}
+				>
+					<Image
+						uri={uri}
+						radiusToken={radiusToken}
+						style={[
+							styles.preview,
+							previewStyle,
+							// The pressed wash, so the tap has an answer before the sheet
+							// arrives. `colors.muted` is the app's own pressed surface rather
+							// than a new token for one control.
+							{ backgroundColor: colors.muted },
+						]}
+					>
+						{children}
+					</Image>
+					{/* **What is drawn over the picture is chosen by whether
+					    there is a picture**, and both halves earn it. With one,
+					    the mark is a small pencil in the *corner*: it labels
+					    something that is already showing, so it stays out of the
+					    middle where it would cover the photograph it annotates.
+					    Without one, the centred glyph *is* the empty state —
+					    the same mark and the same 36 points `module`'s
+					    `moduleMark` uses, because an empty box with a caption
+					    under it reads as a form field, and this is a picture
+					    waiting for one.
+
+					    `children` beats the empty glyph when a caller supplies
+					    it: the logo passes the shop's initial, and an initial
+					    with an image-placeholder printed on top of it is
+					    neither. */}
+					{uri ? (
+						<View style={styles.tapCorner} pointerEvents="none">
+							<Ionicons
+								name="pencil-outline"
+								size={icon.control}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</View>
+					) : children ? null : (
+						<View style={styles.tapBadge} pointerEvents="none">
+							<Ionicons
+								name="image-outline"
+								size={TAP_EMPTY_MARK}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</View>
+					)}
+				</Pressable>
+
+				<PhotoActs
+					open={actsOpen}
+					label={label}
+					canRemove={!!value}
+					busy={busy}
+					onClose={() => setActsOpen(false)}
+					onGallery={() =>
+						pick("gallery", () =>
+							ImagePicker.launchImageLibraryAsync(pickerOptions),
+						)
+					}
+					onCamera={() =>
+						pick("camera", () => ImagePicker.launchCameraAsync(pickerOptions))
+					}
+					onRemove={removePhoto}
+				/>
+
+				{message}
+			</View>
+		);
+	}
 
 	if (layout === "module") {
 		const uri = pendingUri ?? value;
@@ -447,6 +623,205 @@ export function PhotoPicker({
 }
 
 /**
+ * The two acts, as a centred dialog rather than a bottom sheet.
+ *
+ * ## Why not a sheet
+ *
+ * The first version of `"tap"` put these in `./sheet`, and it was wrong for the
+ * block this layout exists for. A sheet is a surface for a *list*, and two choices
+ * are not a list — what it produced was a panel with a title, a chevron on each
+ * row, and a gap, dragging the eye up from the photograph the reader was looking
+ * at when they tapped it. A sheet also says "there is more below", and there is
+ * not: there are exactly two ways to get a photograph, and both fit in one glance.
+ *
+ * So the two acts are the surface. Two tiles side by side, glyph above word, the
+ * same disc-and-word shape `merchant-shortcut-rail` uses for a destination — which
+ * is what these are, two destinations, and reusing that shape is cheaper than
+ * inventing a fourth one. The tiles are `flex: 1` so the pair is one object at any
+ * phone width.
+ *
+ * ## What it costs to be this small
+ *
+ * The scrim is the palette's own `scrim`, not a black at some opacity: the token's
+ * note is that a scrim's job is to make the page behind it recede, and in the dark
+ * scheme `foreground` is near-white, so a dimmed `foreground` backdrop would be the
+ * *bright* object in the frame. Remove is the only row that takes something away,
+ * so it is last, it is quiet, and it only exists when there is something to remove —
+ * a dialog offering "Remove photo" for a picture that is not there is a control
+ * that cannot do its job.
+ */
+function PhotoActs({
+	open,
+	label,
+	canRemove,
+	busy,
+	onClose,
+	onGallery,
+	onCamera,
+	onRemove,
+}: {
+	open: boolean;
+	/** Names the thing being changed, announced as the dialog's label. */
+	label: string;
+	canRemove: boolean;
+	busy: boolean;
+	onClose: () => void;
+	onGallery: () => void;
+	onCamera: () => void;
+	onRemove: () => void;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+	const reducedMotion = useReducedMotion();
+
+	return (
+		<Modal
+			visible={open}
+			transparent
+			animationType={reducedMotion ? "none" : "fade"}
+			onRequestClose={onClose}
+		>
+			<Pressable
+				style={[styles.scrim, { backgroundColor: scrimColor(colors.scrim) }]}
+				onPress={onClose}
+				accessibilityRole="button"
+				accessibilityLabel={t("action.close")}
+			/>
+			<View style={styles.acts} pointerEvents="box-none">
+				<View
+					style={[
+						styles.actsCard,
+						{ backgroundColor: colors.card, borderColor: colors.border },
+					]}
+					accessible
+					accessibilityRole="text"
+					accessibilityLabel={label}
+				>
+					<View style={styles.actsRow}>
+						<Pressable
+							onPress={onGallery}
+							disabled={busy}
+							accessibilityRole="button"
+							accessibilityLabel={t("action.uploadPhoto")}
+							style={styles.actsTile}
+						>
+							<View
+								style={[
+									styles.actsDisc,
+									{ backgroundColor: colors.muted, borderColor: colors.border },
+								]}
+							>
+								<Ionicons
+									name="image-outline"
+									size={icon.back}
+									color={colors.foreground}
+									accessibilityElementsHidden
+									importantForAccessibility="no"
+								/>
+							</View>
+							<Text variant="caption" tone="muted" numberOfLines={1}>
+								{t("action.uploadPhoto")}
+							</Text>
+						</Pressable>
+						<Pressable
+							onPress={onCamera}
+							disabled={busy}
+							accessibilityRole="button"
+							accessibilityLabel={t("action.takePhoto")}
+							style={styles.actsTile}
+						>
+							<View
+								style={[
+									styles.actsDisc,
+									{ backgroundColor: colors.muted, borderColor: colors.border },
+								]}
+							>
+								<Ionicons
+									name="camera-outline"
+									size={icon.back}
+									color={colors.foreground}
+									accessibilityElementsHidden
+									importantForAccessibility="no"
+								/>
+							</View>
+							<Text variant="caption" tone="muted" numberOfLines={1}>
+								{t("action.takePhoto")}
+							</Text>
+						</Pressable>
+					</View>
+
+					{/* Cancel is always there, and it is the only always-there escape.
+					    The scrim above is the second one, which is why it carries no
+					    label of its own and why this row exists rather than relying on a
+					    reader finding the dimmed page behind the card. */}
+					<Pressable
+						onPress={onClose}
+						accessibilityRole="button"
+						accessibilityLabel={t("action.cancel")}
+						style={styles.actsCancel}
+					>
+						<Text variant="label" bold>
+							{t("action.cancel")}
+						</Text>
+					</Pressable>
+
+					{canRemove ? (
+						<Pressable
+							onPress={onRemove}
+							disabled={busy}
+							accessibilityRole="button"
+							accessibilityLabel={t("action.removePhoto")}
+							style={styles.actsCancel}
+						>
+							<Text variant="label" tone="destructive" bold>
+								{t("action.removePhoto")}
+							</Text>
+						</Pressable>
+					) : null}
+				</View>
+			</View>
+		</Modal>
+	);
+}
+
+/**
+ * The scrim as an alpha over the palette's own `scrim` hex.
+ *
+ * `colors.scrim` is a *solid* colour — `#1f1915` in light, `#000000` in dark — and the
+ * token's own note is that a scrim exists to make the page behind it recede. Painting
+ * that hex across the window at full opacity does the opposite: it deletes the page,
+ * and a dialog floating on nothing reads as a launch error rather than as a question
+ * asked of the screen it covers.
+ *
+ * So the hex is kept and the *opacity* is applied. `SCrim_ALPHA` is 0.6 rather than
+ * something heavier: the card has to be unmistakably the nearest object (it is the only
+ * thing at full contrast), while the page behind it stays legible enough that the reader
+ * can tell what they tapped. A heavier scrim hides the photograph they tapped, which is
+ * the one thing this dialog is about.
+ *
+ * `rgba` is built from the token's own channels rather than typed as a literal, so a
+ * palette change moves the scrim with it instead of leaving a `#00000059` behind.
+ */
+const SCRIM_ALPHA = 0.6;
+
+function scrimColor(hex: string): string {
+	const value = hex.replace("#", "");
+	const full =
+		value.length === 3
+			? value
+					.split("")
+					.map((one) => one + one)
+					.join("")
+			: value;
+	if (full.length !== 6) return `${hex}59`;
+	const red = Number.parseInt(full.slice(0, 2), 16);
+	const green = Number.parseInt(full.slice(2, 4), 16);
+	const blue = Number.parseInt(full.slice(4, 6), 16);
+	if (!Number.isFinite(red + green + blue)) return `${hex}59`;
+	return `rgba(${red}, ${green}, ${blue}, ${SCRIM_ALPHA})`;
+}
+
+/**
  * The mime type to store.
  *
  * The picker's `mimeType` is best-effort and iOS is happy to report `image/heic` for a
@@ -492,6 +867,111 @@ const styles = StyleSheet.create({
 		aspectRatio: 1,
 	},
 	controls: { gap: space.sm },
+	/**
+	 * `"tap"`'s target, and the box the badge is centred inside.
+	 *
+	 * No `minHeight` here: the picture inside it already carries the block's height,
+	 * and a floor on the pressable would only matter when a caller passes an empty
+	 * `previewStyle` — at which point the layout is wrong for a different reason and
+	 * this would hide it. `overflow: "hidden"` is *not* set, so the badge escapes the
+	 * circle's bounds rather than being clipped by it.
+	 */
+	tapTarget: { alignSelf: "flex-start" },
+	tapBadge: {
+		position: "absolute",
+		top: 0,
+		right: 0,
+		bottom: 0,
+		left: 0,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	/**
+	 * The corner position for the "press to change" pencil.
+	 *
+	 * A separate style rather than the same absolute box with alignment switched,
+	 * because the two marks are different objects at different scales in different
+	 * places, and a `styles.tapBadge` that meant "centred" in one branch and
+	 * "top-right" in the other would be a prop wearing a name.
+	 */
+	tapCorner: {
+		position: "absolute",
+		top: space.xs,
+		right: space.xs,
+	},
+	/**
+	 * The dialog's scrim, filling the window behind the card.
+	 *
+	 * `StyleSheet.absoluteFill` rather than a `flex: 1` sibling, because the card's own
+	 * container is a centred overlay *on top* of this and neither can be a flex child of
+	 * the other — the scrim is the page, the card floats on it. `flex: 1` on both in a
+	 * row would put them side by side.
+	 *
+	 * The colour is **not** set here. It is `scrimColor()`, below, because `colors.scrim`
+	 * is a solid hex and a solid hex over the whole window *erases* the page behind the
+	 * dialog — the opposite of what a scrim is for. See that function for the alpha.
+	 */
+	scrim: { ...StyleSheet.absoluteFill },
+	/**
+	 * The card's centred container. `pointerEvents: "box-none"` is on the element in the
+	 * JSX, not here: it has to be, because it is the difference between "taps on the
+	 * dimmed page reach the scrim's close" and "they reach nothing".
+	 */
+	acts: {
+		...StyleSheet.absoluteFill,
+		alignItems: "center",
+		justifyContent: "center",
+		padding: space.xl,
+	},
+	/**
+	 * The card itself. `maxWidth` rather than a width, so on a tablet or a landscape
+	 * phone the two tiles do not stretch into two enormous discs — this is a dialog
+	 * about two choices, and its size should not depend on how much screen there is.
+	 */
+	actsCard: {
+		width: "100%",
+		maxWidth: ACTS_MAX_WIDTH,
+		borderRadius: radius.xl,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: "hidden",
+		padding: space.lg,
+		gap: space.sm,
+	},
+	/** The two tiles, as one object. `flex: 1` each so the pair is symmetrical. */
+	actsRow: { flexDirection: "row", gap: space.sm },
+	/**
+	 * A tile's column. `alignItems: "center"` because the word sits under the disc
+	 * rather than beside it, which is `merchant-shortcut-rail`'s tile shape and the
+	 * reason this reads as two destinations instead of two buttons.
+	 */
+	actsTile: {
+		flex: 1,
+		alignItems: "center",
+		gap: space.xs,
+		minHeight: MIN_TOUCH_TARGET,
+	},
+	/** The disc, at `merchant-shortcut-rail`'s own 64. */
+	actsDisc: {
+		width: ACTS_DISC,
+		height: ACTS_DISC,
+		borderRadius: radius.lg,
+		borderWidth: 1,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	/**
+	 * Cancel and remove share one row shape: a bare word, centred, no box.
+	 *
+	 * They are quiet on purpose. The two discs are the answer to the question the
+	 * reader tapped with, and a filled button underneath them would compete with
+	 * both for the same glance. Remove is `destructive` ink and cancel is plain,
+	 * which is the whole difference between the two rows.
+	 */
+	actsCancel: {
+		minHeight: MIN_TOUCH_TARGET,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	message: { minHeight: type.caption.lineHeight },
 	/**
 	 * The media surface, at the height the interface spec measures for it. `overflow: "hidden"`

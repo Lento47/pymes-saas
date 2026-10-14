@@ -32,6 +32,12 @@ apps/*/pnpm-lock.yaml
 # Local mobile browser traces (screenshots for design review are kept separately).
 .design-reference/test-results/
 
+# A timestamped snapshot of files taken before a risky refactor, with a RESTORE.ps1
+# beside it. It is a local safety net, not source: the `.png` and `.xml` inside it
+# would double the size of every clone, and the restore script hardcodes one
+# developer's absolute path.
+.backups/
+
 # Scratch files from an investigation session: `_scan*.py`, `_v*.txt`, `_w*.py`,
 # `_h.txt`. They hardcode absolute paths into one developer's Downloads folder
 # (`_scan.py` opens `C:/Users/<name>/Downloads/interface.md`) and are meaningless

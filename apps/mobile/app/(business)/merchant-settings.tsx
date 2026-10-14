@@ -19,6 +19,7 @@ import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
 import { ManagementEmpty } from "@/components/merchant-management-ui";
+import { PhotoPicker } from "@/components/photo-picker";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
 import { Sheet } from "@/components/sheet";
@@ -30,7 +31,7 @@ import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { radius, space } from "@/theme";
+import { radius, space, type } from "@/theme";
 
 type SettingsForm = {
 	name: string;
@@ -38,8 +39,18 @@ type SettingsForm = {
 	description: string;
 	phone: string;
 	email: string;
-	logoUrl: string;
-	coverUrl: string;
+	/**
+	 * `string | null` and not `string`.
+	 *
+	 * These two are `/files/:id` paths written by `./photo-picker` and read by
+	 * nothing a human types, so the only two states a merchant can put them in are
+	 * "a picture" and "no picture". `null` *is* the second one, and pretending
+	 * otherwise is what made these two a pair of text boxes asking an OWNER to
+	 * paste a URL — a box whose wrong answer is a broken image on every storefront
+	 * card, and whose right answer requires knowing an internal path shape.
+	 */
+	logoUrl: string | null;
+	coverUrl: string | null;
 	line1: string;
 	line2: string;
 	city: string;
@@ -59,6 +70,21 @@ type SettingsForm = {
 type FieldErrors = Partial<Record<keyof SettingsForm, string>>;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * The logo circle's diameter, and the one measurement the composed brand block reads
+ * three times: the preview's own box, the padding that reserves the half of it which
+ * hangs below the portada, and the negative margin that lifts it onto the portada's
+ * edge.
+ *
+ * 72 rather than `./photo-picker`'s own `media.row` (60): a mark that overlaps a
+ * photograph has to be big enough to read against that photograph, and `media.row`
+ * is sized for a product thumbnail in a list row beside its name — a job where the
+ * image is never behind anything. Named here rather than inlined three times, because
+ * the three uses are the *same* length and a block that is 70% padding and 30%
+ * mark is a layout accident waiting to be retuned in one place only.
+ */
+const BRAND_LOGO = 72;
 
 function moneyInput(
 	value: number,
@@ -108,8 +134,8 @@ function initialForm(settings: BusinessSettings): SettingsForm {
 		description: settings.description ?? "",
 		phone: settings.phone ?? "",
 		email: settings.email ?? "",
-		logoUrl: settings.logoUrl ?? "",
-		coverUrl: settings.coverUrl ?? "",
+		logoUrl: settings.logoUrl ?? null,
+		coverUrl: settings.coverUrl ?? null,
 		line1: settings.line1,
 		line2: settings.line2 ?? "",
 		city: settings.city,
@@ -199,8 +225,12 @@ function asSettingsUpdate(
 		region: form.region.trim() || undefined,
 		country: form.country.trim(),
 		postalCode: form.postalCode.trim() || undefined,
-		logoUrl: form.logoUrl.trim() || null,
-		coverUrl: form.coverUrl.trim() || null,
+		// Sent as-is rather than `form.logoUrl.trim() || null`: the value is a stored
+		// `/files/:id`, `null` is the picker's own "removed", and there is no third
+		// state a `trim()` could have been collapsing. `businessUpdateInput` widens both
+		// to `.nullable().optional()` for exactly this write.
+		logoUrl: form.logoUrl,
+		coverUrl: form.coverUrl,
 		deliveryEnabled: form.deliveryEnabled,
 		pickupEnabled: form.pickupEnabled,
 		deliveryFeeMinor: moneyValue(form.deliveryFeeMinor, currency),
@@ -602,22 +632,125 @@ function SettingsForm({
 							/>
 						</Card>
 					</ScreenSection>
-					<ScreenSection title={t("biz.settings.logo")}>
+					<ScreenSection title={t("biz.manage.brandAssets")}>
 						<Card>
-							<Field
-								label={t("biz.settings.logo")}
-								value={form.logoUrl}
-								onChangeText={(value) => change("logoUrl", value)}
-								autoCapitalize="none"
-								editable={canEdit}
-							/>
-							<Field
-								label={t("biz.settings.cover")}
-								value={form.coverUrl}
-								onChangeText={(value) => change("coverUrl", value)}
-								autoCapitalize="none"
-								editable={canEdit}
-							/>
+							{/* The two pictures, composed the way a storefront card draws them.
+
+							    They used to be `<Field>`s bound to `logoUrl`/`coverUrl`,
+							    which asked a merchant to paste an internal `/files/:id`
+							    path by hand — the only control on this form with no way
+							    to be right, and the one whose wrong answer is a broken
+							    image on the Orders board header, the Home header and
+							    every storefront card at once.
+
+							    **Portada on top, logo on the left, straddling its edge.**
+							    Not two stacked boxes because these are not two
+							    independent facts: `components/business-card` draws
+							    them as *one* card, and a merchant choosing a banner and
+							    a mark for that card is composing a thing, not filling in
+							    two fields. `styles.brand` pulls the logo up by half its
+							    own height so the circle sits on the portada's bottom
+							    edge rather than under it, which is the arrangement every
+							    shop front uses and the one that shows at a glance
+							    whether the mark will still read on top of the
+							    photograph.
+
+							    The logo keeps `radiusToken="full"` because `business.tsx`
+							    draws the shop's logo as a circle and a square preview is
+							    a picture of a different thing; the cover takes
+							    `styles.coverPreview`, the 16:9 band `business-card`
+							    draws. Both are `./photo-picker`'s rule that a preview
+							    takes the shape of the thing it stands for.
+
+							    Each picker draws its own sheet, so the composition is
+							    made of two ordinary controls and neither had to learn
+							    about the other.
+
+							    **No buttons, and no repeated labels.** `layout="tap"`
+							    makes the picture itself the control: press the portada
+							    band to change the portada, press the circle to change
+							    the logo, and the two acts arrive in a sheet from
+							    whichever one was pressed. The first version of this
+							    block gave each half its own stacked "Subir foto" and
+							    "Tomar foto" pair and printed each label twice — four
+							    buttons and two duplicated headings under two
+							    pictures, which made the buttons the loudest thing in
+							    a block whose entire job is to show a photograph.
+							    `components/business-card` draws this as one object
+							    with no chrome, and the editor now matches it.
+
+							    **Only the logo carries the help line.** The logo
+							    hangs half its height over whatever sits directly
+							    beneath the portada, and directly beneath the
+							    portada is *its* reserved message row — so a help
+							    line there is a line of words under a circle.
+							    `./photo-picker` reserves that row whether or not it
+							    has anything in it precisely so nothing reflows,
+							    which is what makes the empty row the right place
+							    for the circle to land. One sentence for the pair, at
+							    the bottom of the pair. */}
+							<View style={styles.brand}>
+								<Text variant="label" bold>
+									{t("biz.settings.cover")}
+								</Text>
+								<PhotoPicker
+									label={t("biz.settings.cover")}
+									value={form.coverUrl}
+									onChange={(next) => change("coverUrl", next)}
+									previewStyle={styles.coverPreview}
+									aspect={[16, 9]}
+									layout="tap"
+									businessId={businessId}
+									purpose="business-logo"
+									disabled={!canEdit}
+								/>
+								{/* The half that hangs below the portada is why `brand`
+								    reserves `paddingBottom`: without it the circle is
+								    clipped by the card's own bounds and the merchant
+								    sees a semicircle. It lands on the portada's reserved
+								    (empty) message row, which is the one band of this
+								    block with nothing in it — see the note above for
+								    why the portada carries no help of its own. */}
+								<View style={styles.brandLogo}>
+									<PhotoPicker
+										label={t("biz.settings.logo")}
+										value={form.logoUrl}
+										onChange={(next) => change("logoUrl", next)}
+										radiusToken="full"
+										aspect={[1, 1]}
+										layout="tap"
+										previewStyle={styles.brandLogoPreview}
+										businessId={businessId}
+										purpose="business-logo"
+										disabled={!canEdit}
+									>
+										{/* The shop's own initial, so a merchant who has not
+										    picked a mark yet sees the mark their customers
+										    already see — `business-card`'s fallback, not a
+										    blank circle. `./photo-picker` lets `children`
+										    stand in for its empty-state glyph for exactly
+										    this case: an initial with an image-placeholder
+										    printed over it would be neither. */}
+										<Text variant="title" bold tone="action">
+											{settings.name.trim().charAt(0).toUpperCase()}
+										</Text>
+									</PhotoPicker>
+									<Text variant="label" bold style={styles.brandLogoLabel}>
+										{t("biz.settings.logo")}
+									</Text>
+									{/* The pair's one help line, here rather than on either
+									    picker. `./photo-picker` prints `help` inside its
+									    own wrapper directly under the picture, which put
+									    the sentence between the circle and the word
+									    "Logo" that names it. One sentence, after the
+									    name, about both pictures. */}
+									<View style={styles.brandHelp}>
+										<Text variant="caption" tone="muted">
+											{t("biz.settings.photo.help")}
+										</Text>
+									</View>
+								</View>
+							</View>
 							<View style={styles.currency}>
 								<Text variant="label" bold>
 									{t("biz.settings.currency")}
@@ -773,6 +906,66 @@ const styles = StyleSheet.create({
 	hourFields: { flexDirection: "row", gap: space.md },
 	hourField: { flex: 1 },
 	categoryIndent: { width: space.md },
+	/**
+	 * The cover's box, and the same split `components/business-card` gives its band:
+	 * 16:9 across the full width. `./photo-picker`'s own default is a square
+	 * `media.row` thumbnail because that is what a product photo is, and reusing it
+	 * here would preview a wide photograph as a square crop — the merchant would be
+	 * cropping against a box that lies about where the picture lands.
+	 */
+	coverPreview: { width: "100%", aspectRatio: 16 / 9 },
+	/**
+	 * The composed brand block: portada band on top, logo circle on its bottom-left
+	 * edge.
+	 *
+	 * `paddingBottom` reserves the half of the logo that hangs below the portada. No
+	 * `overflow: "hidden"` anywhere in this subtree, and deliberately: a clip here
+	 * would cut the logo's bottom half off and the merchant would see a semicircle.
+	 * The portada's own corners come from `./photo-picker`'s `Image`, which rounds
+	 * the image itself.
+	 */
+	brand: { paddingBottom: BRAND_LOGO / 2 },
+	/**
+	 * The logo's slot, pulled up by half its own height so the circle straddles the
+	 * portada's bottom edge — the arrangement `components/business-card` draws and
+	 * the one a merchant recognises as "how my shop will look".
+	 *
+	 * `alignSelf: "flex-start"` rather than a width, so the slot is exactly as wide
+	 * as the preview inside it and the two pickers' control bars keep their own
+	 * measure rather than both being stretched to the card's.
+	 */
+	brandLogo: { marginTop: -(BRAND_LOGO / 2), alignSelf: "flex-start" },
+	/**
+	 * The circle's box. `width` rather than letting `./photo-picker`'s own
+	 * `media.row` decide, because this is the one measurement in the block read
+	 * from three places — here, `brand`'s padding, and `brandLogo`'s margin — and
+	 * three copies of `media.row` would be three numbers to keep in agreement.
+	 */
+	brandLogoPreview: { width: BRAND_LOGO, aspectRatio: 1 },
+	/**
+	 * The logo's caption, pulled up over `./photo-picker`'s reserved message row.
+	 *
+	 * `"tap"` draws no label under the picture — the picture is the control and its
+	 * name is in the sheet it opens — so the block supplies its own two captions:
+	 * one above the portada, one below the logo. Below rather than above because
+	 * above the logo is *over the portada*, and a caption lying on the photograph is
+	 * one the merchant cannot read.
+	 *
+	 * The negative margin is exactly `type.caption.lineHeight`: that is the height
+	 * of the empty row `./photo-picker` reserves below its picture so a refusal never
+	 * reflows the form, and this caption takes its place rather than sitting a whole
+	 * row below an invisible one. Written as the token rather than a number because
+	 * the row it cancels is that token.
+	 */
+	brandLogoLabel: { marginTop: -type.caption.lineHeight },
+	/**
+	 * The pair's help line's slot.
+	 *
+	 * `space.xs` from the caption above rather than from the picture, because the
+	 * two are one sentence pair — "Logo" then why a picture is wanted — and the
+	 * reserved message row they share is already spoken for by `brandLogoLabel`.
+	 */
+	brandHelp: { marginTop: space.xs },
 	currency: {
 		alignItems: "center",
 		flexDirection: "row",

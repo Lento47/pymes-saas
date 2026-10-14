@@ -43,6 +43,27 @@ export const business = {
 	"biz.home.catalogSummary":
 		"{active} published · {draft} drafts · {outOfStock} sold out",
 
+	// One label per alert type, over the closed union `MERCHANT_ALERT_TYPES`.
+	// The two the Worker emits today reuse the keys above; the other seven are
+	// here so a type this screen has no word for is a build error rather than a
+	// row labelled "Sold-out products" because it wasn't `new_order`.
+	"biz.home.alert.order_delay": "Orders running late",
+	"biz.home.alert.inventory_low": "Stock running low",
+	"biz.home.alert.store_offline": "Store offline",
+	"biz.home.alert.payment_issue": "Payment issue",
+	"biz.home.alert.settlement_issue": "Settlement issue",
+	"biz.home.alert.catalog_issue": "Catalog needs attention",
+
+	// And the door each alert type offers, so a row is a button that says where
+	// it goes rather than a chevron that has to be guessed at.
+	"biz.home.alertAction.open_orders": "View orders",
+	"biz.home.alertAction.open_catalog": "View catalog",
+	"biz.home.alertAction.open_inventory": "Restock",
+	"biz.home.alertAction.open_settings": "Open settings",
+	"biz.home.alertAction.open_payouts": "View payouts",
+	"biz.home.alertAction.retry_payment": "Retry payment",
+	"biz.home.alertAction.contact_support": "Contact support",
+
 	// The merchant home's operational band ("the pulse"), its section and its rail.
 	// Net sales, not gross: the number after the platform's cut is the one an owner
 	// banks.
@@ -50,6 +71,16 @@ export const business = {
 	"biz.pulse.avgTicket": "Average ticket",
 	"biz.pulse.vsYesterday": "vs. yesterday",
 	"biz.board.sectionTitle": "Orders now",
+	// The home previews at most five orders, so the number it can show is not the
+	// number the shop has. This is the difference, said out loud.
+	"biz.board.queueSummary": "{open} open · showing {shown}",
+	/**
+	 * The pause's second line. `relative` arrives from `formatRelative`, which already
+	 * carries the direction in both languages ("in 8 min" / "en 8 min"), so the key
+	 * supplies only the frame around it.
+	 */
+	"biz.home.pauseResumesIn": "Back in {relative}",
+	"biz.home.pauseSince": "Paused {relative}",
 	"biz.rail.newProduct": "New product",
 	"biz.rail.menu": "Menu",
 	"biz.rail.delivery": "Delivery",
@@ -199,6 +230,8 @@ export const business = {
 	"biz.products.edit": "Edit product",
 	"biz.products.available": "Available",
 	"biz.products.outOfStock": "Sold out",
+	/** Products the home's three-row preview left out, said as the shortfall it is. */
+	"biz.products.moreCount": "+{count} more",
 	"biz.products.stockCount": "{count} in stock",
 	"biz.products.empty.title": "No products yet",
 	"biz.products.empty.body":
@@ -826,7 +859,14 @@ export const business = {
 		"The map is unavailable on this device. Try again in the development app.",
 	"biz.locations.select": "Select location",
 	"biz.locations.current": "Current",
-	"biz.locations.allBusiness": "All locations",
+	/**
+	 * The catalog preview's scope, and deliberately *not* a word like "All
+	 * locations": that names a **filter**, and the catalog is not filtered by
+	 * branch — products and stock are shared by the whole shop. "All locations"
+	 * above a list of products therefore reads as "these are this location's",
+	 * which is the one thing the merchant is not being shown.
+	 */
+	"biz.locations.sharedCatalog": "Shared by every location",
 	"biz.locations.subtitle": "Opening and order intake by branch",
 	"biz.locations.pause": "Pause orders",
 	"biz.locations.resume": "Resume orders",

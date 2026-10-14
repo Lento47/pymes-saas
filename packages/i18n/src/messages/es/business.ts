@@ -52,6 +52,27 @@ export const business = {
 	"biz.home.catalogSummary":
 		"{active} publicados · {draft} borradores · {outOfStock} agotados",
 
+	// Una etiqueta por tipo de alerta, sobre la unión cerrada MERCHANT_ALERT_TYPES.
+	// Los dos que el Worker emite hoy reutilizan las claves de arriba; los otros
+	// siete están aquí para que un tipo sin palabras sea un error de compilación
+	// y no una fila rotulada "Productos agotados" por no ser `new_order`.
+	"biz.home.alert.order_delay": "Pedidos retrasados",
+	"biz.home.alert.inventory_low": "Pocas existencias",
+	"biz.home.alert.store_offline": "Tienda desconectada",
+	"biz.home.alert.payment_issue": "Problema de pago",
+	"biz.home.alert.settlement_issue": "Problema de liquidación",
+	"biz.home.alert.catalog_issue": "Catálogo por revisar",
+
+	// Y la puerta que ofrece cada alerta, para que la fila sea un botón que dice
+	// a dónde lleva en vez de un chevron que hay que adivinar.
+	"biz.home.alertAction.open_orders": "Ver pedidos",
+	"biz.home.alertAction.open_catalog": "Ver catálogo",
+	"biz.home.alertAction.open_inventory": "Reponer stock",
+	"biz.home.alertAction.open_settings": "Abrir ajustes",
+	"biz.home.alertAction.open_payouts": "Ver pagos",
+	"biz.home.alertAction.retry_payment": "Reintentar pago",
+	"biz.home.alertAction.contact_support": "Contactar soporte",
+
 	// The merchant home's operational band ("the pulse"), its section and its rail —
 	// the words of the redesigned board (Downloads/interface.md §14, §25, §64). Net
 	// sales, not gross: the number after the platform's cut is the one an owner banks.
@@ -59,6 +80,16 @@ export const business = {
 	"biz.pulse.avgTicket": "Ticket promedio",
 	"biz.pulse.vsYesterday": "vs. ayer",
 	"biz.board.sectionTitle": "Pedidos ahora",
+	// El inicio previsualiza como máximo cinco pedidos, así que el número que
+	// muestra no es el que tiene la tienda. Esta es la diferencia, dicha.
+	"biz.board.queueSummary": "{open} abiertos · mostrando {shown}",
+	/**
+	 * La segunda línea de la pausa. `relative` viene de `formatRelative`, que ya
+	 * trae la dirección en los dos idiomas ("en 8 min" / "in 8 min"), así que la
+	 * clave solo pone el marco alrededor.
+	 */
+	"biz.home.pauseResumesIn": "Vuelve en {relative}",
+	"biz.home.pauseSince": "Pausado {relative}",
 	"biz.rail.newProduct": "Nuevo producto",
 	"biz.rail.menu": "Menú",
 	"biz.rail.delivery": "Entrega",
@@ -218,6 +249,8 @@ export const business = {
 	"biz.products.edit": "Editar producto",
 	"biz.products.available": "Disponible",
 	"biz.products.outOfStock": "Agotado",
+	/** Los productos que la vista previa de tres filas dejó fuera. */
+	"biz.products.moreCount": "+{count} más",
 	"biz.products.stockCount": "{count} en existencias",
 	"biz.products.empty.title": "Todavía no tienes productos",
 	"biz.products.empty.body":
@@ -892,7 +925,15 @@ export const business = {
 		"El mapa no está disponible en este dispositivo. Inténtalo en la app de desarrollo.",
 	"biz.locations.select": "Elegir sucursal",
 	"biz.locations.current": "Actual",
-	"biz.locations.allBusiness": "Todas las sucursales",
+	/**
+	 * El alcance de la vista previa del catálogo, y deliberadamente *no* una frase
+	 * como "Todas las sucursales": esa nombra un **filtro**, y el catálogo no está
+	 * filtrado por sucursal — los productos y el stock son de toda la tienda.
+	 * "Todas las sucursales" sobre una lista de productos se lee como "estos son de
+	 * esta sucursal", que es justo lo que no se le está mostrando. Reemplaza a
+	 * `allBusiness`, que ya no usa ninguna pantalla.
+	 */
+	"biz.locations.sharedCatalog": "Compartido por todas las sucursales",
 	"biz.locations.subtitle": "Apertura y pedidos por sucursal",
 	"biz.locations.pause": "Pausar pedidos",
 	"biz.locations.resume": "Reanudar pedidos",

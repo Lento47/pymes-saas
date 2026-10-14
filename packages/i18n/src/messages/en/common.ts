@@ -49,6 +49,15 @@ export const common = {
 	"action.uploadPhoto": "Upload photo",
 	"action.takePhoto": "Take picture",
 	"action.removePhoto": "Remove photo",
+	/*
+	 * The tap pair. `components/photo-picker`'s `"tap"` layout hides both buttons
+	 * behind the picture itself, so these are the sentence a screen reader gets in
+	 * their place — a button with no label and no hint is a control nobody can
+	 * describe.
+	 */
+	"action.changePhoto": "Change",
+	"action.uploadPhotoHelp":
+		"Opens a choice between your gallery and the camera.",
 	/* When the camera is off-limits, not when we broke — see the Spanish file's note. */
 	"state.error.cameraDenied":
 		"No camera access. Turn it on in your phone's settings.",

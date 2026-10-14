@@ -95,6 +95,15 @@ export const common = {
 	"action.takePhoto": "Tomar foto",
 	"action.removePhoto": "Quitar foto",
 	/*
+	 * El par del toque. El layout `"tap"` de `components/photo-picker` esconde los
+	 * dos botones detrás de la propia imagen, así que esto es la frase que recibe
+	 * un lector de pantalla en su lugar: un botón sin etiqueta ni pista es un
+	 * control que nadie puede describir.
+	 */
+	"action.changePhoto": "Cambiar",
+	"action.uploadPhotoHelp":
+		"Abre una elección entre tu galería y la cámara.",
+	/*
 	 * When the camera is off-limits, not when we broke. "Algo salió mal de nuestro lado"
 	 * would blame the app for a choice the reader made in a system dialog, and the fix is
 	 * in the phone's settings rather than a retry. The sentence names where, because that

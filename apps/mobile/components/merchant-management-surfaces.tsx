@@ -7,10 +7,14 @@ import {
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
+import { StyleSheet, View } from "react-native";
 import { ActivityDashboard } from "@/components/merchant-activity-dashboard";
 import { useT } from "@/lib/i18n";
+import { NO_VALUE } from "@/lib/no-value";
 import { useTRPC } from "@/lib/trpc/context";
+import { type radius, space, useTheme } from "@/theme";
 import { Button } from "./button";
+import { Image } from "./image";
 import { ListRow } from "./list-row";
 import type { ManagementScope } from "./merchant-management-frame";
 import {
@@ -110,13 +114,26 @@ function SettingsSurface({ scope }: { scope: ManagementScope }) {
 				/>
 			) : null}
 			<ManagementSection title={t("biz.manage.brandAssets")}>
-				<KeyValue
+				{/* The pictures, drawn as the pictures. This section used to be two
+				 * `KeyValue` rows printing `logoUrl` and `coverUrl` verbatim, so an
+				 * OWNER reading their own store profile saw two rows of
+				 * `/files/ab12…` — an internal storage path presented as the answer
+				 * to "what is my logo?". The value of these two rows is only ever a
+				 * picture, so the row *is* the picture, in the shape the thing it
+				 * stands for is drawn elsewhere in the app: a circle for the logo
+				 * (`business.tsx`'s board header) and a 16:9 band for the cover
+				 * (`business-card`). `notSet` still answers a shop that has neither.
+				 */}
+				<BrandAsset
 					label={t("biz.settings.logo")}
-					value={data.logoUrl || notSet}
+					uri={data.logoUrl}
+					radiusToken="full"
+					aspectRatio={1}
 				/>
-				<KeyValue
+				<BrandAsset
 					label={t("biz.settings.cover")}
-					value={data.coverUrl || notSet}
+					uri={data.coverUrl}
+					aspectRatio={16 / 9}
 				/>
 			</ManagementSection>
 			{canEdit ? (
@@ -128,6 +145,54 @@ function SettingsSurface({ scope }: { scope: ManagementScope }) {
 				/>
 			) : null}
 		</>
+	);
+}
+
+/**
+ * One brand asset as a picture, or as the words for having none.
+ *
+ * `radiusToken` and `aspectRatio` are the two things that make this a preview of
+ * the right thing rather than a picture in a box: `./photo-picker`'s own rule is
+ * that a preview takes the shape of the thing it stands for, and the logo is a
+ * circle on the Orders board while the cover is a 16:9 band on every storefront
+ * card. A square crop of a wide photograph would be the merchant composing
+ * against a box that lies.
+ *
+ * The `uri` goes into `./image` rather than an `<img>`-equivalent so the same
+ * `/files/:id` → `GET /files/:id` resolution happens in one place, and so a shop
+ * with no picture gets `./image`'s own empty treatment instead of a broken box.
+ */
+function BrandAsset({
+	label,
+	uri,
+	radiusToken,
+	aspectRatio,
+}: {
+	label: string;
+	uri: string | null;
+	radiusToken?: keyof typeof radius;
+	aspectRatio: number;
+}) {
+	const { colors } = useTheme();
+
+	return (
+		<View style={styles.brandAsset}>
+			<Text variant="label" tone="muted">
+				{label}
+			</Text>
+			<Image
+				uri={uri}
+				radiusToken={radiusToken}
+				style={[
+					styles.brandAssetImage,
+					{ aspectRatio, borderColor: colors.border },
+				]}
+			>
+				<Text variant="caption" tone="muted">
+					{uri ? null : NO_VALUE}
+				</Text>
+			</Image>
+		</View>
 	);
 }
 
@@ -628,6 +693,24 @@ function ReviewsSurface({ scope }: { scope: ManagementScope }) {
 		</>
 	);
 }
+
+const styles = StyleSheet.create({
+	/**
+	 * One asset: its name, then the picture in the shape that asset is drawn
+	 * elsewhere. `gap: space.xs` because the label and the picture are one block's
+	 * two lines, which is `TEXT_STACK_GAP`'s job in the app's own vocabulary — but
+	 * this file's surfaces are `ManagementSection`s rather than `ScreenSection`s
+	 * and none of them imported a text step, so the section's own `space.xs`
+	 * gutter is what this block uses.
+	 */
+	brandAsset: { gap: space.xs },
+	/**
+	 * `width: "100%"` rather than a fixed box, because the two assets are drawn at
+	 * different aspect ratios in the same column and a shared width is the only way
+	 * they stack without one of them deciding the other's width.
+	 */
+	brandAssetImage: { width: "100%", borderWidth: StyleSheet.hairlineWidth },
+});
 
 export {
 	ActivitySurface,

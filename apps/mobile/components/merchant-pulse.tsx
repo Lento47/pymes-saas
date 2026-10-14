@@ -101,6 +101,18 @@ export type MerchantPulseData = Pick<
 	| "averageOrderValueMinor"
 	| "currency"
 	| "comparisons"
+	/**
+	 * Orders at this location that have not reached COMPLETED, CANCELLED or
+	 * REJECTED — the one field of `operationalPulseSchema` the band itself does
+	 * not draw.
+	 *
+	 * It is here rather than read off `home.data.pulse` at the call site because
+	 * this is the type that already names what the pulse carries, and the home's
+	 * queue summary needs it to say how much of the backlog the five-row preview
+	 * is hiding. Adding it to a `Pick` widens the type; it does not oblige the
+	 * band to draw it, and the band draws the same three columns either way.
+	 */
+	| "active"
 >;
 
 /**
