@@ -28,6 +28,17 @@ describe("merchant guide completion", () => {
 		expect(stored.get("pymeshub_merchant_guide_v1:shop-a")).toBe("1");
 	});
 
+	test("reads a completed business after the guide module starts again", async () => {
+		await markMerchantGuideSeen("shop-restarted");
+		const restartedGuide = await import(
+			`./merchant-guide?restart=${Date.now()}`
+		);
+		expect(await restartedGuide.hasSeenMerchantGuide("shop-restarted")).toBe(
+			true,
+		);
+		expect(await restartedGuide.hasSeenMerchantGuide("shop-new")).toBe(false);
+	});
+
 	test("allows one opening when storage cannot be read", async () => {
 		failRead = true;
 		try {
