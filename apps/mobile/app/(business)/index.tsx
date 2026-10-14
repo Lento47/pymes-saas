@@ -22,7 +22,6 @@ import { useMemo, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
-	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
@@ -599,12 +598,7 @@ export default function MerchantHome() {
 				) : (
 					<>
 						<View style={styles.merchantHeader}>
-							{/* Shop controls scroll instead of shrinking at large text sizes. */}
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								contentContainerStyle={styles.rail}
-							>
+							<View style={styles.headerContent}>
 								{/* 52 identity: the initial, or the photograph clipped to r16. */}
 								<Image
 									uri={home.data?.location.logoUrl}
@@ -622,36 +616,38 @@ export default function MerchantHome() {
 										</Text>
 									)}
 								</Image>
-								<Pressable
-									onPress={() =>
-										router.push({
-											pathname: "/(business)/payouts",
-											params: { businessId },
-										})
-									}
-									accessibilityRole="button"
-									accessibilityLabel={`${t("biz.subscription.title")}: ${subscription.data ? t(`biz.subscription.plan.${subscription.data.plan}`) : t("biz.more.subscriptionEmpty")}`}
-									accessibilityHint={t("biz.subscription.change")}
-									style={[styles.tierPill, { backgroundColor: colors.muted }]}
-								>
-									<Ionicons
-										name={
-											subscription.data?.plan === "FREE"
-												? "ribbon-outline"
-												: "diamond-outline"
-										}
-										size={18}
-										color={colors.primary}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-									<Text variant="label" bold>
-										{subscription.data
-											? t(`biz.subscription.plan.${subscription.data.plan}`)
-											: t("biz.more.subscription")}
+								<View style={styles.identityCopy}>
+									<Text variant="title" bold numberOfLines={1}>
+										{shop.businessName}
 									</Text>
-								</Pressable>
-								{/* Open pill: the location's availability as a control. */}
+									<Pressable
+										onPress={() =>
+											router.push({
+												pathname: "/(business)/payouts",
+												params: { businessId },
+											})
+										}
+										accessibilityRole="button"
+										accessibilityLabel={`${t("biz.subscription.title")}: ${subscription.data ? t(`biz.subscription.plan.${subscription.data.plan}`) : t("biz.more.subscriptionEmpty")}`}
+										accessibilityHint={t("biz.subscription.change")}
+										style={styles.planLink}
+									>
+										<Text variant="caption" tone="muted" numberOfLines={1}>
+											{t("biz.subscription.title")} ·{" "}
+											{subscription.data
+												? t(`biz.subscription.plan.${subscription.data.plan}`)
+												: t("biz.more.subscription")}
+										</Text>
+										<Ionicons
+											name="chevron-forward"
+											size={12}
+											color={colors.mutedForeground}
+										/>
+									</Pressable>
+								</View>
+							</View>
+							<View style={styles.headerRows}>
+								{/* Order-taking state and its next action stay together. */}
 								{selectedLocation ? (
 									<Pressable
 										onPress={() => {
@@ -684,32 +680,34 @@ export default function MerchantHome() {
 													)
 												: undefined
 										}
-										style={[styles.openPill, { backgroundColor: colors.muted }]}
+										style={[
+											styles.statusRow,
+											{ borderTopColor: colors.border },
+										]}
 									>
-										<View
-											style={[
-												styles.openDot,
-												{
-													backgroundColor:
-														selectedLocation.status === "open"
-															? colors.success
-															: locationPaused
-																? colors.warning
-																: colors.mutedForeground,
-												},
-											]}
-										/>
-										<Text variant="label" bold>
-											{t(`biz.locations.status.${selectedLocation.status}`)}
-										</Text>
+										<View style={styles.headerRowCopy}>
+											<Text variant="caption" tone="muted">
+												{t("biz.nav.orders")}
+											</Text>
+											<Text variant="body" bold>
+												{t(`biz.locations.status.${selectedLocation.status}`)}
+											</Text>
+										</View>
 										{canManageOperatingState ? (
-											<Ionicons
-												name={locationPaused ? "play-outline" : "chevron-down"}
-												size={14}
-												color={colors.foreground}
-												accessibilityElementsHidden
-												importantForAccessibility="no"
-											/>
+											<View style={styles.rowAction}>
+												<Text variant="label" tone="action" bold>
+													{t(
+														locationPaused
+															? "biz.locations.resume"
+															: "biz.locations.pause",
+													)}
+												</Text>
+												<Ionicons
+													name="chevron-forward"
+													size={16}
+													color={colors.action}
+												/>
+											</View>
 										) : null}
 									</Pressable>
 								) : null}
@@ -737,68 +735,73 @@ export default function MerchantHome() {
 													: undefined
 										}
 										style={[
-											styles.locationPill,
-											{ backgroundColor: colors.muted },
+											styles.locationRow,
+											{ borderBottomColor: colors.border },
 										]}
 									>
 										<Ionicons
 											name="location-outline"
-											size={16}
+											size={20}
 											color={colors.mutedForeground}
 											accessibilityElementsHidden
 											importantForAccessibility="no"
 										/>
-										<Text
-											variant="label"
-											tone="muted"
-											numberOfLines={1}
-											style={styles.locationName}
-										>
-											{selectedLocation.name}
-										</Text>
-									</Pressable>
-								) : null}
-								{/* Bell, with its count where the count belongs. */}
-								<Pressable
-									onPress={() => router.push("/inbox")}
-									accessibilityRole="button"
-									accessibilityLabel={
-										attentionTotal > 0
-											? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
-											: t("account.inbox")
-									}
-									accessibilityHint={t("account.inbox.help")}
-									style={[styles.bell, { backgroundColor: colors.muted }]}
-								>
-									<Ionicons
-										name="notifications-outline"
-										size={icon.action}
-										color={colors.foreground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-									{attentionTotal > 0 ? (
-										<View
-											style={[
-												styles.bellBadge,
-												{ backgroundColor: colors.destructive },
-											]}
-										>
-											{/* The destructive pair, not `inverse`: the merchant
-									    palette spends `primaryForeground` on ink, which
-									    on this fill would be a dark-on-dark count. */}
-											<Text
-												variant="caption"
-												bold
-												tabular
-												style={{ color: colors.destructiveForeground }}
-											>
-												{attentionTotal > 99 ? "99+" : String(attentionTotal)}
+										<View style={styles.headerRowCopy}>
+											<Text variant="caption" tone="muted">
+												{t("biz.locations.title")}
+											</Text>
+											<Text variant="body" bold numberOfLines={1}>
+												{selectedLocation.name}
 											</Text>
 										</View>
-									) : null}
-								</Pressable>
-							</ScrollView>
+										<Ionicons
+											name="chevron-forward"
+											size={16}
+											color={colors.mutedForeground}
+										/>
+									</Pressable>
+								) : null}
+							</View>
+							{/* Bell, with its count where the count belongs. */}
+							<Pressable
+								onPress={() => router.push("/inbox")}
+								accessibilityRole="button"
+								accessibilityLabel={
+									attentionTotal > 0
+										? `${t("account.inbox")} · ${tp("biz.home.attentionCount", attentionTotal)}`
+										: t("account.inbox")
+								}
+								accessibilityHint={t("account.inbox.help")}
+								style={styles.bell}
+							>
+								<Ionicons
+									name="notifications-outline"
+									size={icon.action}
+									color={colors.foreground}
+									accessibilityElementsHidden
+									importantForAccessibility="no"
+								/>
+								{attentionTotal > 0 ? (
+									<View
+										style={[
+											styles.bellBadge,
+											{ backgroundColor: colors.destructive },
+										]}
+									>
+										{/* The destructive pair, not `inverse`: the merchant
+									    palette spends `primaryForeground` on ink, which
+									    on this fill would be a dark-on-dark count. */}
+										<Text
+											variant="caption"
+											bold
+											tabular
+											style={{ color: colors.destructiveForeground }}
+										>
+											{attentionTotal > 99 ? "99+" : String(attentionTotal)}
+										</Text>
+									</View>
+								) : null}
+							</Pressable>
 							{/* Quiet metadata under the rail: cloud, sentence, refresh. No
 							    card, no rules — a 20pt line the eye crosses without stopping. */}
 							<View style={styles.syncMeta} accessibilityLiveRegion="polite">
@@ -1463,11 +1466,17 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 			accessibilityRole="progressbar"
 			accessibilityLabel={loadingLabel}
 		>
-			<View style={styles.railSkeleton}>
+			<View style={styles.headerSkeleton}>
 				<Skeleton style={styles.skeletonIdentityBox} radiusToken="full" />
-				<Skeleton style={[styles.skeletonPill, { width: "28%" }]} />
-				<Skeleton style={[styles.skeletonPill, { width: "24%" }]} />
-				<Skeleton style={[styles.skeletonPill, { width: "14%" }]} />
+				<View style={styles.skeletonIdentityCopy}>
+					<Skeleton style={[styles.skeletonMeta, line("heading", fontScale)]} />
+					<Skeleton style={[styles.skeletonMeta, line("caption", fontScale)]} />
+				</View>
+				<Skeleton style={styles.skeletonBell} radiusToken="full" />
+			</View>
+			<View style={styles.headerSkeletonRows}>
+				<Skeleton style={styles.skeletonHeaderRow} />
+				<Skeleton style={styles.skeletonHeaderRow} />
 			</View>
 			<Skeleton style={[styles.skeletonMeta, line("caption", fontScale)]} />
 			{/* The pulse module's stand-in: inset and cornered like the module,
@@ -1537,15 +1546,47 @@ const styles = StyleSheet.create({
 		borderRadius: radius.md,
 	},
 	emptyOrdersCopy: { flex: 1, gap: space.xs },
-	// Ten points of air under the safe area, then the rail: no header
-	// card, no background container — the controls are the hierarchy.
+	// Identity first, then the branch and order controls as full-width rows.
 	merchantHeader: { paddingTop: 10 },
-	// The rail's own inset and rhythm: 16pt gutters, 8pt between controls,
-	// everything centred on the 52 row.
-	rail: {
-		paddingHorizontal: space.lg,
-		gap: space.sm,
+	headerContent: {
+		flexDirection: "row",
 		alignItems: "center",
+		gap: space.md,
+		paddingHorizontal: space.lg,
+	},
+	headerRows: { marginHorizontal: space.lg, marginTop: space.md },
+	identityCopy: { flex: 1, minWidth: 0, marginRight: 52, gap: space.xs },
+	planLink: {
+		minHeight: 24,
+		flexDirection: "row",
+		alignItems: "center",
+		alignSelf: "flex-start",
+		gap: space.xs,
+	},
+	headerRowCopy: { flex: 1, minWidth: 0, gap: space.xs / 2 },
+	rowAction: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		flexShrink: 1,
+	},
+	statusRow: {
+		width: "100%",
+		minHeight: 64,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		paddingVertical: space.sm,
+	},
+	locationRow: {
+		width: "100%",
+		minHeight: 64,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+		paddingVertical: space.sm,
 	},
 	identity: {
 		width: 52,
@@ -1570,56 +1611,31 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	// Open pill: 44 tall, fully round, muted fill. The 7pt dot is the
-	// spec's number, not STATUS_DOT_SIZE's 8 — a status mark beside 13pt
-	// words, not the card dot beside a caption.
-	openPill: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.sm,
-		height: 44,
-		paddingHorizontal: 14,
-		borderRadius: radius.full,
-	},
-	openDot: { width: 7, height: 7, borderRadius: radius.full },
-	tierPill: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.xs,
-		minHeight: 44,
-		paddingHorizontal: 14,
-		borderRadius: radius.full,
-	},
-	// Location pill: 44 tall, fully round, muted fill, 130 wide at most
-	// with the name truncated to one line. Gap 7 is the spec's number,
-	// between the scale's xs and sm the way the 7pt dot sits between steps.
-	locationPill: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 7,
-		height: 44,
-		paddingHorizontal: 14,
-		maxWidth: 130,
-		borderRadius: radius.full,
-	},
-	locationName: { flexShrink: 1 },
-	// Bell: 44 circle, muted fill. The count keeps its corner pin.
+	// The bell stays at the right edge of the identity row.
 	bell: {
-		position: "relative",
+		position: "absolute",
+		top: 4,
+		right: space.lg,
 		width: 44,
 		height: 44,
-		borderRadius: radius.full,
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	railSkeleton: {
+	headerSkeleton: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: space.sm,
 		paddingHorizontal: space.lg,
 	},
+	skeletonIdentityCopy: { flex: 1, gap: space.xs },
+	skeletonBell: { width: 44, height: 44 },
+	headerSkeletonRows: {
+		gap: space.sm,
+		marginHorizontal: space.lg,
+		marginTop: space.md,
+	},
+	skeletonHeaderRow: { minHeight: 64 },
 	skeletonIdentityBox: { width: 52, height: 52 },
-	skeletonPill: { height: 44, borderRadius: radius.full },
 	skeletonMeta: { width: "40%" },
 	insight: {
 		flexDirection: "row",
