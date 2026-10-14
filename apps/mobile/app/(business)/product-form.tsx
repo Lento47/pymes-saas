@@ -69,9 +69,13 @@ import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
  * - **`isFeatured` is not here.** The detail row carries it, but this form has
  *   no merchandising section yet - and a partial update that supplies a field
  *   it never showed is a write that clears it. The web form makes the same call.
- * - **Inventory is not here.** `trackInventory` and `stockQuantity` are also absent from
- *   `productDetailSchema`, and stock is `products.setStock`'s own procedure — a stepper rather
- *   than a field in a form that saves once.
+ * - **Stock is here, and it is the second of two writes.** `trackInventory` and
+ *   `stockQuantity` are still absent from `productDetailSchema` — the count arrives on
+ *   `availability.quantity` instead — and `products.setStock` is still a procedure of its
+ *   own rather than a field on `products.update`. But the *box* is here, beside price,
+ *   because this is the screen that edits a product. It used to live on the menu row as a
+ *   chip, which meant the count competed with the price for width on a list whose whole job
+ *   is to be scanned. See `stockMinor` for why a blank box is not a zero.
  * - **The photo is a picker, and the bytes land in the API.** `uploads.create`
  *   takes base64 and a mime type, refuses anything that is not JPEG/PNG/WebP
  *   under 5 MB, and answers with `/files/:id`, which is what `imageUrlSchema`
@@ -128,6 +132,7 @@ type Draft = {
 	description: string;
 	price: string;
 	compareAt: string;
+	stock: string;
 	categoryId: string | null;
 	photo: string;
 };
@@ -137,6 +142,7 @@ const EMPTY_DRAFT: Draft = {
 	description: "",
 	price: "",
 	compareAt: "",
+	stock: "",
 	categoryId: null,
 	photo: "",
 };
@@ -258,6 +264,13 @@ export default function ProductFormScreen() {
 											detail.data.compareAtPriceMinor === null
 												? ""
 												: editableOf(detail.data.compareAtPriceMinor, currency),
+										// `availability.quantity` is `nullable`: a product the shop does
+										// not count arrives as `null`, and an empty box is the honest
+										// seed for that — "leave it" rather than "it is zero".
+										stock:
+											detail.data.availability.quantity === null
+												? ""
+												: String(detail.data.availability.quantity),
 										categoryId: detail.data.categoryId,
 										photo: detail.data.imageUrl ?? "",
 									}
@@ -353,8 +366,28 @@ function Fields({
 		priceMinor !== null &&
 		compareAtMinor <= priceMinor;
 
+	/**
+	 * The stock box as a number, or `null` when it is blank.
+	 *
+	 * Blank is not zero: `availability.quantity` is nullable and a product the shop does not
+	 * count arrives as `null`, so an empty box means "leave the count alone" and is *not*
+	 * sent. `0` is a real answer — the product is on the shelf and none of it is — which is
+	 * why the two are told apart by the string rather than by `Number("")` being 0.
+	 *
+	 * Clamped to the API's own `100_000` so a typed `9999999` is refused on this screen,
+	 * where the sentence is next to the box that has to obey it.
+	 */
+	const stockMinor = useMemo(() => {
+		if (draft.stock.trim() === "") return null;
+		const parsed = Number.parseInt(draft.stock, 10);
+		if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100000) return null;
+		return parsed;
+	}, [draft.stock]);
+
 	const problems = useMemo(() => {
-		const found: Partial<Record<"name" | "price" | "compareAt", string>> = {};
+		const found: Partial<
+			Record<"name" | "price" | "compareAt" | "stock", string>
+		> = {};
 		if (draft.name.trim() === "") found.name = t("form.required");
 		// Unparseable and empty are one failure from here: both leave `priceMinor` null, and
 		// the API's own schema would refuse either.
@@ -363,9 +396,16 @@ function Fields({
 		else if (!compareAtBlank && compareAtMinor === null) {
 			found.compareAt = t("form.required");
 		}
+		// A stock box can only be a whole number of units, and the API's own bound is
+		// `100_000` — so anything above that is refused here rather than by the round trip.
+		if (stockMinor === null && draft.stock.trim() !== "") {
+			found.stock = t("form.required");
+		}
 		return found;
 	}, [
 		draft.name,
+		draft.stock,
+		stockMinor,
 		priceMinor,
 		compareAtTooLow,
 		compareAtBlank,
@@ -388,14 +428,24 @@ function Fields({
 		}),
 	);
 
-	const update = useMutation(
-		trpc.products.update.mutationOptions({
-			onSuccess: () => done(t("biz.products.saved")),
-		}),
-	);
+	const update = useMutation(trpc.products.update.mutationOptions());
 
-	const failure = useApiFailure(create.error ?? update.error);
-	const pending = create.isPending || update.isPending;
+	/*
+	 * Stock is `products.setStock`'s own procedure, not a field on `products.update` — the API
+	 * draws the line there because a count is written constantly (every sale) while the rest
+	 * of the product is written rarely. So this form saves it as a second write.
+	 *
+	 * **`update` has no `onSuccess` of its own**, and that is the whole shape of the thing: the
+	 * two writes are one save from the owner's side, so the second has to be able to refuse the
+	 * save without the first having already navigated away. `submit` below chains them — the
+	 * stock write is only started once the update has landed, and only when the box actually
+	 * said something. A blank box means "leave the count alone", which is a real case (a
+	 * product the shop never counted) and is why the mutation is conditional at all.
+	 */
+	const setStock = useMutation(trpc.products.setStock.mutationOptions());
+
+	const failure = useApiFailure(create.error ?? update.error ?? setStock.error);
+	const pending = create.isPending || update.isPending || setStock.isPending;
 
 	/**
 	 * The refusal, read out on iOS, where nothing else will read it.
@@ -462,7 +512,27 @@ function Fields({
 					categoryId,
 					imageUrl,
 				},
-				{ onSettled: () => (inFlight.current = false) },
+				{
+					onSuccess: () => {
+						// The count is the second write, and only when the box said one — a blank
+						// box is "leave it", not "zero". Chained here rather than in the mutation's
+						// own `onSuccess` so the two are one save from the owner's side: if the
+						// count is refused, the name and price that already landed stay landed and
+						// the refusal is read on the box that has to obey it.
+						if (stockMinor === null) {
+							done(t("biz.products.saved"));
+							return;
+						}
+						setStock.mutate(
+							{ businessId, id: productId, quantity: stockMinor },
+							{
+								onSuccess: () => done(t("biz.products.saved")),
+								onError: () => (inFlight.current = false),
+							},
+						);
+					},
+					onError: () => (inFlight.current = false),
+				},
 			);
 			return;
 		}
@@ -572,6 +642,31 @@ function Fields({
 								/>
 							</View>
 						</View>
+						{/* Stock. It lives here, beside price, rather than on the list row it was
+						    bolted onto: this is the screen that edits a product, so this is where a
+						    field belongs, and a count is a field. `0` is not "leave it" — the
+						    box is empty when the shop does not count this product, and a blank
+						    is what leaves `availability.quantity` as it was. */}
+						<Field
+							variant="soft"
+							label={t("biz.products.stock")}
+							value={draft.stock}
+							onChangeText={(value) =>
+								edited(() =>
+									setDraft((was) => ({
+										...was,
+										stock: value.replace(/[^\d]/g, ""),
+									})),
+								)
+							}
+							error={submitted ? (problems.stock ?? null) : null}
+							help={t("biz.products.stock.help")}
+							placeholder="0"
+							affix={<FieldGlyph name="cube-outline" />}
+							keyboardType="number-pad"
+							inputMode="numeric"
+							maxLength={6}
+						/>
 						{/* The long optional text, drawn as a paragraph rather than as a
 						    fifth name field. Its message row is off because it has neither
 						    an `error` nor a `help` to put in it, and on a box this tall a

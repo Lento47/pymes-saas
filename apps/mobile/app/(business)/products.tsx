@@ -1,14 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName } from "@pymeshub/i18n";
 import {
-	MAX_LINE_QUANTITY,
-	type MerchantHome,
-	type ProductCard,
-} from "@pymeshub/shared";
-import {
-	type InfiniteData,
 	useInfiniteQuery,
-	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -115,24 +108,6 @@ import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
  */
 const PAGE_SIZE = 20;
 
-type ProductListPage = {
-	items: ProductCard[];
-	nextCursor: string | null;
-};
-type ProductListData = InfiniteData<ProductListPage>;
-
-function withAvailability(product: ProductCard, quantity: number): ProductCard {
-	return {
-		...product,
-		availability: {
-			...product.availability,
-			inStock: quantity > 0,
-			quantity,
-			maxOrderQuantity: Math.max(1, Math.min(MAX_LINE_QUANTITY, quantity)),
-		},
-	};
-}
-
 export default function ProductsScreen() {
 	return (
 		<Screen padded={false} bottomInset contentStyle={styles.fill}>
@@ -153,7 +128,7 @@ export default function ProductsScreen() {
 function Menu() {
 	const { t, tp, locale } = useT();
 	const trpc = useTRPC();
-	const cache = useQueryClient();
+	const _cache = useQueryClient();
 	const { colors } = useTheme();
 	const merchantScope = useMerchantScope();
 
@@ -231,78 +206,6 @@ function Menu() {
 		),
 	);
 
-	const setStock = useMutation(
-		trpc.products.setStock.mutationOptions({
-			onMutate: async ({ id, quantity }) => {
-				const listKey = trpc.products.list.pathKey();
-				const homeKey = trpc.business.home.pathKey();
-
-				await Promise.all([
-					cache.cancelQueries({ queryKey: listKey }),
-					cache.cancelQueries({ queryKey: homeKey }),
-				]);
-
-				const previousLists = cache.getQueriesData<ProductListData>({
-					queryKey: listKey,
-				});
-				const previousHome = cache.getQueriesData<MerchantHome>({
-					queryKey: homeKey,
-				});
-
-				cache.setQueriesData<ProductListData>(
-					{ queryKey: listKey },
-					(current) =>
-						current && {
-							...current,
-							pages: current.pages.map((page) => ({
-								...page,
-								items: page.items.map((product) =>
-									product.id === id
-										? withAvailability(product, quantity)
-										: product,
-								),
-							})),
-						},
-				);
-				cache.setQueriesData<MerchantHome>(
-					{ queryKey: homeKey },
-					(current) =>
-						current && {
-							...current,
-							catalog: {
-								...current.catalog,
-								products: current.catalog.products.map((product) =>
-									product.id === id
-										? withAvailability(product, quantity)
-										: product,
-								),
-							},
-						},
-				);
-
-				return { previousLists, previousHome };
-			},
-			onError: (_error, _input, context) => {
-				for (const [queryKey, data] of context?.previousLists ?? []) {
-					cache.setQueryData(queryKey, data);
-				}
-				for (const [queryKey, data] of context?.previousHome ?? []) {
-					cache.setQueryData(queryKey, data);
-				}
-			},
-			onSettled: async () => {
-				await Promise.all([
-					cache.invalidateQueries({
-						queryKey: trpc.products.pathKey(),
-					}),
-					cache.invalidateQueries({
-						queryKey: trpc.business.home.pathKey(),
-					}),
-				]);
-			},
-		}),
-	);
-
 	// `categories` and `settings` are in the hold with the other two because the filter row
 	// is part of the header: a wait that cleared before either answered would land the row
 	// after the list and push the first row down — the late arrival the hold exists to hold
@@ -351,17 +254,6 @@ function Menu() {
 							product={product}
 							featured={index === 0}
 							onPress={() => openForm(product.id)}
-							onAvailabilityChange={(quantity) => {
-								if (!shop) return;
-								setStock.mutate({
-									businessId: shop.businessId,
-									id: product.id,
-									quantity,
-								});
-							}}
-							availabilityPending={
-								setStock.isPending && setStock.variables?.id === product.id
-							}
 						/>
 					</AnimateIn>
 				)}
@@ -694,7 +586,7 @@ const styles = StyleSheet.create({
 	// beside the toggle.
 	catalogSearch: { flex: 1 },
 	categoryTabs: {
-		gap: 24,
+		gap: space.sm,
 		paddingHorizontal: space.lg,
 	},
 	categoryTab: {
