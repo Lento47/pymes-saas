@@ -91,6 +91,10 @@ describe("personalization board", () => {
 		expect(exportedFn(board, "DensityToggle")).toContain(
 			't("customize.density.detailed")',
 		);
+		expect(board).toContain(
+			"{selected === item ? renderToolbar?.(item) : null}",
+		);
+		expect(board).toContain("export function PaletteChip");
 	});
 
 	test("holds to edit, jiggles, X removes, and + wells add hidden blocks", () => {
@@ -102,11 +106,13 @@ describe("personalization board", () => {
 		expect(board).toContain("styles.addWell");
 		expect(board).toContain('borderStyle: "dashed"');
 		expect(board).toContain('t("customize.addWidget"');
-		expect(board).toContain("onRemove={() => onToggle(item)}");
-		expect(board).not.toContain("customize.up");
-		expect(board).not.toContain("customize.down");
+		expect(board).toContain(
+			"!canHide || canHide(item) ? () => onToggle(item) : undefined",
+		);
+		expect(board).toContain('name: "moveUp", label: t("customize.up")');
+		expect(board).toContain('name: "moveDown", label: t("customize.down")');
 		expect(board).not.toContain('t("customize.show")');
-		expect(board).not.toContain('t("customize.hide")');
+		expect(board).toContain('name: "hide", label: t("customize.hide")');
 	});
 });
 
@@ -196,14 +202,22 @@ describe("visual variations", () => {
 	test("product count and theme are pictures rather than text-only buttons", () => {
 		expect(board).toContain("export function ProductCountPicker");
 		expect(board).toContain("export function ThemeSwatchPicker");
-		expect(exportedFn(board, "ProductCountPicker")).toContain("styles.countThumb");
-		expect(exportedFn(board, "ThemeSwatchPicker")).toContain("styles.themeWash");
-		expect(exportedFn(board, "ThemeSwatchPicker")).toContain("businessThemeColors");
+		expect(exportedFn(board, "ProductCountPicker")).toContain(
+			"styles.countThumb",
+		);
+		expect(exportedFn(board, "ThemeSwatchPicker")).toContain(
+			"styles.themeWash",
+		);
+		expect(exportedFn(board, "ThemeSwatchPicker")).toContain(
+			"businessThemeColors",
+		);
 	});
 
 	test("each widget can pick a named palette well", () => {
 		expect(board).toContain("export function WidgetPaletteStrip");
-		expect(exportedFn(board, "WidgetPaletteStrip")).toContain("styles.paletteDot");
+		expect(exportedFn(board, "WidgetPaletteStrip")).toContain(
+			"styles.paletteDot",
+		);
 		expect(exportedFn(board, "WidgetPaletteStrip")).toContain(
 			't("customize.paintInherit")',
 		);
@@ -218,7 +232,7 @@ describe("visual variations", () => {
 		expect(header).toContain("styles.compactSketch");
 		expect(header).toContain("LinearGradient");
 		expect(header).toContain("styles.logoDotSmall");
-		expect(header).not.toContain("variant=\"secondary\"");
+		expect(header).not.toContain('variant="secondary"');
 		expect(board).toContain("coverSketch: {\n\t\theight: 72");
 		expect(board).toContain("compactSketch: {\n\t\theight: 44");
 	});
@@ -235,7 +249,9 @@ describe("customize screens", () => {
 		);
 		expect(shopScreen).toContain("hidden: draft.hidden.includes(id)");
 		expect(shopScreen).toContain("<HeaderStylePicker");
-		expect(shopScreen).toContain("onChange={(header) => setDraft({ ...draft, header })}");
+		expect(shopScreen).toContain(
+			"onChange={(header) => setDraft({ ...draft, header })}",
+		);
 		expect(shopScreen).not.toContain('label={t("customize.cover")}');
 		expect(shopScreen).not.toContain('label={t("customize.compact")}');
 	});
@@ -266,6 +282,11 @@ describe("customize screens", () => {
 		expect(dashScreen).toContain("<WidgetPaletteStrip");
 		expect(dashScreen).toContain('t("customize.paintAll")');
 		expect(dashScreen).toContain('t("customize.paintCommand")');
-		expect(dashScreen).toContain("paint={painted ? \"accent\" : \"invert\"}");
+		expect(dashScreen).toContain('paint={painted ? "accent" : "invert"}');
+		expect(dashScreen).toContain('from "@/components/sheet"');
+		expect(dashScreen).toContain("<Sheet");
+		expect(dashScreen).toContain("renderChip");
+		expect(dashScreen).not.toContain("renderToolbar");
+		expect(dashScreen).toContain('setEditor({ kind: "widget", id })');
 	});
 });

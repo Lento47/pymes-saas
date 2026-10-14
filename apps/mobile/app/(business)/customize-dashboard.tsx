@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import type Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import {
 	type DashboardCommandId,
@@ -13,7 +13,9 @@ import {
 	dashboardCommandIdSchema,
 	dashboardMetricIdSchema,
 	dashboardShortcutIdSchema,
+	REQUIRED_DASHBOARD_WIDGETS,
 	resolveDashboardPreferences,
+	SIMPLE_DASHBOARD_PREFERENCES,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
@@ -21,21 +23,25 @@ import { type ComponentProps, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
+import { Card } from "@/components/card";
 
 import {
 	CustomizationRows,
 	DashboardWidgetPreview,
 	DensityToggle,
+	PaletteChip,
 	ProductCountPicker,
 	PulseLayoutPicker,
 	ThemeSwatchPicker,
 	WidgetPaletteStrip,
 } from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
+import { ListRow } from "@/components/list-row";
 import { MerchantCommandRail } from "@/components/merchant-command-rail";
 import { MerchantPulse } from "@/components/merchant-pulse";
 import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
 import { Screen } from "@/components/screen";
+import { Sheet } from "@/components/sheet";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
@@ -173,7 +179,15 @@ export default function CustomizeDashboard() {
 	const [draft, setDraft] = useState<DashboardPreferences>(
 		DEFAULT_DASHBOARD_PREFERENCES,
 	);
-	const [openId, setOpenId] = useState<DashboardWidgetId | null>(null);
+	const [editor, setEditor] = useState<
+		| { kind: "theme" }
+		| { kind: "paintAll" }
+		| { kind: "widget"; id: DashboardWidgetId }
+		| null
+	>(null);
+	const [openCommand, setOpenCommand] = useState<DashboardCommandId | null>(
+		null,
+	);
 	useEffect(() => {
 		if (saved.data)
 			setDraft(resolveDashboardPreferences(saved.data.configuration));
@@ -203,9 +217,11 @@ export default function CustomizeDashboard() {
 			(id) => !draft.shortcutIds.includes(id),
 		),
 	];
-	const metricsValid =
-		draft.metrics.length >= 1 && draft.metrics.length <= 3;
+	const metricsValid = draft.metrics.length >= 1 && draft.metrics.length <= 3;
 	const shortcutsValid = draft.shortcutIds.length >= 1;
+	const dirty = saved.data
+		? JSON.stringify(draft) !== JSON.stringify(saved.data.configuration)
+		: false;
 	const allCompact = layoutsMatch(draft.layouts, COMPACT_LAYOUTS);
 	const allDetailed = layoutsMatch(draft.layouts, DETAILED_LAYOUTS);
 	const paintValues = DEFAULT_DASHBOARD_WIDGETS.map(
@@ -232,41 +248,443 @@ export default function CustomizeDashboard() {
 			shortcutCount={draft.shortcutIds.length}
 		/>
 	);
-	const setWidgetLayout = (
-		id: DashboardWidgetId,
-		layouts: DashboardLayouts,
-	) =>
+	const setWidgetLayout = (id: DashboardWidgetId, layouts: DashboardLayouts) =>
 		setDraft({
 			...draft,
 			layouts: { ...draft.layouts, [id]: layouts[id] },
 		});
-	return (
-		<Screen
-			title={t("customize.dashboard")}
-			leading={<BackButton to="/(business)/customize" />}
-			scroll
-			bottomInset
-		>
-			{saved.error ? (
-				<ErrorState error={saved.error} onRetry={() => void saved.refetch()} />
-			) : null}
-			<Text variant="body" tone="muted">
-				{t("customize.canvasHint")}
-			</Text>
-			<ThemeSwatchPicker
-				value={draft.themeId}
+	const closeEditor = () => {
+		setEditor(null);
+		setOpenCommand(null);
+	};
+	const widgetEditor = (id: DashboardWidgetId) => (
+		<View style={styles.sheetBody}>
+			<WidgetPaletteStrip
+				label={t("customize.paint")}
+				value={draft.widgetThemes[id]}
 				scheme={scheme}
 				onChange={(themeId) =>
 					setDraft({
 						...draft,
-						themeId: themeId as DashboardPreferences["themeId"],
+						widgetThemes: {
+							...draft.widgetThemes,
+							[id]: themeId as DashboardPreferences["themeId"],
+						},
 					})
 				}
 			/>
-			<View style={styles.applyAll}>
-				<Text variant="label" bold>
-					{t("customize.paintAll")}
+			{id === "pulse" ? (
+				<PulseLayoutPicker
+					value={draft.layouts.pulse}
+					metricCount={draft.metrics.length}
+					onChange={(pulse) =>
+						setDraft({
+							...draft,
+							layouts: { ...draft.layouts, pulse },
+						})
+					}
+				/>
+			) : (
+				<DensityToggle
+					compactSelected={draft.layouts[id] === COMPACT_LAYOUTS[id]}
+					onCompact={() => setWidgetLayout(id, COMPACT_LAYOUTS)}
+					onDetailed={() => setWidgetLayout(id, DETAILED_LAYOUTS)}
+					compactPreview={sketch(id, COMPACT_LAYOUTS[id])}
+					detailedPreview={sketch(id, DETAILED_LAYOUTS[id])}
+				/>
+			)}
+			{id === "shortcuts" ? (
+				<View style={styles.inset}>
+					<Text variant="caption" tone="muted">
+						{t("customize.shortcutsHelp")}
+					</Text>
+					<CustomizationRows
+						items={shortcutItems}
+						hidden={dashboardShortcutIdSchema.options.filter(
+							(item) => !draft.shortcutIds.includes(item),
+						)}
+						labels={SHORTCUT_LABELS}
+						onReorder={(next) =>
+							setDraft({
+								...draft,
+								shortcutIds: next.filter((item) =>
+									draft.shortcutIds.includes(item),
+								),
+							})
+						}
+						onToggle={(item) => {
+							if (draft.shortcutIds.includes(item)) {
+								if (draft.shortcutIds.length <= 1) return;
+								setDraft({
+									...draft,
+									shortcutIds: draft.shortcutIds.filter((one) => one !== item),
+								});
+								return;
+							}
+							setDraft({
+								...draft,
+								shortcutIds: [...draft.shortcutIds, item],
+							});
+						}}
+					/>
+				</View>
+			) : null}
+			{id === "pulse" ? (
+				<View style={styles.inset}>
+					<Text variant="caption" tone="muted">
+						{t("customize.metricsWhich")}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{t("customize.metricsHelp")}
+					</Text>
+					<CustomizationRows
+						items={metricItems}
+						hidden={dashboardMetricIdSchema.options.filter(
+							(item) => !draft.metrics.includes(item),
+						)}
+						labels={METRIC_LABELS}
+						onReorder={(next) =>
+							setDraft({
+								...draft,
+								metrics: next.filter((item) => draft.metrics.includes(item)),
+							})
+						}
+						onToggle={(item) => {
+							if (draft.metrics.includes(item)) {
+								if (draft.metrics.length <= 1) return;
+								setDraft({
+									...draft,
+									metrics: draft.metrics.filter((one) => one !== item),
+								});
+								return;
+							}
+							if (draft.metrics.length >= 3) return;
+							setDraft({
+								...draft,
+								metrics: [...draft.metrics, item],
+							});
+						}}
+					/>
+					{metricsValid ? null : (
+						<Text variant="caption" tone="destructive">
+							{t("customize.metricsRange")}
+						</Text>
+					)}
+				</View>
+			) : null}
+			{id === "catalog" ? (
+				<View style={styles.inset}>
+					<Text variant="caption" tone="muted">
+						{t("customize.productCount")}
+					</Text>
+					<ProductCountPicker
+						value={draft.productPreviewCount}
+						onChange={(productPreviewCount) =>
+							setDraft({ ...draft, productPreviewCount })
+						}
+					/>
+				</View>
+			) : null}
+			{id === "commands" ? (
+				<View style={styles.inset}>
+					<Text variant="caption" tone="muted">
+						{t("customize.paintCommand")}
+					</Text>
+					{dashboardCommandIdSchema.options.map((key, index, all) => (
+						<View key={key}>
+							<ListRow
+								title={t(COMMAND_LABELS[key])}
+								chevron
+								divider={index < all.length - 1 && openCommand !== key}
+								trailing={
+									<PaletteChip
+										themeId={draft.commandColors[key]}
+										scheme={scheme}
+										inheritFill={previewColors.primary}
+									/>
+								}
+								onPress={() =>
+									setOpenCommand((current) => (current === key ? null : key))
+								}
+							/>
+							{openCommand === key ? (
+								<WidgetPaletteStrip
+									value={draft.commandColors[key]}
+									scheme={scheme}
+									onChange={(themeId) =>
+										setDraft({
+											...draft,
+											commandColors: {
+												...draft.commandColors,
+												[key]: themeId as DashboardPreferences["themeId"],
+											},
+										})
+									}
+								/>
+							) : null}
+						</View>
+					))}
+				</View>
+			) : null}
+		</View>
+	);
+	const editingWidget = editor?.kind === "widget" ? editor.id : null;
+	return (
+		<>
+			<Screen
+				title={t("customize.dashboard")}
+				leading={<BackButton to="/(business)/customize" />}
+				scroll
+				bottomInset
+			>
+				{saved.error ? (
+					<ErrorState
+						error={saved.error}
+						onRetry={() => void saved.refetch()}
+					/>
+				) : null}
+				<Text variant="body" tone="muted">
+					{t("customize.canvasHint")}
 				</Text>
+				<Card>
+					<View style={styles.preset}>
+						<Text variant="label" bold>
+							{t("customize.simple")}
+						</Text>
+						<Text variant="caption" tone="muted">
+							{t("customize.simpleDashboardHelp")}
+						</Text>
+						<Button
+							variant="secondary"
+							label={t("customize.useSimple")}
+							onPress={() => setDraft({ ...SIMPLE_DASHBOARD_PREFERENCES })}
+						/>
+					</View>
+				</Card>
+				<Card>
+					<ListRow
+						title={t("customize.theme")}
+						chevron
+						trailing={
+							<PaletteChip
+								themeId={draft.themeId}
+								scheme={scheme}
+								inheritFill={deviceColors.primary}
+							/>
+						}
+						onPress={() => setEditor({ kind: "theme" })}
+					/>
+					<ListRow
+						title={t("customize.paintAll")}
+						chevron
+						divider={false}
+						onPress={() => setEditor({ kind: "paintAll" })}
+					/>
+				</Card>
+				<View style={styles.applyAll}>
+					<Text variant="label" bold>
+						{t("customize.density.all")}
+					</Text>
+					<DensityToggle
+						compactSelected={allCompact}
+						detailedSelected={allDetailed}
+						onCompact={() => setDraft({ ...draft, layouts: COMPACT_LAYOUTS })}
+						onDetailed={() => setDraft({ ...draft, layouts: DETAILED_LAYOUTS })}
+						compactPreview={
+							<View style={styles.applySketch}>
+								{[0, 1, 2].map((slot) => (
+									<View
+										key={slot}
+										style={[
+											styles.applyChip,
+											{ backgroundColor: deviceColors.muted },
+										]}
+									/>
+								))}
+							</View>
+						}
+						detailedPreview={
+							<View style={styles.applyStack}>
+								{[0, 1, 2].map((slot) => (
+									<View
+										key={slot}
+										style={[
+											styles.applyBar,
+											{ backgroundColor: deviceColors.border },
+										]}
+									/>
+								))}
+							</View>
+						}
+					/>
+					{allCompact || allDetailed ? null : (
+						<Text variant="caption" tone="muted">
+							{t("customize.saved")}
+						</Text>
+					)}
+				</View>
+				<ThemeColorsOverrideProvider colors={previewColors}>
+					<View
+						style={[
+							styles.canvas,
+							{
+								backgroundColor: previewColors.background,
+								borderColor: previewColors.border,
+							},
+						]}
+					>
+						<View
+							style={[
+								styles.identity,
+								{ backgroundColor: previewColors.foreground },
+							]}
+						>
+							<View
+								style={[
+									styles.identityDot,
+									{ backgroundColor: previewColors.background },
+								]}
+							/>
+							<Text
+								variant="caption"
+								bold
+								style={{ color: previewColors.background }}
+							>
+								{t("biz.dashboard.today")}
+							</Text>
+						</View>
+						<CustomizationRows
+							items={draft.widgets}
+							hidden={draft.hidden}
+							labels={LABELS}
+							onPress={(id) => setEditor({ kind: "widget", id })}
+							onReorder={(widgets) => setDraft({ ...draft, widgets })}
+							canHide={(id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id)}
+							onToggle={(id) => {
+								if (REQUIRED_DASHBOARD_WIDGETS.includes(id)) return;
+								setDraft({
+									...draft,
+									hidden: hidden(id)
+										? draft.hidden.filter((one) => one !== id)
+										: [...draft.hidden, id],
+								});
+							}}
+							renderChip={(id) => (
+								<PaletteChip
+									themeId={draft.widgetThemes[id]}
+									scheme={scheme}
+									inheritFill={previewColors.primary}
+								/>
+							)}
+							renderPreview={(id) => {
+								const widgetThemeId = draft.widgetThemes[id];
+								const widgetColors = widgetThemeId
+									? businessThemeColors(widgetThemeId, scheme)
+									: previewColors;
+								const painted = widgetThemeId != null;
+								const preview =
+									id === "shortcuts" ? (
+										<MerchantShortcutRail
+											layout={draft.layouts.shortcuts}
+											paint={painted}
+											shortcuts={draft.shortcutIds.slice(0, 6).map((key) => ({
+												key,
+												label: t(SHORTCUT_LABELS[key]),
+												icon: SHORTCUT_ICONS[key],
+												onPress: () => {},
+											}))}
+										/>
+									) : id === "pulse" ? (
+										<MerchantPulse
+											data={home.data?.pulse ?? null}
+											dateLabel={new Date().toLocaleDateString(intlLocale)}
+											metrics={
+												draft.metrics.length > 0
+													? draft.metrics.slice(0, 3)
+													: DEFAULT_DASHBOARD_PREFERENCES.metrics
+											}
+											layout={draft.layouts.pulse}
+											paint={painted ? "accent" : "invert"}
+										/>
+									) : id === "commands" ? (
+										<MerchantCommandRail
+											layout={draft.layouts.commands}
+											actions={dashboardCommandIdSchema.options.map((key) => ({
+												key,
+												label: t(COMMAND_LABELS[key]),
+												icon: COMMAND_ICONS[key],
+												primary:
+													key === "add-product" &&
+													draft.commandColors[key] == null,
+												accent: draft.commandColors[key],
+												onPress: () => {},
+											}))}
+										/>
+									) : (
+										sketch(id)
+									);
+								return (
+									<ThemeColorsOverrideProvider colors={widgetColors}>
+										{preview}
+									</ThemeColorsOverrideProvider>
+								);
+							}}
+						/>
+					</View>
+				</ThemeColorsOverrideProvider>
+				{save.error || restore.error ? (
+					<ErrorState
+						error={save.error ?? restore.error}
+						onRetry={() => void saved.refetch()}
+					/>
+				) : null}
+				<Button
+					label={t("customize.save")}
+					disabled={
+						!saved.data ||
+						!dirty ||
+						!metricsValid ||
+						!shortcutsValid ||
+						save.isPending
+					}
+					loading={save.isPending}
+					onPress={() =>
+						run(
+							save.mutateAsync({ businessId, revision, configuration: draft }),
+						)
+					}
+				/>
+				<Button
+					variant="secondary"
+					label={t("customize.restore")}
+					disabled={!saved.data || restore.isPending}
+					onPress={() => run(restore.mutateAsync({ businessId, revision }))}
+				/>
+			</Screen>
+			<Sheet
+				open={editor?.kind === "theme"}
+				onClose={closeEditor}
+				title={t("customize.theme")}
+				closeLabel={t("action.close")}
+				snapPoints={[0.55, 1]}
+			>
+				<ThemeSwatchPicker
+					value={draft.themeId}
+					scheme={scheme}
+					onChange={(themeId) =>
+						setDraft({
+							...draft,
+							themeId: themeId as DashboardPreferences["themeId"],
+						})
+					}
+				/>
+			</Sheet>
+			<Sheet
+				open={editor?.kind === "paintAll"}
+				onClose={closeEditor}
+				title={t("customize.paintAll")}
+				closeLabel={t("action.close")}
+			>
 				<WidgetPaletteStrip
 					value={allPainted}
 					scheme={scheme}
@@ -284,343 +702,24 @@ export default function CustomizeDashboard() {
 						})
 					}
 				/>
-			</View>
-			<View style={styles.applyAll}>
-				<Text variant="label" bold>
-					{t("customize.density.all")}
-				</Text>
-				<DensityToggle
-					compactSelected={allCompact}
-					detailedSelected={allDetailed}
-					onCompact={() => setDraft({ ...draft, layouts: COMPACT_LAYOUTS })}
-					onDetailed={() => setDraft({ ...draft, layouts: DETAILED_LAYOUTS })}
-					compactPreview={
-						<View style={styles.applySketch}>
-							{[0, 1, 2].map((slot) => (
-								<View
-									key={slot}
-									style={[styles.applyChip, { backgroundColor: deviceColors.muted }]}
-								/>
-							))}
-						</View>
-					}
-					detailedPreview={
-						<View style={styles.applyStack}>
-							{[0, 1, 2].map((slot) => (
-								<View
-									key={slot}
-									style={[styles.applyBar, { backgroundColor: deviceColors.border }]}
-								/>
-							))}
-						</View>
-					}
-				/>
-				{allCompact || allDetailed ? null : (
-					<Text variant="caption" tone="muted">
-						{t("customize.saved")}
-					</Text>
-				)}
-			</View>
-			<ThemeColorsOverrideProvider colors={previewColors}>
-				<View
-					style={[
-						styles.canvas,
-						{
-							backgroundColor: previewColors.background,
-							borderColor: previewColors.border,
-						},
-					]}
-				>
-					<View
-						style={[
-							styles.identity,
-							{ backgroundColor: previewColors.foreground },
-						]}
-					>
-						<View
-							style={[
-								styles.identityDot,
-								{ backgroundColor: previewColors.background },
-							]}
-						/>
-						<Text
-							variant="caption"
-							bold
-							style={{ color: previewColors.background }}
-						>
-							{t("biz.dashboard.today")}
-						</Text>
-					</View>
-					<CustomizationRows
-						items={draft.widgets}
-						hidden={draft.hidden}
-						labels={LABELS}
-						selected={openId}
-						onPress={(id) => setOpenId((current) => (current === id ? null : id))}
-						onReorder={(widgets) => setDraft({ ...draft, widgets })}
-						onToggle={(id) => {
-							setOpenId((current) => (current === id ? null : current));
-							setDraft({
-								...draft,
-								hidden: hidden(id)
-									? draft.hidden.filter((one) => one !== id)
-									: [...draft.hidden, id],
-							});
-						}}
-						renderPreview={(id) => {
-							const widgetThemeId = draft.widgetThemes[id];
-							const widgetColors = widgetThemeId
-								? businessThemeColors(widgetThemeId, scheme)
-								: previewColors;
-							const painted = widgetThemeId != null;
-							const preview =
-								id === "shortcuts" ? (
-									<MerchantShortcutRail
-										layout={draft.layouts.shortcuts}
-										paint={painted}
-										shortcuts={draft.shortcutIds.slice(0, 6).map((key) => ({
-											key,
-											label: t(SHORTCUT_LABELS[key]),
-											icon: SHORTCUT_ICONS[key],
-											onPress: () => {},
-										}))}
-									/>
-								) : id === "pulse" ? (
-									<MerchantPulse
-										data={home.data?.pulse ?? null}
-										dateLabel={new Date().toLocaleDateString(intlLocale)}
-										metrics={
-											draft.metrics.length > 0
-												? draft.metrics.slice(0, 3)
-												: DEFAULT_DASHBOARD_PREFERENCES.metrics
-										}
-										layout={draft.layouts.pulse}
-										paint={painted ? "accent" : "invert"}
-									/>
-								) : id === "commands" ? (
-									<MerchantCommandRail
-										layout={draft.layouts.commands}
-										actions={dashboardCommandIdSchema.options.map((key) => ({
-											key,
-											label: t(COMMAND_LABELS[key]),
-											icon: COMMAND_ICONS[key],
-											primary:
-												key === "add-product" &&
-												draft.commandColors[key] == null,
-											accent: draft.commandColors[key],
-											onPress: () => {},
-										}))}
-									/>
-								) : (
-									sketch(id)
-								);
-							return (
-								<ThemeColorsOverrideProvider colors={widgetColors}>
-									{preview}
-								</ThemeColorsOverrideProvider>
-							);
-						}}
-						renderToolbar={(id) => (
-							<>
-								<WidgetPaletteStrip
-									label={t("customize.paint")}
-									value={draft.widgetThemes[id]}
-									scheme={scheme}
-									onChange={(themeId) =>
-										setDraft({
-											...draft,
-											widgetThemes: {
-												...draft.widgetThemes,
-												[id]: themeId as DashboardPreferences["themeId"],
-											},
-										})
-									}
-								/>
-								{id === "pulse" ? (
-									<PulseLayoutPicker
-										value={draft.layouts.pulse}
-										metricCount={draft.metrics.length}
-										onChange={(pulse) =>
-											setDraft({
-												...draft,
-												layouts: { ...draft.layouts, pulse },
-											})
-										}
-									/>
-								) : (
-									<DensityToggle
-										compactSelected={
-											draft.layouts[id] === COMPACT_LAYOUTS[id]
-										}
-										onCompact={() => setWidgetLayout(id, COMPACT_LAYOUTS)}
-										onDetailed={() => setWidgetLayout(id, DETAILED_LAYOUTS)}
-										compactPreview={sketch(id, COMPACT_LAYOUTS[id])}
-										detailedPreview={sketch(id, DETAILED_LAYOUTS[id])}
-									/>
-								)}
-							</>
-						)}
-						renderInset={(id) => {
-							if (id === "shortcuts")
-								return (
-									<View style={styles.inset}>
-										<Text variant="caption" tone="muted">
-											{t("customize.shortcutsHelp")}
-										</Text>
-										<CustomizationRows
-											items={shortcutItems}
-											hidden={dashboardShortcutIdSchema.options.filter(
-												(item) => !draft.shortcutIds.includes(item),
-											)}
-											labels={SHORTCUT_LABELS}
-											onReorder={(next) =>
-												setDraft({
-													...draft,
-													shortcutIds: next.filter((item) =>
-														draft.shortcutIds.includes(item),
-													),
-												})
-											}
-											onToggle={(item) => {
-												if (draft.shortcutIds.includes(item)) {
-													if (draft.shortcutIds.length <= 1) return;
-													setDraft({
-														...draft,
-														shortcutIds: draft.shortcutIds.filter(
-															(one) => one !== item,
-														),
-													});
-													return;
-												}
-												setDraft({
-													...draft,
-													shortcutIds: [...draft.shortcutIds, item],
-												});
-											}}
-										/>
-									</View>
-								);
-							if (id === "pulse")
-								return (
-									<View style={styles.inset}>
-										<Text variant="caption" tone="muted">
-											{t("customize.metricsWhich")}
-										</Text>
-										<Text variant="caption" tone="muted">
-											{t("customize.metricsHelp")}
-										</Text>
-										<CustomizationRows
-											items={metricItems}
-											hidden={dashboardMetricIdSchema.options.filter(
-												(item) => !draft.metrics.includes(item),
-											)}
-											labels={METRIC_LABELS}
-											onReorder={(next) =>
-												setDraft({
-													...draft,
-													metrics: next.filter((item) =>
-														draft.metrics.includes(item),
-													),
-												})
-											}
-											onToggle={(item) => {
-												if (draft.metrics.includes(item)) {
-													if (draft.metrics.length <= 1) return;
-													setDraft({
-														...draft,
-														metrics: draft.metrics.filter((one) => one !== item),
-													});
-													return;
-												}
-												if (draft.metrics.length >= 3) return;
-												setDraft({
-													...draft,
-													metrics: [...draft.metrics, item],
-												});
-											}}
-										/>
-										{metricsValid ? null : (
-											<Text variant="caption" tone="destructive">
-												{t("customize.metricsRange")}
-											</Text>
-										)}
-									</View>
-								);
-							if (id === "catalog")
-								return (
-									<View style={styles.inset}>
-										<Text variant="caption" tone="muted">
-											{t("customize.productCount")}
-										</Text>
-										<ProductCountPicker
-											value={draft.productPreviewCount}
-											onChange={(productPreviewCount) =>
-												setDraft({ ...draft, productPreviewCount })
-											}
-										/>
-									</View>
-								);
-							if (id === "commands")
-								return (
-									<View style={styles.inset}>
-										<Text variant="caption" tone="muted">
-											{t("customize.paintCommand")}
-										</Text>
-										{dashboardCommandIdSchema.options.map((key) => (
-											<WidgetPaletteStrip
-												key={key}
-												label={t(COMMAND_LABELS[key])}
-												value={draft.commandColors[key]}
-												scheme={scheme}
-												onChange={(themeId) =>
-													setDraft({
-														...draft,
-														commandColors: {
-															...draft.commandColors,
-															[key]:
-																themeId as DashboardPreferences["themeId"],
-														},
-													})
-												}
-											/>
-										))}
-									</View>
-								);
-							return null;
-						}}
-					/>
-				</View>
-			</ThemeColorsOverrideProvider>
-			{save.error || restore.error ? (
-				<ErrorState
-					error={save.error ?? restore.error}
-					onRetry={() => void saved.refetch()}
-				/>
-			) : null}
-			<Button
-				label={t("customize.save")}
-				disabled={
-					!saved.data ||
-					!metricsValid ||
-					!shortcutsValid ||
-					save.isPending
+			</Sheet>
+			<Sheet
+				open={editingWidget != null}
+				onClose={closeEditor}
+				title={
+					editingWidget ? t(LABELS[editingWidget]) : t("customize.dashboard")
 				}
-				loading={save.isPending}
-				onPress={() =>
-					run(save.mutateAsync({ businessId, revision, configuration: draft }))
-				}
-			/>
-			<Button
-				variant="secondary"
-				label={t("customize.restore")}
-				disabled={!saved.data || restore.isPending}
-				onPress={() => run(restore.mutateAsync({ businessId, revision }))}
-			/>
-		</Screen>
+				closeLabel={t("action.close")}
+				snapPoints={[0.7, 1]}
+			>
+				{editingWidget ? widgetEditor(editingWidget) : null}
+			</Sheet>
+		</>
 	);
 }
 
 const styles = StyleSheet.create({
+	preset: { gap: space.sm },
 	applyAll: { gap: space.sm },
 	applySketch: {
 		flexDirection: "row",
@@ -654,4 +753,5 @@ const styles = StyleSheet.create({
 		borderRadius: radius.full,
 	},
 	inset: { gap: space.sm, paddingTop: space.sm },
+	sheetBody: { gap: space.md },
 });

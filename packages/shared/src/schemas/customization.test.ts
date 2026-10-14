@@ -3,11 +3,39 @@ import {
 	brandAccentCheck,
 	DEFAULT_DASHBOARD_PREFERENCES,
 	DEFAULT_STOREFRONT_APPEARANCE,
+	dashboardPreferencesSchema,
 	resolveDashboardPreferences,
 	resolveStorefrontAppearance,
+	SIMPLE_DASHBOARD_PREFERENCES,
+	SIMPLE_STOREFRONT_APPEARANCE,
+	storefrontAppearanceSchema,
 } from "./customization";
 
 describe("saved customization compatibility", () => {
+	test("simple presets validate and keep the operational dashboard visible", () => {
+		expect(
+			dashboardPreferencesSchema.safeParse(SIMPLE_DASHBOARD_PREFERENCES)
+				.success,
+		).toBe(true);
+		expect(
+			storefrontAppearanceSchema.safeParse(SIMPLE_STOREFRONT_APPEARANCE)
+				.success,
+		).toBe(true);
+		expect(SIMPLE_DASHBOARD_PREFERENCES.hidden).not.toContain("queue");
+		expect(SIMPLE_DASHBOARD_PREFERENCES.hidden).not.toContain("attention");
+		expect(SIMPLE_DASHBOARD_PREFERENCES.hidden).not.toContain("commands");
+	});
+
+	test("older hidden operational blocks reappear without losing other preferences", () => {
+		const resolved = resolveDashboardPreferences({
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			hidden: ["queue", "attention", "commands", "catalog"],
+			themeId: "coral",
+		});
+		expect(resolved.hidden).toEqual(["catalog"]);
+		expect(resolved.themeId).toBe("coral");
+	});
+
 	test("unknown dashboard widgets are dropped and the required layout is completed", () => {
 		expect(
 			resolveDashboardPreferences({

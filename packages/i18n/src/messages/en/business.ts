@@ -1412,6 +1412,12 @@ export const business = {
 	"customize.publish": "Publish shop design",
 	"customize.discard": "Discard draft",
 	"customize.restore": "Restore default",
+	"customize.simple": "Simple layout",
+	"customize.useSimple": "Use simple layout",
+	"customize.simpleDashboardHelp":
+		"Keep orders, alerts and everyday actions in view. Hide extra reports and the product preview. You can still adjust any block below.",
+	"customize.simpleShopHelp":
+		"Show a compact shop header and the product menu. You can add offers or featured products below. Save, then publish when ready.",
 	"customize.show": "Show",
 	"customize.hide": "Hide",
 	"customize.up": "Move up",
@@ -1446,7 +1452,7 @@ export const business = {
 		"Choose one to three numbers. Hold one to change the order.",
 	"customize.metricsRange": "Choose one to three numbers.",
 	"customize.canvasHint":
-		"This is your home screen. Paint each block, hold one to move it, tap it for more, pick compact or detailed.",
+		"This is your home screen. Tap a block to paint or restyle it. Hold one to move it.",
 	"customize.paint": "This block's color",
 	"customize.paintAll": "Paint everything",
 	"customize.paintInherit": "Match the panel",

@@ -65,6 +65,12 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
 	"commands",
 	"catalog",
 ];
+/** Operational blocks remain visible even when a saved layout predates this rule. */
+export const REQUIRED_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
+	"attention",
+	"queue",
+	"commands",
+];
 export const DEFAULT_DASHBOARD_SHORTCUTS: DashboardShortcutId[] = [
 	...dashboardShortcutIdSchema.options,
 ];
@@ -137,6 +143,10 @@ export const dashboardPreferencesSchema = z.object({
 		.refine(
 			(value) => new Set(value).size === value.length,
 			"A widget can be hidden only once",
+		)
+		.refine(
+			(value) => value.every((id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id)),
+			"Operational widgets must remain visible",
 		),
 	metrics: z
 		.array(dashboardMetricIdSchema)
@@ -178,6 +188,22 @@ export const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
 	widgetThemes: DEFAULT_DASHBOARD_WIDGET_THEMES,
 	commandColors: DEFAULT_DASHBOARD_COMMAND_COLORS,
 };
+export const SIMPLE_DASHBOARD_PREFERENCES: DashboardPreferences = {
+	...DEFAULT_DASHBOARD_PREFERENCES,
+	widgets: [...DEFAULT_DASHBOARD_WIDGETS],
+	hidden: ["insights", "catalog"],
+	metrics: ["orders"],
+	shortcutIds: ["orders", "catalog", "hours"],
+	layouts: {
+		shortcuts: "grid",
+		pulse: "cards",
+		insights: "stack",
+		attention: "list",
+		queue: "compact",
+		commands: "wrap",
+		catalog: "tiles",
+	},
+};
 
 /**
  * Insert widgets a saved board does not know yet, in the default relative
@@ -214,11 +240,14 @@ function patchThemeMap<T extends Record<string, string | null>>(
 	defaults: T,
 	value: unknown,
 ): T {
-	if (!value || typeof value !== "object" || Array.isArray(value)) return defaults;
+	if (!value || typeof value !== "object" || Array.isArray(value))
+		return defaults;
 	const next = { ...defaults };
 	const raw = value as Record<string, unknown>;
 	for (const key of Object.keys(defaults) as Array<keyof T>) {
-		const parsed = dashboardThemeIdSchema.nullable().safeParse(raw[String(key)]);
+		const parsed = dashboardThemeIdSchema
+			.nullable()
+			.safeParse(raw[String(key)]);
 		if (parsed.success) next[key] = parsed.data as T[keyof T];
 	}
 	return next;
@@ -249,7 +278,7 @@ export function migrateDashboardPreferences(value: unknown): unknown {
 	const hidden = uniqueKnown(input.hidden, (item) => {
 		const parsed = dashboardWidgetIdSchema.safeParse(item);
 		return parsed.success ? parsed.data : null;
-	});
+	}).filter((id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id));
 	const metrics = uniqueKnown(input.metrics, (item) => {
 		const parsed = dashboardMetricIdSchema.safeParse(item);
 		return parsed.success ? parsed.data : null;
@@ -286,7 +315,8 @@ export function migrateDashboardPreferences(value: unknown): unknown {
 		version: 1,
 		widgets,
 		hidden,
-		metrics: metrics.length > 0 ? metrics : DEFAULT_DASHBOARD_PREFERENCES.metrics,
+		metrics:
+			metrics.length > 0 ? metrics : DEFAULT_DASHBOARD_PREFERENCES.metrics,
 		layouts,
 		shortcutIds:
 			shortcutIds.length > 0
@@ -330,6 +360,12 @@ export const DEFAULT_STOREFRONT_APPEARANCE: StorefrontAppearance = {
 	header: "cover",
 	accentColor: null,
 	sections: ["information", "offers", "featured"],
+	hidden: ["offers", "featured"],
+};
+export const SIMPLE_STOREFRONT_APPEARANCE: StorefrontAppearance = {
+	...DEFAULT_STOREFRONT_APPEARANCE,
+	header: "compact",
+	sections: [...DEFAULT_STOREFRONT_APPEARANCE.sections],
 	hidden: ["offers", "featured"],
 };
 

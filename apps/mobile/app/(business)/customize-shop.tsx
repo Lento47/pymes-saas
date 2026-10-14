@@ -1,6 +1,7 @@
 import {
 	brandAccentCheck,
 	DEFAULT_STOREFRONT_APPEARANCE,
+	SIMPLE_STOREFRONT_APPEARANCE,
 	type StorefrontAppearance,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +10,7 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
+import { Card } from "@/components/card";
 import {
 	CustomizationRows,
 	HeaderStylePicker,
@@ -105,6 +107,21 @@ export default function CustomizeShop() {
 			<Text variant="body" tone="muted">
 				{t("customize.draft")}
 			</Text>
+			<Card>
+				<View style={{ gap: space.sm }}>
+					<Text variant="label" bold>
+						{t("customize.simple")}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{t("customize.simpleShopHelp")}
+					</Text>
+					<Button
+						variant="secondary"
+						label={t("customize.useSimple")}
+						onPress={() => setDraft({ ...SIMPLE_STOREFRONT_APPEARANCE })}
+					/>
+				</View>
+			</Card>
 			<ScreenSection title={t("customize.shop")}>
 				<View style={{ gap: space.sm }}>
 					<ListRow

@@ -1,8 +1,6 @@
 import type { MessageKey } from "@pymeshub/i18n";
-import type {
-	DashboardLayouts,
-	DashboardWidgetId,
-} from "@pymeshub/shared";
+import type { DashboardLayouts, DashboardWidgetId } from "@pymeshub/shared";
+import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -18,14 +16,13 @@ import Animated, {
 	withSpring,
 	withTiming,
 } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
-
-import { duration, spring } from "@/lib/motion";
 import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { duration, spring } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import { moveItem } from "@/lib/reorder";
 import {
+	type BusinessThemeId,
 	businessThemeColors,
 	businessThemeOrder,
 	type ColorScheme,
@@ -35,13 +32,24 @@ import {
 	useTheme,
 } from "@/theme";
 
-import { Pressable, hitSlopFor } from "./pressable";
+import { hitSlopFor, Pressable } from "./pressable";
 import { Text } from "./text";
 
 export { moveItem } from "@/lib/reorder";
 
 const REMOVE_SIZE = 28;
 const SWAP_DISTANCE = 36;
+const PREVIEW_SLOTS = [
+	"one",
+	"two",
+	"three",
+	"four",
+	"five",
+	"six",
+	"seven",
+	"eight",
+	"nine",
+] as const;
 
 /**
  * Home-screen tiles you hold to rearrange: they jiggle, an X removes one, and a
@@ -53,9 +61,11 @@ export function CustomizationRows<T extends string>({
 	labels,
 	onReorder,
 	onToggle,
+	canHide,
 	onPress,
 	selected,
 	renderPreview,
+	renderChip,
 	renderToolbar,
 	renderInset,
 }: {
@@ -64,9 +74,11 @@ export function CustomizationRows<T extends string>({
 	labels: Record<T, MessageKey>;
 	onReorder: (next: T[]) => void;
 	onToggle: (item: T) => void;
+	canHide?: (item: T) => boolean;
 	onPress?: (item: T) => void;
 	selected?: T | null;
 	renderPreview?: (item: T) => ReactNode;
+	renderChip?: (item: T) => ReactNode;
 	renderToolbar?: (item: T) => ReactNode;
 	renderInset?: (item: T) => ReactNode;
 }) {
@@ -101,15 +113,18 @@ export function CustomizationRows<T extends string>({
 					label={t(labels[item])}
 					onEnterEdit={enterEdit}
 					onPress={onPress ? () => onPress(item) : undefined}
-					onRemove={() => onToggle(item)}
+					onRemove={
+						!canHide || canHide(item) ? () => onToggle(item) : undefined
+					}
 					onMove={(direction) =>
 						onReorder(moveItem(items, items.indexOf(item), direction, hidden))
 					}
 					canMoveUp={index > 0}
 					canMoveDown={index < visible.length - 1}
+					chip={renderChip?.(item)}
 				>
 					{renderPreview?.(item) ?? null}
-					{renderToolbar?.(item) ?? null}
+					{selected === item ? renderToolbar?.(item) : null}
 					{selected === item ? renderInset?.(item) : null}
 				</WidgetTile>
 			))}
@@ -156,7 +171,11 @@ export function CustomizationRows<T extends string>({
 					accessibilityLabel={t("customize.done")}
 					style={[styles.done, { backgroundColor: colors.primary }]}
 				>
-					<Text variant="label" bold style={{ color: colors.primaryForeground }}>
+					<Text
+						variant="label"
+						bold
+						style={{ color: colors.primaryForeground }}
+					>
 						{t("customize.done")}
 					</Text>
 				</Pressable>
@@ -170,6 +189,7 @@ function WidgetTile({
 	reduced,
 	selected,
 	label,
+	chip,
 	children,
 	onEnterEdit,
 	onPress,
@@ -182,10 +202,11 @@ function WidgetTile({
 	reduced: boolean;
 	selected: boolean;
 	label: string;
+	chip?: ReactNode;
 	children: ReactNode;
 	onEnterEdit: () => void;
 	onPress?: () => void;
-	onRemove: () => void;
+	onRemove?: () => void;
 	onMove: (direction: -1 | 1) => void;
 	canMoveUp: boolean;
 	canMoveDown: boolean;
@@ -254,10 +275,7 @@ function WidgetTile({
 		: Gesture.Exclusive(longPress, tap);
 
 	const animated = useAnimatedStyle(() => ({
-		transform: [
-			{ translateY: drag.value },
-			{ rotate: `${wiggle.value}deg` },
-		],
+		transform: [{ translateY: drag.value }, { rotate: `${wiggle.value}deg` }],
 		zIndex: drag.value === 0 ? 0 : 2,
 	}));
 
@@ -273,16 +291,43 @@ function WidgetTile({
 					},
 					animated,
 				]}
+				accessible={!editing}
+				accessibilityRole={!editing && onPress ? "button" : undefined}
 				accessibilityLabel={label}
 				accessibilityHint={
 					editing ? t("customize.editing") : t("customize.holdToMove")
 				}
+				onAccessibilityTap={onPress}
+				accessibilityActions={
+					editing
+						? undefined
+						: [
+								...(canMoveUp
+									? [{ name: "moveUp", label: t("customize.up") }]
+									: []),
+								...(canMoveDown
+									? [{ name: "moveDown", label: t("customize.down") }]
+									: []),
+								...(onRemove
+									? [{ name: "hide", label: t("customize.hide") }]
+									: []),
+							]
+				}
+				onAccessibilityAction={(event) => {
+					const action = event.nativeEvent.actionName;
+					if (action === "moveUp") move(-1);
+					if (action === "moveDown") move(1);
+					if (action === "hide") onRemove?.();
+				}}
 			>
-				<Text variant="label" bold>
-					{label}
-				</Text>
+				<View style={styles.tileHead}>
+					<Text variant="label" bold style={styles.tileTitle}>
+						{label}
+					</Text>
+					{chip}
+				</View>
 				{children}
-				{editing ? (
+				{editing && onRemove ? (
 					<Pressable
 						onPress={onRemove}
 						hitSlop={hitSlopFor(REMOVE_SIZE)}
@@ -314,9 +359,7 @@ export function ShopSectionPreview({
 	if (id === "information") {
 		return (
 			<View style={styles.previewRow}>
-				<View
-					style={[styles.avatar, { backgroundColor: colors.muted }]}
-				/>
+				<View style={[styles.avatar, { backgroundColor: colors.muted }]} />
 				<View style={styles.previewCopy}>
 					<View
 						style={[
@@ -337,12 +380,8 @@ export function ShopSectionPreview({
 	if (id === "offers") {
 		return (
 			<View style={styles.previewRow}>
-				<View
-					style={[styles.pill, { backgroundColor: colors.primary }]}
-				/>
-				<View
-					style={[styles.pill, { backgroundColor: colors.muted }]}
-				/>
+				<View style={[styles.pill, { backgroundColor: colors.primary }]} />
+				<View style={[styles.pill, { backgroundColor: colors.muted }]} />
 			</View>
 		);
 	}
@@ -378,7 +417,7 @@ export function DashboardWidgetPreview({
 		if (layout === "grid") {
 			return (
 				<View style={styles.previewGrid}>
-					{Array.from({ length: count }, (_, slot) => (
+					{PREVIEW_SLOTS.slice(0, count).map((slot) => (
 						<View
 							key={slot}
 							style={[styles.shortcut, { backgroundColor: colors.muted }]}
@@ -389,7 +428,7 @@ export function DashboardWidgetPreview({
 		}
 		return (
 			<View style={styles.previewRow}>
-				{Array.from({ length: Math.min(4, count) }, (_, slot) => (
+				{PREVIEW_SLOTS.slice(0, Math.min(4, count)).map((slot) => (
 					<View
 						key={slot}
 						style={[styles.shortcut, { backgroundColor: colors.muted }]}
@@ -420,7 +459,7 @@ export function DashboardWidgetPreview({
 						]}
 					/>
 					<View style={styles.previewRow}>
-						{Array.from({ length: Math.max(0, count - 1) }, (_, slot) => (
+						{PREVIEW_SLOTS.slice(0, Math.max(0, count - 1)).map((slot) => (
 							<View
 								key={slot}
 								style={[
@@ -440,7 +479,7 @@ export function DashboardWidgetPreview({
 		if (layout === "stack") {
 			return (
 				<View style={styles.previewCopy}>
-					{Array.from({ length: count }, (_, slot) => (
+					{PREVIEW_SLOTS.slice(0, count).map((slot) => (
 						<View
 							key={slot}
 							style={[
@@ -472,7 +511,7 @@ export function DashboardWidgetPreview({
 		if (layout === "cards") {
 			return (
 				<View style={styles.previewRow}>
-					{Array.from({ length: count }, (_, slot) => (
+					{PREVIEW_SLOTS.slice(0, count).map((slot) => (
 						<View
 							key={slot}
 							style={[
@@ -505,10 +544,8 @@ export function DashboardWidgetPreview({
 			);
 		}
 		return (
-			<View
-				style={[styles.pulseBand, { backgroundColor: colors.foreground }]}
-			>
-				{Array.from({ length: count }, (_, slot) => (
+			<View style={[styles.pulseBand, { backgroundColor: colors.foreground }]}>
+				{PREVIEW_SLOTS.slice(0, count).map((slot) => (
 					<View
 						key={slot}
 						style={[styles.metric, { backgroundColor: "transparent" }]}
@@ -591,10 +628,7 @@ export function DashboardWidgetPreview({
 					{[64, 48, 56].map((width) => (
 						<View
 							key={width}
-							style={[
-								styles.chip,
-								{ width, backgroundColor: colors.muted },
-							]}
+							style={[styles.chip, { width, backgroundColor: colors.muted }]}
 						/>
 					))}
 				</View>
@@ -611,10 +645,7 @@ export function DashboardWidgetPreview({
 							]}
 						/>
 						<View
-							style={[
-								styles.bar,
-								{ flex: 1, backgroundColor: colors.border },
-							]}
+							style={[styles.bar, { flex: 1, backgroundColor: colors.border }]}
 						/>
 					</View>
 				))}
@@ -628,10 +659,7 @@ export function DashboardWidgetPreview({
 					{[0, 1, 2].map((slot) => (
 						<View
 							key={slot}
-							style={[
-								styles.queueCompact,
-								{ backgroundColor: colors.muted },
-							]}
+							style={[styles.queueCompact, { backgroundColor: colors.muted }]}
 						/>
 					))}
 				</View>
@@ -670,27 +698,21 @@ export function DashboardWidgetPreview({
 					{[0, 1, 2, 3].map((slot) => (
 						<View
 							key={slot}
-							style={[
-								styles.commandCell,
-								{ backgroundColor: colors.muted },
-							]}
+							style={[styles.commandCell, { backgroundColor: colors.muted }]}
 						/>
 					))}
 				</View>
 			);
 		}
 		return (
-			<View
-				style={[styles.commandRail, { backgroundColor: colors.card }]}
-			>
+			<View style={[styles.commandRail, { backgroundColor: colors.card }]}>
 				{[0, 1, 2, 3, 4].map((slot) => (
 					<View
 						key={slot}
 						style={[
 							styles.commandDot,
 							{
-								backgroundColor:
-									slot === 0 ? colors.primary : colors.muted,
+								backgroundColor: slot === 0 ? colors.primary : colors.muted,
 							},
 						]}
 					/>
@@ -701,7 +723,7 @@ export function DashboardWidgetPreview({
 	if (layout === "tiles") {
 		return (
 			<View style={styles.previewRow}>
-				{Array.from({ length: Math.min(3, productCount) }, (_, slot) => (
+				{PREVIEW_SLOTS.slice(0, Math.min(3, productCount)).map((slot) => (
 					<View
 						key={slot}
 						style={[styles.productTile, { backgroundColor: colors.muted }]}
@@ -712,16 +734,11 @@ export function DashboardWidgetPreview({
 	}
 	return (
 		<View style={styles.previewCopy}>
-			{Array.from({ length: Math.min(3, productCount) }, (_, slot) => (
+			{PREVIEW_SLOTS.slice(0, Math.min(3, productCount)).map((slot) => (
 				<View key={slot} style={styles.previewRow}>
+					<View style={[styles.thumb, { backgroundColor: colors.muted }]} />
 					<View
-						style={[styles.thumb, { backgroundColor: colors.muted }]}
-					/>
-					<View
-						style={[
-							styles.bar,
-							{ flex: 1, backgroundColor: colors.border },
-						]}
+						style={[styles.bar, { flex: 1, backgroundColor: colors.border }]}
 					/>
 				</View>
 			))}
@@ -752,23 +769,18 @@ export function HeaderStylePicker({
 				style={[
 					styles.headerCard,
 					{
-						borderColor:
-							value === "cover" ? colors.primary : colors.border,
+						borderColor: value === "cover" ? colors.primary : colors.border,
 						backgroundColor: colors.card,
 					},
 				]}
 			>
-				<View
-					style={[styles.coverSketch, { backgroundColor: colors.accent }]}
-				>
+				<View style={[styles.coverSketch, { backgroundColor: colors.accent }]}>
 					<LinearGradient
 						colors={[`${colors.background}00`, colors.background]}
 						style={StyleSheet.absoluteFill}
 						pointerEvents="none"
 					/>
-					<View
-						style={[styles.logoDot, { backgroundColor: colors.card }]}
-					/>
+					<View style={[styles.logoDot, { backgroundColor: colors.card }]} />
 				</View>
 				<Text variant="caption" bold>
 					{t("customize.cover")}
@@ -785,8 +797,7 @@ export function HeaderStylePicker({
 				style={[
 					styles.headerCard,
 					{
-						borderColor:
-							value === "compact" ? colors.primary : colors.border,
+						borderColor: value === "compact" ? colors.primary : colors.border,
 						backgroundColor: colors.card,
 					},
 				]}
@@ -968,19 +979,44 @@ export function ProductCountPicker({
 					onPress={() => onChange(count)}
 				>
 					<View style={styles.countSketch}>
-						{Array.from({ length: count }, (_, slot) => (
+						{PREVIEW_SLOTS.slice(0, count).map((slot) => (
 							<View
 								key={slot}
-								style={[
-									styles.countThumb,
-									{ backgroundColor: colors.muted },
-								]}
+								style={[styles.countThumb, { backgroundColor: colors.muted }]}
 							/>
 						))}
 					</View>
 				</VisualChoiceCard>
 			))}
 		</View>
+	);
+}
+
+export function PaletteChip({
+	themeId,
+	scheme,
+	inheritFill,
+}: {
+	themeId: BusinessThemeId | null | undefined;
+	scheme: ColorScheme;
+	inheritFill: string;
+}) {
+	const { colors } = useTheme();
+	const fill = themeId
+		? businessThemeColors(themeId, scheme).primary
+		: inheritFill;
+	return (
+		<View
+			accessibilityElementsHidden
+			importantForAccessibility="no"
+			style={[
+				styles.paletteDot,
+				{
+					backgroundColor: fill,
+					borderColor: colors.border,
+				},
+			]}
+		/>
 	);
 }
 
@@ -1037,8 +1073,7 @@ export function WidgetPaletteStrip({
 								styles.paletteDot,
 								{
 									backgroundColor: theme.primary,
-									borderColor:
-										value === id ? colors.foreground : theme.primary,
+									borderColor: value === id ? colors.foreground : theme.primary,
 								},
 							]}
 						/>
@@ -1067,17 +1102,9 @@ export function ThemeSwatchPicker({
 				label={t("customize.appTheme")}
 				onPress={() => onChange(null)}
 			>
-				<View
-					style={[
-						styles.themeWash,
-						{ backgroundColor: colors.muted },
-					]}
-				>
+				<View style={[styles.themeWash, { backgroundColor: colors.muted }]}>
 					<View
-						style={[
-							styles.themeBand,
-							{ backgroundColor: colors.foreground },
-						]}
+						style={[styles.themeBand, { backgroundColor: colors.foreground }]}
 					/>
 				</View>
 			</VisualChoiceCard>
@@ -1091,16 +1118,10 @@ export function ThemeSwatchPicker({
 						onPress={() => onChange(id)}
 					>
 						<View
-							style={[
-								styles.themeWash,
-								{ backgroundColor: theme.background },
-							]}
+							style={[styles.themeWash, { backgroundColor: theme.background }]}
 						>
 							<View
-								style={[
-									styles.themeBand,
-									{ backgroundColor: theme.primary },
-								]}
+								style={[styles.themeBand, { backgroundColor: theme.primary }]}
 							/>
 						</View>
 					</VisualChoiceCard>
@@ -1120,6 +1141,12 @@ const styles = StyleSheet.create({
 		minHeight: 88,
 		overflow: "visible",
 	},
+	tileHead: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
+	tileTitle: { flex: 1 },
 	remove: {
 		position: "absolute",
 		top: -10,
