@@ -83,8 +83,9 @@ describe("courier MOTION UI composition", () => {
 		expect(board).toContain('NOT_FOUND: "delivery.offer.unavailable"');
 	});
 
-	test("active delivery is a light map canvas with a real completion slider", () => {
-		expect(detail).toContain('courierMotionTokens("active"');
+	test("active delivery keeps its map and darkens completed runs in dark theme", () => {
+		expect(detail).toContain('completedDark ? "completed" : "active"');
+		expect(detail).toContain("styles.completedMapScrim");
 		expect(detail).toContain("DeliveryConfirmationSlider");
 		expect(detail).toContain("<RouteStops");
 		expect(detail).toContain("export function RouteStops");

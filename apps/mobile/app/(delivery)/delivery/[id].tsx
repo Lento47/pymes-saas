@@ -86,8 +86,7 @@ export default function CourierDeliveryDetailScreen() {
 
 function CourierRun({ deliveryId }: { deliveryId: string }) {
 	const { t, intlLocale } = useT();
-	const { colors } = useTheme();
-	const motion = courierMotionTokens("active", colors);
+	const { colors, scheme } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const trpc = useTRPC();
@@ -102,6 +101,12 @@ function CourierRun({ deliveryId }: { deliveryId: string }) {
 			{ deliveryId },
 			{ refetchInterval: POLL_MS },
 		),
+	);
+	const completedDark = scheme === "dark" && query.data?.status === "DELIVERED";
+	const motion = courierMotionTokens(
+		completedDark ? "completed" : "active",
+		colors,
+		scheme,
 	);
 	const offers = useQuery(
 		trpc.deliveries.offers.queryOptions(undefined, {
@@ -252,7 +257,7 @@ function CourierRun({ deliveryId }: { deliveryId: string }) {
 
 	return (
 		<View style={[styles.fill, { backgroundColor: motion.canvas }]}>
-			<StatusBar style="dark" />
+			<StatusBar style={completedDark ? "light" : "dark"} />
 			{mapAvailable && pickupPoint && dropoffPoint ? (
 				<MapView
 					coords={pickupPoint}
@@ -278,6 +283,12 @@ function CourierRun({ deliveryId }: { deliveryId: string }) {
 			) : (
 				<View style={[styles.mapBleed, { backgroundColor: motion.canvas }]} />
 			)}
+			{completedDark ? (
+				<View
+					pointerEvents="none"
+					style={[styles.mapBleed, styles.completedMapScrim]}
+				/>
+			) : null}
 
 			<SafeAreaView
 				edges={["top"]}
@@ -518,7 +529,11 @@ function TaskSheet({
 	return (
 		<View style={styles.task}>
 			<View style={styles.merchantRow}>
-				<MerchantMark name={delivery.business.name} color={motion.sheetInk} />
+				<MerchantMark
+					name={delivery.business.name}
+					color={motion.sheetInk}
+					background={motion.sheetControl}
+				/>
 				<View style={styles.merchantCopy}>
 					<Text variant="heading" bold style={{ color: motion.sheetInk }}>
 						{delivery.business.name}
@@ -775,7 +790,7 @@ function StopRow({
 				</View>
 				{connect ? (
 					<View
-						style={[styles.connector, { backgroundColor: motion.border }]}
+						style={[styles.connector, { backgroundColor: motion.sheetBorder }]}
 					/>
 				) : null}
 			</View>
@@ -836,6 +851,7 @@ const styles = StyleSheet.create({
 		borderRadius: 0,
 		borderWidth: 0,
 	},
+	completedMapScrim: { backgroundColor: "rgba(10, 16, 28, 0.68)" },
 	overlay: {
 		...StyleSheet.absoluteFill,
 		paddingHorizontal: courierMotionSpace.gutter,

@@ -477,7 +477,8 @@ export const business = {
 	"biz.subscription.plan.GROWTH": "Growth",
 	"biz.subscription.plan.GROWTH.tagline": "Segunda sucursal y equipo",
 	"biz.subscription.plan.BUSINESS": "Business",
-	"biz.subscription.plan.BUSINESS.tagline": "Varias sucursales y express sin tope",
+	"biz.subscription.plan.BUSINESS.tagline":
+		"Varias sucursales y express sin tope",
 
 	"biz.subscription.cadence": "Periodicidad",
 	"biz.subscription.cadence.MONTHLY": "Mensual",
@@ -837,7 +838,8 @@ export const business = {
 	"biz.auditHistory.action.orderRefund": "Reembolsó un pedido",
 	"biz.auditHistory.action.productUnpublish": "Ocultó un producto",
 	"biz.auditHistory.action.subscriptionRecordPayment": "Registró un pago",
-	"biz.auditHistory.action.subscriptionCreatePriceBook": "Creó un libro de precios",
+	"biz.auditHistory.action.subscriptionCreatePriceBook":
+		"Creó un libro de precios",
 	"biz.auditHistory.action.subscriptionPlanChanged": "Cambió el plan",
 	"biz.auditHistory.action.categoryCreate": "Creó una categoría",
 	"biz.auditHistory.action.categoryUpdate": "Actualizó una categoría",
@@ -1342,7 +1344,10 @@ export const business = {
 	"delivery.motion.hero.connect": "Conectá",
 	"delivery.motion.hero.with": "con tu ",
 	"delivery.motion.hero.city": "ciudad",
-	"delivery.motion.acceptOffers": "Aceptar ofertas",
+	"delivery.motion.availability.receiving": "Recibiendo ofertas",
+	"delivery.motion.availability.paused": "Ofertas pausadas",
+	"delivery.motion.availability.pause": "Pausar",
+	"delivery.motion.availability.resume": "Reanudar",
 	"delivery.motion.metric.month": "Este mes",
 	"delivery.motion.metric.rating": "Calificación",
 	"delivery.motion.metric.deliveries": "Entregas",
@@ -1375,6 +1380,8 @@ export const business = {
 	"delivery.motion.availability.online.body":
 		"Estás recibiendo ofertas en tu zona.",
 	"delivery.motion.availability.offline.body":
+		"Reanudá para recibir nuevas ofertas.",
+	"delivery.motion.availability.pauseConfirm":
 		"No recibirás nuevas ofertas hasta que vuelvas a activarlo.",
 	"delivery.motion.availability.goOffline": "Pausar ofertas",
 	"delivery.motion.availability.goOnline": "Recibir ofertas",

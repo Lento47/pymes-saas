@@ -159,8 +159,8 @@ function Runs() {
 
 function MotionBoard({ profile }: { profile: CourierProfile }) {
 	const { t, tp, intlLocale } = useT();
-	const { colors } = useTheme();
-	const motion = courierMotionTokens("waiting", colors);
+	const { colors, scheme } = useTheme();
+	const motion = courierMotionTokens("waiting", colors, scheme);
 	const reduceMotion = useReducedMotion();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
@@ -409,24 +409,6 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 				<View style={styles.header}>
 					<View style={styles.headerLead}>
 						<CourierWordmark color={motion.ink} />
-						<CourierAvailabilityControl
-							available={available}
-							motion={motion}
-							disabled={availability.isPending}
-							onChange={(next) => {
-								if (next) saveAvailability(true);
-								else setOfflineOpen(true);
-							}}
-						/>
-						{availabilityFailure.message ? (
-							<Text
-								variant="caption"
-								tone="destructive"
-								accessibilityRole="alert"
-							>
-								{availabilityFailure.message}
-							</Text>
-						) : null}
 					</View>
 					<CourierAvatarButton
 						name={me.data?.name ?? profile.displayName}
@@ -442,6 +424,20 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 					deliveries={deliveriesValue}
 					motion={motion}
 				/>
+				<CourierAvailabilityControl
+					available={available}
+					motion={motion}
+					disabled={availability.isPending}
+					onPress={() => {
+						if (available) setOfflineOpen(true);
+						else saveAvailability(true);
+					}}
+				/>
+				{availabilityFailure.message ? (
+					<Text variant="caption" tone="destructive" accessibilityRole="alert">
+						{availabilityFailure.message}
+					</Text>
+				) : null}
 				<ActiveZoneControl
 					label={zoneLabel}
 					motion={motion}
@@ -541,7 +537,11 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 							/>
 						</View>
 						<View style={styles.merchantRow}>
-							<MerchantMark name={offer.businessName} color={motion.sheetInk} />
+							<MerchantMark
+								name={offer.businessName}
+								color={motion.sheetInk}
+								background={motion.sheetControl}
+							/>
 							<View style={styles.merchantCopy}>
 								<Text variant="heading" bold style={{ color: motion.sheetInk }}>
 									{offer.businessName}
@@ -684,7 +684,7 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 				open={offlineOpen}
 				onClose={() => setOfflineOpen(false)}
 				title={t("delivery.motion.availability.goOffline")}
-				body={t("delivery.motion.availability.offline.body")}
+				body={t("delivery.motion.availability.pauseConfirm")}
 				confirmLabel={t("delivery.motion.availability.goOffline")}
 				confirmVariant="primary"
 				onConfirm={() => saveAvailability(false)}

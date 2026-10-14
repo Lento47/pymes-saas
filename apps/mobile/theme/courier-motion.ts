@@ -1,10 +1,9 @@
 /**
  * MOTION UI canvases for the courier tree.
  *
- * Waiting is a dark editorial dispatch surface. Active delivery is a light navigation
- * surface. Those personalities are **state-driven**, not the OS theme: a courier on a
- * run still sees the pale map when the phone is in dark mode, and the waiting board
- * stays dark when the phone is in light mode.
+ * Waiting is a dark editorial dispatch surface. Its bottom sheet follows the selected
+ * theme; the map-led active delivery keeps its light navigation surface while
+ * its task sheet follows the selected theme.
  *
  * Brand, route ink, and primary CTAs still come from `colors.primary`. The spec's
  * indigo (`#4166F5`) is the *role* of that token — never a hardcoded hue that would
@@ -13,10 +12,10 @@
 
 import { mixOklab } from "@/lib/color";
 
-import type { ThemeColors } from "./tokens";
+import type { ColorScheme, ThemeColors } from "./tokens";
 import { radius, space } from "./tokens";
 
-export type CourierMotionMode = "waiting" | "active";
+export type CourierMotionMode = "waiting" | "active" | "completed";
 
 export type CourierMotionTokens = {
 	canvas: string;
@@ -26,10 +25,7 @@ export type CourierMotionTokens = {
 	ink: string;
 	muted: string;
 	subtle: string;
-	/**
-	 * Type on `sheet`. The offer and task panels are always white, so this ink stays
-	 * dark even when the waiting canvas — and the OS theme — are dark.
-	 */
+	/** Type on the sheet surface selected for this screen and theme. */
 	sheetInk: string;
 	sheetMuted: string;
 	sheetBorder: string;
@@ -78,16 +74,48 @@ const ACTIVE = {
 	sliderInk: "#FFFFFF",
 } as const;
 
+const WAITING_DARK_SHEET = {
+	sheet: WAITING.elevated,
+	sheetInk: WAITING.ink,
+	sheetMuted: WAITING.muted,
+	sheetBorder: WAITING.border,
+	sheetControl: "#2B3A56",
+	handle: "#73829B",
+} as const;
+
 export function courierMotionTokens(
 	mode: CourierMotionMode,
 	colors: ThemeColors,
+	scheme: ColorScheme,
 ): CourierMotionTokens {
 	const base = mode === "waiting" ? WAITING : ACTIVE;
+	const surface =
+		mode === "waiting" && scheme === "dark"
+			? { ...base, ...WAITING_DARK_SHEET }
+			: mode !== "waiting" && scheme === "dark"
+				? {
+						...base,
+						sheet: colors.card,
+						sheetInk: colors.cardForeground,
+						sheetMuted: colors.mutedForeground,
+						sheetBorder: colors.border,
+						sheetControl: colors.secondary,
+						handle: colors.mutedForeground,
+					}
+				: base;
 	return {
-		...base,
+		...surface,
+		...(mode === "completed" && scheme === "dark"
+			? {
+					canvas: colors.background,
+					ink: colors.foreground,
+					muted: colors.mutedForeground,
+					border: colors.border,
+				}
+			: {}),
 		brand: colors.primary,
 		brandInk: colors.primaryForeground,
-		brandSoft: mixOklab(base.sheet, colors.primary, 0.88),
+		brandSoft: mixOklab(surface.sheet, colors.primary, 0.88),
 		geometry: mixOklab(base.canvas, colors.primary, 0.9),
 	};
 }

@@ -18,7 +18,6 @@ import {
 import { Image } from "./image";
 import { hitSlopFor, Pressable } from "./pressable";
 import { Spinner } from "./spinner";
-import { Switch } from "./switch";
 import { Text } from "./text";
 
 export function CourierWordmark({ color }: { color: string }) {
@@ -38,30 +37,55 @@ export function CourierWordmark({ color }: { color: string }) {
 export function CourierAvailabilityControl({
 	available,
 	motion,
-	onChange,
+	onPress,
 	disabled,
 }: {
 	available: boolean;
 	motion: CourierMotionTokens;
-	onChange: (next: boolean) => void;
+	onPress: () => void;
 	disabled: boolean;
 }) {
 	const { t } = useT();
-	const label = t("delivery.motion.acceptOffers");
+	const state = t(
+		available
+			? "delivery.motion.availability.receiving"
+			: "delivery.motion.availability.paused",
+	);
+	const action = t(
+		available
+			? "delivery.motion.availability.pause"
+			: "delivery.motion.availability.resume",
+	);
 	return (
-		<View style={styles.availability}>
+		<View style={[styles.availability, { borderColor: motion.border }]}>
 			<Text
-				variant="label"
-				style={[styles.availabilityLabel, { color: motion.muted }]}
+				variant="body"
+				bold
+				style={[styles.availabilityLabel, { color: motion.ink }]}
 			>
-				{label}
+				{state}
 			</Text>
-			<Switch
-				checked={available}
-				onChange={onChange}
-				label={label}
+			<Pressable
+				onPress={onPress}
+				ripple={false}
+				accessibilityRole="button"
+				accessibilityLabel={action}
+				accessibilityHint={state}
 				disabled={disabled}
-			/>
+				disabledOpacity={1}
+				style={styles.availabilityAction}
+			>
+				<Text variant="label" bold style={{ color: motion.brand }}>
+					{action}
+				</Text>
+				<Ionicons
+					name={available ? "pause-outline" : "play-outline"}
+					size={icon.inline}
+					color={motion.brand}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			</Pressable>
 		</View>
 	);
 }
@@ -167,24 +191,41 @@ export function CourierPerformanceMetrics({
 	motion: CourierMotionTokens;
 }) {
 	const { t } = useT();
+	const { fontScale } = useWindowDimensions();
+	const stacked = fontScale >= 1.6;
 	return (
-		<View style={styles.metrics}>
+		<View style={[styles.metrics, stacked ? styles.metricsStacked : null]}>
 			<Metric
 				value={month}
 				caption={t("delivery.motion.metric.month")}
 				motion={motion}
+				stacked={stacked}
 			/>
-			<View style={[styles.metricRule, { backgroundColor: motion.border }]} />
+			<View
+				style={[
+					styles.metricRule,
+					stacked ? styles.metricRuleStacked : null,
+					{ backgroundColor: motion.border },
+				]}
+			/>
 			<Metric
 				value={rating}
 				caption={t("delivery.motion.metric.rating")}
 				motion={motion}
+				stacked={stacked}
 			/>
-			<View style={[styles.metricRule, { backgroundColor: motion.border }]} />
+			<View
+				style={[
+					styles.metricRule,
+					stacked ? styles.metricRuleStacked : null,
+					{ backgroundColor: motion.border },
+				]}
+			/>
 			<Metric
 				value={deliveries}
 				caption={t("delivery.motion.metric.deliveries")}
 				motion={motion}
+				stacked={stacked}
 			/>
 		</View>
 	);
@@ -194,13 +235,15 @@ function Metric({
 	value,
 	caption,
 	motion,
+	stacked,
 }: {
 	value: string;
 	caption: string;
 	motion: CourierMotionTokens;
+	stacked: boolean;
 }) {
 	return (
-		<View style={styles.metric}>
+		<View style={stacked ? styles.metricStacked : styles.metric}>
 			<Text
 				variant="title"
 				bold
@@ -335,18 +378,25 @@ export function MerchantMark({
 	uri,
 	size = 48,
 	color,
+	background = "#F3F4F6",
 }: {
 	name: string;
 	uri?: string | null;
 	size?: number;
 	color: string;
+	background?: string;
 }) {
 	const letter = name.trim().charAt(0).toUpperCase() || "?";
 	return (
 		<View
 			style={[
 				styles.mark,
-				{ width: size, height: size, borderRadius: radius.md },
+				{
+					width: size,
+					height: size,
+					borderRadius: radius.md,
+					backgroundColor: background,
+				},
 			]}
 		>
 			{uri ? (
@@ -452,9 +502,19 @@ const styles = StyleSheet.create({
 		justifyContent: "space-between",
 		gap: space.sm,
 		minHeight: MIN_TOUCH_TARGET,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+		marginBottom: space.md,
 	},
 	availabilityLabel: {
-		fontWeight: weight.semibold,
+		flexShrink: 1,
+	},
+	availabilityAction: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		minHeight: MIN_TOUCH_TARGET,
+		paddingLeft: space.md,
 	},
 	avatar: {
 		width: 40,
@@ -497,7 +557,14 @@ const styles = StyleSheet.create({
 		paddingTop: space.md,
 		paddingBottom: space.lg,
 	},
+	metricsStacked: { flexDirection: "column", gap: space.xs },
 	metric: { flex: 1, gap: 4 },
+	metricStacked: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: space.md,
+	},
 	metricValue: {
 		...courierDisplay.metric,
 		fontWeight: weight.bold,
@@ -507,6 +574,11 @@ const styles = StyleSheet.create({
 		...courierDisplay.eyebrow,
 	},
 	metricRule: { width: StyleSheet.hairlineWidth, marginVertical: 6 },
+	metricRuleStacked: {
+		width: "100%",
+		height: StyleSheet.hairlineWidth,
+		marginVertical: 0,
+	},
 	zone: {
 		flexDirection: "row",
 		alignItems: "center",
