@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { type MessageKey, MOVE_LABELS } from "@pymeshub/i18n";
 import {
 	type DashboardPreferences,
-	DEFAULT_DASHBOARD_PREFERENCES,
+	resolveDashboardPreferences,
 	type FulfilmentKind,
 	formatMoney,
 	MARKET_TIME_ZONE,
@@ -49,6 +49,7 @@ import {
 	pulseBandHeight,
 } from "@/components/merchant-pulse";
 import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
+import { Price } from "@/components/price";
 import { hitSlopFor, Pressable } from "@/components/pressable";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
@@ -322,11 +323,18 @@ export default function MerchantHome() {
 	const dashboardPreferences = useQuery(
 		trpc.business.dashboardPreferences.queryOptions(
 			{ businessId: businessId ?? "" },
-			{ enabled: signedIn && !!businessId },
+			{
+				enabled: signedIn && !!businessId,
+				select: (data) => ({
+					...data,
+					configuration: resolveDashboardPreferences(data.configuration),
+				}),
+			},
 		),
 	);
-	const configuration =
-		dashboardPreferences.data?.configuration ?? DEFAULT_DASHBOARD_PREFERENCES;
+	const configuration = resolveDashboardPreferences(
+		dashboardPreferences.data?.configuration,
+	);
 	const colors = configuration.themeId
 		? businessThemeColors(configuration.themeId, scheme)
 		: deviceColors;
@@ -693,93 +701,104 @@ export default function MerchantHome() {
 
 	const renderWidget = (id: DashboardPreferences["widgets"][number]) => {
 		switch (id) {
-			case "shortcuts":
+			case "shortcuts": {
+				const doors = [
+					{
+						key: "orders" as const,
+						label: t("biz.nav.orders"),
+						icon: "receipt-outline" as const,
+						onPress: () => router.push("/(business)/business"),
+					},
+					{
+						key: "catalog" as const,
+						label: t("biz.nav.products"),
+						icon: "fast-food-outline" as const,
+						onPress: () => router.push("/(business)/products"),
+					},
+					{
+						key: "promotions" as const,
+						label: t("biz.promotions.title"),
+						icon: "ticket-outline" as const,
+						onPress: () => router.push("/(business)/promotions"),
+					},
+					{
+						key: "analytics" as const,
+						label: t("biz.analytics.title"),
+						icon: "stats-chart-outline" as const,
+						onPress: () => router.push("/(business)/analytics"),
+					},
+					{
+						key: "team" as const,
+						label: t("biz.more.team"),
+						icon: "people-outline" as const,
+						onPress: () =>
+							router.push({
+								pathname: "/(business)/team",
+								params: { businessId },
+							}),
+					},
+					{
+						key: "payouts" as const,
+						label: t("biz.more.payouts"),
+						icon: "cash-outline" as const,
+						onPress: () =>
+							router.push({
+								pathname: "/(business)/payouts",
+								params: { businessId },
+							}),
+					},
+					{
+						key: "hours" as const,
+						label: t("biz.settings.hours"),
+						icon: "time-outline" as const,
+						onPress: () =>
+							router.push({
+								pathname: "/(business)/shop-hours",
+								params: { businessId },
+							}),
+					},
+					{
+						key: "locations" as const,
+						label: t("biz.locations.title"),
+						icon: "location-outline" as const,
+						onPress: () =>
+							router.push({
+								pathname: "/(business)/locations",
+								params: { businessId },
+							}),
+					},
+					{
+						key: "reviews" as const,
+						label: t("biz.reviews.title"),
+						icon: "star-outline" as const,
+						onPress: () =>
+							router.push({
+								pathname: "/(business)/reviews",
+								params: { businessId },
+							}),
+					},
+				];
 				return (
 					<MerchantShortcutRail
-						shortcuts={[
-							{
-								key: "orders",
-								label: t("biz.nav.orders"),
-								icon: "receipt-outline",
-								onPress: () => router.push("/(business)/business"),
-							},
-							{
-								key: "catalog",
-								label: t("biz.nav.products"),
-								icon: "fast-food-outline",
-								onPress: () => router.push("/(business)/products"),
-							},
-							{
-								key: "promotions",
-								label: t("biz.promotions.title"),
-								icon: "ticket-outline",
-								onPress: () => router.push("/(business)/promotions"),
-							},
-							{
-								key: "analytics",
-								label: t("biz.analytics.title"),
-								icon: "stats-chart-outline",
-								onPress: () => router.push("/(business)/analytics"),
-							},
-							{
-								key: "team",
-								label: t("biz.more.team"),
-								icon: "people-outline",
-								onPress: () =>
-									router.push({
-										pathname: "/(business)/team",
-										params: { businessId },
-									}),
-							},
-							{
-								key: "payouts",
-								label: t("biz.more.payouts"),
-								icon: "cash-outline",
-								onPress: () =>
-									router.push({
-										pathname: "/(business)/payouts",
-										params: { businessId },
-									}),
-							},
-							{
-								key: "hours",
-								label: t("biz.settings.hours"),
-								icon: "time-outline",
-								onPress: () =>
-									router.push({
-										pathname: "/(business)/shop-hours",
-										params: { businessId },
-									}),
-							},
-							{
-								key: "locations",
-								label: t("biz.locations.title"),
-								icon: "location-outline",
-								onPress: () =>
-									router.push({
-										pathname: "/(business)/locations",
-										params: { businessId },
-									}),
-							},
-							{
-								key: "reviews",
-								label: t("biz.reviews.title"),
-								icon: "star-outline",
-								onPress: () =>
-									router.push({
-										pathname: "/(business)/reviews",
-										params: { businessId },
-									}),
-							},
-						]}
+						layout={configuration.layouts.shortcuts}
+						paint={configuration.widgetThemes.shortcuts != null}
+						shortcuts={configuration.shortcutIds.flatMap((shortcutId) => {
+							const found = doors.find((door) => door.key === shortcutId);
+							return found ? [found] : [];
+						})}
 					/>
 				);
+			}
 			case "pulse":
 				return (
 					<MerchantPulse
 						data={pulse}
 						dateLabel={dateLabel}
 						metrics={configuration.metrics}
+						layout={configuration.layouts.pulse}
+						paint={
+							configuration.widgetThemes.pulse ? "accent" : "invert"
+						}
 					/>
 				);
 			case "insights":
@@ -792,6 +811,8 @@ export default function MerchantHome() {
 							/>
 						) : analytics.data ? (
 							<MerchantInsight
+								layout={configuration.layouts.insights}
+								painted={configuration.widgetThemes.insights != null}
 								items={[
 									{
 										label: t("biz.dashboard.topProducts"),
@@ -830,7 +851,313 @@ export default function MerchantHome() {
 						) : null}
 					</>
 				);
-			case "catalog":
+			case "attention":
+				if (attention.length === 0) return null;
+				if (configuration.layouts.attention === "chips") {
+					const attentionPainted =
+						configuration.widgetThemes.attention != null;
+					return (
+						<View style={[styles.pad, styles.attentionChips]}>
+							{attention.map((alert) => {
+								const route = alert.action && ALERT_ROUTES[alert.action];
+								return (
+									<Pressable
+										key={`${alert.type}:${alert.action ?? ""}`}
+										onPress={() => {
+											if (route && businessId) router.push(route(businessId));
+										}}
+										disabled={!route}
+										accessibilityRole={route ? "button" : undefined}
+										accessibilityLabel={`${t(ATTENTION_LABEL_KEYS[alert.type])}: ${alert.count}`}
+										style={[
+											styles.attentionChip,
+											{
+												borderColor: attentionPainted
+													? colors.primary
+													: colors.border,
+												backgroundColor: attentionPainted
+													? colors.primary
+													: colors.muted,
+											},
+										]}
+									>
+										<Ionicons
+											name={ATTENTION_ICONS[alert.type]}
+											size={16}
+											color={
+												attentionPainted
+													? colors.primaryForeground
+													: alert.severity === "critical"
+														? colors.destructive
+														: colors.warning
+											}
+										/>
+										<Text
+											variant="caption"
+											bold
+											style={
+												attentionPainted
+													? { color: colors.primaryForeground }
+													: undefined
+											}
+										>
+											{t(ATTENTION_LABEL_KEYS[alert.type])} {alert.count}
+										</Text>
+									</Pressable>
+								);
+							})}
+						</View>
+					);
+				}
+				return (
+					<View style={styles.pad}>
+						<SectionHeader title={t("biz.home.attention")} />
+						{attention.map((alert, index) => (
+							<AttentionRow
+								key={`${alert.type}:${alert.action ?? ""}`}
+								label={t(ATTENTION_LABEL_KEYS[alert.type])}
+								count={alert.count}
+								severity={alert.severity}
+								icon={ATTENTION_ICONS[alert.type]}
+								actionLabel={
+									alert.action
+										? t(ATTENTION_ACTION_KEYS[alert.action])
+										: null
+								}
+								last={index === attention.length - 1}
+								onPress={() => {
+									const route =
+										alert.action && ALERT_ROUTES[alert.action];
+									if (route && businessId) router.push(route(businessId));
+								}}
+							/>
+						))}
+					</View>
+				);
+			case "queue":
+				return (
+					<>
+						<View style={styles.pad}>
+							<SectionHeader
+								title={t("biz.board.sectionTitle")}
+								action={{
+									label: t("action.viewAll"),
+									onPress: () => router.push("/business"),
+									accessibilityHint: t("biz.dashboard.viewBoard"),
+								}}
+							/>
+							{queueIsTruncated && openOrders !== null ? (
+								<Text
+									variant="caption"
+									tone="muted"
+									tabular
+									style={styles.queueSummary}
+								>
+									{t("biz.board.queueSummary", {
+										open: openOrders,
+										shown: orders.length,
+									})}
+								</Text>
+							) : null}
+						</View>
+						{orders.length === 0 ? (
+							<View style={styles.pad}>
+								<View
+									style={[
+										styles.emptyOrders,
+										{ backgroundColor: colors.muted },
+									]}
+								>
+									<Ionicons
+										name="checkmark-circle-outline"
+										size={icon.back}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+									<View style={styles.emptyOrdersCopy}>
+										<Text variant="body" bold>
+											{t("biz.board.caughtUp")}
+										</Text>
+										<Text variant="caption" tone="muted">
+											{t("biz.board.empty.body")}
+										</Text>
+									</View>
+								</View>
+							</View>
+						) : configuration.layouts.queue === "compact" ? (
+							<View style={styles.compactQueue}>
+								{orders.map((order) => (
+									<Pressable
+										key={order.id}
+										onPress={() =>
+											router.push({
+												pathname: "/merchant-order/[id]",
+												params: { id: order.id },
+											})
+										}
+										accessibilityRole="button"
+										accessibilityLabel={`#${order.reference}`}
+										style={[
+											styles.compactQueueRow,
+											{ borderBottomColor: colors.border },
+										]}
+									>
+										{configuration.widgetThemes.queue ? (
+											<View
+												style={[
+													styles.queuePaintMark,
+													{ backgroundColor: colors.primary },
+												]}
+											/>
+										) : null}
+										<View style={styles.compactQueueCopy}>
+											<Text variant="body" bold numberOfLines={1}>
+												#{order.reference}
+											</Text>
+											<Text variant="caption" tone="muted" numberOfLines={1}>
+												{t(statusKey(order.status))}
+											</Text>
+										</View>
+										<Text variant="body" bold tabular>
+											{formatMoney(order.totalMinor, order.currency, {
+												locale: intlLocale,
+											})}
+										</Text>
+									</Pressable>
+								))}
+							</View>
+						) : (
+							<View>
+								{orders.map((order, index) => {
+									const actions: MerchantRowAction[] = nextStatuses(
+										order.status,
+										"BUSINESS",
+										order.fulfilment,
+									)
+										.slice(0, 2)
+										.map((to, actionIndex) => ({
+											label: t(moveLabelKey(to, order.fulfilment)),
+											onPress: () =>
+												advance.mutate({
+													orderId: order.id,
+													to,
+													expectedStatus: order.status,
+												}),
+											pending: advance.variables?.orderId === order.id,
+											kind: actionIndex === 0 ? "primary" : "secondary",
+										}));
+
+									return (
+										<MerchantOrderRow
+											key={order.id}
+											onPress={() =>
+												router.push({
+													pathname: "/merchant-order/[id]",
+													params: { id: order.id },
+												})
+											}
+											reference={order.reference}
+											headline={order.headline}
+											fulfilmentLabel={t(
+												order.fulfilment === "PICKUP"
+													? "order.pickup"
+													: "order.delivery",
+											)}
+											status={order.status}
+											statusLabel={t(statusKey(order.status))}
+											totalLabel={formatMoney(
+												order.totalMinor,
+												order.currency,
+												{
+													locale: intlLocale,
+												},
+											)}
+											waitLabel={
+												formatRelative(order.placedAt, intlLocale) ??
+												undefined
+											}
+											urgent={order.status === "PENDING" ? "new" : null}
+											last={index === orders.length - 1}
+											actions={actions.length ? actions : undefined}
+										/>
+									);
+								})}
+							</View>
+						)}
+					</>
+				);
+			case "commands":
+				return (
+					<MerchantCommandRail
+						layout={configuration.layouts.commands}
+						actions={[
+							{
+								key: "add-product",
+								label: t("biz.products.add"),
+								icon: "add-outline",
+								primary:
+									configuration.commandColors["add-product"] == null,
+								accent: configuration.commandColors["add-product"],
+								onPress: () =>
+									router.push({
+										pathname: "/product-form",
+										params: { businessId },
+									}),
+							},
+							{
+								key: "promo",
+								label: t("biz.promotions.title"),
+								icon: "ticket-outline",
+								accent: configuration.commandColors.promo,
+								onPress: () => router.push("/(business)/promotions"),
+							},
+							{
+								key: "stock",
+								label: t("biz.products.stock"),
+								icon: "cube-outline",
+								accent: configuration.commandColors.stock,
+								onPress: () => router.push("/products"),
+							},
+							{
+								key: "hours",
+								label: t("biz.settings.hours"),
+								icon: "time-outline",
+								accent: configuration.commandColors.hours,
+								onPress: () => router.push("/(business)/shop-hours"),
+							},
+							{
+								key: "pause",
+								label: locationPaused
+									? t("biz.locations.resume")
+									: t("biz.locations.pause"),
+								icon: locationPaused ? "play-outline" : "pause-outline",
+								accent: configuration.commandColors.pause,
+								disabled:
+									!canManageOperatingState ||
+									pause.isPending ||
+									resume.isPending,
+								onPress: () => {
+									if (!businessId || !selectedLocation) return;
+									if (locationPaused) {
+										resume.mutate({
+											businessId,
+											locationId: selectedLocation.id,
+										});
+										return;
+									}
+									setPauseDuration(undefined);
+									setPauseStage("duration");
+								},
+							},
+						]}
+					/>
+				);
+			case "catalog": {
+				const products = (home.data?.catalog.products ?? []).slice(
+					0,
+					configuration.productPreviewCount,
+				);
 				return (
 					<>
 						{home.data ? (
@@ -852,10 +1179,6 @@ export default function MerchantHome() {
 										outOfStock: home.data.catalog.outOfStock,
 									})}
 								</Text>
-								{/* What the three-row preview left out. Derived from the
-								    reads above, so it cannot disagree with the summary
-								    printed directly over it, and said as a count of
-								    products rather than of alerts. */}
 								{catalogHidden !== null && catalogHidden > 0 ? (
 									<Text variant="caption" tone="muted" tabular>
 										{t("biz.products.moreCount", { count: catalogHidden })}
@@ -865,26 +1188,57 @@ export default function MerchantHome() {
 									<Text variant="body" tone="muted">
 										{t("biz.products.empty.title")}
 									</Text>
-								) : (
-									home.data.catalog.products
-										.slice(0, configuration.productPreviewCount)
-										.map((product) => (
-											<BusinessProductRow
+								) : configuration.layouts.catalog === "tiles" ? (
+									<View style={styles.catalogTiles}>
+										{products.map((product) => (
+											<Pressable
 												key={product.id}
-												product={product}
 												onPress={() =>
 													router.push({
 														pathname: "/product-form",
 														params: { businessId, id: product.id },
 													})
 												}
-											/>
-										))
+												accessibilityRole="button"
+												accessibilityLabel={product.title}
+												style={styles.catalogTile}
+											>
+												<Image
+													uri={product.imageUrl}
+													style={styles.catalogTileImage}
+													accessibilityElementsHidden
+													importantForAccessibility="no"
+												/>
+												<Text variant="caption" numberOfLines={2}>
+													{product.title}
+												</Text>
+												<Price
+													amountMinor={product.priceMinor}
+													currency={product.currency}
+													variant="caption"
+												/>
+											</Pressable>
+										))}
+									</View>
+								) : (
+									products.map((product) => (
+										<BusinessProductRow
+											key={product.id}
+											product={product}
+											onPress={() =>
+												router.push({
+													pathname: "/product-form",
+													params: { businessId, id: product.id },
+												})
+											}
+										/>
+									))
 								)}
 							</View>
 						) : null}
 					</>
 				);
+			}
 		}
 	};
 
@@ -1172,15 +1526,6 @@ export default function MerchantHome() {
 									</Pressable>
 								</View>
 							</View>
-							{/* Destination carousel: the More doors a thumb reaches by sliding.
-						    None of these tiles takes the lime fill — the command rail below
-						    holds the moment's action. */}
-							{configuration.widgets
-								.slice(0, 1)
-								.filter((id) => !configuration.hidden.includes(id))
-								.map((id) => (
-									<Fragment key={id}>{renderWidget(id)}</Fragment>
-								))}
 							{pause.error || resume.error ? (
 								<View style={styles.pad}>
 									<ErrorState error={pause.error ?? resume.error} />
@@ -1224,261 +1569,22 @@ export default function MerchantHome() {
 								</View>
 							) : null}
 
-							{/* Full-bleed by construction: the band draws edge to edge, and the
-					    screen's `padded={false}` is what lets it. */}
 							{configuration.widgets
-								.slice(1, 3)
 								.filter((id) => !configuration.hidden.includes(id))
-								.map((id) => (
-									<Fragment key={id}>{renderWidget(id)}</Fragment>
-								))}
-
-							{attention.length > 0 ? (
-								<View style={styles.pad}>
-									<SectionHeader title={t("biz.home.attention")} />
-									{/* All but the last row drop the trailing hairline the row's own
-						    default draws — the rhythm the board's rows keep with `last`, so
-						    a card of rows never ends in a line for nobody. */}
-									{attention.map((alert, index) => (
-										// The whole row opens the alert's destination, and the
-										// labelled button at the end says which one — see
-										// `AttentionRow` for why the row is a plain report
-										// rather than a button when the alert carries no
-										// action at all.
-										<AttentionRow
-											key={`${alert.type}:${alert.action ?? ""}`}
-											label={t(ATTENTION_LABEL_KEYS[alert.type])}
-											count={alert.count}
-											severity={alert.severity}
-											icon={ATTENTION_ICONS[alert.type]}
-											// `action` is optional on the wire, so this is a
-											// question with a real `undefined` behind it rather
-											// than a branch that cannot fail.
-											actionLabel={
-												alert.action
-													? t(ATTENTION_ACTION_KEYS[alert.action])
-													: null
-											}
-											last={index === attention.length - 1}
-											onPress={() => {
-												const route =
-													alert.action && ALERT_ROUTES[alert.action];
-												// `businessId` is optional here. This JSX lives
-												// inside the branch that already proved one
-												// exists, but the closure does not know that,
-												// and an OWNER tapping an alert must not reach a
-												// screen with an empty shop id.
-												if (route && businessId) router.push(route(businessId));
-											}}
-										/>
-									))}
-								</View>
-							) : null}
-
-							<View style={styles.pad}>
-								<SectionHeader
-									title={t("biz.board.sectionTitle")}
-									action={{
-										label: t("action.viewAll"),
-										onPress: () => router.push("/business"),
-										accessibilityHint: t("biz.dashboard.viewBoard"),
-									}}
-								/>
-								{/* The preview holds at most five rows and the shop may
-							    hold far more, so the shortfall is said rather than
-							    implied — and only when the two numbers differ.
-							    "5 open · showing 5" is a fact about the screen
-							    rather than about the shop, and printing it would
-							    teach the reader that a number which changes with
-							    the preview's width is a business fact. */}
-								{queueIsTruncated && openOrders !== null ? (
-									<Text
-										variant="caption"
-										tone="muted"
-										tabular
-										style={styles.queueSummary}
-									>
-										{t("biz.board.queueSummary", {
-											open: openOrders,
-											shown: orders.length,
-										})}
-									</Text>
-								) : null}
-							</View>
-							{orders.length === 0 ? (
-								<View style={styles.pad}>
-									<View
-										style={[
-											styles.emptyOrders,
-											{ backgroundColor: colors.muted },
-										]}
-									>
-										<Ionicons
-											name="checkmark-circle-outline"
-											size={icon.back}
-											color={colors.mutedForeground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
-										<View style={styles.emptyOrdersCopy}>
-											<Text variant="body" bold>
-												{t("biz.board.caughtUp")}
-											</Text>
-											<Text variant="caption" tone="muted">
-												{t("biz.board.empty.body")}
-											</Text>
-										</View>
-									</View>
-								</View>
-							) : (
-								<View>
-									{orders.map((order, index) => {
-										const actions: MerchantRowAction[] = nextStatuses(
-											order.status,
-											"BUSINESS",
-											order.fulfilment,
-										)
-											.slice(0, 2)
-											.map((to, actionIndex) => ({
-												label: t(moveLabelKey(to, order.fulfilment)),
-												onPress: () =>
-													advance.mutate({
-														orderId: order.id,
-														to,
-														expectedStatus: order.status,
-													}),
-												pending: advance.variables?.orderId === order.id,
-												kind: actionIndex === 0 ? "primary" : "secondary",
-											}));
-
-										return (
-											// Full-bleed, like the board's queue: the row pays its own
-											// gutters (`merchant-order-row`'s `main`/`aside`), so a `pad`
-											// wrapper here would double them and put the ink at 48 points
-											// under a section title sitting at 24.
-											//
-											// `waitLabel` is how long this order has been standing. The
-											// row already had a slot for it and nothing was putting one
-											// there, which left the oldest order on the board drawn
-											// exactly like the newest — and age is the fact that
-											// decides which row to take first. Past a day
-											// `formatRelative` hands over to the clock, so this never
-											// reads as a count of days on a screen whose job is to
-											// say how far along it is.
-											<MerchantOrderRow
-												key={order.id}
-												onPress={() =>
-													router.push({
-														pathname: "/merchant-order/[id]",
-														params: { id: order.id },
-													})
-												}
-												reference={order.reference}
-												headline={order.headline}
-												fulfilmentLabel={t(
-													order.fulfilment === "PICKUP"
-														? "order.pickup"
-														: "order.delivery",
-												)}
-												status={order.status}
-												statusLabel={t(statusKey(order.status))}
-												totalLabel={formatMoney(
-													order.totalMinor,
-													order.currency,
-													{
-														locale: intlLocale,
-													},
-												)}
-												waitLabel={
-													formatRelative(order.placedAt, intlLocale) ??
-													undefined
-												}
-												urgent={order.status === "PENDING" ? "new" : null}
-												last={index === orders.length - 1}
-												actions={actions.length ? actions : undefined}
-											/>
-										);
-									})}
-								</View>
-							)}
-
-							{/* The doors, as the rail (┬º25) rather than the card it replaces:
-						    every destination is a route in this tree, so no action leads
-						    nowhere. Adding a product is the moment's one filled control.
-
-						    The five are ┬º25's own list. `orders` and `menu` used to sit here
-						    and were the tab bar's destinations said again in different words;
-						    ┬º25 names the *jobs* instead, which is why `Stock` opens the
-						    catalogue the steppers live on and `Pause` gives the order the
-						    header's status chip also gives. The label names the state the
-						    command moves to — `./switch`'s contract — so the same slot reads
-						    "Pausar pedidos" and "Reanudar pedidos" without a second item. */}
-							<MerchantCommandRail
-								actions={[
-									{
-										key: "add-product",
-										label: t("biz.products.add"),
-										icon: "add-outline",
-										primary: true,
-										onPress: () =>
-											router.push({
-												pathname: "/product-form",
-												params: { businessId },
-											}),
-									},
-									{
-										key: "promo",
-										label: t("biz.promotions.title"),
-										icon: "ticket-outline",
-										onPress: () => router.push("/(business)/promotions"),
-									},
-									{
-										key: "stock",
-										label: t("biz.products.stock"),
-										icon: "cube-outline",
-										onPress: () => router.push("/products"),
-									},
-									{
-										key: "hours",
-										label: t("biz.settings.hours"),
-										icon: "time-outline",
-										onPress: () => router.push("/(business)/shop-hours"),
-									},
-									{
-										key: "pause",
-										label: locationPaused
-											? t("biz.locations.resume")
-											: t("biz.locations.pause"),
-										icon: locationPaused ? "play-outline" : "pause-outline",
-										disabled:
-											!canManageOperatingState ||
-											pause.isPending ||
-											resume.isPending,
-										onPress: () => {
-											if (!selectedLocation) return;
-											if (locationPaused) {
-												resume.mutate({
-													businessId,
-													locationId: selectedLocation.id,
-												});
-												return;
-											}
-											// ┬º47 names "pause all orders" as one of the writes that
-											// gets a confirmation, and `pauseStage`'s own flow is that
-											// confirmation — a duration, then a `ConfirmSheet`.
-											setPauseDuration(undefined);
-											setPauseStage("duration");
-										},
-									},
-								]}
-							/>
-
-							{configuration.widgets
-								.slice(3)
-								.filter((id) => !configuration.hidden.includes(id))
-								.map((id) => (
-									<Fragment key={id}>{renderWidget(id)}</Fragment>
-								))}
+								.map((id) => {
+									const widgetThemeId = configuration.widgetThemes[id];
+									const widgetColors = widgetThemeId
+										? businessThemeColors(widgetThemeId, scheme)
+										: colors;
+									return (
+										<ThemeColorsOverrideProvider
+											key={id}
+											colors={widgetColors}
+										>
+											{renderWidget(id)}
+										</ThemeColorsOverrideProvider>
+									);
+								})}
 						</>
 					)}
 				</Screen>
@@ -1601,25 +1707,35 @@ export default function MerchantHome() {
 
 function MerchantInsight({
 	items,
+	layout = "columns",
+	painted = false,
 }: {
 	items: { value: string | null; label: string }[];
+	layout?: DashboardPreferences["layouts"]["insights"];
+	painted?: boolean;
 }) {
 	const { colors } = useTheme();
+	const stacked = layout === "stack";
+	const rule = painted ? colors.primary : colors.border;
 
 	return (
 		<View
 			style={[
 				styles.insight,
+				stacked && styles.insightStack,
 				{
-					borderTopColor: colors.border,
-					borderBottomColor: colors.border,
+					borderTopColor: rule,
+					borderBottomColor: rule,
 				},
 			]}
 		>
 			{items.map((item) => (
 				<View
 					key={item.label}
-					style={styles.insightItem}
+					style={[
+						styles.insightItem,
+						stacked && styles.insightStackItem,
+					]}
 					accessible
 					accessibilityRole="text"
 					accessibilityLabel={`${item.label}: ${item.value ?? NO_VALUE}`}
@@ -1916,6 +2032,53 @@ const styles = StyleSheet.create({
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
 	insightItem: { flex: 1, minWidth: 0, gap: space.xs },
+	insightStack: { flexDirection: "column" },
+	insightStackItem: { flex: 0, width: "100%" },
+	attentionChips: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.sm,
+	},
+	attentionChip: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.xs,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		borderRadius: radius.full,
+		borderWidth: 1,
+		minHeight: MIN_TOUCH_TARGET,
+	},
+	catalogTiles: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.sm,
+		marginTop: space.sm,
+	},
+	catalogTile: {
+		width: "31%",
+		flexGrow: 1,
+		gap: space.xs,
+	},
+	catalogTileImage: {
+		width: "100%",
+		aspectRatio: 1,
+		borderRadius: radius.md,
+	},
+	compactQueue: { gap: space.xs, paddingHorizontal: space.lg },
+	compactQueueRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		minHeight: MIN_TOUCH_TARGET,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	compactQueueCopy: { flex: 1, minWidth: 0 },
+	queuePaintMark: {
+		width: 4,
+		alignSelf: "stretch",
+		borderRadius: radius.full,
+	},
 	attentionRow: {
 		minHeight: 52,
 		flexDirection: "row",

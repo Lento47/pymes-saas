@@ -3,7 +3,7 @@ import {
 	businessAuditHistoryInput,
 	businessCreateInput,
 	businessUpdateInput,
-	dashboardPreferencesSchema,
+	dashboardPreferencesInputSchema,
 	locationCreateInput,
 	locationPauseInput,
 	locationScopeInput,
@@ -59,7 +59,7 @@ export const businessRouter = router({
 			z.object({
 				businessId: z.string(),
 				revision: z.number().int().min(0),
-				configuration: dashboardPreferencesSchema,
+				configuration: dashboardPreferencesInputSchema,
 			}),
 		)
 		.mutation(({ ctx, input }) =>

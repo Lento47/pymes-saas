@@ -1,7 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { icon, space, useTheme, weight as weights } from "@/theme";
+import {
+	type BusinessThemeId,
+	businessThemeColors,
+	icon,
+	space,
+	useTheme,
+	weight as weights,
+} from "@/theme";
 
 import { Pressable } from "./pressable";
 import { Text } from "./text";
@@ -79,6 +86,8 @@ export type MerchantRailAction = {
 	 * (`interface.md` §6) is "this one, now", and two of them is no message at all.
 	 */
 	primary?: boolean;
+	/** Named merchant palette for this action's fill. Null keeps the bar's chrome. */
+	accent?: BusinessThemeId | null;
 	/**
 	 * Whether the command can be given right now.
 	 *
@@ -109,8 +118,13 @@ function RailAction({
 }: {
 	action: MerchantRailAction;
 }): React.ReactElement {
-	const { colors } = useTheme();
-	const primary = action.primary === true;
+	const { colors, scheme } = useTheme();
+	const accentColors = action.accent
+		? businessThemeColors(action.accent, scheme)
+		: null;
+	const fill = accentColors ?? colors;
+	const filled = accentColors != null || action.primary === true;
+	const ink = filled ? fill.primaryForeground : colors.mutedForeground;
 
 	return (
 		<Pressable
@@ -120,8 +134,8 @@ function RailAction({
 			accessibilityLabel={action.label}
 			style={[
 				styles.item,
-				primary && {
-					backgroundColor: colors.primary,
+				filled && {
+					backgroundColor: fill.primary,
 					minHeight: FILL_HEIGHT,
 					marginVertical: space.xs,
 				},
@@ -130,7 +144,7 @@ function RailAction({
 			<Ionicons
 				name={action.icon}
 				size={icon.action}
-				color={primary ? colors.primaryForeground : colors.mutedForeground}
+				color={ink}
 				accessibilityElementsHidden
 				importantForAccessibility="no"
 			/>
@@ -139,7 +153,7 @@ function RailAction({
 				style={{
 					fontSize: LABEL_FONT_SIZE,
 					fontWeight: weights.semibold,
-					color: primary ? colors.primaryForeground : colors.mutedForeground,
+					color: ink,
 				}}
 			>
 				{action.label}
@@ -157,12 +171,18 @@ function RailAction({
  */
 export function MerchantCommandRail({
 	actions,
+	layout = "rail",
 }: {
 	actions: MerchantRailAction[];
+	layout?: "rail" | "wrap";
 }): React.ReactElement | null {
 	const { colors } = useTheme();
 
 	if (actions.length === 0) return null;
+
+	const items = actions.map((action) => (
+		<RailAction key={action.key} action={action} />
+	));
 
 	return (
 		<View
@@ -175,15 +195,17 @@ export function MerchantCommandRail({
 				},
 			]}
 		>
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				contentContainerStyle={styles.track}
-			>
-				{actions.map((action) => (
-					<RailAction key={action.key} action={action} />
-				))}
-			</ScrollView>
+			{layout === "wrap" ? (
+				<View style={styles.wrap}>{items}</View>
+			) : (
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={styles.track}
+				>
+					{items}
+				</ScrollView>
+			)}
 		</View>
 	);
 }
@@ -225,6 +247,14 @@ const styles = StyleSheet.create({
 	track: {
 		paddingHorizontal: space.xl,
 		alignItems: "center",
+		gap: space.sm,
+	},
+	wrap: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		justifyContent: "center",
+		paddingHorizontal: space.xl,
+		paddingVertical: space.sm,
 		gap: space.sm,
 	},
 	/**

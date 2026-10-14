@@ -8,13 +8,154 @@ import {
 } from "./customization";
 
 describe("saved customization compatibility", () => {
-	test("unknown dashboard widgets fall back to the required layout", () => {
+	test("unknown dashboard widgets are dropped and the required layout is completed", () => {
 		expect(
 			resolveDashboardPreferences({
 				...DEFAULT_DASHBOARD_PREFERENCES,
 				widgets: ["shortcuts", "pulse", "retired", "catalog"],
+				metrics: ["orders"],
+				productPreviewCount: 9,
 			}),
-		).toEqual(DEFAULT_DASHBOARD_PREFERENCES);
+		).toEqual({
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			widgets: [
+				"shortcuts",
+				"pulse",
+				"insights",
+				"attention",
+				"queue",
+				"commands",
+				"catalog",
+			],
+			metrics: ["orders"],
+			productPreviewCount: 9,
+		});
+	});
+
+	test("a saved board without layouts still has shortcuts after resolve", () => {
+		const resolved = resolveDashboardPreferences({
+			version: 1,
+			widgets: ["shortcuts", "pulse", "insights", "catalog"],
+			hidden: [],
+			metrics: ["net_sales", "orders", "average_order"],
+			productPreviewCount: 3,
+			themeId: null,
+		});
+		expect(resolved.layouts.shortcuts).toBe("rail");
+		expect(resolved.shortcutIds[0]).toBe("orders");
+	});
+
+	test("a four-widget board from an older app keeps order and gains the new blocks", () => {
+		expect(
+			resolveDashboardPreferences({
+				version: 1,
+				widgets: ["catalog", "pulse", "shortcuts", "insights"],
+				hidden: ["insights"],
+				metrics: ["net_sales", "active_orders"],
+				productPreviewCount: 6,
+				themeId: "coral",
+			}),
+		).toEqual({
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			widgets: [
+				"catalog",
+				"pulse",
+				"shortcuts",
+				"insights",
+				"attention",
+				"queue",
+				"commands",
+			],
+			hidden: ["insights"],
+			metrics: ["net_sales", "active_orders"],
+			productPreviewCount: 6,
+			themeId: "coral",
+		});
+	});
+
+	test("partial layouts and shortcut lists fill in the missing keys", () => {
+		const resolved = resolveDashboardPreferences({
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			layouts: { pulse: "cards", catalog: "tiles" },
+			shortcutIds: ["orders", "reviews"],
+		});
+		expect(resolved.layouts).toEqual({
+			...DEFAULT_DASHBOARD_PREFERENCES.layouts,
+			pulse: "cards",
+			catalog: "tiles",
+		});
+		expect(resolved.shortcutIds).toEqual(["orders", "reviews"]);
+	});
+
+	test("pulse hero and stack layouts survive resolve", () => {
+		expect(
+			resolveDashboardPreferences({
+				...DEFAULT_DASHBOARD_PREFERENCES,
+				layouts: { pulse: "hero" },
+			}).layouts.pulse,
+		).toBe("hero");
+		expect(
+			resolveDashboardPreferences({
+				...DEFAULT_DASHBOARD_PREFERENCES,
+				layouts: { pulse: "stack" },
+			}).layouts.pulse,
+		).toBe("stack");
+	});
+
+	test("an invalid layout value keeps the default for that widget", () => {
+		expect(
+			resolveDashboardPreferences({
+				...DEFAULT_DASHBOARD_PREFERENCES,
+				layouts: { pulse: "neon", shortcuts: "grid" },
+			}).layouts,
+		).toEqual({
+			...DEFAULT_DASHBOARD_PREFERENCES.layouts,
+			shortcuts: "grid",
+		});
+	});
+
+	test("a saved board without widgetThemes or commandColors still resolves", () => {
+		const resolved = resolveDashboardPreferences({
+			version: 1,
+			widgets: ["shortcuts", "pulse", "insights", "catalog"],
+			hidden: [],
+			metrics: ["net_sales", "orders", "average_order"],
+			productPreviewCount: 3,
+			themeId: "coral",
+		});
+		expect(resolved.widgetThemes).toEqual(
+			DEFAULT_DASHBOARD_PREFERENCES.widgetThemes,
+		);
+		expect(resolved.commandColors).toEqual(
+			DEFAULT_DASHBOARD_PREFERENCES.commandColors,
+		);
+		expect(resolved.themeId).toBe("coral");
+	});
+
+	test("painting one widget keeps the others inheriting the panel", () => {
+		const resolved = resolveDashboardPreferences({
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			widgetThemes: { pulse: "coral" },
+			commandColors: { "add-product": "amber" },
+		});
+		expect(resolved.widgetThemes.pulse).toBe("coral");
+		expect(resolved.widgetThemes.shortcuts).toBeNull();
+		expect(resolved.widgetThemes.catalog).toBeNull();
+		expect(resolved.commandColors["add-product"]).toBe("amber");
+		expect(resolved.commandColors.promo).toBeNull();
+	});
+
+	test("an unknown palette id on a widget is dropped", () => {
+		expect(
+			resolveDashboardPreferences({
+				...DEFAULT_DASHBOARD_PREFERENCES,
+				widgetThemes: { pulse: "neon", shortcuts: "sky" },
+				commandColors: { promo: "hotpink" },
+			}).widgetThemes,
+		).toEqual({
+			...DEFAULT_DASHBOARD_PREFERENCES.widgetThemes,
+			shortcuts: "sky",
+		});
 	});
 
 	test("unknown shop sections and versions fall back to the current layout", () => {

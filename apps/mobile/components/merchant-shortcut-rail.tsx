@@ -40,12 +40,64 @@ export type MerchantShortcut = {
 
 export function MerchantShortcutRail({
 	shortcuts,
+	layout = "rail",
+	paint = false,
 }: {
 	shortcuts: MerchantShortcut[];
+	layout?: "rail" | "grid";
+	paint?: boolean;
 }) {
 	const { colors } = useTheme();
 
 	if (shortcuts.length === 0) return null;
+
+	const tiles = shortcuts.map((item) => (
+		<Pressable
+			key={item.key}
+			onPress={item.onPress}
+			accessibilityRole="button"
+			accessibilityLabel={item.label}
+			style={styles.tile}
+		>
+			{/* The disc is the visual and the word beneath names it: `accent`
+			    behind `accentForeground` ink, the palette's quiet tinted pair —
+			    the same one `./category-rail`'s tiles wear. A filled tile here
+			    would compete with the command rail's lime moment below. */}
+			<View
+				style={[
+					styles.disc,
+					{
+						backgroundColor: paint ? colors.primary : colors.muted,
+						borderColor: paint ? colors.primary : colors.border,
+					},
+				]}
+			>
+				<Ionicons
+					name={item.icon}
+					size={icon.back}
+					color={paint ? colors.primaryForeground : colors.foreground}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			</View>
+			<Text
+				variant="caption"
+				tone="muted"
+				numberOfLines={1}
+				style={styles.tileLabel}
+			>
+				{item.label}
+			</Text>
+		</Pressable>
+	));
+
+	if (layout === "grid") {
+		return (
+			<View style={styles.grid} accessibilityRole="menubar">
+				{tiles}
+			</View>
+		);
+	}
 
 	return (
 		<ScrollView
@@ -57,45 +109,7 @@ export function MerchantShortcutRail({
 			snapToInterval={TILE + space.md}
 			decelerationRate="fast"
 		>
-			{shortcuts.map((item) => (
-				<Pressable
-					key={item.key}
-					onPress={item.onPress}
-					accessibilityRole="button"
-					accessibilityLabel={item.label}
-					style={styles.tile}
-				>
-					{/* The disc is the visual and the word beneath names it: `accent`
-					    behind `accentForeground` ink, the palette's quiet tinted pair —
-					    the same one `./category-rail`'s tiles wear. A filled tile here
-					    would compete with the command rail's lime moment below. */}
-					<View
-						style={[
-							styles.disc,
-							{
-								backgroundColor: colors.muted,
-								borderColor: colors.border,
-							},
-						]}
-					>
-						<Ionicons
-							name={item.icon}
-							size={icon.back}
-							color={colors.foreground}
-							accessibilityElementsHidden
-							importantForAccessibility="no"
-						/>
-					</View>
-					<Text
-						variant="caption"
-						tone="muted"
-						numberOfLines={1}
-						style={styles.tileLabel}
-					>
-						{item.label}
-					</Text>
-				</Pressable>
-			))}
+			{tiles}
 		</ScrollView>
 	);
 }
@@ -121,4 +135,11 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	tileLabel: { textAlign: "center" },
+	grid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		paddingHorizontal: space.lg,
+		gap: space.md,
+		marginTop: space.md,
+	},
 });

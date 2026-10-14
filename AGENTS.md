@@ -1,8 +1,8 @@
 # Hermes — Agente de PymesHub
 
 > **Auto-carga:** Este archivo se inyecta al inicio de cada sesión. No requiere carga manual.
-> **Última actualización:** 2026-10-08 — stack canónico corregido a Cloudflare-only; se
-> inventarió lo que aún vive en Railway en vez de borrarlo del documento.
+> **Última actualización:** 2026-10-14 — D1: comando canónico para aplicar
+> migraciones en producción (`wrangler d1 migrations apply pymhubdb --remote --env production`).
 
 ---
 
@@ -79,6 +79,45 @@ Antes de cualquier cambio de código, Hermes debe cargar:
 8. **No usar `#` en rutas.** Pathname-based routing exclusivamente.
 9. **No mock data.** Todo debe venir de API real.
 10. **Dark theme only** para landing/marketing. Ámbar (`#F59E0B`) como único acento.
+11. **SQL nuevo en `packages/db/migrations/` no está en Cloudflare hasta que se aplique.** Un Worker desplegado no corre esas migraciones. Aplicar D1 a producción con Wrangler (abajo). No asumir que staging/prod están al día porque el SQL existe en el repo o porque los tests locales pasan (el harness de tests aplica el directorio SQL a bun:sqlite, no a D1 remota).
+12. **La app móvil habla con `https://api.pymeshub.lat`.** Un JSON de preferencias más rico (7 widgets, layouts, paint) no se guarda hasta que el Worker de producción se despliega con ese schema. Aplicar D1 no actualiza el código del Worker. Desde `packages/trpc-api`: `wrangler deploy --env production` (`bun run deploy`). Un 500/`BAD_REQUEST` al guardar el panel con código de soporte es, casi siempre, Worker viejo vs payload nuevo — no una tabla faltante.
+
+---
+
+## D1 — aplicar migraciones en Cloudflare (producción)
+
+SQL vive en `packages/db/migrations/`. Wrangler lee `packages/trpc-api/wrangler.toml`
+(`migrations_dir = ../../packages/db/migrations`). Base de producción: `pymhubdb`
+(`add40616-4e4e-4851-9f2d-0eca6380ca3b`).
+
+Desde `packages/db`, con cuenta `CLOUDFLARE_ACCOUNT_ID=a0880a963b36e3bb7150104a0fa1a613`
+(sin eso, `--env production` responde Cloudflare API 7403):
+
+```bash
+# producción — esto es "apply them to Cloudflare"
+wrangler d1 migrations apply pymhubdb --remote --env production -c ../trpc-api/wrangler.toml
+
+# equivalente
+bun run db:migrate:remote
+```
+
+Staging: `bun run db:migrate:staging` (`pymeshub-staging`, `--env staging`).
+Local Miniflare: `bun run db:migrate:local` (`pymhubdb --local`).
+
+`No migrations to apply!` significa que `d1_migrations` en esa D1 ya tiene esos
+archivos. No redefinir `[[migrations]]` Durable Object dentro de `[env.staging]` /
+`[env.production]` (reemplaza la lista). No agregar una clase a un tag DO ya aplicado.
+
+Si `0021_tiers_and_cadence.sql` falla con `SQLITE_CONSTRAINT_FOREIGNKEY` en D1
+local vacía, insertar `price_book` `launch-2026` (valores de `seed.sql`) y reaplicar.
+
+Código del Worker (producción), cuando el save del panel cambia de forma:
+
+```bash
+cd packages/trpc-api
+wrangler deploy --env production
+# equivalente: bun run deploy
+```
 
 ---
 

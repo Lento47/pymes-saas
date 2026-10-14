@@ -69,6 +69,41 @@ describe("mobile customization", () => {
 		).rejects.toThrow();
 	});
 
+	test("dashboard save accepts seven widgets, pulse layouts, and paint maps", async () => {
+		const testWorld = world();
+		const businessId = await seedBusiness(testWorld.db, {
+			id: "biz_custom_paint",
+			slug: "custom-paint",
+		});
+		const owner = await seedUser(testWorld.db, { id: "usr_custom_paint" });
+		await seedMembership(testWorld.db, owner.id, businessId, "OWNER");
+		const mine = appRouter.createCaller(await authed(testWorld, owner));
+		const configuration = {
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			layouts: {
+				...DEFAULT_DASHBOARD_PREFERENCES.layouts,
+				pulse: "hero" as const,
+			},
+			widgetThemes: {
+				...DEFAULT_DASHBOARD_PREFERENCES.widgetThemes,
+				pulse: "coral" as const,
+			},
+			commandColors: {
+				...DEFAULT_DASHBOARD_PREFERENCES.commandColors,
+				"add-product": "lime" as const,
+			},
+		};
+		const saved = await mine.business.saveDashboardPreferences({
+			businessId,
+			revision: 0,
+			configuration,
+		});
+		expect(saved.configuration.widgets).toHaveLength(7);
+		expect(saved.configuration.layouts.pulse).toBe("hero");
+		expect(saved.configuration.widgetThemes.pulse).toBe("coral");
+		expect(saved.configuration.commandColors["add-product"]).toBe("lime");
+	});
+
 	test("shop drafts are private, publishing changes the public response, and staff cannot edit", async () => {
 		const testWorld = world();
 		const businessId = await seedBusiness(testWorld.db, {

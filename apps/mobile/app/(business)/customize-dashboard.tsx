@@ -1,48 +1,132 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import type { MessageKey } from "@pymeshub/i18n";
 import {
+	type DashboardCommandId,
+	type DashboardLayouts,
+	type DashboardMetricId,
 	type DashboardPreferences,
+	type DashboardShortcutId,
+	type DashboardWidgetId,
+	DEFAULT_DASHBOARD_COMMAND_COLORS,
 	DEFAULT_DASHBOARD_PREFERENCES,
+	DEFAULT_DASHBOARD_WIDGETS,
+	dashboardCommandIdSchema,
 	dashboardMetricIdSchema,
+	dashboardShortcutIdSchema,
+	resolveDashboardPreferences,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { type ComponentProps, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
-import { Card } from "@/components/card";
+
 import {
 	CustomizationRows,
 	DashboardWidgetPreview,
+	DensityToggle,
+	ProductCountPicker,
+	PulseLayoutPicker,
+	ThemeSwatchPicker,
+	WidgetPaletteStrip,
 } from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
+import { MerchantCommandRail } from "@/components/merchant-command-rail";
 import { MerchantPulse } from "@/components/merchant-pulse";
-import { Screen, ScreenSection } from "@/components/screen";
+import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
+import { Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	businessThemeColors,
-	businessThemeOrder,
 	radius,
 	space,
 	ThemeColorsOverrideProvider,
 	useTheme,
 } from "@/theme";
 
-const LABELS = {
+const LABELS: Record<DashboardWidgetId, MessageKey> = {
 	shortcuts: "customize.shortcuts",
 	pulse: "customize.metrics",
 	insights: "customize.insights",
+	attention: "customize.attention",
+	queue: "customize.queue",
+	commands: "customize.commands",
 	catalog: "customize.catalog",
-} as const;
-const METRIC_LABELS = {
+};
+const METRIC_LABELS: Record<DashboardMetricId, MessageKey> = {
 	net_sales: "customize.netSales",
 	orders: "customize.orders",
 	average_order: "customize.averageOrder",
 	active_orders: "customize.activeOrders",
-} as const;
+};
+const SHORTCUT_LABELS: Record<DashboardShortcutId, MessageKey> = {
+	orders: "biz.nav.orders",
+	catalog: "biz.nav.products",
+	promotions: "biz.promotions.title",
+	analytics: "biz.analytics.title",
+	team: "biz.more.team",
+	payouts: "biz.more.payouts",
+	hours: "biz.settings.hours",
+	locations: "biz.locations.title",
+	reviews: "biz.reviews.title",
+};
+const SHORTCUT_ICONS: Record<
+	DashboardShortcutId,
+	ComponentProps<typeof Ionicons>["name"]
+> = {
+	orders: "receipt-outline",
+	catalog: "fast-food-outline",
+	promotions: "ticket-outline",
+	analytics: "stats-chart-outline",
+	team: "people-outline",
+	payouts: "cash-outline",
+	hours: "time-outline",
+	locations: "location-outline",
+	reviews: "star-outline",
+};
+const COMMAND_LABELS: Record<DashboardCommandId, MessageKey> = {
+	"add-product": "biz.products.add",
+	promo: "biz.promotions.title",
+	stock: "biz.products.stock",
+	hours: "biz.settings.hours",
+	pause: "biz.locations.pause",
+};
+const COMMAND_ICONS: Record<
+	DashboardCommandId,
+	ComponentProps<typeof Ionicons>["name"]
+> = {
+	"add-product": "add-outline",
+	promo: "ticket-outline",
+	stock: "cube-outline",
+	hours: "time-outline",
+	pause: "pause-outline",
+};
+const COMPACT_LAYOUTS: DashboardLayouts = {
+	shortcuts: "grid",
+	pulse: "cards",
+	insights: "stack",
+	attention: "chips",
+	queue: "compact",
+	commands: "wrap",
+	catalog: "tiles",
+};
+const DETAILED_LAYOUTS: DashboardLayouts = {
+	shortcuts: "rail",
+	pulse: "band",
+	insights: "columns",
+	attention: "list",
+	queue: "rows",
+	commands: "rail",
+	catalog: "rows",
+};
+
+function layoutsMatch(value: DashboardLayouts, target: DashboardLayouts) {
+	return DEFAULT_DASHBOARD_WIDGETS.every((id) => value[id] === target[id]);
+}
 
 export default function CustomizeDashboard() {
 	const { t, intlLocale } = useT();
@@ -55,7 +139,13 @@ export default function CustomizeDashboard() {
 	const saved = useQuery(
 		trpc.business.dashboardPreferences.queryOptions(
 			{ businessId },
-			{ enabled: !!businessId },
+			{
+				enabled: !!businessId,
+				select: (data) => ({
+					...data,
+					configuration: resolveDashboardPreferences(data.configuration),
+				}),
+			},
 		),
 	);
 	const locations = useQuery(
@@ -83,8 +173,10 @@ export default function CustomizeDashboard() {
 	const [draft, setDraft] = useState<DashboardPreferences>(
 		DEFAULT_DASHBOARD_PREFERENCES,
 	);
+	const [openId, setOpenId] = useState<DashboardWidgetId | null>(null);
 	useEffect(() => {
-		if (saved.data) setDraft(saved.data.configuration);
+		if (saved.data)
+			setDraft(resolveDashboardPreferences(saved.data.configuration));
 	}, [saved.data]);
 	const refresh = async () => {
 		await cache.invalidateQueries({
@@ -95,11 +187,59 @@ export default function CustomizeDashboard() {
 	const run = (task: Promise<unknown>) => {
 		void task.then(refresh).catch(() => {});
 	};
-	const hidden = (id: DashboardPreferences["widgets"][number]) =>
-		draft.hidden.includes(id);
+	const hidden = (id: DashboardWidgetId) => draft.hidden.includes(id);
 	const previewColors = draft.themeId
 		? businessThemeColors(draft.themeId, scheme)
 		: deviceColors;
+	const metricItems: DashboardMetricId[] = [
+		...draft.metrics,
+		...dashboardMetricIdSchema.options.filter(
+			(id) => !draft.metrics.includes(id),
+		),
+	];
+	const shortcutItems: DashboardShortcutId[] = [
+		...draft.shortcutIds,
+		...dashboardShortcutIdSchema.options.filter(
+			(id) => !draft.shortcutIds.includes(id),
+		),
+	];
+	const metricsValid =
+		draft.metrics.length >= 1 && draft.metrics.length <= 3;
+	const shortcutsValid = draft.shortcutIds.length >= 1;
+	const allCompact = layoutsMatch(draft.layouts, COMPACT_LAYOUTS);
+	const allDetailed = layoutsMatch(draft.layouts, DETAILED_LAYOUTS);
+	const paintValues = DEFAULT_DASHBOARD_WIDGETS.map(
+		(id) => draft.widgetThemes[id],
+	);
+	const allPainted =
+		paintValues.every((id) => id === paintValues[0]) &&
+		draft.themeId === paintValues[0]
+			? paintValues[0]
+			: undefined;
+	const paintedWidgets = (themeId: DashboardPreferences["themeId"]) =>
+		Object.fromEntries(
+			DEFAULT_DASHBOARD_WIDGETS.map((id) => [id, themeId]),
+		) as DashboardPreferences["widgetThemes"];
+	const sketch = (
+		id: DashboardWidgetId,
+		layout: DashboardLayouts[DashboardWidgetId] = draft.layouts[id],
+	) => (
+		<DashboardWidgetPreview
+			id={id}
+			layout={layout}
+			metricCount={draft.metrics.length}
+			productCount={draft.productPreviewCount}
+			shortcutCount={draft.shortcutIds.length}
+		/>
+	);
+	const setWidgetLayout = (
+		id: DashboardWidgetId,
+		layouts: DashboardLayouts,
+	) =>
+		setDraft({
+			...draft,
+			layouts: { ...draft.layouts, [id]: layouts[id] },
+		});
 	return (
 		<Screen
 			title={t("customize.dashboard")}
@@ -110,178 +250,347 @@ export default function CustomizeDashboard() {
 			{saved.error ? (
 				<ErrorState error={saved.error} onRetry={() => void saved.refetch()} />
 			) : null}
-			<ScreenSection title={t("customize.dashboard")}>
-				<Text variant="body" tone="muted">
-					{t("customize.saved")}
+			<Text variant="body" tone="muted">
+				{t("customize.canvasHint")}
+			</Text>
+			<ThemeSwatchPicker
+				value={draft.themeId}
+				scheme={scheme}
+				onChange={(themeId) =>
+					setDraft({
+						...draft,
+						themeId: themeId as DashboardPreferences["themeId"],
+					})
+				}
+			/>
+			<View style={styles.applyAll}>
+				<Text variant="label" bold>
+					{t("customize.paintAll")}
 				</Text>
-				<CustomizationRows
-					items={draft.widgets}
-					hidden={draft.hidden}
-					labels={LABELS}
-					onReorder={(widgets) => setDraft({ ...draft, widgets })}
-					onToggle={(id) =>
+				<WidgetPaletteStrip
+					value={allPainted}
+					scheme={scheme}
+					onChange={(themeId) =>
 						setDraft({
 							...draft,
-							hidden: hidden(id)
-								? draft.hidden.filter((one) => one !== id)
-								: [...draft.hidden, id],
+							themeId: themeId as DashboardPreferences["themeId"],
+							widgetThemes: paintedWidgets(
+								themeId as DashboardPreferences["themeId"],
+							),
+							commandColors:
+								themeId === null
+									? DEFAULT_DASHBOARD_COMMAND_COLORS
+									: draft.commandColors,
 						})
 					}
-					renderPreview={(id) => <DashboardWidgetPreview id={id} />}
 				/>
-			</ScreenSection>
-			<ScreenSection title={t("customize.metrics")}>
-				<View style={{ gap: space.xs }}>
-					{dashboardMetricIdSchema.options.map((id) => (
-						<Button
-							key={id}
-							variant="secondary"
-							label={t(METRIC_LABELS[id])}
-							selected={draft.metrics.includes(id)}
-							choiceRole="checkbox"
-							onPress={() =>
-								setDraft({
-									...draft,
-									metrics: draft.metrics.includes(id)
-										? draft.metrics.filter((item) => item !== id)
-										: [...draft.metrics, id],
-								})
-							}
-						/>
-					))}
-				</View>
-				{draft.metrics.length < 1 || draft.metrics.length > 3 ? (
-					<Text variant="caption" tone="destructive">
-						Choose one to three metrics / Elige de uno a tres números.
-					</Text>
-				) : null}
-			</ScreenSection>
-			<ScreenSection title={t("customize.productCount")}>
-				<View style={{ flexDirection: "row", gap: space.xs }}>
-					{([3, 6, 9] as const).map((count) => (
-						<Button
-							key={count}
-							variant="secondary"
-							label={String(count)}
-							selected={draft.productPreviewCount === count}
-							onPress={() => setDraft({ ...draft, productPreviewCount: count })}
-						/>
-					))}
-				</View>
-			</ScreenSection>
-			<ScreenSection title={t("customize.theme")}>
-				<View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xs }}>
-					<Button
-						variant="secondary"
-						label={t("customize.appTheme")}
-						selected={draft.themeId === null}
-						onPress={() => setDraft({ ...draft, themeId: null })}
-					/>
-					{businessThemeOrder().map((id) => (
-						<Button
-							key={id}
-							variant="secondary"
-							label={id}
-							selected={draft.themeId === id}
-							icon={
+			</View>
+			<View style={styles.applyAll}>
+				<Text variant="label" bold>
+					{t("customize.density.all")}
+				</Text>
+				<DensityToggle
+					compactSelected={allCompact}
+					detailedSelected={allDetailed}
+					onCompact={() => setDraft({ ...draft, layouts: COMPACT_LAYOUTS })}
+					onDetailed={() => setDraft({ ...draft, layouts: DETAILED_LAYOUTS })}
+					compactPreview={
+						<View style={styles.applySketch}>
+							{[0, 1, 2].map((slot) => (
 								<View
-									style={{
-										width: 16,
-										height: 16,
-										borderRadius: 8,
-										backgroundColor: businessThemeColors(id, scheme).primary,
-									}}
+									key={slot}
+									style={[styles.applyChip, { backgroundColor: deviceColors.muted }]}
 								/>
-							}
-							onPress={() => setDraft({ ...draft, themeId: id })}
+							))}
+						</View>
+					}
+					detailedPreview={
+						<View style={styles.applyStack}>
+							{[0, 1, 2].map((slot) => (
+								<View
+									key={slot}
+									style={[styles.applyBar, { backgroundColor: deviceColors.border }]}
+								/>
+							))}
+						</View>
+					}
+				/>
+				{allCompact || allDetailed ? null : (
+					<Text variant="caption" tone="muted">
+						{t("customize.saved")}
+					</Text>
+				)}
+			</View>
+			<ThemeColorsOverrideProvider colors={previewColors}>
+				<View
+					style={[
+						styles.canvas,
+						{
+							backgroundColor: previewColors.background,
+							borderColor: previewColors.border,
+						},
+					]}
+				>
+					<View
+						style={[
+							styles.identity,
+							{ backgroundColor: previewColors.foreground },
+						]}
+					>
+						<View
+							style={[
+								styles.identityDot,
+								{ backgroundColor: previewColors.background },
+							]}
 						/>
-					))}
-				</View>
-			</ScreenSection>
-			<ScreenSection title={t("customize.preview")}>
-				<ThemeColorsOverrideProvider colors={previewColors}>
-					<Card>
-						<Text variant="body" bold>
+						<Text
+							variant="caption"
+							bold
+							style={{ color: previewColors.background }}
+						>
 							{t("biz.dashboard.today")}
 						</Text>
-						{draft.widgets
-							.filter((id) => !hidden(id))
-							.map((id) => {
-								if (id === "shortcuts")
-									return (
-										<View key={id} style={styles.shortcutRow}>
-											{[
-												{
-													icon: "receipt-outline" as const,
-													label: t("biz.nav.orders"),
-												},
-												{
-													icon: "fast-food-outline" as const,
-													label: t("biz.nav.products"),
-												},
-												{
-													icon: "ticket-outline" as const,
-													label: t("biz.promotions.title"),
-												},
-											].map((shortcut) => (
-												<View key={shortcut.icon} style={styles.shortcut}>
-													<Ionicons
-														name={shortcut.icon}
-														size={20}
-														color={previewColors.foreground}
-													/>
-													<Text variant="caption" numberOfLines={1}>
-														{shortcut.label}
-													</Text>
-												</View>
-											))}
-										</View>
-									);
-								if (id === "pulse")
-									return (
-										<MerchantPulse
-											key={id}
-											data={home.data?.pulse ?? null}
-											dateLabel={new Date().toLocaleDateString(intlLocale)}
-											metrics={
-												draft.metrics.length > 0
-													? draft.metrics.slice(0, 3)
-													: DEFAULT_DASHBOARD_PREFERENCES.metrics
-											}
-										/>
-									);
-								if (id === "insights")
-									return (
-										<View key={id} style={styles.widget}>
-											<Text variant="body" bold>
-												{t("customize.insights")}
-											</Text>
-											{home.data?.insights.topProduct ? (
-												<Text variant="body">
-													{t("biz.dashboard.topProducts")}:{" "}
-													{home.data.insights.topProduct}
-												</Text>
-											) : null}
-										</View>
-									);
+					</View>
+					<CustomizationRows
+						items={draft.widgets}
+						hidden={draft.hidden}
+						labels={LABELS}
+						selected={openId}
+						onPress={(id) => setOpenId((current) => (current === id ? null : id))}
+						onReorder={(widgets) => setDraft({ ...draft, widgets })}
+						onToggle={(id) => {
+							setOpenId((current) => (current === id ? null : current));
+							setDraft({
+								...draft,
+								hidden: hidden(id)
+									? draft.hidden.filter((one) => one !== id)
+									: [...draft.hidden, id],
+							});
+						}}
+						renderPreview={(id) => {
+							const widgetThemeId = draft.widgetThemes[id];
+							const widgetColors = widgetThemeId
+								? businessThemeColors(widgetThemeId, scheme)
+								: previewColors;
+							const painted = widgetThemeId != null;
+							const preview =
+								id === "shortcuts" ? (
+									<MerchantShortcutRail
+										layout={draft.layouts.shortcuts}
+										paint={painted}
+										shortcuts={draft.shortcutIds.slice(0, 6).map((key) => ({
+											key,
+											label: t(SHORTCUT_LABELS[key]),
+											icon: SHORTCUT_ICONS[key],
+											onPress: () => {},
+										}))}
+									/>
+								) : id === "pulse" ? (
+									<MerchantPulse
+										data={home.data?.pulse ?? null}
+										dateLabel={new Date().toLocaleDateString(intlLocale)}
+										metrics={
+											draft.metrics.length > 0
+												? draft.metrics.slice(0, 3)
+												: DEFAULT_DASHBOARD_PREFERENCES.metrics
+										}
+										layout={draft.layouts.pulse}
+										paint={painted ? "accent" : "invert"}
+									/>
+								) : id === "commands" ? (
+									<MerchantCommandRail
+										layout={draft.layouts.commands}
+										actions={dashboardCommandIdSchema.options.map((key) => ({
+											key,
+											label: t(COMMAND_LABELS[key]),
+											icon: COMMAND_ICONS[key],
+											primary:
+												key === "add-product" &&
+												draft.commandColors[key] == null,
+											accent: draft.commandColors[key],
+											onPress: () => {},
+										}))}
+									/>
+								) : (
+									sketch(id)
+								);
+							return (
+								<ThemeColorsOverrideProvider colors={widgetColors}>
+									{preview}
+								</ThemeColorsOverrideProvider>
+							);
+						}}
+						renderToolbar={(id) => (
+							<>
+								<WidgetPaletteStrip
+									label={t("customize.paint")}
+									value={draft.widgetThemes[id]}
+									scheme={scheme}
+									onChange={(themeId) =>
+										setDraft({
+											...draft,
+											widgetThemes: {
+												...draft.widgetThemes,
+												[id]: themeId as DashboardPreferences["themeId"],
+											},
+										})
+									}
+								/>
+								{id === "pulse" ? (
+									<PulseLayoutPicker
+										value={draft.layouts.pulse}
+										metricCount={draft.metrics.length}
+										onChange={(pulse) =>
+											setDraft({
+												...draft,
+												layouts: { ...draft.layouts, pulse },
+											})
+										}
+									/>
+								) : (
+									<DensityToggle
+										compactSelected={
+											draft.layouts[id] === COMPACT_LAYOUTS[id]
+										}
+										onCompact={() => setWidgetLayout(id, COMPACT_LAYOUTS)}
+										onDetailed={() => setWidgetLayout(id, DETAILED_LAYOUTS)}
+										compactPreview={sketch(id, COMPACT_LAYOUTS[id])}
+										detailedPreview={sketch(id, DETAILED_LAYOUTS[id])}
+									/>
+								)}
+							</>
+						)}
+						renderInset={(id) => {
+							if (id === "shortcuts")
 								return (
-									<View key={id} style={styles.widget}>
-										<Text variant="body" bold>
-											{t("biz.nav.menu")}
+									<View style={styles.inset}>
+										<Text variant="caption" tone="muted">
+											{t("customize.shortcutsHelp")}
 										</Text>
-										{home.data?.catalog.products
-											.slice(0, draft.productPreviewCount)
-											.map((product) => (
-												<Text key={product.id} variant="body" numberOfLines={1}>
-													{product.title}
-												</Text>
-											))}
+										<CustomizationRows
+											items={shortcutItems}
+											hidden={dashboardShortcutIdSchema.options.filter(
+												(item) => !draft.shortcutIds.includes(item),
+											)}
+											labels={SHORTCUT_LABELS}
+											onReorder={(next) =>
+												setDraft({
+													...draft,
+													shortcutIds: next.filter((item) =>
+														draft.shortcutIds.includes(item),
+													),
+												})
+											}
+											onToggle={(item) => {
+												if (draft.shortcutIds.includes(item)) {
+													if (draft.shortcutIds.length <= 1) return;
+													setDraft({
+														...draft,
+														shortcutIds: draft.shortcutIds.filter(
+															(one) => one !== item,
+														),
+													});
+													return;
+												}
+												setDraft({
+													...draft,
+													shortcutIds: [...draft.shortcutIds, item],
+												});
+											}}
+										/>
 									</View>
 								);
-							})}
-					</Card>
-				</ThemeColorsOverrideProvider>
-			</ScreenSection>
+							if (id === "pulse")
+								return (
+									<View style={styles.inset}>
+										<Text variant="caption" tone="muted">
+											{t("customize.metricsWhich")}
+										</Text>
+										<Text variant="caption" tone="muted">
+											{t("customize.metricsHelp")}
+										</Text>
+										<CustomizationRows
+											items={metricItems}
+											hidden={dashboardMetricIdSchema.options.filter(
+												(item) => !draft.metrics.includes(item),
+											)}
+											labels={METRIC_LABELS}
+											onReorder={(next) =>
+												setDraft({
+													...draft,
+													metrics: next.filter((item) =>
+														draft.metrics.includes(item),
+													),
+												})
+											}
+											onToggle={(item) => {
+												if (draft.metrics.includes(item)) {
+													if (draft.metrics.length <= 1) return;
+													setDraft({
+														...draft,
+														metrics: draft.metrics.filter((one) => one !== item),
+													});
+													return;
+												}
+												if (draft.metrics.length >= 3) return;
+												setDraft({
+													...draft,
+													metrics: [...draft.metrics, item],
+												});
+											}}
+										/>
+										{metricsValid ? null : (
+											<Text variant="caption" tone="destructive">
+												{t("customize.metricsRange")}
+											</Text>
+										)}
+									</View>
+								);
+							if (id === "catalog")
+								return (
+									<View style={styles.inset}>
+										<Text variant="caption" tone="muted">
+											{t("customize.productCount")}
+										</Text>
+										<ProductCountPicker
+											value={draft.productPreviewCount}
+											onChange={(productPreviewCount) =>
+												setDraft({ ...draft, productPreviewCount })
+											}
+										/>
+									</View>
+								);
+							if (id === "commands")
+								return (
+									<View style={styles.inset}>
+										<Text variant="caption" tone="muted">
+											{t("customize.paintCommand")}
+										</Text>
+										{dashboardCommandIdSchema.options.map((key) => (
+											<WidgetPaletteStrip
+												key={key}
+												label={t(COMMAND_LABELS[key])}
+												value={draft.commandColors[key]}
+												scheme={scheme}
+												onChange={(themeId) =>
+													setDraft({
+														...draft,
+														commandColors: {
+															...draft.commandColors,
+															[key]:
+																themeId as DashboardPreferences["themeId"],
+														},
+													})
+												}
+											/>
+										))}
+									</View>
+								);
+							return null;
+						}}
+					/>
+				</View>
+			</ThemeColorsOverrideProvider>
 			{save.error || restore.error ? (
 				<ErrorState
 					error={save.error ?? restore.error}
@@ -292,8 +601,8 @@ export default function CustomizeDashboard() {
 				label={t("customize.save")}
 				disabled={
 					!saved.data ||
-					draft.metrics.length < 1 ||
-					draft.metrics.length > 3 ||
+					!metricsValid ||
+					!shortcutsValid ||
 					save.isPending
 				}
 				loading={save.isPending}
@@ -312,12 +621,37 @@ export default function CustomizeDashboard() {
 }
 
 const styles = StyleSheet.create({
-	shortcutRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-	shortcut: {
-		minWidth: 78,
-		maxWidth: 100,
-		alignItems: "center",
-		gap: space.xs,
+	applyAll: { gap: space.sm },
+	applySketch: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 4,
+		minHeight: 36,
 	},
-	widget: { gap: space.xs, borderRadius: radius.md, padding: space.sm },
+	applyChip: {
+		width: 28,
+		height: 16,
+		borderRadius: radius.full,
+	},
+	applyStack: { gap: 4, minHeight: 36, justifyContent: "center" },
+	applyBar: { height: 8, borderRadius: radius.full },
+	canvas: {
+		borderWidth: 1,
+		borderRadius: radius.lg,
+		padding: space.md,
+		gap: space.md,
+	},
+	identity: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		padding: space.sm,
+		borderRadius: radius.md,
+	},
+	identityDot: {
+		width: 22,
+		height: 22,
+		borderRadius: radius.full,
+	},
+	inset: { gap: space.sm, paddingTop: space.sm },
 });

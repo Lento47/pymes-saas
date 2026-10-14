@@ -25,6 +25,12 @@ describe("merchant home figures and names", () => {
 		expect(pulse).toContain("minimumFontScale={0.6}");
 		expect(pulse).toContain("column: { flexShrink: 1, minWidth: 0 }");
 		expect(pulse).toContain('currencyDisplay: "narrowSymbol"');
+		expect(pulse).toContain('paint?: "invert" | "accent"');
+		expect(pulse).toContain("const bandFill = accent ? colors.primary : colors.foreground");
+		expect(pulse).toContain('layout === "hero"');
+		expect(pulse).toContain('layout === "stack"');
+		expect(pulse).toContain("styles.heroLead");
+		expect(pulse).toContain("styles.stackRow");
 	});
 
 	test("menu product titles wrap fully and the row can grow", () => {
@@ -65,5 +71,20 @@ describe("merchant home figures and names", () => {
 		expect(rail).toContain("colors.muted");
 		expect(rail).toContain("colors.foreground");
 		expect(rail).not.toContain("colors.accent");
+	});
+
+	test("attention, queue, and commands are widgets the saved order can move", () => {
+		expect(home).toContain('case "attention":');
+		expect(home).toContain('case "queue":');
+		expect(home).toContain('case "commands":');
+		expect(home).toContain("configuration.layouts.pulse");
+		expect(home).toContain("configuration.shortcutIds");
+		expect(home).toContain("resolveDashboardPreferences");
+		expect(home).not.toContain(".slice(0, 1)");
+		expect(home).not.toContain(".slice(1, 3)");
+		expect(home).toContain("configuration.widgetThemes");
+		expect(home).toContain("configuration.commandColors");
+		expect(home).toContain('paint={');
+		expect(home).toContain('accent: configuration.commandColors');
 	});
 });

@@ -1,4 +1,8 @@
 import type { MessageKey } from "@pymeshub/i18n";
+import type {
+	DashboardLayouts,
+	DashboardWidgetId,
+} from "@pymeshub/shared";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -21,7 +25,15 @@ import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import { moveItem } from "@/lib/reorder";
-import { MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
+import {
+	businessThemeColors,
+	businessThemeOrder,
+	type ColorScheme,
+	MIN_TOUCH_TARGET,
+	radius,
+	space,
+	useTheme,
+} from "@/theme";
 
 import { Pressable, hitSlopFor } from "./pressable";
 import { Text } from "./text";
@@ -41,14 +53,22 @@ export function CustomizationRows<T extends string>({
 	labels,
 	onReorder,
 	onToggle,
+	onPress,
+	selected,
 	renderPreview,
+	renderToolbar,
+	renderInset,
 }: {
 	items: readonly T[];
 	hidden: readonly T[];
 	labels: Record<T, MessageKey>;
 	onReorder: (next: T[]) => void;
 	onToggle: (item: T) => void;
+	onPress?: (item: T) => void;
+	selected?: T | null;
 	renderPreview?: (item: T) => ReactNode;
+	renderToolbar?: (item: T) => ReactNode;
+	renderInset?: (item: T) => ReactNode;
 }) {
 	const { t } = useT();
 	const { colors } = useTheme();
@@ -77,8 +97,10 @@ export function CustomizationRows<T extends string>({
 					key={item}
 					editing={editing}
 					reduced={reduced}
+					selected={selected === item}
 					label={t(labels[item])}
 					onEnterEdit={enterEdit}
+					onPress={onPress ? () => onPress(item) : undefined}
 					onRemove={() => onToggle(item)}
 					onMove={(direction) =>
 						onReorder(moveItem(items, items.indexOf(item), direction, hidden))
@@ -87,6 +109,8 @@ export function CustomizationRows<T extends string>({
 					canMoveDown={index < visible.length - 1}
 				>
 					{renderPreview?.(item) ?? null}
+					{renderToolbar?.(item) ?? null}
+					{selected === item ? renderInset?.(item) : null}
 				</WidgetTile>
 			))}
 			{tucked.length > 0 ? (
@@ -144,9 +168,11 @@ export function CustomizationRows<T extends string>({
 function WidgetTile({
 	editing,
 	reduced,
+	selected,
 	label,
 	children,
 	onEnterEdit,
+	onPress,
 	onRemove,
 	onMove,
 	canMoveUp,
@@ -154,9 +180,11 @@ function WidgetTile({
 }: {
 	editing: boolean;
 	reduced: boolean;
+	selected: boolean;
 	label: string;
 	children: ReactNode;
 	onEnterEdit: () => void;
+	onPress?: () => void;
 	onRemove: () => void;
 	onMove: (direction: -1 | 1) => void;
 	canMoveUp: boolean;
@@ -201,6 +229,11 @@ function WidgetTile({
 		.onStart(() => {
 			runOnJS(onEnterEdit)();
 		});
+	const tap = Gesture.Tap()
+		.enabled(!editing && !!onPress)
+		.onEnd(() => {
+			if (onPress) runOnJS(onPress)();
+		});
 	const pan = Gesture.Pan()
 		.enabled(editing)
 		.onUpdate((event) => {
@@ -216,6 +249,9 @@ function WidgetTile({
 			drag.value = withSpring(0, spring.layout);
 			if (direction !== 0) runOnJS(move)(direction);
 		});
+	const gesture = editing
+		? Gesture.Simultaneous(longPress, pan)
+		: Gesture.Exclusive(longPress, tap);
 
 	const animated = useAnimatedStyle(() => ({
 		transform: [
@@ -226,13 +262,14 @@ function WidgetTile({
 	}));
 
 	return (
-		<GestureDetector gesture={Gesture.Simultaneous(longPress, pan)}>
+		<GestureDetector gesture={gesture}>
 			<Animated.View
 				style={[
 					styles.tile,
 					{
 						backgroundColor: colors.card,
-						borderColor: colors.border,
+						borderColor: selected ? colors.primary : colors.border,
+						borderWidth: selected ? 2 : 1,
 					},
 					animated,
 				]}
@@ -324,14 +361,35 @@ export function ShopSectionPreview({
 /** Tiny dashboard sketches so each widget looks like a different job. */
 export function DashboardWidgetPreview({
 	id,
+	layout,
+	metricCount = 3,
+	productCount = 3,
+	shortcutCount = 4,
 }: {
-	id: "shortcuts" | "pulse" | "insights" | "catalog";
+	id: DashboardWidgetId;
+	layout?: DashboardLayouts[DashboardWidgetId];
+	metricCount?: number;
+	productCount?: number;
+	shortcutCount?: number;
 }) {
 	const { colors } = useTheme();
 	if (id === "shortcuts") {
+		const count = Math.min(6, Math.max(3, shortcutCount));
+		if (layout === "grid") {
+			return (
+				<View style={styles.previewGrid}>
+					{Array.from({ length: count }, (_, slot) => (
+						<View
+							key={slot}
+							style={[styles.shortcut, { backgroundColor: colors.muted }]}
+						/>
+					))}
+				</View>
+			);
+		}
 		return (
 			<View style={styles.previewRow}>
-				{[0, 1, 2, 3].map((slot) => (
+				{Array.from({ length: Math.min(4, count) }, (_, slot) => (
 					<View
 						key={slot}
 						style={[styles.shortcut, { backgroundColor: colors.muted }]}
@@ -341,17 +399,124 @@ export function DashboardWidgetPreview({
 		);
 	}
 	if (id === "pulse") {
+		const count = Math.min(3, Math.max(1, metricCount));
+		if (layout === "hero") {
+			return (
+				<View
+					style={[
+						styles.pulseBand,
+						styles.pulseHero,
+						{ backgroundColor: colors.foreground },
+					]}
+				>
+					<View
+						style={[
+							styles.bar,
+							{
+								width: "62%",
+								height: 14,
+								backgroundColor: colors.background,
+							},
+						]}
+					/>
+					<View style={styles.previewRow}>
+						{Array.from({ length: Math.max(0, count - 1) }, (_, slot) => (
+							<View
+								key={slot}
+								style={[
+									styles.bar,
+									{
+										flex: 1,
+										height: 8,
+										backgroundColor: colors.background,
+									},
+								]}
+							/>
+						))}
+					</View>
+				</View>
+			);
+		}
+		if (layout === "stack") {
+			return (
+				<View style={styles.previewCopy}>
+					{Array.from({ length: count }, (_, slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.pulseStackRow,
+								{ borderBottomColor: colors.border },
+							]}
+						>
+							<View
+								style={[
+									styles.bar,
+									{ width: "36%", backgroundColor: colors.muted },
+								]}
+							/>
+							<View
+								style={[
+									styles.bar,
+									{
+										width: "28%",
+										height: 10,
+										backgroundColor: colors.foreground,
+									},
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
+		if (layout === "cards") {
+			return (
+				<View style={styles.previewRow}>
+					{Array.from({ length: count }, (_, slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.metricCard,
+								{
+									backgroundColor: colors.card,
+									borderColor: colors.border,
+								},
+							]}
+						>
+							<View
+								style={[
+									styles.bar,
+									{ width: "40%", backgroundColor: colors.muted },
+								]}
+							/>
+							<View
+								style={[
+									styles.bar,
+									{
+										width: "70%",
+										height: 10,
+										backgroundColor: colors.foreground,
+									},
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
 		return (
-			<View style={styles.previewRow}>
-				{[0, 1, 2].map((slot) => (
+			<View
+				style={[styles.pulseBand, { backgroundColor: colors.foreground }]}
+			>
+				{Array.from({ length: count }, (_, slot) => (
 					<View
 						key={slot}
-						style={[styles.metric, { backgroundColor: colors.muted }]}
+						style={[styles.metric, { backgroundColor: "transparent" }]}
 					>
 						<View
 							style={[
 								styles.bar,
-								{ width: "50%", backgroundColor: colors.border },
+								{ width: "50%", backgroundColor: colors.background },
 							]}
 						/>
 						<View
@@ -360,7 +525,7 @@ export function DashboardWidgetPreview({
 								{
 									width: "78%",
 									height: 8,
-									backgroundColor: colors.foreground,
+									backgroundColor: colors.background,
 								},
 							]}
 						/>
@@ -370,26 +535,184 @@ export function DashboardWidgetPreview({
 		);
 	}
 	if (id === "insights") {
+		if (layout === "stack") {
+			return (
+				<View style={styles.previewCopy}>
+					{[0, 1, 2].map((slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.insightStackRow,
+								{ borderBottomColor: colors.border },
+							]}
+						>
+							<View
+								style={[
+									styles.bar,
+									{ width: "36%", backgroundColor: colors.muted },
+								]}
+							/>
+							<View
+								style={[
+									styles.bar,
+									{ width: "58%", height: 8, backgroundColor: colors.border },
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
+		return (
+			<View style={styles.previewRow}>
+				{[0, 1, 2].map((slot) => (
+					<View key={slot} style={styles.previewCopy}>
+						<View
+							style={[
+								styles.bar,
+								{ width: "88%", height: 8, backgroundColor: colors.border },
+							]}
+						/>
+						<View
+							style={[
+								styles.bar,
+								{ width: "62%", height: 8, backgroundColor: colors.muted },
+							]}
+						/>
+					</View>
+				))}
+			</View>
+		);
+	}
+	if (id === "attention") {
+		if (layout === "chips") {
+			return (
+				<View style={styles.previewRow}>
+					{[64, 48, 56].map((width) => (
+						<View
+							key={width}
+							style={[
+								styles.chip,
+								{ width, backgroundColor: colors.muted },
+							]}
+						/>
+					))}
+				</View>
+			);
+		}
 		return (
 			<View style={styles.previewCopy}>
-				<View
-					style={[
-						styles.bar,
-						{ width: "88%", height: 8, backgroundColor: colors.border },
-					]}
-				/>
-				<View
-					style={[
-						styles.bar,
-						{ width: "62%", height: 8, backgroundColor: colors.muted },
-					]}
-				/>
+				{[0, 1].map((slot) => (
+					<View key={slot} style={styles.previewRow}>
+						<View
+							style={[
+								styles.attentionRail,
+								{ backgroundColor: colors.warning },
+							]}
+						/>
+						<View
+							style={[
+								styles.bar,
+								{ flex: 1, backgroundColor: colors.border },
+							]}
+						/>
+					</View>
+				))}
+			</View>
+		);
+	}
+	if (id === "queue") {
+		if (layout === "compact") {
+			return (
+				<View style={styles.previewCopy}>
+					{[0, 1, 2].map((slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.queueCompact,
+								{ backgroundColor: colors.muted },
+							]}
+						/>
+					))}
+				</View>
+			);
+		}
+		return (
+			<View style={styles.previewCopy}>
+				{[0, 1].map((slot) => (
+					<View key={slot} style={styles.queueRow}>
+						<View
+							style={[styles.queueMark, { backgroundColor: colors.primary }]}
+						/>
+						<View style={styles.previewCopy}>
+							<View
+								style={[
+									styles.bar,
+									{ width: "70%", backgroundColor: colors.border },
+								]}
+							/>
+							<View
+								style={[
+									styles.bar,
+									{ width: "40%", backgroundColor: colors.muted },
+								]}
+							/>
+						</View>
+					</View>
+				))}
+			</View>
+		);
+	}
+	if (id === "commands") {
+		if (layout === "wrap") {
+			return (
+				<View style={styles.previewGrid}>
+					{[0, 1, 2, 3].map((slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.commandCell,
+								{ backgroundColor: colors.muted },
+							]}
+						/>
+					))}
+				</View>
+			);
+		}
+		return (
+			<View
+				style={[styles.commandRail, { backgroundColor: colors.card }]}
+			>
+				{[0, 1, 2, 3, 4].map((slot) => (
+					<View
+						key={slot}
+						style={[
+							styles.commandDot,
+							{
+								backgroundColor:
+									slot === 0 ? colors.primary : colors.muted,
+							},
+						]}
+					/>
+				))}
+			</View>
+		);
+	}
+	if (layout === "tiles") {
+		return (
+			<View style={styles.previewRow}>
+				{Array.from({ length: Math.min(3, productCount) }, (_, slot) => (
+					<View
+						key={slot}
+						style={[styles.productTile, { backgroundColor: colors.muted }]}
+					/>
+				))}
 			</View>
 		);
 	}
 	return (
 		<View style={styles.previewCopy}>
-			{[0, 1, 2].map((slot) => (
+			{Array.from({ length: Math.min(3, productCount) }, (_, slot) => (
 				<View key={slot} style={styles.previewRow}>
 					<View
 						style={[styles.thumb, { backgroundColor: colors.muted }]}
@@ -507,6 +830,286 @@ export function HeaderStylePicker({
 	);
 }
 
+const PULSE_LAYOUT_LABELS: Record<DashboardLayouts["pulse"], MessageKey> = {
+	band: "customize.layout.band",
+	cards: "customize.layout.cards",
+	hero: "customize.layout.hero",
+	stack: "customize.layout.stack",
+};
+
+export function PulseLayoutPicker({
+	value,
+	onChange,
+	metricCount,
+}: {
+	value: DashboardLayouts["pulse"];
+	onChange: (next: DashboardLayouts["pulse"]) => void;
+	metricCount: number;
+}) {
+	const { t } = useT();
+	const card = (layout: DashboardLayouts["pulse"]) => (
+		<VisualChoiceCard
+			key={layout}
+			selected={value === layout}
+			label={t(PULSE_LAYOUT_LABELS[layout])}
+			onPress={() => onChange(layout)}
+		>
+			<DashboardWidgetPreview
+				id="pulse"
+				layout={layout}
+				metricCount={metricCount}
+				productCount={3}
+				shortcutCount={4}
+			/>
+		</VisualChoiceCard>
+	);
+	return (
+		<View style={styles.pulsePicker}>
+			<View style={styles.densityRow}>
+				{card("band")}
+				{card("cards")}
+			</View>
+			<View style={styles.densityRow}>
+				{card("hero")}
+				{card("stack")}
+			</View>
+		</View>
+	);
+}
+
+export function DensityToggle({
+	compactSelected,
+	detailedSelected = !compactSelected,
+	compactPreview,
+	detailedPreview,
+	onCompact,
+	onDetailed,
+}: {
+	compactSelected: boolean;
+	detailedSelected?: boolean;
+	compactPreview: ReactNode;
+	detailedPreview: ReactNode;
+	onCompact: () => void;
+	onDetailed: () => void;
+}) {
+	const { t } = useT();
+	return (
+		<View style={styles.densityRow}>
+			<VisualChoiceCard
+				selected={compactSelected}
+				label={t("customize.density.compact")}
+				onPress={onCompact}
+			>
+				{compactPreview}
+			</VisualChoiceCard>
+			<VisualChoiceCard
+				selected={detailedSelected}
+				label={t("customize.density.detailed")}
+				onPress={onDetailed}
+			>
+				{detailedPreview}
+			</VisualChoiceCard>
+		</View>
+	);
+}
+
+export function VisualChoiceCard({
+	selected,
+	label,
+	onPress,
+	children,
+}: {
+	selected: boolean;
+	label: string;
+	onPress: () => void;
+	children: ReactNode;
+}) {
+	const { colors } = useTheme();
+	return (
+		<Pressable
+			onPress={() => {
+				selection();
+				onPress();
+			}}
+			accessibilityRole="button"
+			accessibilityState={{ selected }}
+			accessibilityLabel={label}
+			style={[
+				styles.choiceCard,
+				{
+					borderColor: selected ? colors.primary : colors.border,
+					backgroundColor: colors.card,
+				},
+			]}
+		>
+			{children}
+			<Text variant="caption" bold numberOfLines={2}>
+				{label}
+			</Text>
+		</Pressable>
+	);
+}
+
+export function ProductCountPicker({
+	value,
+	onChange,
+}: {
+	value: 3 | 6 | 9;
+	onChange: (next: 3 | 6 | 9) => void;
+}) {
+	const { colors } = useTheme();
+	return (
+		<View style={styles.headerRow}>
+			{([3, 6, 9] as const).map((count) => (
+				<VisualChoiceCard
+					key={count}
+					selected={value === count}
+					label={String(count)}
+					onPress={() => onChange(count)}
+				>
+					<View style={styles.countSketch}>
+						{Array.from({ length: count }, (_, slot) => (
+							<View
+								key={slot}
+								style={[
+									styles.countThumb,
+									{ backgroundColor: colors.muted },
+								]}
+							/>
+						))}
+					</View>
+				</VisualChoiceCard>
+			))}
+		</View>
+	);
+}
+
+export function WidgetPaletteStrip({
+	value,
+	scheme,
+	onChange,
+	label,
+}: {
+	value: string | null | undefined;
+	scheme: ColorScheme;
+	onChange: (next: string | null) => void;
+	label?: string;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+	return (
+		<View style={styles.paletteBlock}>
+			{label ? (
+				<Text variant="caption" tone="muted">
+					{label}
+				</Text>
+			) : null}
+			<View style={styles.paletteRow}>
+				<Pressable
+					onPress={() => {
+						selection();
+						onChange(null);
+					}}
+					accessibilityRole="button"
+					accessibilityState={{ selected: value === null }}
+					accessibilityLabel={t("customize.paintInherit")}
+					style={[
+						styles.paletteDot,
+						{
+							backgroundColor: colors.muted,
+							borderColor: value === null ? colors.foreground : colors.border,
+						},
+					]}
+				/>
+				{businessThemeOrder().map((id) => {
+					const theme = businessThemeColors(id, scheme);
+					return (
+						<Pressable
+							key={id}
+							onPress={() => {
+								selection();
+								onChange(id);
+							}}
+							accessibilityRole="button"
+							accessibilityState={{ selected: value === id }}
+							accessibilityLabel={id}
+							style={[
+								styles.paletteDot,
+								{
+									backgroundColor: theme.primary,
+									borderColor:
+										value === id ? colors.foreground : theme.primary,
+								},
+							]}
+						/>
+					);
+				})}
+			</View>
+		</View>
+	);
+}
+
+export function ThemeSwatchPicker({
+	value,
+	scheme,
+	onChange,
+}: {
+	value: string | null;
+	scheme: ColorScheme;
+	onChange: (next: string | null) => void;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+	return (
+		<View style={styles.swatchWrap}>
+			<VisualChoiceCard
+				selected={value === null}
+				label={t("customize.appTheme")}
+				onPress={() => onChange(null)}
+			>
+				<View
+					style={[
+						styles.themeWash,
+						{ backgroundColor: colors.muted },
+					]}
+				>
+					<View
+						style={[
+							styles.themeBand,
+							{ backgroundColor: colors.foreground },
+						]}
+					/>
+				</View>
+			</VisualChoiceCard>
+			{businessThemeOrder().map((id) => {
+				const theme = businessThemeColors(id, scheme);
+				return (
+					<VisualChoiceCard
+						key={id}
+						selected={value === id}
+						label={id}
+						onPress={() => onChange(id)}
+					>
+						<View
+							style={[
+								styles.themeWash,
+								{ backgroundColor: theme.background },
+							]}
+						>
+							<View
+								style={[
+									styles.themeBand,
+									{ backgroundColor: theme.primary },
+								]}
+							/>
+						</View>
+					</VisualChoiceCard>
+				);
+			})}
+		</View>
+	);
+}
+
 const styles = StyleSheet.create({
 	board: { gap: space.md },
 	tile: {
@@ -614,4 +1217,126 @@ const styles = StyleSheet.create({
 		borderRadius: radius.full,
 	},
 	compactCopy: { flex: 1, gap: 4 },
+	previewGrid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.sm,
+	},
+	pulseBand: {
+		flexDirection: "row",
+		gap: space.sm,
+		padding: space.sm,
+		borderRadius: radius.md,
+	},
+	pulsePicker: { gap: space.sm },
+	pulseHero: { flexDirection: "column" },
+	pulseStackRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingBottom: space.xs,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	metricCard: {
+		flex: 1,
+		gap: space.xs,
+		padding: space.sm,
+		borderRadius: radius.md,
+		borderWidth: 1,
+	},
+	insightStackRow: {
+		gap: space.xs,
+		paddingBottom: space.xs,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	chip: {
+		height: 22,
+		borderRadius: radius.full,
+	},
+	attentionRail: {
+		width: 4,
+		height: 22,
+		borderRadius: radius.full,
+	},
+	queueRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
+	queueMark: {
+		width: 8,
+		height: 28,
+		borderRadius: radius.full,
+	},
+	queueCompact: {
+		height: 10,
+		borderRadius: radius.full,
+	},
+	commandRail: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		padding: space.sm,
+		borderRadius: radius.md,
+	},
+	commandDot: {
+		width: 22,
+		height: 22,
+		borderRadius: radius.sm,
+	},
+	commandCell: {
+		width: 36,
+		height: 28,
+		borderRadius: radius.sm,
+	},
+	choiceCard: {
+		flex: 1,
+		minWidth: 88,
+		gap: space.sm,
+		padding: space.sm,
+		borderWidth: 2,
+		borderRadius: radius.lg,
+	},
+	densityRow: { flexDirection: "row", gap: space.sm },
+	countSketch: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 4,
+		minHeight: 44,
+	},
+	countThumb: {
+		width: 18,
+		height: 18,
+		borderRadius: radius.sm,
+	},
+	swatchWrap: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.sm,
+	},
+	themeWash: {
+		height: 44,
+		borderRadius: radius.md,
+		overflow: "hidden",
+		justifyContent: "flex-end",
+	},
+	themeBand: {
+		height: 12,
+		width: "100%",
+	},
+	paletteBlock: { gap: space.xs },
+	paletteRow: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: space.sm,
+		alignItems: "center",
+	},
+	paletteDot: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		borderWidth: 2,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 });

@@ -365,6 +365,8 @@ function PulseMetric({
 	label,
 	value,
 	delta,
+	ink,
+	size = "metric",
 }: {
 	flex: number;
 	stacked?: boolean;
@@ -373,8 +375,9 @@ function PulseMetric({
 	label: string;
 	value: string;
 	delta: string | null;
+	ink: string;
+	size?: "metric" | "small";
 }) {
-	const { colors } = useTheme();
 	const reduceMotion = useReducedMotion();
 
 	const spoken = spokenColumn(label, value, delta);
@@ -386,13 +389,16 @@ function PulseMetric({
 				numberOfLines={stacked ? undefined : 1}
 				adjustsFontSizeToFit={!stacked}
 				minimumFontScale={0.6}
-				style={[styles.metricValue, { color: colors.background }]}
+				style={[
+					size === "small" ? styles.metricValueSmall : styles.metricValue,
+					{ color: ink },
+				]}
 			>
 				{value}
 			</Text>
 			<Text
 				numberOfLines={stacked ? undefined : 2}
-				style={[styles.metricLabel, { color: colors.background }]}
+				style={[styles.metricLabel, { color: ink }]}
 			>
 				{label}
 			</Text>
@@ -403,7 +409,7 @@ function PulseMetric({
 					numberOfLines={stacked ? undefined : 1}
 					adjustsFontSizeToFit={!stacked}
 					minimumFontScale={0.6}
-					style={[styles.metricDelta, { color: colors.background }]}
+					style={[styles.metricDelta, { color: ink }]}
 				>
 					{delta}
 				</Text>
@@ -449,77 +455,94 @@ export function MerchantPulse({
 	data,
 	dateLabel,
 	metrics = ["net_sales", "orders", "average_order"],
+	layout = "band",
+	paint = "invert",
 }: {
 	data: MerchantPulseData | null;
 	dateLabel: string;
 	metrics?: DashboardPreferences["metrics"];
+	layout?: DashboardPreferences["layouts"]["pulse"];
+	paint?: "invert" | "accent";
 }) {
 	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
 	const { fontScale } = useWindowDimensions();
 	const stacked = fontScale >= 1.8;
+	const cards = layout === "cards";
+	const hero = layout === "hero";
+	const tally = layout === "stack";
+	const filled = !cards && !tally;
+	const accent = paint === "accent";
+	const ink = filled
+		? accent
+			? colors.primaryForeground
+			: colors.background
+		: accent
+			? colors.primary
+			: colors.foreground;
+	const bandFill = accent ? colors.primary : colors.foreground;
+	const cardBorder = accent ? colors.primary : colors.border;
 	const columns = metrics.flatMap((id) => {
 		const found = COLUMNS.find((column) => column.id === id);
 		return found ? [found] : [];
 	});
 
-	return (
-		<View style={[styles.band, { backgroundColor: colors.foreground }]}>
+	const rule = (index: number) =>
+		index > 0 && !cards ? (
 			<View
-				style={[styles.header, stacked && { flexWrap: "wrap", gap: space.xs }]}
-			>
-				<Text style={[styles.bandTitle, { color: colors.background }]}>
-					{t("biz.dashboard.today")}
-				</Text>
-				<Text variant="caption" tabular style={{ color: colors.background }}>
-					{dateLabel}
-				</Text>
-			</View>
-			<View style={[styles.metrics, stacked && { flexDirection: "column" }]}>
-				{data === null
-					? columns.map((column, index) => (
-							<Fragment key={column.labelKey}>
-								{index > 0 ? (
-									<View
-										style={[
-											styles.rule,
-											stacked && {
-												width: "100%",
-												height: StyleSheet.hairlineWidth,
+				style={[
+					styles.rule,
+					stacked && {
+						width: "100%",
+						height: StyleSheet.hairlineWidth,
+					},
+					{ backgroundColor: colors.mutedForeground },
+				]}
+			/>
+		) : null;
+	const figures =
+		data === null
+			? columns.map((column, index) => (
+					<Fragment key={column.labelKey}>
+						{rule(index)}
+						<View
+							style={[
+								styles.column,
+								stacked ? { width: "100%" } : { flex: column.flex },
+								cards
+									? [
+											styles.card,
+											{
+												backgroundColor: colors.card,
+												borderColor: cardBorder,
 											},
-											{ backgroundColor: colors.mutedForeground },
-										]}
-									/>
-								) : null}
-								<View
-									style={[
-										styles.column,
-										stacked ? { width: "100%" } : { flex: column.flex },
-									]}
-								>
-									<Skeleton
-										style={[
-											styles.metricSkeleton,
-											{ height: pulseColumnHeight(fontScale) },
-										]}
-									/>
-								</View>
-							</Fragment>
-						))
-					: columns.map((column, index) => (
-							<Fragment key={column.labelKey}>
-								{index > 0 ? (
-									<View
-										style={[
-											styles.rule,
-											stacked && {
-												width: "100%",
-												height: StyleSheet.hairlineWidth,
-											},
-											{ backgroundColor: colors.mutedForeground },
-										]}
-									/>
-								) : null}
+										]
+									: null,
+							]}
+						>
+							<Skeleton
+								style={[
+									styles.metricSkeleton,
+									{ height: pulseColumnHeight(fontScale) },
+								]}
+							/>
+						</View>
+					</Fragment>
+				))
+			: columns.map((column, index) => (
+					<Fragment key={column.labelKey}>
+						{rule(index)}
+						{cards ? (
+							<View
+								style={[
+									styles.card,
+									stacked ? { width: "100%" } : { flex: column.flex },
+									{
+										backgroundColor: colors.card,
+										borderColor: cardBorder,
+									},
+								]}
+							>
 								<PulseMetric
 									flex={column.flex}
 									stacked={stacked}
@@ -527,9 +550,229 @@ export function MerchantPulse({
 									label={t(column.labelKey)}
 									value={column.value(data, intlLocale)}
 									delta={column.delta(data, intlLocale)}
+									ink={ink}
 								/>
-							</Fragment>
+							</View>
+						) : (
+							<PulseMetric
+								flex={column.flex}
+								stacked={stacked}
+								index={index}
+								label={t(column.labelKey)}
+								value={column.value(data, intlLocale)}
+								delta={column.delta(data, intlLocale)}
+								ink={ink}
+							/>
+						)}
+					</Fragment>
+				));
+
+	if (hero) {
+		const lead = columns[0];
+		const rest = columns.slice(1);
+		if (!lead) return null;
+		return (
+			<View style={[styles.band, { backgroundColor: bandFill }]}>
+				<View
+					style={[
+						styles.header,
+						stacked && { flexWrap: "wrap", gap: space.xs },
+					]}
+				>
+					<Text style={[styles.bandTitle, { color: ink }]}>
+						{t("biz.dashboard.today")}
+					</Text>
+					<Text variant="caption" tabular style={{ color: ink }}>
+						{dateLabel}
+					</Text>
+				</View>
+				<View style={styles.heroLead}>
+					{data === null ? (
+						<Skeleton
+							style={[
+								styles.metricSkeleton,
+								{ height: pulseColumnHeight(fontScale) },
+							]}
+						/>
+					) : (
+						<PulseMetric
+							flex={lead.flex}
+							stacked
+							index={0}
+							label={t(lead.labelKey)}
+							value={lead.value(data, intlLocale)}
+							delta={lead.delta(data, intlLocale)}
+							ink={ink}
+						/>
+					)}
+				</View>
+				{rest.length > 0 ? (
+					<View
+						style={[
+							styles.heroRest,
+							stacked && { flexDirection: "column" },
+						]}
+					>
+						{rest.map((column, index) => (
+							<View
+								key={column.labelKey}
+								style={stacked ? { width: "100%" as const } : { flex: 1 }}
+							>
+								{data === null ? (
+									<Skeleton
+										style={[
+											styles.metricSkeleton,
+											{ height: pulseColumnHeight(fontScale) * 0.6 },
+										]}
+									/>
+								) : (
+									<PulseMetric
+										flex={column.flex}
+										stacked={stacked}
+										index={index + 1}
+										label={t(column.labelKey)}
+										value={column.value(data, intlLocale)}
+										delta={column.delta(data, intlLocale)}
+										ink={ink}
+										size="small"
+									/>
+								)}
+							</View>
 						))}
+					</View>
+				) : null}
+			</View>
+		);
+	}
+
+	if (tally) {
+		return (
+			<View
+				style={[
+					styles.stackBlock,
+					{
+						backgroundColor: colors.card,
+						borderColor: cardBorder,
+					},
+				]}
+			>
+				<View
+					style={[
+						styles.header,
+						stacked && { flexWrap: "wrap", gap: space.xs },
+					]}
+				>
+					<Text style={[styles.bandTitle, { color: ink }]}>
+						{t("biz.dashboard.today")}
+					</Text>
+					<Text
+						variant="caption"
+						tabular
+						style={{ color: colors.mutedForeground }}
+					>
+						{dateLabel}
+					</Text>
+				</View>
+				{columns.map((column) => {
+					const spoken = spokenColumn(
+						t(column.labelKey),
+						data === null ? "" : column.value(data, intlLocale),
+						data === null ? null : column.delta(data, intlLocale),
+					);
+					return (
+						<View
+							key={column.labelKey}
+							style={[
+								styles.stackRow,
+								{ borderBottomColor: cardBorder },
+							]}
+							accessible
+							accessibilityRole="text"
+							accessibilityLabel={spoken}
+						>
+							<View style={styles.stackCopy}>
+								<Text
+									style={[
+										styles.metricLabel,
+										{ color: ink, marginTop: 0 },
+									]}
+								>
+									{t(column.labelKey)}
+								</Text>
+								{data === null ||
+								column.delta(data, intlLocale) === null ? null : (
+									<Text
+										variant="caption"
+										tabular
+										style={{ color: ink }}
+									>
+										{column.delta(data, intlLocale)}
+									</Text>
+								)}
+							</View>
+							{data === null ? (
+								<Skeleton
+									style={[
+										styles.metricSkeleton,
+										{ width: 72, height: merchantType.metricSmall.lineHeight },
+									]}
+								/>
+							) : (
+								<Text
+									tabular
+									style={[styles.metricValueSmall, { color: ink }]}
+								>
+									{column.value(data, intlLocale)}
+								</Text>
+							)}
+						</View>
+					);
+				})}
+			</View>
+		);
+	}
+
+	if (cards) {
+		return (
+			<View style={styles.cardsBlock}>
+				<View
+					style={[
+						styles.header,
+						stacked && { flexWrap: "wrap", gap: space.xs },
+					]}
+				>
+					<Text style={[styles.bandTitle, { color: ink }]}>
+						{t("biz.dashboard.today")}
+					</Text>
+					<Text
+						variant="caption"
+						tabular
+						style={{ color: colors.mutedForeground }}
+					>
+						{dateLabel}
+					</Text>
+				</View>
+				<View style={[styles.metrics, stacked && { flexDirection: "column" }]}>
+					{figures}
+				</View>
+			</View>
+		);
+	}
+
+	return (
+		<View style={[styles.band, { backgroundColor: bandFill }]}>
+			<View
+				style={[styles.header, stacked && { flexWrap: "wrap", gap: space.xs }]}
+			>
+				<Text style={[styles.bandTitle, { color: ink }]}>
+					{t("biz.dashboard.today")}
+				</Text>
+				<Text variant="caption" tabular style={{ color: ink }}>
+					{dateLabel}
+				</Text>
+			</View>
+			<View style={[styles.metrics, stacked && { flexDirection: "column" }]}>
+				{figures}
 			</View>
 		</View>
 	);
@@ -578,6 +821,30 @@ const styles = StyleSheet.create({
 	metricSkeleton: { width: METRIC_SKELETON_WIDTH },
 	/** The figure, at `merchantType.metric` with `tabular-nums` — which `theme/merchant.ts` asks every call site to add, and `./text`'s `tabular` does. */
 	metricValue: { ...merchantType.metric, fontWeight: weight.bold },
+	metricValueSmall: { ...merchantType.metricSmall, fontWeight: weight.bold },
+	heroLead: { marginTop: space.md },
+	heroRest: {
+		flexDirection: "row",
+		gap: space.sm,
+		marginTop: space.md,
+	},
+	stackBlock: {
+		marginHorizontal: space.lg,
+		borderRadius: radius.xl,
+		borderWidth: 1,
+		paddingHorizontal: space.xl,
+		paddingVertical: space.lg,
+		gap: space.sm,
+	},
+	stackRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: space.md,
+		paddingVertical: space.sm,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+	},
+	stackCopy: { flex: 1, minWidth: 0, gap: space.xs },
 	metricLabel: {
 		...PULSE_SMALL,
 		marginTop: space.xs,
@@ -586,4 +853,14 @@ const styles = StyleSheet.create({
 	},
 	/** The delta rides `TEXT_STACK_GAP` — the gap *inside* one text stack, which is what a figure and its change against yesterday are. */
 	metricDelta: { marginTop: TEXT_STACK_GAP, fontWeight: weight.bold },
+	cardsBlock: {
+		marginHorizontal: space.lg,
+		gap: space.md,
+	},
+	card: {
+		borderWidth: 1,
+		borderRadius: radius.lg,
+		padding: space.md,
+		minWidth: 0,
+	},
 });

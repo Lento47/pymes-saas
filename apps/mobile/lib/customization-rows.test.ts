@@ -82,6 +82,17 @@ describe("reorder helper", () => {
 });
 
 describe("personalization board", () => {
+	test("a tap opens a tile and compact/detailed are two pictures", () => {
+		expect(board).toContain("Gesture.Tap()");
+		expect(board).toContain("export function DensityToggle");
+		expect(exportedFn(board, "DensityToggle")).toContain(
+			't("customize.density.compact")',
+		);
+		expect(exportedFn(board, "DensityToggle")).toContain(
+			't("customize.density.detailed")',
+		);
+	});
+
 	test("holds to edit, jiggles, X removes, and + wells add hidden blocks", () => {
 		expect(board).toContain("Gesture.LongPress()");
 		expect(board).toContain("Gesture.Pan()");
@@ -147,6 +158,60 @@ describe("visual variations", () => {
 		expect(insights).not.toContain("styles.thumb");
 	});
 
+	test("attention, queue, and commands use sketches the four original widgets do not", () => {
+		const dash = exportedFn(board, "DashboardWidgetPreview");
+		const attention = idBranch(dash, "attention");
+		const queue = idBranch(dash, "queue");
+		const commands = idBranch(dash, "commands");
+
+		expect(attention).toContain("styles.attentionRail");
+		expect(attention).toContain("styles.chip");
+		expect(queue).not.toContain("styles.attentionRail");
+		expect(commands).not.toContain("styles.attentionRail");
+
+		expect(queue).toContain("styles.queueRow");
+		expect(queue).toContain("styles.queueCompact");
+		expect(attention).not.toContain("styles.queueRow");
+		expect(commands).not.toContain("styles.queueRow");
+
+		expect(commands).toContain("styles.commandRail");
+		expect(commands).toContain("styles.commandDot");
+		expect(attention).not.toContain("styles.commandRail");
+		expect(queue).not.toContain("styles.commandRail");
+	});
+
+	test("pulse, catalog, and shortcut sketches change with the chosen layout", () => {
+		const dash = exportedFn(board, "DashboardWidgetPreview");
+		expect(idBranch(dash, "pulse")).toContain('layout === "cards"');
+		expect(idBranch(dash, "pulse")).toContain('layout === "hero"');
+		expect(idBranch(dash, "pulse")).toContain('layout === "stack"');
+		expect(idBranch(dash, "pulse")).toContain("styles.pulseBand");
+		expect(idBranch(dash, "pulse")).toContain("styles.pulseHero");
+		expect(idBranch(dash, "pulse")).toContain("styles.pulseStackRow");
+		expect(idBranch(dash, "shortcuts")).toContain('layout === "grid"');
+		expect(idBranch(dash, "insights")).toContain('layout === "stack"');
+		expect(dash).toContain('layout === "tiles"');
+	});
+
+	test("product count and theme are pictures rather than text-only buttons", () => {
+		expect(board).toContain("export function ProductCountPicker");
+		expect(board).toContain("export function ThemeSwatchPicker");
+		expect(exportedFn(board, "ProductCountPicker")).toContain("styles.countThumb");
+		expect(exportedFn(board, "ThemeSwatchPicker")).toContain("styles.themeWash");
+		expect(exportedFn(board, "ThemeSwatchPicker")).toContain("businessThemeColors");
+	});
+
+	test("each widget can pick a named palette well", () => {
+		expect(board).toContain("export function WidgetPaletteStrip");
+		expect(exportedFn(board, "WidgetPaletteStrip")).toContain("styles.paletteDot");
+		expect(exportedFn(board, "WidgetPaletteStrip")).toContain(
+			't("customize.paintInherit")',
+		);
+		expect(exportedFn(board, "WidgetPaletteStrip")).toContain(
+			"businessThemeOrder()",
+		);
+	});
+
 	test("cover and compact are two different header pictures", () => {
 		const header = exportedFn(board, "HeaderStylePicker");
 		expect(header).toContain("styles.coverSketch");
@@ -178,12 +243,29 @@ describe("customize screens", () => {
 	test("dashboard board gets widget sketches and writes widgets plus hidden", () => {
 		expect(dashScreen).toContain("<CustomizationRows");
 		expect(dashScreen).toContain(
-			"renderPreview={(id) => <DashboardWidgetPreview id={id} />}",
-		);
-		expect(dashScreen).toContain(
 			"onReorder={(widgets) => setDraft({ ...draft, widgets })}",
 		);
 		expect(dashScreen).toContain("hidden: hidden(id)");
 		expect(dashScreen).toContain("[...draft.hidden, id]");
+		expect(dashScreen).toContain("shortcutIds");
+		expect(dashScreen).toContain("<ProductCountPicker");
+		expect(dashScreen).toContain("<ThemeSwatchPicker");
+		expect(dashScreen).toContain("COMPACT_LAYOUTS");
+		expect(dashScreen).toContain("DETAILED_LAYOUTS");
+		expect(dashScreen).toContain("<DensityToggle");
+		expect(dashScreen).toContain("<PulseLayoutPicker");
+		expect(board).toContain("export function PulseLayoutPicker");
+		expect(dashScreen).toContain("styles.canvas");
+		expect(dashScreen).not.toContain("<ScreenSection");
+		expect(dashScreen).toContain("resolveDashboardPreferences");
+		expect(dashScreen).toContain("SHORTCUT_ICONS");
+		expect(dashScreen).not.toContain("ellipse-outline");
+		expect(dashScreen).not.toContain('choiceRole="checkbox"');
+		expect(dashScreen).toContain("widgetThemes");
+		expect(dashScreen).toContain("commandColors");
+		expect(dashScreen).toContain("<WidgetPaletteStrip");
+		expect(dashScreen).toContain('t("customize.paintAll")');
+		expect(dashScreen).toContain('t("customize.paintCommand")');
+		expect(dashScreen).toContain("paint={painted ? \"accent\" : \"invert\"}");
 	});
 });
