@@ -261,6 +261,19 @@ export const business = {
 	"biz.products.compareAt": "Precio anterior",
 	"biz.products.compareAt.rule": "Tiene que ser mayor que el precio.",
 	"biz.products.category": "Categoría",
+	"biz.products.category.new": "Nueva categoría",
+	"biz.products.category.manage": "Administrar categorías",
+	"biz.products.category.rename": "Renombrar",
+	"biz.products.category.delete": "Eliminar",
+	"biz.products.category.name": "Nombre de la categoría",
+	"biz.products.category.save": "Guardar categoría",
+	"biz.products.category.none": "Sin categoría",
+	"biz.products.category.optional": "Categoría de tu negocio (opcional)",
+	"biz.products.category.deletePrompt": "¿Eliminar {name}?",
+	"biz.products.category.reassign":
+		"Reasigna sus productos antes de eliminarla:",
+	"biz.products.category.createFirst":
+		"Crea otra categoría para poder reasignar los productos.",
 	/*
 	 * Bajo el selector de categoría del formulario de producto. La lista de al lado ya está
 	 * acotada al giro del negocio — un negocio de comida ve categorías de comida, uno de

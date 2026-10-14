@@ -5,6 +5,7 @@ import {
 } from "@pymeshub/shared";
 import { z } from "zod";
 import { assertRole } from "../services/helpers";
+import * as merchantCategories from "../services/merchant-categories";
 import * as products from "../services/products";
 import { businessProcedure, publicProcedure, router } from "../trpc";
 
@@ -30,6 +31,39 @@ import { businessProcedure, publicProcedure, router } from "../trpc";
 const scopedProduct = <T extends z.ZodTypeAny>(schema: T) =>
 	z.intersection(z.object({ businessId: z.string() }), schema);
 export const productsRouter = router({
+	merchantCategories: businessProcedure("products:read")
+		.input(z.object({ businessId: z.string() }))
+		.query(({ ctx }) => merchantCategories.list(ctx)),
+	createMerchantCategory: businessProcedure("products:write")
+		.input(
+			z.object({
+				businessId: z.string(),
+				name: z.string().trim().min(1).max(60),
+			}),
+		)
+		.mutation(({ ctx, input }) => merchantCategories.create(ctx, input.name)),
+	renameMerchantCategory: businessProcedure("products:write")
+		.input(
+			z.object({
+				businessId: z.string(),
+				id: z.string(),
+				name: z.string().trim().min(1).max(60),
+			}),
+		)
+		.mutation(({ ctx, input }) =>
+			merchantCategories.rename(ctx, input.id, input.name),
+		),
+	deleteMerchantCategory: businessProcedure("products:write")
+		.input(
+			z.object({
+				businessId: z.string(),
+				id: z.string(),
+				reassignToId: z.string().optional(),
+			}),
+		)
+		.mutation(({ ctx, input }) =>
+			merchantCategories.remove(ctx, input.id, input.reassignToId),
+		),
 	byId: publicProcedure
 		.input(z.object({ id: z.string() }))
 		.query(({ ctx, input }) => products.byId(ctx, input)),

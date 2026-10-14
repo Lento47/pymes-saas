@@ -25,6 +25,7 @@ export const ID_PREFIXES = {
 	deliveryRating: "drt",
 	address: "adr",
 	category: "cat",
+	merchantCategory: "mct",
 	product: "prd",
 	variant: "var",
 	optionGroup: "ogp",

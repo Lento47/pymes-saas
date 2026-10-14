@@ -242,6 +242,18 @@ export const business = {
 	"biz.products.compareAt": "Previous price",
 	"biz.products.compareAt.rule": "It has to be more than the price.",
 	"biz.products.category": "Category",
+	"biz.products.category.new": "New category",
+	"biz.products.category.manage": "Manage categories",
+	"biz.products.category.rename": "Rename",
+	"biz.products.category.delete": "Delete",
+	"biz.products.category.name": "Category name",
+	"biz.products.category.save": "Save category",
+	"biz.products.category.none": "No category",
+	"biz.products.category.optional": "Your business category (optional)",
+	"biz.products.category.deletePrompt": "Delete {name}?",
+	"biz.products.category.reassign": "Reassign its products before deleting:",
+	"biz.products.category.createFirst":
+		"Create another category to reassign these products.",
 	/*
 	 * Under the product form's category picker. The list beside it is already narrowed to
 	 * the shop's own vertical — a food shop's products file under food categories, a phone

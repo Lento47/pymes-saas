@@ -440,6 +440,7 @@ export function productDetailOf(input: {
 		...productCardOf(input.product, input.business),
 		images: (input.product.images ?? []) as string[],
 		categoryId: input.product.categoryId,
+		merchantCategoryId: input.product.merchantCategoryId,
 		categoryName: input.categoryName,
 		categoryNameEn: input.categoryNameEn,
 		sku: input.product.sku,

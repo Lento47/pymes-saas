@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { localizedName } from "@pymeshub/i18n";
 import {
 	useInfiniteQuery,
+	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
 import { PaginatedList } from "@/components/paginated-list";
 import { Pressable } from "@/components/pressable";
@@ -31,7 +32,7 @@ import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
 import { Text } from "@/components/text";
-import { categoryPickerRows } from "@/lib/category-scope";
+import { useApiFailure } from "@/lib/api-error";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
@@ -39,67 +40,8 @@ import { useTRPC } from "@/lib/trpc/context";
 import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
 
 /**
- * The shop's menu: what the business sells, and the door to changing it.
- *
- * ## The read is the public one, and the reason is written down in the web app
- *
- * `products.list` with `businessId` is not a dashboard procedure. It is the *public*
- * catalogue read, and it is the one this screen stays on even though a
- * business-scoped read exists: the member-only `status` filter on this same
- * procedure, plus `products.detail` for one row. This menu shows the published
- * shelf by decision rather than by necessity — a draft created here would
- * vanish from the menu that created it (see the form), so the menu shows what
- * the customers see and the form creates what the menu can hold. What
- * `products.list` does have is an exemption - a caller who is a *member* of
- * the shop it was asked about skips the `publicBusiness()` filter - and the
- * two notes below are what that exemption buys.
- *
- * - **The exemption is what makes this screen work for a shop that has not
- *   opened yet.** A caller who is a *member* of the shop it was asked about
- *   skips the `publicBusiness()` filter, so a shop that is `DRAFT`, `CLOSED` or
- *   `SUSPENDED` still shows its own team the menu
- *   (`apps/api/src/services/products.ts`). The member `status` filter the same
- *   procedure carries is deliberately left alone here, for the reason above.
- * - **`archivedAt IS NULL` is unconditional.** So the world this screen can see
- *   is *published and not archived*, and nothing else. `biz.products.status.DRAFT`,
- *   `biz.products.status.ARCHIVED` and `biz.products.filter.hidden` are landed keys that this
- *   screen deliberately does not draw: a filter for rows the read cannot return is a control
- *   that answers "nothing here" every time it is used, and a status chip that can only ever
- *   read "Publicado" states a fact rather than offering a choice.
- *
- * The consequence lands on the *create* path, and `apps/web` already decided it rather
- * than re-deriving it (`apps/web/components/business/product-form.tsx:45`): the member
- * read could reopen a draft, but this menu would not show it, so the honest create path
- * is still the one that ends with a product the owner can still see.
- *
- * ## The row is `./business-product-row`, and it is not the customer row
- *
- * A menu row for the customer and a menu row for the owner used to be one object -
- * `ProductRow` with a different `onPress` - and that read as one menu wearing two
- * labels: the owner saw the photo, the rating and the discount, which are the
- * customer's facts, and nothing of their own. The owner row answers a different
- * question ("what state is it in") with the name, the price and the availability
- * word, and its tap opens the form instead of the storefront. Same `ListRow`
- * family, none of the merchandising - which is what makes the two menus two.
- *
- * ## Two pickers, and both are the sheet-of-`ListRow`s this app already owns
- *
- * Every shop on the account is a shop this screen can be pointed at, and the choice travels
- * in the route when a product is opened, so it is made here once rather than re-derived by
- * the form. A single shop skips the picker entirely — a control with one option is a label.
- *
- * The category filter is `products.list`'s own `categoryId` and not a filter applied to a
- * loaded page: the API narrows in SQL (`docs/api.md`), and a client that filtered its first
- * twenty rows would report an empty category to an owner whose twenty-first product is in it.
- * "Todos" is the absence of the parameter rather than a value, which is the same shape the
- * input has.
- *
- * The list inside that sheet is the shop's vertical and nothing else — `@/lib/category-scope`
- * owns the rule. A shop is filed on a leaf of the taxonomy (`assertLeafCategory` refuses a
- * sector), so its vertical is that leaf's parent: a bakery filters by "Food & Beverage"'s
- * children, a phone shop by "Electronics & Technology"'s. The help line under the filter row
- * names that vertical (`biz.products.category.help`), because a filter list that is suddenly
- * ten rows long reads as one with rows missing unless the reason is beside it.
+ * Merchant menu. Todos is the unfiltered product list; the other tabs are
+ * categories created by this business. Marketplace taxonomy remains separate.
  */
 
 /**
@@ -126,9 +68,9 @@ export default function ProductsScreen() {
  * the query, which puts the two halves of one screen in two places to save nothing.
  */
 function Menu() {
-	const { t, tp, locale } = useT();
+	const { t, tp } = useT();
 	const trpc = useTRPC();
-	const _cache = useQueryClient();
+	const cache = useQueryClient();
 	const { colors } = useTheme();
 	const merchantScope = useMerchantScope();
 
@@ -151,6 +93,15 @@ function Menu() {
 
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [shopOpen, setShopOpen] = useState(false);
+	const [categoryOpen, setCategoryOpen] = useState(false);
+	const [categoryMode, setCategoryMode] = useState<
+		"list" | "create" | "rename" | "delete"
+	>("list");
+	const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+		null,
+	);
+	const [categoryName, setCategoryName] = useState("");
+	const [reassignToId, setReassignToId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	/**
 	 * Whether the header is drawing its field or its title. `interface.md` §49: the
@@ -159,39 +110,59 @@ function Menu() {
 	 */
 	const [searchOpen, setSearchOpen] = useState(false);
 
-	// The shop's own `categoryId` — a leaf — is what scopes the filter to this shop's
-	// vertical and names it on the row's help line (`@/lib/category-scope`). The read is
-	// `business.settings` rather than a field on `myBusinesses`, so the memberships list stays
-	// the five facts a switcher needs and the one fact only this filter wants rides with the
-	// one screen that wants it.
-	const settings = useQuery(
-		trpc.business.settings.queryOptions(
+	const categories = useQuery(
+		trpc.products.merchantCategories.queryOptions(
 			{ businessId: shop?.businessId ?? "" },
 			{ enabled: shop !== undefined },
 		),
 	);
+	const pickerRows = categories.data ?? [];
 
-	const categories = useQuery(trpc.catalog.categories.queryOptions());
-	const all = categories.data ?? [];
-
-	/*
-	 * The filter panel draws this shop's vertical and nothing else — see `@/lib/category-scope`,
-	 * which owns both the scoping rule and the shape of the list it returns. A shop with a
-	 * readable category gets its sector's children flat (about ten rows); the expansion below
-	 * is only the fallback for a shop the read cannot name a vertical for, and it is derived
-	 * from the filter rather than held in its own state so the panel opens on the branch the
-	 * list is already narrowed to.
-	 */
-	const pickerRows = categoryPickerRows(all, {
-		businessCategoryId: settings.data?.categoryId ?? null,
-		chosenId: categoryId,
-	});
+	const refreshCategories = () => {
+		void cache.invalidateQueries({
+			queryKey: trpc.products.merchantCategories.pathKey(),
+		});
+		void cache.invalidateQueries({ queryKey: trpc.products.list.pathKey() });
+		void cache.invalidateQueries({ queryKey: trpc.products.detail.pathKey() });
+	};
+	const createCategory = useMutation(
+		trpc.products.createMerchantCategory.mutationOptions({
+			onSuccess: () => {
+				refreshCategories();
+				setCategoryMode("list");
+				setCategoryName("");
+			},
+		}),
+	);
+	const renameCategory = useMutation(
+		trpc.products.renameMerchantCategory.mutationOptions({
+			onSuccess: () => {
+				refreshCategories();
+				setCategoryMode("list");
+			},
+		}),
+	);
+	const deleteCategory = useMutation(
+		trpc.products.deleteMerchantCategory.mutationOptions({
+			onSuccess: () => {
+				refreshCategories();
+				setCategoryId(null);
+				setCategoryMode("list");
+			},
+		}),
+	);
+	const categoryError = useApiFailure(
+		createCategory.error ?? renameCategory.error ?? deleteCategory.error,
+	);
+	const editingCategory = pickerRows.find(
+		(row) => row.id === editingCategoryId,
+	);
 
 	const products = useInfiniteQuery(
 		trpc.products.list.infiniteQueryOptions(
 			{
 				businessId: shop?.businessId ?? "",
-				categoryId: categoryId ?? undefined,
+				merchantCategoryId: categoryId ?? undefined,
 				search: search.trim() || undefined,
 				// `sortDirection` is left alone: `products.list` defaults to `desc`, and the
 				// reserved key is `direction` — see `productListInput`'s docblock.
@@ -206,18 +177,15 @@ function Menu() {
 		),
 	);
 
-	// `categories` and `settings` are in the hold with the other two because the filter row
+	// `categories` are in the hold with the other two because the filter row
 	// is part of the header: a wait that cleared before either answered would land the row
 	// after the list and push the first row down — the late arrival the hold exists to hold
-	// back. The predicate is `isLoading` and not `isPending`: `products` and `settings` are
+	// back. The predicate is `isLoading` and not `isPending`: `products` are
 	// `enabled: shop !== undefined`, and a disabled query reports `isPending` forever, which
 	// would hold the skeleton up on the account-with-no-shop path this screen has an empty
 	// state for. `isLoading` is the one that means "an enabled read is still on the network".
 	const waiting = useSkeletonHold(
-		shops.isLoading ||
-			products.isLoading ||
-			categories.isLoading ||
-			settings.isLoading,
+		shops.isLoading || products.isLoading || categories.isLoading,
 	);
 
 	const items = useMemo(
@@ -368,17 +336,16 @@ moves to (`./switch`'s contract) instead of saying "search" in both.
 								{/* The taxonomy read failing is its own sentence, not an empty list:
 								    the filter quietly vanishing would be a control an owner cannot
 								    tell from one that was never there. */}
-								{categories.isError || settings.isError ? (
+								{categories.isError ? (
 									<View style={styles.pad}>
 										<ErrorState
-											error={categories.error ?? settings.error}
+											error={categories.error}
 											onRetry={() => {
 												void categories.refetch();
-												void settings.refetch();
 											}}
 										/>
 									</View>
-								) : pickerRows.length > 0 ? (
+								) : (
 									<ScrollView
 										horizontal
 										showsHorizontalScrollIndicator={false}
@@ -395,7 +362,7 @@ moves to (`./switch`'s contract) instead of saying "search" in both.
 										{pickerRows.map((row) => (
 											<CategoryTab
 												key={row.id}
-												label={localizedName(row, locale)}
+												label={row.name}
 												selected={row.id === categoryId}
 												onPress={() => {
 													if (row.id !== categoryId) selection();
@@ -403,7 +370,30 @@ moves to (`./switch`'s contract) instead of saying "search" in both.
 												}}
 											/>
 										))}
+										<CategoryTab
+											label={t("biz.products.category.new")}
+											selected={false}
+											onPress={() => {
+												setCategoryMode("create");
+												setCategoryName("");
+												setCategoryOpen(true);
+											}}
+										/>
 									</ScrollView>
+								)}
+								{!categories.isError ? (
+									<Pressable
+										style={styles.manageCategories}
+										onPress={() => {
+											setCategoryMode("list");
+											setCategoryOpen(true);
+										}}
+										accessibilityRole="button"
+									>
+										<Text variant="caption" tone="action">
+											{t("biz.products.category.manage")}
+										</Text>
+									</Pressable>
 								) : null}
 
 								<View style={styles.pad}>
@@ -455,6 +445,156 @@ moves to (`./switch`'s contract) instead of saying "search" in both.
 			{/* Mounted last and as a sibling of the scroller, which is what `./sheet` needs —
 			    it has no portal. Both stay mounted so their exits play; closed they draw
 			    nothing. */}
+			<Sheet
+				open={categoryOpen}
+				onClose={() => setCategoryOpen(false)}
+				title={t("biz.products.category.manage")}
+				closeLabel={t("action.close")}
+				avoidKeyboard
+				snapPoints={[0.65, 0.9]}
+			>
+				<View style={styles.categoryManager}>
+					{categoryMode === "list" ? (
+						<>
+							<Button
+								label={t("biz.products.category.new")}
+								onPress={() => {
+									setCategoryName("");
+									setCategoryMode("create");
+								}}
+							/>
+							{pickerRows.map((row) => (
+								<View key={row.id} style={styles.categoryManageRow}>
+									<View style={styles.categoryManageCopy}>
+										<Text bold>{row.name}</Text>
+										<Text variant="caption" tone="muted">
+											{tp("biz.catalog.count", row.productCount)}
+										</Text>
+									</View>
+									<Button
+										size="sm"
+										variant="ghost"
+										label={t("biz.products.category.rename")}
+										onPress={() => {
+											setEditingCategoryId(row.id);
+											setCategoryName(row.name);
+											setCategoryMode("rename");
+										}}
+									/>
+									<Button
+										size="sm"
+										variant="ghost"
+										label={t("biz.products.category.delete")}
+										onPress={() => {
+											setEditingCategoryId(row.id);
+											setReassignToId(null);
+											setCategoryMode("delete");
+										}}
+									/>
+								</View>
+							))}
+						</>
+					) : null}
+					{categoryMode === "create" || categoryMode === "rename" ? (
+						<>
+							<Field
+								label={t("biz.products.category.name")}
+								value={categoryName}
+								onChangeText={setCategoryName}
+								maxLength={60}
+							/>
+							<Button
+								label={t("biz.products.category.save")}
+								disabled={
+									!categoryName.trim() ||
+									createCategory.isPending ||
+									renameCategory.isPending
+								}
+								loading={createCategory.isPending || renameCategory.isPending}
+								onPress={() => {
+									if (!shop || !categoryName.trim()) return;
+									if (categoryMode === "create")
+										createCategory.mutate({
+											businessId: shop.businessId,
+											name: categoryName.trim(),
+										});
+									else if (editingCategoryId)
+										renameCategory.mutate({
+											businessId: shop.businessId,
+											id: editingCategoryId,
+											name: categoryName.trim(),
+										});
+								}}
+							/>
+							<Button
+								variant="ghost"
+								label={t("action.back")}
+								onPress={() => setCategoryMode("list")}
+							/>
+						</>
+					) : null}
+					{categoryMode === "delete" && editingCategory ? (
+						<>
+							<Text>
+								{t("biz.products.category.deletePrompt", {
+									name: editingCategory.name,
+								})}
+							</Text>
+							{editingCategory.productCount > 0 ? (
+								<>
+									<Text variant="caption" tone="muted">
+										{t("biz.products.category.reassign")}
+									</Text>
+									{pickerRows
+										.filter((row) => row.id !== editingCategory.id)
+										.map((row) => (
+											<ListRow
+												key={row.id}
+												title={row.name}
+												state={
+													reassignToId === row.id
+														? t("biz.new.selected")
+														: undefined
+												}
+												onPress={() => setReassignToId(row.id)}
+											/>
+										))}
+									{pickerRows.length === 1 ? (
+										<Text tone="muted">
+											{t("biz.products.category.createFirst")}
+										</Text>
+									) : null}
+								</>
+							) : null}
+							<Button
+								variant="destructive"
+								label={t("biz.products.category.delete")}
+								disabled={
+									deleteCategory.isPending ||
+									(editingCategory.productCount > 0 && !reassignToId)
+								}
+								loading={deleteCategory.isPending}
+								onPress={() => {
+									if (shop)
+										deleteCategory.mutate({
+											businessId: shop.businessId,
+											id: editingCategory.id,
+											reassignToId: reassignToId ?? undefined,
+										});
+								}}
+							/>
+							<Button
+								variant="ghost"
+								label={t("action.back")}
+								onPress={() => setCategoryMode("list")}
+							/>
+						</>
+					) : null}
+					{categoryError.message ? (
+						<Text tone="destructive">{categoryError.message}</Text>
+					) : null}
+				</View>
+			</Sheet>
 			<Sheet
 				open={shopOpen}
 				onClose={() => setShopOpen(false)}
@@ -563,6 +703,20 @@ const styles = StyleSheet.create({
 	// The body's height, which `./paginated-list`'s `flex: 1` grows into.
 	fill: { flex: 1 },
 	pad: { paddingHorizontal: space.lg },
+	manageCategories: {
+		alignSelf: "flex-start",
+		minHeight: MIN_TOUCH_TARGET,
+		justifyContent: "center",
+		paddingHorizontal: space.lg,
+	},
+	categoryManager: { gap: space.md, paddingBottom: space.lg },
+	categoryManageRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		flexWrap: "wrap",
+		gap: space.xs,
+	},
+	categoryManageCopy: { flexGrow: 1, minWidth: 120 },
 	catalogHeader: {
 		height: 56,
 		flexDirection: "row",

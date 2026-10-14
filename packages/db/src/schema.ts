@@ -634,6 +634,27 @@ export const category = sqliteTable(
 	(table) => [uniqueIndex("category_slug_unique").on(table.slug)],
 );
 
+/** A merchant's own menu grouping, independent of the marketplace taxonomy. */
+export const merchantCategory = sqliteTable(
+	"merchant_category",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id")
+			.notNull()
+			.references(() => business.id, { onDelete: "cascade" }),
+		name: text("name").notNull(),
+		sortOrder: integer("sort_order").notNull().default(0),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("merchant_category_business_idx").on(table.businessId),
+		uniqueIndex("merchant_category_name_unique").on(
+			table.businessId,
+			sql`lower(${table.name})`,
+		),
+	],
+);
+
 export const product = sqliteTable(
 	"product",
 	{
@@ -644,6 +665,10 @@ export const product = sqliteTable(
 		categoryId: text("category_id").references(() => category.id, {
 			onDelete: "set null",
 		}),
+		merchantCategoryId: text("merchant_category_id").references(
+			() => merchantCategory.id,
+			{ onDelete: "set null" },
+		),
 		name: text("name").notNull(),
 		description: text("description"),
 		imageUrl: text("image_url"),
@@ -676,6 +701,7 @@ export const product = sqliteTable(
 		// The business's own catalogue, and the storefront's browse-by-category.
 		index("product_business_status_idx").on(table.businessId, table.status),
 		index("product_category_status_idx").on(table.categoryId, table.status),
+		index("product_merchant_category_idx").on(table.merchantCategoryId),
 	],
 );
 

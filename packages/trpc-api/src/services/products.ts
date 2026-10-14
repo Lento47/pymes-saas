@@ -2,6 +2,7 @@ import type { Db } from "@pymeshub/db";
 import {
 	business as businessTable,
 	category as categoryTable,
+	merchantCategory as merchantCategoryTable,
 	productOptionGroup as productOptionGroupTable,
 	productOption as productOptionTable,
 	product as productTable,
@@ -80,6 +81,24 @@ const RELATED_LIMIT = 6;
  */
 const PUBLIC_PRODUCT_STATUS: ProductStatus = "ACTIVE";
 const ARCHIVED_STATUS: ProductStatus = "ARCHIVED";
+
+async function assertMerchantCategory(
+	ctx: Context,
+	businessId: string,
+	id: string,
+) {
+	const [row] = await ctx.db
+		.select({ id: merchantCategoryTable.id })
+		.from(merchantCategoryTable)
+		.where(
+			and(
+				eq(merchantCategoryTable.id, id),
+				eq(merchantCategoryTable.businessId, businessId),
+			),
+		)
+		.limit(1);
+	if (!row) throw new NotFoundError();
+}
 
 export async function byId(
 	ctx: Context,
@@ -183,6 +202,18 @@ export async function list(
 	// so the equality this replaced answered nothing for the top level of the taxonomy.
 	if (input.categoryId)
 		conditions.push(inCategory(productTable.categoryId, input.categoryId));
+	if (input.merchantCategoryId) {
+		// Menu groupings are private to the merchant, including the filter itself.
+		if (!ownShop || !input.businessId) throw new NotFoundError();
+		await assertMerchantCategory(
+			ctx,
+			input.businessId,
+			input.merchantCategoryId,
+		);
+		conditions.push(
+			eq(productTable.merchantCategoryId, input.merchantCategoryId),
+		);
+	}
 	if (input.featuredOnly) conditions.push(eq(productTable.isFeatured, true));
 	// The two halves of "marked down", and they are the same two the home feed's offers
 	// list filters with — see `catalog.ts`'s offer query and `productListInput`'s docblock.
@@ -308,8 +339,7 @@ export async function create(
 	 * already there", so the count passed is one below the result — a product landing
 	 * exactly on its cap is allowed, and the one over it reports the cap it hit.
 	 */
-	const imageCount =
-		(input.imageUrl ? 1 : 0) + input.images.length;
+	const imageCount = (input.imageUrl ? 1 : 0) + input.images.length;
 	checkCount({
 		ctx,
 		limitName: "imagesPerProduct",
@@ -333,12 +363,15 @@ export async function create(
 
 	const now = new Date();
 	const id = newId("product");
+	if (input.merchantCategoryId)
+		await assertMerchantCategory(ctx, businessId, input.merchantCategoryId);
 
 	const statements: BatchItem<"sqlite">[] = [
 		ctx.db.insert(productTable).values({
 			id,
 			businessId,
 			categoryId: input.categoryId ?? null,
+			merchantCategoryId: input.merchantCategoryId ?? null,
 			name: input.name,
 			description: input.description ?? null,
 			imageUrl: input.imageUrl ?? null,
@@ -391,6 +424,8 @@ export async function update(
 		.limit(1);
 
 	const before = orNotFound(existing[0]);
+	if (input.merchantCategoryId)
+		await assertMerchantCategory(ctx, businessId, input.merchantCategoryId);
 
 	// The rule is checked against the *result*, not against the payload. An update that
 	// lowers the price and says nothing about the struck-through one must still be
@@ -409,6 +444,7 @@ export async function update(
 	assign(patch, "name", input.name);
 	assign(patch, "description", input.description);
 	assign(patch, "categoryId", input.categoryId);
+	assign(patch, "merchantCategoryId", input.merchantCategoryId);
 	assign(patch, "imageUrl", input.imageUrl);
 	assign(patch, "images", input.images);
 	assign(patch, "priceMinor", input.priceMinor);

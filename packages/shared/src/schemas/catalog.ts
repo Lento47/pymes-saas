@@ -96,6 +96,7 @@ const productFields = z.object({
 	name: shortText(150),
 	description: z.string().trim().max(600).optional(),
 	categoryId: z.string().optional(),
+	merchantCategoryId: z.string().nullable().optional(),
 	imageUrl: imageUrlSchema.optional(),
 	images: z.array(imageUrlSchema).max(10).default([]),
 	priceMinor: moneyMinorSchema,
@@ -190,6 +191,7 @@ export type ProductUpdateInput = z.infer<typeof productUpdateInput>;
 export const productListInput = z.object({
 	businessId: z.string().optional(),
 	categoryId: z.string().optional(),
+	merchantCategoryId: z.string().optional(),
 	search: z.string().trim().max(120).optional(),
 	/**
 	 * Management only, and only for the shop the caller is on the team of: an
@@ -472,6 +474,7 @@ export type ProductOptionGroup = z.infer<typeof productOptionGroupSchema>;
 export const productDetailSchema = productCardSchema.extend({
 	images: z.array(z.string()),
 	categoryId: z.string().nullable(),
+	merchantCategoryId: z.string().nullable(),
 	categoryName: z.string().nullable(),
 	/**
 	 * The category's English name, flattened onto the detail row beside the Spanish one.

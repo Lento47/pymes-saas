@@ -1,7 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { localizedName } from "@pymeshub/i18n";
 import {
-	type Category,
 	type Currency,
 	currencyExponent,
 	formatMoney,
@@ -34,16 +31,11 @@ import { line } from "@/components/skeletons";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
-import {
-	categoryPickerRows,
-	indentFor,
-	shopSector,
-} from "@/lib/category-scope";
 import { amountHint, currencySymbol } from "@/lib/currency";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
+import { MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 /**
  * One product: "add" and "edit" are the same screen, told apart by `id` in the route.
@@ -101,20 +93,10 @@ import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
  * exactly why the conversion runs through the shared helper rather than through arithmetic
  * here.
  *
- * ## The category picker is scoped to this shop's vertical, and the draft arrives filed
+ * ## Merchant category
  *
- * A shop is filed on a leaf of the taxonomy — `assertLeafCategory` refuses a sector
- * (`apps/api/src/services/businesses.ts`) — so its vertical is that leaf's parent: a bakery is
- * "Food & Beverage", a phone shop is "Electronics & Technology". `@/lib/category-scope` turns
- * that into the list this picker draws, which is the sector's children and not the 242-row
- * tree: if the business is food then all food categories appear, and nothing else does. The
- * `biz.products.category.help` line under the heading names that vertical out loud, because a
- * short list with no explanation reads as a list with rows missing.
- *
- * On create the draft arrives already filed under the shop's own category. Name and price are
- * then the only boxes between an owner and a saved product, and the picker is there to move a
- * product sideways inside its own vertical rather than to answer a question every new product
- * would otherwise ask.
+ * The editable menu category belongs to this business. The platform taxonomy
+ * category stays on the product for marketplace discovery and is not edited here.
  *
  * ## The field order is the required path first
  *
@@ -134,6 +116,7 @@ type Draft = {
 	compareAt: string;
 	stock: string;
 	categoryId: string | null;
+	merchantCategoryId: string | null;
 	photo: string;
 };
 
@@ -144,6 +127,7 @@ const EMPTY_DRAFT: Draft = {
 	compareAt: "",
 	stock: "",
 	categoryId: null,
+	merchantCategoryId: null,
 	photo: "",
 };
 
@@ -173,7 +157,12 @@ export default function ProductFormScreen() {
 			{ enabled: businessId.length > 0 },
 		),
 	);
-	const categories = useQuery(trpc.catalog.categories.queryOptions());
+	const categories = useQuery(
+		trpc.products.merchantCategories.queryOptions(
+			{ businessId },
+			{ enabled: businessId.length > 0 },
+		),
+	);
 
 	// `isLoading`, not `isPending`: `detail` is `enabled: productId !== undefined`, and a
 	// disabled query reports `isPending` forever — which would hold the skeleton up on the
@@ -245,16 +234,14 @@ export default function ProductFormScreen() {
 						productId={productId}
 						currency={currency}
 						categories={categories.data ?? []}
-						businessCategoryId={settings.data?.categoryId ?? null}
-						// A new product arrives filed under the shop's own category: the picker is
-						// then a sideways move inside the shop's vertical rather than a question
-						// every product has to answer from scratch. `EMPTY_DRAFT` keeps `categoryId`
-						// null for the one shop the read cannot name one for.
+						// Keep the shop's platform category for marketplace discovery;
+						// the merchant's own menu category starts unselected.
 						initial={
 							detail.data === undefined
 								? {
 										...EMPTY_DRAFT,
 										categoryId: settings.data?.categoryId ?? null,
+										merchantCategoryId: null,
 									}
 								: {
 										name: detail.data.title,
@@ -272,6 +259,7 @@ export default function ProductFormScreen() {
 												? ""
 												: String(detail.data.availability.quantity),
 										categoryId: detail.data.categoryId,
+										merchantCategoryId: detail.data.merchantCategoryId,
 										photo: detail.data.imageUrl ?? "",
 									}
 						}
@@ -309,15 +297,12 @@ function Fields({
 	productId,
 	currency,
 	categories,
-	businessCategoryId,
 	initial,
 }: {
 	businessId: string;
 	productId?: string;
 	currency: Currency;
-	categories: Category[];
-	/** The shop's own `categoryId` — a leaf. What scopes the picker and names the help line. */
-	businessCategoryId: string | null;
+	categories: { id: string; name: string }[];
 	initial: Draft;
 }) {
 	const { t, locale } = useT();
@@ -330,26 +315,7 @@ function Fields({
 	const [submitted, setSubmitted] = useState(false);
 	const [picking, setPicking] = useState(false);
 
-	/*
-	 * The picker draws this shop's vertical and nothing else — see `@/lib/category-scope`,
-	 * which owns both the scoping rule and the shape of the list it returns. A shop with a
-	 * readable category gets its sector's children flat (about ten rows); the expansion below
-	 * is only the fallback for a shop the read cannot name a vertical for, and it is derived
-	 * from the draft rather than held in its own state so the accordion opens on the branch
-	 * the product's category is already in.
-	 */
-	const chosen = categories.find((one) => one.id === draft.categoryId);
-	const openSectorId =
-		chosen === undefined ? undefined : (chosen.parentId ?? chosen.id);
-	const pickerRows = categoryPickerRows(categories, {
-		businessCategoryId,
-		chosenId: draft.categoryId,
-		openSectorId,
-	});
-	// The vertical's name, for the help line under the heading. `null` when the shop has
-	// none to read, and then the help line is not drawn at all rather than printed without
-	// its value.
-	const sector = shopSector(categories, businessCategoryId);
+	const chosen = categories.find((one) => one.id === draft.merchantCategoryId);
 	// A guard rather than a disabled button alone: two taps inside one frame both pass an
 	// `isPending` check that has not re-rendered yet, and a duplicate product is a row the
 	// owner then has to find and archive.
@@ -489,6 +455,7 @@ function Fields({
 		inFlight.current = true;
 
 		const categoryId = draft.categoryId ?? undefined;
+		const merchantCategoryId = draft.merchantCategoryId;
 		const name = draft.name.trim();
 		// Absent means "leave it" on update and null on create (`assign` skips
 		// `undefined`, and the column already defaults null): an emptied box
@@ -510,6 +477,7 @@ function Fields({
 					priceMinor,
 					compareAtPriceMinor: compareAtMinor,
 					categoryId,
+					merchantCategoryId,
 					imageUrl,
 				},
 				{
@@ -545,6 +513,7 @@ function Fields({
 				priceMinor,
 				compareAtPriceMinor: compareAtMinor ?? undefined,
 				categoryId,
+				merchantCategoryId,
 				imageUrl,
 				// See the docblock: a `DRAFT` is invisible *and* uneditable to the person who
 				// just made it, so the create that ends visible is the honest one.
@@ -697,28 +666,6 @@ function Fields({
 						title={t("biz.products.category")}
 						subtitle={t("biz.products.section.category.help")}
 					>
-						{/* The list opens in place rather than in a `./sheet`, which is the panel
-						    `app/new-business` uses for the same choice: this screen's body is one
-						    scroll view (`./screen`'s `scroll`), and a sheet mounted inside a scroll
-						    view is laid out in its content and scrolls away with it. The row above
-						    the list names the choice and toggles it.
-
-						    A filled surface rather than a `Card`: a card carries a hairline and
-						    `shadow.card`, and on a white canvas neither of those is what
-						    separates it from the page — the fill is. The closed row carries no
-						    "Selected" word, because there is one choice on screen and the
-						    checkmark is not available for a row this size.
-
-						    The gutter is on the **rows**, not on this surface, and that is the
-						    whole correction. `./list-row` has `paddingVertical` and no
-						    `paddingHorizontal` — a row contributes no horizontal air by
-						    design and its container is meant to. The `Card` this replaced
-						    supplied `padding: space.lg`, and taking it away took 16 points
-						    out of every row in the control: measured, the list's text was
-						    sitting 0.7dp inside the surface's own edge, and the mark above it
-						    4dp. Padding the surface instead would fix that and inset every
-						    hairline with it, which is a different look and a bigger change to
-						    what is on screen now. */}
 						<View
 							style={[
 								styles.selector,
@@ -727,80 +674,56 @@ function Fields({
 						>
 							<ListRow
 								style={styles.rowGutter}
-								leading={
-									<View style={styles.selectorMark}>
-										<Ionicons
-											name="grid-outline"
-											size={icon.action}
-											color={colors.foreground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
-									</View>
-								}
-								title={
-									chosen
-										? localizedName(chosen, locale)
-										: t("biz.products.category")
-								}
-								subtitle={
-									sector === null
-										? undefined
-										: t("biz.products.category.help", {
-												sector: localizedName(sector, locale),
-											})
-								}
+								title={chosen?.name ?? t("biz.products.category.none")}
+								subtitle={t("biz.products.category.optional")}
 								chevron
 								divider={picking}
 								onPress={() => setPicking((was) => !was)}
 							/>
-							{picking
-								? pickerRows.map((row, index) => {
-										const selected = draft.categoryId === row.id;
-										const hasChildren = categories.some(
-											(one) => one.parentId === row.id,
-										);
-										return (
-											<ListRow
-												key={row.id}
-												style={styles.rowGutter}
-												title={localizedName(row, locale)}
-												// A row steps in under its parent exactly when that parent is
-												// also on the list — see `indentFor`. Scoped, the sector is
-												// absent and its children sit flush as peers; unscoped, the
-												// sector is present and its children step in under it.
-												//
-												// This indent is a *nesting* step and stays `space.lg`, measured
-												// from the gutter above. It is deliberately not the closed row's
-												// own indent: that row is this list's summary, and the row it
-												// summarises — the one marked "Selected" — is in here too, so
-												// indenting the list under the summary's label would indent a
-												// row relative to itself.
-												leading={
-													indentFor(pickerRows, row) ? (
-														<View style={styles.indent} />
-													) : undefined
-												}
-												divider={index < pickerRows.length - 1}
-												state={selected ? t("biz.new.selected") : undefined}
-												onPress={() => {
-													// A picker settling on a value: the haptic answers
-													// the tap that changes the category, not a re-tap
-													// of the one already on (`./business`'s ShopChips
-													// rule).
-													if (!selected) selection();
-													edited(() =>
-														setDraft((was) => ({
-															...was,
-															categoryId: row.id,
-														})),
-													);
-													if (!hasChildren) setPicking(false);
-												}}
-											/>
-										);
-									})
-								: null}
+							{picking ? (
+								<>
+									<ListRow
+										style={styles.rowGutter}
+										title={t("biz.products.category.none")}
+										state={
+											draft.merchantCategoryId === null
+												? t("biz.new.selected")
+												: undefined
+										}
+										onPress={() => {
+											edited(() =>
+												setDraft((was) => ({
+													...was,
+													merchantCategoryId: null,
+												})),
+											);
+											setPicking(false);
+										}}
+									/>
+									{categories.map((row) => (
+										<ListRow
+											key={row.id}
+											style={styles.rowGutter}
+											title={row.name}
+											state={
+												draft.merchantCategoryId === row.id
+													? t("biz.new.selected")
+													: undefined
+											}
+											onPress={() => {
+												selection();
+												edited(() =>
+													setDraft((was) => ({
+														...was,
+														merchantCategoryId: row.id,
+													})),
+												);
+												setPicking(false);
+											}}
+										/>
+									))}
+								</>
+							) : null}
 						</View>
 					</ScreenSection>
 				</AnimateIn>
