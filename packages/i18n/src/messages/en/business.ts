@@ -1441,6 +1441,7 @@ export const business = {
 	"customize.averageOrder": "Average order",
 	"customize.activeOrders": "Active orders",
 	"customize.productCount": "Products shown",
+	"customize.productCountOption": "{count} products shown",
 	"customize.theme": "Dashboard color theme",
 	"customize.appTheme": "Use app theme",
 	"customize.shortcutsPick": "Which shortcuts to show",

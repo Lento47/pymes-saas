@@ -1522,6 +1522,7 @@ export const business = {
 	"customize.averageOrder": "Pedido promedio",
 	"customize.activeOrders": "Pedidos activos",
 	"customize.productCount": "Productos visibles",
+	"customize.productCountOption": "{count} productos visibles",
 	"customize.theme": "Tema de color del panel",
 	"customize.appTheme": "Usar tema de la app",
 	"customize.shortcutsPick": "Cuáles accesos mostrar",

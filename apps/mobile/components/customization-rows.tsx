@@ -935,11 +935,13 @@ export function DensityToggle({
 export function VisualChoiceCard({
 	selected,
 	label,
+	accessibilityLabel,
 	onPress,
 	children,
 }: {
 	selected: boolean;
 	label: string;
+	accessibilityLabel?: string;
 	onPress: () => void;
 	children: ReactNode;
 }) {
@@ -952,7 +954,7 @@ export function VisualChoiceCard({
 			}}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
-			accessibilityLabel={label}
+			accessibilityLabel={accessibilityLabel ?? label}
 			style={[
 				styles.choiceCard,
 				{
@@ -977,6 +979,7 @@ export function ProductCountPicker({
 	onChange: (next: 3 | 6 | 9) => void;
 }) {
 	const { colors } = useTheme();
+	const { t } = useT();
 	return (
 		<View style={styles.headerRow}>
 			{([3, 6, 9] as const).map((count) => (
@@ -984,6 +987,7 @@ export function ProductCountPicker({
 					key={count}
 					selected={value === count}
 					label={String(count)}
+					accessibilityLabel={t("customize.productCountOption", { count })}
 					onPress={() => onChange(count)}
 				>
 					<View style={styles.countSketch}>
