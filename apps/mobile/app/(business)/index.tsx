@@ -14,8 +14,8 @@ import {
 	type ProductCard,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { router, useIsFocused } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
@@ -35,6 +35,7 @@ import {
 	ITEM_TRACK_HEIGHT,
 	MerchantCommandRail,
 } from "@/components/merchant-command-rail";
+import { MerchantGuide } from "@/components/merchant-guide";
 import {
 	MerchantOrderRow,
 	type MerchantRowAction,
@@ -61,6 +62,7 @@ import { useSession } from "@/lib/auth/session";
 import { formatClock, formatDayMonth, formatRelative } from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { hasSeenMerchantGuide } from "@/lib/merchant-guide";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { NO_VALUE } from "@/lib/no-value";
 import { useTRPC } from "@/lib/trpc/context";
@@ -295,7 +297,10 @@ export default function MerchantHome() {
 	const toast = useToast();
 	const { colors } = useTheme();
 	const scope = useMerchantScope();
+	const focused = useIsFocused();
 	const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+	const [guideBusinessId, setGuideBusinessId] = useState<string | null>(null);
+	const guideChecked = useRef(new Set<string>());
 	const [pauseStage, setPauseStage] = useState<PauseStage>(null);
 	const [pauseDuration, setPauseDuration] = useState<PauseDuration>();
 
@@ -369,6 +374,25 @@ export default function MerchantHome() {
 					(!!businessId && (locations.isPending || home.isPending)))),
 	);
 	const failed = shops.error ?? locations.error ?? home.error;
+	const guideReady = signedIn && !waiting && !failed && !!shop && !!home.data;
+	useEffect(() => {
+		if (
+			!focused ||
+			!guideReady ||
+			!businessId ||
+			guideChecked.current.has(businessId)
+		)
+			return;
+		let active = true;
+		void hasSeenMerchantGuide(businessId).then((seen) => {
+			if (!active) return;
+			guideChecked.current.add(businessId);
+			if (!seen) setGuideBusinessId(businessId);
+		});
+		return () => {
+			active = false;
+		};
+	}, [businessId, focused, guideReady]);
 
 	const dateLabel = formatDayMonth(new Date(), intlLocale);
 	const dashboardQueries = [shops, locations, home, analytics];
@@ -1384,6 +1408,13 @@ export default function MerchantHome() {
 					</>
 				)}
 			</Screen>
+			{businessId ? (
+				<MerchantGuide
+					open={focused && guideBusinessId === businessId}
+					businessId={businessId}
+					onClose={() => setGuideBusinessId(null)}
+				/>
+			) : null}
 			<Sheet
 				open={locationPickerOpen}
 				onClose={() => setLocationPickerOpen(false)}

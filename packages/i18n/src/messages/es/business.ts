@@ -597,6 +597,25 @@ export const business = {
 	 * which is the mistake `nav.primary`'s comment already records.
 	 */
 	"biz.nav.primary": "Secciones del negocio",
+	"biz.guide.title": "Guía de tu negocio",
+	"biz.guide.view": "Ver guía del negocio",
+	"biz.guide.progress": "Paso {current} de {total}",
+	"biz.guide.orders.title": "Pedidos",
+	"biz.guide.orders.body": "Toca Pedidos para ver pedidos nuevos y aceptarlos.",
+	"biz.guide.delivery.title": "Negocio y entregas",
+	"biz.guide.delivery.body":
+		"Marca dónde recogen los repartidores y configura tus entregas.",
+	"biz.guide.products.title": "Productos y plan",
+	"biz.guide.products.body":
+		"Agrega lo que vendes y elige el plan para tu negocio.",
+	"biz.guide.openOrders": "Ver pedidos",
+	"biz.guide.setPin": "Marcar negocio",
+	"biz.guide.deliverySettings": "Configurar entregas",
+	"biz.guide.openProducts": "Ver productos",
+	"biz.guide.viewPlans": "Ver planes",
+	"biz.guide.skip": "Omitir",
+	"biz.guide.next": "Siguiente",
+	"biz.guide.done": "Listo",
 	"biz.nav.orders": "Pedidos",
 	"biz.nav.products": "Productos",
 	"biz.nav.analytics": "Análisis",

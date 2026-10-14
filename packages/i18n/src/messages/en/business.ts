@@ -548,6 +548,25 @@ export const business = {
 	 * mistake `nav.primary`'s comment already records.
 	 */
 	"biz.nav.primary": "Business sections",
+	"biz.guide.title": "Your merchant guide",
+	"biz.guide.view": "View merchant guide",
+	"biz.guide.progress": "Step {current} of {total}",
+	"biz.guide.orders.title": "Orders",
+	"biz.guide.orders.body": "Tap Orders to see new orders and accept them.",
+	"biz.guide.delivery.title": "Shop and delivery",
+	"biz.guide.delivery.body":
+		"Mark where couriers collect orders, then set your delivery options.",
+	"biz.guide.products.title": "Products and plan",
+	"biz.guide.products.body":
+		"Add what you sell, and choose the plan that fits your shop.",
+	"biz.guide.openOrders": "Open Orders",
+	"biz.guide.setPin": "Set shop pin",
+	"biz.guide.deliverySettings": "Delivery settings",
+	"biz.guide.openProducts": "Open Products",
+	"biz.guide.viewPlans": "View plans",
+	"biz.guide.skip": "Skip",
+	"biz.guide.next": "Next",
+	"biz.guide.done": "Done",
 	"biz.nav.orders": "Orders",
 	"biz.nav.products": "Products",
 	"biz.nav.analytics": "Analytics",
