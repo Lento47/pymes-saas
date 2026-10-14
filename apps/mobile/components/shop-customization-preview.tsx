@@ -8,6 +8,7 @@ import {
 } from "@pymeshub/shared";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image, StyleSheet, View } from "react-native";
+import { contrastRatio } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { radius, space, useTheme } from "@/theme";
 import { ShopCustomizationSections } from "./shop-customization-sections";
@@ -31,10 +32,12 @@ export function ShopCustomizationPreview({
 	const brand =
 		colorCheck?.valid && appearance.accentColor
 			? appearance.accentColor
-			: colors.primary;
+			: colors.accent;
 	const brandInk = colorCheck?.valid
 		? colorCheck.ink
-		: colors.primaryForeground;
+		: contrastRatio(brand, "#000000") >= 4.5
+			? "#000000"
+			: "#FFFFFF";
 	const coverMode = appearance.header === "cover";
 	const hasCover = coverMode && !!storefront.card.coverUrl;
 	const headerInk = coverMode ? colors.foreground : brandInk;
