@@ -8,11 +8,15 @@ import {
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
+	KeyboardAvoidingView,
+	Modal,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
@@ -36,6 +40,7 @@ import { useApiFailure } from "@/lib/api-error";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
+import { useReducedMotion } from "@/lib/reduced-motion";
 import { useTRPC } from "@/lib/trpc/context";
 import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
 
@@ -72,6 +77,9 @@ function Menu() {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { colors } = useTheme();
+	const { height } = useWindowDimensions();
+	const insets = useSafeAreaInsets();
+	const reducedMotion = useReducedMotion();
 	const merchantScope = useMerchantScope();
 
 	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
@@ -442,159 +450,212 @@ moves to (`./switch`'s contract) instead of saying "search" in both.
 				onRefresh={() => products.refetch()}
 			/>
 
-			{/* Mounted last and as a sibling of the scroller, which is what `./sheet` needs —
-			    it has no portal. Both stay mounted so their exits play; closed they draw
-			    nothing. */}
-			<Sheet
-				open={categoryOpen}
-				onClose={() => setCategoryOpen(false)}
-				title={t("biz.products.category.manage")}
-				closeLabel={t("action.close")}
-				avoidKeyboard
-				snapPoints={[0.65, 0.9]}
+			<Modal
+				visible={categoryOpen}
+				transparent
+				presentationStyle="overFullScreen"
+				statusBarTranslucent
+				navigationBarTranslucent
+				animationType={reducedMotion ? "none" : "fade"}
+				onRequestClose={() => setCategoryOpen(false)}
 			>
-				<View style={styles.categoryManager}>
-					{categoryMode === "list" ? (
-						<>
-							<Button
-								label={t("biz.products.category.new")}
-								onPress={() => {
-									setCategoryName("");
-									setCategoryMode("create");
-								}}
-							/>
-							{pickerRows.map((row) => (
-								<View key={row.id} style={styles.categoryManageRow}>
-									<View style={styles.categoryManageCopy}>
-										<Text bold>{row.name}</Text>
-										<Text variant="caption" tone="muted">
-											{tp("biz.catalog.count", row.productCount)}
-										</Text>
-									</View>
-									<Button
-										size="sm"
-										variant="ghost"
-										label={t("biz.products.category.rename")}
-										onPress={() => {
-											setEditingCategoryId(row.id);
-											setCategoryName(row.name);
-											setCategoryMode("rename");
-										}}
-									/>
-									<Button
-										size="sm"
-										variant="ghost"
-										label={t("biz.products.category.delete")}
-										onPress={() => {
-											setEditingCategoryId(row.id);
-											setReassignToId(null);
-											setCategoryMode("delete");
-										}}
-									/>
-								</View>
-							))}
-						</>
-					) : null}
-					{categoryMode === "create" || categoryMode === "rename" ? (
-						<>
-							<Field
-								label={t("biz.products.category.name")}
-								value={categoryName}
-								onChangeText={setCategoryName}
-								maxLength={60}
-							/>
-							<Button
-								label={t("biz.products.category.save")}
-								disabled={
-									!categoryName.trim() ||
-									createCategory.isPending ||
-									renameCategory.isPending
-								}
-								loading={createCategory.isPending || renameCategory.isPending}
-								onPress={() => {
-									if (!shop || !categoryName.trim()) return;
-									if (categoryMode === "create")
-										createCategory.mutate({
-											businessId: shop.businessId,
-											name: categoryName.trim(),
-										});
-									else if (editingCategoryId)
-										renameCategory.mutate({
-											businessId: shop.businessId,
-											id: editingCategoryId,
-											name: categoryName.trim(),
-										});
-								}}
-							/>
-							<Button
-								variant="ghost"
-								label={t("action.back")}
-								onPress={() => setCategoryMode("list")}
-							/>
-						</>
-					) : null}
-					{categoryMode === "delete" && editingCategory ? (
-						<>
-							<Text>
-								{t("biz.products.category.deletePrompt", {
-									name: editingCategory.name,
-								})}
+				<KeyboardAvoidingView
+					behavior={Platform.OS === "ios" ? "padding" : "height"}
+					style={[
+						styles.categoryDialogRoot,
+						{
+							paddingTop: insets.top + space.lg,
+							paddingBottom: insets.bottom + space.lg,
+						},
+					]}
+				>
+					<Pressable
+						style={[
+							StyleSheet.absoluteFill,
+							{ backgroundColor: colors.scrim, opacity: 0.32 },
+						]}
+						onPress={() => setCategoryOpen(false)}
+						accessibilityRole="button"
+						accessibilityLabel={t("action.close")}
+					/>
+					<View
+						style={[
+							styles.categoryDialog,
+							{
+								backgroundColor: colors.card,
+								borderColor: colors.border,
+								maxHeight: height - insets.top - insets.bottom - space.lg * 2,
+							},
+						]}
+						accessibilityViewIsModal
+						onAccessibilityEscape={() => setCategoryOpen(false)}
+					>
+						<View style={styles.categoryDialogHeader}>
+							<Text variant="title" bold style={styles.categoryDialogTitle}>
+								{t("biz.products.category.manage")}
 							</Text>
-							{editingCategory.productCount > 0 ? (
+							<Pressable
+								onPress={() => setCategoryOpen(false)}
+								accessibilityRole="button"
+								accessibilityLabel={t("action.close")}
+								style={styles.categoryDialogClose}
+							>
+								<Ionicons
+									name="close"
+									size={icon.action}
+									color={colors.foreground}
+								/>
+							</Pressable>
+						</View>
+						<ScrollView
+							keyboardShouldPersistTaps="handled"
+							contentContainerStyle={styles.categoryManager}
+						>
+							{categoryMode === "list" ? (
 								<>
-									<Text variant="caption" tone="muted">
-										{t("biz.products.category.reassign")}
-									</Text>
-									{pickerRows
-										.filter((row) => row.id !== editingCategory.id)
-										.map((row) => (
-											<ListRow
-												key={row.id}
-												title={row.name}
-												state={
-													reassignToId === row.id
-														? t("biz.new.selected")
-														: undefined
-												}
-												onPress={() => setReassignToId(row.id)}
+									<Button
+										label={t("biz.products.category.new")}
+										onPress={() => {
+											setCategoryName("");
+											setCategoryMode("create");
+										}}
+									/>
+									{pickerRows.map((row) => (
+										<View key={row.id} style={styles.categoryManageRow}>
+											<View style={styles.categoryManageCopy}>
+												<Text bold>{row.name}</Text>
+												<Text variant="caption" tone="muted">
+													{tp("biz.catalog.count", row.productCount)}
+												</Text>
+											</View>
+											<Button
+												size="sm"
+												variant="ghost"
+												label={t("biz.products.category.rename")}
+												onPress={() => {
+													setEditingCategoryId(row.id);
+													setCategoryName(row.name);
+													setCategoryMode("rename");
+												}}
 											/>
-										))}
-									{pickerRows.length === 1 ? (
-										<Text tone="muted">
-											{t("biz.products.category.createFirst")}
-										</Text>
-									) : null}
+											<Button
+												size="sm"
+												variant="ghost"
+												label={t("biz.products.category.delete")}
+												onPress={() => {
+													setEditingCategoryId(row.id);
+													setReassignToId(null);
+													setCategoryMode("delete");
+												}}
+											/>
+										</View>
+									))}
 								</>
 							) : null}
-							<Button
-								variant="destructive"
-								label={t("biz.products.category.delete")}
-								disabled={
-									deleteCategory.isPending ||
-									(editingCategory.productCount > 0 && !reassignToId)
-								}
-								loading={deleteCategory.isPending}
-								onPress={() => {
-									if (shop)
-										deleteCategory.mutate({
-											businessId: shop.businessId,
-											id: editingCategory.id,
-											reassignToId: reassignToId ?? undefined,
-										});
-								}}
-							/>
-							<Button
-								variant="ghost"
-								label={t("action.back")}
-								onPress={() => setCategoryMode("list")}
-							/>
-						</>
-					) : null}
-					{categoryError.message ? (
-						<Text tone="destructive">{categoryError.message}</Text>
-					) : null}
-				</View>
-			</Sheet>
+							{categoryMode === "create" || categoryMode === "rename" ? (
+								<>
+									<Field
+										label={t("biz.products.category.name")}
+										value={categoryName}
+										onChangeText={setCategoryName}
+										maxLength={60}
+									/>
+									<Button
+										label={t("biz.products.category.save")}
+										disabled={
+											!categoryName.trim() ||
+											createCategory.isPending ||
+											renameCategory.isPending
+										}
+										loading={
+											createCategory.isPending || renameCategory.isPending
+										}
+										onPress={() => {
+											if (!shop || !categoryName.trim()) return;
+											if (categoryMode === "create")
+												createCategory.mutate({
+													businessId: shop.businessId,
+													name: categoryName.trim(),
+												});
+											else if (editingCategoryId)
+												renameCategory.mutate({
+													businessId: shop.businessId,
+													id: editingCategoryId,
+													name: categoryName.trim(),
+												});
+										}}
+									/>
+									<Button
+										variant="ghost"
+										label={t("action.back")}
+										onPress={() => setCategoryMode("list")}
+									/>
+								</>
+							) : null}
+							{categoryMode === "delete" && editingCategory ? (
+								<>
+									<Text>
+										{t("biz.products.category.deletePrompt", {
+											name: editingCategory.name,
+										})}
+									</Text>
+									{editingCategory.productCount > 0 ? (
+										<>
+											<Text variant="caption" tone="muted">
+												{t("biz.products.category.reassign")}
+											</Text>
+											{pickerRows
+												.filter((row) => row.id !== editingCategory.id)
+												.map((row) => (
+													<ListRow
+														key={row.id}
+														title={row.name}
+														state={
+															reassignToId === row.id
+																? t("biz.new.selected")
+																: undefined
+														}
+														onPress={() => setReassignToId(row.id)}
+													/>
+												))}
+											{pickerRows.length === 1 ? (
+												<Text tone="muted">
+													{t("biz.products.category.createFirst")}
+												</Text>
+											) : null}
+										</>
+									) : null}
+									<Button
+										variant="destructive"
+										label={t("biz.products.category.delete")}
+										disabled={
+											deleteCategory.isPending ||
+											(editingCategory.productCount > 0 && !reassignToId)
+										}
+										loading={deleteCategory.isPending}
+										onPress={() => {
+											if (shop)
+												deleteCategory.mutate({
+													businessId: shop.businessId,
+													id: editingCategory.id,
+													reassignToId: reassignToId ?? undefined,
+												});
+										}}
+									/>
+									<Button
+										variant="ghost"
+										label={t("action.back")}
+										onPress={() => setCategoryMode("list")}
+									/>
+								</>
+							) : null}
+							{categoryError.message ? (
+								<Text tone="destructive">{categoryError.message}</Text>
+							) : null}
+						</ScrollView>
+					</View>
+				</KeyboardAvoidingView>
+			</Modal>
 			<Sheet
 				open={shopOpen}
 				onClose={() => setShopOpen(false)}
@@ -709,7 +770,38 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		paddingHorizontal: space.lg,
 	},
-	categoryManager: { gap: space.md, paddingBottom: space.lg },
+	categoryDialogRoot: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+		paddingHorizontal: space.lg,
+	},
+	categoryDialog: {
+		width: "100%",
+		maxWidth: 440,
+		borderWidth: StyleSheet.hairlineWidth,
+		borderRadius: 24,
+		overflow: "hidden",
+	},
+	categoryDialogHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingLeft: space.lg,
+		paddingRight: space.xs,
+		paddingTop: space.sm,
+	},
+	categoryDialogTitle: { flex: 1 },
+	categoryDialogClose: {
+		width: MIN_TOUCH_TARGET,
+		height: MIN_TOUCH_TARGET,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	categoryManager: {
+		gap: space.md,
+		paddingHorizontal: space.lg,
+		paddingBottom: space.lg,
+	},
 	categoryManageRow: {
 		flexDirection: "row",
 		alignItems: "center",
