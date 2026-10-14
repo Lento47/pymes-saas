@@ -5,10 +5,11 @@ import {
 	parseMoney,
 } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
+	BackHandler,
 	Platform,
 	StyleSheet,
 	useWindowDimensions,
@@ -36,6 +37,8 @@ import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 import { MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
+
+const PRODUCTS_ROUTE = "/(business)/products" as const;
 
 /**
  * One product: "add" and "edit" are the same screen, told apart by `id` in the route.
@@ -138,6 +141,18 @@ export default function ProductFormScreen() {
 
 	const businessId = params.businessId ?? "";
 	const productId = params.id;
+	useFocusEffect(
+		useCallback(() => {
+			const subscription = BackHandler.addEventListener(
+				"hardwareBackPress",
+				() => {
+					router.replace(PRODUCTS_ROUTE);
+					return true;
+				},
+			);
+			return () => subscription.remove();
+		}, []),
+	);
 
 	const detail = useQuery(
 		trpc.products.detail.queryOptions(
@@ -204,11 +219,10 @@ export default function ProductFormScreen() {
 					: t("biz.products.screen.edit")
 			}
 			// A pushed screen with no visible way back. `product-form` is one of the
-			// `MERCHANT_BARLESS_ROUTES`, so it is a tab to the navigator and the gesture
-			// works — but a form the owner cannot leave without a swipe is a form with a
-			// gesture where a control should be, and the disc is the one filled control this
-			// screen's own heading is loud enough to need a peer for.
-			leading={<BackButton to="/(business)/products" surface />}
+			// `MERCHANT_BARLESS_ROUTES`, so it is a tab to the navigator. The back
+			// control returns to Productos explicitly; tab history can otherwise
+			// point at Home even when Productos opened the form.
+			leading={<BackButton to={PRODUCTS_ROUTE} surface replace />}
 			scroll
 			// The four text inputs and the bar under them: the frame is what knows which platform
 			// needs the keyboard's height paid as an inset, so the screen asks for it rather than
@@ -385,7 +399,7 @@ function Fields({
 		// separately would be naming the same subtree twice.
 		void cache.invalidateQueries({ queryKey: trpc.products.pathKey() });
 		toast.show(message);
-		router.back();
+		router.replace(PRODUCTS_ROUTE);
 	};
 
 	const create = useMutation(

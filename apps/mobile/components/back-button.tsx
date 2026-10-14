@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import type { Href } from "expo-router";
+import { type Href, router } from "expo-router";
 import { StyleSheet } from "react-native";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
@@ -49,9 +49,12 @@ export function BackButton({
 	to,
 	style,
 	surface = false,
+	replace = false,
 }: {
 	to: Href;
 	style?: object;
+	/** Use for tab-hosted forms whose browser history can point at a different tab. */
+	replace?: boolean;
 	/**
 	 * Draw the control on a filled disc rather than as a bare chevron.
 	 *
@@ -74,7 +77,7 @@ export function BackButton({
 
 	return (
 		<Pressable
-			onPress={() => leaveScreen(to)}
+			onPress={() => (replace ? router.replace(to) : leaveScreen(to))}
 			accessibilityRole="button"
 			accessibilityLabel={t("action.back")}
 			style={[
