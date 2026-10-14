@@ -161,9 +161,7 @@ export function CustomizationRows<T extends string>({
 								<Text variant="title" tone="action">
 									+
 								</Text>
-								<Text variant="caption" numberOfLines={2}>
-									{t(labels[item])}
-								</Text>
+								<Text variant="caption">{t(labels[item])}</Text>
 							</Pressable>
 						))}
 					</View>
@@ -964,7 +962,7 @@ export function VisualChoiceCard({
 			]}
 		>
 			{children}
-			<Text variant="caption" bold numberOfLines={2}>
+			<Text variant="caption" bold>
 				{label}
 			</Text>
 		</Pressable>
