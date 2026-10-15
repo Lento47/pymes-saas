@@ -17,6 +17,7 @@ import Animated, {
 	withSpring,
 	withTiming,
 } from "react-native-reanimated";
+import { THEME_LABEL } from "@/lib/business-theme-labels";
 import { selection, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { duration, spring } from "@/lib/motion";
@@ -1427,36 +1428,47 @@ export function ThemeSwatchPicker({
 }) {
 	const { t } = useT();
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
+	const cellStyle = [
+		styles.swatchCell,
+		fontScale >= 1.5 ? styles.swatchCellFull : null,
+	];
 	return (
 		<View style={styles.swatchWrap}>
-			<VisualChoiceCard
-				selected={value === null}
-				label={t("customize.appTheme")}
-				onPress={() => onChange(null)}
-			>
-				<View style={[styles.themeWash, { backgroundColor: colors.muted }]}>
-					<View
-						style={[styles.themeBand, { backgroundColor: colors.foreground }]}
-					/>
-				</View>
-			</VisualChoiceCard>
+			<View style={cellStyle}>
+				<VisualChoiceCard
+					selected={value === null}
+					label={t("customize.appTheme")}
+					onPress={() => onChange(null)}
+				>
+					<View style={[styles.themeWash, { backgroundColor: colors.muted }]}>
+						<View
+							style={[styles.themeBand, { backgroundColor: colors.foreground }]}
+						/>
+					</View>
+				</VisualChoiceCard>
+			</View>
 			{businessThemeOrder().map((id) => {
 				const theme = businessThemeColors(id, scheme);
 				return (
-					<VisualChoiceCard
-						key={id}
-						selected={value === id}
-						label={id}
-						onPress={() => onChange(id)}
-					>
-						<View
-							style={[styles.themeWash, { backgroundColor: theme.background }]}
+					<View key={id} style={cellStyle}>
+						<VisualChoiceCard
+							selected={value === id}
+							label={t(THEME_LABEL[id])}
+							onPress={() => onChange(id)}
 						>
 							<View
-								style={[styles.themeBand, { backgroundColor: theme.primary }]}
-							/>
-						</View>
-					</VisualChoiceCard>
+								style={[
+									styles.themeWash,
+									{ backgroundColor: theme.background },
+								]}
+							>
+								<View
+									style={[styles.themeBand, { backgroundColor: theme.primary }]}
+								/>
+							</View>
+						</VisualChoiceCard>
+					</View>
 				);
 			})}
 		</View>
@@ -1709,6 +1721,8 @@ const styles = StyleSheet.create({
 		flexWrap: "wrap",
 		gap: space.md,
 	},
+	swatchCell: { width: "30%", flexGrow: 1 },
+	swatchCellFull: { width: "100%" },
 	themeWash: {
 		height: 44,
 		borderRadius: radius.md,

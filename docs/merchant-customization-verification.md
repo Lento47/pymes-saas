@@ -21,13 +21,15 @@ Status: implementation published; native acceptance is incomplete. Updated 2026-
 | Fresh editor entry | Direct launches without a business parameter now fall back to the account's first business; explicit route/scope selections take priority. Saved photos load after a fresh bundle reload, and business-list failures have a retry action |
 | Large-text controls | Photo editor now opens full height; logo and Done can scroll fully into view at 200%. Dashboard Compact/Detailed cards stack with complete labels; header, metric and widget-layout choices use the same large-text treatment |
 | Photo picker entry/cancel/removal | Native gallery and 16:9 crop frame opened at 200%; crop canceled before upload. Local cover removal and Done checked; no draft saved or published |
+| Personal preference restart persistence | Saved dashboard theme Coral → Lime, cold-stopped and reopened the app, then verified Lime selected from the server-backed editor. Restored Coral, cold-started again, and verified Coral selected. No other preference fields were edited |
+| Theme picker layout and copy | Fixed compressed swatches and vertical letter wrapping at normal size. Three-column grid uses localized theme names; 200% text uses full-width cards. Both inspected natively. Shared label map, mobile TypeScript and 23 focused checks pass |
 
 Photo controls now live only in Personalization → Customer shop. Uploaded asset paths use the app's image resolver. Photo changes remain private until Publish; settings forms no longer send stale image values.
 
 ## Remaining native acceptance
 
 - [ ] Complete native photo upload/save/restart/publish and confirm the customer view. Gallery/crop entry, cancellation, local removal and Done have been checked without saving.
-- [ ] Confirm saved preferences synchronize between two actual app sessions. API tests already verify separate authenticated callers.
+- [ ] Confirm saved preferences synchronize between two actual app sessions. Cold-restart persistence is verified; API tests verify separate authenticated callers. A second concurrent emulator was not launched with only 2.1 GB RAM free.
 - [ ] Check the final editors in both color schemes and languages, on a small screen with 200% text.
 - [x] Recheck the revised cover header in dark mode at 200% text, including status icons over a bright cover.
 - [ ] Check TalkBack focus/actions and reduced motion, including fixed operational widgets.
@@ -36,4 +38,6 @@ Photo controls now live only in Personalization → Customer shop. Uploaded asse
 
 Native verification is unblocked. The main emulator's release APK was backed up to `%TEMP%/pymeshub-main-before-verification.apk`, then the existing `%TEMP%/pymeshub-verification.apk` was installed with `adb install -r -d`, retaining the merchant login. Its development host is `localhost:8081` with ADB reverse. No APK was generated. Use the native Reload control when checking file changes: Fast Refresh did not reliably apply them during this session. The setup question is superseded; a new login is unnecessary on this device.
 
-The main emulator was restored to 1080×2400, density 420, font scale 1.0, Spanish/light, and its original accessibility settings. The spare is closed. No dashboard changes or shop drafts were saved or published; local test edits were cleared by bundle reload. The temporary imported crop image was removed.
+The main emulator was restored to 1080×2400, density 420, font scale 1.0, Spanish/light, TalkBack disabled and its original animation-scale setting. The spare is closed. The temporary dashboard theme change was restored and verified after a cold start; no shop drafts were saved or published. Other local test edits were cleared by bundle reload. The temporary imported crop image was removed.
+
+TalkBack was enabled for setup, but its Android notification-permission window did not settle reliably through the automated controls. App focus traversal and tile actions remain unverified; enabling the service alone is not acceptance evidence.

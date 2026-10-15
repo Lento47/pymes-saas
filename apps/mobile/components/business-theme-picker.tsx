@@ -1,8 +1,8 @@
-import type { MessageKey } from "@pymeshub/i18n";
 import { StyleSheet, View } from "react-native";
 
 import { Pressable } from "@/components/pressable";
 import { Text } from "@/components/text";
+import { THEME_LABEL } from "@/lib/business-theme-labels";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import {
@@ -153,31 +153,6 @@ function ThemeSwatch({
 		</Pressable>
 	);
 }
-
-/**
- * Display names for the themes.
- *
- * The four are colour words rather than invented product names, because that is what the
- * control is choosing and a name that flatters a palette makes the swatch beside it look
- * like a lie. `businessThemeOrder()` is imported for the assertion below rather than for
- * the render: the map is indexed by `BusinessThemeId`, so a theme added to the list without
- * a label here is a type error rather than a runtime blank.
- */
-const THEME_LABEL = {
-	lime: "biz.theme.lime",
-	amber: "biz.theme.amber",
-	coral: "biz.theme.coral",
-	sky: "biz.theme.sky",
-	sunset: "biz.theme.sunset",
-	forest: "biz.theme.forest",
-	ocean: "biz.theme.ocean",
-	orchid: "biz.theme.orchid",
-	citrus: "biz.theme.citrus",
-	berry: "biz.theme.berry",
-	dune: "biz.theme.dune",
-	harbor: "biz.theme.harbor",
-	vine: "biz.theme.vine",
-} as const satisfies Record<BusinessThemeId, MessageKey>;
 
 const styles = StyleSheet.create({
 	/*
