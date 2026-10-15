@@ -63,6 +63,7 @@ export function CustomizationRows<T extends string>({
 	onReorder,
 	onToggle,
 	canHide,
+	fixed = [],
 	dense = false,
 	onPress,
 	selected,
@@ -77,6 +78,7 @@ export function CustomizationRows<T extends string>({
 	onReorder: (next: T[]) => void;
 	onToggle: (item: T) => void;
 	canHide?: (item: T) => boolean;
+	fixed?: readonly T[];
 	dense?: boolean;
 	onPress?: (item: T) => void;
 	selected?: T | null;
@@ -90,6 +92,7 @@ export function CustomizationRows<T extends string>({
 	const reduced = useReducedMotion();
 	const [editing, setEditing] = useState(false);
 	const visible = items.filter((item) => !hidden.includes(item));
+	const movable = visible.filter((item) => !fixed.includes(item));
 	const tucked = items.filter((item) => hidden.includes(item));
 
 	const enterEdit = () => {
@@ -109,10 +112,11 @@ export function CustomizationRows<T extends string>({
 					{editing ? t("customize.editing") : t("customize.holdToMove")}
 				</Text>
 			)}
-			{visible.map((item, index) => (
+			{visible.map((item) => (
 				<WidgetTile
 					key={item}
-					editing={editing}
+					editing={editing && !fixed.includes(item)}
+					fixed={fixed.includes(item)}
 					reduced={reduced}
 					dense={dense}
 					selected={selected === item}
@@ -120,13 +124,23 @@ export function CustomizationRows<T extends string>({
 					onEnterEdit={enterEdit}
 					onPress={onPress ? () => onPress(item) : undefined}
 					onRemove={
-						!canHide || canHide(item) ? () => onToggle(item) : undefined
+						!fixed.includes(item) && (!canHide || canHide(item))
+							? () => onToggle(item)
+							: undefined
 					}
-					onMove={(direction) =>
-						onReorder(moveItem(items, items.indexOf(item), direction, hidden))
+					onMove={(direction) => {
+						if (fixed.includes(item)) return;
+						onReorder(
+							moveItem(items, items.indexOf(item), direction, [
+								...hidden,
+								...fixed,
+							]),
+						);
+					}}
+					canMoveUp={movable.indexOf(item) > 0}
+					canMoveDown={
+						movable.includes(item) && movable.indexOf(item) < movable.length - 1
 					}
-					canMoveUp={index > 0}
-					canMoveDown={index < visible.length - 1}
 					chip={renderChip?.(item)}
 				>
 					{renderPreview?.(item) ?? null}
@@ -190,6 +204,7 @@ export function CustomizationRows<T extends string>({
 
 function WidgetTile({
 	editing,
+	fixed,
 	reduced,
 	dense,
 	selected,
@@ -204,6 +219,7 @@ function WidgetTile({
 	canMoveDown,
 }: {
 	editing: boolean;
+	fixed: boolean;
 	reduced: boolean;
 	dense: boolean;
 	selected: boolean;
@@ -252,6 +268,7 @@ function WidgetTile({
 	};
 
 	const longPress = Gesture.LongPress()
+		.enabled(!fixed)
 		.minDuration(380)
 		.onStart(() => {
 			runOnJS(onEnterEdit)();
@@ -302,7 +319,11 @@ function WidgetTile({
 				accessibilityRole={!editing && onPress ? "button" : undefined}
 				accessibilityLabel={label}
 				accessibilityHint={
-					editing ? t("customize.editing") : t("customize.holdToMove")
+					fixed
+						? undefined
+						: editing
+							? t("customize.editing")
+							: t("customize.holdToMove")
 				}
 				onAccessibilityTap={onPress}
 				accessibilityActions={
@@ -633,9 +654,7 @@ export function DashboardWidgetPreview({
 	if (id === "insights") {
 		if (layout === "band") {
 			return (
-				<View
-					style={[styles.pulseBand, { backgroundColor: colors.primary }]}
-				>
+				<View style={[styles.pulseBand, { backgroundColor: colors.primary }]}>
 					{[0, 1, 2].map((slot) => (
 						<View key={slot} style={styles.insightBandCell}>
 							<View
@@ -886,8 +905,7 @@ export function DashboardWidgetPreview({
 								styles.commandStack,
 								styles.previewRow,
 								{
-									backgroundColor:
-										slot === 0 ? colors.primary : colors.muted,
+									backgroundColor: slot === 0 ? colors.primary : colors.muted,
 									paddingHorizontal: 6,
 								},
 							]}
@@ -897,9 +915,7 @@ export function DashboardWidgetPreview({
 									styles.commandDot,
 									{
 										backgroundColor:
-											slot === 0
-												? colors.primaryForeground
-												: colors.border,
+											slot === 0 ? colors.primaryForeground : colors.border,
 									},
 								]}
 							/>
@@ -909,9 +925,7 @@ export function DashboardWidgetPreview({
 									{
 										flex: 1,
 										backgroundColor:
-											slot === 0
-												? colors.primaryForeground
-												: colors.border,
+											slot === 0 ? colors.primaryForeground : colors.border,
 									},
 								]}
 							/>
@@ -957,7 +971,10 @@ export function DashboardWidgetPreview({
 							style={[styles.productTile, { backgroundColor: colors.muted }]}
 						/>
 						<View
-							style={[styles.bar, { width: "80%", backgroundColor: colors.border }]}
+							style={[
+								styles.bar,
+								{ width: "80%", backgroundColor: colors.border },
+							]}
 						/>
 					</View>
 				))}
@@ -1338,8 +1355,7 @@ export function WidgetPaletteStrip({
 							styles.paletteDot,
 							{
 								backgroundColor: colors.muted,
-								borderColor:
-									value === null ? colors.foreground : colors.border,
+								borderColor: value === null ? colors.foreground : colors.border,
 							},
 						]}
 					/>

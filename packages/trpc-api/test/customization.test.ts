@@ -72,6 +72,22 @@ describe("mobile customization", () => {
 		await expect(
 			coworker.business.dashboardPreferences({ businessId: second }),
 		).rejects.toThrow();
+		await expect(
+			coworker.business.saveDashboardPreferences({
+				businessId: second,
+				revision: 0,
+				configuration,
+			}),
+		).rejects.toThrow();
+		await coworker.business.saveDashboardPreferences({
+			businessId: first,
+			revision: 0,
+			configuration: { ...configuration, themeId: "sky" },
+		});
+		expect(
+			(await mine.business.dashboardPreferences({ businessId: first }))
+				.configuration,
+		).toEqual(configuration);
 	});
 
 	test("dashboard save accepts seven widgets, pulse layouts, and paint maps", async () => {
@@ -85,9 +101,11 @@ describe("mobile customization", () => {
 		const mine = appRouter.createCaller(await authed(testWorld, owner));
 		const configuration = {
 			...DEFAULT_DASHBOARD_PREFERENCES,
+			widgets: [...DEFAULT_DASHBOARD_PREFERENCES.widgets].reverse(),
 			layouts: {
 				...DEFAULT_DASHBOARD_PREFERENCES.layouts,
 				pulse: "hero" as const,
+				queue: "cards" as const,
 			},
 			widgetThemes: {
 				...DEFAULT_DASHBOARD_PREFERENCES.widgetThemes,
@@ -104,7 +122,13 @@ describe("mobile customization", () => {
 			configuration,
 		});
 		expect(saved.configuration.widgets).toHaveLength(7);
+		expect(saved.configuration.widgets.slice(3, 6)).toEqual([
+			"attention",
+			"queue",
+			"commands",
+		]);
 		expect(saved.configuration.layouts.pulse).toBe("hero");
+		expect(saved.configuration.layouts.queue).toBe("cards");
 		expect(saved.configuration.widgetThemes.pulse).toBe("coral");
 		expect(saved.configuration.commandColors["add-product"]).toBe("lime");
 	});

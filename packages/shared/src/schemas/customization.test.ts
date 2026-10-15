@@ -4,6 +4,7 @@ import {
 	DEFAULT_DASHBOARD_PREFERENCES,
 	DEFAULT_STOREFRONT_APPEARANCE,
 	dashboardPreferencesSchema,
+	REQUIRED_DASHBOARD_WIDGETS,
 	resolveDashboardPreferences,
 	resolveStorefrontAppearance,
 	SIMPLE_DASHBOARD_PREFERENCES,
@@ -12,6 +13,37 @@ import {
 } from "./customization";
 
 describe("saved customization compatibility", () => {
+	test("operational slots stay fixed when any optional widget order is saved", () => {
+		const permutations = <T>(items: T[]): T[][] =>
+			items.length === 0
+				? [[]]
+				: items.flatMap((item, i) =>
+						permutations(items.filter((_, j) => i !== j)).map((rest) => [
+							item,
+							...rest,
+						]),
+					);
+		const optional = DEFAULT_DASHBOARD_PREFERENCES.widgets.filter(
+			(id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id),
+		);
+		for (const order of permutations(optional)) {
+			const configuration = dashboardPreferencesSchema.parse({
+				...DEFAULT_DASHBOARD_PREFERENCES,
+				widgets: [...REQUIRED_DASHBOARD_WIDGETS].reverse().concat(order),
+			});
+			for (const id of REQUIRED_DASHBOARD_WIDGETS) {
+				expect(configuration.widgets.indexOf(id)).toBe(
+					DEFAULT_DASHBOARD_PREFERENCES.widgets.indexOf(id),
+				);
+			}
+			expect(
+				configuration.widgets.filter(
+					(id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id),
+				),
+			).toEqual(order);
+			expect(resolveDashboardPreferences(configuration)).toEqual(configuration);
+		}
+	});
 	test("simple presets validate and keep the operational dashboard visible", () => {
 		expect(
 			dashboardPreferencesSchema.safeParse(SIMPLE_DASHBOARD_PREFERENCES)
@@ -89,10 +121,10 @@ describe("saved customization compatibility", () => {
 				"catalog",
 				"pulse",
 				"shortcuts",
-				"insights",
 				"attention",
 				"queue",
 				"commands",
+				"insights",
 			],
 			hidden: ["insights"],
 			metrics: ["net_sales", "active_orders"],

@@ -71,6 +71,20 @@ export const REQUIRED_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
 	"queue",
 	"commands",
 ];
+/** Optional widgets can move around the operational blocks, whose slots stay fixed. */
+export function pinOperationalWidgets(
+	widgets: readonly DashboardWidgetId[],
+): DashboardWidgetId[] {
+	const optional = widgets.filter(
+		(id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id),
+	);
+	let nextOptional = 0;
+	return DEFAULT_DASHBOARD_WIDGETS.map((id) =>
+		REQUIRED_DASHBOARD_WIDGETS.includes(id)
+			? id
+			: (optional[nextOptional++] ?? id),
+	);
+}
 export const DEFAULT_DASHBOARD_SHORTCUTS: DashboardShortcutId[] = [
 	...dashboardShortcutIdSchema.options,
 ];
@@ -136,7 +150,8 @@ export const dashboardPreferencesSchema = z.object({
 		.refine(
 			(value) => new Set(value).size === DEFAULT_DASHBOARD_WIDGETS.length,
 			"Each dashboard widget must appear once",
-		),
+		)
+		.transform(pinOperationalWidgets),
 	hidden: z
 		.array(dashboardWidgetIdSchema)
 		.max(DEFAULT_DASHBOARD_WIDGETS.length)

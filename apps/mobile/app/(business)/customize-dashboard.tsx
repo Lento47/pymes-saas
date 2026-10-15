@@ -471,8 +471,7 @@ export default function CustomizeDashboard() {
 												...draft,
 												commandColors: {
 													...draft.commandColors,
-													[key]:
-														themeId as DashboardPreferences["themeId"],
+													[key]: themeId as DashboardPreferences["themeId"],
 												},
 											})
 										}
@@ -591,115 +590,118 @@ export default function CustomizeDashboard() {
 					<Text variant="caption" tone="muted">
 						{t("customize.canvasHint")}
 					</Text>
-				<ThemeColorsOverrideProvider colors={previewColors}>
-					<View
-						style={[
-							styles.canvas,
-							{
-								backgroundColor: previewColors.background,
-								borderColor: previewColors.border,
-							},
-						]}
-					>
+					<ThemeColorsOverrideProvider colors={previewColors}>
 						<View
 							style={[
-								styles.identity,
-								{ backgroundColor: previewColors.foreground },
+								styles.canvas,
+								{
+									backgroundColor: previewColors.background,
+									borderColor: previewColors.border,
+								},
 							]}
 						>
 							<View
 								style={[
-									styles.identityDot,
-									{ backgroundColor: previewColors.background },
+									styles.identity,
+									{ backgroundColor: previewColors.foreground },
 								]}
-							/>
-							<Text
-								variant="caption"
-								bold
-								style={{ color: previewColors.background }}
 							>
-								{t("biz.dashboard.today")}
-							</Text>
-						</View>
-						<CustomizationRows
-							items={draft.widgets}
-							hidden={draft.hidden}
-							labels={LABELS}
-							onPress={(id) => setEditor({ kind: "widget", id })}
-							onReorder={(widgets) => setDraft({ ...draft, widgets })}
-							canHide={(id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id)}
-							onToggle={(id) => {
-								if (REQUIRED_DASHBOARD_WIDGETS.includes(id)) return;
-								setDraft({
-									...draft,
-									hidden: hidden(id)
-										? draft.hidden.filter((one) => one !== id)
-										: [...draft.hidden, id],
-								});
-							}}
-							renderChip={(id) => (
-								<PaletteChip
-									themeId={draft.widgetThemes[id]}
-									scheme={scheme}
-									inheritFill={previewColors.primary}
+								<View
+									style={[
+										styles.identityDot,
+										{ backgroundColor: previewColors.background },
+									]}
 								/>
-							)}
-							renderPreview={(id) => {
-								const widgetThemeId = draft.widgetThemes[id];
-								const widgetColors = widgetThemeId
-									? businessThemeColors(widgetThemeId, scheme)
-									: previewColors;
-								const painted = widgetThemeId != null;
-								const preview =
-									id === "shortcuts" ? (
-										<MerchantShortcutRail
-											layout={draft.layouts.shortcuts}
-											paint={painted}
-											shortcuts={draft.shortcutIds.slice(0, 6).map((key) => ({
-												key,
-												label: t(SHORTCUT_LABELS[key]),
-												icon: SHORTCUT_ICONS[key],
-												onPress: () => {},
-											}))}
-										/>
-									) : id === "pulse" ? (
-										<MerchantPulse
-											data={home.data?.pulse ?? null}
-											dateLabel={new Date().toLocaleDateString(intlLocale)}
-											metrics={
-												draft.metrics.length > 0
-													? draft.metrics.slice(0, 3)
-													: DEFAULT_DASHBOARD_PREFERENCES.metrics
-											}
-											layout={draft.layouts.pulse}
-											paint={painted ? "accent" : "invert"}
-										/>
-									) : id === "commands" ? (
-										<MerchantCommandRail
-											layout={draft.layouts.commands}
-											actions={dashboardCommandIdSchema.options.map((key) => ({
-												key,
-												label: t(COMMAND_LABELS[key]),
-												icon: COMMAND_ICONS[key],
-												primary:
-													key === "add-product" &&
-													draft.commandColors[key] == null,
-												accent: draft.commandColors[key],
-												onPress: () => {},
-											}))}
-										/>
-									) : (
-										sketch(id)
+								<Text
+									variant="caption"
+									bold
+									style={{ color: previewColors.background }}
+								>
+									{t("biz.dashboard.today")}
+								</Text>
+							</View>
+							<CustomizationRows
+								items={draft.widgets}
+								hidden={draft.hidden}
+								fixed={REQUIRED_DASHBOARD_WIDGETS}
+								labels={LABELS}
+								onPress={(id) => setEditor({ kind: "widget", id })}
+								onReorder={(widgets) => setDraft({ ...draft, widgets })}
+								canHide={(id) => !REQUIRED_DASHBOARD_WIDGETS.includes(id)}
+								onToggle={(id) => {
+									if (REQUIRED_DASHBOARD_WIDGETS.includes(id)) return;
+									setDraft({
+										...draft,
+										hidden: hidden(id)
+											? draft.hidden.filter((one) => one !== id)
+											: [...draft.hidden, id],
+									});
+								}}
+								renderChip={(id) => (
+									<PaletteChip
+										themeId={draft.widgetThemes[id]}
+										scheme={scheme}
+										inheritFill={previewColors.primary}
+									/>
+								)}
+								renderPreview={(id) => {
+									const widgetThemeId = draft.widgetThemes[id];
+									const widgetColors = widgetThemeId
+										? businessThemeColors(widgetThemeId, scheme)
+										: previewColors;
+									const painted = widgetThemeId != null;
+									const preview =
+										id === "shortcuts" ? (
+											<MerchantShortcutRail
+												layout={draft.layouts.shortcuts}
+												paint={painted}
+												shortcuts={draft.shortcutIds.slice(0, 6).map((key) => ({
+													key,
+													label: t(SHORTCUT_LABELS[key]),
+													icon: SHORTCUT_ICONS[key],
+													onPress: () => {},
+												}))}
+											/>
+										) : id === "pulse" ? (
+											<MerchantPulse
+												data={home.data?.pulse ?? null}
+												dateLabel={new Date().toLocaleDateString(intlLocale)}
+												metrics={
+													draft.metrics.length > 0
+														? draft.metrics.slice(0, 3)
+														: DEFAULT_DASHBOARD_PREFERENCES.metrics
+												}
+												layout={draft.layouts.pulse}
+												paint={painted ? "accent" : "invert"}
+											/>
+										) : id === "commands" ? (
+											<MerchantCommandRail
+												layout={draft.layouts.commands}
+												actions={dashboardCommandIdSchema.options.map(
+													(key) => ({
+														key,
+														label: t(COMMAND_LABELS[key]),
+														icon: COMMAND_ICONS[key],
+														primary:
+															key === "add-product" &&
+															draft.commandColors[key] == null,
+														accent: draft.commandColors[key],
+														onPress: () => {},
+													}),
+												)}
+											/>
+										) : (
+											sketch(id)
+										);
+									return (
+										<ThemeColorsOverrideProvider colors={widgetColors}>
+											{preview}
+										</ThemeColorsOverrideProvider>
 									);
-								return (
-									<ThemeColorsOverrideProvider colors={widgetColors}>
-										{preview}
-									</ThemeColorsOverrideProvider>
-								);
-							}}
-						/>
-					</View>
-				</ThemeColorsOverrideProvider>
+								}}
+							/>
+						</View>
+					</ThemeColorsOverrideProvider>
 				</View>
 				{save.error || restore.error ? (
 					<ErrorState
@@ -708,28 +710,32 @@ export default function CustomizeDashboard() {
 					/>
 				) : null}
 				<View style={styles.actions}>
-				<Button
-					label={t("customize.save")}
-					disabled={
-						!saved.data ||
-						!dirty ||
-						!metricsValid ||
-						!shortcutsValid ||
-						save.isPending
-					}
-					loading={save.isPending}
-					onPress={() =>
-						run(
-							save.mutateAsync({ businessId, revision, configuration: draft }),
-						)
-					}
-				/>
-				<Button
-					variant="secondary"
-					label={t("customize.restore")}
-					disabled={!saved.data || restore.isPending}
-					onPress={() => run(restore.mutateAsync({ businessId, revision }))}
-				/>
+					<Button
+						label={t("customize.save")}
+						disabled={
+							!saved.data ||
+							!dirty ||
+							!metricsValid ||
+							!shortcutsValid ||
+							save.isPending
+						}
+						loading={save.isPending}
+						onPress={() =>
+							run(
+								save.mutateAsync({
+									businessId,
+									revision,
+									configuration: draft,
+								}),
+							)
+						}
+					/>
+					<Button
+						variant="secondary"
+						label={t("customize.restore")}
+						disabled={!saved.data || restore.isPending}
+						onPress={() => run(restore.mutateAsync({ businessId, revision }))}
+					/>
 				</View>
 			</Screen>
 			<Sheet
@@ -806,7 +812,11 @@ const styles = StyleSheet.create({
 		height: 16,
 		borderRadius: radius.full,
 	},
-	applyStack: { gap: space.xs, minHeight: MIN_TOUCH_TARGET, justifyContent: "center" },
+	applyStack: {
+		gap: space.xs,
+		minHeight: MIN_TOUCH_TARGET,
+		justifyContent: "center",
+	},
 	applyBar: { height: 8, borderRadius: radius.full },
 	canvas: {
 		borderWidth: 1,

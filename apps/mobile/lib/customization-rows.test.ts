@@ -54,13 +54,20 @@ function fallbackReturn(fn: string): string {
 describe("reorder helper", () => {
 	test("the board swaps neighbours through the shipped moveItem", () => {
 		expect(board).toContain('from "@/lib/reorder"');
-		expect(board).toContain(
-			"onReorder(moveItem(items, items.indexOf(item), direction, hidden))",
-		);
 		expect(moveItem(["a", "b", "c"], 1, -1)).toEqual(["b", "a", "c"]);
 		expect(moveItem(["a", "b", "c"], 1, 1)).toEqual(["a", "c", "b"]);
 		expect(moveItem(["a", "b", "c"], 0, -1)).toEqual(["a", "b", "c"]);
 		expect(moveItem(["a", "b", "c"], 2, 1)).toEqual(["a", "b", "c"]);
+	});
+	test("an optional widget moves past operational slots without moving them", () => {
+		const items = ["shortcuts", "attention", "queue", "commands", "catalog"];
+		expect(moveItem(items, 4, -1, ["attention", "queue", "commands"])).toEqual([
+			"catalog",
+			"attention",
+			"queue",
+			"commands",
+			"shortcuts",
+		]);
 	});
 
 	test("a drag skips a hidden mid-item so the visible order actually changes", () => {
@@ -106,9 +113,6 @@ describe("personalization board", () => {
 		expect(board).toContain("styles.addWell");
 		expect(board).toContain('borderStyle: "dashed"');
 		expect(board).toContain('t("customize.addWidget"');
-		expect(board).toContain(
-			"!canHide || canHide(item) ? () => onToggle(item) : undefined",
-		);
 		expect(board).toContain('name: "moveUp", label: t("customize.up")');
 		expect(board).toContain('name: "moveDown", label: t("customize.down")');
 		expect(board).not.toContain('t("customize.show")');

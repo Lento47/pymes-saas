@@ -1547,7 +1547,7 @@ export const business = {
 		"Elige de uno a tres números. Mantén uno para cambiar el orden.",
 	"customize.metricsRange": "Elige de uno a tres números.",
 	"customize.canvasHint":
-		"Toca un bloque para cambiarlo. Mantén y arrastra para moverlo.",
+		"Toca un bloque para cambiar su diseño. Avisos, pedidos y acciones quedan en su lugar.",
 	"customize.paint": "Color de este bloque",
 	"customize.paintAll": "Pintar todo",
 	"customize.paintInherit": "Como el panel",

@@ -174,8 +174,7 @@ export const business = {
 	"biz.order.call": "Call",
 	"biz.order.message": "Message",
 	"biz.order.openMap": "Open map",
-	"biz.order.external.unavailable":
-		"This phone has no app that can open that.",
+	"biz.order.external.unavailable": "This phone has no app that can open that.",
 	// The dark hero's last line, and the only place this screen claims a time the payload does
 	// not carry. `orderSummarySchema` has no `updatedAt`; the newest event in the log is the
 	// order's real last change, so the copy names the event rather than promising a freshness
@@ -1465,7 +1464,8 @@ export const business = {
 	"customize.metricsHelp":
 		"Choose one to three numbers. Hold one to change the order.",
 	"customize.metricsRange": "Choose one to three numbers.",
-	"customize.canvasHint": "Tap a block to change it. Hold and drag to move it.",
+	"customize.canvasHint":
+		"Tap a block to change its look. Alerts, orders and actions stay in place.",
 	"customize.paint": "This block's color",
 	"customize.paintAll": "Paint everything",
 	"customize.paintInherit": "Match the panel",
