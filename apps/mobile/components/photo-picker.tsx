@@ -289,12 +289,14 @@ export function PhotoPicker({
 			const permission = await ImagePicker.requestCameraPermissionsAsync();
 			if (!permission.granted) {
 				warning();
+				setActsOpen(false);
 				setLocalError(t("state.error.cameraDenied"));
 				return;
 			}
 		}
 
 		const result = await launch();
+		setActsOpen(false);
 		if (result.canceled) return;
 		const asset = result.assets[0];
 		if (!asset?.base64) {
@@ -340,6 +342,7 @@ export function PhotoPicker({
 	const removePhoto = () => {
 		if (locked) return;
 		selection();
+		setActsOpen(false);
 		setPendingUri(null);
 		setLocalError(null);
 		onChange(null);

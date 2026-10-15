@@ -9,7 +9,7 @@ Status: implementation published; native acceptance is incomplete. Updated 2026-
 | User/business isolation, staff personal preferences, owner/manager shop editing, stale-write rejection | `packages/trpc-api/test/customization.test.ts` |
 | Private drafts, publish/discard/default behavior, private photo edits and atomic photo publishing | Same API tests: 5 pass after `15bf2ca2`; injected publish failure rolls photos back |
 | Compatibility, Simple presets, operational widgets fixed and visible, readable accent suggestions | `packages/shared/src/schemas/customization.test.ts`: 15 pass |
-| Mobile regression coverage | Full mobile suite: 371 pass after business fallback and full-height photo editor; 14 focused customization checks pass after large-text selector changes |
+| Mobile regression coverage | Full mobile suite: 371 pass after photo-action dismissal changes; mobile TypeScript and the 3 focused merchant asset checks pass |
 | Discard unsaved changes and prevent overlapping save/publish/discard actions | Mobile TypeScript and 14 focused customization UI checks pass |
 | Type safety | Mobile, shared, API and DB typechecks pass after photo consolidation |
 | Deployment | Production API version `d94fcd94-8c76-43eb-b782-ae4c53c7cdb2`; `/health` returned 200 with DB healthy |
@@ -23,12 +23,15 @@ Status: implementation published; native acceptance is incomplete. Updated 2026-
 | Photo picker entry/cancel/removal | Native gallery and 16:9 crop frame opened at 200%; crop canceled before upload. Local cover removal and Done checked; no draft saved or published |
 | Personal preference restart persistence | Saved dashboard theme Coral → Lime, cold-stopped and reopened the app, then verified Lime selected from the server-backed editor. Restored Coral, cold-started again, and verified Coral selected. No other preference fields were edited |
 | Theme picker layout and copy | Fixed compressed swatches and vertical letter wrapping at normal size. Three-column grid uses localized theme names; 200% text uses full-width cards. Both inspected natively. Shared label map, mobile TypeScript and 23 focused checks pass |
+| Native photo draft recovery | Uploaded a rotated 16:9 copy of the shop's current cover, saved a private draft, cold-started and inspected the recovered rotated preview. Published appearance and canonical cover stayed unchanged. Native Discard removed the test draft |
+| Native Publish and public visibility | Saved the visually identical color spelling `#0891b2`; unauthenticated public API still returned published `#0891B2`. Native Publish then exposed the saved spelling. Restored and published the exact original configuration, verified original logo/cover paths and no draft at revision 15. Atomic photo publication is covered by the 5 API tests |
+| Photo action dismissal and local discard | Square logo crop opened and canceled; actions closed automatically. Local logo removal also closed actions. Discarding that unsaved removal left D1 unchanged at revision 15 |
 
 Photo controls now live only in Personalization → Customer shop. Uploaded asset paths use the app's image resolver. Photo changes remain private until Publish; settings forms no longer send stale image values.
 
 ## Remaining native acceptance
 
-- [ ] Complete native photo upload/save/restart/publish and confirm the customer view. Gallery/crop entry, cancellation, local removal and Done have been checked without saving.
+- [x] Verify native photo upload, draft save/restart/discard, native Publish and published-only public responses. Photo publication atomicity is verified by API tests; the native Publish test used an equivalent color spelling to preserve the displayed shop design.
 - [ ] Confirm saved preferences synchronize between two actual app sessions. Cold-restart persistence is verified; API tests verify separate authenticated callers. A second concurrent emulator was not launched with only 2.1 GB RAM free.
 - [ ] Check the final editors in both color schemes and languages, on a small screen with 200% text.
 - [x] Recheck the revised cover header in dark mode at 200% text, including status icons over a bright cover.
@@ -38,6 +41,8 @@ Photo controls now live only in Personalization → Customer shop. Uploaded asse
 
 Native verification is unblocked. The main emulator's release APK was backed up to `%TEMP%/pymeshub-main-before-verification.apk`, then the existing `%TEMP%/pymeshub-verification.apk` was installed with `adb install -r -d`, retaining the merchant login. Its development host is `localhost:8081` with ADB reverse. No APK was generated. Use the native Reload control when checking file changes: Fast Refresh did not reliably apply them during this session. The setup question is superseded; a new login is unnecessary on this device.
 
-The main emulator was restored to 1080×2400, density 420, font scale 1.0, Spanish/light, TalkBack disabled and its original animation-scale setting. The spare is closed. The temporary dashboard theme change was restored and verified after a cold start; no shop drafts were saved or published. Other local test edits were cleared by bundle reload. The temporary imported crop image was removed.
+The main emulator was restored to 1080×2400, density 420, font scale 1.0, Spanish/light, TalkBack disabled and its original animation-scale setting. The spare is closed. The temporary dashboard theme change was restored and verified after a cold start. Shop draft/publish checks restored the exact original published configuration and canonical images, with no remaining draft. The temporary imported gallery files were removed.
+
+The upload API deliberately has no delete procedure. One unreferenced verification upload (`upl_8ea8417d-20b3-4a94-a282-263b3a73fe3b`, a rotated copy of the already-public cover) remains under that existing retention policy; it was never published or attached to canonical business media.
 
 TalkBack was enabled for setup, but its Android notification-permission window did not settle reliably through the automated controls. App focus traversal and tile actions remain unverified; enabling the service alone is not acceptance evidence.
