@@ -128,8 +128,25 @@ export default function CustomizeShop() {
 			JSON.stringify(saved.data.draft ?? saved.data.published)
 		: false;
 	const failure = save.error ?? publish.error ?? discard.error ?? restore.error;
+	const busy =
+		save.isPending ||
+		publish.isPending ||
+		discard.isPending ||
+		restore.isPending;
 	const run = (task: Promise<unknown>) => {
 		void task.then(refresh).catch(() => {});
+	};
+	const discardChanges = () => {
+		if (!saved.data || busy) return;
+		save.reset();
+		publish.reset();
+		discard.reset();
+		restore.reset();
+		if (saved.data.draft) {
+			run(discard.mutateAsync({ businessId, revision }));
+		} else {
+			setDraft(saved.data.published);
+		}
 	};
 	return (
 		<>
@@ -255,10 +272,7 @@ export default function CustomizeShop() {
 					<Button
 						label={t("customize.save")}
 						disabled={
-							!saved.data ||
-							!dirty ||
-							(!!accent && !accent.valid) ||
-							save.isPending
+							!saved.data || !dirty || (!!accent && !accent.valid) || busy
 						}
 						loading={save.isPending}
 						onPress={() =>
@@ -273,7 +287,7 @@ export default function CustomizeShop() {
 					/>
 					<Button
 						label={t("customize.publish")}
-						disabled={!saved.data?.draft || dirty || publish.isPending}
+						disabled={!saved.data?.draft || dirty || busy}
 						loading={publish.isPending}
 						accessibilityHint={dirty ? t("customize.saveFirst") : undefined}
 						onPress={() => run(publish.mutateAsync({ businessId, revision }))}
@@ -281,13 +295,13 @@ export default function CustomizeShop() {
 					<Button
 						variant="secondary"
 						label={t("customize.discard")}
-						disabled={!saved.data?.draft || discard.isPending}
-						onPress={() => run(discard.mutateAsync({ businessId, revision }))}
+						disabled={!saved.data || (!saved.data.draft && !dirty) || busy}
+						onPress={discardChanges}
 					/>
 					<Button
 						variant="secondary"
 						label={t("customize.restore")}
-						disabled={restore.isPending}
+						disabled={!saved.data || busy}
 						onPress={() => run(restore.mutateAsync({ businessId, revision }))}
 					/>
 				</View>
@@ -316,7 +330,7 @@ export default function CustomizeShop() {
 						layout="tap"
 						businessId={businessId}
 						purpose="business-logo"
-						disabled={!saved.data}
+						disabled={!saved.data || busy}
 					/>
 					<View
 						style={{
@@ -337,7 +351,7 @@ export default function CustomizeShop() {
 							layout="tap"
 							businessId={businessId}
 							purpose="business-logo"
-							disabled={!saved.data}
+							disabled={!saved.data || busy}
 						>
 							<Text variant="title" bold>
 								{preview?.card.name.trim().charAt(0).toUpperCase()}
