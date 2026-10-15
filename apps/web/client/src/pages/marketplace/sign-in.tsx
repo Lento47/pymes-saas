@@ -13,6 +13,8 @@ function authErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message === "auth.error.invalidCredentials") return "Email o contraseña incorrectos.";
   if (message === "auth.error.rateLimited") return "Demasiados intentos. Probá en unos minutos.";
+  if (message === "auth.error.timeout") return "El servidor tardó demasiado en responder. Intentá de nuevo.";
+  if (message === "auth.error.network") return "No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.";
   return "No pudimos completar la operación. Intentá de nuevo.";
 }
 
@@ -33,7 +35,7 @@ export default function MarketplaceSignInPage({ initialMode = "sign-in" }: { ini
     setBusy(true);
     try {
       if (mode === "sign-up") {
-        if (password.length < 8) throw new Error("auth.error.weakPassword");
+        if (password.length < 12) throw new Error("auth.error.weakPassword");
         // Both assertions are required parameters of `signUp` rather than optional ones, and
         // the Worker refuses a sign-up that arrives without them — they are the record of what
         // the customer agreed to. So this form has to collect them and send them, rather than
@@ -49,7 +51,7 @@ export default function MarketplaceSignInPage({ initialMode = "sign-in" }: { ini
       window.location.assign("/orders");
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
-      setError(message === "auth.error.weakPassword" ? "La contraseña debe tener al menos 8 caracteres." : authErrorMessage(caught));
+      setError(message === "auth.error.weakPassword" ? "La contraseña debe tener al menos 12 caracteres." : authErrorMessage(caught));
     } finally {
       setBusy(false);
     }
@@ -119,7 +121,7 @@ export default function MarketplaceSignInPage({ initialMode = "sign-in" }: { ini
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              minLength={8}
+              minLength={mode === "sign-up" ? 12 : undefined}
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
             />
