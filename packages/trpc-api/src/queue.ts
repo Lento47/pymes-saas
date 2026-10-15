@@ -8,7 +8,7 @@ import {
 	order as orderTable,
 	user as userTable,
 } from "@pymeshub/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { Env } from "./env";
 import type { OrderEventEnvelope, OrderEventMessage } from "./events";
@@ -149,7 +149,16 @@ async function recipientsFor(db: Db, businessId: string): Promise<string[]> {
 	const rows = await db
 		.select({ userId: membershipTable.userId })
 		.from(membershipTable)
-		.where(eq(membershipTable.businessId, businessId));
+		.where(
+			and(
+				eq(membershipTable.businessId, businessId),
+				// "All of them" means everyone who can act for the shop, which is not
+				// the same as every row: an unaccepted invitation would ring a phone
+				// on behalf of a shop the person has not joined, and a revoked
+				// membership would keep telling somebody about orders they cannot see.
+				eq(membershipTable.status, "ACTIVE"),
+			),
+		);
 
 	return rows.map((row) => row.userId);
 }

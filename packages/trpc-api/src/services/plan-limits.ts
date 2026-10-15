@@ -8,7 +8,7 @@ import {
 	upgradeTarget,
 } from "@pymeshub/shared";
 import { ForbiddenError } from "../errors";
-import type { BusinessContext } from "./helpers";
+import type { BillingPlan, BusinessContext } from "./helpers";
 
 /**
  * The three questions a service asks about a merchant's plan, and the one place they
@@ -128,7 +128,16 @@ export class QuotaExceededError extends ForbiddenError {
  * they are one over.
  */
 export function checkCount(input: {
-	ctx: BusinessContext;
+	/**
+	 * `BillingPlan`, not `BusinessContext`.
+	 *
+	 * The check reads two fields — the plan and the derived status — and `BillingPlan` is the
+	 * type declared for exactly that ("just the plan, for a procedure that needs it without
+	 * being a `businessProcedure`"). Widening it back would mean the one caller that is *not*
+	 * a `businessProcedure` — `affiliations.accept`, where a seat is actually spent — had to
+	 * fabricate a membership to pass a type it never reads.
+	 */
+	ctx: BillingPlan;
 	limitName: CountablePlanLimit;
 	resourceType: string;
 	current: number;

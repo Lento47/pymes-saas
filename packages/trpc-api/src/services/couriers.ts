@@ -31,6 +31,7 @@ import {
 	isNull,
 	like,
 	lte,
+	ne,
 	or,
 	sql,
 } from "drizzle-orm";
@@ -339,6 +340,12 @@ export async function directory(
 				and(
 					eq(membershipTable.businessId, ctx.membership.businessId),
 					inArray(membershipTable.userId, userIds),
+					// An `ACTIVE` filter, and the directory is where it is most
+					// visible: without it a revoked courier would still carry the
+					// "on the team" badge in the list a manager picks from, and an
+					// unaccepted invitation would carry it before the person had
+					// agreed to anything.
+					eq(membershipTable.status, "ACTIVE"),
 				),
 			),
 		ctx.db
@@ -410,8 +417,20 @@ export async function invite(
 
 	const [memberships, existingInvites, businessCount, courierCount] =
 		await Promise.all([
+			// **Unfiltered by `status`, and the reason has changed since Phase 1.** It still
+			// guards a unique index rather than a permission: `membership_business_user_unique`
+			// is on `(business_id, user_id)`, so narrowing this read without a reactivation path
+			// would let the code reach the insert at the bottom of this function and turn a
+			// sentence into a constraint error.
+			//
+			// The reactivation path now exists, and it is on the *acceptance* side rather than
+			// here — `couriers.respond` updates an existing non-`ACTIVE` row instead of inserting
+			// a second one. That is the right end of the flow to fix it: an invitation is a
+			// question, and a person whose membership was revoked years ago should still be
+			// allowed to be *asked*. What the check below refuses is asking somebody who is
+			// already on the team.
 			ctx.db
-				.select({ id: membershipTable.id })
+				.select({ id: membershipTable.id, status: membershipTable.status })
 				.from(membershipTable)
 				.where(
 					and(
@@ -454,7 +473,7 @@ export async function invite(
 				),
 		]);
 
-	if (memberships[0]) {
+	if (memberships[0]?.status === "ACTIVE") {
 		throw new ConflictError("Esta persona ya forma parte del equipo");
 	}
 	if (existingInvites[0]) {
@@ -668,7 +687,7 @@ export async function respond(
 	}
 
 	const existing = await ctx.db
-		.select({ id: membershipTable.id })
+		.select({ id: membershipTable.id, status: membershipTable.status })
 		.from(membershipTable)
 		.where(
 			and(
@@ -677,7 +696,7 @@ export async function respond(
 			),
 		)
 		.limit(1);
-	if (existing[0]) {
+	if (existing[0]?.status === "ACTIVE") {
 		throw new ConflictError("Ya formas parte de este equipo");
 	}
 
@@ -692,18 +711,67 @@ export async function respond(
 		throw new ConflictError("Esta invitación ya no está pendiente");
 	}
 
+	/**
+	 * Activate the membership, reviving the row when one is already there.
+	 *
+	 * The read above is unfiltered by `status` — it has to be, because it is what decides
+	 * *which* of these two branches runs — and the branch is the reactivation path
+	 * `couriers.invite` was changed to allow: a rider whose membership was revoked, or who
+	 * left a shop and is being asked back, gets their own row back rather than colliding with
+	 * `membership_business_user_unique` on an insert.
+	 *
+	 * Before this, the two halves disagreed. `couriers.invite` refused *any* existing row
+	 * outright, so the collision was unreachable; narrowing that refusal without this would
+	 * have turned "esta persona ya forma parte del equipo" into a constraint error on the
+	 * acceptance, which is a 500 on the one screen a rider reaches from a push notification.
+	 *
+	 * The update restates `status <> 'ACTIVE'` for the reason `updateStaffRole` restates its
+	 * own: no transaction can be opened around the read and the write, so a membership
+	 * activated in between must not be re-written by a stale acceptance.
+	 */
 	try {
-		await ctx.db.insert(membershipTable).values({
-			id: newId("membership"),
-			businessId: row.invite.businessId,
-			userId: ctx.user.id,
-			role: "COURIER",
-			createdAt: now,
-		});
+		if (existing[0]) {
+			await ctx.db
+				.update(membershipTable)
+				.set({
+					role: "COURIER",
+					status: "ACTIVE",
+					// The new episode's dates, and the cleared fields are what stop a revoked row
+					// from carrying its revocation into a membership that is live.
+					acceptedAt: now,
+					revokedAt: null,
+					expiresAt: null,
+					inviteTokenHash: null,
+				})
+				.where(
+					and(
+						eq(membershipTable.id, existing[0].id),
+						ne(membershipTable.status, "ACTIVE"),
+					),
+				);
+		} else {
+			await ctx.db.insert(membershipTable).values({
+				id: newId("membership"),
+				businessId: row.invite.businessId,
+				userId: ctx.user.id,
+				role: "COURIER",
+				// Acceptance is the only event that creates a COURIER membership, so the
+				// row it writes is `ACTIVE` by definition — there is no second step in
+				// which this person agrees to a second thing.
+				status: "ACTIVE",
+				acceptedAt: now,
+				createdAt: now,
+			});
+		}
 	} catch (error) {
 		// A concurrent acceptance may already have created the membership. If so,
 		// the accepted invitation is the truthful final state. Otherwise put the
 		// invitation back so a transient write failure is retryable.
+		//
+		// The read is `ACTIVE`-filtered so that "somebody already did this" means
+		// somebody who actually has the membership. A stale revoked row would
+		// otherwise be mistaken for a concurrent acceptance and this function would
+		// report an accepted invitation whose access does not exist.
 		const membership = await ctx.db
 			.select({ id: membershipTable.id })
 			.from(membershipTable)
@@ -711,6 +779,7 @@ export async function respond(
 				and(
 					eq(membershipTable.businessId, row.invite.businessId),
 					eq(membershipTable.userId, ctx.user.id),
+					eq(membershipTable.status, "ACTIVE"),
 				),
 			)
 			.limit(1);

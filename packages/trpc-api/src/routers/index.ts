@@ -1,5 +1,6 @@
 import { router } from "../trpc";
 import { adminRouter } from "./admin";
+import { affiliationsRouter } from "./affiliations";
 import { businessRouter } from "./business";
 import { businessesRouter } from "./businesses";
 import { cartRouter } from "./cart";
@@ -11,6 +12,7 @@ import { devicesRouter } from "./devices";
 import { favoritesRouter } from "./favorites";
 import { healthRouter } from "./health";
 import { ideaRouter } from "./idea";
+import { identityRouter } from "./identity";
 import { notificationsRouter } from "./notifications";
 import { ordersRouter } from "./orders";
 import { productsRouter } from "./products";
@@ -75,6 +77,21 @@ export const appRouter = router({
 	// it still answers "may this person see what the business owes the platform".
 	subscription: subscriptionRouter,
 	uploads: uploadsRouter,
+	/**
+	 * Who somebody is: a shop's public profile, an invitation link resolved before there is a
+	 * session, and the caller's own identity. **Not** under `business` — two of its three
+	 * procedures are public and the third answers about a person, so it is the one namespace
+	 * where `businessProcedure`'s invariant does not apply. See `routers/identity.ts`.
+	 */
+	identity: identityRouter,
+	/**
+	 * The invitee's half of an affiliation: accept, decline, leave. **Not** under `business`
+	 * for the reason above in its strongest form — accepting an invitation acts on a
+	 * membership that is `PENDING_USER_ACCEPTANCE`, which is by definition absent from the
+	 * caller's memberships, so `businessProcedure` could not resolve it. See
+	 * `routers/affiliations.ts`.
+	 */
+	affiliations: affiliationsRouter,
 	admin: adminRouter,
 });
 

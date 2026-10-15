@@ -1,0 +1,41 @@
+-- Verified profiles and organization affiliations, part 2 of 2 (invitation tokens).
+--
+-- Hand-written, for the reason `0032` states: `migrations/meta/` stops at
+-- `0020_snapshot.json` while hand-written migrations exist through `0032`, so
+-- `drizzle-kit generate` would diff against a twenty-migration-old snapshot and try
+-- to recreate ten already-applied files. That is a production outage, and
+-- `drizzle.config.ts` says so.
+--
+-- Additive: one ADD COLUMN and one CREATE UNIQUE INDEX. No DROP, no table rebuild,
+-- no data rewrite.
+--
+-- ## Why a token at all, when the row already names the invitee
+--
+-- `membership.user_id` is `NOT NULL`, so an invitation is addressed to a person who
+-- already has an account and the authorization is the *session*: `affiliations.accept`
+-- requires the signed-in caller to be the user the row names. That check is the whole
+-- boundary and it needs no secret.
+--
+-- The token answers a different question: **which invitation is this link about**,
+-- asked by somebody who is not signed in yet. The emailed link carries it, and
+-- `identity.invitationPreview` resolves it to a shop name and a role so the sign-in
+-- screen can say "Café Central te invitó a unirte como Encargado" instead of
+-- "inicie sesión". That read is public, so the token is a credential — and it is
+-- stored **only as a SHA-256 digest**, which is the property this column exists for:
+-- a dump of this database yields no usable invitation link.
+--
+-- The raw value is returned exactly once, by `business.inviteAffiliate`, and no read
+-- ever returns it again. `identity.invitationPreview` takes it as input; it never
+-- echoes it.
+--
+-- ## Why the index is UNIQUE
+--
+-- A digest is a row's public handle, so two rows sharing one would make the link
+-- ambiguous — and a reader would have to decide which of them to show. SQLite treats
+-- each NULL in a unique index as distinct, so the overwhelmingly common case (a row
+-- that is not an invitation, or one whose token has been cleared on acceptance)
+-- inserts freely.
+
+ALTER TABLE `membership` ADD `invite_token_hash` text;
+--> statement-breakpoint
+CREATE UNIQUE INDEX `membership_invite_token_unique` ON `membership` (`invite_token_hash`);

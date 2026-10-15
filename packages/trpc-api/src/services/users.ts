@@ -100,7 +100,17 @@ export async function me(ctx: UserContext): Promise<MeResult> {
 		})
 		.from(membershipTable)
 		.innerJoin(businessTable, eq(membershipTable.businessId, businessTable.id))
-		.where(eq(membershipTable.userId, ctx.user.id));
+		.where(
+			and(
+				eq(membershipTable.userId, ctx.user.id),
+				// The same contract as `business.myBusinesses`, and it has to be: this
+				// is the second half of the same list, read by the account screen
+				// rather than the switcher. Two sources for "my businesses" that
+				// disagreed about a pending invitation would be a screen that offers a
+				// shop the API then refuses.
+				eq(membershipTable.status, "ACTIVE"),
+			),
+		);
 
 	// Whether this person is a courier, and how far along that is.
 	//

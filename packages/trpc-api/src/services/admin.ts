@@ -48,6 +48,7 @@ import {
 } from "drizzle-orm";
 import { ConflictError, ValidationError } from "../errors";
 import { auditStatement, requireReason } from "./audit";
+import { grantVerificationStatements } from "./business-verification";
 import type { UserContext } from "./helpers";
 import { batchOf, likePattern, orNotFound } from "./helpers";
 import {
@@ -203,8 +204,17 @@ function listLimit(input: { limit: number }): number {
  * from the list it sends you to is worse than no badge: the operator sees 4, opens the queue,
  * and finds 3, and concludes one was handled by somebody who did not say so. So:
  *
- * - `pendingVerification` is `metrics`' own predicate, `is_verified = 0 and status <>
- *   'SUSPENDED'` — a suspended shop is not waiting for verification, it is suspended.
+ * - `pendingVerification` is `verification_status = 'PENDING'` — the same predicate
+ *   `admin.verificationQueue` pages on. It used to be `is_verified = 0 and status <>
+ *   'SUSPENDED'`, and **Phase 2 changed it because that predicate was wrong**: `is_verified`
+ *   is a projection of `verification_status` that cannot tell `PENDING` from `REVOKED`,
+ *   from `REJECTED`, or from a shop that has never applied — which is nearly every shop on
+ *   the platform. The badge read "412 waiting" on a queue with three rows in it, and the
+ *   operator concluded the console was broken. A count of *applications* is
+ *   `verification_status = 'PENDING'`, and it needs no `status <> 'SUSPENDED'` clause: a
+ *   suspended shop cannot have applied through `business.requestVerification`, which
+ *   refuses one, and if it applied first and was suspended after, its application is still
+ *   genuinely waiting for a reviewer.
  * - `pendingCouriers` is `courierProfiles`' own predicate, `verification_status = 'PENDING'`,
  *   **inner-joined to `user`** because that list is. A profile whose user row has gone is not
  *   in the list an operator reaches, so counting it would raise the badge above its own page.
@@ -218,9 +228,10 @@ export async function approvalCounts(
 	const [businesses, couriers] = await Promise.all([
 		ctx.db
 			.select({
-				total: sql<number>`coalesce(sum(case when ${businessTable.isVerified} = 0 and ${businessTable.status} <> 'SUSPENDED' then 1 else 0 end), 0)`,
+				total: sql<number>`count(*)`,
 			})
-			.from(businessTable),
+			.from(businessTable)
+			.where(eq(businessTable.verificationStatus, "PENDING")),
 		ctx.db
 			.select({
 				total: sql<number>`count(*)`,
@@ -266,7 +277,7 @@ export async function metrics(ctx: UserContext): Promise<AdminMetrics> {
 				total: sql<number>`count(*)`,
 				active: sql<number>`coalesce(sum(case when ${businessTable.status} = 'ACTIVE' then 1 else 0 end), 0)`,
 				suspended: sql<number>`coalesce(sum(case when ${businessTable.status} = 'SUSPENDED' then 1 else 0 end), 0)`,
-				pendingVerification: sql<number>`coalesce(sum(case when ${businessTable.isVerified} = 0 and ${businessTable.status} <> 'SUSPENDED' then 1 else 0 end), 0)`,
+				pendingVerification: sql<number>`coalesce(sum(case when ${businessTable.verificationStatus} = 'PENDING' then 1 else 0 end), 0)`,
 			})
 			.from(businessTable),
 		ctx.db
@@ -724,6 +735,49 @@ export async function reactivateBusiness(
 	return readBusinessRow(ctx.db, input.targetId);
 }
 
+/**
+ * Platform verification, and the manual path to it.
+ *
+ * The boolean and the record move together, in one `db.batch`, and the batch is
+ * the whole guarantee: D1 has no transaction to open from here, so a `batch` is
+ * the only atomic write this database offers, and two statements run separately
+ * would leave a shop verified in one column and unverified in the other for as
+ * long as the gap lasted.
+ *
+ * **The write itself lives in `services/business-verification.ts`** as
+ * `grantVerificationStatements`, and this function calls it. It used to be inline
+ * here with a docblock telling every other path that granted a verification to
+ * copy it — and Phase 2 added exactly such a path (`approveBusinessVerification`,
+ * the queue's decision on a `business_verification_request`), at which point "copy
+ * these five columns correctly" stopped being an instruction and became a shared
+ * function. The two paths still write the same thing; there is now one place that
+ * says what that is.
+ *
+ * **It also closes whatever application was open**, which the shared function does
+ * and this path needed most: this is the grant that does not read an application
+ * first, so before Phase 2 a shop verified manually here kept its application open
+ * — `approvalCounts` (which counts the shop's status) said nothing was waiting while
+ * `verificationQueue` (which pages the request table) still listed a row. One shop,
+ * two answers, from the pair of reads that exist precisely to agree.
+ *
+ * The three values written are the three that describe an approval: `APPROVED`,
+ * the `BUSINESS` level, and when. `verification_expires_at` is **cleared**, which
+ * is a fix rather than a detail: the manual path grants an open-ended approval,
+ * and before Phase 2 it left a stored expiry untouched — so an operator verifying
+ * a shop whose previous review had lapsed wrote `APPROVED` beside a date in the
+ * past, `isVerified` said `true`, and `deriveDisplay` refused the badge. The
+ * column said verified and the badge said otherwise, which is the exact
+ * disagreement this docblock's first paragraph is about.
+ *
+ * This is the **manual** path: an operator correcting a record, or verifying a
+ * shop that never applied. It needs no application, which is the one thing that
+ * distinguishes it from `approveBusinessVerification` — that one refuses without
+ * an open request, because a decision on the queue is a decision about a row.
+ *
+ * The audit entry carries both spellings for the same reason the write does —
+ * the log is read by a human who may be looking at either, and an entry that
+ * recorded only `isVerified` would not say what the shop was verified *as*.
+ */
 export async function verifyBusiness(
 	ctx: UserContext,
 	input: { targetId: string; reason?: string },
@@ -731,21 +785,19 @@ export async function verifyBusiness(
 	const current = await readBusiness(ctx.db, input.targetId);
 	const now = new Date();
 
-	await ctx.db.batch([
-		ctx.db
-			.update(businessTable)
-			.set({ isVerified: true, updatedAt: now })
-			.where(eq(businessTable.id, input.targetId)),
-		auditStatement(ctx, {
-			action: "business.verify",
-			targetType: "business",
-			targetId: input.targetId,
-			before: { isVerified: current.isVerified },
-			after: { isVerified: true },
-			reason: input.reason ?? null,
-			now,
-		}),
-	]);
+	await ctx.db.batch(
+		batchOf(
+			grantVerificationStatements(ctx, {
+				businessId: input.targetId,
+				before: {
+					isVerified: current.isVerified,
+					verificationStatus: current.verificationStatus,
+				},
+				reason: input.reason ?? null,
+				now,
+			}),
+		),
+	);
 
 	return readBusinessRow(ctx.db, input.targetId);
 }
@@ -1648,15 +1700,24 @@ export async function subscriptions(
 }
 
 /**
- * The OWNER's membership on a business — the address a debt reminder goes to.
+ * The OWNER's membership on a business — the address a debt reminder goes to, and
+ * the name an admin list shows beside a shop.
  *
  * A subquery rather than a join because `membership` has four roles and a business can
  * have several members: joining it would multiply the row. A scalar subquery with an
  * `OWNER` filter returns at most one address, which is what the column means.
+ *
+ * `status = 'ACTIVE'` is what keeps the column honest. Without it a revoked owner
+ * stays the shop's address and its displayed owner for as long as the row exists —
+ * so a billing reminder would be mailed to somebody who has not worked there for
+ * months, and the admin list would name them as though nothing had changed. The
+ * fallback when nobody qualifies is `null`, which reads as "no owner", and that is
+ * the truth: a shop with no active owner is a state an operator needs to see rather
+ * than one to paper over with a stale row.
  */
 const ownerUserIdSql = sql`(
 	select m.user_id from membership m
-	where m.business_id = ${businessTable.id} and m.role = 'OWNER'
+	where m.business_id = ${businessTable.id} and m.role = 'OWNER' and m.status = 'ACTIVE'
 	order by m.created_at
 	limit 1
 )`;
@@ -2247,6 +2308,16 @@ async function readUserRow(db: Db, id: string): Promise<AdminUserRow> {
 	});
 }
 
+/**
+ * The roles a page of users holds, for the admin user list.
+ *
+ * `ACTIVE`-filtered, and it is a product decision rather than a security one: this
+ * is what the admin list shows as a person's roles, and an unaccepted invitation
+ * is not a role they hold — printing "MANAGER at Café Central" beside somebody who
+ * has never opened the invitation is a support call waiting to happen. A revoked
+ * membership is not a role either. The history is not lost: it is in `membership`
+ * and in the audit log, and the admin surfaces that need it can read the row.
+ */
 async function rolesFor(
 	db: Db,
 	userIds: readonly string[],
@@ -2263,7 +2334,12 @@ async function rolesFor(
 		})
 		.from(membershipTable)
 		.innerJoin(businessTable, eq(membershipTable.businessId, businessTable.id))
-		.where(inArray(membershipTable.userId, [...userIds]));
+		.where(
+			and(
+				inArray(membershipTable.userId, [...userIds]),
+				eq(membershipTable.status, "ACTIVE"),
+			),
+		);
 
 	for (const row of rows) {
 		const list = roles.get(row.userId) ?? [];
@@ -2459,13 +2535,15 @@ const GROSS_VOLUME_SQL = sql<number>`(select coalesce(sum(${orderTable.totalMino
 /** The order-by twin of `GROSS_VOLUME_SQL` — see the note above the two. */
 const GROSS_VOLUME_SORT_SQL = sql<number>`(select coalesce(sum(${orderTable.totalMinor}), 0) from ${orderTable} where ${orderTable.businessId} = ${businessTable.id} and ${orderTable.status} not in ('CANCELLED','REJECTED'))`;
 
+/** The owner an admin list shows beside a shop. `ACTIVE`-filtered for the reason in `ownerUserIdSql`. */
 const OWNER_NAME_SQL = sql<
 	string | null
->`(select ${userTable}.${userTable.name} from ${membershipTable} inner join ${userTable} on ${userTable}.${userTable.id} = ${membershipTable}.${membershipTable.userId} where ${membershipTable}.${membershipTable.businessId} = ${businessTable}.${businessTable.id} and ${membershipTable}.${membershipTable.role} = 'OWNER' order by ${membershipTable}.${membershipTable.createdAt} asc limit 1)`;
+>`(select ${userTable}.${userTable.name} from ${membershipTable} inner join ${userTable} on ${userTable}.${userTable.id} = ${membershipTable}.${membershipTable.userId} where ${membershipTable}.${membershipTable.businessId} = ${businessTable}.${businessTable.id} and ${membershipTable}.${membershipTable.role} = 'OWNER' and ${membershipTable}.${membershipTable.status} = 'ACTIVE' order by ${membershipTable}.${membershipTable.createdAt} asc limit 1)`;
 
+/** The owner's address, and the same filter as `OWNER_NAME_SQL` — the pair must agree about who the owner is. */
 const OWNER_EMAIL_SQL = sql<
 	string | null
->`(select ${userTable}.${userTable.email} from ${membershipTable} inner join ${userTable} on ${userTable}.${userTable.id} = ${membershipTable}.${membershipTable.userId} where ${membershipTable}.${membershipTable.businessId} = ${businessTable}.${businessTable.id} and ${membershipTable}.${membershipTable.role} = 'OWNER' order by ${membershipTable}.${membershipTable.createdAt} asc limit 1)`;
+>`(select ${userTable}.${userTable.email} from ${membershipTable} inner join ${userTable} on ${userTable}.${userTable.id} = ${membershipTable}.${membershipTable.userId} where ${membershipTable}.${membershipTable.businessId} = ${businessTable}.${businessTable.id} and ${membershipTable}.${membershipTable.role} = 'OWNER' and ${membershipTable}.${membershipTable.status} = 'ACTIVE' order by ${membershipTable}.${membershipTable.createdAt} asc limit 1)`;
 
 /**
  * Why a business is suspended, read back from the audit entry that suspended it.

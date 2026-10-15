@@ -79,6 +79,42 @@ export const ADMIN_ACTIONS = [
 	 * writing its own row is not an act an operator performed.
 	 */
 	"idea.resolve",
+	/**
+	 * Affiliations: who works at a shop, who was asked, and who was removed.
+	 *
+	 * These are **merchant acts, not operator acts**, and they are in this list anyway
+	 * because this list is the platform's audit vocabulary rather than a menu of admin
+	 * powers — `auditStatement` takes an `AdminAction`, and `REASON_REQUIRED_ACTIONS`
+	 * is typed against it. The alternative was a second union and a second writer, and
+	 * two ways to write an audit row is how one of them ends up without a reason.
+	 *
+	 * They matter more than most entries here, not less. A shop asked in March "who had
+	 * access to my till" has no other answer: `removeStaff` deletes the row, so the
+	 * audit log is the only place a former employee's departure survives — and
+	 * `revokeAffiliation` keeps the row precisely so the two records can be read
+	 * together.
+	 */
+	"affiliation.invite",
+	"affiliation.accept",
+	"affiliation.decline",
+	"affiliation.leave",
+	"affiliation.revoke",
+	/**
+	 * A shop applying, and an operator deciding.
+	 *
+	 * **Applying is not `business.verify`**, and the separation is deliberate:
+	 * `business.verify` is the platform *granting* the mark, and this is the merchant
+	 * *asking* for it. An audit log that recorded both under one action could not
+	 * answer "did this shop ever apply, or did an operator verify it off their own
+	 * bat?" — which is the question a dispute about a badge actually asks.
+	 *
+	 * Approval reuses `business.verify` rather than adding a fourth name: the
+	 * consequence is identical to the manual path, it goes through the same write, and
+	 * two names for one outcome is how a report counts half of it.
+	 */
+	"business.verification_request",
+	"business.verification_reject",
+	"business.verification_revoke",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 export const adminActionSchema = z.enum(ADMIN_ACTIONS);
@@ -142,6 +178,31 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	 * policy asks for, rather than a coincidence.
 	 */
 	"category.delete",
+	/**
+	 * Taking a verification back, and refusing one.
+	 *
+	 * Both are removals in the sense this list means. A revocation strips a badge that
+	 * customers have been reading as a claim about a real registration, and a rejection
+	 * ends an application somebody spent an afternoon assembling — in both cases the
+	 * applicant is owed a sentence, and the sentence is also the only thing that makes
+	 * the decision reviewable by whoever inherits the queue.
+	 *
+	 * Approval is deliberately absent, for `user.grant_admin`'s reason: granting a mark
+	 * is not the act that needs defending, and making an operator justify a *yes* is how
+	 * the queue stops moving.
+	 */
+	"business.verification_reject",
+	"business.verification_revoke",
+	/**
+	 * Removing somebody from a shop's team.
+	 *
+	 * The same family as `user.suspend`: a real person loses the ability to open their
+	 * till, and the reason is read by an owner who was not in the room. `affiliation.leave`
+	 * and `affiliation.decline` are **not** here — those are the person's own decisions
+	 * about their own access, and demanding a justification for leaving a job is the
+	 * pattern `user.reactivate` was kept out of this list to avoid.
+	 */
+	"affiliation.revoke",
 ];
 
 /**
@@ -394,11 +455,18 @@ export type AdminReviewRow = z.infer<typeof adminReviewRowSchema>;
  * has to be right: it is how an operator knows whether anything is waiting.
  *
  * **The two predicates must match the ones their lists use**, or the badge and the list
- * disagree and one of them is a lie. `pendingVerification` is `is_verified = 0 and status <>
- * 'SUSPENDED'`, taken from `metrics`; `pendingCouriers` is `verification_status = 'PENDING'`
- * **inner-joined to `user`**, taken from `courierProfiles` — a profile whose user row is
- * missing is absent from that list, so counting it here would make the badge higher than the
- * list it sends you to.
+ * disagree and one of them is a lie. `pendingVerification` is `verification_status =
+ * 'PENDING'`, taken from `admin.verificationQueue`; `pendingCouriers` is
+ * `verification_status = 'PENDING'` **inner-joined to `user`**, taken from
+ * `courierProfiles` — a profile whose user row is missing is absent from that list, so
+ * counting it here would make the badge higher than the list it sends you to.
+ *
+ * `pendingVerification` used to be `is_verified = 0 and status <> 'SUSPENDED'`, and the
+ * change is worth recording because the old predicate was **wrong rather than merely
+ * different**: `is_verified` is a compatibility projection of `verification_status` that
+ * cannot distinguish an application under review from one that was rejected, revoked, or
+ * never made. Nearly every shop on the platform has never applied, so the badge counted
+ * the platform instead of the queue.
  *
  * No input: this is a fixed pair of counts, and an input that could filter them is an input
  * with nothing to filter *for* — a queue's depth is the whole number or it is not a number.

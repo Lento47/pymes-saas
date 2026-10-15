@@ -1289,6 +1289,12 @@ export async function assign(
 			and(
 				eq(membershipTable.businessId, order.businessId),
 				eq(membershipTable.userId, ctx.user.id),
+				// Acting for a shop requires a membership that is still in force. Both
+				// callers of this read are authorization: one decides whether the
+				// caller may assign a courier, the other whether they may see the
+				// order at all. An unaccepted invitation would satisfy neither
+				// question honestly, and a revoked membership answers "not any more".
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		)
 		.limit(1);
@@ -1920,7 +1926,8 @@ export async function queue(
 	if (!courierBoard) {
 		// The check and the query are one statement's worth of truth: a non-member's
 		// `businessId` matches no membership row, and the answer is the one a non-existent
-		// business gets.
+		// business gets. A membership that is not `ACTIVE` is a non-member here for the
+		// same reason and produces the same answer rather than a third one.
 		const membership = await ctx.db
 			.select({ role: membershipTable.role })
 			.from(membershipTable)
@@ -1928,6 +1935,7 @@ export async function queue(
 				and(
 					eq(membershipTable.businessId, businessId as string),
 					eq(membershipTable.userId, ctx.user.id),
+					eq(membershipTable.status, "ACTIVE"),
 				),
 			)
 			.limit(1);
@@ -2820,6 +2828,12 @@ async function reachableOrder(
 			and(
 				eq(membershipTable.businessId, order.businessId),
 				eq(membershipTable.userId, ctx.user.id),
+				// Acting for a shop requires a membership that is still in force. Both
+				// callers of this read are authorization: one decides whether the
+				// caller may assign a courier, the other whether they may see the
+				// order at all. An unaccepted invitation would satisfy neither
+				// question honestly, and a revoked membership answers "not any more".
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		)
 		.limit(1);

@@ -14,7 +14,7 @@ import {
 	type SubscriptionStatus,
 	subscriptionStatusAt,
 } from "@pymeshub/shared/plans";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createAuth } from "./auth";
 import type { RateLimitRoom } from "./durable/rate-limit-room";
 
@@ -120,6 +120,26 @@ export function clientFrom(header: string | null | undefined): ClientKind {
 		: "unknown";
 }
 
+/**
+ * Every business the caller may **currently act for**, and the single place that
+ * question is answered.
+ *
+ * `status = 'ACTIVE'` is not a filter, it is the authorization boundary. The list
+ * this returns is what `businessProcedure` answers a `businessId` against and
+ * what every `ctx.memberships` reader in the API treats as "shops I am in", so a
+ * `PENDING_USER_ACCEPTANCE` row reaching here would hand a capability to somebody
+ * who has not accepted anything — and every check downstream would be reading a
+ * membership that means something else. The condition is inside the `where`
+ * clause for the reason stated in `helpers.ts`: a row that is loaded and then
+ * judged is the bug the design exists to prevent.
+ *
+ * The other three states are each excluded for a reason worth naming.
+ * `PENDING_USER_ACCEPTANCE` is an invitation, not access — it surfaces through
+ * `business.pendingInvitations`, which is deliberately a *different* procedure so
+ * that no consumer has to remember to partition the two. `REVOKED` and `EXPIRED`
+ * are access that ended, and a membership that ended must read as though it were
+ * never granted.
+ */
 async function loadMemberships(db: Db, userId: string): Promise<Membership[]> {
 	const rows = await db
 		.select({
@@ -127,7 +147,12 @@ async function loadMemberships(db: Db, userId: string): Promise<Membership[]> {
 			role: membershipTable.role,
 		})
 		.from(membershipTable)
-		.where(eq(membershipTable.userId, userId));
+		.where(
+			and(
+				eq(membershipTable.userId, userId),
+				eq(membershipTable.status, "ACTIVE"),
+			),
+		);
 	return rows.map((row) => ({ businessId: row.businessId, role: row.role }));
 }
 

@@ -9,6 +9,10 @@ import {
 	REASON_REQUIRED_ACTIONS,
 } from "./admin";
 import { createPriceBookInput, recordPaymentInput } from "./admin-subscription";
+import {
+	adminVerificationDecisionInput,
+	affiliationRevokeInput,
+} from "./affiliation";
 
 /**
  * An action that demands a reason must have somewhere to put one.
@@ -64,6 +68,21 @@ const REASON_INPUTS: Record<string, { shape: Record<string, unknown> }> = {
 	"subscription.record_payment": recordPaymentInput,
 	"subscription.create_price_book": createPriceBookInput,
 	"category.delete": adminDeleteCategoryInput,
+	/**
+	 * Phase 2's three, and the two shapes behind them.
+	 *
+	 * `affiliation.revoke` is a **merchant** act with a reason required by its own schema —
+	 * `affiliationRevokeInput.reason` is `z.string().trim().min(1)`, so a blank never reaches
+	 * the service. The other two are operator acts on a verification, and they share
+	 * `adminVerificationDecisionInput`, whose `reason` is **optional** for the same reason
+	 * `adminCourierDecisionInput`'s is: the same shape serves `approveBusinessVerification`,
+	 * which needs no justification, and the two removals, which `requireReason` refuses
+	 * without one. The key existing is what this table checks; which branch requires it is the
+	 * service's decision.
+	 */
+	"affiliation.revoke": affiliationRevokeInput,
+	"business.verification_reject": adminVerificationDecisionInput,
+	"business.verification_revoke": adminVerificationDecisionInput,
 };
 
 describe("REASON_REQUIRED_ACTIONS", () => {

@@ -436,7 +436,9 @@ export const business = {
 	"biz.settings.hours.kind.unavailable": "No disponible",
 	"biz.settings.hours.days": "Días",
 	"biz.settings.hours.pickDays": "Elige al menos un día",
+	"biz.settings.hours.edit": "Editar",
 	"biz.settings.hours.remove": "Quitar",
+	"biz.settings.hours.removed": "Tramo quitado",
 	"biz.settings.hours.another": "Agregar otro tramo",
 	"biz.settings.readOnly":
 		"Solo el dueño o el encargado pueden guardar cambios",

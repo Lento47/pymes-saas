@@ -327,6 +327,11 @@ async function candidateFor(
 					inArray(membershipTable.userId, userIds),
 					eq(membershipTable.businessId, input.businessId),
 					eq(membershipTable.role, "COURIER"),
+					// A courier whose membership has ended is not "somebody this shop
+					// has worked with" for ranking purposes any more: the preference
+					// exists to reward a standing relationship, and a revoked one is
+					// not standing. An unaccepted invitation never counted either.
+					eq(membershipTable.status, "ACTIVE"),
 				),
 			),
 	]);

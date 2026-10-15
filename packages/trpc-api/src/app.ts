@@ -100,6 +100,11 @@ async function mayWatchOrder(
 			and(
 				eq(membershipTable.businessId, row.businessId),
 				eq(membershipTable.userId, userId),
+				// The websocket answers "may this person watch this order", which is a
+				// capability and is therefore the same question `businessProcedure`
+				// asks. An unaccepted invitation must not open a socket, and neither
+				// must a membership that has been taken away.
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		)
 		.limit(1);

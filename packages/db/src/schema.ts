@@ -144,6 +144,73 @@ export type OptionGroupKind = (typeof OPTION_GROUP_KINDS)[number];
 export const PROMOTION_KINDS = ["PERCENT", "FIXED", "FREE_DELIVERY"] as const;
 export type PromotionKind = (typeof PROMOTION_KINDS)[number];
 
+/**
+ * How far a business got through platform verification.
+ *
+ * **Two narrow unions rather than one wide one, and the omissions are the
+ * point.** A single `verificationTier` was the obvious first design, and it
+ * collapses two independent questions — "is a review open?" and "is this shop
+ * verified, and as what?" — into one string, which is why adding a state later
+ * means rewriting every comparison instead of widening one.
+ *
+ * What is deliberately **not** here, so nobody adds it by reflex:
+ *
+ * - **`GOVERNMENT`** and a `verifiedGovernment` badge. This platform verifies a
+ *   *shop* — a legal name, a tax id, a domain — and it has no process that could
+ *   honestly produce a claim about a government. A level the product cannot
+ *   reach is a branch every reader has to handle and no writer can produce.
+ * - **`PREMIUM`** and a `verifiedAccount` badge. Selling a badge is a different
+ *   product with different obligations (disclosure, refunds, what happens when
+ *   the subscription lapses mid-review). Nothing in the plan model charges for
+ *   verification, so the level would be unreachable here today.
+ *
+ * Both are additive when they arrive: a new literal in each union, a new member
+ * in the shared `profileBadge` enum, and the read path that already collapses
+ * "shape and badge follow the same predicate" widens with them.
+ */
+export const VERIFICATION_STATUSES = [
+	"NONE",
+	"PENDING",
+	"APPROVED",
+	"REJECTED",
+	"REVOKED",
+] as const;
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+/** What a shop is verified **as**. `NONE` is the only level the product issues today. */
+export const VERIFICATION_LEVELS = ["NONE", "BUSINESS"] as const;
+export type VerificationLevel = (typeof VERIFICATION_LEVELS)[number];
+
+/**
+ * Where one person's affiliation with one business stands.
+ *
+ * The lifecycle lives on `membership` rather than in a parallel
+ * `organization_affiliation` table, because `membership` already **is** the
+ * (person, business) pair: it carries the unique index, both foreign keys and
+ * the role, and a second table would either duplicate those or leave two rows
+ * per pair that can disagree about the role.
+ *
+ * `PENDING_USER_ACCEPTANCE` is the state the product did not have. Before it,
+ * `inviteStaff` inserted an `ACTIVE` membership on somebody else's behalf and
+ * they were on the team the moment a manager typed their address. The state is
+ * named for **who has to act** rather than for what it is ("invited"), because
+ * the invariant the whole design turns on is that the person named by a pending
+ * row has been granted nothing yet.
+ *
+ * `EXPIRED` is a stored state rather than a computed one — unlike the badge,
+ * which is evaluated per read. The difference is what the row is for: a badge
+ * is a claim about now and must vanish the instant a review lapses, while this
+ * column answers "what did we invite, and what happened to it", which is
+ * history and must not change because a clock moved.
+ */
+export const AFFILIATION_STATUSES = [
+	"ACTIVE",
+	"PENDING_USER_ACCEPTANCE",
+	"REVOKED",
+	"EXPIRED",
+] as const;
+export type AffiliationStatus = (typeof AFFILIATION_STATUSES)[number];
+
 // `PAYOUT_STATUSES` went with the `payout` table. It described the settlement of a
 // platform cut of a merchant's sales, which is not what this platform charges: the
 // consumer pays the merchant and the courier directly, and the platform invoices a
@@ -373,9 +440,56 @@ export const business = sqliteTable(
 		 * Unlisted, never deleted: orders, reviews and history stay.
 		 */
 		listed: integer("listed", { mode: "boolean" }).notNull().default(true),
+		/**
+		 * **A projection of `verificationStatus`, kept for compatibility.**
+		 *
+		 * It was the whole record until `0032_identity_badges.sql`: a boolean an
+		 * admin flipped. A boolean cannot say *why* a shop is not verified, when
+		 * the decision was made, whether it lapsed, or what the shop was verified
+		 * as — and the badge had nowhere to hang a review state, a level or an
+		 * expiry.
+		 *
+		 * The two are written **in the same `db.batch`** as each other, never one
+		 * alone: `isVerified` is `verificationStatus === 'APPROVED'`, and the batch
+		 * is what makes that true rather than aspirational. It stays because
+		 * `apps/web`, the admin filters and the mobile cards already read it, and
+		 * narrowing the union of readers is a separate change from widening the
+		 * record. New code reads `verificationStatus`.
+		 */
 		isVerified: integer("is_verified", { mode: "boolean" })
 			.notNull()
 			.default(false),
+		/**
+		 * The record `isVerified` projects. Defaults to `NONE`, which is what every
+		 * existing business is: nothing in the product has ever granted a level.
+		 */
+		verificationStatus: text("verification_status")
+			.$type<VerificationStatus>()
+			.notNull()
+			.default("NONE"),
+		/**
+		 * What the shop is verified as, written with the approval rather than
+		 * derived from it: a `BUSINESS` badge on a shop whose evidence was a
+		 * personal id is a claim the platform should not have to un-make later.
+		 */
+		verificationLevel: text("verification_level")
+			.$type<VerificationLevel>()
+			.notNull()
+			.default("NONE"),
+		/** When the approval was granted. Null until then, and null for a rejection. */
+		verifiedAt: integer("verified_at", { mode: "timestamp_ms" }),
+		/**
+		 * When the verification lapses, if it does.
+		 *
+		 * **Evaluated at read time, never by a cron.** A re-review that is not run
+		 * on the day it was due would otherwise leave a lapsed badge on a storefront
+		 * until somebody noticed; a read that compares this to `now` cannot be late,
+		 * and the badge is a claim about the present. Null means "does not expire",
+		 * which is the state every approval starts in.
+		 */
+		verificationExpiresAt: integer("verification_expires_at", {
+			mode: "timestamp_ms",
+		}),
 		ratingAvg: real("rating_avg").notNull().default(0),
 		ratingCount: integer("rating_count").notNull().default(0),
 		deliveryEnabled: integer("delivery_enabled", { mode: "boolean" })
@@ -476,6 +590,57 @@ export const membership = sqliteTable(
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
 		role: text("role").$type<MembershipRole>().notNull(),
+		/**
+		 * Where the affiliation stands. **Every existing row is `ACTIVE`**, which is
+		 * what the default does and why `0032` is additive rather than a backfill:
+		 * before this column there was no state to be in but active.
+		 *
+		 * A `PENDING_USER_ACCEPTANCE` row grants **nothing**: no capability, no seat,
+		 * no switcher entry, no badge. See `AFFILIATION_STATUSES`.
+		 */
+		status: text("status")
+			.$type<AffiliationStatus>()
+			.notNull()
+			.default("ACTIVE"),
+		/** Who extended the invitation. Null for a membership nobody invited — an owner. */
+		invitedByUserId: text("invited_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		/** When the invited person accepted. Null while pending, and null for a row that never was. */
+		acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
+		/**
+		 * When access was taken away. Distinct from `REVOKED` membership being
+		 * *deleted*, which is what this table did before: a delete loses the fact
+		 * that the person was ever there, and a shop asked "who had access in March"
+		 * needs that fact.
+		 */
+		revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+		/**
+		 * When an unaccepted invitation stops being acceptable.
+		 *
+		 * Stored rather than derived so an invitation's window can be extended
+		 * without editing history. An `ACTIVE` membership with this set is not
+		 * expired — expiry is only meaningful for a pending row, and the accept path
+		 * clears the field when it moves one.
+		 */
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+		/**
+		 * The **digest** of this invitation's link token, never the token itself.
+		 *
+		 * The column is a credential's hash and nothing else reads it as data: a
+		 * database dump must not yield a working invitation link, which is the whole
+		 * reason the raw value exists only in the response that minted it and in the
+		 * email that carried it. `services/invite-token.ts` is the only place that
+		 * hashes, and it hashes in one direction.
+		 *
+		 * Cleared by `affiliations.accept` in the same batch that moves the row to
+		 * `ACTIVE`: the link's job is over, and leaving a live digest on a membership
+		 * that is no longer an invitation is a credential kept past its purpose.
+		 * `REVOKED` and `EXPIRED` rows keep theirs, because a token that resolves to a
+		 * refusal is how the preview can say "esta invitación ya no está disponible"
+		 * rather than "no existe".
+		 */
+		inviteTokenHash: text("invite_token_hash"),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
 	(table) => [
@@ -486,6 +651,96 @@ export const membership = sqliteTable(
 		// Every request resolves the caller's memberships before it resolves
 		// anything else, so this is the hottest read in the tenancy model.
 		index("membership_user_idx").on(table.userId),
+		// The two indexes `0032` adds for the status-aware reads. `(user_id, status)`
+		// supersedes `membership_user_idx` above — the leading column is the same, so
+		// SQLite can serve a user-only lookup from either — and the older one is left
+		// in place on purpose: dropping an index is a production change of its own
+		// with its own rollback question, and this migration is additive. Revisit with
+		// measurements, not with tidiness.
+		index("membership_user_status_idx").on(table.userId, table.status),
+		// The tenant's own reads: the staff list, the seat count, and the "who may
+		// still act for this shop" question, all of which now filter by status.
+		index("membership_business_status_idx").on(table.businessId, table.status),
+		// The invitation link's own lookup, added by `0033`. UNIQUE rather than plain:
+		// a digest is a row's public handle, and two rows sharing one would make
+		// `identity.invitationPreview` have to choose between them. SQLite treats each
+		// NULL as distinct here, so the rows that are not invitations cost nothing.
+		uniqueIndex("membership_invite_token_unique").on(table.inviteTokenHash),
+	],
+);
+
+/**
+ * A shop's application for verification, and the reviewer's decision on it.
+ *
+ * Its own table rather than columns on `business`, because a shop applies more
+ * than once: the first rejection is a fact worth keeping, the evidence attached
+ * to it is the reason, and columns on the business would overwrite it on the
+ * second attempt.
+ *
+ * **`review_note` is internal and never leaves the admin surface.** It is where
+ * a reviewer writes "the tax id does not match the legal name", which is a
+ * sentence written for a colleague rather than for the applicant. Every public
+ * read of this table selects named columns; none selects `*`, and
+ * `identity.profile` returns no part of this row at all.
+ */
+export const businessVerificationRequest = sqliteTable(
+	"business_verification_request",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id")
+			.notNull()
+			.references(() => business.id, { onDelete: "cascade" }),
+		submittedByUserId: text("submitted_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		/** `PENDING` while open. A decision moves it to `APPROVED`, `REJECTED` or `REVOKED`. */
+		status: text("status")
+			.$type<VerificationStatus>()
+			.notNull()
+			.default("PENDING"),
+		/** The name as it appears on the registration document, which may differ from `business.name`. */
+		legalName: text("legal_name"),
+		country: text("country"),
+		taxId: text("tax_id"),
+		supportEmail: text("support_email"),
+		domain: text("domain"),
+		/** A URL proving control of `domain` — a page the reviewer can open. */
+		domainEvidenceUrl: text("domain_evidence_url"),
+		/**
+		 * Upload ids, as `string[]`. Nullable rather than defaulted to `[]`, matching
+		 * how `business.hours` treats "not recorded yet": a nullable JSON column has
+		 * one empty state, a defaulted one has two that a reader has to reconcile.
+		 */
+		documents: text("documents", { mode: "json" }).$type<string[]>(),
+		/** Internal. Never returned by a public read. See the table's docblock. */
+		reviewNote: text("review_note"),
+		reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+		/** What the applicant is told. Distinct from `reviewNote`. */
+		decisionReason: text("decision_reason"),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		// One open application per shop, enforced by the database. A second is a
+		// double submission — two reviewers reading the same evidence and possibly
+		// deciding it twice — which is exactly what `courier_invite_pending_unique`
+		// prevents for invitations.
+		uniqueIndex("business_verification_request_open_unique")
+			.on(table.businessId)
+			.where(sql`${table.status} = 'PENDING'`),
+		index("business_verification_request_business_idx").on(
+			table.businessId,
+			table.status,
+			table.createdAt,
+		),
+		// The admin queue: oldest open application first, without a scan.
+		index("business_verification_request_queue_idx").on(
+			table.status,
+			table.createdAt,
+		),
 	],
 );
 

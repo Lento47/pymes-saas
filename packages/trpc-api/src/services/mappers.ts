@@ -220,8 +220,17 @@ export function membershipSummaryOf(row: {
 	};
 }
 
+/**
+ * One row of the staff screen.
+ *
+ * The membership parameter is a **`Pick` of the two fields this reads**, not the whole
+ * row, and that is deliberate rather than tidy. Since `membership` grew an affiliation
+ * lifecycle it has five more columns, and requiring all of them would force
+ * `inviteStaff` — which has just built a new row and knows exactly four things about it
+ * — to invent the rest. A mapper that only needs a role and a date should ask for those.
+ */
 export function staffMemberOf(
-	membershipRow: MembershipRow,
+	membershipRow: Pick<MembershipRow, "role" | "createdAt">,
 	userRow: Pick<UserRow, "id" | "name" | "email" | "image">,
 ): StaffMember {
 	return {

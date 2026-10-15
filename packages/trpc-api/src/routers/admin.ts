@@ -9,6 +9,8 @@ import {
 	adminSupportTicketListInput,
 	adminSupportTicketReplyInput,
 	adminSupportTicketResolveInput,
+	adminVerificationDecisionInput,
+	adminVerificationQueueInput,
 	createPriceBookInput,
 	recordPaymentInput,
 } from "@pymeshub/shared";
@@ -16,6 +18,7 @@ import { z } from "zod";
 
 import * as admin from "../services/admin";
 import * as adminContent from "../services/admin-content";
+import * as businessVerification from "../services/business-verification";
 import * as subscriptions from "../services/subscription";
 import { adminProcedure, router } from "../trpc";
 
@@ -77,6 +80,70 @@ export const adminRouter = router({
 	verifyBusiness: adminProcedure
 		.input(adminActionInput)
 		.mutation(({ ctx, input }) => admin.verifyBusiness(ctx, input)),
+
+	/**
+	 * The review queue for `business_verification_request`: open applications, oldest first.
+	 *
+	 * Added in Phase 2 beyond the three decisions the brief named, and it is the one addition
+	 * that makes them usable: `approveBusinessVerification` refuses without an open request, so
+	 * a console that could decide but not read would be a console where the only way to find
+	 * an application was to guess its business id. It is also the only shape on the platform
+	 * that carries the submitted evidence — see `adminVerificationQueueRowSchema`.
+	 */
+	verificationQueue: adminProcedure
+		.input(adminVerificationQueueInput)
+		.query(({ ctx, input }) => businessVerification.verificationQueue(ctx, input)),
+
+	/**
+	 * Approve an application. The queue's yes.
+	 *
+	 * Distinct from `verifyBusiness` above, which stays the **manual** path: that one needs no
+	 * application because an operator may be correcting a record or verifying a shop that
+	 * never applied. This one is a decision *about a row*, so an absent or already-decided
+	 * application is a `NOT_FOUND` — which is also what stops two reviewers approving the same
+	 * stale page twice.
+	 *
+	 * No reason required, matching `user.grant_admin`'s reasoning: granting a mark is not the
+	 * act that needs defending, and making an operator justify a yes is how a queue stops
+	 * moving. `reviewNote` is optional, internal, and returned to nobody.
+	 */
+	approveBusinessVerification: adminProcedure
+		.input(adminVerificationDecisionInput)
+		.mutation(({ ctx, input }) =>
+			businessVerification.approveBusinessVerification(ctx, input),
+		),
+
+	/**
+	 * Refuse an application. **A reason is required**, enforced by `requireReason` in the
+	 * service against `REASON_REQUIRED_ACTIONS`, so the console asks for one and a caller that
+	 * skips the console cannot omit it.
+	 *
+	 * A rejection is not a ban: the shop may apply again immediately, and the evidence from
+	 * the refused application stays on its own row rather than being overwritten by the retry.
+	 */
+	rejectBusinessVerification: adminProcedure
+		.input(adminVerificationDecisionInput)
+		.mutation(({ ctx, input }) =>
+			businessVerification.rejectBusinessVerification(ctx, input),
+		),
+
+	/**
+	 * Take a verification back. **A reason is required.**
+	 *
+	 * Different from a rejection in both directions: it needs no open application, because the
+	 * claim it ends is already in force, and it refuses when the shop's stored status is not
+	 * `APPROVED`, because revoking a claim that does not exist is not a decision.
+	 *
+	 * **It clears the badge and keeps the team.** Every read collapses a revoked verification
+	 * through `deriveDisplay`, so nothing has to be written for the mark to come down; no
+	 * membership is touched, because a job is not a mark and locking a shop's staff out of
+	 * their own dashboard is not what a badge removal means.
+	 */
+	revokeBusinessVerification: adminProcedure
+		.input(adminVerificationDecisionInput)
+		.mutation(({ ctx, input }) =>
+			businessVerification.revokeBusinessVerification(ctx, input),
+		),
 
 	users: adminProcedure
 		.input(adminListInput)

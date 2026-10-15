@@ -402,7 +402,9 @@ export const business = {
 	"biz.settings.hours.kind.unavailable": "Unavailable",
 	"biz.settings.hours.days": "Days",
 	"biz.settings.hours.pickDays": "Pick at least one day",
+	"biz.settings.hours.edit": "Edit",
 	"biz.settings.hours.remove": "Remove",
+	"biz.settings.hours.removed": "Block removed",
 	"biz.settings.hours.another": "Add another block",
 	"biz.settings.hours.help":
 		"Start empty. Pick the days, the opening time, and the closing time. You can add a break, lunch, or a stretch when you are not available.",

@@ -17,6 +17,13 @@ export const ID_PREFIXES = {
 	business: "biz",
 	location: "loc",
 	membership: "mem",
+	/**
+	 * A shop's application for verification. Its own prefix rather than `biz_`,
+	 * because a log line that reads `bvr_` says the row is a reviewable claim about
+	 * a business and not the business — and an id from one table pasted into a
+	 * lookup against the other is a 404 rather than a wrong row.
+	 */
+	businessVerificationRequest: "bvr",
 	dashboardPreference: "dbp",
 	courierProfile: "cpr",
 	courierInvite: "cin",

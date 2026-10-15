@@ -46,6 +46,15 @@ function statusOf(row: typeof requestTable.$inferSelect): DeletionStatus {
 	};
 }
 
+/**
+ * Refuse to delete an account that is the last administrator of a live business.
+ *
+ * Both reads filter `ACTIVE`, and both for the same reason: the question is how
+ * many people can still administer the shop, and a membership that has ended is
+ * not one of them. A revoked owner counted here would let somebody delete their
+ * account and leave a business with nobody able to open it — the exact state this
+ * function exists to prevent, arrived at through the guard meant to stop it.
+ */
 async function assertNotLastOwner(db: Db, userId: string): Promise<void> {
 	const owned = await db
 		.select({ businessId: membershipTable.businessId })
@@ -54,6 +63,7 @@ async function assertNotLastOwner(db: Db, userId: string): Promise<void> {
 			and(
 				eq(membershipTable.userId, userId),
 				eq(membershipTable.role, "OWNER"),
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		);
 	for (const membership of owned) {
@@ -65,6 +75,7 @@ async function assertNotLastOwner(db: Db, userId: string): Promise<void> {
 					eq(membershipTable.businessId, membership.businessId),
 					eq(membershipTable.role, "OWNER"),
 					ne(membershipTable.userId, userId),
+					eq(membershipTable.status, "ACTIVE"),
 				),
 			)
 			.limit(1);

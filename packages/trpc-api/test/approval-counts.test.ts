@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import {
-	business as businessTable,
-	courierProfile as courierProfileTable,
-} from "@pymeshub/db";
-import { eq } from "drizzle-orm";
+import { courierProfile as courierProfileTable } from "@pymeshub/db";
 
 import { appRouter } from "../src/routers";
-import { authed, seedBusiness, seedUser, world } from "./harness";
+import {
+	authed,
+	seedBusiness,
+	seedUser,
+	seedVerificationRequest,
+	world,
+} from "./harness";
 
 /**
  * `admin.approvalCounts` — the number on the console's queue badge.
@@ -26,7 +28,25 @@ import { authed, seedBusiness, seedUser, world } from "./harness";
  *
  * So every assertion here is a comparison against the corresponding list's own `total`, and
  * the interesting cases are the ones where the two implementations could plausibly disagree:
- * a suspended shop, and a courier profile whose user row is gone.
+ * a shop that never applied, a shop whose application was refused, and a courier profile
+ * whose user row is gone.
+ *
+ * ## The disagreement this file recorded for a year, and how Phase 2 ended it
+ *
+ * The version of this file that preceded the verified-profiles work carried a skipped test
+ * named "the badge and the queue agree on what awaits verification", with a docblock
+ * explaining that they could not: the badge counted `is_verified = 0`, which is every shop
+ * that has not been approved — including every shop that never applied — while the
+ * Aprobaciones tab listed `status = 'DRAFT'`, an axis with nothing to do with verification.
+ * Neither predicate described a queue, so neither agreed with the other, and the skip
+ * recorded that fixing it was a product call.
+ *
+ * Phase 2 made the call. `is_verified` is a **projection** of `verification_status`, so it
+ * cannot distinguish `PENDING` from `REJECTED`, from `REVOKED`, or from a shop nobody has
+ * ever looked at — and the honest predicate for "applications awaiting review" is the status
+ * itself. Both the badge and the queue now read `verification_status = 'PENDING'`, the
+ * skipped test is un-skipped against `admin.verificationQueue`, and the two tests that
+ * replace it pin the halves of the bug that the old predicate produced.
  */
 
 type Caller = ReturnType<typeof appRouter.createCaller>;
@@ -55,84 +75,106 @@ describe("approval queue depth", () => {
 		w.close();
 	});
 
-	/**
-	 * KNOWN ISSUE — skipped, and this is the one to un-skip first.
-	 *
-	 * The badge counts unverified shops; the Aprobaciones tab lists `status = 'DRAFT'` ones.
-	 * `status` and `is_verified` are independent axes — a shop is created `DRAFT`, the owner
-	 * publishes it to `ACTIVE` via `business.setStatus`, and `verifyBusiness` sets
-	 * `is_verified` without touching `status` — so **approving a row does not remove it from
-	 * the queue it was approved in**.
-	 *
-	 * Pre-existing, and not introduced by `approvalCounts`. But it is precisely the class of
-	 * disagreement this endpoint was written to prevent, so it is recorded here rather than
-	 * written around, and the suite stays green.
-	 *
-	 * Deciding the fix is a product call: the card reads "Esperan verificación" and its action
-	 * is `verifyBusiness`, which both point at `is_verified`. Making the list agree means
-	 * filtering it on `is_verified`, which `adminListInput` cannot express yet.
-	 */
-	test.skip("the badge and the queue agree on what awaits verification", async () => {
+	test("the badge and the queue agree on what awaits verification", async () => {
 		const w = world();
-		await seedBusiness(w.db, { id: "biz_appr_agreeing" });
-
-		const admin = await adminCaller(w);
-		const counts = await admin.admin.approvalCounts();
-		// `status: ["DRAFT"]`, which is exactly what the console's client-side
-		// `pendingVerifications()` helper asks for — spelled out here because the helper is a
-		// filter on top of this procedure, not a procedure of its own.
-		const queue = await admin.admin.businesses({
-			status: ["DRAFT"],
-			limit: 50,
+		const applicant = await seedUser(w.db, { id: "usr_appr_agreeing" });
+		await seedBusiness(w.db, {
+			id: "biz_appr_agreeing",
+			verificationStatus: "PENDING",
+		});
+		await seedVerificationRequest(w.db, {
+			id: "bvr_appr_agreeing",
+			businessId: "biz_appr_agreeing",
+			submittedByUserId: applicant.id,
 		});
 
-		expect(counts.pendingVerification).toBe(queue.total);
-		expect(queue.rows.every((row) => !row.isVerified)).toBe(true);
+		const admin = await adminCaller(w);
+		const counts = await admin.admin.approvalCounts();
+		const queue = await admin.admin.verificationQueue({ limit: 50 });
+
+		// The assertion the old file could not make, against the list the badge actually
+		// sends an operator to. `verificationQueue` is the Phase 2 addition that makes this
+		// checkable at all: it pages `verification_status = 'PENDING'`, which is the badge's
+		// own predicate.
+		expect(counts.pendingVerification).toBe(queue.rows.length);
+		expect(counts.pendingVerification).toBe(1);
+		expect(queue.rows[0]?.businessId).toBe("biz_appr_agreeing");
 
 		w.close();
 	});
 
-	test("counts the unverified shops, which is what the card is titled", async () => {
+	test("a shop that has never applied is not in the queue, which is what the old predicate got wrong", async () => {
 		const w = world();
 
-		// `seedBusiness` has no `isVerified` override — deliberately, since almost nothing
-		// else in the suite cares — so the column is written directly here.
-		await seedBusiness(w.db, { id: "biz_appr_waiting" });
-		await seedBusiness(w.db, { id: "biz_appr_approved" });
-		await w.db
-			.update(businessTable)
-			.set({ isVerified: true })
-			.where(eq(businessTable.id, "biz_appr_approved"));
+		// Two shops, neither of which has ever applied for anything. The predicate this
+		// replaced — `is_verified = 0` — counted both, because it asks "is this shop
+		// approved" rather than "is this shop waiting". On the real platform that is every
+		// shop, so the badge read a four-figure number over a queue of three, and an
+		// operator who opened it and found three rows concluded the console was broken.
+		await seedBusiness(w.db, { id: "biz_appr_never_a" });
+		await seedBusiness(w.db, { id: "biz_appr_never_b" });
 
 		const admin = await adminCaller(w);
 
-		const counts = await admin.admin.approvalCounts();
-		const all = await admin.admin.businesses({ limit: 50 });
-		const unverified = all.rows.filter(
-			(row: { isVerified: boolean }) => !row.isVerified,
-		);
-
-		expect(counts.pendingVerification).toBe(unverified.length);
-		expect(counts.pendingVerification).toBe(1);
+		expect((await admin.admin.approvalCounts()).pendingVerification).toBe(0);
 
 		w.close();
 	});
 
-	test("does not count a suspended shop as waiting for verification", async () => {
+	test("a shop whose application was refused is not waiting for anything", async () => {
 		const w = world();
-		const suspended = await seedBusiness(w.db, {
+
+		// The other half of "the projection cannot tell the states apart": `REJECTED` and
+		// `PENDING` both leave `is_verified` false. Only one of them is work.
+		await seedBusiness(w.db, {
+			id: "biz_appr_rejected",
+			verificationStatus: "REJECTED",
+		});
+
+		const admin = await adminCaller(w);
+
+		expect((await admin.admin.approvalCounts()).pendingVerification).toBe(0);
+
+		w.close();
+	});
+
+	test("a suspended shop that applied is still counted, because its application is still open", async () => {
+		const w = world();
+
+		// The predicate this replaced had a `status <> 'SUSPENDED'` clause, and it was there
+		// for a good reason: a suspended shop is not waiting *for verification*, it is
+		// suspended. What the clause got wrong was the population — with `is_verified = 0` in
+		// front of it, the exclusion was doing the work the whole predicate should have been
+		// doing.
+		//
+		// With the population fixed to applications, the clause is not just unnecessary, it
+		// is wrong: a shop that applied and was then suspended has an application a reviewer
+		// must still decide, and hiding it from the badge means the queue has a row the
+		// number above it denies. So the badge counts it, and this test says so out loud
+		// rather than leaving the absence of a clause to be re-derived.
+		//
+		// Both rows are seeded because the product writes both: `requestVerification` moves
+		// the shop to `PENDING` *and* opens an application in one batch. The queue pages the
+		// application, the badge counts the shop, and they agree because no path writes one
+		// without the other.
+		await seedBusiness(w.db, {
 			id: "biz_appr_suspended",
 			status: "SUSPENDED",
+			verificationStatus: "PENDING",
 		});
-		expect(suspended).toBeTruthy();
+		await seedVerificationRequest(w.db, {
+			id: "bvr_appr_suspended",
+			businessId: "biz_appr_suspended",
+		});
 
 		const admin = await adminCaller(w);
-
-		// The predicate is `is_verified = 0 and status <> 'SUSPENDED'`, copied from
-		// `metrics`. A suspended shop is not queued behind a review, so counting it would
-		// put a number on the badge that no queue can clear.
 		const counts = await admin.admin.approvalCounts();
-		expect(counts.pendingVerification).toBe(0);
+		const queue = await admin.admin.verificationQueue({ limit: 50 });
+
+		expect(counts.pendingVerification).toBe(1);
+		expect(queue.rows.map((row) => row.businessId)).toEqual([
+			"biz_appr_suspended",
+		]);
 
 		w.close();
 	});
@@ -209,11 +251,87 @@ describe("approval queue depth", () => {
 		w.close();
 	});
 
+	test("the business badge falls when an application is approved", async () => {
+		const w = world();
+
+		// The same transition on the business side, and it is worth its own test because the
+		// two halves of this endpoint are two separate queries: the courier transition above
+		// cannot catch a business predicate that never moves. An approval writes
+		// `verification_status = 'APPROVED'` and the badge counts `'PENDING'`, so the number
+		// falls as a consequence of the decision rather than as a separate write that could
+		// be forgotten.
+		await seedBusiness(w.db, {
+			id: "biz_appr_transition",
+			verificationStatus: "PENDING",
+		});
+		await seedVerificationRequest(w.db, {
+			id: "bvr_appr_transition",
+			businessId: "biz_appr_transition",
+		});
+
+		const admin = await adminCaller(w);
+		expect((await admin.admin.approvalCounts()).pendingVerification).toBe(1);
+
+		await admin.admin.approveBusinessVerification({
+			targetId: "biz_appr_transition",
+		});
+
+		expect((await admin.admin.approvalCounts()).pendingVerification).toBe(0);
+
+		w.close();
+	});
+
+	test("the manual path closes the application too, so the badge and the queue cannot disagree", async () => {
+		const w = world();
+
+		// The divergence this pins, and it was reachable: `admin.verifyBusiness` grants the
+		// mark without reading an application, so before Phase 2 it left one open — the shop
+		// read `APPROVED`, the badge (which counts the shop's status) said nothing was
+		// waiting, and the queue (which pages the request table) still listed the row. One
+		// shop, two answers, from the pair of reads that exist precisely to agree.
+		//
+		// Both writes now come from `grantVerificationStatements`, so the application is
+		// closed by the same batch that grants the mark.
+		await seedBusiness(w.db, {
+			id: "biz_appr_manual",
+			verificationStatus: "PENDING",
+		});
+		await seedVerificationRequest(w.db, {
+			id: "bvr_appr_manual",
+			businessId: "biz_appr_manual",
+		});
+
+		const admin = await adminCaller(w);
+		expect((await admin.admin.verificationQueue({ limit: 50 })).rows).toHaveLength(
+			1,
+		);
+
+		await admin.admin.verifyBusiness({ targetId: "biz_appr_manual" });
+
+		const [counts, queue] = await Promise.all([
+			admin.admin.approvalCounts(),
+			admin.admin.verificationQueue({ limit: 50 }),
+		]);
+		expect(counts.pendingVerification).toBe(0);
+		expect(queue.rows).toEqual([]);
+
+		w.close();
+	});
+
 	test("counts across tenants, because a queue is not per-shop", async () => {
 		const w = world();
-		await seedBusiness(w.db, { id: "biz_appr_a" });
-		await seedBusiness(w.db, { id: "biz_appr_b" });
-		await seedBusiness(w.db, { id: "biz_appr_c" });
+		await seedBusiness(w.db, {
+			id: "biz_appr_a",
+			verificationStatus: "PENDING",
+		});
+		await seedBusiness(w.db, {
+			id: "biz_appr_b",
+			verificationStatus: "PENDING",
+		});
+		await seedBusiness(w.db, {
+			id: "biz_appr_c",
+			verificationStatus: "PENDING",
+		});
 
 		const admin = await adminCaller(w);
 

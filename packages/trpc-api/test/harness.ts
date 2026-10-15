@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { AuthenticatedUser } from "@pymeshub/auth";
 import {
 	business as businessTable,
+	businessVerificationRequest as businessVerificationRequestTable,
 	category as categoryTable,
 	createDb,
 	type Db,
@@ -25,9 +26,12 @@ import {
 	user as userTable,
 } from "@pymeshub/db";
 import type {
+	AffiliationStatus,
 	CountablePlanLimit,
 	Currency,
 	TicketStatus,
+	VerificationLevel,
+	VerificationStatus,
 } from "@pymeshub/shared";
 import { newOrderReference, PLAN_LIMITS } from "@pymeshub/shared";
 import type {
@@ -48,7 +52,7 @@ import {
 	STATUS_IS_LISTED,
 	subscriptionStatusAt,
 } from "@pymeshub/shared/plans";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { Context, Membership, MirrorUser } from "../src/context";
 import type { Env } from "../src/env";
@@ -730,19 +734,122 @@ export async function seedSession(
 	return token;
 }
 
+/**
+ * A membership row, in whatever state the spec needs.
+ *
+ * `status` defaults to `ACTIVE` because that is the column's default and because
+ * an active membership is what nearly every spec wants — a spec that seeds a
+ * `PENDING_USER_ACCEPTANCE` one is deliberately constructing the case where
+ * nothing should be granted, and it says so.
+ *
+ * `invitedByUserId`, `acceptedAt` and `expiresAt` exist so an invitation can be
+ * built the way the product builds one; the identity resolver and
+ * `pendingInvitations` both read them, and a fixture that could not set them
+ * would test a row the API cannot produce.
+ *
+ * Returns the id, so a spec can act on the exact row it seeded.
+ */
 export async function seedMembership(
 	db: Db,
 	userId: string,
 	businessId: string,
 	role: Membership["role"],
-): Promise<void> {
+	overrides: {
+		id?: string;
+		status?: AffiliationStatus;
+		invitedByUserId?: string;
+		acceptedAt?: Date | null;
+		revokedAt?: Date | null;
+		expiresAt?: Date | null;
+		createdAt?: Date;
+		/**
+		 * The **digest** of an invitation link, never the raw token.
+		 *
+		 * A spec that wants to call `identity.invitationPreview` mints a token with
+		 * `mintInviteToken()` and seeds `hash` here, because that is the only pair the
+		 * product can produce: `inviteAffiliate` returns the token and stores the digest, and
+		 * a fixture that wrote the raw token into the column would be seeding a row no
+		 * migration could have created — and would make the "stored hashed only" assertion
+		 * pass by writing the thing it forbids.
+		 */
+		inviteTokenHash?: string | null;
+	} = {},
+): Promise<string> {
+	const id = overrides.id ?? `mem_test_${userId}_${businessId}`;
+	const now = new Date();
 	await db.insert(membershipTable).values({
-		id: `mem_test_${userId}_${businessId}`,
+		id,
 		businessId,
 		userId,
 		role,
-		createdAt: new Date(),
+		status: overrides.status ?? "ACTIVE",
+		invitedByUserId: overrides.invitedByUserId ?? null,
+		acceptedAt: overrides.acceptedAt ?? null,
+		revokedAt: overrides.revokedAt ?? null,
+		expiresAt: overrides.expiresAt ?? null,
+		inviteTokenHash: overrides.inviteTokenHash ?? null,
+		createdAt: overrides.createdAt ?? now,
 	});
+	return id;
+}
+
+/**
+ * An application for verification, so a spec can reach the states only a reviewer can.
+ *
+ * Two of the five `verification_status` values are unwritable by any merchant — `REJECTED`
+ * and `REVOKED` are an operator's answer — so a spec that wants a shop in either state has
+ * to seed the *business* that way, which `seedBusiness` already does. This seeder exists for
+ * the third thing a spec needs and a business row cannot carry: an **open application**,
+ * which is what `admin.approveBusinessVerification` and `admin.rejectBusinessVerification`
+ * refuse without.
+ *
+ * `submittedByUserId` is optional and nullable rather than defaulting to a seeded user: the
+ * column is `on delete set null`, and the queue's own spec asserts that a row whose
+ * submitter has gone is still reviewable. A fixture that invented a user would make that
+ * case unreachable.
+ */
+export async function seedVerificationRequest(
+	db: Db,
+	overrides: {
+		id?: string;
+		businessId: string;
+		submittedByUserId?: string | null;
+		status?: VerificationStatus;
+		legalName?: string | null;
+		country?: string | null;
+		taxId?: string | null;
+		supportEmail?: string | null;
+		domain?: string | null;
+		domainEvidenceUrl?: string | null;
+		documents?: string[] | null;
+		reviewNote?: string | null;
+		decisionReason?: string | null;
+		createdAt?: Date;
+		reviewedAt?: Date | null;
+	},
+): Promise<string> {
+	const id = overrides.id ?? `bvr_test_${overrides.businessId}`;
+	const now = overrides.createdAt ?? new Date();
+	await db.insert(businessVerificationRequestTable).values({
+		id,
+		businessId: overrides.businessId,
+		submittedByUserId: overrides.submittedByUserId ?? null,
+		status: overrides.status ?? "PENDING",
+		legalName: overrides.legalName ?? null,
+		country: overrides.country ?? null,
+		taxId: overrides.taxId ?? null,
+		supportEmail: overrides.supportEmail ?? null,
+		domain: overrides.domain ?? null,
+		domainEvidenceUrl: overrides.domainEvidenceUrl ?? null,
+		documents: overrides.documents ?? null,
+		reviewNote: overrides.reviewNote ?? null,
+		decisionReason: overrides.decisionReason ?? null,
+		reviewedByUserId: null,
+		reviewedAt: overrides.reviewedAt ?? null,
+		createdAt: now,
+		updatedAt: now,
+	});
+	return id;
 }
 
 /**
@@ -893,9 +1000,25 @@ export async function seedBusiness(
 		 * teardown the harness cannot enforce.
 		 */
 		raiseLimits?: Partial<Record<CountablePlanLimit, number>>;
+		/**
+		 * The verification state, as three facts rather than a boolean.
+		 *
+		 * `isVerified` is **derived from `verificationStatus`** rather than set
+		 * separately, because that is the invariant production keeps — `verifyBusiness`
+		 * writes both in one batch — and a fixture that could set them independently
+		 * would let a spec assert a combination no real row can hold. A spec that
+		 * wants the projection to disagree with the record has to say so explicitly,
+		 * and nothing should want that.
+		 */
+		verificationStatus?: VerificationStatus;
+		verificationLevel?: VerificationLevel;
+		verifiedAt?: Date | null;
+		/** An approval that has lapsed. Read-time expiry is what a spec proves with this. */
+		verificationExpiresAt?: Date | null;
 	} = {},
 ): Promise<string> {
 	const id = overrides.id ?? "biz_test_shop";
+	const verificationStatus = overrides.verificationStatus ?? "NONE";
 	for (const [key, value] of Object.entries(overrides.raiseLimits ?? {})) {
 		raiseLimit(overrides.plan ?? "BUSINESS", key as CountablePlanLimit, value);
 	}
@@ -906,6 +1029,11 @@ export async function seedBusiness(
 		currency: "CRC",
 		plan: overrides.plan ?? "BUSINESS",
 		status: overrides.status ?? "ACTIVE",
+		isVerified: verificationStatus === "APPROVED",
+		verificationStatus,
+		verificationLevel: overrides.verificationLevel ?? "NONE",
+		verifiedAt: overrides.verifiedAt ?? null,
+		verificationExpiresAt: overrides.verificationExpiresAt ?? null,
 		deliveryEnabled: true,
 		pickupEnabled: true,
 		// Deliveries in ordinary fixtures have a real courier fee. A zero-fee shop
@@ -1087,8 +1215,13 @@ export async function seedReview(
  * caller with no row for a business genuinely has no membership, so `businessProcedure`
  * refuses them through its own code path and not through a stub.
  *
- * The production loader is not exported, so this mirrors its one select. If a membership
- * ever means more than `(businessId, role)`, this is the line that has to change with it.
+ * The production loader is not exported, so this mirrors its one select. **The mirror
+ * includes `status = 'ACTIVE'`**, and this is the line the comment here always warned
+ * about: a membership now means more than `(businessId, role)`, so a harness that
+ * forgot the status filter would hand a `PENDING_USER_ACCEPTANCE` caller a capability
+ * in every spec while the real Worker refused it — green tests asserting the opposite
+ * of production. The specs that prove an invitation grants nothing lean on this being
+ * an honest mirror, and one of them reads this function's own output to do it.
  */
 export async function contextFor(
 	test: TestWorld,
@@ -1105,7 +1238,12 @@ export async function contextFor(
 							role: membershipTable.role,
 						})
 						.from(membershipTable)
-						.where(eq(membershipTable.userId, user.id))
+						.where(
+							and(
+								eq(membershipTable.userId, user.id),
+								eq(membershipTable.status, "ACTIVE"),
+							),
+						)
 				).map((row) => ({
 					businessId: row.businessId,
 					role: row.role as Membership["role"],

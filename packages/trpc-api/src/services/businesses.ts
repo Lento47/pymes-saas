@@ -35,6 +35,7 @@ import {
 	type MembershipSummary,
 	newId,
 	ORDER_STATUSES,
+	type PendingInvitation,
 	resolveStorefrontAppearance,
 	type StaffMember,
 	type Subscription,
@@ -60,12 +61,16 @@ import {
 	sql,
 } from "drizzle-orm";
 
+import type { BatchItem } from "drizzle-orm/batch";
+
 import type { Context } from "../context";
 import { ConflictError, ForbiddenError, ValidationError } from "../errors";
+import { auditStatement } from "./audit";
 import { dispatchNext } from "./delivery-dispatch";
 import type { BusinessContext, UserContext } from "./helpers";
 import {
 	assertRole,
+	batchOf,
 	inCategory,
 	isOpenAt,
 	likePattern,
@@ -141,6 +146,21 @@ interface BusinessCandidate {
 // The caller's own businesses
 // ---------------------------------------------------------------------------
 
+/**
+ * The app's business switcher: the shops this person may **operate right now**.
+ *
+ * The `ACTIVE` filter is what makes the switcher's contract true rather than
+ * approximate. This procedure is the list a client draws as "my businesses" and
+ * picks a scope from, so a `PENDING_USER_ACCEPTANCE` row appearing here would be
+ * an invitation rendered as a shop — selectable, and then refused by
+ * `businessProcedure` on the first call that needed it.
+ *
+ * Invitations are **not** returned in some other field of this response, and that
+ * is deliberate: they arrive from `pendingInvitations` instead. One response
+ * carrying both would make "is this a shop I can use" a property the caller has
+ * to remember to check, and the field name is a weaker guard than a separate
+ * procedure.
+ */
 export async function myBusinesses(
 	ctx: UserContext,
 ): Promise<MembershipSummary[]> {
@@ -154,13 +174,84 @@ export async function myBusinesses(
 		})
 		.from(membershipTable)
 		.innerJoin(businessTable, eq(membershipTable.businessId, businessTable.id))
-		.where(eq(membershipTable.userId, ctx.user.id));
+		.where(
+			and(
+				eq(membershipTable.userId, ctx.user.id),
+				eq(membershipTable.status, "ACTIVE"),
+			),
+		);
 
 	// Sorted here rather than in SQL because a switcher lists three rows, and the
 	// collation SQLite would use on the name is not the one the clients use.
 	return rows
 		.sort((a, b) => a.businessName.localeCompare(b.businessName))
 		.map(membershipSummaryOf);
+}
+
+/**
+ * Invitations this person has been sent and has not answered.
+ *
+ * The other half of the split above, and **non-authorizing on purpose**. Nothing
+ * here is a shop the caller may use: no capability is minted from it, it is not
+ * selectable, it does not count against a plan's seat cap, and
+ * `resolveProfileIdentity` will not accept one of these business ids as a scope.
+ * It exists so a screen can say "you have been invited to Café Central" without
+ * that sentence being a permission.
+ *
+ * `expiresAt` is returned rather than filtered on. An invitation whose window has
+ * passed is still something the person was sent, and a client that hid it would
+ * leave them wondering why a notification led nowhere; the accept path is where a
+ * lapsed row is refused, once, in the one place that can do something about it.
+ */
+export async function pendingInvitations(
+	ctx: UserContext,
+): Promise<PendingInvitation[]> {
+	const rows = await ctx.db
+		.select({
+			id: membershipTable.id,
+			businessId: membershipTable.businessId,
+			businessSlug: businessTable.slug,
+			businessName: businessTable.name,
+			businessLogoUrl: businessTable.logoUrl,
+			role: membershipTable.role,
+			expiresAt: membershipTable.expiresAt,
+			createdAt: membershipTable.createdAt,
+			inviterId: userTable.id,
+			inviterName: userTable.name,
+			inviterImage: userTable.image,
+		})
+		.from(membershipTable)
+		.innerJoin(businessTable, eq(membershipTable.businessId, businessTable.id))
+		// A left join, because `invited_by_user_id` is nullable twice over: an owner's
+		// own membership has no inviter, and the column is `on delete set null` so the
+		// person who invited you can remove their account while the invitation stands.
+		.leftJoin(userTable, eq(membershipTable.invitedByUserId, userTable.id))
+		.where(
+			and(
+				eq(membershipTable.userId, ctx.user.id),
+				eq(membershipTable.status, "PENDING_USER_ACCEPTANCE"),
+			),
+		);
+
+	return rows
+		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+		.map((row) => ({
+			id: row.id,
+			businessId: row.businessId,
+			businessSlug: row.businessSlug,
+			businessName: row.businessName,
+			businessLogoUrl: row.businessLogoUrl,
+			role: row.role,
+			invitedBy: row.inviterId
+				? {
+						id: row.inviterId,
+						name: row.inviterName ?? "",
+						image: row.inviterImage,
+					}
+				: null,
+			expiresAt: row.expiresAt,
+			createdAt: row.createdAt,
+		}));
 }
 
 // ---------------------------------------------------------------------------
@@ -935,6 +1026,11 @@ export async function create(
 			businessId: id,
 			userId: ctx.user.id,
 			role: "OWNER",
+			// An owner writing their own membership is the one row that is `ACTIVE` by
+			// construction — there is nobody to accept an invitation from, and leaving
+			// this to the column default would make the shop's own founder a member by
+			// accident of a schema choice rather than by intent.
+			status: "ACTIVE",
 			createdAt: now,
 		}),
 		ctx.db.insert(locationTable).values({
@@ -1018,6 +1114,21 @@ export async function setStatus(
 // The team
 // ---------------------------------------------------------------------------
 
+/**
+ * The team, as the staff screen lists it: **people who can act for this shop
+ * today**.
+ *
+ * Pending invitations are excluded, and they are excluded from *here* rather than
+ * filtered by the client, because this list is what another screen offers to
+ * change roles and remove people from. A `PENDING_USER_ACCEPTANCE` row rendered
+ * beside an `ACTIVE` one would be a name with a role dropdown next to it for
+ * somebody who has agreed to nothing — and removing them would delete an
+ * invitation rather than a colleague.
+ *
+ * `inviteStaff`'s own list of who is already on the team is this same set, which
+ * is why the two reads carry the same filter: a manager must not be able to send
+ * a second invitation to somebody whose first is still open.
+ */
 export async function staff(ctx: BusinessContext): Promise<StaffMember[]> {
 	const rows = await ctx.db
 		.select({
@@ -1031,7 +1142,12 @@ export async function staff(ctx: BusinessContext): Promise<StaffMember[]> {
 		})
 		.from(membershipTable)
 		.innerJoin(userTable, eq(membershipTable.userId, userTable.id))
-		.where(eq(membershipTable.businessId, ctx.membership.businessId));
+		.where(
+			and(
+				eq(membershipTable.businessId, ctx.membership.businessId),
+				eq(membershipTable.status, "ACTIVE"),
+			),
+		);
 
 	// OWNER first, then MANAGER, then STAFF, then COURIER. The list is a
 	// permission ladder, and sorting it alphabetically buries the person who
@@ -1094,8 +1210,29 @@ export async function inviteStaff(
 		);
 	}
 
+	/**
+	 * **Unfiltered by `status`, and the reason has changed since Phase 1.**
+	 *
+	 * It is still unfiltered because it exists to answer "does a row already exist for
+	 * this pair": `membership_business_user_unique` is on `(business_id, user_id)` and a
+	 * second insert is a constraint failure rather than an invitation, so narrowing this
+	 * read would let the code past the check and into that failure — a 500 where a
+	 * sentence belongs.
+	 *
+	 * What changed is what happens next. Phase 1 refused on *any* row and recorded the
+	 * consequence in the docblock above: re-inviting somebody whose membership was
+	 * revoked had no path, and the refusal said "ya forma parte del equipo" about a person
+	 * who demonstrably did not. The reactivation path is now here — the branch below
+	 * updates the row instead of colliding with it — and `inviteAffiliate` carries the
+	 * same branch for invitations.
+	 *
+	 * Unfiltered, the check can still only ever be **stricter** than a status-aware one:
+	 * it refuses where the narrow version might have proceeded. A read that cannot grant
+	 * anything is not an authorization boundary, which is why it is safe to leave as it is
+	 * and why the branch, not the filter, is the fix.
+	 */
 	const existing = await ctx.db
-		.select({ id: membershipTable.id })
+		.select({ id: membershipTable.id, status: membershipTable.status })
 		.from(membershipTable)
 		.where(
 			and(
@@ -1105,7 +1242,10 @@ export async function inviteStaff(
 		)
 		.limit(1);
 
-	if (existing[0])
+	const row = existing[0];
+	// `ACTIVE` is the only status that means "already on the team". Everything else is a
+	// relationship that ended, and this is a new one.
+	if (row?.status === "ACTIVE")
 		throw new ConflictError("Esa persona ya forma parte del equipo");
 
 	/**
@@ -1141,6 +1281,13 @@ export async function inviteStaff(
 				and(
 					eq(membershipTable.businessId, businessId),
 					ne(membershipTable.role, "COURIER"),
+					// Only people who can act count. A seat is taken by somebody who
+					// is on the team, and an unaccepted invitation is nobody: counting
+					// pending rows would let a manager exhaust a plan's seats by
+					// typing addresses, which is a paid resource spent without a
+					// person behind it — and the invitation could still be declined,
+					// leaving the shop paying for nothing.
+					eq(membershipTable.status, "ACTIVE"),
 				),
 			);
 		checkCount({
@@ -1154,18 +1301,74 @@ export async function inviteStaff(
 	const now = new Date();
 	const id = newMembershipId();
 
-	await ctx.db.insert(membershipTable).values({
-		id,
-		businessId,
-		userId: user.id,
-		role: input.role,
-		createdAt: now,
-	});
+	/**
+	 * The write, the audit row, and the reactivation branch, in one batch.
+	 *
+	 * The batch is new here and it is the rule `services/audit.ts` states: a change and the
+	 * record of the change are one atomic unit. `inviteStaff` was one of the paths that
+	 * predated the rule, which meant a shop could add somebody and have no row saying who
+	 * did it — and the person added could be an OWNER.
+	 *
+	 * The update branch is addressed by id, which was read under both `businessId` and
+	 * `userId`, and it restates `status <> 'ACTIVE'`: D1 offers no transaction to open
+	 * around the read and the write, so a membership activated between them must not be
+	 * silently re-written by a stale invitation.
+	 */
+	const write: BatchItem<"sqlite"> = row
+		? ctx.db
+				.update(membershipTable)
+				.set({
+					role: input.role,
+					status: "ACTIVE",
+					// The new episode's dates, not the old one's. `acceptedAt` is written
+					// because this path grants access immediately — there is no second thing
+					// for the person to agree to — and the cleared fields are what stops a
+					// revoked row from carrying its revocation into a membership that is live.
+					acceptedAt: now,
+					revokedAt: null,
+					expiresAt: null,
+					inviteTokenHash: null,
+					invitedByUserId: ctx.user.id,
+				})
+				.where(
+					and(
+						eq(membershipTable.id, row.id),
+						ne(membershipTable.status, "ACTIVE"),
+					),
+				)
+		: ctx.db.insert(membershipTable).values({
+				id,
+				businessId,
+				userId: user.id,
+				role: input.role,
+				// Written rather than left to the column default, so that the one insert in
+				// this file that *grants* access says out loud which state it grants. A
+				// reader should not have to open the schema to learn that this is `ACTIVE`.
+				status: "ACTIVE",
+				// The inviter, which the insert never recorded. It is what lets the shop's
+				// ledger answer "who brought this person in" for a team member as well as for
+				// an invitation, and it is nullable because a row created by an owner for
+				// themselves has nobody to name.
+				invitedByUserId: ctx.user.id,
+				createdAt: now,
+			});
 
-	return staffMemberOf(
-		{ id, businessId, userId: user.id, role: input.role, createdAt: now },
-		user,
+	await ctx.db.batch(
+		batchOf([
+			write,
+			auditStatement(ctx, {
+				action: "affiliation.invite",
+				targetType: "membership",
+				targetId: row?.id ?? id,
+				before: row ? { status: row.status } : null,
+				after: { status: "ACTIVE", role: input.role, userId: user.id, businessId },
+				reason: null,
+				now,
+			}),
+		]),
 	);
+
+	return staffMemberOf({ role: input.role, createdAt: now }, user);
 }
 
 /**
@@ -1197,6 +1400,10 @@ export async function updateStaffRole(
 			and(
 				eq(membershipTable.businessId, businessId),
 				eq(membershipTable.userId, input.userId),
+				// A non-active row is not a member, so this answers `NOT_FOUND` rather
+				// than demoting somebody who cannot be demoted — the same shape as a
+				// `userId` from another tenant.
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		)
 		.limit(1);
@@ -1214,6 +1421,15 @@ export async function updateStaffRole(
 			and(
 				eq(membershipTable.businessId, businessId),
 				eq(membershipTable.userId, input.userId),
+				// The read above already established that this row is `ACTIVE`, and the
+				// condition is restated here on purpose. The update is addressed by
+				// `(businessId, userId)` rather than by the membership's id, and D1
+				// offers no transaction to open around the pair — so without this, a
+				// membership revoked between the read and the write would still be
+				// promoted, and the caller would be told it worked. The window is small
+				// and the consequence is an ex-employee holding a role, which is worth
+				// one more clause.
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		);
 
@@ -1243,6 +1459,14 @@ export async function removeStaff(
 			and(
 				eq(membershipTable.businessId, businessId),
 				eq(membershipTable.userId, input.userId),
+				// Removing somebody who has already been removed is a `NOT_FOUND`, not
+				// a second delete. The alternative — succeeding on a row that was not
+				// there — would make "did this work" unanswerable from the response.
+				//
+				// The consequence is that the Phase 2 revoke path cannot be reached
+				// through this procedure, which is intended: revoking keeps the row
+				// and its history, and this deletes it. They are different actions.
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		)
 		.limit(1);
@@ -1260,7 +1484,23 @@ export async function removeStaff(
 	return { ok: true };
 }
 
-async function assertNotLastOwner(
+/**
+ * Refuse to leave a business with nobody who can administer it.
+ *
+ * The `ACTIVE` filter is load-bearing and easy to miss. Without it, a revoked
+ * owner would still be counted as an owner — so revoking the last one would look
+ * like the business still had one, and the shop would end up with an owner list
+ * that exists only in this query's imagination: nobody able to log in, and no way
+ * to fix it from the UI. The question this asks is "how many people can still
+ * administer this shop", and a revoked membership answers zero to it.
+ *
+ * **Exported** because three callers now need it and they are not all in this file:
+ * `removeStaff` and `updateStaffRole` here, and `services/affiliations.ts`'s
+ * `leaveBusiness` and `revokeAffiliation`. A second copy is how one of them ends up
+ * counting a revoked owner — which is precisely the bug the `ACTIVE` filter above
+ * was added to fix, and it would come back in the copy nobody re-read.
+ */
+export async function assertNotLastOwner(
 	ctx: BusinessContext,
 	businessId: string,
 	excludedUserId: string,
@@ -1272,6 +1512,7 @@ async function assertNotLastOwner(
 			and(
 				eq(membershipTable.businessId, businessId),
 				eq(membershipTable.role, "OWNER"),
+				eq(membershipTable.status, "ACTIVE"),
 			),
 		);
 
@@ -1633,6 +1874,15 @@ export async function auditHistory(
 		),
 		and(
 			eq(auditLogTable.targetType, "user"),
+			// **Deliberately not `ACTIVE`-filtered, and it is the only membership read
+			// in this file that is not.** This clause decides which entries about a
+			// *person* are visible to a shop, and its question is historical: "was
+			// this actor ever on this team". Filtering it would erase a removed
+			// employee's entire audit trail from the shop's own history — the records
+			// of what they did while they worked there would disappear at the moment
+			// the shop most needs to look at them, which is right after removing
+			// somebody. `status` says what a membership is *now*; this asks what it
+			// *was*, and those are different questions.
 			exists(
 				ctx.db
 					.select({ id: membershipTable.id })
