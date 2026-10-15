@@ -43,7 +43,8 @@ describe("merchant home figures and names", () => {
 
 	test("insight values wrap inside equal columns", () => {
 		expect(home).toContain("insightItem: { flex: 1, minWidth: 0");
-		expect(home).toContain('<Text variant="body" bold numberOfLines={2}>');
+		expect(home).toContain('variant="body"');
+		expect(home).toContain("numberOfLines={2}");
 	});
 
 	test("analytics failure does not replace the board", () => {

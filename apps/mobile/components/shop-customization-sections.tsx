@@ -1,20 +1,21 @@
 import type {
 	BusinessCard,
 	BusinessHoursEntry,
+	ProductCard,
 	StorefrontAppearance,
 } from "@pymeshub/shared";
-import { brandAccentCheck } from "@pymeshub/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { View } from "react-native";
-import { bandAnchor } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
-import { space, useTheme } from "@/theme";
+import { radius, space, useTheme } from "@/theme";
 import { ErrorState } from "./error-state";
 import { HoursTable } from "./hours-table";
+import { ProductRail } from "./product-rail";
 import { ProductRow } from "./product-row";
 import { ProductRowsSkeleton } from "./skeletons";
+import { SectionHeader } from "./section-header";
 import { Text } from "./text";
 
 /** The same optional content in the editor preview and the customer's shop. */
@@ -48,12 +49,15 @@ export function ShopCustomizationSections({
 			{ enabled: featuredVisible },
 		),
 	);
-	const accent =
-		appearance.accentColor && brandAccentCheck(appearance.accentColor).valid
-			? bandAnchor(appearance.accentColor, colors.background)
-			: colors.action;
+	const openProduct = (product: ProductCard) => {
+		if (!preview)
+			router.push({
+				pathname: "/(customer)/product/[id]",
+				params: { id: product.id },
+			});
+	};
 	return (
-		<View style={{ gap: space.lg }}>
+		<View style={{ gap: space.xl }}>
 			{appearance.sections
 				.filter((id) => !appearance.hidden.includes(id))
 				.map((id) => {
@@ -73,44 +77,55 @@ export function ShopCustomizationSections({
 						);
 					const query = id === "offers" ? offers : featured;
 					const products = query.data?.items ?? [];
+					const title =
+						id === "offers" ? t("customize.offers") : t("customize.featured");
 					if (!preview && query.isSuccess && products.length === 0) return null;
 					return (
-						<View
-							key={id}
-							style={{ paddingHorizontal: space.lg, gap: space.sm }}
-						>
-							<Text variant="title" bold style={{ color: accent }}>
-								{id === "offers"
-									? t("customize.offers")
-									: t("customize.featured")}
-							</Text>
-							{query.isPending ? <ProductRowsSkeleton /> : null}
-							{query.error ? (
-								<ErrorState
-									error={query.error}
-									onRetry={() => void query.refetch()}
+						<View key={id} style={{ gap: space.md }}>
+							<View style={{ paddingHorizontal: space.lg, gap: space.sm }}>
+								<SectionHeader title={title} style={{ marginBottom: 0 }} />
+								{query.isPending ? <ProductRowsSkeleton /> : null}
+								{query.error ? (
+									<ErrorState
+										error={query.error}
+										onRetry={() => void query.refetch()}
+									/>
+								) : null}
+								{preview && query.isSuccess && products.length === 0 ? (
+									<Text variant="body" tone="muted">
+										{id === "offers"
+											? t("home.offers.empty.title")
+											: t("home.featured.empty.title")}
+									</Text>
+								) : null}
+							</View>
+							{id === "offers" && products.length > 0 ? (
+								<ProductRail
+									products={products}
+									onPress={preview ? () => {} : openProduct}
 								/>
 							) : null}
-							{preview && query.isSuccess && products.length === 0 ? (
-								<Text variant="body" tone="muted">
-									{id === "offers"
-										? t("home.offers.empty.title")
-										: t("home.featured.empty.title")}
-								</Text>
-							) : null}
-							{products.map((product) => (
-								<ProductRow
-									key={product.id}
-									product={product}
-									onPress={() => {
-										if (!preview)
-											router.push({
-												pathname: "/(customer)/product/[id]",
-												params: { id: product.id },
-											});
+							{id === "featured" && products.length > 0 ? (
+								<View
+									style={{
+										marginHorizontal: space.lg,
+										borderRadius: radius.lg,
+										borderWidth: 1,
+										borderColor: colors.border,
+										backgroundColor: colors.card,
+										overflow: "hidden",
 									}}
-								/>
-							))}
+								>
+									{products.map((product, index) => (
+										<ProductRow
+											key={product.id}
+											product={product}
+											divider={index < products.length - 1}
+											onPress={() => openProduct(product)}
+										/>
+									))}
+								</View>
+							) : null}
 						</View>
 					);
 				})}

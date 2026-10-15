@@ -14,6 +14,8 @@ export default function CustomerLayout() {
 	return (
 		<Stack screenOptions={{ headerShown: false }}>
 			<Stack.Screen name="(tabs)" />
+			<Stack.Screen name="account-hub" />
+			<Stack.Screen name="edit-profile" />
 		</Stack>
 	);
 }

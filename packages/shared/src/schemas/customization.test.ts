@@ -101,6 +101,28 @@ describe("saved customization compatibility", () => {
 		});
 	});
 
+	test("extra layout designs survive and an unknown one falls back", () => {
+		const resolved = resolveDashboardPreferences({
+			...DEFAULT_DASHBOARD_PREFERENCES,
+			layouts: {
+				shortcuts: "list",
+				insights: "band",
+				attention: "cards",
+				queue: "cards",
+				commands: "stack",
+				catalog: "rail",
+				pulse: "nope",
+			},
+		});
+		expect(resolved.layouts.shortcuts).toBe("list");
+		expect(resolved.layouts.insights).toBe("band");
+		expect(resolved.layouts.attention).toBe("cards");
+		expect(resolved.layouts.queue).toBe("cards");
+		expect(resolved.layouts.commands).toBe("stack");
+		expect(resolved.layouts.catalog).toBe("rail");
+		expect(resolved.layouts.pulse).toBe("band");
+	});
+
 	test("partial layouts and shortcut lists fill in the missing keys", () => {
 		const resolved = resolveDashboardPreferences({
 			...DEFAULT_DASHBOARD_PREFERENCES,

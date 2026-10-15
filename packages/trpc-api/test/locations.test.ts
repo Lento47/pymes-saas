@@ -79,12 +79,14 @@ test("merchant locations return effective hours for the Costa Rica day", async (
 			opensMinute: 600,
 			closesMinute: 1200,
 			isClosed: false,
+			kind: "open" as const,
 		}));
 		const branchHours = Array.from({ length: 7 }, (_, day) => ({
 			day,
 			opensMinute: 480,
 			closesMinute: 1080,
 			isClosed: false,
+			kind: "open" as const,
 		}));
 		await testWorld.db
 			.update(businessTable)
@@ -106,6 +108,7 @@ test("merchant locations return effective hours for the Costa Rica day", async (
 			opensMinute: 480,
 			closesMinute: 1080,
 			isClosed: false,
+			kind: "open",
 		});
 		const locations = await owner.business.locations({ businessId });
 		expect(locations.find((row) => row.isDefault)?.todayHours).toEqual({
@@ -113,6 +116,7 @@ test("merchant locations return effective hours for the Costa Rica day", async (
 			opensMinute: 600,
 			closesMinute: 1200,
 			isClosed: false,
+			kind: "open",
 		});
 		expect(locations.find((row) => row.id === branch.id)?.todayHours).toEqual(
 			branch.todayHours,
@@ -545,6 +549,7 @@ test("expired pauses resume by server time; staff cannot pause and suspended sho
 					opensMinute: 0,
 					closesMinute: 0,
 					isClosed: true,
+					kind: "open" as const,
 				})),
 			})
 			.where(eq(locationTable.id, locationId));

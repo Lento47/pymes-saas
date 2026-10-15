@@ -15,6 +15,7 @@ import {
 	CustomizationRows,
 	HeaderStylePicker,
 	ShopSectionPreview,
+	WidgetPaletteStrip,
 } from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
@@ -25,7 +26,13 @@ import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { space } from "@/theme";
+import {
+	type BusinessThemeId,
+	businessThemeColors,
+	businessThemeOrder,
+	space,
+	useTheme,
+} from "@/theme";
 
 const LABELS = {
 	information: "customize.shopInfo",
@@ -33,8 +40,27 @@ const LABELS = {
 	featured: "customize.featured",
 } as const;
 
+/** The swatch a shop owner taps, stored as the hex the storefront already reads. */
+function shopAccentHex(id: BusinessThemeId): string {
+	const primary = businessThemeColors(id, "light").primary.toUpperCase();
+	const check = brandAccentCheck(primary);
+	return (check.valid ? primary : (check.suggested ?? primary)).toUpperCase();
+}
+
+function shopAccentId(accent: string | null): BusinessThemeId | null {
+	if (!accent) return null;
+	const upper = accent.toUpperCase();
+	for (const id of businessThemeOrder()) {
+		if (shopAccentHex(id) === upper) return id;
+		if (businessThemeColors(id, "light").primary.toUpperCase() === upper)
+			return id;
+	}
+	return null;
+}
+
 export default function CustomizeShop() {
 	const { t } = useT();
+	const { scheme } = useTheme();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const scope = useMerchantScope();
@@ -94,6 +120,7 @@ export default function CustomizeShop() {
 			leading={<BackButton to="/(business)/customize" />}
 			scroll
 			bottomInset
+			contentStyle={{ gap: space.xl }}
 		>
 			{saved.error || storefront.error ? (
 				<ErrorState
@@ -127,7 +154,7 @@ export default function CustomizeShop() {
 			<Text variant="caption" tone="muted">
 				{t("customize.draft")}
 			</Text>
-			<View style={{ gap: space.sm, marginTop: space.xxl }}>
+			<View style={{ gap: space.lg }}>
 				<ListRow
 					title={t("customize.photos")}
 					chevron
@@ -144,6 +171,19 @@ export default function CustomizeShop() {
 				<HeaderStylePicker
 					value={draft.header}
 					onChange={(header) => setDraft({ ...draft, header })}
+				/>
+				<WidgetPaletteStrip
+					label={t("customize.color")}
+					value={shopAccentId(draft.accentColor)}
+					scheme={scheme}
+					onChange={(themeId) =>
+						setDraft({
+							...draft,
+							accentColor: themeId
+								? shopAccentHex(themeId as BusinessThemeId)
+								: null,
+						})
+					}
 				/>
 				<Field
 					label={t("customize.color")}
@@ -196,35 +236,42 @@ export default function CustomizeShop() {
 			{failure ? (
 				<ErrorState error={failure} onRetry={() => void saved.refetch()} />
 			) : null}
-			<Button
-				label={t("customize.save")}
-				disabled={
-					!saved.data || !dirty || (!!accent && !accent.valid) || save.isPending
-				}
-				loading={save.isPending}
-				onPress={() =>
-					run(save.mutateAsync({ businessId, revision, configuration: draft }))
-				}
-			/>
-			<Button
-				label={t("customize.publish")}
-				disabled={!saved.data?.draft || dirty || publish.isPending}
-				loading={publish.isPending}
-				accessibilityHint={dirty ? t("customize.saveFirst") : undefined}
-				onPress={() => run(publish.mutateAsync({ businessId, revision }))}
-			/>
-			<Button
-				variant="secondary"
-				label={t("customize.discard")}
-				disabled={!saved.data?.draft || discard.isPending}
-				onPress={() => run(discard.mutateAsync({ businessId, revision }))}
-			/>
-			<Button
-				variant="secondary"
-				label={t("customize.restore")}
-				disabled={restore.isPending}
-				onPress={() => run(restore.mutateAsync({ businessId, revision }))}
-			/>
+			<View style={{ gap: space.sm }}>
+				<Button
+					label={t("customize.save")}
+					disabled={
+						!saved.data ||
+						!dirty ||
+						(!!accent && !accent.valid) ||
+						save.isPending
+					}
+					loading={save.isPending}
+					onPress={() =>
+						run(
+							save.mutateAsync({ businessId, revision, configuration: draft }),
+						)
+					}
+				/>
+				<Button
+					label={t("customize.publish")}
+					disabled={!saved.data?.draft || dirty || publish.isPending}
+					loading={publish.isPending}
+					accessibilityHint={dirty ? t("customize.saveFirst") : undefined}
+					onPress={() => run(publish.mutateAsync({ businessId, revision }))}
+				/>
+				<Button
+					variant="secondary"
+					label={t("customize.discard")}
+					disabled={!saved.data?.draft || discard.isPending}
+					onPress={() => run(discard.mutateAsync({ businessId, revision }))}
+				/>
+				<Button
+					variant="secondary"
+					label={t("customize.restore")}
+					disabled={restore.isPending}
+					onPress={() => run(restore.mutateAsync({ businessId, revision }))}
+				/>
+			</View>
 		</Screen>
 	);
 }

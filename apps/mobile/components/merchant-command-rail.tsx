@@ -5,6 +5,8 @@ import {
 	type BusinessThemeId,
 	businessThemeColors,
 	icon,
+	MIN_TOUCH_TARGET,
+	radius,
 	space,
 	useTheme,
 	weight as weights,
@@ -174,9 +176,9 @@ export function MerchantCommandRail({
 	layout = "rail",
 }: {
 	actions: MerchantRailAction[];
-	layout?: "rail" | "wrap";
+	layout?: "rail" | "wrap" | "stack";
 }): React.ReactElement | null {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 
 	if (actions.length === 0) return null;
 
@@ -195,7 +197,72 @@ export function MerchantCommandRail({
 				},
 			]}
 		>
-			{layout === "wrap" ? (
+			{layout === "stack" ? (
+				<View style={styles.stack}>
+					{actions.map((action) => {
+						const accentColors = action.accent
+							? businessThemeColors(action.accent, scheme)
+							: null;
+						const filled = accentColors != null || action.primary === true;
+						const fill = accentColors ?? colors;
+						return (
+							<Pressable
+								key={action.key}
+								onPress={action.onPress}
+								disabled={action.disabled}
+								accessibilityRole="button"
+								accessibilityLabel={action.label}
+								style={[
+									styles.stackItem,
+									filled && { backgroundColor: fill.primary },
+									!filled && {
+										borderWidth: 1,
+										borderColor: colors.border,
+									},
+								]}
+							>
+								<View
+									style={[
+										styles.stackDisc,
+										filled
+											? { backgroundColor: fill.primaryForeground }
+											: { backgroundColor: colors.muted },
+									]}
+								>
+									<Ionicons
+										name={action.icon}
+										size={icon.action}
+										color={filled ? fill.primary : colors.foreground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								</View>
+								<Text
+									variant="body"
+									bold
+									numberOfLines={1}
+									style={
+										filled
+											? { color: fill.primaryForeground, flex: 1 }
+											: { flex: 1 }
+									}
+								>
+									{action.label}
+								</Text>
+								{filled ? null : (
+									<Ionicons
+										name="chevron-forward"
+										size={icon.control}
+										color={colors.mutedForeground}
+										accessibilityElementsHidden
+										importantForAccessibility="no"
+									/>
+								)}
+							</Pressable>
+						);
+					})}
+				</View>
+			) : layout === "wrap" ? (
 				<View style={styles.wrap}>{items}</View>
 			) : (
 				<ScrollView
@@ -248,6 +315,27 @@ const styles = StyleSheet.create({
 		paddingHorizontal: space.xl,
 		alignItems: "center",
 		gap: space.sm,
+	},
+	stack: {
+		gap: space.md,
+		paddingHorizontal: space.lg,
+		paddingVertical: space.md,
+	},
+	stackItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		minHeight: 52,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		borderRadius: radius.lg,
+	},
+	stackDisc: {
+		width: 32,
+		height: 32,
+		borderRadius: radius.md,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	wrap: {
 		flexDirection: "row",

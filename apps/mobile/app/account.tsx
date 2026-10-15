@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import { useQuery } from "@tanstack/react-query";
-import { type Href, router } from "expo-router";
+import { type Href, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
@@ -148,14 +148,27 @@ export default function AccountScreen() {
 	const { colors } = useTheme();
 	const { status: sessionStatus, signOut } = useSession();
 	const [signOutOpen, setSignOutOpen] = useState(false);
-	const [profile, setProfile] = useState<AccountProfile>("customer");
+	const requested = useLocalSearchParams<{ profile?: string }>().profile;
+	const requestedProfile: AccountProfile | null =
+		requested === "customer" ||
+		requested === "business" ||
+		requested === "delivery"
+			? requested
+			: null;
+	const [profile, setProfile] = useState<AccountProfile>(
+		requestedProfile ?? "customer",
+	);
 
-	// The stored answer, read once. `"customer"` is the value a fresh install behaves as, so the
-	// first frame is never wrong, only possibly stale for the milliseconds storage takes — the
-	// same order `app/settings.tsx` reads its two device preferences in.
+	// The stored answer, read once, unless the door that opened this screen named a
+	// profile. The home avatar asks for the customer list; the switcher still offers
+	// Negocio and Repartidor when this person has those memberships.
 	useEffect(() => {
+		if (requestedProfile) {
+			setProfile(requestedProfile);
+			return;
+		}
 		void initDevicePrefs().then(() => setProfile(getAccountProfile()));
-	}, []);
+	}, [requestedProfile]);
 
 	const signedIn = sessionStatus === "signed-in";
 	const me = useQuery(
@@ -497,7 +510,7 @@ export default function AccountScreen() {
 				) : (
 					<AnimateIn index={1}>
 						<Card
-							onPress={() => router.push("/profile")}
+							onPress={() => router.push("/edit-profile")}
 							accessibilityLabel={me.data?.name ?? t("account.title")}
 							accessibilityHint={t("action.edit")}
 						>

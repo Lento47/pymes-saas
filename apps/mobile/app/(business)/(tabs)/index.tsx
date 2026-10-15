@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	AccessibilityInfo,
 	Platform,
+	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
@@ -852,6 +853,99 @@ export default function MerchantHome() {
 				);
 			case "attention":
 				if (attention.length === 0) return null;
+				if (configuration.layouts.attention === "cards") {
+					const attentionPainted = configuration.widgetThemes.attention != null;
+					return (
+						<View style={[styles.pad, styles.attentionCards]}>
+							{attention.map((alert) => {
+								const route = alert.action && ALERT_ROUTES[alert.action];
+								return (
+									<Pressable
+										key={`${alert.type}:${alert.action ?? ""}`}
+										onPress={() => {
+											if (route && businessId) router.push(route(businessId));
+										}}
+										disabled={!route}
+										accessibilityRole={route ? "button" : undefined}
+										accessibilityLabel={`${t(ATTENTION_LABEL_KEYS[alert.type])}: ${alert.count}`}
+										style={[
+											styles.attentionCard,
+											{
+												borderColor: attentionPainted
+													? colors.primary
+													: colors.border,
+												backgroundColor: colors.card,
+											},
+										]}
+									>
+										<View style={styles.attentionCardHead}>
+											<View
+												style={[
+													styles.attentionCardDisc,
+													{
+														backgroundColor:
+															alert.severity === "critical"
+																? colors.destructive
+																: colors.warning,
+													},
+												]}
+											>
+												<Ionicons
+													name={ATTENTION_ICONS[alert.type]}
+													size={icon.action}
+													color={
+														alert.severity === "critical"
+															? colors.destructiveForeground
+															: colors.warningForeground
+													}
+													accessibilityElementsHidden
+													importantForAccessibility="no"
+												/>
+											</View>
+											<Text variant="body" bold style={styles.attentionCopy}>
+												{t(ATTENTION_LABEL_KEYS[alert.type])}
+											</Text>
+											<View
+												style={[
+													styles.attentionCount,
+													{ backgroundColor: colors.muted },
+												]}
+											>
+												<Text variant="label" bold tabular>
+													{alert.count}
+												</Text>
+											</View>
+										</View>
+										{alert.action ? (
+											<View
+												style={[
+													styles.attentionCardAction,
+													{
+														backgroundColor: attentionPainted
+															? colors.primary
+															: colors.muted,
+													},
+												]}
+											>
+												<Text
+													variant="label"
+													bold
+													style={
+														attentionPainted
+															? { color: colors.primaryForeground }
+															: undefined
+													}
+												>
+													{t(ATTENTION_ACTION_KEYS[alert.action])}
+												</Text>
+											</View>
+										) : null}
+									</Pressable>
+								);
+							})}
+						</View>
+					);
+				}
 				if (configuration.layouts.attention === "chips") {
 					const attentionPainted = configuration.widgetThemes.attention != null;
 					return (
@@ -996,6 +1090,81 @@ export default function MerchantHome() {
 									</View>
 								</View>
 							</View>
+						) : configuration.layouts.queue === "cards" ? (
+							<View style={styles.queueCards}>
+								{orders.map((order) => {
+									const actions = orderActions(order);
+									const primary = actions[0];
+									return (
+										<View
+											key={order.id}
+											style={[
+												styles.queueCard,
+												{
+													borderColor: configuration.widgetThemes.queue
+														? colors.primary
+														: colors.border,
+													backgroundColor: colors.card,
+												},
+											]}
+										>
+											<Pressable
+												onPress={() =>
+													router.push({
+														pathname: "/merchant-order/[id]",
+														params: { id: order.id },
+													})
+												}
+												accessibilityRole="button"
+												accessibilityLabel={`#${order.reference}`}
+												style={styles.queueCardHead}
+											>
+												<View
+													style={[
+														styles.queueCardDisc,
+														{
+															backgroundColor: configuration.widgetThemes
+																.queue
+																? colors.primary
+																: colors.muted,
+														},
+													]}
+												>
+													<Ionicons
+														name={
+															order.fulfilment === "PICKUP"
+																? "storefront-outline"
+																: "bicycle-outline"
+														}
+														size={icon.action}
+														color={
+															configuration.widgetThemes.queue
+																? colors.primaryForeground
+																: colors.primary
+														}
+														accessibilityElementsHidden
+														importantForAccessibility="no"
+													/>
+												</View>
+												<View style={styles.compactQueueCopy}>
+													<Text variant="body" bold numberOfLines={1}>
+														#{order.reference}
+													</Text>
+													<Text variant="caption" tone="muted" numberOfLines={1}>
+														{t(statusKey(order.status))}
+													</Text>
+												</View>
+												<Text variant="body" bold tabular>
+													{formatMoney(order.totalMinor, order.currency, {
+														locale: intlLocale,
+													})}
+												</Text>
+											</Pressable>
+											{primary ? <MerchantAction action={primary} /> : null}
+										</View>
+									);
+								})}
+							</View>
 						) : configuration.layouts.queue === "compact" ? (
 							<View style={styles.compactQueue}>
 								{orders.map((order) => {
@@ -1027,6 +1196,17 @@ export default function MerchantHome() {
 														]}
 													/>
 												) : null}
+												<Ionicons
+													name={
+														order.fulfilment === "PICKUP"
+															? "storefront-outline"
+															: "bicycle-outline"
+													}
+													size={icon.action}
+													color={colors.primary}
+													accessibilityElementsHidden
+													importantForAccessibility="no"
+												/>
 												<View style={styles.compactQueueCopy}>
 													<Text variant="body" bold numberOfLines={1}>
 														#{order.reference}
@@ -1075,6 +1255,7 @@ export default function MerchantHome() {
 											}
 											reference={order.reference}
 											headline={order.headline}
+											fulfilment={order.fulfilment}
 											fulfilmentLabel={t(
 												order.fulfilment === "PICKUP"
 													? "order.pickup"
@@ -1203,6 +1384,48 @@ export default function MerchantHome() {
 									<Text variant="body" tone="muted">
 										{t("biz.products.empty.title")}
 									</Text>
+								) : configuration.layouts.catalog === "rail" ? (
+									<ScrollView
+										horizontal
+										showsHorizontalScrollIndicator={false}
+										contentContainerStyle={styles.catalogRail}
+									>
+										{products.map((product) => (
+											<Pressable
+												key={product.id}
+												onPress={() =>
+													router.push({
+														pathname: "/product-form",
+														params: { businessId, id: product.id },
+													})
+												}
+												accessibilityRole="button"
+												accessibilityLabel={product.title}
+												style={[
+													styles.catalogRailItem,
+													{
+														borderColor: colors.border,
+														backgroundColor: colors.card,
+													},
+												]}
+											>
+												<Image
+													uri={product.imageUrl}
+													style={styles.catalogTileImage}
+													accessibilityElementsHidden
+													importantForAccessibility="no"
+												/>
+												<Text variant="caption" numberOfLines={2}>
+													{product.title}
+												</Text>
+												<Price
+													amountMinor={product.priceMinor}
+													currency={product.currency}
+													variant="caption"
+												/>
+											</Pressable>
+										))}
+									</ScrollView>
 								) : configuration.layouts.catalog === "tiles" ? (
 									<View style={styles.catalogTiles}>
 										{products.map((product) => (
@@ -1728,6 +1951,7 @@ function MerchantInsight({
 }) {
 	const { colors } = useTheme();
 	const stacked = layout === "stack";
+	const band = layout === "band";
 	const rule = painted ? colors.primary : colors.border;
 
 	return (
@@ -1735,7 +1959,11 @@ function MerchantInsight({
 			style={[
 				styles.insight,
 				stacked && styles.insightStack,
-				{
+				band && styles.insightBand,
+				band && {
+					backgroundColor: painted ? colors.primary : colors.muted,
+				},
+				!band && {
 					borderTopColor: rule,
 					borderBottomColor: rule,
 				},
@@ -1744,15 +1972,30 @@ function MerchantInsight({
 			{items.map((item) => (
 				<View
 					key={item.label}
-					style={[styles.insightItem, stacked && styles.insightStackItem]}
+					style={[
+						styles.insightItem,
+						stacked && styles.insightStackItem,
+						band && styles.insightBandItem,
+					]}
 					accessible
 					accessibilityRole="text"
 					accessibilityLabel={`${item.label}: ${item.value ?? NO_VALUE}`}
 				>
-					<Text variant="caption" tone="muted" numberOfLines={2}>
+					<Text
+						variant="caption"
+						tone={band && painted ? "inverse" : "muted"}
+						numberOfLines={2}
+					>
 						{item.label}
 					</Text>
-					<Text variant="body" bold numberOfLines={2}>
+					<Text
+						variant="body"
+						bold
+						numberOfLines={2}
+						style={
+							band && painted ? { color: colors.primaryForeground } : undefined
+						}
+					>
 						{item.value ?? NO_VALUE}
 					</Text>
 				</View>
@@ -2043,6 +2286,83 @@ const styles = StyleSheet.create({
 	insightItem: { flex: 1, minWidth: 0, gap: space.xs },
 	insightStack: { flexDirection: "column" },
 	insightStackItem: { flex: 0, width: "100%" },
+	insightBand: {
+		marginHorizontal: space.lg,
+		borderRadius: radius.lg,
+		borderTopWidth: 0,
+		borderBottomWidth: 0,
+		paddingVertical: space.lg,
+	},
+	insightBandItem: { alignItems: "center" },
+	attentionCards: { gap: space.md },
+	attentionCard: {
+		gap: space.sm,
+		padding: space.md,
+		borderWidth: 1,
+		borderRadius: radius.lg,
+	},
+	attentionCardHead: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+	},
+	attentionCardDisc: {
+		width: 36,
+		height: 36,
+		borderRadius: radius.md,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	attentionCount: {
+		minWidth: 28,
+		paddingHorizontal: space.sm,
+		paddingVertical: space.xs,
+		borderRadius: radius.full,
+		alignItems: "center",
+	},
+	attentionCardAction: {
+		alignSelf: "stretch",
+		alignItems: "center",
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		borderRadius: radius.md,
+		minHeight: 36,
+		justifyContent: "center",
+	},
+	queueCards: {
+		gap: space.md,
+		paddingHorizontal: space.lg,
+	},
+	queueCard: {
+		gap: space.sm,
+		padding: space.md,
+		borderWidth: 1,
+		borderRadius: radius.lg,
+	},
+	queueCardHead: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		minHeight: MIN_TOUCH_TARGET,
+	},
+	queueCardDisc: {
+		width: 40,
+		height: 40,
+		borderRadius: radius.md,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	catalogRail: {
+		gap: space.md,
+		paddingTop: space.md,
+	},
+	catalogRailItem: {
+		width: 148,
+		gap: space.xs,
+		padding: space.sm,
+		borderWidth: 1,
+		borderRadius: radius.lg,
+	},
 	attentionChips: {
 		flexDirection: "row",
 		flexWrap: "wrap",

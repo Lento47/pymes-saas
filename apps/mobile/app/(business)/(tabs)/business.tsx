@@ -805,12 +805,11 @@ function Board() {
 									// there, and the stages above and below it say what is.
 									if (stage.orders.length === 0) return null;
 									return (
-										<View key={stage.key}>
-											{/* §16's section, with the stage's count beside its name:
-											    the count is the queue's own length — a fact the read
-											    returned, not a sum invented for emphasis. */}
+										<View key={stage.key} style={styles.stage}>
 											<SectionHeader
-												title={t("biz.board.section", {
+												name={t(stage.key)}
+												count={stage.orders.length}
+												label={t("biz.board.section", {
 													title: t(stage.key),
 													count: stage.orders.length,
 												})}
@@ -871,6 +870,7 @@ function Board() {
 															}
 															reference={order.reference}
 															headline={order.headline}
+															fulfilment={order.fulfilment}
 															fulfilmentLabel={t(
 																order.fulfilment === "PICKUP"
 																	? "order.pickup"
@@ -1079,31 +1079,31 @@ function BoardFilters({
 	const { t } = useT();
 
 	return (
-		<View style={styles.chips} accessibilityRole="tablist">
-			{BOARD_FILTERS.map((filter) => {
-				const chosen = filter.id === value;
+		<View style={styles.filters} accessibilityRole="tablist">
+			{BOARD_FILTERS.map((item) => {
+				const chosen = item.id === value;
 				return (
 					<Pressable
-						key={filter.id}
+						key={item.id}
 						onPress={() => {
 							if (chosen) return;
 							selection();
-							onChange(filter.id);
+							onChange(item.id);
 						}}
 						accessibilityRole="tab"
 						accessibilityState={{ selected: chosen }}
+						accessibilityLabel={t(item.label)}
 						scaleTo={PRESS_SCALE_ROW}
 						style={[
-							styles.chip,
+							styles.filter,
 							{
-								backgroundColor: chosen ? colors.muted : colors.background,
-								borderWidth: 1,
-								borderColor: colors.border,
+								backgroundColor: chosen ? colors.card : colors.background,
+								borderColor: chosen ? colors.foreground : colors.border,
 							},
 						]}
 					>
 						<Text variant="label" bold tone={chosen ? "default" : "muted"}>
-							{t(filter.label)}
+							{t(item.label)}
 						</Text>
 					</Pressable>
 				);
@@ -1112,27 +1112,35 @@ function BoardFilters({
 	);
 }
 
-/**
- * The section header, per interface.md §16: a 44-point rail with the bands' own air, the
- * section's name at 13 points bold and uppercase in `mutedForeground`, and no trailing
- * action. It is written here rather than taken from `./section-header` because §16's stage
- * rail is a quieter band than what that primitive draws — a 17-point title and a
- * right-hand "view all" slot this screen has nothing to put in. The shared primitive is
- * still the console's answer where a section is titled rather than a rail: the home and
- * analytics tabs of this same tree take it, so the fork is this screen's alone.
- */
-function SectionHeader({ title }: { title: string }): React.ReactElement {
+function SectionHeader({
+	name,
+	count,
+	label,
+}: {
+	name: string;
+	count: number;
+	label: string;
+}): React.ReactElement {
 	const { colors } = useTheme();
 
 	return (
-		<View style={styles.section}>
+		<View
+			style={[styles.section, { backgroundColor: colors.muted }]}
+			accessibilityRole="header"
+			accessibilityLabel={label}
+		>
 			<Text
 				variant="label"
 				bold
 				style={[styles.sectionTitle, { color: colors.mutedForeground }]}
 			>
-				{title}
+				{name}
 			</Text>
+			<View style={[styles.countPill, { backgroundColor: colors.background }]}>
+				<Text variant="label" bold tabular>
+					{count}
+				</Text>
+			</View>
 		</View>
 	);
 }
@@ -1267,7 +1275,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: space.lg,
 		paddingTop: space.xl,
 		paddingBottom: space.lg,
-		gap: space.md,
+		gap: space.lg,
 	},
 	identityRow: {
 		flexDirection: "row",
@@ -1291,6 +1299,15 @@ const styles = StyleSheet.create({
 	skeletonStatus: { width: "40%" },
 	/** The chip row, and one chip: the floor and the word's own padding, grown normally. */
 	chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+	filters: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+	filter: {
+		minHeight: MIN_TOUCH_TARGET,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		justifyContent: "center",
+		borderWidth: 1,
+		borderRadius: radius.full,
+	},
 	chip: {
 		// A floor, not a height: at 200% the label wraps and the chip grows with it.
 		minHeight: MIN_TOUCH_TARGET,
@@ -1301,20 +1318,30 @@ const styles = StyleSheet.create({
 	},
 	skeletonChip: { width: space.huge * 3, borderRadius: radius.sm },
 	/** The section rail: §16's 44 as a floor, so a wrapped name grows it. */
+	stage: { marginTop: space.lg },
 	section: {
 		minHeight: MIN_TOUCH_TARGET,
 		paddingHorizontal: space.lg,
+		flexDirection: "row",
 		alignItems: "center",
-		justifyContent: "center",
+		gap: space.sm,
 	},
-	sectionTitle: { textTransform: "uppercase" },
+	countPill: {
+		minWidth: 28,
+		paddingHorizontal: space.sm,
+		paddingVertical: space.xs,
+		borderRadius: radius.full,
+		alignItems: "center",
+	},
+	sectionTitle: { textTransform: "uppercase", flexShrink: 1 },
 	skeletonSection: { width: "40%" },
 	// The empty queue's band: the bands' air, and the vertical step a quiet band keeps.
 	// The heading and the sentence under it are one text stack, so the gap inside it is
 	// `TEXT_STACK_GAP` rather than a `space` step.
 	quietBand: {
 		paddingHorizontal: space.lg,
-		paddingVertical: space.huge,
+		paddingTop: space.xl,
+		paddingBottom: space.huge,
 		gap: TEXT_STACK_GAP,
 	},
 	// The refusal and its dismiss control, as one row. `alignItems: "flex-start"` because

@@ -195,6 +195,11 @@ describe("visual variations", () => {
 		expect(idBranch(dash, "pulse")).toContain("styles.pulseHero");
 		expect(idBranch(dash, "pulse")).toContain("styles.pulseStackRow");
 		expect(idBranch(dash, "shortcuts")).toContain('layout === "grid"');
+		expect(idBranch(dash, "shortcuts")).toContain('layout === "list"');
+		expect(idBranch(dash, "queue")).toContain('layout === "cards"');
+		expect(idBranch(dash, "commands")).toContain('layout === "stack"');
+		expect(dash).toContain('layout === "rail"');
+		expect(board).toContain("export function WidgetLayoutPicker");
 		expect(idBranch(dash, "insights")).toContain('layout === "stack"');
 		expect(dash).toContain('layout === "tiles"');
 	});
@@ -254,6 +259,9 @@ describe("customize screens", () => {
 		);
 		expect(shopScreen).not.toContain('label={t("customize.cover")}');
 		expect(shopScreen).not.toContain('label={t("customize.compact")}');
+		expect(shopScreen).toContain("<WidgetPaletteStrip");
+		expect(shopScreen).toContain("<Field");
+		expect(shopScreen).toContain("brandAccentCheck(draft.accentColor)");
 	});
 
 	test("dashboard board gets widget sketches and writes widgets plus hidden", () => {

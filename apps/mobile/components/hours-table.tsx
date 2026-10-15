@@ -130,9 +130,10 @@ export const HoursTable = memo(function HoursTable({
 	 * customer is most likely to be planning around — `apps/web/components/catalog/hours.ts`
 	 * sorts its `weekOrder` the same way, against the same seven values.
 	 */
-	const ordered = [...hours].sort(
-		(a, b) => ((a.day + 6) % 7) - ((b.day + 6) % 7),
-	);
+	const ordered = [1, 2, 3, 4, 5, 6, 0].flatMap((day) => {
+		const entries = hours.filter((entry) => entry.day === day);
+		return entries.length > 0 ? [{ day, entries }] : [];
+	});
 
 	/**
 	 * Every row's name, or no table at all.
@@ -149,9 +150,9 @@ export const HoursTable = memo(function HoursTable({
 	 * `@pymeshub/i18n`'s own `INTL_LOCALES` value — so it is a guard against a missing
 	 * capability, never a state a customer reaches.
 	 */
-	const rows = ordered.map((entry) => ({
-		entry,
-		dayName: weekdayName(entry.day, intlLocale),
+	const rows = ordered.map((group) => ({
+		...group,
+		dayName: weekdayName(group.day, intlLocale),
 	}));
 	if (rows.some((row) => row.dayName === null)) return null;
 
@@ -182,32 +183,35 @@ export const HoursTable = memo(function HoursTable({
 			</View>
 
 			<View style={styles.rows}>
-				{rows.map(({ entry, dayName }) => {
-					const isToday = entry.day === today;
-					const closed =
-						entry.isClosed || entry.closesMinute <= entry.opensMinute;
-
-					const opens = formatMinuteOfDay(entry.opensMinute, intlLocale);
-					const closes = formatMinuteOfDay(entry.closesMinute, intlLocale);
-					/**
-					 * The range, or `null` when the runtime has no clock to build it from.
-					 *
-					 * `formatMinuteOfDay` answers `null` rather than throwing, and the string it
-					 * would otherwise be is never "null" — an unformattable range is dropped, which
-					 * is the same rule the guard above follows. Reachable only if the clock
-					 * constructor fails while the weekday one works, which cannot happen while both
-					 * take the same locale; written out rather than left to string interpolation
-					 * so that if it ever does, a row loses its time instead of gaining a lie.
-					 */
+				{rows.map(({ day, entries, dayName }) => {
+					const isToday = day === today;
+					const closed = entries.some((entry) => entry.isClosed);
 					const range = closed
 						? t("store.closed")
-						: opens && closes
-							? `${opens}–${closes}`
-							: null;
+						: entries
+								.map((entry) => {
+									const opens = formatMinuteOfDay(
+										entry.opensMinute,
+										intlLocale,
+									);
+									const closes = formatMinuteOfDay(
+										entry.closesMinute,
+										intlLocale,
+									);
+									if (!opens || !closes) return null;
+									const span = `${opens}–${closes}`;
+									if (entry.kind === "break")
+										return t("store.hours.break", { range: span });
+									if (entry.kind === "unavailable")
+										return t("store.hours.unavailable", { range: span });
+									return span;
+								})
+								.filter((part): part is string => part !== null)
+								.join(" · ") || t("store.closed");
 
 					return (
 						<View
-							key={entry.day}
+							key={day}
 							style={styles.row}
 							// One node per weekday, so the row is spoken as one sentence in the
 							// order the eye reads it: "lunes, Hoy, 08:00–18:00". Without it the

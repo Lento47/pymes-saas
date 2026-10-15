@@ -220,7 +220,7 @@ function BusinessHoursSurface({ scope }: { scope: ManagementScope }) {
 			<ManagementSection title={t("biz.manage.schedule")}>
 				{hours.map((entry, index) => (
 					<ListRow
-						key={entry.day}
+						key={`${entry.day}-${entry.kind ?? "open"}-${entry.opensMinute}`}
 						title={weekdayName(entry.day, intlLocale) ?? String(entry.day)}
 						subtitle={hoursSubtitle(entry, intlLocale, t)}
 						divider={index < hours.length - 1}
@@ -247,7 +247,11 @@ function hoursSubtitle(
 	if (entry.isClosed) return t("biz.settings.hours.closed");
 	const opens = formatMinuteOfDay(entry.opensMinute, intlLocale);
 	const closes = formatMinuteOfDay(entry.closesMinute, intlLocale);
-	return opens && closes ? `${opens} – ${closes}` : t("biz.manage.unavailable");
+	const range = opens && closes ? `${opens} – ${closes}` : t("biz.manage.unavailable");
+	if (entry.kind === "break") return t("store.hours.break", { range });
+	if (entry.kind === "unavailable")
+		return t("store.hours.unavailable", { range });
+	return range;
 }
 
 function LocationsSurface({ scope }: { scope: ManagementScope }) {

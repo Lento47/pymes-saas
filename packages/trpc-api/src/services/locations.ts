@@ -43,10 +43,21 @@ function locationOf(
 	const pauseIsCurrent =
 		location.pauseReason !== null &&
 		(location.resumeAt === null || location.resumeAt > now);
-	const { day } = localDayAndMinute(now);
-	const todayHours = (location.hours ?? business.hours)?.find(
-		(entry) => entry.day === day,
+	const { day, minuteOfDay } = localDayAndMinute(now);
+	const todayEntries =
+		(location.hours ?? business.hours)?.filter((entry) => entry.day === day) ??
+		[];
+	const openWindows = todayEntries.filter(
+		(entry) => !entry.isClosed && (entry.kind ?? "open") === "open",
 	);
+	const todayHours = todayEntries.some((entry) => entry.isClosed)
+		? null
+		: (openWindows.find(
+				(entry) =>
+					minuteOfDay >= entry.opensMinute && minuteOfDay < entry.closesMinute,
+			) ??
+			openWindows[0] ??
+			null);
 	return {
 		id: location.id,
 		businessId: location.businessId,

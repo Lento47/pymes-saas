@@ -105,6 +105,7 @@ export function ShopCustomizationPreview({
 				<View style={{ height: 4, backgroundColor: brand }} />
 			) : null}
 
+			<View style={{ paddingTop: space.lg }}>
 			<ShopCustomizationSections
 				appearance={appearance}
 				card={storefront.card}
@@ -112,6 +113,7 @@ export function ShopCustomizationPreview({
 				isOpen={storefront.isOpen}
 				preview
 			/>
+			</View>
 
 			<View style={styles.menu}>
 				<View style={[styles.search, { borderColor: colors.border }]}>

@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import type { DashboardLayouts, DashboardWidgetId } from "@pymeshub/shared";
 import { LinearGradient } from "expo-linear-gradient";
@@ -386,18 +387,45 @@ export function ShopSectionPreview({
 	if (id === "offers") {
 		return (
 			<View style={styles.previewRow}>
-				<View style={[styles.pill, { backgroundColor: colors.primary }]} />
-				<View style={[styles.pill, { backgroundColor: colors.muted }]} />
+				{[0, 1].map((slot) => (
+					<View
+						key={slot}
+						style={[
+							styles.offerCard,
+							{
+								backgroundColor: colors.muted,
+								borderColor: colors.border,
+							},
+						]}
+					>
+						<View style={[styles.pill, { backgroundColor: colors.primary }]} />
+					</View>
+				))}
 			</View>
 		);
 	}
 	return (
-		<View style={styles.previewRow}>
-			{[0, 1, 2].map((slot) => (
-				<View
-					key={slot}
-					style={[styles.productTile, { backgroundColor: colors.muted }]}
-				/>
+		<View style={styles.previewCopy}>
+			{[0, 1].map((slot) => (
+				<View key={slot} style={styles.previewRow}>
+					<View
+						style={[styles.productTile, { backgroundColor: colors.muted }]}
+					/>
+					<View style={styles.previewCopy}>
+						<View
+							style={[
+								styles.bar,
+								{ width: "80%", backgroundColor: colors.border },
+							]}
+						/>
+						<View
+							style={[
+								styles.bar,
+								{ width: "46%", backgroundColor: colors.muted },
+							]}
+						/>
+					</View>
+				</View>
 			))}
 		</View>
 	);
@@ -428,6 +456,31 @@ export function DashboardWidgetPreview({
 							key={slot}
 							style={[styles.shortcut, { backgroundColor: colors.muted }]}
 						/>
+					))}
+				</View>
+			);
+		}
+		if (layout === "list") {
+			return (
+				<View style={styles.previewCopy}>
+					{PREVIEW_SLOTS.slice(0, Math.min(3, count)).map((slot) => (
+						<View key={slot} style={styles.previewRow}>
+							<View
+								style={[styles.shortcut, { backgroundColor: colors.muted }]}
+							/>
+							<View
+								style={[
+									styles.bar,
+									{ flex: 1, backgroundColor: colors.border },
+								]}
+							/>
+							<Ionicons
+								name="chevron-forward"
+								size={12}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+							/>
+						</View>
 					))}
 				</View>
 			);
@@ -578,6 +631,24 @@ export function DashboardWidgetPreview({
 		);
 	}
 	if (id === "insights") {
+		if (layout === "band") {
+			return (
+				<View
+					style={[styles.pulseBand, { backgroundColor: colors.primary }]}
+				>
+					{[0, 1, 2].map((slot) => (
+						<View key={slot} style={styles.insightBandCell}>
+							<View
+								style={[
+									styles.bar,
+									{ width: "70%", backgroundColor: colors.primaryForeground },
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
 		if (layout === "stack") {
 			return (
 				<View style={styles.previewCopy}>
@@ -628,6 +699,45 @@ export function DashboardWidgetPreview({
 		);
 	}
 	if (id === "attention") {
+		if (layout === "cards") {
+			return (
+				<View style={styles.previewCopy}>
+					{[0, 1].map((slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.metricCard,
+								{
+									backgroundColor: colors.card,
+									borderColor: colors.border,
+								},
+							]}
+						>
+							<View style={styles.previewRow}>
+								<Ionicons
+									name="alert-circle-outline"
+									size={14}
+									color={colors.warning}
+									accessibilityElementsHidden
+								/>
+								<View
+									style={[
+										styles.bar,
+										{ flex: 1, backgroundColor: colors.border },
+									]}
+								/>
+							</View>
+							<View
+								style={[
+									styles.queueButton,
+									{ backgroundColor: colors.primary },
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
 		if (layout === "chips") {
 			return (
 				<View style={styles.previewRow}>
@@ -659,45 +769,157 @@ export function DashboardWidgetPreview({
 		);
 	}
 	if (id === "queue") {
+		const samples = [
+			{ key: "delivery", icon: "bicycle-outline" as const },
+			{ key: "pickup", icon: "storefront-outline" as const },
+		];
+		if (layout === "cards") {
+			return (
+				<View style={styles.previewCopy}>
+					{samples.map((sample) => (
+						<View
+							key={sample.key}
+							style={[
+								styles.metricCard,
+								{
+									backgroundColor: colors.card,
+									borderColor: colors.border,
+								},
+							]}
+						>
+							<View style={styles.queueRow}>
+								<Ionicons
+									name={sample.icon}
+									size={16}
+									color={colors.primary}
+									accessibilityElementsHidden
+								/>
+								<View
+									style={[
+										styles.bar,
+										{ flex: 1, backgroundColor: colors.border },
+									]}
+								/>
+							</View>
+							<View
+								style={[
+									styles.queueButton,
+									{ alignSelf: "flex-start", backgroundColor: colors.primary },
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
 		if (layout === "compact") {
 			return (
 				<View style={styles.previewCopy}>
-					{[0, 1, 2].map((slot) => (
-						<View
-							key={slot}
-							style={[styles.queueCompact, { backgroundColor: colors.muted }]}
-						/>
+					{samples.map((sample) => (
+						<View key={sample.key} style={styles.queueCompact}>
+							<Ionicons
+								name={sample.icon}
+								size={14}
+								color={colors.primary}
+								accessibilityElementsHidden
+							/>
+							<View
+								style={[
+									styles.bar,
+									{ flex: 1, backgroundColor: colors.border },
+								]}
+							/>
+							<View
+								style={[
+									styles.queueButton,
+									{ backgroundColor: colors.primary },
+								]}
+							/>
+						</View>
 					))}
 				</View>
 			);
 		}
 		return (
 			<View style={styles.previewCopy}>
-				{[0, 1].map((slot) => (
-					<View key={slot} style={styles.queueRow}>
+				{samples.map((sample) => (
+					<View key={sample.key} style={styles.queueRow}>
 						<View
 							style={[styles.queueMark, { backgroundColor: colors.primary }]}
+						/>
+						<Ionicons
+							name={sample.icon}
+							size={16}
+							color={colors.foreground}
+							accessibilityElementsHidden
 						/>
 						<View style={styles.previewCopy}>
 							<View
 								style={[
 									styles.bar,
-									{ width: "70%", backgroundColor: colors.border },
+									{ width: "72%", backgroundColor: colors.border },
 								]}
 							/>
 							<View
 								style={[
 									styles.bar,
-									{ width: "40%", backgroundColor: colors.muted },
+									{ width: "42%", backgroundColor: colors.muted },
 								]}
 							/>
 						</View>
+						<View
+							style={[styles.queueButton, { backgroundColor: colors.primary }]}
+						/>
 					</View>
 				))}
 			</View>
 		);
 	}
 	if (id === "commands") {
+		if (layout === "stack") {
+			return (
+				<View style={styles.previewCopy}>
+					{[0, 1, 2].map((slot) => (
+						<View
+							key={slot}
+							style={[
+								styles.commandStack,
+								styles.previewRow,
+								{
+									backgroundColor:
+										slot === 0 ? colors.primary : colors.muted,
+									paddingHorizontal: 6,
+								},
+							]}
+						>
+							<View
+								style={[
+									styles.commandDot,
+									{
+										backgroundColor:
+											slot === 0
+												? colors.primaryForeground
+												: colors.border,
+									},
+								]}
+							/>
+							<View
+								style={[
+									styles.bar,
+									{
+										flex: 1,
+										backgroundColor:
+											slot === 0
+												? colors.primaryForeground
+												: colors.border,
+									},
+								]}
+							/>
+						</View>
+					))}
+				</View>
+			);
+		}
 		if (layout === "wrap") {
 			return (
 				<View style={styles.previewGrid}>
@@ -722,6 +944,22 @@ export function DashboardWidgetPreview({
 							},
 						]}
 					/>
+				))}
+			</View>
+		);
+	}
+	if (layout === "rail") {
+		return (
+			<View style={styles.previewRow}>
+				{PREVIEW_SLOTS.slice(0, Math.min(3, productCount)).map((slot) => (
+					<View key={slot} style={styles.previewCopy}>
+						<View
+							style={[styles.productTile, { backgroundColor: colors.muted }]}
+						/>
+						<View
+							style={[styles.bar, { width: "80%", backgroundColor: colors.border }]}
+						/>
+					</View>
 				))}
 			</View>
 		);
@@ -930,6 +1168,35 @@ export function DensityToggle({
 	);
 }
 
+export function WidgetLayoutPicker<T extends string>({
+	value,
+	options,
+	onChange,
+	render,
+}: {
+	value: T;
+	options: readonly { id: T; label: MessageKey }[];
+	onChange: (next: T) => void;
+	render: (id: T) => ReactNode;
+}) {
+	const { t } = useT();
+	return (
+		<View style={styles.layoutGrid}>
+			{options.map((option) => (
+				<View key={option.id} style={styles.layoutCell}>
+					<VisualChoiceCard
+						selected={value === option.id}
+						label={t(option.label)}
+						onPress={() => onChange(option.id)}
+					>
+						{render(option.id)}
+					</VisualChoiceCard>
+				</View>
+			))}
+		</View>
+	);
+}
+
 export function VisualChoiceCard({
 	selected,
 	label,
@@ -1050,6 +1317,11 @@ export function WidgetPaletteStrip({
 					{label}
 				</Text>
 			) : null}
+			<Text variant="label" bold>
+				{value
+					? t(`biz.theme.${value}` as MessageKey)
+					: t("customize.paintInherit")}
+			</Text>
 			<View style={styles.paletteRow}>
 				<Pressable
 					onPress={() => {
@@ -1059,14 +1331,19 @@ export function WidgetPaletteStrip({
 					accessibilityRole="button"
 					accessibilityState={{ selected: value === null }}
 					accessibilityLabel={t("customize.paintInherit")}
-					style={[
-						styles.paletteDot,
-						{
-							backgroundColor: colors.muted,
-							borderColor: value === null ? colors.foreground : colors.border,
-						},
-					]}
-				/>
+					style={styles.paletteTarget}
+				>
+					<View
+						style={[
+							styles.paletteDot,
+							{
+								backgroundColor: colors.muted,
+								borderColor:
+									value === null ? colors.foreground : colors.border,
+							},
+						]}
+					/>
+				</Pressable>
 				{businessThemeOrder().map((id) => {
 					const theme = businessThemeColors(id, scheme);
 					return (
@@ -1078,15 +1355,20 @@ export function WidgetPaletteStrip({
 							}}
 							accessibilityRole="button"
 							accessibilityState={{ selected: value === id }}
-							accessibilityLabel={id}
-							style={[
-								styles.paletteDot,
-								{
-									backgroundColor: theme.primary,
-									borderColor: value === id ? colors.foreground : theme.primary,
-								},
-							]}
-						/>
+							accessibilityLabel={t(`biz.theme.${id}` as MessageKey)}
+							style={styles.paletteTarget}
+						>
+							<View
+								style={[
+									styles.paletteDot,
+									{
+										backgroundColor: theme.primary,
+										borderColor:
+											value === id ? colors.foreground : theme.primary,
+									},
+								]}
+							/>
+						</Pressable>
 					);
 				})}
 			</View>
@@ -1142,12 +1424,12 @@ export function ThemeSwatchPicker({
 }
 
 const styles = StyleSheet.create({
-	board: { gap: space.md },
+	board: { gap: space.lg },
 	tile: {
 		borderWidth: 1,
 		borderRadius: radius.lg,
-		padding: space.md,
-		gap: space.sm,
+		padding: space.lg,
+		gap: space.md,
 		minHeight: 88,
 		overflow: "visible",
 	},
@@ -1174,8 +1456,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	tray: { gap: space.sm },
-	trayRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+	tray: { gap: space.md, paddingTop: space.sm },
+	trayRow: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
 	addWell: {
 		borderWidth: 1.5,
 		borderStyle: "dashed",
@@ -1207,6 +1489,14 @@ const styles = StyleSheet.create({
 		height: 22,
 		width: 72,
 		borderRadius: radius.full,
+	},
+	offerCard: {
+		flex: 1,
+		height: 64,
+		borderRadius: radius.md,
+		borderWidth: 1,
+		justifyContent: "flex-end",
+		padding: space.sm,
 	},
 	productTile: {
 		flex: 1,
@@ -1270,7 +1560,7 @@ const styles = StyleSheet.create({
 		padding: space.sm,
 		borderRadius: radius.md,
 	},
-	pulsePicker: { gap: space.sm },
+	pulsePicker: { gap: space.md },
 	pulseHero: { flexDirection: "column" },
 	pulseStackRow: {
 		flexDirection: "row",
@@ -1286,6 +1576,7 @@ const styles = StyleSheet.create({
 		borderRadius: radius.md,
 		borderWidth: 1,
 	},
+	insightBandCell: { flex: 1, gap: 4 },
 	insightStackRow: {
 		gap: space.xs,
 		paddingBottom: space.xs,
@@ -1311,7 +1602,14 @@ const styles = StyleSheet.create({
 		borderRadius: radius.full,
 	},
 	queueCompact: {
-		height: 10,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.sm,
+		minHeight: 28,
+	},
+	queueButton: {
+		width: 36,
+		height: 16,
 		borderRadius: radius.full,
 	},
 	commandRail: {
@@ -1331,15 +1629,28 @@ const styles = StyleSheet.create({
 		height: 28,
 		borderRadius: radius.sm,
 	},
+	commandStack: {
+		minHeight: 28,
+		borderRadius: radius.sm,
+		alignItems: "center",
+		paddingVertical: space.xs,
+	},
+	layoutGrid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		marginHorizontal: -space.sm,
+	},
+	layoutCell: { width: "50%", padding: space.sm },
 	choiceCard: {
 		flex: 1,
-		minWidth: 88,
+		minWidth: 0,
+		minHeight: MIN_TOUCH_TARGET,
 		gap: space.sm,
-		padding: space.sm,
+		padding: space.md,
 		borderWidth: 2,
 		borderRadius: radius.lg,
 	},
-	densityRow: { flexDirection: "row", gap: space.sm },
+	densityRow: { flexDirection: "row", gap: space.md },
 	countSketch: {
 		flexDirection: "row",
 		flexWrap: "wrap",
@@ -1354,7 +1665,7 @@ const styles = StyleSheet.create({
 	swatchWrap: {
 		flexDirection: "row",
 		flexWrap: "wrap",
-		gap: space.sm,
+		gap: space.md,
 	},
 	themeWash: {
 		height: 44,
@@ -1366,19 +1677,23 @@ const styles = StyleSheet.create({
 		height: 12,
 		width: "100%",
 	},
-	paletteBlock: { gap: space.xs },
+	paletteBlock: { gap: space.sm },
 	paletteRow: {
 		flexDirection: "row",
 		flexWrap: "wrap",
-		gap: space.sm,
+		gap: space.xs,
 		alignItems: "center",
+	},
+	paletteTarget: {
+		width: MIN_TOUCH_TARGET,
+		height: MIN_TOUCH_TARGET,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	paletteDot: {
 		width: 28,
 		height: 28,
-		borderRadius: 14,
+		borderRadius: radius.full,
 		borderWidth: 2,
-		alignItems: "center",
-		justifyContent: "center",
 	},
 });

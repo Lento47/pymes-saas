@@ -23,6 +23,7 @@ import { Rail } from "./rail";
 export function ProductRail({
 	products,
 	onQuickAdd,
+	onPress,
 }: {
 	products: ProductCard[];
 	/**
@@ -31,6 +32,8 @@ export function ProductRail({
 	 * the default is no button at all.
 	 */
 	onQuickAdd?: (product: ProductCard) => void;
+	/** Replaces each tile's own navigation. */
+	onPress?: (product: ProductCard) => void;
 }) {
 	if (products.length === 0) return null;
 
@@ -43,6 +46,7 @@ export function ProductRail({
 						product={product}
 						index={index}
 						onQuickAdd={onQuickAdd}
+						onPress={onPress ? () => onPress(product) : undefined}
 						style={{ width }}
 					/>
 				))

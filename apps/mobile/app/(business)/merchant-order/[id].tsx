@@ -9,7 +9,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
 
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
@@ -303,15 +303,19 @@ export default function MerchantOrderDetail() {
 		: "";
 	const handOff = useCallback(
 		(scheme: "tel" | "sms", body?: string) => {
+			if (!dialable) return;
 			const url =
 				scheme === "tel"
 					? `tel:${dialable}`
-					: `sms:${dialable}${body === undefined ? "" : `?body=${body}`}`;
-			return Linking.canOpenURL(url)
-				.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
-				.catch(() => null);
+					: `sms:${dialable}${body === undefined ? "" : `?body=${encodeURIComponent(body)}`}`;
+			// `canOpenURL` answers false for `tel:` and `sms:` on Android 11+ unless the
+			// manifest lists those intents. `openURL` still hands the number to the dialer
+			// or the messages app, so asking first made these buttons do nothing.
+			return Linking.openURL(url).catch(() => {
+				Alert.alert(t("biz.order.external.unavailable"));
+			});
 		},
-		[dialable],
+		[dialable, t],
 	);
 
 	/**
@@ -331,10 +335,10 @@ export default function MerchantOrderDetail() {
 						.filter((line): line is string => Boolean(line))
 						.join(", ");
 		const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-		return Linking.canOpenURL(url)
-			.then((canOpen) => (canOpen ? Linking.openURL(url) : null))
-			.catch(() => null);
-	}, [detail?.deliveryAddress]);
+		return Linking.openURL(url).catch(() => {
+			Alert.alert(t("biz.order.external.unavailable"));
+		});
+	}, [detail?.deliveryAddress, t]);
 
 	/**
 	 * When each step was reached, and the notes, both read off the one event log the screen

@@ -1,4 +1,5 @@
-import type { OrderStatus } from "@pymeshub/shared";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import type { FulfilmentKind, OrderStatus } from "@pymeshub/shared";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -14,6 +15,7 @@ import Animated, {
 import { HIGHLIGHT_FADE, HIGHLIGHT_OPACITY, spring } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import {
+	icon,
 	orderChip,
 	radius,
 	space,
@@ -166,6 +168,7 @@ export function MerchantOrderRow({
 	reference,
 	headline,
 	fulfilmentLabel,
+	fulfilment,
 	status,
 	statusLabel,
 	totalLabel,
@@ -180,6 +183,8 @@ export function MerchantOrderRow({
 	reference: string;
 	headline: string;
 	fulfilmentLabel: string;
+	/** Pickup or delivery. Draws the same icon the order detail uses. */
+	fulfilment?: FulfilmentKind;
 	status: OrderStatus;
 	statusLabel: string;
 	totalLabel: string;
@@ -340,57 +345,76 @@ export function MerchantOrderRow({
 							<Text
 								variant="label"
 								tone="muted"
-								numberOfLines={1}
 								style={{ fontWeight: weights.bold }}
 							>
 								#{reference}
 							</Text>
 							<Text
 								variant="body"
-								numberOfLines={1}
-								style={{ fontWeight: weights.semibold, flexShrink: 1 }}
+								style={{ fontWeight: weights.semibold, flex: 1 }}
 							>
 								{headline}
 							</Text>
+							<Text
+								variant="body"
+								tabular
+								style={{ fontWeight: weights.bold }}
+							>
+								{totalLabel}
+							</Text>
 						</View>
 						<View style={styles.metaLine}>
-							<Text
-								variant="caption"
-								tone="muted"
-								numberOfLines={1}
-								style={{ flexShrink: 1 }}
-							>
+							{fulfilment ? (
+								<Ionicons
+									name={
+										fulfilment === "PICKUP"
+											? "bag-handle-outline"
+											: "car-outline"
+									}
+									size={icon.control}
+									color={colors.foreground}
+									accessibilityElementsHidden
+									importantForAccessibility="no"
+								/>
+							) : null}
+							<Text variant="caption" tone="muted">
 								{fulfilmentLabel}
 							</Text>
 							<MerchantStatusChip status={status} label={statusLabel} />
 							{waitLabel ? (
-								<Text variant="caption" tone="muted" tabular>
+								<Text
+									variant="caption"
+									tone={urgent === "critical" ? "destructive" : "muted"}
+									tabular
+									style={
+										urgent === "late"
+											? { color: colors.warning }
+											: undefined
+									}
+								>
 									{waitLabel}
 								</Text>
 							) : null}
 						</View>
 					</View>
 
-					<View pointerEvents="box-none" style={styles.aside}>
-						<Text
-							pointerEvents="none"
-							variant="body"
-							tabular
-							style={{ fontWeight: weights.bold }}
+					{actions && actions.length > 0 ? (
+						<View
+							pointerEvents="box-none"
+							style={[
+								styles.actionRow,
+								actions.length === 1 && styles.actionRowSingle,
+							]}
 						>
-							{totalLabel}
-						</Text>
-						{actions && actions.length > 0 ? (
-							<View style={styles.actions}>
-								{actions.map((action) => (
-									<MerchantAction
-										key={`${action.kind ?? "secondary"}:${action.label}`}
-										action={action}
-									/>
-								))}
-							</View>
-						) : null}
-					</View>
+							{actions.map((action) => (
+								<MerchantAction
+									key={`${action.kind ?? "secondary"}:${action.label}`}
+									action={action}
+									fill={actions.length > 1}
+								/>
+							))}
+						</View>
+					) : null}
 				</Animated.View>
 			</GestureDetector>
 		</View>
@@ -410,8 +434,11 @@ export function MerchantOrderRow({
  */
 export function MerchantAction({
 	action,
+	fill = false,
 }: {
 	action: MerchantRowAction;
+	/** Share the actions row. A lone action stays content-sized. */
+	fill?: boolean;
 }): React.ReactElement {
 	const { colors } = useTheme();
 	const kind = action.kind ?? "secondary";
@@ -423,6 +450,7 @@ export function MerchantAction({
 			accessibilityRole="button"
 			style={[
 				styles.action,
+				fill && styles.actionFill,
 				kind === "primary" && { backgroundColor: colors.primary },
 				kind === "secondary" && {
 					borderWidth: 1,
@@ -515,10 +543,9 @@ const styles = StyleSheet.create({
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
 	rowSurface: {
-		flexDirection: "row",
-		alignItems: "center",
 		minHeight: ROW_MIN_HEIGHT,
 		paddingVertical: space.md,
+		gap: space.sm,
 	},
 	helpSlot: {
 		position: "absolute",
@@ -551,43 +578,29 @@ const styles = StyleSheet.create({
 		borderRadius: radius.full,
 	},
 	main: {
-		flex: 1,
-		// `titleLine` and `metaLine` are two lines of one statement — what this order is,
-		// and what it needs — so they stack at `TEXT_STACK_GAP`, the same shape as
-		// `./list-row`'s `body`. `space.*` separates blocks, not lines inside one.
 		gap: TEXT_STACK_GAP,
 		paddingLeft: space.lg,
+		paddingRight: space.lg,
 	},
 	/** Two sizes on one line, met at the baseline or the line reads as two rows. */
 	titleLine: {
 		flexDirection: "row",
-		alignItems: "baseline",
+		alignItems: "flex-start",
 		gap: space.sm,
 	},
 	metaLine: {
 		flexDirection: "row",
 		alignItems: "center",
+		flexWrap: "wrap",
 		gap: space.sm,
 	},
-	aside: {
-		alignItems: "flex-end",
-		gap: space.xs,
-		paddingLeft: space.sm,
-		// The row is full-bleed at every call site (interface.md §64's queue runs its
-		// hairlines edge to edge), so the money column pays the screen's air itself rather
-		// than borrowing a wrapper's — dropping the row in unpadded would otherwise put the
-		// total on the bezel. The air cannot be forgotten, which is the same guarantee
-		// `./empty-state` took for its own gutter: paid here, so it cannot be adjusted per
-		// caller either.
-		paddingRight: space.lg,
-	},
-	actions: {
+	actionRow: {
 		flexDirection: "row",
-		flexWrap: "wrap",
-		justifyContent: "flex-end",
 		alignItems: "center",
 		gap: space.sm,
+		paddingHorizontal: space.lg,
 	},
+	actionRowSingle: { justifyContent: "flex-end" },
 	chip: {
 		alignSelf: "flex-start",
 		justifyContent: "center",
@@ -607,6 +620,7 @@ const styles = StyleSheet.create({
 		paddingVertical: space.sm,
 		borderRadius: radius.md,
 	},
+	actionFill: { flex: 1, alignSelf: "stretch" },
 	/** The quiet action's air: narrower than a boxed one, since it draws no box to fill. */
 	actionQuiet: {
 		paddingHorizontal: space.sm,

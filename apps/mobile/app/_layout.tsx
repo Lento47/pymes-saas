@@ -327,6 +327,10 @@ function ThemedStack() {
 					<Stack.Screen name="(delivery)" />
 				</Stack.Protected>
 				<Stack.Screen name="(auth)" options={{ presentation: "modal" }} />
+				{/* Shared by all three profiles. They sit outside the role guards so a tap
+				    inside the customer, merchant, or courier tree can still open them. */}
+				<Stack.Screen name="account" />
+				<Stack.Screen name="profile" />
 			</Stack>
 		</>
 	);

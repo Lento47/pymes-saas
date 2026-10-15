@@ -1,4 +1,4 @@
-import type Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import {
 	type DashboardCommandId,
@@ -33,6 +33,7 @@ import {
 	ProductCountPicker,
 	PulseLayoutPicker,
 	ThemeSwatchPicker,
+	WidgetLayoutPicker,
 	WidgetPaletteStrip,
 } from "@/components/customization-rows";
 import { ErrorState } from "@/components/error-state";
@@ -48,8 +49,11 @@ import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	businessThemeColors,
+	icon,
+	MIN_TOUCH_TARGET,
 	radius,
 	space,
+	TEXT_STACK_GAP,
 	ThemeColorsOverrideProvider,
 	useTheme,
 } from "@/theme";
@@ -119,6 +123,43 @@ const COMPACT_LAYOUTS: DashboardLayouts = {
 	queue: "compact",
 	commands: "wrap",
 	catalog: "tiles",
+};
+const WIDGET_LAYOUTS: {
+	[K in Exclude<DashboardWidgetId, "pulse">]: readonly {
+		id: DashboardLayouts[K];
+		label: MessageKey;
+	}[];
+} = {
+	shortcuts: [
+		{ id: "rail", label: "customize.layout.rail" },
+		{ id: "grid", label: "customize.layout.grid" },
+		{ id: "list", label: "customize.layout.list" },
+	],
+	insights: [
+		{ id: "columns", label: "customize.layout.columns" },
+		{ id: "stack", label: "customize.layout.stack" },
+		{ id: "band", label: "customize.layout.band" },
+	],
+	attention: [
+		{ id: "list", label: "customize.layout.list" },
+		{ id: "chips", label: "customize.layout.chips" },
+		{ id: "cards", label: "customize.layout.cards" },
+	],
+	queue: [
+		{ id: "rows", label: "customize.layout.rows" },
+		{ id: "compact", label: "customize.layout.compact" },
+		{ id: "cards", label: "customize.layout.cards" },
+	],
+	commands: [
+		{ id: "rail", label: "customize.layout.rail" },
+		{ id: "wrap", label: "customize.layout.wrap" },
+		{ id: "stack", label: "customize.layout.stack" },
+	],
+	catalog: [
+		{ id: "rows", label: "customize.layout.rows" },
+		{ id: "tiles", label: "customize.layout.tiles" },
+		{ id: "rail", label: "customize.layout.rail" },
+	],
 };
 const DETAILED_LAYOUTS: DashboardLayouts = {
 	shortcuts: "rail",
@@ -248,11 +289,6 @@ export default function CustomizeDashboard() {
 			shortcutCount={draft.shortcutIds.length}
 		/>
 	);
-	const setWidgetLayout = (id: DashboardWidgetId, layouts: DashboardLayouts) =>
-		setDraft({
-			...draft,
-			layouts: { ...draft.layouts, [id]: layouts[id] },
-		});
 	const closeEditor = () => {
 		setEditor(null);
 		setOpenCommand(null);
@@ -273,6 +309,11 @@ export default function CustomizeDashboard() {
 					})
 				}
 			/>
+			{id === "queue" ? (
+				<Text variant="caption" tone="muted">
+					{t("customize.queueHelp")}
+				</Text>
+			) : null}
 			{id === "pulse" ? (
 				<PulseLayoutPicker
 					value={draft.layouts.pulse}
@@ -285,12 +326,16 @@ export default function CustomizeDashboard() {
 					}
 				/>
 			) : (
-				<DensityToggle
-					compactSelected={draft.layouts[id] === COMPACT_LAYOUTS[id]}
-					onCompact={() => setWidgetLayout(id, COMPACT_LAYOUTS)}
-					onDetailed={() => setWidgetLayout(id, DETAILED_LAYOUTS)}
-					compactPreview={sketch(id, COMPACT_LAYOUTS[id])}
-					detailedPreview={sketch(id, DETAILED_LAYOUTS[id])}
+				<WidgetLayoutPicker
+					value={draft.layouts[id]}
+					options={WIDGET_LAYOUTS[id]}
+					onChange={(next) =>
+						setDraft({
+							...draft,
+							layouts: { ...draft.layouts, [id]: next },
+						})
+					}
+					render={(layout) => sketch(id, layout)}
 				/>
 			)}
 			{id === "shortcuts" ? (
@@ -397,6 +442,13 @@ export default function CustomizeDashboard() {
 							<ListRow
 								title={t(COMMAND_LABELS[key])}
 								chevron
+								leading={
+									<Ionicons
+										name={COMMAND_ICONS[key]}
+										size={icon.action}
+										color={previewColors.foreground}
+									/>
+								}
 								divider={index < all.length - 1 && openCommand !== key}
 								trailing={
 									<PaletteChip
@@ -410,19 +462,22 @@ export default function CustomizeDashboard() {
 								}
 							/>
 							{openCommand === key ? (
-								<WidgetPaletteStrip
-									value={draft.commandColors[key]}
-									scheme={scheme}
-									onChange={(themeId) =>
-										setDraft({
-											...draft,
-											commandColors: {
-												...draft.commandColors,
-												[key]: themeId as DashboardPreferences["themeId"],
-											},
-										})
-									}
-								/>
+								<View style={styles.commandPaint}>
+									<WidgetPaletteStrip
+										value={draft.commandColors[key]}
+										scheme={scheme}
+										onChange={(themeId) =>
+											setDraft({
+												...draft,
+												commandColors: {
+													...draft.commandColors,
+													[key]:
+														themeId as DashboardPreferences["themeId"],
+												},
+											})
+										}
+									/>
+								</View>
 							) : null}
 						</View>
 					))}
@@ -438,6 +493,7 @@ export default function CustomizeDashboard() {
 				leading={<BackButton to="/(business)/customize" />}
 				scroll
 				bottomInset
+				contentStyle={styles.page}
 			>
 				{saved.error ? (
 					<ErrorState
@@ -467,9 +523,6 @@ export default function CustomizeDashboard() {
 						/>
 					</View>
 				</Card>
-				<Text variant="caption" tone="muted">
-					{t("customize.canvasHint")}
-				</Text>
 				<Card>
 					<ListRow
 						title={t("customize.theme")}
@@ -490,10 +543,12 @@ export default function CustomizeDashboard() {
 						onPress={() => setEditor({ kind: "paintAll" })}
 					/>
 				</Card>
-				<View style={styles.applyAll}>
-					<Text variant="label" bold>
-						{t("customize.density.all")}
-					</Text>
+				<View style={styles.section}>
+					<View style={styles.sectionCopy}>
+						<Text variant="label" bold>
+							{t("customize.density.all")}
+						</Text>
+					</View>
 					<DensityToggle
 						compactSelected={allCompact}
 						detailedSelected={allDetailed}
@@ -532,6 +587,10 @@ export default function CustomizeDashboard() {
 						</Text>
 					)}
 				</View>
+				<View style={styles.section}>
+					<Text variant="caption" tone="muted">
+						{t("customize.canvasHint")}
+					</Text>
 				<ThemeColorsOverrideProvider colors={previewColors}>
 					<View
 						style={[
@@ -641,12 +700,14 @@ export default function CustomizeDashboard() {
 						/>
 					</View>
 				</ThemeColorsOverrideProvider>
+				</View>
 				{save.error || restore.error ? (
 					<ErrorState
 						error={save.error ?? restore.error}
 						onRetry={() => void saved.refetch()}
 					/>
 				) : null}
+				<View style={styles.actions}>
 				<Button
 					label={t("customize.save")}
 					disabled={
@@ -669,6 +730,7 @@ export default function CustomizeDashboard() {
 					disabled={!saved.data || restore.isPending}
 					onPress={() => run(restore.mutateAsync({ businessId, revision }))}
 				/>
+				</View>
 			</Screen>
 			<Sheet
 				open={editor?.kind === "theme"}
@@ -728,26 +790,29 @@ export default function CustomizeDashboard() {
 }
 
 const styles = StyleSheet.create({
+	page: { gap: space.xl },
+	section: { gap: space.sm },
+	sectionCopy: { gap: TEXT_STACK_GAP },
+	actions: { gap: space.sm },
 	preset: { gap: space.sm },
-	applyAll: { gap: space.sm },
 	applySketch: {
 		flexDirection: "row",
 		flexWrap: "wrap",
-		gap: 4,
-		minHeight: 36,
+		gap: space.xs,
+		minHeight: MIN_TOUCH_TARGET,
 	},
 	applyChip: {
 		width: 28,
 		height: 16,
 		borderRadius: radius.full,
 	},
-	applyStack: { gap: 4, minHeight: 36, justifyContent: "center" },
+	applyStack: { gap: space.xs, minHeight: MIN_TOUCH_TARGET, justifyContent: "center" },
 	applyBar: { height: 8, borderRadius: radius.full },
 	canvas: {
 		borderWidth: 1,
 		borderRadius: radius.lg,
-		padding: space.md,
-		gap: space.md,
+		padding: space.lg,
+		gap: space.lg,
 	},
 	identity: {
 		flexDirection: "row",
@@ -761,6 +826,7 @@ const styles = StyleSheet.create({
 		height: 22,
 		borderRadius: radius.full,
 	},
-	inset: { gap: space.sm, paddingTop: space.sm },
-	sheetBody: { gap: space.md },
+	inset: { gap: space.md, paddingTop: space.md },
+	commandPaint: { paddingTop: space.sm, paddingBottom: space.md },
+	sheetBody: { gap: space.xl },
 });

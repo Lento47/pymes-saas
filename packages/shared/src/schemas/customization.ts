@@ -46,13 +46,13 @@ export const dashboardThemeIdSchema = z.enum([
 	"vine",
 ]);
 export const dashboardLayoutsSchema = z.object({
-	shortcuts: z.enum(["rail", "grid"]).default("rail"),
+	shortcuts: z.enum(["rail", "grid", "list"]).default("rail"),
 	pulse: z.enum(["band", "cards", "hero", "stack"]).default("band"),
-	insights: z.enum(["columns", "stack"]).default("columns"),
-	attention: z.enum(["list", "chips"]).default("list"),
-	queue: z.enum(["rows", "compact"]).default("rows"),
-	commands: z.enum(["rail", "wrap"]).default("rail"),
-	catalog: z.enum(["rows", "tiles"]).default("rows"),
+	insights: z.enum(["columns", "stack", "band"]).default("columns"),
+	attention: z.enum(["list", "chips", "cards"]).default("list"),
+	queue: z.enum(["rows", "compact", "cards"]).default("rows"),
+	commands: z.enum(["rail", "wrap", "stack"]).default("rail"),
+	catalog: z.enum(["rows", "tiles", "rail"]).default("rows"),
 });
 export type DashboardLayouts = z.infer<typeof dashboardLayoutsSchema>;
 

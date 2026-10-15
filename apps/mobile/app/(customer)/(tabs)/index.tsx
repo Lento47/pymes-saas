@@ -354,7 +354,12 @@ export default function HomeScreen() {
 					onLocationPress={() => setLocationPickerOpen(true)}
 					name={name}
 					avatarUrl={me.data?.image ?? null}
-					onAvatarPress={() => router.push("/account")}
+					onAvatarPress={() =>
+						router.push({
+							pathname: "/account-hub",
+							params: { profile: "customer" },
+						})
+					}
 					onNotificationsPress={() => router.push("/inbox")}
 				/>
 

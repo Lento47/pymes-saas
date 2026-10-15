@@ -40,7 +40,6 @@ import { ID_PREFIXES } from "@pymeshub/shared/ids";
 import { optionDelta, optionsHash } from "@pymeshub/shared/options";
 import {
 	canTransition,
-	type DeliverySpeed,
 	type FulfilmentKind,
 	type OrderActor,
 	type OrderStatus,
@@ -249,13 +248,20 @@ function weekHours(
 	return [0, 1, 2, 3, 4, 5, 6].map((day) => {
 		const override = overrides[day];
 		if (override === null) {
-			return { day, opensMinute: 0, closesMinute: 0, isClosed: true };
+			return {
+				day,
+				opensMinute: 0,
+				closesMinute: 0,
+				isClosed: true,
+				kind: "open",
+			};
 		}
 		return {
 			day,
 			opensMinute: override?.opensMinute ?? opensMinute,
 			closesMinute: override?.closesMinute ?? closesMinute,
 			isClosed: false,
+			kind: "open",
 		};
 	});
 }

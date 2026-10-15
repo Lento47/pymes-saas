@@ -44,26 +44,32 @@ export type BusinessStatus = (typeof BUSINESS_STATUSES)[number];
  */
 export const DAYS_OF_WEEK = [0, 1, 2, 3, 4, 5, 6] as const;
 
+/**
+ * `open` is a trading window. `break` and `unavailable` are gaps inside the day
+ * (lunch, a pause). Several windows may share a day. Older rows omit `kind` and
+ * are treated as `open`.
+ */
+export const businessHoursKindSchema = z.enum([
+	"open",
+	"break",
+	"unavailable",
+]);
+export type BusinessHoursKind = z.infer<typeof businessHoursKindSchema>;
+
 export const businessHoursEntrySchema = z
 	.object({
 		day: z.number().int().min(0).max(6),
 		opensMinute: z.number().int().min(0).max(1440),
 		closesMinute: z.number().int().min(0).max(1440),
 		isClosed: z.boolean().default(false),
+		kind: businessHoursKindSchema.default("open"),
 	})
 	.refine((entry) => entry.isClosed || entry.closesMinute > entry.opensMinute, {
 		message: "La hora de cierre debe ser posterior a la de apertura",
 	});
 export type BusinessHoursEntry = z.infer<typeof businessHoursEntrySchema>;
 
-export const businessHoursSchema = z
-	.array(businessHoursEntrySchema)
-	.max(7)
-	.refine(
-		(entries) =>
-			new Set(entries.map((entry) => entry.day)).size === entries.length,
-		{ message: "Hay días repetidos en el horario" },
-	);
+export const businessHoursSchema = z.array(businessHoursEntrySchema).max(42);
 
 export const businessCreateInput = z.object({
 	name: shortText(120),

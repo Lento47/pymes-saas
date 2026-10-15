@@ -1,25 +1,27 @@
 import { weekdayName } from "@pymeshub/i18n";
+import type { BusinessHoursKind } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
-import { Field } from "@/components/field";
+import { Pressable } from "@/components/pressable";
+import { Sheet } from "@/components/sheet";
 import { Screen, ScreenSection } from "@/components/screen";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
-import { Switch } from "@/components/switch";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { MIN_TOUCH_TARGET, space, type, useTheme } from "@/theme";
+import { selection } from "@/lib/haptics";
+import { MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
 /**
  * The shop's week, written down.
@@ -141,14 +143,14 @@ export default function ShopHours() {
 	// always, so a save can never land a duplicate day (`businessHoursSchema`
 	// refines those away) and the row order is the form's own rather than the
 	// order the server happened to return them in.
-	const [week, setWeek] = useState<DayDraft[] | null>(null);
+	const [blocks, setBlocks] = useState<HoursBlock[] | null>(null);
+	const [composer, setComposer] = useState<HoursBlock | null>(null);
+	const [composerError, setComposerError] = useState<string | null>(null);
+	const [clock, setClock] = useState<"opens" | "closes" | null>(null);
 	// The device's weekday, the same call `components/hours-table` makes for the
 	// same reason: a business row carries no timezone, so the shop's own today
 	// is the server's problem (`businesses.bySlug`'s `isOpen`) and this marker is
 	// the phone's.
-	const today = new Date().getDay();
-
-	const [submitted, setSubmitted] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const prefilled = useRef(false);
 
@@ -167,95 +169,54 @@ export default function ShopHours() {
 	useEffect(() => {
 		if (prefilled.current || !settings.data) return;
 		prefilled.current = true;
-		if (settings.data.hours.length > 0) setWeek(draftFrom(settings.data.hours));
+		setBlocks(blocksFrom(settings.data.hours));
 	}, [settings.data]);
 
-	const setDay = (day: number, apply: (one: DayDraft) => DayDraft) => {
-		setWeek((current) =>
-			current === null
-				? current
-				: current.map((one) => (one.day === day ? apply(one) : one)),
-		);
+	const blockError = (block: HoursBlock): string | null => {
+		if (block.days.length === 0) return t("biz.settings.hours.pickDays");
+		const opens = parseClock(block.opens);
+		const closes = parseClock(block.closes);
+		if (opens === null || closes === null) {
+			return block.opens.trim().length === 0 || block.closes.trim().length === 0
+				? t("form.required")
+				: t("biz.new.number.unreadable");
+		}
+		if (block.kind === "unavailable" && closes !== opens) return null;
+		if (closes <= opens) return t("biz.settings.hours.rule");
+		return null;
+	};
+
+	const commitComposer = () => {
+		if (!composer) return;
+		const error = blockError(composer);
+		setComposerError(error);
+		if (error) return;
+		setBlocks((current) => [...(current ?? []), composer]);
+		setComposer(null);
+		setComposerError(null);
 		if (update.isError) update.reset();
 	};
 
-	/**
-	 * Copy this row onto every day of the week, `isClosed` included.
-	 *
-	 * The whole row and not just its times: a merchant who has set Monday to
-	 * `08:00–18:00` and closed is describing a week in which no day trades, and a
-	 * copy that kept each day's own `isClosed` would leave that week untouched.
-	 * Reversible by typing and by re-copying, and nothing leaves this screen until
-	 * `biz.settings.save` — so this is a draft edit and not the kind of change
-	 * `docs/design-mobile.md` puts behind a confirmation.
-	 */
-	const copyToAll = (source: DayDraft) => {
-		setWeek((current) =>
-			current === null
-				? current
-				: current.map((one) => ({
-						day: one.day,
-						opens: source.opens,
-						closes: source.closes,
-						closed: source.closed,
-					})),
-		);
-		if (update.isError) update.reset();
-	};
-
-	// One error per day at most, on the box the sentence is about: a missing time
-	// is that box, and a range that runs backwards is the closing one, because
-	// `biz.settings.hours.rule` is a sentence about the closing time.
-	const errorsOf = (one: DayDraft) => {
-		const opens = parseClock(one.opens);
-		const closes = parseClock(one.closes);
-		if (one.closed) return { opens: null, closes: null };
-		if (opens === null) {
-			return {
-				opens:
-					one.opens.trim().length === 0
-						? t("form.required")
-						: t("biz.new.number.unreadable"),
-				closes: null,
-			};
-		}
-		if (closes === null) {
-			return {
-				opens: null,
-				closes:
-					one.closes.trim().length === 0
-						? t("form.required")
-						: t("biz.new.number.unreadable"),
-			};
-		}
-		if (closes <= opens)
-			return { opens: null, closes: t("biz.settings.hours.rule") };
-		return { opens: null, closes: null };
-	};
-
-	const weekOk =
-		week?.every((one) => {
-			const errors = errorsOf(one);
-			return errors.opens === null && errors.closes === null;
-		}) ?? false;
+	const blocksOk = (blocks ?? []).every((block) => blockError(block) === null);
 
 	const submit = () => {
 		if (update.isPending) return;
-		setSubmitted(true);
-		if (week === null || !weekOk) return;
+		if (blocks === null || !blocksOk || composer !== null) return;
 		setSaving(true);
 		update.mutate(
 			{
 				businessId,
-				// The array as a whole, and always all seven: `businessHoursSchema`
-				// refuses a duplicate day and `businesses.update` replaces the column
-				// rather than merging into it.
-				hours: week.map((one) => ({
-					day: one.day,
-					opensMinute: parseClock(one.opens) ?? 0,
-					closesMinute: parseClock(one.closes) ?? 0,
-					isClosed: one.closed,
-				})),
+				hours: blocks.flatMap((block) =>
+					block.days.flatMap((day) =>
+						windowsOf(block).map((window) => ({
+							day,
+							opensMinute: window.opensMinute,
+							closesMinute: window.closesMinute,
+							isClosed: false,
+							kind: block.kind,
+						})),
+					),
+				),
 			},
 			{
 				onSuccess: async () => {
@@ -291,128 +252,82 @@ export default function ShopHours() {
 								void settings.refetch();
 							}}
 						/>
-					) : week === null ? (
-						// Not an error and not a form: the shop has said nothing about
-						// its week, and the sentence is what says so — without it a
-						// screen with one button reads as a form that failed to load.
+					) : blocks === null ? null : (
 						<AnimateIn index={0}>
 							<ScreenSection title={t("biz.settings.hours")}>
 								<Text variant="body" tone="muted">
 									{t("biz.settings.hours.help")}
 								</Text>
-								<Button
-									label={t("biz.settings.hours.add")}
-									variant="secondary"
-									fullWidth
-									style={styles.add}
-									onPress={() => setWeek(seedWeek())}
-								/>
-							</ScreenSection>
-						</AnimateIn>
-					) : (
-						<AnimateIn index={0}>
-							<ScreenSection title={t("biz.settings.hours")}>
-								{week.map((one, index) => {
-									const errors = errorsOf(one);
-									const shown = submitted
-										? errors
-										: { opens: null, closes: null };
-									return (
-										<View
-											key={one.day}
-											style={[
-												styles.day,
-												index < week.length - 1 && {
-													borderBottomWidth: StyleSheet.hairlineWidth,
-													borderBottomColor: colors.border,
-												},
-											]}
-										>
-											<View style={styles.dayHead}>
-												<View style={styles.dayName}>
-													<Text variant="body" bold>
-														{weekdayName(one.day, intlLocale)}
-													</Text>
-													{/*
-														`action`, not `primary`: `tone="primary"` is `colors.primary`, and in the
-														merchant tree that is the lime **fill**, not ink. This caption sits on
-														the row's white card, so `primary` put lime `#C8FF18` on `#FFFFFF` —
-														**1.18:1**. `action` is `#111111` and holds **18.88:1** here. Same
-														mistake as the shop initial in `shop-settings.tsx`, and the same reason it
-														survived: the consumer palette's `primary` is a dark ultramarine and reads
-														fine as ink, so only the merchant tree can get this wrong.
-												*/}
-													{one.day === today ? (
-														<Text variant="caption" tone="action" bold>
-															{t("store.today")}
-														</Text>
-													) : null}
-												</View>
-											</View>
-
-											<View style={styles.dayTimes}>
-												<View style={styles.time}>
-													<Field
-														label={t("biz.settings.hours.opens")}
-														value={one.opens}
-														onChangeText={(value) =>
-															setDay(one.day, (draft) => ({
-																...draft,
-																opens: value,
-															}))
-														}
-														error={shown.opens}
-														editable={!one.closed}
-														keyboardType="numbers-and-punctuation"
-														maxLength={5}
-														placeholder="08:00"
-													/>
-												</View>
-												<View style={styles.time}>
-													<Field
-														label={t("biz.settings.hours.closes")}
-														value={one.closes}
-														onChangeText={(value) =>
-															setDay(one.day, (draft) => ({
-																...draft,
-																closes: value,
-															}))
-														}
-														error={shown.closes}
-														editable={!one.closed}
-														keyboardType="numbers-and-punctuation"
-														maxLength={5}
-														placeholder="18:00"
-													/>
-												</View>
-											</View>
-
-											<View style={styles.dayFoot}>
-												<View style={styles.closedPair}>
-													<Switch
-														checked={one.closed}
-														onChange={(next) =>
-															setDay(one.day, (draft) => ({
-																...draft,
-																closed: next,
-															}))
-														}
-														label={t("biz.settings.hours.closed")}
-													/>
-													<Text variant="label" tone="muted">
-														{t("biz.settings.hours.closed")}
-													</Text>
-												</View>
-												<Button
-													label={t("biz.settings.hours.copyToAll")}
-													variant="ghost"
-													size="sm"
-													onPress={() => copyToAll(one)}
-												/>
-											</View>
+								{blocks.length === 0 && composer === null ? (
+									<Text variant="caption" tone="muted">
+										{t("biz.settings.hours.pickDays")}
+									</Text>
+								) : null}
+								{blocks.map((block) => (
+									<View
+										key={block.key}
+										style={[
+											styles.block,
+											{
+												borderColor: colors.border,
+												backgroundColor: colors.card,
+											},
+										]}
+									>
+										<View style={styles.blockHead}>
+											<Text variant="body" bold>
+												{t(`biz.settings.hours.kind.${block.kind}`)}
+											</Text>
+											<Button
+												label={t("biz.settings.hours.remove")}
+												variant="ghost"
+												size="sm"
+												onPress={() =>
+													setBlocks((current) =>
+														(current ?? []).filter(
+															(one) => one.key !== block.key,
+														),
+													)
+												}
+											/>
 										</View>
-									);
-								})}
+										<Text variant="caption" tone="muted">
+											{block.days
+												.map((day) => weekdayName(day, intlLocale))
+												.filter((name): name is string => name !== null)
+												.join(", ")}
+										</Text>
+										<Text variant="body" tabular>
+											{block.opens}–{block.closes}
+										</Text>
+									</View>
+								))}
+								{composer ? (
+									<HoursComposer
+										block={composer}
+										error={composerError}
+										locale={intlLocale}
+										bounds={openBounds(blocks)}
+										onChange={setComposer}
+										onCommit={commitComposer}
+										onOpenClock={setClock}
+									/>
+								) : (
+									<Button
+										label={
+											blocks.length === 0
+												? t("biz.settings.hours.add")
+												: t("biz.settings.hours.another")
+										}
+										variant="secondary"
+										fullWidth
+										style={styles.add}
+										onPress={() => {
+											setComposerError(null);
+											setComposer(emptyBlock());
+										}}
+									/>
+								)}
 							</ScreenSection>
 						</AnimateIn>
 					)}
@@ -432,7 +347,7 @@ export default function ShopHours() {
 				</SignedIn>
 			</Screen>
 
-			{ready && week !== null ? (
+			{ready && blocks !== null ? (
 				<ActionBar
 					docked
 					primary={{
@@ -443,68 +358,432 @@ export default function ShopHours() {
 					}}
 				/>
 			) : null}
+			<Sheet
+				open={clock !== null && composer !== null}
+				onClose={() => setClock(null)}
+				title={
+					clock === "closes"
+						? t(
+								composer?.kind === "open"
+									? "biz.settings.hours.closes"
+									: "biz.settings.hours.to",
+							)
+						: t(
+								composer?.kind === "open"
+									? "biz.settings.hours.opens"
+									: "biz.settings.hours.from",
+							)
+				}
+				closeLabel={t("action.close")}
+				scrollEnabled={false}
+				snapPoints={[0.46]}
+			>
+				{composer && clock ? (
+					<ClockWheels
+						value={
+							clock === "opens"
+								? composer.opens || "08:00"
+								: composer.closes || "18:00"
+						}
+						allowEndOfDay={clock === "closes"}
+						onChange={(next) =>
+							setComposer({ ...composer, [clock]: next })
+						}
+					/>
+				) : null}
+			</Sheet>
 		</View>
 	);
 }
 
-/** One weekday, as the boxes hold it. `opens`/`closes` are the typed strings. */
-type DayDraft = {
-	day: number;
+const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
+const HOURS_KINDS = ["open", "break", "unavailable"] as const;
+
+type HoursBlock = {
+	key: string;
+	kind: BusinessHoursKind;
+	days: number[];
 	opens: string;
 	closes: string;
-	closed: boolean;
 };
 
-/**
- * The week the "Cargar horario" button fills in: `08:00–18:00` Monday to Saturday,
- * Sunday shut. A starting shape to correct rather than an empty grid to author —
- * see the file docblock. `day` runs 0–6 in the schema's own numbering (Sunday is
- * 0), and the form draws Monday first, so the seed is written against that
- * numbering and the sort is `./hours-table`'s.
- */
-function seedWeek(): DayDraft[] {
-	return [0, 1, 2, 3, 4, 5, 6].map((day) => ({
-		day,
-		opens: "08:00",
-		closes: "18:00",
-		closed: day === 0,
-	}));
+function emptyBlock(): HoursBlock {
+	return {
+		key: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+		kind: "open",
+		days: [],
+		opens: "",
+		closes: "",
+	};
 }
 
-/**
- * The stored week into the boxes, Monday first and a seed row for any weekday the
- * column left out. `businessHoursSchema` allows fewer than seven entries — the
- * refine is on *duplicate* days, not on missing ones — so a shop that answered with
- * three rows still gets a form of seven, and the four it never stated open as the
- * seed rather than as a claim.
- */
-function draftFrom(hours: readonly DayDraftSource[]): DayDraft[] {
-	const byDay = new Map(hours.map((entry) => [entry.day, entry]));
-	return [1, 2, 3, 4, 5, 6, 0].map((day) => {
-		const entry = byDay.get(day);
-		if (!entry) {
-			return {
-				day,
-				opens: "08:00",
-				closes: "18:00",
-				closed: day === 0,
-			};
+function blocksFrom(
+	hours: readonly {
+		day: number;
+		opensMinute: number;
+		closesMinute: number;
+		isClosed: boolean;
+		kind?: BusinessHoursKind;
+	}[],
+): HoursBlock[] {
+	const groups = new Map<string, HoursBlock>();
+	for (const entry of hours) {
+		const closedDay = entry.isClosed;
+		const kind = closedDay ? "unavailable" : (entry.kind ?? "open");
+		const opens = closedDay ? "00:00" : toClock(entry.opensMinute);
+		const closes = closedDay ? "24:00" : toClock(entry.closesMinute);
+		const id = `${kind}|${opens}|${closes}`;
+		const existing = groups.get(id);
+		if (existing) {
+			existing.days.push(entry.day);
+			continue;
 		}
-		return {
-			day,
-			opens: toClock(entry.opensMinute),
-			closes: toClock(entry.closesMinute),
-			closed: entry.isClosed,
-		};
-	});
+		groups.set(id, {
+			key: id,
+			kind,
+			days: [entry.day],
+			opens,
+			closes,
+		});
+	}
+	return mergeOvernight([...groups.values()]);
 }
 
-type DayDraftSource = {
-	day: number;
+function sameDays(left: readonly number[], right: readonly number[]): boolean {
+	if (left.length !== right.length) return false;
+	const a = [...left].sort();
+	const b = [...right].sort();
+	return a.every((day, index) => day === b[index]);
+}
+
+/** An overnight unavailable stretch is stored as evening plus morning. Show it as one block. */
+function mergeOvernight(blocks: HoursBlock[]): HoursBlock[] {
+	const used = new Set<string>();
+	const merged: HoursBlock[] = [];
+	for (const evening of blocks) {
+		if (evening.kind !== "unavailable" || parseClock(evening.closes) !== 1440)
+			continue;
+		const morning = blocks.find(
+			(block) =>
+				block.kind === "unavailable" &&
+				parseClock(block.opens) === 0 &&
+				!used.has(block.key) &&
+				sameDays(block.days, evening.days),
+		);
+		if (!morning) continue;
+		used.add(evening.key);
+		used.add(morning.key);
+		merged.push({ ...evening, closes: morning.closes });
+	}
+	return [...blocks.filter((block) => !used.has(block.key)), ...merged];
+}
+
+function openBounds(blocks: readonly HoursBlock[]): {
+	start: string;
+	end: string;
+} {
+	let start = 8 * 60;
+	let end = 18 * 60;
+	let found = false;
+	for (const block of blocks) {
+		if (block.kind !== "open") continue;
+		const opens = parseClock(block.opens);
+		const closes = parseClock(block.closes);
+		if (opens === null || closes === null || closes <= opens) continue;
+		if (!found || opens < start) start = opens;
+		if (!found || closes > end) end = closes;
+		found = true;
+	}
+	return { start: toClock(start), end: toClock(end) };
+}
+
+function windowsOf(block: HoursBlock): {
 	opensMinute: number;
 	closesMinute: number;
-	isClosed: boolean;
-};
+}[] {
+	const opens = parseClock(block.opens) ?? 0;
+	const closes = parseClock(block.closes) ?? 0;
+	if (block.kind === "unavailable" && closes < opens) {
+		return [
+			{ opensMinute: opens, closesMinute: 1440 },
+			{ opensMinute: 0, closesMinute: closes },
+		].filter((window) => window.closesMinute > window.opensMinute);
+	}
+	return [{ opensMinute: opens, closesMinute: closes }];
+}
+
+function HoursComposer({
+	block,
+	error,
+	locale,
+	bounds,
+	onChange,
+	onCommit,
+	onOpenClock,
+}: {
+	block: HoursBlock;
+	error: string | null;
+	locale: string;
+	/** Opening and closing of the days the shop actually serves. */
+	bounds: { start: string; end: string };
+	onChange: (next: HoursBlock) => void;
+	onCommit: () => void;
+	onOpenClock: (which: "opens" | "closes") => void;
+}) {
+	const { t } = useT();
+	const { colors } = useTheme();
+	return (
+		<View style={[styles.block, { borderColor: colors.border }]}>
+			<Text variant="label" bold>
+				{t("biz.settings.hours.days")}
+			</Text>
+			<View style={styles.days}>
+				{HOURS_KINDS.map((kind) => {
+					const chosen = block.kind === kind;
+					return (
+						<Pressable
+							key={kind}
+							onPress={() => {
+								selection();
+								onChange(
+									kind === "unavailable"
+										? {
+												...block,
+												kind,
+												opens: bounds.end,
+												closes: bounds.start,
+											}
+										: { ...block, kind },
+								);
+							}}
+							accessibilityRole="radio"
+							accessibilityState={{ selected: chosen }}
+							style={[
+								styles.dayChip,
+								{
+									backgroundColor: chosen ? colors.primary : colors.muted,
+									borderColor: chosen ? colors.primary : colors.border,
+								},
+							]}
+						>
+							<Text
+								variant="label"
+								bold
+								style={{
+									color: chosen
+										? colors.primaryForeground
+										: colors.foreground,
+								}}
+							>
+								{t(`biz.settings.hours.kind.${kind}`)}
+							</Text>
+						</Pressable>
+					);
+				})}
+			</View>
+			<View style={styles.days}>
+				{WEEK_DAYS.map((day) => {
+					const chosen = block.days.includes(day);
+					const name = weekdayName(day, locale);
+					return (
+						<Pressable
+							key={day}
+							onPress={() => {
+								selection();
+								onChange({
+									...block,
+									days: chosen
+										? block.days.filter((one) => one !== day)
+										: [...block.days, day],
+								});
+							}}
+							accessibilityRole="checkbox"
+							accessibilityState={{ checked: chosen }}
+							accessibilityLabel={name ?? String(day)}
+							style={[
+								styles.dayChip,
+								{
+									backgroundColor: chosen ? colors.primary : colors.muted,
+									borderColor: chosen ? colors.primary : colors.border,
+								},
+							]}
+						>
+							<Text
+								variant="label"
+								bold
+								style={{
+									color: chosen
+										? colors.primaryForeground
+										: colors.foreground,
+								}}
+							>
+								{name}
+							</Text>
+						</Pressable>
+					);
+				})}
+			</View>
+			<View style={styles.dayTimes}>
+				<TimeChoice
+					label={t(
+						block.kind === "open"
+							? "biz.settings.hours.opens"
+							: "biz.settings.hours.from",
+					)}
+					value={block.opens || "08:00"}
+					onPress={() => {
+						if (!block.opens) onChange({ ...block, opens: "08:00" });
+						onOpenClock("opens");
+					}}
+				/>
+				<TimeChoice
+					label={t(
+						block.kind === "open"
+							? "biz.settings.hours.closes"
+							: "biz.settings.hours.to",
+					)}
+					value={block.closes || "18:00"}
+					onPress={() => {
+						if (!block.closes) onChange({ ...block, closes: "18:00" });
+						onOpenClock("closes");
+					}}
+				/>
+			</View>
+			{error ? (
+				<Text variant="caption" tone="destructive">
+					{error}
+				</Text>
+			) : null}
+			<Button
+				label={t("biz.settings.hours.add")}
+				onPress={onCommit}
+			/>
+		</View>
+	);
+}
+
+function TimeChoice({
+	label,
+	value,
+	onPress,
+}: {
+	label: string;
+	value: string;
+	onPress: () => void;
+}) {
+	const { colors } = useTheme();
+	return (
+		<Pressable
+			onPress={onPress}
+			accessibilityRole="button"
+			accessibilityLabel={`${label}, ${value}`}
+			style={[styles.timeChoice, { borderColor: colors.border }]}
+		>
+			<Text variant="caption" tone="muted">
+				{label}
+			</Text>
+			<Text variant="title" bold tabular>
+				{value}
+			</Text>
+		</Pressable>
+	);
+}
+
+const WHEEL_ITEM = 44;
+const WHEEL_HOURS = Array.from({ length: 24 }, (_, hour) =>
+	String(hour).padStart(2, "0"),
+);
+const WHEEL_MINUTES = Array.from({ length: 12 }, (_, step) =>
+	String(step * 5).padStart(2, "0"),
+);
+
+function ClockWheels({
+	value,
+	allowEndOfDay,
+	onChange,
+}: {
+	value: string;
+	allowEndOfDay: boolean;
+	onChange: (next: string) => void;
+}) {
+	const parsed = parseClock(value) ?? 8 * 60;
+	const hour = Math.min(allowEndOfDay ? 24 : 23, Math.floor(parsed / 60));
+	const minute = hour === 24 ? 0 : Math.round((parsed % 60) / 5) * 5;
+	const hours = allowEndOfDay ? [...WHEEL_HOURS, "24"] : WHEEL_HOURS;
+	const minutes = hour === 24 ? ["00"] : WHEEL_MINUTES;
+	const write = (nextHour: number, nextMinute: number) => {
+		const minuteValue = nextHour === 24 ? 0 : nextMinute;
+		onChange(toClock(nextHour * 60 + minuteValue));
+	};
+	return (
+		<View style={styles.wheels}>
+			<Wheel
+				values={hours}
+				selected={String(hour).padStart(2, "0")}
+				onSelect={(next) => write(Number(next), minute)}
+			/>
+			<Wheel
+				values={minutes}
+				selected={String(minute).padStart(2, "0")}
+				onSelect={(next) => write(hour, Number(next))}
+			/>
+		</View>
+	);
+}
+
+function Wheel({
+	values,
+	selected,
+	onSelect,
+}: {
+	values: readonly string[];
+	selected: string;
+	onSelect: (value: string) => void;
+}) {
+	const ref = useRef<ScrollView>(null);
+	const { colors } = useTheme();
+	const index = Math.max(0, values.indexOf(selected));
+	const settle = (offset: number) => {
+		const next = Math.round(offset / WHEEL_ITEM);
+		const clamped = Math.min(values.length - 1, Math.max(0, next));
+		const picked = values[clamped];
+		if (picked && picked !== selected) onSelect(picked);
+	};
+	useEffect(() => {
+		ref.current?.scrollTo({ y: index * WHEEL_ITEM, animated: false });
+	}, [index, values]);
+	return (
+		<View style={styles.wheel}>
+			<View
+				pointerEvents="none"
+				style={[styles.wheelMark, { borderColor: colors.border }]}
+			/>
+			<ScrollView
+				ref={ref}
+				snapToInterval={WHEEL_ITEM}
+				snapToAlignment="start"
+				decelerationRate="fast"
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={styles.wheelPad}
+				onMomentumScrollEnd={(event) => settle(event.nativeEvent.contentOffset.y)}
+				onScrollEndDrag={(event) => settle(event.nativeEvent.contentOffset.y)}
+			>
+				{values.map((item) => (
+					<View key={item} style={styles.wheelItem}>
+						<Text
+							variant="title"
+							bold={item === selected}
+							tabular
+							tone={item === selected ? "default" : "muted"}
+						>
+							{item}
+						</Text>
+					</View>
+				))}
+			</ScrollView>
+		</View>
+	);
+}
 
 function toClock(minute: number): string {
 	const capped = Math.max(0, Math.min(1440, Math.round(minute)));
@@ -591,6 +870,27 @@ const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
 	add: { marginTop: space.md },
+	block: {
+		gap: space.md,
+		padding: space.md,
+		borderWidth: 1,
+		borderRadius: radius.lg,
+	},
+	blockHead: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: space.sm,
+	},
+	days: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+	dayChip: {
+		minHeight: MIN_TOUCH_TARGET,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		justifyContent: "center",
+		borderWidth: 1,
+		borderRadius: radius.full,
+	},
 	day: { paddingVertical: space.md, gap: space.sm },
 	dayHead: {
 		flexDirection: "row",
@@ -615,6 +915,34 @@ const styles = StyleSheet.create({
 		gap: space.sm,
 	},
 	time: { flex: 1, minWidth: 120 },
+	timeChoice: {
+		flex: 1,
+		minWidth: 120,
+		minHeight: MIN_TOUCH_TARGET,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.xs,
+		borderWidth: 1,
+		borderRadius: radius.lg,
+		paddingVertical: space.sm,
+	},
+	wheels: { flexDirection: "row", gap: space.md, height: WHEEL_ITEM * 5 },
+	wheel: { flex: 1, height: WHEEL_ITEM * 5 },
+	wheelPad: { paddingVertical: WHEEL_ITEM * 2 },
+	wheelItem: {
+		height: WHEEL_ITEM,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	wheelMark: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: WHEEL_ITEM * 2,
+		height: WHEEL_ITEM,
+		borderTopWidth: 1,
+		borderBottomWidth: 1,
+	},
 	dayFoot: {
 		flexDirection: "row",
 		alignItems: "center",

@@ -174,6 +174,8 @@ export const business = {
 	"biz.order.call": "Call",
 	"biz.order.message": "Message",
 	"biz.order.openMap": "Open map",
+	"biz.order.external.unavailable":
+		"This phone has no app that can open that.",
 	// The dark hero's last line, and the only place this screen claims a time the payload does
 	// not carry. `orderSummarySchema` has no `updatedAt`; the newest event in the log is the
 	// order's real last change, so the copy names the event rather than promising a freshness
@@ -392,10 +394,19 @@ export const business = {
 	"biz.settings.currency": "Currency",
 	"biz.settings.hours.opens": "Opens",
 	"biz.settings.hours.closes": "Closes",
+	"biz.settings.hours.from": "From",
+	"biz.settings.hours.to": "To",
 	"biz.settings.hours.rule": "Closing time has to be after opening time",
 	"biz.settings.hours.add": "Add hours",
+	"biz.settings.hours.kind.open": "Open",
+	"biz.settings.hours.kind.break": "Break or lunch",
+	"biz.settings.hours.kind.unavailable": "Unavailable",
+	"biz.settings.hours.days": "Days",
+	"biz.settings.hours.pickDays": "Pick at least one day",
+	"biz.settings.hours.remove": "Remove",
+	"biz.settings.hours.another": "Add another block",
 	"biz.settings.hours.help":
-		"Until you set hours, your business shows as open at all times.",
+		"Start empty. Pick the days, the opening time, and the closing time. You can add a break, lunch, or a stretch when you are not available.",
 	"biz.settings.readOnly": "Only the owner or the manager can save changes",
 	"biz.settings.suspended":
 		"PymesHub suspended this business. Write to us to have it looked at.",
@@ -1423,7 +1434,7 @@ export const business = {
 	"customize.down": "Move down",
 	"customize.cover": "Cover header",
 	"customize.compact": "Compact header",
-	"customize.color": "Brand accent (#RRGGBB)",
+	"customize.color": "Brand color",
 	"customize.colorError":
 		"This color is hard to see in light or dark mode. Try the suggested shade.",
 	"customize.useSuggestedShade": "Use suggested shade {color}",
@@ -1435,6 +1446,8 @@ export const business = {
 	"customize.insights": "Insights",
 	"customize.attention": "Needs attention",
 	"customize.queue": "Orders now",
+	"customize.queueHelp":
+		"Rows show the order, its icon, and the button. Compact is a shorter line.",
 	"customize.commands": "Quick actions",
 	"customize.catalog": "Product preview",
 	"customize.netSales": "Net sales",

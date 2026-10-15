@@ -187,10 +187,21 @@ export function isOpenAt(
 	if (!hours || hours.length === 0) return true;
 
 	const { day, minuteOfDay } = localDayAndMinute(at);
-	const today = hours.find((entry) => entry.day === day);
-	if (!today || today.isClosed) return false;
+	const today = hours.filter((entry) => entry.day === day);
+	if (today.length === 0) return false;
+	if (today.some((entry) => entry.isClosed)) return false;
 
-	return minuteOfDay >= today.opensMinute && minuteOfDay < today.closesMinute;
+	const covers = (entry: BusinessHoursEntry) =>
+		minuteOfDay >= entry.opensMinute && minuteOfDay < entry.closesMinute;
+	const open = today.some(
+		(entry) => (entry.kind ?? "open") === "open" && covers(entry),
+	);
+	const blocked = today.some(
+		(entry) =>
+			(entry.kind === "break" || entry.kind === "unavailable") &&
+			covers(entry),
+	);
+	return open && !blocked;
 }
 
 /** `YYYY-MM-DD`, in UTC. The day key every series in this API is grouped by. */

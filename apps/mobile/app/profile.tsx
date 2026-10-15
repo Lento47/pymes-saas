@@ -11,6 +11,7 @@ import {
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
+import { BackButton } from "@/components/back-button";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { PhotoPicker } from "@/components/photo-picker";
@@ -121,6 +122,7 @@ export default function Profile() {
 		<View style={styles.root}>
 			<Screen
 				title={t("account.profile.title")}
+				leading={<BackButton to="/" />}
 				scroll
 				// Two text inputs and the email read-out under them: the frame is what knows which
 				// platform needs the keyboard's height paid as an inset, so the screen asks for it
@@ -520,6 +522,7 @@ function ProfileFields({ form }: { form: ProfileForm }) {
 					help={t("account.profile.photo.help")}
 					radiusToken="full"
 					aspect={[1, 1]}
+					layout="tap"
 				>
 					{form.nameValue.trim() ? (
 						<Text variant="title" tone="action" bold>

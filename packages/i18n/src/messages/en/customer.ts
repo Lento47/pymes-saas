@@ -139,6 +139,8 @@ export const customer = {
 	"store.closed": "Closed",
 	"store.closed.until": "Closed · opens {time}",
 	"store.hours": "Hours",
+	"store.hours.break": "Break {range}",
+	"store.hours.unavailable": "Unavailable {range}",
 	"store.hours.today": "Today: {range}",
 	"store.hours.closedToday": "Closed today",
 	/* The marker on today's row — see the Spanish file's note, including why it is not `store.hours.today`. */

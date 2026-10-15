@@ -192,6 +192,8 @@ export const business = {
 	"biz.order.call": "Llamar",
 	"biz.order.message": "Mensaje",
 	"biz.order.openMap": "Ver mapa",
+	"biz.order.external.unavailable":
+		"Este teléfono no tiene una app para abrir eso.",
 	// La última línea del héroe oscuro, y el único lugar donde esta pantalla afirma una hora
 	// que el payload no trae. `orderSummarySchema` no tiene `updatedAt`; el evento más nuevo
 	// del log es el último cambio real del pedido, así que la copia nombra el evento en vez de
@@ -422,11 +424,20 @@ export const business = {
 	"biz.settings.currency": "Moneda",
 	"biz.settings.hours.opens": "Abre",
 	"biz.settings.hours.closes": "Cierra",
+	"biz.settings.hours.from": "Desde",
+	"biz.settings.hours.to": "Hasta",
 	"biz.settings.hours.rule":
 		"La hora de cierre tiene que ser después de la de apertura",
-	"biz.settings.hours.add": "Cargar horario",
+	"biz.settings.hours.add": "Agregar horario",
 	"biz.settings.hours.help":
-		"Mientras no cargues un horario, tu negocio aparece como abierto a toda hora.",
+		"Empieza vacío. Elige los días, la hora de inicio y la de cierre. Puedes agregar un descanso, un almuerzo o un tramo en el que no atiendes.",
+	"biz.settings.hours.kind.open": "Atiendo",
+	"biz.settings.hours.kind.break": "Descanso o almuerzo",
+	"biz.settings.hours.kind.unavailable": "No disponible",
+	"biz.settings.hours.days": "Días",
+	"biz.settings.hours.pickDays": "Elige al menos un día",
+	"biz.settings.hours.remove": "Quitar",
+	"biz.settings.hours.another": "Agregar otro tramo",
 	"biz.settings.readOnly":
 		"Solo el dueño o el encargado pueden guardar cambios",
 	"biz.settings.suspended":
@@ -1504,7 +1515,7 @@ export const business = {
 	"customize.down": "Bajar",
 	"customize.cover": "Portada grande",
 	"customize.compact": "Encabezado compacto",
-	"customize.color": "Color de marca (#RRGGBB)",
+	"customize.color": "Color de marca",
 	"customize.colorError":
 		"Este color no se distingue bien en claro u oscuro. Prueba el tono sugerido.",
 	"customize.useSuggestedShade": "Usar tono sugerido {color}",
@@ -1516,6 +1527,8 @@ export const business = {
 	"customize.insights": "Datos útiles",
 	"customize.attention": "Necesita atención",
 	"customize.queue": "Pedidos ahora",
+	"customize.queueHelp":
+		"Filas muestra el pedido, el icono y el botón. Compacto es una línea más corta.",
 	"customize.commands": "Acciones rápidas",
 	"customize.catalog": "Vista de productos",
 	"customize.netSales": "Ventas netas",

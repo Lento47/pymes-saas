@@ -110,11 +110,14 @@ export function ProductRow({
 	/** Suppressed on a storefront, where the shop's name is the screen's title. */
 	showSeller = false,
 	showDisclosure = false,
+	divider = true,
 }: {
 	product: ProductCard;
 	onPress: () => void;
 	showSeller?: boolean;
 	showDisclosure?: boolean;
+	/** Off on the last row of a card, so the card's own edge is the only line. */
+	divider?: boolean;
 }) {
 	const { colors } = useTheme();
 	const { t, tp, intlLocale } = useT();
@@ -191,6 +194,7 @@ export function ProductRow({
 			accessibilityLabel={spoken}
 			style={({ pressed }) => [
 				styles.row,
+				divider ? styles.divider : null,
 				{ borderBottomColor: colors.border },
 				pressed && { backgroundColor: colors.muted },
 			]}
@@ -316,7 +320,6 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET + space.xl,
 		paddingVertical: space.md,
 		paddingHorizontal: space.lg,
-		borderBottomWidth: StyleSheet.hairlineWidth,
 		// Square, and named so because `./pressable`'s base would otherwise hand the row
 		// `radius.sm` — the one corner this row must not take. The group box above it owns the
 		// shape (`radius.md` with `overflow: hidden`, where the row's own corners never showed),
@@ -325,6 +328,9 @@ const styles = StyleSheet.create({
 		// rounded-none-with-a-comment, for the argument in full: "The row has no corner of its
 		// own", above.
 		borderRadius: 0,
+	},
+	divider: {
+		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
 	thumb: {
 		width: media.row,

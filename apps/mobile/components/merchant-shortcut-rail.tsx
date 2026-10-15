@@ -44,7 +44,7 @@ export function MerchantShortcutRail({
 	paint = false,
 }: {
 	shortcuts: MerchantShortcut[];
-	layout?: "rail" | "grid";
+	layout?: "rail" | "grid" | "list";
 	paint?: boolean;
 }) {
 	const { colors } = useTheme();
@@ -57,7 +57,7 @@ export function MerchantShortcutRail({
 			onPress={item.onPress}
 			accessibilityRole="button"
 			accessibilityLabel={item.label}
-			style={styles.tile}
+			style={[styles.tile, layout === "grid" && styles.gridTile]}
 		>
 			{/* The disc is the visual and the word beneath names it: `accent`
 			    behind `accentForeground` ink, the palette's quiet tinted pair —
@@ -90,6 +90,56 @@ export function MerchantShortcutRail({
 			</Text>
 		</Pressable>
 	));
+
+	if (layout === "list") {
+		return (
+			<View style={styles.list} accessibilityRole="menubar">
+				{shortcuts.map((item, index) => (
+					<Pressable
+						key={item.key}
+						onPress={item.onPress}
+						accessibilityRole="button"
+						accessibilityLabel={item.label}
+						style={[
+							styles.listRow,
+							index < shortcuts.length - 1 && {
+								borderBottomWidth: StyleSheet.hairlineWidth,
+								borderBottomColor: colors.border,
+							},
+						]}
+					>
+						<View
+							style={[
+								styles.listDisc,
+								{
+									backgroundColor: paint ? colors.primary : colors.muted,
+									borderColor: paint ? colors.primary : colors.border,
+								},
+							]}
+						>
+							<Ionicons
+								name={item.icon}
+								size={icon.action}
+								color={paint ? colors.primaryForeground : colors.foreground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</View>
+						<Text variant="body" numberOfLines={1} style={styles.listLabel}>
+							{item.label}
+						</Text>
+						<Ionicons
+							name="chevron-forward"
+							size={icon.control}
+							color={colors.mutedForeground}
+							accessibilityElementsHidden
+							importantForAccessibility="no"
+						/>
+					</Pressable>
+				))}
+			</View>
+		);
+	}
 
 	if (layout === "grid") {
 		return (
@@ -142,4 +192,21 @@ const styles = StyleSheet.create({
 		gap: space.md,
 		marginTop: space.md,
 	},
+	gridTile: { width: "30%", flexGrow: 1 },
+	list: { paddingHorizontal: space.lg, marginTop: space.md },
+	listRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		minHeight: MIN_TOUCH_TARGET,
+	},
+	listDisc: {
+		width: 36,
+		height: 36,
+		borderRadius: radius.md,
+		borderWidth: 1,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	listLabel: { flex: 1 },
 });

@@ -91,6 +91,7 @@ export function ProductTile({
 	product,
 	index,
 	onQuickAdd,
+	onPress,
 	style,
 }: {
 	product: ProductCard;
@@ -105,6 +106,8 @@ export function ProductTile({
 	 * no button at all.
 	 */
 	onQuickAdd?: (product: ProductCard) => void;
+	/** Replaces the tile's own navigation. A shop preview uses this so a tap stays on the editor. */
+	onPress?: () => void;
 	style?: StyleProp<ViewStyle>;
 }) {
 	const { colors } = useTheme();
@@ -157,11 +160,13 @@ export function ProductTile({
 			    not disagree about the grid's shape. */}
 			<Card
 				style={style}
-				onPress={() =>
-					router.push({
-						pathname: "/product/[id]",
-						params: { id: product.id },
-					})
+				onPress={
+					onPress ??
+					(() =>
+						router.push({
+							pathname: "/product/[id]",
+							params: { id: product.id },
+						}))
 				}
 				accessibilityLabel={spoken}
 			>
