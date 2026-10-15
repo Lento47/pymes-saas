@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { imageUrlSchema } from "./common";
 
 /** Only named, supported pieces of the merchant home can be customized. */
 export const dashboardWidgetIdSchema = z.enum([
@@ -349,6 +350,9 @@ export const shopSectionIdSchema = z.enum([
 ]);
 export const storefrontAppearanceSchema = z.object({
 	version: z.literal(1),
+	/** Private photo edits. Publish applies them to the business identity. */
+	logoUrl: imageUrlSchema.nullable().optional(),
+	coverUrl: imageUrlSchema.nullable().optional(),
 	header: z.enum(["cover", "compact"]),
 	accentColor: z
 		.string()

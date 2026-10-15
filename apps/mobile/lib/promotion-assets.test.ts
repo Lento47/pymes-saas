@@ -13,13 +13,16 @@ const form = readFileSync(
 	join(root, "app", "(business)", "promotion-form.tsx"),
 	"utf8",
 );
-const picker = readFileSync(join(root, "components", "photo-picker.tsx"), "utf8");
+const picker = readFileSync(
+	join(root, "components", "photo-picker.tsx"),
+	"utf8",
+);
 const product = readFileSync(
 	join(root, "app", "(business)", "product-form.tsx"),
 	"utf8",
 );
 const shop = readFileSync(
-	join(root, "app", "(business)", "shop-settings.tsx"),
+	join(root, "app", "(business)", "customize-shop.tsx"),
 	"utf8",
 );
 

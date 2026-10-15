@@ -1,4 +1,5 @@
 import {
+	business,
 	merchantDashboardPreference,
 	mobileShopAppearance,
 } from "@pymeshub/db";
@@ -12,7 +13,7 @@ import {
 	resolveStorefrontAppearance,
 	type StorefrontAppearance,
 } from "@pymeshub/shared";
-import { and, eq } from "drizzle-orm";
+import { and, eq, exists, sql } from "drizzle-orm";
 import { ConflictError, ForbiddenError, ValidationError } from "../errors";
 import type { BusinessContext } from "./helpers";
 
@@ -158,7 +159,52 @@ export async function publishShop(ctx: BusinessContext, revision: number) {
 		throw new ConflictError(
 			"El diseño cambió en otro dispositivo. Actualiza antes de publicar.",
 		);
-	return changeShop(ctx, revision, { published: current.draft, draft: null });
+	const { logoUrl, coverUrl, ...appearance } = current.draft;
+	if (logoUrl === undefined && coverUrl === undefined)
+		return changeShop(ctx, revision, { published: appearance, draft: null });
+	const businessId = ctx.membership.businessId;
+	const now = new Date();
+	// Both writes share the revision guard and one transaction. A stale publish
+	// cannot change photos, and a failed design write cannot publish photos alone.
+	const revisionMatches = and(
+		eq(mobileShopAppearance.businessId, businessId),
+		eq(mobileShopAppearance.revision, revision),
+	);
+	const [, updated] = await ctx.db.batch([
+		ctx.db
+			.update(business)
+			.set({
+				...(logoUrl !== undefined ? { logoUrl } : {}),
+				...(coverUrl !== undefined ? { coverUrl } : {}),
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(business.id, businessId),
+					exists(
+						ctx.db
+							.select({ one: sql`1` })
+							.from(mobileShopAppearance)
+							.where(revisionMatches),
+					),
+				),
+			),
+		ctx.db
+			.update(mobileShopAppearance)
+			.set({
+				published: appearance,
+				draft: null,
+				revision: revision + 1,
+				updatedAt: now,
+			})
+			.where(revisionMatches)
+			.returning({ revision: mobileShopAppearance.revision }),
+	]);
+	if (!updated.length)
+		throw new ConflictError(
+			"El diseño cambió en otro dispositivo. Actualiza antes de publicar.",
+		);
+	return readShop(ctx);
 }
 
 export async function discardShopDraft(ctx: BusinessContext, revision: number) {

@@ -1,4 +1,3 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName } from "@pymeshub/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -13,7 +12,6 @@ import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
-import { PhotoPicker } from "@/components/photo-picker";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
@@ -27,100 +25,11 @@ import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, MIN_TOUCH_TARGET, media, space, useTheme } from "@/theme";
+import { MIN_TOUCH_TARGET, space } from "@/theme";
 
-/**
- * Everything about a shop a merchant can answer from their own desk: the name
- * and the two pictures, the description, the category it is filed under, the
- * contact pair, and the address.
- *
- * It is here for one reason that has been visible on every screen since the
- * schema grew the columns: `logoUrl` and `coverUrl` are drawn in four places —
- * the Orders board's identity, the Home header, and every storefront card's
- * band or logo box — and until this file there was no control anywhere that
- * could set either of them. A merchant with a photograph of their shop could
- * not put it up. The rest of the family arrived with them, because a name and
- * a logo are half of a listing and the other half is what the shop sells and
- * where to find it.
- *
- * ## Why the pictures are not on the delivery screen
- *
- * `business-delivery` is onboarding step three, and a pickup-only shop walks
- * past it on the skip button: the delivery numbers are settings for a
- * capability that shop does not have. Putting the identity there would mean a
- * pickup-only merchant could never set their own logo, which is the one
- * picture every customer sees. Identity is not a delivery number, and it is
- * not a step in a ladder.
- *
- * ## What is not here, and where it is
- *
- * The week is not here: `./shop-hours` writes `hours`, and it is its own screen
- * for the reason `architecture.md` gives it — a destination under More, and
- * seven decisions rather than one.
- *
- * `minOrderMinor`, `deliveryEnabled` and `pickupEnabled` are on
- * `app/business-delivery.tsx` with the fee, the radius and the prep time. One
- * write's worth of numbers, on the screen that already owns them, rather than
- * the same patch split across two destinations.
- *
- * `payments`, `notifications` and `pause` are drawn nowhere in this app: they
- * have no writer on `businessUpdateInput`. `currency` and `slug` have a column
- * and no door — `packages/trpc-api/src/services/businesses.ts` refuses both,
- * because a currency change re-prices every product and a slug change
- * re-points every link. `country` is two letters this market does not change.
- * Pickup coordinates are chosen on `shop-location`, where the merchant places
- * a map pin.
- *
- * ## Clearing is a write, and the three shapes of it
- *
- * An emptied box must mean "gone", not "leave it alone" — the blank-means-
- * unchanged form is the one that silently keeps last week's phone number after
- * a merchant deleted it. So each optional field sends the write its schema
- * actually accepts:
- *
- * - `description`, `line2` and `postalCode` are `.trim().max(n).optional()`,
- *   so an emptied box sends `""`, which `assignIfPresent` writes as the empty
- *   string. `app/(business)/product-form.tsx` reached the same answer for its
- *   description for the same reason.
- * - `phone` and `email` cannot hold `""` — one is `min(8)` after stripping
- *   punctuation, the other has to parse as an address — so an emptied box sends
- *   `null`, the write `logoUrl`/`coverUrl` already use. That is why
- *   `businessUpdateInput` widens those two to `.nullable().optional()`.
- *
- * The three fields a shop cannot exist without — `name`, `categoryId`, and the
- * address's `line1`/`city`/`region` — refuse an emptied box instead of
- * clearing it. `businessCreateInput` made them required, so the row on the
- * server always has a value to lose, and a form that would let a merchant wipe
- * their own street is a form with a trap in it.
- *
- * ## The two pictures are not the same shape, and the preview says so
- *
- * `components/business-card` draws the logo as a circle and the cover as a 16:9
- * band across the top of the card. `components/photo-picker` takes the box it is
- * given, so each preview is the shape of the thing it is a picture of — the same
- * rule its `radiusToken` prop is named for. A square cover preview would be a
- * crop of a wide photograph, and the merchant would be cropping against a box
- * that lies about where the picture will land.
- *
- * The bytes land the moment a picture is picked (`uploads.create` stores them and
- * answers with `/files/:id`); the write this screen owns is the one that *names*
- * them on the shop's row. That split is why the two pickers hold
- * `string | null | undefined` rather than a string: `undefined` is "not touched",
- * and `businesses.update`'s `assignIfPresent` writes only what was sent, so a
- * name-only save cannot blank a logo the merchant set last week.
- *
- * ## The category panel is the whole taxonomy, on purpose
- *
- * `lib/category-scope` scopes a product's picker to the shop's own vertical,
- * because a product belongs to one of about ten neighbours. The shop's category
- * is the vertical — choosing it is choosing which ten those are — so scoping
- * here would lock a merchant into the branch they are trying to leave. This is
- * the file's other shape: every sector, one expanded, exactly as
- * `app/new-business.tsx` draws the same choice on the day the shop is created.
- */
+/** Business details, contact and pickup address. Photos are edited in Personalization. */
 export default function ShopSettings() {
 	const { t, locale } = useT();
-	const { colors } = useTheme();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
@@ -157,8 +66,6 @@ export default function ShopSettings() {
 	const [region, setRegion] = useState("");
 	const [postalCode, setPostalCode] = useState("");
 	const [editingAddress, setEditingAddress] = useState(false);
-	const [logo, setLogo] = useState<string | null | undefined>(undefined);
-	const [cover, setCover] = useState<string | null | undefined>(undefined);
 	const [categoryOpen, setCategoryOpen] = useState(false);
 	const [openSectorId, setOpenSectorId] = useState<string | undefined>(
 		undefined,
@@ -180,9 +87,6 @@ export default function ShopSettings() {
 	// real name, so the fields open holding what the server has. Once, because a
 	// refetch after the save must not stomp typing.
 	//
-	// The two pictures are *not* prefilled into state, deliberately — see the file
-	// docblock. Their display value is derived below, so `undefined` survives the
-	// read and keeps meaning "nobody has touched this".
 	useEffect(() => {
 		if (prefilled.current || !settings.data) return;
 		prefilled.current = true;
@@ -197,14 +101,6 @@ export default function ShopSettings() {
 		setRegion(settings.data.region);
 		setPostalCode(settings.data.postalCode ?? "");
 	}, [settings.data]);
-
-	// Not `??`-chained: an explicit `null` is a decision (the picture was taken
-	// off) and must win over the stored row, while `undefined` means the reader
-	// never reached it and the row is the truth.
-	const logoValue =
-		logo !== undefined ? logo : (settings.data?.logoUrl ?? null);
-	const coverValue =
-		cover !== undefined ? cover : (settings.data?.coverUrl ?? null);
 
 	/*
 	 * The taxonomy is two levels — 18 sectors and their 224 children — and a
@@ -289,10 +185,6 @@ export default function ShopSettings() {
 							postalCode: postalCode.trim(),
 						}
 					: {}),
-				// Omitted when untouched, `null` when taken off, the stored path when
-				// picked — the three cases `assignIfPresent` distinguishes.
-				logoUrl: logo,
-				coverUrl: cover,
 			},
 			{
 				onSuccess: async () => {
@@ -337,15 +229,6 @@ export default function ShopSettings() {
 						/>
 					) : settings.data ? (
 						<>
-							{/* One section for the name and the two pictures, not three
-							    sections of one field. `components/photo-picker` draws its own
-							    label above its controls, so a heading repeating that word
-							    would say "Logo" twice on the way to the picture. The name
-							    leads because it is the one field every screen reads, the
-							    pictures follow in the order their previews change shape —
-							    circle, then band — and the description closes the group as
-							    the long optional text, the same place
-							    `app/(business)/product-form.tsx` puts it. */}
 							<AnimateIn index={0}>
 								<ScreenSection title={t("biz.settings.profile")}>
 									<Field
@@ -361,66 +244,6 @@ export default function ShopSettings() {
 										maxLength={120}
 									/>
 
-									{/* A circle, because the Orders board draws the shop's logo
-									    as one (`app/(business)/business.tsx`) and a square
-									    preview would be a picture of a different thing. The
-									    fallback is the shop's own initial — the same mark
-									    `components/business-card` draws — so a merchant who has
-									    not picked a picture yet sees the mark their customers
-									    already see. */}
-									<PhotoPicker
-										label={t("biz.settings.logo")}
-										value={logoValue}
-										onChange={(next) => edited(() => setLogo(next))}
-										help={t("biz.settings.photo.help")}
-										radiusToken="full"
-										aspect={[1, 1]}
-										businessId={businessId || undefined}
-										purpose="business-logo"
-									>
-										{/*
-										    `action`, not `primary`, and the difference is whether this letter is
-										    visible at all. `./text`'s `tone="primary"` resolves to `colors.primary`,
-										    which in this tree is the lime **fill** — the merchant palette spends the
-										    brand on surfaces and keeps `action` for ink. On the `muted` box
-										    `./image` puts a missing picture's children on, that is lime `#C8FF18` on
-										    `#F6F5F1`: **1.08:1**, which is not a contrast ratio so much as a rumour of
-										    one. `action` is `#111111` and holds **17.31:1** on the same box.
-										    The consumer palette cannot make this mistake — its `primary` is a dark
-										    ultramarine at 7.00:1 on `card` — which is why it survived a review here.
-									    */}
-										<Text variant="title" tone="action" bold>
-											{name.trim().charAt(0).toUpperCase() ||
-												settings.data.name.trim().charAt(0).toUpperCase()}
-										</Text>
-									</PhotoPicker>
-
-									{/* The band `components/business-card` draws across the
-									    top of a card: full width at 16:9, and `md` corners
-									    because that is the corner the card gives it. */}
-									<PhotoPicker
-										label={t("biz.settings.cover")}
-										value={coverValue}
-										onChange={(next) => edited(() => setCover(next))}
-										help={t("biz.settings.photo.help")}
-										radiusToken="md"
-										aspect={[16, 9]}
-										previewStyle={styles.coverPreview}
-										businessId={businessId || undefined}
-										purpose="business-logo"
-									>
-										<Ionicons
-											name="image-outline"
-											size={icon.action}
-											color={colors.mutedForeground}
-										/>
-									</PhotoPicker>
-
-									{/* The long optional text: an owner who has a name and two
-									    pictures can save now, and this is here for the one who
-									    has more to say. `multiline`, and blank it sits at the
-									    same floor as every other box — it grows with what is
-									    typed into it, not with being empty. */}
 									<Field
 										label={t("biz.settings.description")}
 										value={description}
@@ -685,9 +508,8 @@ export default function ShopSettings() {
 
 /**
  * The form in grey, in the shape it will have: each field's triple — label, box,
- * reserved message row — under its own real `ScreenSection` title, the two
- * pictures' blocks where the real ones sit (thumb, label, two button bars,
- * message), and the category's help line and the one row the list toggles open.
+ * reserved message row — under its own real `ScreenSection` title, and the
+ * category's help line and the one row the list toggles open.
  * The order is the real form's, so the skeleton and the form it stands in for
  * are the same page. The heights are the real form's at the reader's text scale,
  * which is why every line goes through `line()` rather than through a fixed
@@ -721,34 +543,6 @@ function ShopSettingsSkeleton({ loadingLabel }: { loadingLabel: string }) {
 					/>
 					<Skeleton style={formStyles.input} />
 					<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				</View>
-
-				{/* Each picture's block mirrors `components/photo-picker`: thumb,
-				    label, two button bars, and the reserved message row. The cover's
-				    thumb is the only one that is not `media.row` square, for the same
-				    reason the real preview is not: a wait that ends in a different
-				    shape is a second, smaller layout jump. */}
-				<View style={styles.photoWrap}>
-					<Skeleton style={styles.skeletonLogo} />
-					<View style={styles.photoField}>
-						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-						<Skeleton style={formStyles.input} />
-						<Skeleton style={formStyles.input} />
-						<Skeleton
-							style={[formStyles.message, line("caption", fontScale)]}
-						/>
-					</View>
-				</View>
-				<View style={styles.photoWrap}>
-					<Skeleton style={styles.skeletonCover} />
-					<View style={styles.photoField}>
-						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-						<Skeleton style={formStyles.input} />
-						<Skeleton style={formStyles.input} />
-						<Skeleton
-							style={[formStyles.message, line("caption", fontScale)]}
-						/>
-					</View>
 				</View>
 
 				{/* The description's box is `multiline` and blank it sits at the same
@@ -800,14 +594,6 @@ const MAX_PHONE_DIGITS = 15;
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
-	// The cover's box, the same split `components/business-card` gives its band.
-	coverPreview: { width: "100%", aspectRatio: 16 / 9 },
-	// The picture above its controls: the logo's thumb is `./photo-picker`'s own
-	// `media.row` box in a circle, the cover's is the band's 16:9.
-	skeletonLogo: { width: media.row, aspectRatio: 1 },
-	skeletonCover: { width: "100%", aspectRatio: 16 / 9 },
-	photoWrap: { gap: space.sm },
-	photoField: { gap: space.sm },
 	// One step of the scale, applied only to a row whose parent is also on the
 	// list (`indentFor`). Unscoped here, the sector is present and its children
 	// step in under it. This is air, never a second row shape.

@@ -13,6 +13,75 @@ import {
 } from "./harness";
 
 describe("mobile customization", () => {
+	test("photo drafts stay private, publish atomically, and allow removal", async () => {
+		const testWorld = world();
+		const businessId = await seedBusiness(testWorld.db, {
+			id: "biz_custom_photos",
+			slug: "custom-photos",
+		});
+		const owner = await seedUser(testWorld.db, { id: "usr_custom_photos" });
+		await seedMembership(testWorld.db, owner.id, businessId, "OWNER");
+		const caller = appRouter.createCaller(await authed(testWorld, owner));
+		const configuration = {
+			...DEFAULT_STOREFRONT_APPEARANCE,
+			logoUrl: "/files/merchant-logo",
+			coverUrl: "/files/merchant-cover",
+		};
+		const original = await caller.businesses.bySlug({ slug: "custom-photos" });
+		await caller.business.saveShopDraft({
+			businessId,
+			revision: 0,
+			configuration,
+		});
+		expect(
+			(await caller.business.shopAppearance({ businessId })).draft,
+		).toEqual(configuration);
+		const privateDraft = await caller.businesses.bySlug({
+			slug: "custom-photos",
+		});
+		expect(privateDraft.card.logoUrl).toBe(original.card.logoUrl);
+		expect(privateDraft.card.coverUrl).toBe(original.card.coverUrl);
+		expect(privateDraft.appearance).toBeUndefined();
+		await expect(
+			caller.business.publishShopDraft({ businessId, revision: 0 }),
+		).rejects.toThrow();
+		testWorld.sqlite.exec(
+			"CREATE TRIGGER fail_photo_publish BEFORE UPDATE ON mobile_shop_appearance BEGIN SELECT RAISE(ABORT, 'publish failed'); END",
+		);
+		await expect(
+			caller.business.publishShopDraft({ businessId, revision: 1 }),
+		).rejects.toThrow();
+		expect(
+			(await caller.businesses.bySlug({ slug: "custom-photos" })).card.logoUrl,
+		).toBe(original.card.logoUrl);
+		expect(
+			(await caller.business.shopAppearance({ businessId })).draft,
+		).toEqual(configuration);
+		testWorld.sqlite.exec("DROP TRIGGER fail_photo_publish");
+		await caller.business.publishShopDraft({ businessId, revision: 1 });
+		const published = await caller.businesses.bySlug({ slug: "custom-photos" });
+		expect(published.card.logoUrl).toBe(configuration.logoUrl);
+		expect(published.card.coverUrl).toBe(configuration.coverUrl);
+		expect(published.appearance).toEqual(DEFAULT_STOREFRONT_APPEARANCE);
+		await caller.business.saveShopDraft({
+			businessId,
+			revision: 2,
+			configuration: { ...DEFAULT_STOREFRONT_APPEARANCE, logoUrl: null },
+		});
+		await caller.business.discardShopDraft({ businessId, revision: 3 });
+		expect(
+			(await caller.businesses.bySlug({ slug: "custom-photos" })).card.logoUrl,
+		).toBe(configuration.logoUrl);
+		await caller.business.saveShopDraft({
+			businessId,
+			revision: 4,
+			configuration: { ...DEFAULT_STOREFRONT_APPEARANCE, logoUrl: null },
+		});
+		await caller.business.publishShopDraft({ businessId, revision: 5 });
+		const removed = await caller.businesses.bySlug({ slug: "custom-photos" });
+		expect(removed.card.logoUrl).toBeNull();
+		expect(removed.card.coverUrl).toBe(configuration.coverUrl);
+	});
 	test("dashboard settings belong to one user and business, and reject stale saves", async () => {
 		const testWorld = world();
 		const first = await seedBusiness(testWorld.db, {

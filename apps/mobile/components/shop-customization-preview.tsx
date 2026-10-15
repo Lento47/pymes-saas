@@ -7,10 +7,11 @@ import {
 	type StorefrontAppearance,
 } from "@pymeshub/shared";
 import { LinearGradient } from "expo-linear-gradient";
-import { Image, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { contrastRatio } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { radius, space, useTheme } from "@/theme";
+import { Image } from "./image";
 import { ShopCustomizationSections } from "./shop-customization-sections";
 import { Text } from "./text";
 
@@ -63,10 +64,9 @@ export function ShopCustomizationPreview({
 			>
 				{hasCover ? (
 					<Image
-						source={{ uri: storefront.card.coverUrl ?? "" }}
+						uri={storefront.card.coverUrl}
 						style={StyleSheet.absoluteFill}
 						resizeMode="cover"
-						accessibilityIgnoresInvertColors
 					/>
 				) : null}
 				{coverMode ? (
@@ -78,11 +78,7 @@ export function ShopCustomizationPreview({
 				) : null}
 				<View style={styles.identity}>
 					{storefront.card.logoUrl ? (
-						<Image
-							source={{ uri: storefront.card.logoUrl }}
-							style={styles.logo}
-							accessibilityIgnoresInvertColors
-						/>
+						<Image uri={storefront.card.logoUrl} style={styles.logo} />
 					) : null}
 					<View style={styles.identityText}>
 						<Text
@@ -106,13 +102,13 @@ export function ShopCustomizationPreview({
 			) : null}
 
 			<View style={{ paddingTop: space.lg }}>
-			<ShopCustomizationSections
-				appearance={appearance}
-				card={storefront.card}
-				hours={storefront.hours}
-				isOpen={storefront.isOpen}
-				preview
-			/>
+				<ShopCustomizationSections
+					appearance={appearance}
+					card={storefront.card}
+					hours={storefront.hours}
+					isOpen={storefront.isOpen}
+					preview
+				/>
 			</View>
 
 			<View style={styles.menu}>
@@ -150,11 +146,7 @@ export function ShopCustomizationPreview({
 						style={[styles.product, { borderBottomColor: colors.border }]}
 					>
 						{product.imageUrl ? (
-							<Image
-								source={{ uri: product.imageUrl }}
-								style={styles.productImage}
-								accessibilityIgnoresInvertColors
-							/>
+							<Image uri={product.imageUrl} style={styles.productImage} />
 						) : null}
 						<View style={styles.productText}>
 							<Text variant="body" bold numberOfLines={2}>
