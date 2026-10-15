@@ -67,7 +67,9 @@ export default function CustomizeShop() {
 	const cache = useQueryClient();
 	const scope = useMerchantScope();
 	const params = useLocalSearchParams<{ businessId?: string }>();
-	const businessId = params.businessId ?? scope.businessId ?? "";
+	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
+	const businessId =
+		params.businessId || scope.businessId || shops.data?.[0]?.businessId || "";
 	const saved = useQuery(
 		trpc.business.shopAppearance.queryOptions(
 			{ businessId },
@@ -128,6 +130,8 @@ export default function CustomizeShop() {
 			JSON.stringify(saved.data.draft ?? saved.data.published)
 		: false;
 	const failure = save.error ?? publish.error ?? discard.error ?? restore.error;
+	const loadError =
+		saved.error ?? storefront.error ?? (!businessId ? shops.error : null);
 	const busy =
 		save.isPending ||
 		publish.isPending ||
@@ -157,10 +161,14 @@ export default function CustomizeShop() {
 				bottomInset
 				contentStyle={{ gap: space.xl }}
 			>
-				{saved.error || storefront.error ? (
+				{loadError ? (
 					<ErrorState
-						error={saved.error ?? storefront.error}
+						error={loadError}
 						onRetry={() => {
+							if (!businessId) {
+								void shops.refetch();
+								return;
+							}
 							void saved.refetch();
 							void storefront.refetch();
 						}}
@@ -311,6 +319,7 @@ export default function CustomizeShop() {
 				onClose={() => setPhotosOpen(false)}
 				title={t("customize.photos")}
 				closeLabel={t("action.close")}
+				snapPoints={[1]}
 			>
 				<View style={{ gap: space.md }}>
 					<Text variant="caption" tone="muted">

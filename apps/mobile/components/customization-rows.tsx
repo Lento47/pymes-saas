@@ -4,7 +4,7 @@ import type { DashboardLayouts, DashboardWidgetId } from "@pymeshub/shared";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	cancelAnimation,
@@ -1017,8 +1017,11 @@ export function HeaderStylePicker({
 }) {
 	const { t } = useT();
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
 	return (
-		<View style={styles.headerRow}>
+		<View
+			style={[styles.headerRow, fontScale >= 1.5 ? styles.choiceColumn : null]}
+		>
 			<Pressable
 				onPress={() => {
 					selection();
@@ -1119,6 +1122,7 @@ export function PulseLayoutPicker({
 	metricCount: number;
 }) {
 	const { t } = useT();
+	const { fontScale } = useWindowDimensions();
 	const card = (layout: DashboardLayouts["pulse"]) => (
 		<VisualChoiceCard
 			key={layout}
@@ -1137,11 +1141,21 @@ export function PulseLayoutPicker({
 	);
 	return (
 		<View style={styles.pulsePicker}>
-			<View style={styles.densityRow}>
+			<View
+				style={[
+					styles.densityRow,
+					fontScale >= 1.5 ? styles.choiceColumn : null,
+				]}
+			>
 				{card("band")}
 				{card("cards")}
 			</View>
-			<View style={styles.densityRow}>
+			<View
+				style={[
+					styles.densityRow,
+					fontScale >= 1.5 ? styles.choiceColumn : null,
+				]}
+			>
 				{card("hero")}
 				{card("stack")}
 			</View>
@@ -1165,8 +1179,11 @@ export function DensityToggle({
 	onDetailed: () => void;
 }) {
 	const { t } = useT();
+	const { fontScale } = useWindowDimensions();
 	return (
-		<View style={styles.densityRow}>
+		<View
+			style={[styles.densityRow, fontScale >= 1.5 ? styles.choiceColumn : null]}
+		>
 			<VisualChoiceCard
 				selected={compactSelected}
 				label={t("customize.density.compact")}
@@ -1197,10 +1214,17 @@ export function WidgetLayoutPicker<T extends string>({
 	render: (id: T) => ReactNode;
 }) {
 	const { t } = useT();
+	const { fontScale } = useWindowDimensions();
 	return (
 		<View style={styles.layoutGrid}>
 			{options.map((option) => (
-				<View key={option.id} style={styles.layoutCell}>
+				<View
+					key={option.id}
+					style={[
+						styles.layoutCell,
+						fontScale >= 1.5 ? styles.layoutCellFull : null,
+					]}
+				>
 					<VisualChoiceCard
 						selected={value === option.id}
 						label={t(option.label)}
@@ -1657,6 +1681,8 @@ const styles = StyleSheet.create({
 		marginHorizontal: -space.sm,
 	},
 	layoutCell: { width: "50%", padding: space.sm },
+	layoutCellFull: { width: "100%" },
+	choiceColumn: { flexDirection: "column" },
 	choiceCard: {
 		flex: 1,
 		minWidth: 0,

@@ -182,7 +182,9 @@ export default function CustomizeDashboard() {
 	const cache = useQueryClient();
 	const scope = useMerchantScope();
 	const params = useLocalSearchParams<{ businessId?: string }>();
-	const businessId = params.businessId ?? scope.businessId ?? "";
+	const shops = useQuery(trpc.business.myBusinesses.queryOptions());
+	const businessId =
+		params.businessId || scope.businessId || shops.data?.[0]?.businessId || "";
 	const saved = useQuery(
 		trpc.business.dashboardPreferences.queryOptions(
 			{ businessId },
@@ -263,6 +265,7 @@ export default function CustomizeDashboard() {
 	const dirty = saved.data
 		? JSON.stringify(draft) !== JSON.stringify(saved.data.configuration)
 		: false;
+	const loadError = saved.error ?? (!businessId ? shops.error : null);
 	const allCompact = layoutsMatch(draft.layouts, COMPACT_LAYOUTS);
 	const allDetailed = layoutsMatch(draft.layouts, DETAILED_LAYOUTS);
 	const paintValues = DEFAULT_DASHBOARD_WIDGETS.map(
@@ -494,10 +497,12 @@ export default function CustomizeDashboard() {
 				bottomInset
 				contentStyle={styles.page}
 			>
-				{saved.error ? (
+				{loadError ? (
 					<ErrorState
-						error={saved.error}
-						onRetry={() => void saved.refetch()}
+						error={loadError}
+						onRetry={() =>
+							void (businessId ? saved.refetch() : shops.refetch())
+						}
 					/>
 				) : null}
 				<Card>
