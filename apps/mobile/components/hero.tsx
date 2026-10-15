@@ -1,5 +1,4 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
@@ -52,14 +51,11 @@ import { Text } from "./text";
  * chip is the pair `4.8 (212)`, which is `./business-card`'s claim that a score is only worth
  * printing beside the number of rows behind it.
  *
- * The photo fades into the page canvas above the identity. Every line of text sits on
+ * The rounded identity panel overlaps the cover. Every line of text sits on
  * that opaque canvas, even when large text makes the header taller. This keeps theme
  * contrast independent of the uploaded photo. Facts retain their own themed surfaces.
  */
 export const HERO_MIN_HEIGHT = 360;
-
-/** Fade from the photo into the opaque identity surface. */
-const FADE_LOCATIONS = [0, 1] as const;
 
 /**
  * The shield beside the name: `icon.inline` plus two.
@@ -152,7 +148,8 @@ export function Hero({
 	const { colors, scheme } = useTheme();
 	const { t } = useT();
 	const insets = useSafeAreaInsets();
-	const { height: windowHeight } = useWindowDimensions();
+	const { height: windowHeight, fontScale } = useWindowDimensions();
+	const largeText = fontScale >= 1.5;
 	const coverHeight = Math.max(
 		HERO_MIN_HEIGHT,
 		Math.round(windowHeight * 0.42),
@@ -188,23 +185,32 @@ export function Hero({
 
 			<View style={{ minHeight: Math.round(coverHeight * 0.45) }} />
 			<View style={[styles.content, { backgroundColor: colors.background }]}>
-				<LinearGradient
-					pointerEvents="none"
-					colors={[`${colors.background}00`, colors.background]}
-					locations={[...FADE_LOCATIONS]}
-					style={styles.fade}
-				/>
-				<View style={styles.identity}>
+				{accentColor ? <ShopBrandAccent color={accentColor} /> : null}
+				<View style={[styles.identity, largeText && styles.identityStacked]}>
 					{logoUrl ? (
-						<Image
-							uri={logoUrl}
-							style={styles.logo}
-							accessibilityElementsHidden
-						/>
+						<View
+							style={[
+								styles.logoFrame,
+								{
+									backgroundColor: colors.background,
+									borderColor: accentColor ? `${accentColor}30` : colors.border,
+								},
+							]}
+						>
+							<Image
+								uri={logoUrl}
+								style={styles.logo}
+								accessibilityElementsHidden
+							/>
+						</View>
 					) : null}
 
-					<View style={styles.identityBody}>
-						{accentColor ? <ShopBrandAccent color={accentColor} /> : null}
+					<View
+						style={[
+							styles.identityBody,
+							largeText && styles.identityBodyStacked,
+						]}
+					>
 						<View style={styles.nameRow}>
 							{/* No `numberOfLines`, and there were two. The docblock above makes the name
 							    the identity — "the shop's name is what a customer arriving from a link is
@@ -301,7 +307,7 @@ export function Hero({
 const styles = StyleSheet.create({
 	hero: {
 		borderRadius: radius.lg,
-		// Clips the picture and the fade to the box, so the two cannot disagree about
+		// Clips the picture and the identity panel to the box, so they agree about
 		// the shape they are filling.
 		overflow: "hidden",
 		minHeight: HERO_MIN_HEIGHT,
@@ -311,22 +317,24 @@ const styles = StyleSheet.create({
 	statusBar: { position: "absolute", top: 0, left: 0, right: 0 },
 	fill: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
 	coverPhoto: { borderRadius: 0 },
-	fade: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		top: -space.xl,
-		height: space.xl,
-	},
 	// An opaque canvas protects every wrapped line from arbitrary cover colors.
-	content: { padding: space.lg },
+	content: {
+		padding: space.lg,
+		paddingTop: space.xxl,
+		marginTop: -space.lg,
+		borderTopLeftRadius: radius.xl,
+		borderTopRightRadius: radius.xl,
+	},
 	identity: { flexDirection: "row", alignItems: "center", gap: space.md },
+	identityStacked: { flexDirection: "column", alignItems: "flex-start" },
+	logoFrame: { padding: space.xs, borderWidth: 1, borderRadius: radius.lg },
 	logo: { width: media.header, height: media.header },
 	// The name, its meta line and the state row are one text stack, so the gap inside it is
 	// `TEXT_STACK_GAP` and not a `space` step (`theme/tokens.ts`) — at `space.xs` the lines
 	// read as separate paragraphs. The same anatomy `./business-card` draws for the same
 	// facts, so one shop is stacked at one grammar on both surfaces.
 	identityBody: { flex: 1, gap: TEXT_STACK_GAP },
+	identityBodyStacked: { flex: 0, alignSelf: "stretch" },
 	nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
 	flex: { flex: 1 },
 	metaRow: {

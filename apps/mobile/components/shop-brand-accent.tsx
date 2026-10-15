@@ -1,30 +1,45 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { radius, space } from "@/theme";
 
-/** A quiet signature above the shop name, shared with the personalization preview. */
+/** Decorative color at the cover's curved edge; text stays on an opaque canvas. */
 export function ShopBrandAccent({ color }: { color: string }) {
 	return (
-		<LinearGradient
-			colors={[color, `${color}38`]}
-			start={{ x: 0, y: 0 }}
-			end={{ x: 1, y: 0 }}
-			style={styles.mark}
+		<View
+			style={styles.decoration}
 			accessible={false}
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			pointerEvents="none"
-		/>
+		>
+			<LinearGradient
+				colors={[`${color}16`, `${color}00`]}
+				style={StyleSheet.absoluteFill}
+			/>
+			<View style={[styles.arc, { borderColor: `${color}12` }]} />
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	mark: {
-		width: space.huge + space.xl,
-		height: space.xs,
+	decoration: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		height: space.huge * 3,
+		borderTopLeftRadius: radius.xl,
+		borderTopRightRadius: radius.xl,
+		overflow: "hidden",
+	},
+	arc: {
+		position: "absolute",
+		width: space.huge * 4,
+		height: space.huge * 4,
+		right: -space.huge,
+		top: -space.huge * 2,
 		borderRadius: radius.full,
-		alignSelf: "flex-start",
-		marginBottom: space.sm,
+		borderWidth: space.md,
 	},
 });

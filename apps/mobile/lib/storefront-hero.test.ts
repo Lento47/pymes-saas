@@ -12,9 +12,8 @@ const store = readFileSync(
 );
 
 describe("storefront cover hero", () => {
-	test("a cover is full-bleed and fades into the page canvas", () => {
-		expect(hero).toContain("expo-linear-gradient");
-		expect(hero).toContain("LinearGradient");
+	test("a full-bleed cover keeps identity text on the page canvas", () => {
+		expect(hero).toContain("backgroundColor: colors.background");
 		expect(hero).toContain("colors.background");
 		expect(hero).toContain("heroCover");
 		expect(hero).toContain("leading");

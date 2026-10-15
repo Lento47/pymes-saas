@@ -6,8 +6,7 @@ import {
 	type ProductCard,
 	type StorefrontAppearance,
 } from "@pymeshub/shared";
-import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { bandAnchor, contrastRatio } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { radius, space, ThemeColorsOverrideProvider, useTheme } from "@/theme";
@@ -28,6 +27,8 @@ export function ShopCustomizationPreview({
 }) {
 	const { t, intlLocale } = useT();
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
+	const largeText = fontScale >= 1.5;
 	const colorCheck = appearance.accentColor
 		? brandAccentCheck(appearance.accentColor)
 		: null;
@@ -87,21 +88,34 @@ export function ShopCustomizationPreview({
 								: null
 						}
 					>
-						{coverMode ? (
-							<LinearGradient
-								colors={[`${colors.background}00`, colors.background]}
-								style={styles.fade}
-								pointerEvents="none"
-							/>
+						{coverMode && colorCheck?.valid ? (
+							<ShopBrandAccent color={brand} />
 						) : null}
-						<View style={styles.identity}>
+						<View
+							style={[
+								styles.identity,
+								coverMode && largeText && styles.identityStacked,
+							]}
+						>
 							{storefront.card.logoUrl ? (
-								<Image uri={storefront.card.logoUrl} style={styles.logo} />
+								<View
+									style={[
+										coverMode && styles.logoFrame,
+										coverMode && {
+											backgroundColor: colors.background,
+											borderColor: `${brand}30`,
+										},
+									]}
+								>
+									<Image uri={storefront.card.logoUrl} style={styles.logo} />
+								</View>
 							) : null}
-							<View style={styles.identityText}>
-								{coverMode && colorCheck?.valid ? (
-									<ShopBrandAccent color={brand} />
-								) : null}
+							<View
+								style={[
+									styles.identityText,
+									coverMode && largeText && styles.identityTextStacked,
+								]}
+							>
 								<Text variant="title" bold style={{ color: headerInk }}>
 									{storefront.card.name}
 								</Text>
@@ -190,18 +204,20 @@ const styles = StyleSheet.create({
 	header: { padding: space.lg, justifyContent: "flex-end" },
 	coverHeader: { minHeight: 170, padding: 0 },
 	coverSpace: { minHeight: 80 },
-	coverIdentity: { padding: space.lg },
-	fade: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		top: -space.xl,
-		height: space.xl,
+	coverIdentity: {
+		padding: space.lg,
+		paddingTop: space.xxl,
+		marginTop: -space.lg,
+		borderTopLeftRadius: radius.xl,
+		borderTopRightRadius: radius.xl,
 	},
 	compactHeader: { minHeight: 105 },
 	identity: { flexDirection: "row", alignItems: "center", gap: space.sm },
+	identityStacked: { flexDirection: "column", alignItems: "flex-start" },
 	identityText: { flex: 1, gap: space.xs },
+	identityTextStacked: { flex: 0, alignSelf: "stretch" },
 	logo: { width: 48, height: 48, borderRadius: radius.md },
+	logoFrame: { padding: space.xs, borderWidth: 1, borderRadius: radius.lg },
 	menu: { padding: space.lg, gap: space.md },
 	search: {
 		borderWidth: 1,
