@@ -12,6 +12,7 @@ import { bandAnchor, contrastRatio } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import { radius, space, ThemeColorsOverrideProvider, useTheme } from "@/theme";
 import { Image } from "./image";
+import { ShopBrandAccent } from "./shop-brand-accent";
 import { ShopCustomizationSections } from "./shop-customization-sections";
 import { Text } from "./text";
 
@@ -78,38 +79,41 @@ export function ShopCustomizationPreview({
 							resizeMode="cover"
 						/>
 					) : null}
-					{coverMode ? (
-						<LinearGradient
-							colors={[`${colors.background}00`, colors.background]}
-							style={StyleSheet.absoluteFill}
-							pointerEvents="none"
-						/>
-					) : null}
-					<View style={styles.identity}>
-						{storefront.card.logoUrl ? (
-							<Image uri={storefront.card.logoUrl} style={styles.logo} />
+					{coverMode ? <View style={styles.coverSpace} /> : null}
+					<View
+						style={
+							coverMode
+								? [styles.coverIdentity, { backgroundColor: colors.background }]
+								: null
+						}
+					>
+						{coverMode ? (
+							<LinearGradient
+								colors={[`${colors.background}00`, colors.background]}
+								style={styles.fade}
+								pointerEvents="none"
+							/>
 						) : null}
-						<View style={styles.identityText}>
-							<Text
-								variant="title"
-								bold
-								style={{ color: headerInk }}
-								numberOfLines={2}
-							>
-								{storefront.card.name}
-							</Text>
-							<Text variant="caption" style={{ color: headerInk }}>
-								{storefront.isOpen ? t("store.open") : t("store.closed")}
-								{" · "}
-								{storefront.card.city}
-							</Text>
+						<View style={styles.identity}>
+							{storefront.card.logoUrl ? (
+								<Image uri={storefront.card.logoUrl} style={styles.logo} />
+							) : null}
+							<View style={styles.identityText}>
+								{coverMode && colorCheck?.valid ? (
+									<ShopBrandAccent color={brand} />
+								) : null}
+								<Text variant="title" bold style={{ color: headerInk }}>
+									{storefront.card.name}
+								</Text>
+								<Text variant="caption" style={{ color: headerInk }}>
+									{storefront.isOpen ? t("store.open") : t("store.closed")}
+									{" · "}
+									{storefront.card.city}
+								</Text>
+							</View>
 						</View>
 					</View>
 				</View>
-				{coverMode && appearance.accentColor && colorCheck?.valid ? (
-					<View style={{ height: 4, backgroundColor: brand }} />
-				) : null}
-
 				<View style={{ paddingTop: space.lg }}>
 					<ShopCustomizationSections
 						appearance={appearance}
@@ -184,7 +188,16 @@ export function ShopCustomizationPreview({
 const styles = StyleSheet.create({
 	frame: { borderWidth: 1, borderRadius: radius.lg, overflow: "hidden" },
 	header: { padding: space.lg, justifyContent: "flex-end" },
-	coverHeader: { minHeight: 170 },
+	coverHeader: { minHeight: 170, padding: 0 },
+	coverSpace: { minHeight: 80 },
+	coverIdentity: { padding: space.lg },
+	fade: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: -space.xl,
+		height: space.xl,
+	},
 	compactHeader: { minHeight: 105 },
 	identity: { flexDirection: "row", alignItems: "center", gap: space.sm },
 	identityText: { flex: 1, gap: space.xs },

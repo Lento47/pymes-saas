@@ -16,6 +16,7 @@ Status: implementation published; native acceptance is incomplete. Updated 2026-
 | Normal-size Spanish rendering | Merchant dashboard editor, shop header/preview, and compact weekday selector inspected on `emulator-5554` |
 | Public small-screen rendering | Published photos and compact hours inspected at 720×1280 with 200% text, Spanish/light and English/dark on the spare emulator |
 | Home business card | Photo and details now share one clipped surface and press target; joined layout inspected in English/dark on the spare emulator |
+| Cover header readability and brand decoration | Identity now has an opaque theme canvas and grows with text. Full-width stripe replaced by a short rounded gradient above the name; same component in the preview. Inspected in Spanish/light at normal and 200% text on 720×1280 |
 
 Photo controls now live only in Personalization → Customer shop. Uploaded asset paths use the app's image resolver. Photo changes remain private until Publish; settings forms no longer send stale image values.
 
@@ -24,7 +25,7 @@ Photo controls now live only in Personalization → Customer shop. Uploaded asse
 - [ ] Select, crop, remove and preview logo/banner; save a draft, restart, publish, then confirm the customer view.
 - [ ] Confirm saved preferences synchronize between two actual app sessions. API tests already verify separate authenticated callers.
 - [ ] Check the final editors in both color schemes and languages, on a small screen with 200% text.
-- [ ] Improve storefront hero text contrast over bright covers at 200% text; the current bottom fade does not cover every wrapped title.
+- [ ] Recheck the revised cover header in dark mode at 200% text. Spanish/light rendering now keeps all title lines on the opaque canvas.
 - [ ] Check TalkBack focus/actions and reduced motion, including fixed operational widgets.
 - [ ] Confirm orders remain reachable with optional dashboard widgets hidden and reordered.
 - [ ] Confirm product browsing, search, cart, reviews and checkout remain reachable with both shop headers and all optional sections hidden/reordered.

@@ -17,6 +17,7 @@ import {
 } from "@/theme";
 
 import { Image } from "./image";
+import { ShopBrandAccent } from "./shop-brand-accent";
 import { Text } from "./text";
 
 /**
@@ -51,33 +52,13 @@ import { Text } from "./text";
  * chip is the pair `4.8 (212)`, which is `./business-card`'s claim that a score is only worth
  * printing beside the number of rows behind it.
  *
- * ## The scrim, and the two inks
- *
- * A photograph is not a surface the palette can reason about — a shop can upload a picture
- * of a white wall — so the words over it sit on a scrim, and the scrim is **always dark**.
- * That is not a theme choice: it is the only thing that lets the ink be **always light**,
- * because the picture underneath knows nothing about the reader's setting.
- *
- * So this component has two inks and picks by whether there is a cover, not by the theme:
- *
- * - **A cover** — the photo fades into the page canvas, so the identity uses the ordinary
- *   theme ink (`foreground` on `background`).
- * - **No cover** — there is no photograph to fight, so the hero becomes an `accent` surface
- *   and the ink is the ordinary theme's, through `Text`'s own `tone`.
- *
- * Both inks are tokens either way. A cover fades into `colors.background` with
- * `expo-linear-gradient` so the menu under the hero is the same canvas the photo lands on.
- * The fade is that token, not a second palette.
- *
- * The **facts are the one exception**, and it is not an exception to the rule: `./facts` fills
- * its chips with `colors.muted` and inks them from the theme, so a chip carries its own
- * readable surface whatever it is dropped on. Nothing here recolours them, and no chip's ink is
- * borrowed from `inks()` — a chip that inherited the scrim's light ink would be light ink on a
- * light chip.
+ * The photo fades into the page canvas above the identity. Every line of text sits on
+ * that opaque canvas, even when large text makes the header taller. This keeps theme
+ * contrast independent of the uploaded photo. Facts retain their own themed surfaces.
  */
 export const HERO_MIN_HEIGHT = 360;
 
-/** Lower half of the cover, fading into the page canvas. */
+/** Fade from the photo into the opaque identity surface. */
 const FADE_LOCATIONS = [0, 1] as const;
 
 /**
@@ -92,13 +73,12 @@ const FADE_LOCATIONS = [0, 1] as const;
 const VERIFIED_SIZE = icon.inline + 2;
 
 /**
- * The ink and the marks, chosen once. See "The scrim, and the two inks" above.
+ * The ink and the marks, chosen once.
  *
  * `text` is `undefined` — not a colour — when there is no cover, and that is the point: an
  * empty string, or a token borrowed to stand in for one, would be this component overriding
  * `./text`'s own theme-resolved ink with something it made up. `undefined` means "no
- * override", so without a cover the words are the ordinary `foreground` on the `accent`
- * surface, which is a pair the palette already decided.
+ * override", so without a cover Text resolves the ordinary theme foreground.
  */
 function inks(
 	hasCover: boolean,
@@ -154,6 +134,7 @@ type HeroProps = {
 	 * `action`, so a chevron on a photograph sits on a surface the theme already owns.
 	 */
 	leading?: ReactNode;
+	accentColor?: string;
 };
 
 export function Hero({
@@ -166,6 +147,7 @@ export function Hero({
 	facts,
 	action,
 	leading,
+	accentColor,
 }: HeroProps) {
 	const { colors, scheme } = useTheme();
 	const { t } = useT();
@@ -188,7 +170,6 @@ export function Hero({
 				styles.heroCover,
 				{
 					backgroundColor: hasCover ? colors.muted : colors.accent,
-					height: coverHeight,
 					minHeight: coverHeight,
 				},
 			]}
@@ -205,14 +186,14 @@ export function Hero({
 				/>
 			) : null}
 
-			<LinearGradient
-				pointerEvents="none"
-				colors={[`${colors.background}00`, colors.background]}
-				locations={[...FADE_LOCATIONS]}
-				style={styles.fade}
-			/>
-
-			<View style={styles.content}>
+			<View style={{ minHeight: Math.round(coverHeight * 0.45) }} />
+			<View style={[styles.content, { backgroundColor: colors.background }]}>
+				<LinearGradient
+					pointerEvents="none"
+					colors={[`${colors.background}00`, colors.background]}
+					locations={[...FADE_LOCATIONS]}
+					style={styles.fade}
+				/>
 				<View style={styles.identity}>
 					{logoUrl ? (
 						<Image
@@ -223,6 +204,7 @@ export function Hero({
 					) : null}
 
 					<View style={styles.identityBody}>
+						{accentColor ? <ShopBrandAccent color={accentColor} /> : null}
 						<View style={styles.nameRow}>
 							{/* No `numberOfLines`, and there were two. The docblock above makes the name
 							    the identity — "the shop's name is what a customer arriving from a link is
@@ -325,12 +307,11 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		left: 0,
 		right: 0,
-		bottom: 0,
-		height: "58%",
+		top: -space.xl,
+		height: space.xl,
 	},
-	// The top padding is the action's room: the heart is pinned up there, and at 200% text
-	// the identity block grows up towards it.
-	content: { padding: space.lg, paddingTop: space.huge + space.xl },
+	// An opaque canvas protects every wrapped line from arbitrary cover colors.
+	content: { padding: space.lg },
 	identity: { flexDirection: "row", alignItems: "center", gap: space.md },
 	logo: { width: media.header, height: media.header },
 	// The name, its meta line and the state row are one text stack, so the gap inside it is

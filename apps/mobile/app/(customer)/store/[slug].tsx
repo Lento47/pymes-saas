@@ -15,13 +15,7 @@ import {
 } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import {
-	Image,
-	Platform,
-	type ScrollView,
-	StyleSheet,
-	View,
-} from "react-native";
+import { Platform, type ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
 	useAnimatedScrollHandler,
 	useSharedValue,
@@ -34,6 +28,7 @@ import { ErrorState } from "@/components/error-state";
 import { Fact, Facts } from "@/components/facts";
 import { FavoriteButton } from "@/components/favorite-button";
 import { Hero } from "@/components/hero";
+import { Image } from "@/components/image";
 import { ListEnd } from "@/components/list-end";
 import { Price } from "@/components/price";
 import { ProductRow } from "@/components/product-row";
@@ -848,6 +843,7 @@ export default function Store() {
 							    Back rides in `leading` on the `card` pill. */}
 								{appearance.header === "cover" ? (
 									<Hero
+										accentColor={accentCheck?.valid ? brandAccent : undefined}
 										coverUrl={card.coverUrl}
 										name={card.name}
 										meta={
@@ -893,7 +889,8 @@ export default function Store() {
 										>
 											{card.logoUrl ? (
 												<Image
-													source={{ uri: card.logoUrl }}
+													uri={card.logoUrl}
+													accessibilityElementsHidden
 													style={{ width: 52, height: 52, borderRadius: 12 }}
 												/>
 											) : null}
@@ -909,9 +906,6 @@ export default function Store() {
 										</View>
 									</View>
 								)}
-								{appearance.header === "cover" && accentCheck?.valid ? (
-									<View style={{ height: 4, backgroundColor: brandAccent }} />
-								) : null}
 
 								{selectedOffer ? (
 									<View style={styles.pad}>
