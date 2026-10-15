@@ -237,6 +237,8 @@ export const customer = {
 	"store.closed": "Cerrado",
 	"store.closed.until": "Cerrado · abre {time}",
 	"store.hours": "Horario",
+	"store.hours.openNow": "Abierto ahora",
+	"store.hours.closedNow": "Cerrado ahora",
 	"store.hours.break": "Descanso {range}",
 	"store.hours.unavailable": "No disponible {range}",
 	"store.hours.today": "Hoy: {range}",

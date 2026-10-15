@@ -139,6 +139,8 @@ export const customer = {
 	"store.closed": "Closed",
 	"store.closed.until": "Closed · opens {time}",
 	"store.hours": "Hours",
+	"store.hours.openNow": "Open now",
+	"store.hours.closedNow": "Closed now",
 	"store.hours.break": "Break {range}",
 	"store.hours.unavailable": "Unavailable {range}",
 	"store.hours.today": "Today: {range}",
