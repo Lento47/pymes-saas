@@ -727,33 +727,40 @@ export async function declineInvitation(
 /**
  * Somebody leaves the team themselves.
  *
- * A `businessProcedure("orders:read")` — the capability every role holds — because this is
- * the one membership mutation whose actor is the member. There is no role to check: a STAFF
- * member may quit and so may an owner, and the only refusal is the last-owner guard, which is
- * about the shop rather than about the person.
+ * A `protectedProcedure`, and the authorization is the caller's own row: the read below is
+ * addressed by `businessId`, by `user_id = ctx.user.id` and by `status = 'ACTIVE'`, so it is
+ * the guard and the tenant check in one statement - which is `orNotFound`'s own rule, stated in
+ * its docblock. The same shape `acceptInvitation` and `declineInvitation` use, because all
+ * three are one kind of act: the caller ending or answering **their own** relationship with a
+ * shop.
  *
- * **The last owner cannot leave**, and the guard is `assertNotLastOwner` — the same function
+ * **Not a capability, and that is a correction rather than a preference.** This was
+ * `businessProcedure("orders:read")`, chosen because every role holds it, and the gate was
+ * therefore an *orders* permission standing in for "any member of this shop". The two are the
+ * same set today and nothing like the same rule: `orders:read` is what a role needs in order to
+ * read a shop's order book, and the day it is narrowed - or a role arrives without it - leaving
+ * a job breaks for a reason that has nothing to do with leaving. There is no capability meaning
+ * "you are a member" either: the table is a matrix of job functions, and a capability granted to
+ * every role is vocabulary that can never refuse. So the guard is the membership itself.
+ *
+ * **The last owner cannot leave**, and the guard is `assertNotLastOwner` - the same function
  * `removeStaff` uses, imported rather than reimplemented, because two copies of "how many
  * people can still administer this shop" is how one of them keeps counting a revoked owner.
  * Leaving is a resignation, and a shop nobody can administer is a state with no way out of it
- * from the UI.
+ * from the UI. It runs only for an OWNER, and the role now comes from the row rather than from
+ * the middleware, so the guard and the write describe the same membership.
  *
  * The row is kept, like every other ending here, so the shop's history survives the person's
- * departure — which is the whole difference between this and `removeStaff`'s delete.
+ * departure - which is the whole difference between this and `removeStaff`'s delete.
  */
 export async function leaveBusiness(
-	ctx: BusinessContext,
-	_input: { businessId: string },
+	ctx: UserContext,
+	input: { businessId: string },
 ): Promise<{ ok: true }> {
-	const businessId = ctx.membership.businessId;
+	const businessId = input.businessId;
 
-	if (ctx.membership.role === "OWNER") {
-		await assertNotLastOwner(ctx, businessId, ctx.user.id);
-	}
-
-	const now = new Date();
 	const rows = await ctx.db
-		.select({ id: membershipTable.id })
+		.select({ id: membershipTable.id, role: membershipTable.role })
 		.from(membershipTable)
 		.where(
 			and(
@@ -765,6 +772,12 @@ export async function leaveBusiness(
 		.limit(1);
 
 	const row = orNotFound(rows[0]);
+
+	if (row.role === "OWNER") {
+		await assertNotLastOwner(ctx, businessId, ctx.user.id);
+	}
+
+	const now = new Date();
 
 	await ctx.db.batch(
 		batchOf([
@@ -781,7 +794,7 @@ export async function leaveBusiness(
 				action: AFFILIATION_AUDIT.leave,
 				targetType: "membership",
 				targetId: row.id,
-				before: { status: "ACTIVE", role: ctx.membership.role },
+				before: { status: "ACTIVE", role: row.role },
 				after: { status: "REVOKED", businessId },
 				reason: null,
 				now,

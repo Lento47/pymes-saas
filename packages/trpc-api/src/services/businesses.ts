@@ -1497,11 +1497,18 @@ export async function removeStaff(
  * **Exported** because three callers now need it and they are not all in this file:
  * `removeStaff` and `updateStaffRole` here, and `services/affiliations.ts`'s
  * `leaveBusiness` and `revokeAffiliation`. A second copy is how one of them ends up
- * counting a revoked owner — which is precisely the bug the `ACTIVE` filter above
+ * counting a revoked owner - which is precisely the bug the `ACTIVE` filter above
  * was added to fix, and it would come back in the copy nobody re-read.
+ *
+ * `UserContext` rather than `BusinessContext`, and that is not a loosening: the function
+ * reads nothing but `ctx.db`, and the caller who needs it most is `leaveBusiness`, whose
+ * `protectedProcedure` has no middleware-built membership to pass. It still takes
+ * `businessId` as an argument rather than reading one off a context, because it is a
+ * question *about a shop* rather than about the caller - and the answer must not depend on
+ * which shop the caller happened to be acting for.
  */
 export async function assertNotLastOwner(
-	ctx: BusinessContext,
+	ctx: UserContext,
 	businessId: string,
 	excludedUserId: string,
 ): Promise<void> {

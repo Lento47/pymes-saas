@@ -731,6 +731,76 @@ describe("declining and leaving", () => {
 
 		test.close();
 	});
+
+	test("the least powerful member can still leave, because leaving is not a capability", async () => {
+		const { test, businessId, invitee } = await shop();
+		await seedMembership(test.db, invitee.id, businessId, "COURIER", {
+			acceptedAt: new Date("2025-06-01T00:00:00Z"),
+		});
+
+		const caller = appRouter.createCaller(await authed(test, invitee)) as Caller;
+
+		// The contrast is what gives this test its meaning: a rider holds none of the
+		// capabilities the shop's operations are gated on, so a capability-gated procedure
+		// refuses them outright.
+		const failure = await refused(caller.business.staff({ businessId }));
+		expect(failure.code).toBe("FORBIDDEN");
+
+		// And they can still end their own membership. The gate is the membership itself, not a
+		// permission borrowed from another part of the product - `orders:read` stood in for "any
+		// member of this shop" until Phase 2's review, and a rider is the member that makes the
+		// difference visible.
+		expect(await caller.affiliations.leave({ businessId })).toEqual({ ok: true });
+		expect((await membershipRow(test, invitee.id, businessId))?.status).toBe(
+			"REVOKED",
+		);
+
+		test.close();
+	});
+
+	test("refuses a stranger and a membership that already ended, with one answer", async () => {
+		const { test, businessId, invitee, other } = await shop();
+		const membershipId = await seedMembership(
+			test.db,
+			invitee.id,
+			businessId,
+			"STAFF",
+			{
+				status: "REVOKED",
+				revokedAt: new Date("2025-03-01T00:00:00Z"),
+			},
+		);
+
+		const removedCaller = appRouter.createCaller(
+			await authed(test, invitee),
+		) as Caller;
+		const strangerCaller = appRouter.createCaller(
+			await authed(test, other),
+		) as Caller;
+
+		// Three ways to have no membership of this shop, one answer: the read is by
+		// `(businessId, user_id, status = ACTIVE)`, so `orNotFound` cannot tell "removed last
+		// month" from "never asked" from "that id is somebody else's shop" apart - which is what
+		// keeps a resignation from being a probe for which businesses exist.
+		const removed = await refused(removedCaller.affiliations.leave({ businessId }));
+		const stranger = await refused(strangerCaller.affiliations.leave({ businessId }));
+		const absent = await refused(
+			strangerCaller.affiliations.leave({ businessId: "biz_lifecycle_absent" }),
+		);
+
+		expect(removed.code).toBe("NOT_FOUND");
+		expect(stranger.code).toBe("NOT_FOUND");
+		expect(absent.code).toBe("NOT_FOUND");
+
+		// And a refusal wrote nothing: a stale client's button is not a resignation, and the
+		// date on the row is still the one the shop's own revocation put there.
+		expect(
+			(await membershipRow(test, invitee.id, businessId))?.revokedAt?.getTime(),
+		).toBe(new Date("2025-03-01T00:00:00Z").getTime());
+		expect(await auditActions(test, membershipId)).toEqual([]);
+
+		test.close();
+	});
 });
 
 describe("the shop removing somebody", () => {
