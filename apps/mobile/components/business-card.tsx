@@ -107,14 +107,8 @@ import { Text } from "./text";
  *
  * ## The padding is the card's
  *
- * This card used to hand `Card` a `style` of `padding: space.md`, one step tighter than the
- * primitive's own `space.lg`, so a feed of shops sat denser than a column of anything else.
- * `docs/design-mobile.md` is explicit that the inside padding of a primitive belongs to the
- * primitive, and this was the override it names: the card and the block standing in for it in
- * `./skeletons` then had to agree about a number neither of them owned, which is a coupling
- * that holds until one of them is edited. A card that genuinely needs a different inside is a
- * variant on `./card`, where the number and every other card's number move together; this one
- * does not need one.
+ * `Card` owns the standard content padding. Its cover slot puts the photo edge to edge
+ * inside the same surface, so the picture and details share a border and a press target.
  *
  * ## The heart is a sibling of the card's target, not a child of it
  *
@@ -275,22 +269,22 @@ export function BusinessCard({
 
 	return (
 		<View style={styles.wrap}>
-			{/* The cover, when the payload has one — `./hero`'s split. It is `./image`, so the
-			    band is the right size from the first frame and the photograph fades in over it;
-			    with no `uri` it is not rendered at all, and the card is exactly the composed
-			    row below. */}
-			{business.coverUrl ? (
-				<Image
-					uri={business.coverUrl}
-					radiusToken="md"
-					style={styles.cover}
-					// Decorative: the shop's name is on the row below, and the card's own
-					// label announces it.
-					accessibilityElementsHidden
-					importantForAccessibility="no"
-				/>
-			) : null}
-			<Card onPress={onPress} accessibilityLabel={spoken}>
+			<Card
+				onPress={onPress}
+				accessibilityLabel={spoken}
+				cover={
+					business.coverUrl ? (
+						<Image
+							uri={business.coverUrl}
+							style={styles.cover}
+							// Decorative: the shop's name is on the row below, and the card's own
+							// label announces it.
+							accessibilityElementsHidden
+							importantForAccessibility="no"
+						/>
+					) : null
+				}
+			>
 				<View style={styles.row}>
 					{/* The logo is the cover's stand-in, so a shop that has a cover draws one
 					    picture of itself on this card and not two. See the docblock's split. */}
@@ -410,9 +404,8 @@ export function BusinessCard({
 						</Facts>
 					</View>
 
-					{/* The heart's square, kept in the row so the text column ends where it always
-					    did. The target itself is the sibling below — see the file docblock. */}
-					<View style={styles.favoriteSlot} />
+					{/* Reserve the heart's space only when it sits beside the text. */}
+					{business.coverUrl ? null : <View style={styles.favoriteSlot} />}
 				</View>
 			</Card>
 
@@ -439,21 +432,14 @@ const styles = StyleSheet.create({
 	 * positioned ancestor, and this is the only one that is the card's own box.
 	 */
 	wrap: { position: "relative" },
-	// The cover band, above the card's own surface rather than inside its padding: it is the
-	// picture of the shop, and `./image` owns its corner and its clip.
+	// Card clips the outer corners; the photo meets its details without an inset or gap.
 	cover: {
 		width: "100%",
 		aspectRatio: 16 / 9,
-		marginBottom: space.md,
+		borderRadius: 0,
 	},
 	row: { flexDirection: "row", gap: space.md },
-	/**
-	 * The heart's square, empty. The row is laid out as if the heart were still in it, so the
-	 * text column breaks at the same character it did when it was — the geometry, without the
-	 * nested target. The pin's `space.lg` is `./card`'s padding from the wrapper's corner; on
-	 * a card with no cover that is this square, and with a cover the pin rides the band above
-	 * on the pill `favoritePin` documents.
-	 */
+	// Cards with a cover put the heart over the photo and use the full text width.
 	favoriteSlot: { width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET },
 	/**
 	 * The heart, the card's padding in from the top and the right edge. Absolute, so it is a

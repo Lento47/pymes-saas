@@ -21,6 +21,7 @@ import { Pressable } from "./pressable";
  */
 export function Card({
 	children,
+	cover,
 	onPress,
 	accessibilityLabel,
 	accessibilityHint,
@@ -29,6 +30,8 @@ export function Card({
 	style,
 }: {
 	children: React.ReactNode;
+	/** Edge-to-edge media, clipped to the card; content keeps the standard padding. */
+	cover?: React.ReactNode;
 	onPress?: () => void;
 	accessibilityLabel?: string;
 	accessibilityHint?: string;
@@ -62,6 +65,7 @@ export function Card({
 
 	const surface = [
 		styles.card,
+		cover ? styles.withCover : null,
 		{
 			backgroundColor:
 				tone === "brand"
@@ -77,7 +81,16 @@ export function Card({
 		style,
 	];
 
-	if (!onPress) return <View style={surface}>{children}</View>;
+	const content = cover ? (
+		<>
+			{cover}
+			<View style={styles.content}>{children}</View>
+		</>
+	) : (
+		children
+	);
+
+	if (!onPress) return <View style={surface}>{content}</View>;
 
 	return (
 		<Pressable
@@ -87,12 +100,14 @@ export function Card({
 			accessibilityHint={accessibilityHint}
 			style={surface}
 		>
-			{children}
+			{content}
 		</Pressable>
 	);
 }
 
 const styles = StyleSheet.create({
+	withCover: { padding: 0, overflow: "hidden" },
+	content: { padding: space.lg },
 	card: {
 		borderRadius: radius.md,
 		borderWidth: 1,
