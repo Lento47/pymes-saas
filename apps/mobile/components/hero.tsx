@@ -265,6 +265,13 @@ export function Hero({
 				    floating against a column of one-word lines. */}
 				{facts ? <View style={styles.facts}>{facts}</View> : null}
 			</View>
+			<View
+				pointerEvents="none"
+				style={[
+					styles.statusBar,
+					{ height: insets.top, backgroundColor: colors.background },
+				]}
+			/>
 
 			{leading ? (
 				<View
@@ -301,6 +308,7 @@ const styles = StyleSheet.create({
 		justifyContent: "flex-end",
 	},
 	heroCover: { borderRadius: 0 },
+	statusBar: { position: "absolute", top: 0, left: 0, right: 0 },
 	fill: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
 	coverPhoto: { borderRadius: 0 },
 	fade: {

@@ -290,7 +290,7 @@ function WidgetTile({
 					: event.translationY > SWAP_DISTANCE && canMoveDown
 						? 1
 						: 0;
-			drag.value = withSpring(0, spring.layout);
+			drag.value = reduced ? 0 : withSpring(0, spring.layout);
 			if (direction !== 0) runOnJS(move)(direction);
 		});
 	const gesture = editing
