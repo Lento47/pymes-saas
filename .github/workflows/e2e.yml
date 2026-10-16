@@ -11,10 +11,11 @@ on:
   pull_request:
     branches: [main]
 
+# Only artifacts are uploaded; an artifact upload needs no write scopes, so the
+# token stays read-only - the wider checks/pull-requests grant existed for a
+# reporting step the workflow no longer runs.
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -66,15 +67,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: "10"
 
@@ -111,7 +112,7 @@ jobs:
           APP_URL: http://localhost:5000
 
       - name: Upload E2E report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: playwright-report
@@ -119,7 +120,7 @@ jobs:
           retention-days: 14
 
       - name: Upload test results (failures only)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
           name: playwright-results

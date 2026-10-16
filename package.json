@@ -90,6 +90,8 @@
       "esbuild@<0.25.0": "^0.25.0",
       "esbuild@>=0.27.0": "^0.28.1",
       "multer": "^2.3.0",
+      "handlebars": "4.7.10",
+      "@modelcontextprotocol/sdk": "^1.31.0",
       "wouter>react": "19.3.0",
       "react-freeze>react": "19.3.0",
       "use-latest-callback>react": "19.3.0",
