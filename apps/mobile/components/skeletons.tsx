@@ -1280,7 +1280,8 @@ const styles = StyleSheet.create({
 	// which is the block's own default, and its margin is the screen's for the control it
 	// stands in (`app/search.tsx`'s `mode`).
 	segmented: {
-		height: MIN_TOUCH_TARGET + HAIRLINE * 2,
+		height: MIN_TOUCH_TARGET + space.xs * 2 + 2,
+		borderRadius: radius.md,
 		marginHorizontal: space.lg,
 		marginTop: space.md,
 	},

@@ -201,10 +201,10 @@ const styles = StyleSheet.create({
 	label: { flexShrink: 1, textAlign: "center" },
 	group: {
 		flexDirection: "row",
-		borderRadius: radius.sm,
+		borderRadius: radius.md,
 		borderWidth: 1,
-		// The selected fill would otherwise square off the group's corners.
-		overflow: "hidden",
+		padding: space.xs,
+		gap: space.xs,
 	},
 	groupStacked: { flexDirection: "column" },
 	segment: {
@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET,
 		paddingHorizontal: space.md,
 		paddingVertical: space.sm,
+		borderRadius: radius.sm,
 	},
 	segmentStacked: { flex: 0, width: "100%" },
 });

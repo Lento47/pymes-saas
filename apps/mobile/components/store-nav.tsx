@@ -253,7 +253,7 @@ function Chip({
 	selected: boolean;
 	onPress: () => void;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 
 	return (
 		<Pressable
@@ -271,7 +271,7 @@ function Chip({
 					backgroundColor: selected
 						? colors.primary
 						: pressed
-							? colors.accent
+							? `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`
 							: colors.card,
 					borderColor: selected ? colors.primary : colors.border,
 				},

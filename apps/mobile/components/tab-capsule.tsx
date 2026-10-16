@@ -17,7 +17,7 @@ import {
 	CAPSULE_LABEL_LINE_HEIGHT,
 	labelledCapsuleExtraHeight,
 } from "@/lib/tab-capsule-metrics";
-import { CAPSULE_HEIGHT, CAPSULE_LIFT, radius, useTheme } from "@/theme";
+import { CAPSULE_HEIGHT, CAPSULE_LIFT, radius, space, useTheme } from "@/theme";
 
 /**
  * The floating capsule: one tab bar, used by both trees.
@@ -106,19 +106,7 @@ export function TabMark({
 	const { colors } = useTheme();
 
 	const mark = (
-		<View
-			style={[
-				styles.mark,
-				label ? styles.labelMark : null,
-				// Hairline edge, no shadow: white on near-white separates with a crisp line,
-				// and a second shadow inside the bar's own read as dirt.
-				focused && {
-					backgroundColor: colors.card,
-					borderWidth: StyleSheet.hairlineWidth,
-					borderColor: colors.border,
-				},
-			]}
-		>
+		<View style={[styles.mark, label ? styles.labelMark : null]}>
 			<Ionicons
 				name={name}
 				// Explicit 24: the navigator hands 22-24 and the contract never named
@@ -236,10 +224,7 @@ export function useCapsuleScreenOptions({
 			<Pressable
 				onPress={onPress as (() => void) | undefined}
 				onLongPress={(onLongPress ?? undefined) as (() => void) | undefined}
-				// No Android ripple: a bounded ripple takes the button's rectangular frame
-				// (this item is ~80x70), so every tap flashed a grey square. The press still
-				// answers with the primitive's spring and dim — the same feedback iOS gets, on
-				// both platforms.
+				// One rounded highlight covers the icon and label on every platform.
 				ripple={false}
 				accessibilityRole={Platform.OS === "ios" ? "button" : "tab"}
 				accessibilityState={{
@@ -247,12 +232,20 @@ export function useCapsuleScreenOptions({
 					selected: ariaSelected ?? accessibilityState?.selected,
 				}}
 				accessibilityLabel={accessibilityLabel ?? ariaLabel}
+				scaleTo={1}
 				// Centred, because the primitive floors the box and aligns nothing — an
 				// uncentred disc pins to the top of the 70pt button and the icons read high
 				// with dead air beneath them.
-				style={[
-					{ alignItems: "center", justifyContent: "center" },
+				style={({ pressed }) => [
 					style as StyleProp<ViewStyle>,
+					styles.tabButton,
+					{
+						backgroundColor: pressed
+							? withAlpha(colors.foreground, 0.08)
+							: (ariaSelected ?? accessibilityState?.selected)
+								? colors.muted
+								: "transparent",
+					},
 				]}
 			>
 				{children as ReactNode}
@@ -295,13 +288,10 @@ export function useCapsuleScreenOptions({
 		tabBarItemStyle: {
 			flex: 1,
 			height: "100%",
-			alignItems: labelled ? "stretch" : "center",
+			alignItems: "stretch",
 			justifyContent: "center",
 			paddingVertical: 0,
-			// Optical correction from the device screenshot: the row reads ~3pt high. 6pt
-			// here moves the shared centerline down 3 with air to spare on both sides —
-			// revisit, do not stack, if the underlying inset changes.
-			paddingTop: 6,
+			paddingTop: 0,
 		},
 		// Neutralize any icon-wrapper offset the navigator brings: margins or padding here
 		// would lift the glyph off the shared centerline the 52 discs are measured against.
@@ -318,6 +308,13 @@ export function useCapsuleScreenOptions({
 }
 
 const styles = StyleSheet.create({
+	tabButton: {
+		alignItems: "center",
+		justifyContent: "center",
+		marginHorizontal: space.xs,
+		marginVertical: space.sm,
+		borderRadius: radius.full,
+	},
 	labelledMark: {
 		width: "100%",
 		alignItems: "center",

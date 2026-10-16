@@ -319,7 +319,6 @@ export function MerchantOrderRow({
 							}
 						}}
 						scaleTo={1}
-						rippleColor={colors.muted}
 						style={StyleSheet.absoluteFill}
 					/>
 					<View pointerEvents="none" style={styles.railSlot}>
@@ -355,11 +354,7 @@ export function MerchantOrderRow({
 							>
 								{headline}
 							</Text>
-							<Text
-								variant="body"
-								tabular
-								style={{ fontWeight: weights.bold }}
-							>
+							<Text variant="body" tabular style={{ fontWeight: weights.bold }}>
 								{totalLabel}
 							</Text>
 						</View>
@@ -387,9 +382,7 @@ export function MerchantOrderRow({
 									tone={urgent === "critical" ? "destructive" : "muted"}
 									tabular
 									style={
-										urgent === "late"
-											? { color: colors.warning }
-											: undefined
+										urgent === "late" ? { color: colors.warning } : undefined
 									}
 								>
 									{waitLabel}

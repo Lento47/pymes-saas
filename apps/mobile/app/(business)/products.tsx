@@ -42,7 +42,7 @@ import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import { useTRPC } from "@/lib/trpc/context";
-import { icon, MIN_TOUCH_TARGET, space, useTheme } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 /**
  * Merchant menu. Todos is the unfiltered product list; the other tabs are
@@ -718,6 +718,7 @@ function CategoryTab({
 		<Pressable
 			accessibilityRole="tab"
 			accessibilityState={{ selected }}
+			scaleTo={1}
 			onPress={onPress}
 			style={[
 				styles.categoryTab,
@@ -844,8 +845,11 @@ const styles = StyleSheet.create({
 		paddingHorizontal: space.lg,
 	},
 	categoryTab: {
-		height: 44,
+		minHeight: MIN_TOUCH_TARGET,
 		minWidth: MIN_TOUCH_TARGET,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		borderRadius: radius.md,
 		alignItems: "center",
 		justifyContent: "center",
 		borderBottomWidth: 2,

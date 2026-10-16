@@ -104,7 +104,7 @@ export function ProductRow({
 	/** Off on the last row of a card, so the card's own edge is the only line. */
 	divider?: boolean;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 	const { t, intlLocale } = useT();
 
 	// Availability is the API's word (`availabilityOf`), not a stock number: a row that
@@ -159,7 +159,9 @@ export function ProductRow({
 				styles.row,
 				divider ? styles.divider : null,
 				{ borderBottomColor: colors.border },
-				pressed && { backgroundColor: colors.muted },
+				pressed && {
+					backgroundColor: `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`,
+				},
 			]}
 		>
 			<Image
@@ -277,14 +279,8 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET + space.xl,
 		paddingVertical: space.md,
 		paddingHorizontal: space.lg,
-		// Square, and named so because `./pressable`'s base would otherwise hand the row
-		// `radius.sm` — the one corner this row must not take. The group box above it owns the
-		// shape (`radius.md` with `overflow: hidden`, where the row's own corners never showed),
-		// and where the rows reach the screen's edges there is no corner to round; without
-		// this the pressed fill drew 6pt corners inside the group's 12pt ones. `docs/design.md`'s
-		// rounded-none-with-a-comment, for the argument in full: "The row has no corner of its
-		// own", above.
-		borderRadius: 0,
+		// Keep the press wash rounded when the row appears outside a card.
+		borderRadius: radius.md,
 	},
 	divider: {
 		borderBottomWidth: StyleSheet.hairlineWidth,

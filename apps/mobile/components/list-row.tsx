@@ -107,7 +107,7 @@ export function ListRow({
 	divider?: boolean;
 	style?: React.ComponentProps<typeof View>["style"];
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 
 	// A comma is punctuation rather than copy, so the two parts are joined here rather than
 	// through a key that would need translating into a language that separates them the same
@@ -205,7 +205,9 @@ export function ListRow({
 				// The pressed background stays a colour rather than becoming the primitive's
 				// dim, because a row is mostly empty space: a 10% opacity change across a
 				// full-width row is the one press answer that is easy to miss.
-				pressed && { backgroundColor: colors.muted },
+				pressed && {
+					backgroundColor: `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`,
+				},
 				style,
 			]}
 		>

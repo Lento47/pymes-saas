@@ -2047,7 +2047,7 @@ function AttentionRow({
 	last: boolean;
 	onPress: () => void;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 	const semantic =
 		severity === "critical" ? colors.destructive : colors.warning;
 	const pressable = actionLabel !== null;
@@ -2063,7 +2063,11 @@ function AttentionRow({
 				styles.attentionRow,
 				{ borderBottomColor: colors.border },
 				last ? null : styles.attentionDivider,
-				pressed && pressable ? { backgroundColor: colors.muted } : null,
+				pressed && pressable
+					? {
+							backgroundColor: `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`,
+						}
+					: null,
 			]}
 		>
 			<View style={[styles.attentionRail, { backgroundColor: semantic }]} />

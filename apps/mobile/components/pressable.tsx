@@ -91,7 +91,7 @@ type PressableProps = AccessibilityProps & {
 	disabledOpacity?: number;
 	/** Android's ripple. On by default; off under reduced motion regardless of this. */
 	ripple?: boolean;
-	/** The ripple's colour. Defaults to `muted`, the same token a pressed row uses. */
+	/** Optional ripple override; the default is a translucent foreground tint. */
 	rippleColor?: string;
 	hitSlop?: number | Insets;
 	style?: StyleProp<ViewStyle> | ((state: PressState) => StyleProp<ViewStyle>);
@@ -128,7 +128,7 @@ export function Pressable({
 	style,
 	...a11y
 }: PressableProps) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
 	const reduceMotion = useReducedMotion();
 	const [pressed, setPressed] = useState(false);
 
@@ -180,11 +180,7 @@ export function Pressable({
 	const resolved = typeof style === "function" ? style({ pressed }) : style;
 	const flat = StyleSheet.flatten(resolved) ?? {};
 	const { clip, radii } = pressOutline(flat);
-	// `muted` is the token a pressed row already uses, so the ripple and the pressed
-	// background are the same colour by construction. A translucent overlay would
-	// read better on Android, and the palette has no alpha tokens — inventing one
-	// here would be a colour decision made outside the file that owns colour.
-	//
+	// A translucent tint keeps the underlying surface visible during a press.
 	// `foreground: true` puts the ripple on the view's foreground, which Android
 	// clips to the same rounded outline as `overflow: "hidden"` + `borderRadius`.
 	// Without it the ripple is a rectangular mask the size of the layout box — a
@@ -192,7 +188,9 @@ export function Pressable({
 	const android_ripple =
 		ripple && !reduceMotion
 			? {
-					color: rippleColor ?? colors.muted,
+					color:
+						rippleColor ??
+						`${colors.foreground}${scheme === "dark" ? "14" : "10"}`,
 					borderless: false as const,
 					foreground: true,
 				}
