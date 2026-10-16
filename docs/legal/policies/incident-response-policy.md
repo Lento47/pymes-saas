@@ -11,11 +11,14 @@ Aplica a incidentes reales o sospechados que involucren:
 - acceso no autorizado;
 - fuga o exposicion de datos;
 - compromiso de credenciales;
-- perdida de aislamiento multi-tenant;
+- pérdida de aislamiento entre clientes, comercios o sucursales;
+- manipulación de precios, pedidos, entregas, cobros o suscripciones;
+- exposición de direcciones, ubicación de repartidores, información de pedidos o tokens de dispositivos;
 - indisponibilidad grave del servicio;
 - abuso o uso malicioso de integraciones;
-- alteracion no autorizada de configuraciones o datos;
-- incidentes en proveedores criticos con impacto en PymesHub.
+- alteración no autorizada de configuraciones o datos;
+- incidentes de Cloudflare Workers/D1/KV/R2/Queues y de endpoints NestJS/Railway todavía operados;
+- incidentes en proveedores críticos con impacto en PymesHub.
 
 ## 3. Definicion de incidente
 
@@ -26,7 +29,9 @@ Se considera incidente cualquier evento que comprometa o pueda comprometer la se
 - `Coordinador del incidente`: `[RESPONSABLE_INCIDENTES]`
 - `Lider tecnico`: `[RESPONSABLE_TECNICO]`
 - `Responsable de comunicacion a clientes`: `[RESPONSABLE_CLIENTES]`
-- `Responsable legal/privacidad`: `privacidad@pymeshub.lat`
+- `Responsable legal/privacidad`: `[RESPONSABLE_PRIVACIDAD]` (verificar la operación de `privacidad@pymeshub.lat` antes de usarlo como contacto externo)
+
+Los identificadores entre corchetes son **roles pendientes de designación**; no deben presentarse como equipo de respuesta operativo hasta asignar suplentes y canales de contacto.
 
 El Coordinador del incidente es responsable de abrir, mantener y cerrar el expediente operativo del caso.
 
@@ -45,6 +50,10 @@ El Coordinador del incidente es responsable de abrir, mantener y cerrar el exped
 - `SEV-4`: documentacion y remediacion segun criticidad residual.
 
 ## 7. Flujo operativo
+
+Los reportes de vulnerabilidades de investigadores externos se reciben mediante la política pública [`../../../SECURITY.md`](../../../SECURITY.md). La recepción de un hallazgo no demuestra por sí sola un incidente: primero se valida impacto, exposición y evidencia. Si hay explotación, acceso no autorizado, exposición de datos o daño operativo, abrir un incidente según esta política. Los objetivos de respuesta para reportes de vulnerabilidad no sustituyen la contención inmediata de incidentes críticos.
+
+Al iniciar un incidente, comprobar **ambas** superficies mientras sigan desplegadas: API del marketplace en Cloudflare y endpoints heredados de consola/reportes en NestJS/Railway. No asumir que migrar una funcionalidad retira automáticamente su endpoint, base de datos o cola anterior.
 
 ### 7.1 Deteccion y apertura
 
@@ -82,7 +91,7 @@ Debe determinarse, en la medida posible:
 
 - causa raiz o causa mas probable;
 - ventana temporal del incidente;
-- datos, clientes o workspaces afectados;
+- datos, clientes, comercios, sucursales, pedidos, repartidores o servicios heredados afectados;
 - controles fallidos o ausentes;
 - necesidad de comunicacion externa.
 
@@ -107,7 +116,7 @@ Todo incidente relevante debe cerrar con:
 
 ## 8. Comunicacion
 
-La comunicacion interna y externa debe ser coordinada para evitar mensajes contradictorios. Cuando el incidente afecte datos personales, continuidad relevante o compromisos contractuales, `Otnel S.A.` notificara segun la ley, el contrato y el nivel de riesgo observado.
+La comunicacion interna y externa debe ser coordinada para evitar mensajes contradictorios. Cuando el incidente afecte datos personales, continuidad relevante o compromisos contractuales, la entidad responsable verificada deberá evaluar las notificaciones exigibles por la ley aplicable y los contratos, con asesoramiento jurídico cuando proceda. No asumir plazos regulatorios sin validación específica.
 
 La comunicacion a clientes debe incluir, en la medida razonable:
 
@@ -118,7 +127,7 @@ La comunicacion a clientes debe incluir, en la medida razonable:
 - recomendaciones al cliente, si existen;
 - canal de seguimiento.
 
-Se utilizara como base [`../templates/incident-notification-template.md`](../templates/incident-notification-template.md).
+Se utilizara como base [`../../templates/incident-notification-template.md`](../../templates/incident-notification-template.md).
 
 ## 9. Evidencia y registros
 

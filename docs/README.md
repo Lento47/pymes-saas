@@ -1,24 +1,18 @@
-# Paquete Documental Maestro de PymesHub
+# Documentación de PymesHub — marketplace y documentación heredada
 
 ## 1. Proposito
 
-Este directorio contiene la documentacion maestra de PymesHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete cubre la capa contractual externa, las politicas internas de cumplimiento, la operacion del servicio, y las especificaciones tecnicas del API.
+Este directorio reúne documentación del **marketplace de comercio local y entregas PymesHub** y documentos heredados de su etapa como SaaS B2B. **No todos los textos describen la arquitectura o las funcionalidades actuales.** La documentación histórica se conserva como referencia hasta su revisión; no debe interpretarse como prueba de que una integración, control o servicio esté desplegado.
 
-El objetivo no es teoria ni certificacion: es dejar el repositorio listo para operar con orden, demostrar control documental, y servir como base seria para validacion legal, fiscal, de privacidad, seguridad, soporte y producto.
+Para la arquitectura vigente, consultar primero [`../README.md`](../README.md) y [`../AGENTS.md`](../AGENTS.md). Para el reporte externo de vulnerabilidades, el documento canónico es [`../SECURITY.md`](../SECURITY.md); las políticas de `legal/policies/` establecen criterios internos y no sustituyen ese canal de reporte.
 
 ## 2. Alcance y separacion por rama
 
-Este paquete vive en `main-api` y aplica a:
+En la rama principal `master`, el producto prioritario es el marketplace que conecta **clientes, comercios y repartidores**, con aplicaciones web y móvil, un cliente de escritorio y una API de Cloudflare Workers. La infraestructura principal utiliza D1, KV, R2 y Queues. **La migración no ha terminado:** `AGENTS.md` también identifica funciones operativas de consola y reportes de errores en NestJS/Railway y PostgreSQL. Esas superficies no deben omitirse de seguridad o respuesta a incidentes mientras sigan operativas.
 
-- el sitio y dominio `pymeshub.lat`;
-- el producto PymesHub (inbox, CRM, tareas, documentos, OCR, automatizaciones, IA, multi-tenant);
-- la operacion de `Otnel S.A.` en `Costa Rica`;
-- los clientes B2B de PymesHub;
-- los miembros internos, contratistas y proveedores autorizados.
+Los documentos sobre inbox, CRM, OCR, IA, workspaces, facturación SaaS y la antigua separación `main-api`/`main-web` pueden referirse al producto anterior. Evaluar su vigencia por separado antes de utilizarlos para describir el marketplace o asumir compromisos con terceros. Las entidades centrales del marketplace son usuarios, comercios, sucursales, pedidos, repartidores y entregas.
 
-Documentacion **especifica del frontend** (design system, despliegue Cloudflare Pages) vive en `main-web/docs/web/`. Esa rama solo contiene docs frontend.
-
-No sustituye asesoria legal, fiscal o regulatoria local.
+Las referencias corporativas, fiscales y de privacidad requieren validación por las personas responsables. Este repositorio **no sustituye asesoría legal, fiscal ni regulatoria en Costa Rica**.
 
 ## 3. Estructura
 
@@ -39,7 +33,7 @@ docs/
 │   ├── risk-register.md
 │   └── subprocessors-list.md
 ├── technical/                    ← INGENIERIA Y SPECS DEL API
-│   ├── api-deployment/             despliegue del API a Railway
+│   ├── api-deployment/             referencias heredadas de despliegue a Railway (verificar vigencia)
 │   ├── api-spec/                   requisitos del producto (legal acceptance, auditoria, IA, OCR, multi-tenant)
 │   ├── architecture/               diagramas, boundaries, Cloudflare, mapas y servicios externos
 │   └── security-audits/            historial de remediaciones de seguridad
@@ -51,10 +45,10 @@ docs/
 
 ### 4.1 Placeholders controlados
 
-- `Otnel S.A.`
-- `privacidad@pymeshub.lat`
-- `pymeshub.lat`
-- `Costa Rica`
+- `Otnel S.A.` — entidad legal a confirmar con los responsables
+- `privacidad@pymeshub.lat` — contacto a verificar antes de publicarlo
+- `pymeshub.lat` — dominio de la aplicación web documentada
+- `Costa Rica` — jurisdicción que requiere validación legal según el caso
 
 ### 4.2 Estandar editorial
 
@@ -86,4 +80,4 @@ La topologia operativa de Cloudflare y el despliegue de mapas estan documentados
 
 ## 7. Relacion con la rama frontend
 
-La regla del proyecto: **frontend → main-web, backend + cross-cutting → main-api, sin mezcla**. Cada push gatilla CI + deploy en su plataforma respectiva (Cloudflare Pages para `main-web`, Railway para `main-api`).
+**Estado actual:** `master` es la rama principal unificada. La regla histórica `main-web`/`main-api` ya no describe la organización activa del repositorio. Web y API Worker tienen despliegues diferenciados en Cloudflare; los procesos legados de Railway permanecen separados mientras se completa su retirada. Consulte los flujos de release reales antes de deducir qué se desplegó a producción a partir de un commit. El contenido de esta sección sustituye las indicaciones de ramas del paquete SaaS anterior.
