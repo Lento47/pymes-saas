@@ -12,6 +12,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Pressable } from "@/components/pressable";
+import { Text } from "@/components/text";
+import {
+	CAPSULE_LABEL_LINE_HEIGHT,
+	labelledCapsuleExtraHeight,
+} from "@/lib/tab-capsule-metrics";
 import { CAPSULE_HEIGHT, CAPSULE_LIFT, radius, useTheme } from "@/theme";
 
 /**
@@ -91,17 +96,20 @@ export function TabMark({
 	focused,
 	name,
 	color,
+	label,
 }: {
 	focused: boolean;
 	name: React.ComponentProps<typeof Ionicons>["name"];
 	color: React.ComponentProps<typeof Ionicons>["color"];
+	label?: string;
 }) {
 	const { colors } = useTheme();
 
-	return (
+	const mark = (
 		<View
 			style={[
 				styles.mark,
+				label ? styles.labelMark : null,
 				// Hairline edge, no shadow: white on near-white separates with a crisp line,
 				// and a second shadow inside the bar's own read as dirt.
 				focused && {
@@ -115,14 +123,14 @@ export function TabMark({
 				name={name}
 				// Explicit 24: the navigator hands 22-24 and the contract never named
 				// one, so the two states would differ by whatever it happened to pass.
-				size={24}
+				size={label ? 20 : 24}
 				color={color}
 				accessibilityElementsHidden
 				importantForAccessibility="no"
 			/>
 			{/* The dot is *pinned*, not stacked below the glyph, so landing on a tab
 			    never shifts the icon by the dot's height. */}
-			{focused ? (
+			{focused && !label ? (
 				<View
 					style={[styles.dot, { backgroundColor: colors.primary }]}
 					accessibilityElementsHidden
@@ -130,6 +138,29 @@ export function TabMark({
 				/>
 			) : null}
 		</View>
+	);
+	return label ? (
+		<View
+			style={styles.labelledMark}
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+		>
+			{mark}
+			<Text
+				variant="caption"
+				bold={focused}
+				style={{
+					fontSize: 11,
+					lineHeight: CAPSULE_LABEL_LINE_HEIGHT,
+					color,
+					textAlign: "center",
+				}}
+			>
+				{label}
+			</Text>
+		</View>
+	) : (
+		mark
 	);
 }
 
@@ -168,10 +199,20 @@ type CapsuleScreenOptions = Extract<
  * that in something named `use*`. Called as a plain `capsuleScreenOptions()` from a layout
  * component it would be a hook call in a non-hook, and the lint would be right to say so.
  */
-export function useCapsuleScreenOptions(): CapsuleScreenOptions {
+export function useCapsuleScreenOptions({
+	labelled = false,
+}: {
+	labelled?: boolean;
+} = {}): CapsuleScreenOptions {
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { width: windowWidth } = useWindowDimensions();
+	const { width: windowWidth, fontScale } = useWindowDimensions();
+	const capsuleWidth = labelled
+		? Math.min(
+				windowWidth - 32,
+				Math.max(CAPSULE_WIDTH, CAPSULE_WIDTH * fontScale),
+			)
+		: CAPSULE_WIDTH;
 
 	return {
 		headerShown: false,
@@ -187,6 +228,8 @@ export function useCapsuleScreenOptions(): CapsuleScreenOptions {
 			onLongPress,
 			accessibilityState,
 			accessibilityLabel,
+			"aria-label": ariaLabel,
+			"aria-selected": ariaSelected,
 			style,
 			children,
 		}) => (
@@ -198,8 +241,12 @@ export function useCapsuleScreenOptions(): CapsuleScreenOptions {
 				// answers with the primitive's spring and dim — the same feedback iOS gets, on
 				// both platforms.
 				ripple={false}
-				accessibilityState={accessibilityState}
-				accessibilityLabel={accessibilityLabel}
+				accessibilityRole={Platform.OS === "ios" ? "button" : "tab"}
+				accessibilityState={{
+					...accessibilityState,
+					selected: ariaSelected ?? accessibilityState?.selected,
+				}}
+				accessibilityLabel={accessibilityLabel ?? ariaLabel}
 				// Centred, because the primitive floors the box and aligns nothing — an
 				// uncentred disc pins to the top of the 70pt button and the icons read high
 				// with dead air beneath them.
@@ -218,8 +265,10 @@ export function useCapsuleScreenOptions(): CapsuleScreenOptions {
 				position: "absolute",
 				left: 0,
 				right: 0,
-				marginHorizontal: Math.max(0, (windowWidth - CAPSULE_WIDTH) / 2),
-				height: CAPSULE_HEIGHT,
+				marginHorizontal: Math.max(0, (windowWidth - capsuleWidth) / 2),
+				height:
+					CAPSULE_HEIGHT +
+					(labelled ? labelledCapsuleExtraHeight(fontScale) : 0),
 				// Inset outside the bar, never inside it: paddingBottom here is the exact
 				// bug — dead air under the icons. Both physical edges are zeroed explicitly
 				// because a vertical shorthand does not reliably cancel an explicit bottom
@@ -246,7 +295,7 @@ export function useCapsuleScreenOptions(): CapsuleScreenOptions {
 		tabBarItemStyle: {
 			flex: 1,
 			height: "100%",
-			alignItems: "center",
+			alignItems: labelled ? "stretch" : "center",
 			justifyContent: "center",
 			paddingVertical: 0,
 			// Optical correction from the device screenshot: the row reads ~3pt high. 6pt
@@ -269,6 +318,13 @@ export function useCapsuleScreenOptions(): CapsuleScreenOptions {
 }
 
 const styles = StyleSheet.create({
+	labelledMark: {
+		width: "100%",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 2,
+	},
+	labelMark: { width: 28, height: 28 },
 	// Fixed 52 square in both states, so selection never reflows the bar: the disc is
 	// always there, and only its fill, lift and dot arrive on focus. The glyph is centred
 	// alone — the dot is pinned, not stacked, so landing on a tab never shifts the icon.

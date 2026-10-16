@@ -37,6 +37,7 @@ import { ListRow } from "@/components/list-row";
 import {
 	ITEM_TRACK_HEIGHT,
 	MerchantCommandRail,
+	type MerchantRailAction,
 } from "@/components/merchant-command-rail";
 import { MerchantGuide } from "@/components/merchant-guide";
 import {
@@ -51,7 +52,7 @@ import {
 	pulseBandHeight,
 } from "@/components/merchant-pulse";
 import { MerchantShortcutRail } from "@/components/merchant-shortcut-rail";
-import { hitSlopFor, Pressable } from "@/components/pressable";
+import { Pressable } from "@/components/pressable";
 import { Price } from "@/components/price";
 import { Screen } from "@/components/screen";
 import { SectionHeader } from "@/components/section-header";
@@ -64,12 +65,19 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { messageFor, toApiFailure, useApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
-import { formatClock, formatDayMonth, formatRelative } from "@/lib/format";
+import { formatDayMonth, formatRelative } from "@/lib/format";
 import { light, warning } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { hasSeenMerchantGuide } from "@/lib/merchant-guide";
+import {
+	isMerchantOrderNotification,
+	isSimpleMerchantHome,
+	merchantHomeWidgets,
+	showMerchantHomeCommand,
+} from "@/lib/merchant-home-layout";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { NO_VALUE } from "@/lib/no-value";
+import { notificationRuntime } from "@/lib/notification-runtime";
 import { useTRPC } from "@/lib/trpc/context";
 import {
 	businessThemeColors,
@@ -340,6 +348,7 @@ export default function MerchantHome() {
 	const colors = configuration.themeId
 		? businessThemeColors(configuration.themeId, scheme)
 		: deviceColors;
+	const simpleHome = isSimpleMerchantHome(configuration);
 	const subscription = useQuery(
 		trpc.subscription.current.queryOptions(
 			{ businessId: businessId ?? "" },
@@ -355,7 +364,7 @@ export default function MerchantHome() {
 	const locations = useQuery(
 		trpc.business.locations.queryOptions(
 			{ businessId: businessId ?? "" },
-			{ enabled: signedIn && !!businessId, refetchInterval: 5_000 },
+			{ enabled: signedIn && focused && !!businessId },
 		),
 	);
 	const selectedLocation =
@@ -375,10 +384,11 @@ export default function MerchantHome() {
 			{
 				enabled:
 					signedIn &&
+					focused &&
+					!configuration.hidden.includes("insights") &&
 					!!businessId &&
 					!!locationId &&
 					(shop?.role === "OWNER" || shop?.role === "MANAGER"),
-				refetchInterval: 5_000,
 			},
 		),
 	);
@@ -387,11 +397,35 @@ export default function MerchantHome() {
 		trpc.business.home.queryOptions(
 			{ businessId: businessId ?? "", locationId: locationId ?? "" },
 			{
-				enabled: signedIn && !!businessId && !!locationId,
-				refetchInterval: 5_000,
+				enabled: signedIn && focused && !!businessId && !!locationId,
+				staleTime: 0,
 			},
 		),
 	);
+	useEffect(() => {
+		if (!signedIn || !businessId || !locationId) return;
+		const notifications = notificationRuntime();
+		if (!notifications) return;
+		const refreshForOrder = (data: Record<string, unknown> | undefined) => {
+			if (!isMerchantOrderNotification(data, businessId)) return;
+			void cache.invalidateQueries({
+				queryKey: trpc.business.home.queryKey({ businessId, locationId }),
+			});
+			void cache.invalidateQueries({
+				queryKey: trpc.business.analytics.pathKey(),
+			});
+		};
+		const listener = notifications.addNotificationReceivedListener(
+			({ request }) => refreshForOrder(request.content.data),
+		);
+		const response = notifications.addNotificationResponseReceivedListener(
+			({ notification }) => refreshForOrder(notification.request.content.data),
+		);
+		return () => {
+			listener.remove();
+			response.remove();
+		};
+	}, [businessId, locationId, signedIn, cache, trpc]);
 
 	const waiting = useSkeletonHold(
 		status === "loading" ||
@@ -425,31 +459,6 @@ export default function MerchantHome() {
 	}, [businessId, focused, guideReady]);
 
 	const dateLabel = formatDayMonth(new Date(), intlLocale);
-	const dashboardQueries = [shops, locations, home, analytics];
-	const latestUpdate = Math.max(
-		...dashboardQueries.map((query) => query.dataUpdatedAt),
-	);
-	const syncing = dashboardQueries.some((query) => query.isFetching);
-	const updateAge = Date.now() - latestUpdate;
-	const relativeUpdate = latestUpdate
-		? formatRelative(latestUpdate, intlLocale)
-		: null;
-	const updateClock = latestUpdate
-		? formatClock(latestUpdate, intlLocale)
-		: null;
-	const updateDescription = relativeUpdate ?? updateClock;
-	const isStale = updateAge >= 5 * 60_000;
-	const freshnessLabel = syncing
-		? t("biz.dashboard.syncing")
-		: updateAge < 60_000
-			? t("biz.dashboard.updatedJustNow")
-			: isStale
-				? t("biz.dashboard.updatedStale", {
-						relative: updateDescription ?? "",
-					})
-				: t("biz.dashboard.updatedRelative", {
-						relative: updateDescription ?? "",
-					});
 
 	/**
 	 * The pulse's three figures, from the reads above and nothing else. The money
@@ -548,6 +557,9 @@ export default function MerchantHome() {
 				await cache.invalidateQueries({
 					queryKey: trpc.orders.pathKey(),
 				});
+				await cache.invalidateQueries({
+					queryKey: trpc.business.home.pathKey(),
+				});
 				let refreshed: CachedOrder | undefined;
 				for (const [, data] of cache.getQueriesData<unknown>({
 					queryKey: trpc.orders.pathKey(),
@@ -573,6 +585,12 @@ export default function MerchantHome() {
 				);
 				await cache.invalidateQueries({
 					queryKey: trpc.orders.pathKey(),
+				});
+				await cache.invalidateQueries({
+					queryKey: trpc.business.home.pathKey(),
+				});
+				await cache.invalidateQueries({
+					queryKey: trpc.business.analytics.pathKey(),
 				});
 			},
 		}),
@@ -621,7 +639,9 @@ export default function MerchantHome() {
 			shops.refetch(),
 			locations.refetch(),
 			home.refetch(),
-			analytics.refetch(),
+			...(!configuration.hidden.includes("insights") && canManage
+				? [analytics.refetch()]
+				: []),
 		]);
 	};
 	const pause = useMutation(
@@ -782,6 +802,7 @@ export default function MerchantHome() {
 				];
 				return (
 					<MerchantShortcutRail
+						compact={simpleHome}
 						layout={configuration.layouts.shortcuts}
 						paint={configuration.widgetThemes.shortcuts != null}
 						shortcuts={configuration.shortcutIds.flatMap((shortcutId) => {
@@ -794,6 +815,7 @@ export default function MerchantHome() {
 			case "pulse":
 				return (
 					<MerchantPulse
+						compact={simpleHome}
 						data={pulse}
 						dateLabel={dateLabel}
 						metrics={configuration.metrics}
@@ -1123,8 +1145,7 @@ export default function MerchantHome() {
 													style={[
 														styles.queueCardDisc,
 														{
-															backgroundColor: configuration.widgetThemes
-																.queue
+															backgroundColor: configuration.widgetThemes.queue
 																? colors.primary
 																: colors.muted,
 														},
@@ -1150,7 +1171,11 @@ export default function MerchantHome() {
 													<Text variant="body" bold numberOfLines={1}>
 														#{order.reference}
 													</Text>
-													<Text variant="caption" tone="muted" numberOfLines={1}>
+													<Text
+														variant="caption"
+														tone="muted"
+														numberOfLines={1}
+													>
 														{t(statusKey(order.status))}
 													</Text>
 												</View>
@@ -1287,66 +1312,79 @@ export default function MerchantHome() {
 			case "commands":
 				return (
 					<MerchantCommandRail
+						compact={simpleHome}
 						layout={configuration.layouts.commands}
-						actions={[
-							{
-								key: "add-product",
-								label: t("biz.products.add"),
-								icon: "add-outline",
-								primary: configuration.commandColors["add-product"] == null,
-								accent: configuration.commandColors["add-product"],
-								onPress: () =>
-									router.push({
-										pathname: "/product-form",
-										params: { businessId },
-									}),
-							},
-							{
-								key: "promo",
-								label: t("biz.promotions.title"),
-								icon: "ticket-outline",
-								accent: configuration.commandColors.promo,
-								onPress: () => router.push("/(business)/promotions"),
-							},
-							{
-								key: "stock",
-								label: t("biz.products.stock"),
-								icon: "cube-outline",
-								accent: configuration.commandColors.stock,
-								onPress: () => router.push("/products"),
-							},
-							{
-								key: "hours",
-								label: t("biz.settings.hours"),
-								icon: "time-outline",
-								accent: configuration.commandColors.hours,
-								onPress: () => router.push("/(business)/shop-hours"),
-							},
-							{
-								key: "pause",
-								label: locationPaused
-									? t("biz.locations.resume")
-									: t("biz.locations.pause"),
-								icon: locationPaused ? "play-outline" : "pause-outline",
-								accent: configuration.commandColors.pause,
-								disabled:
-									!canManageOperatingState ||
-									pause.isPending ||
-									resume.isPending,
-								onPress: () => {
-									if (!businessId || !selectedLocation) return;
-									if (locationPaused) {
-										resume.mutate({
-											businessId,
-											locationId: selectedLocation.id,
-										});
-										return;
-									}
-									setPauseDuration(undefined);
-									setPauseStage("duration");
+						actions={(
+							[
+								{
+									key: "add-product",
+									label: t("biz.products.add"),
+									icon: "add-outline",
+									primary:
+										(!simpleHome ||
+											(home.data?.catalog.active === 0 &&
+												home.data.catalog.draft === 0)) &&
+										configuration.commandColors["add-product"] == null,
+									accent: configuration.commandColors["add-product"],
+									onPress: () =>
+										router.push({
+											pathname: "/product-form",
+											params: { businessId },
+										}),
 								},
-							},
-						]}
+								{
+									key: "promo",
+									label: t("biz.promotions.title"),
+									icon: "ticket-outline",
+									accent: configuration.commandColors.promo,
+									onPress: () => router.push("/(business)/promotions"),
+								},
+								{
+									key: "stock",
+									label: t("biz.products.stock"),
+									icon: "cube-outline",
+									accent: configuration.commandColors.stock,
+									onPress: () => router.push("/products"),
+								},
+								{
+									key: "hours",
+									label: t("biz.settings.hours"),
+									icon: "time-outline",
+									accent: configuration.commandColors.hours,
+									onPress: () => router.push("/(business)/shop-hours"),
+								},
+								{
+									key: "pause",
+									label: locationPaused
+										? t("biz.locations.resume")
+										: t("biz.locations.pause"),
+									icon: locationPaused ? "play-outline" : "pause-outline",
+									accent: configuration.commandColors.pause,
+									disabled:
+										!canManageOperatingState ||
+										pause.isPending ||
+										resume.isPending,
+									onPress: () => {
+										if (!businessId || !selectedLocation) return;
+										if (locationPaused) {
+											resume.mutate({
+												businessId,
+												locationId: selectedLocation.id,
+											});
+											return;
+										}
+										setPauseDuration(undefined);
+										setPauseStage("duration");
+									},
+								},
+							] satisfies MerchantRailAction[]
+						).filter((action) =>
+							showMerchantHomeCommand(
+								action.key,
+								configuration,
+								!!selectedLocation,
+							),
+						)}
 					/>
 				);
 			case "catalog": {
@@ -1729,40 +1767,6 @@ export default function MerchantHome() {
 										</View>
 									) : null}
 								</Pressable>
-								{/* Quiet metadata under the rail: cloud, sentence, refresh. No
-							    card, no rules — a 20pt line the eye crosses without stopping. */}
-								<View style={styles.syncMeta} accessibilityLiveRegion="polite">
-									<Ionicons
-										name={syncing ? "sync-outline" : "cloud-done-outline"}
-										size={14}
-										color={colors.mutedForeground}
-										accessibilityElementsHidden
-										importantForAccessibility="no"
-									/>
-									<Text
-										variant="caption"
-										tone="muted"
-										style={styles.syncMetaLabel}
-									>
-										{freshnessLabel}
-									</Text>
-									<Pressable
-										onPress={refreshDashboard}
-										accessibilityRole="button"
-										accessibilityLabel={t("biz.dashboard.refresh")}
-										accessibilityHint={t("biz.dashboard.refreshHelp")}
-										hitSlop={hitSlopFor(MIN_TOUCH_TARGET)}
-										style={styles.refreshTarget}
-									>
-										<Ionicons
-											name="refresh"
-											size={18}
-											color={syncing ? colors.action : colors.mutedForeground}
-											accessibilityElementsHidden
-											importantForAccessibility="no"
-										/>
-									</Pressable>
-								</View>
 							</View>
 							{pause.error || resume.error ? (
 								<View style={styles.pad}>
@@ -1807,19 +1811,17 @@ export default function MerchantHome() {
 								</View>
 							) : null}
 
-							{configuration.widgets
-								.filter((id) => !configuration.hidden.includes(id))
-								.map((id) => {
-									const widgetThemeId = configuration.widgetThemes[id];
-									const widgetColors = widgetThemeId
-										? businessThemeColors(widgetThemeId, scheme)
-										: colors;
-									return (
-										<ThemeColorsOverrideProvider key={id} colors={widgetColors}>
-											{renderWidget(id)}
-										</ThemeColorsOverrideProvider>
-									);
-								})}
+							{merchantHomeWidgets(configuration).map((id) => {
+								const widgetThemeId = configuration.widgetThemes[id];
+								const widgetColors = widgetThemeId
+									? businessThemeColors(widgetThemeId, scheme)
+									: colors;
+								return (
+									<ThemeColorsOverrideProvider key={id} colors={widgetColors}>
+										{renderWidget(id)}
+									</ThemeColorsOverrideProvider>
+								);
+							})}
 						</>
 					)}
 				</Screen>
@@ -2158,21 +2160,6 @@ function HomeSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const SKELETON_ROWS = [0, 1, 2] as const;
 
 const styles = StyleSheet.create({
-	// Quiet metadata under the rail: cloud, sentence, refresh — a 20pt
-	// line with no card and no rules. Lime lives only on the refresh
-	// glyph while it is actually refreshing.
-	syncMeta: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: space.xs,
-		paddingHorizontal: space.lg,
-		minHeight: 20,
-		marginTop: space.sm,
-	},
-	syncMetaLabel: { flex: 1 },
-	// Visible 18-point glyph; the 44-point target arrives as hitSlop so
-	// the row stays quiet.
-	refreshTarget: { alignItems: "center", justifyContent: "center" },
 	body: { gap: space.lg },
 	pad: { paddingHorizontal: space.lg },
 	emptyOrders: {

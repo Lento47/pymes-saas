@@ -223,6 +223,7 @@ function Fields({
 		// the two separately would be naming the same subtree twice.
 		void cache.invalidateQueries({ queryKey: trpc.promotions.pathKey() });
 		void cache.invalidateQueries({ queryKey: trpc.catalog.pathKey() });
+		void cache.invalidateQueries({ queryKey: trpc.business.home.pathKey() });
 		toast.show(message);
 		router.back();
 	};

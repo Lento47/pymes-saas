@@ -457,12 +457,14 @@ export function MerchantPulse({
 	metrics = ["net_sales", "orders", "average_order"],
 	layout = "band",
 	paint = "invert",
+	compact = false,
 }: {
 	data: MerchantPulseData | null;
 	dateLabel: string;
 	metrics?: DashboardPreferences["metrics"];
 	layout?: DashboardPreferences["layouts"]["pulse"];
 	paint?: "invert" | "accent";
+	compact?: boolean;
 }) {
 	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
@@ -486,6 +488,56 @@ export function MerchantPulse({
 		const found = COLUMNS.find((column) => column.id === id);
 		return found ? [found] : [];
 	});
+	const singleColumn = columns[0];
+	if (compact && columns.length === 1 && singleColumn) {
+		const column = singleColumn;
+		return (
+			<View
+				style={[
+					styles.compactCard,
+					{ backgroundColor: colors.card, borderColor: cardBorder },
+				]}
+			>
+				<View style={styles.compactHeader}>
+					<Text variant="caption" tone="muted">
+						{t("biz.dashboard.today")}
+					</Text>
+					<Text variant="caption" tone="muted">
+						{dateLabel}
+					</Text>
+				</View>
+				<View
+					style={styles.compactMetric}
+					accessible
+					accessibilityLabel={
+						data
+							? spokenColumn(
+									t(column.labelKey),
+									column.value(data, intlLocale),
+									null,
+								)
+							: t("state.loading")
+					}
+				>
+					<Text variant="body" style={{ flex: 1 }}>
+						{t(column.labelKey)}
+					</Text>
+					{data ? (
+						<Text
+							variant="heading"
+							bold
+							tabular
+							style={{ color: accent ? colors.primary : colors.foreground }}
+						>
+							{column.value(data, intlLocale)}
+						</Text>
+					) : (
+						<Skeleton style={{ width: 48, height: 24 }} />
+					)}
+				</View>
+			</View>
+		);
+	}
 
 	const rule = (index: number) =>
 		index > 0 && !cards ? (
@@ -608,10 +660,7 @@ export function MerchantPulse({
 				</View>
 				{rest.length > 0 ? (
 					<View
-						style={[
-							styles.heroRest,
-							stacked && { flexDirection: "column" },
-						]}
+						style={[styles.heroRest, stacked && { flexDirection: "column" }]}
 					>
 						{rest.map((column, index) => (
 							<View
@@ -682,30 +731,20 @@ export function MerchantPulse({
 					return (
 						<View
 							key={column.labelKey}
-							style={[
-								styles.stackRow,
-								{ borderBottomColor: cardBorder },
-							]}
+							style={[styles.stackRow, { borderBottomColor: cardBorder }]}
 							accessible
 							accessibilityRole="text"
 							accessibilityLabel={spoken}
 						>
 							<View style={styles.stackCopy}>
 								<Text
-									style={[
-										styles.metricLabel,
-										{ color: ink, marginTop: 0 },
-									]}
+									style={[styles.metricLabel, { color: ink, marginTop: 0 }]}
 								>
 									{t(column.labelKey)}
 								</Text>
 								{data === null ||
 								column.delta(data, intlLocale) === null ? null : (
-									<Text
-										variant="caption"
-										tabular
-										style={{ color: ink }}
-									>
+									<Text variant="caption" tabular style={{ color: ink }}>
 										{column.delta(data, intlLocale)}
 									</Text>
 								)}
@@ -718,10 +757,7 @@ export function MerchantPulse({
 									]}
 								/>
 							) : (
-								<Text
-									tabular
-									style={[styles.metricValueSmall, { color: ink }]}
-								>
+								<Text tabular style={[styles.metricValueSmall, { color: ink }]}>
 									{column.value(data, intlLocale)}
 								</Text>
 							)}
@@ -779,6 +815,20 @@ export function MerchantPulse({
 }
 
 const styles = StyleSheet.create({
+	compactCard: {
+		marginHorizontal: space.lg,
+		padding: space.md,
+		gap: space.sm,
+		borderRadius: radius.lg,
+		borderWidth: StyleSheet.hairlineWidth,
+	},
+	compactHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		flexWrap: "wrap",
+		gap: space.sm,
+	},
+	compactMetric: { flexDirection: "row", alignItems: "center", gap: space.md },
 	/**
 	 * The module itself: inset by the page gutter, cornered at the module
 	 * step, clipped to it. The ink surface (`colors.foreground`) on the white

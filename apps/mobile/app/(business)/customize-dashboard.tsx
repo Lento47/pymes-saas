@@ -45,6 +45,10 @@ import { Screen } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { Text } from "@/components/text";
 import { useT } from "@/lib/i18n";
+import {
+	isSimpleMerchantHome,
+	showMerchantHomeCommand,
+} from "@/lib/merchant-home-layout";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
 import {
@@ -658,6 +662,7 @@ export default function CustomizeDashboard() {
 									const preview =
 										id === "shortcuts" ? (
 											<MerchantShortcutRail
+												compact={isSimpleMerchantHome(draft)}
 												layout={draft.layouts.shortcuts}
 												paint={painted}
 												shortcuts={draft.shortcutIds.slice(0, 6).map((key) => ({
@@ -669,6 +674,7 @@ export default function CustomizeDashboard() {
 											/>
 										) : id === "pulse" ? (
 											<MerchantPulse
+												compact={isSimpleMerchantHome(draft)}
 												data={home.data?.pulse ?? null}
 												dateLabel={new Date().toLocaleDateString(intlLocale)}
 												metrics={
@@ -681,19 +687,29 @@ export default function CustomizeDashboard() {
 											/>
 										) : id === "commands" ? (
 											<MerchantCommandRail
+												compact={isSimpleMerchantHome(draft)}
 												layout={draft.layouts.commands}
-												actions={dashboardCommandIdSchema.options.map(
-													(key) => ({
+												actions={dashboardCommandIdSchema.options
+													.filter((key) =>
+														showMerchantHomeCommand(
+															key,
+															draft,
+															!!home.data?.location,
+														),
+													)
+													.map((key) => ({
 														key,
 														label: t(COMMAND_LABELS[key]),
 														icon: COMMAND_ICONS[key],
 														primary:
 															key === "add-product" &&
+															(!isSimpleMerchantHome(draft) ||
+																(home.data?.catalog.active === 0 &&
+																	home.data.catalog.draft === 0)) &&
 															draft.commandColors[key] == null,
 														accent: draft.commandColors[key],
 														onPress: () => {},
-													}),
-												)}
+													}))}
 											/>
 										) : (
 											sketch(id)

@@ -42,10 +42,12 @@ export function MerchantShortcutRail({
 	shortcuts,
 	layout = "rail",
 	paint = false,
+	compact = false,
 }: {
 	shortcuts: MerchantShortcut[];
 	layout?: "rail" | "grid" | "list";
 	paint?: boolean;
+	compact?: boolean;
 }) {
 	const { colors } = useTheme();
 
@@ -66,15 +68,24 @@ export function MerchantShortcutRail({
 			<View
 				style={[
 					styles.disc,
+					compact && styles.compactDisc,
 					{
-						backgroundColor: paint ? colors.primary : colors.muted,
-						borderColor: paint ? colors.primary : colors.border,
+						backgroundColor: paint
+							? colors.primary
+							: compact
+								? colors.card
+								: colors.muted,
+						borderColor: paint
+							? colors.primary
+							: compact
+								? colors.card
+								: colors.border,
 					},
 				]}
 			>
 				<Ionicons
 					name={item.icon}
-					size={icon.back}
+					size={compact ? 20 : icon.back}
 					color={paint ? colors.primaryForeground : colors.foreground}
 					accessibilityElementsHidden
 					importantForAccessibility="no"
@@ -83,7 +94,7 @@ export function MerchantShortcutRail({
 			<Text
 				variant="caption"
 				tone="muted"
-				numberOfLines={1}
+				numberOfLines={compact ? undefined : 1}
 				style={styles.tileLabel}
 			>
 				{item.label}
@@ -168,6 +179,7 @@ export function MerchantShortcutRail({
 const TILE = 64;
 
 const styles = StyleSheet.create({
+	compactDisc: { width: 36, height: 36, borderRadius: radius.md },
 	/** The scroll's content: the rail's own gutter and the gap tiles keep. */
 	track: { paddingHorizontal: space.lg, gap: space.md, marginTop: space.md },
 	tile: {

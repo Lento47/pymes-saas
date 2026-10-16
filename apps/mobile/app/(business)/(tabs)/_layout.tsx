@@ -7,17 +7,32 @@ import { useT } from "@/lib/i18n";
  */
 export default function BusinessTabs() {
 	const { t } = useT();
-	const capsule = useCapsuleScreenOptions();
+	const capsule = useCapsuleScreenOptions({ labelled: true });
 
 	return (
-		<Tabs screenOptions={capsule}>
+		<Tabs
+			screenOptions={{
+				...capsule,
+				tabBarIconStyle: {
+					width: "100%",
+					height: "100%",
+					marginTop: 0,
+					marginBottom: 0,
+				},
+			}}
+		>
 			<Tabs.Screen
 				name="index"
 				options={{
 					title: t("nav.home"),
 					tabBarAccessibilityLabel: t("nav.home"),
 					tabBarIcon: ({ focused, color }) => (
-						<TabMark focused={focused} name="home-outline" color={color} />
+						<TabMark
+							focused={focused}
+							name="home-outline"
+							color={color}
+							label={t("nav.home")}
+						/>
 					),
 				}}
 			/>
@@ -27,7 +42,12 @@ export default function BusinessTabs() {
 					title: t("biz.nav.orders"),
 					tabBarAccessibilityLabel: t("biz.nav.orders"),
 					tabBarIcon: ({ focused, color }) => (
-						<TabMark focused={focused} name="receipt-outline" color={color} />
+						<TabMark
+							focused={focused}
+							name="receipt-outline"
+							color={color}
+							label={t("biz.nav.orders")}
+						/>
 					),
 				}}
 			/>
@@ -40,6 +60,7 @@ export default function BusinessTabs() {
 						<TabMark
 							focused={focused}
 							name="person-circle-outline"
+							label={t("nav.account")}
 							color={color}
 						/>
 					),
@@ -51,7 +72,12 @@ export default function BusinessTabs() {
 					title: t("biz.nav.menu"),
 					tabBarAccessibilityLabel: t("biz.nav.menu"),
 					tabBarIcon: ({ focused, color }) => (
-						<TabMark focused={focused} name="menu-outline" color={color} />
+						<TabMark
+							focused={focused}
+							name="menu-outline"
+							color={color}
+							label={t("biz.nav.menu")}
+						/>
 					),
 				}}
 			/>

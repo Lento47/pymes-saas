@@ -5,7 +5,6 @@ import {
 	type BusinessThemeId,
 	businessThemeColors,
 	icon,
-	MIN_TOUCH_TARGET,
 	radius,
 	space,
 	useTheme,
@@ -174,13 +173,78 @@ function RailAction({
 export function MerchantCommandRail({
 	actions,
 	layout = "rail",
+	compact = false,
 }: {
 	actions: MerchantRailAction[];
 	layout?: "rail" | "wrap" | "stack";
+	compact?: boolean;
 }): React.ReactElement | null {
 	const { colors, scheme } = useTheme();
 
 	if (actions.length === 0) return null;
+	if (compact) {
+		return (
+			<View
+				style={[
+					styles.compactGroup,
+					{ borderColor: colors.border, backgroundColor: colors.card },
+				]}
+			>
+				{actions.map((action, index) => {
+					const fill = action.accent
+						? businessThemeColors(action.accent, scheme)
+						: colors;
+					const filled = action.primary === true || action.accent != null;
+					const ink = filled ? fill.primaryForeground : colors.foreground;
+					return (
+						<Pressable
+							key={action.key}
+							onPress={action.onPress}
+							disabled={action.disabled}
+							accessibilityRole="button"
+							accessibilityLabel={action.label}
+							style={[
+								styles.compactItem,
+								{
+									backgroundColor: filled ? fill.primary : colors.card,
+									borderTopColor: colors.border,
+									borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
+									borderTopLeftRadius: index === 0 ? radius.lg : 0,
+									borderTopRightRadius: index === 0 ? radius.lg : 0,
+									borderBottomLeftRadius:
+										index === actions.length - 1 ? radius.lg : 0,
+									borderBottomRightRadius:
+										index === actions.length - 1 ? radius.lg : 0,
+								},
+							]}
+						>
+							<Ionicons
+								name={action.icon}
+								size={20}
+								color={ink}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+							<Text
+								variant="label"
+								bold={filled}
+								style={{ flex: 1, color: ink }}
+							>
+								{action.label}
+							</Text>
+							<Ionicons
+								name="chevron-forward"
+								size={16}
+								color={filled ? ink : colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</Pressable>
+					);
+				})}
+			</View>
+		);
+	}
 
 	const items = actions.map((action) => (
 		<RailAction key={action.key} action={action} />
@@ -305,6 +369,19 @@ const ITEM_MIN_WIDTH = 64;
 const LABEL_FONT_SIZE = 11;
 
 const styles = StyleSheet.create({
+	compactGroup: {
+		marginHorizontal: space.lg,
+		borderWidth: StyleSheet.hairlineWidth,
+		borderRadius: radius.lg,
+	},
+	compactItem: {
+		minHeight: 52,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		paddingHorizontal: space.md,
+		paddingVertical: space.md,
+	},
 	/** The band: a `card` surface ruled by the page's hairlines, full-bleed. */
 	bar: {
 		borderTopWidth: StyleSheet.hairlineWidth,

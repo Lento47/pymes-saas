@@ -41,8 +41,9 @@
  * is parsed as one, and one sentence is enough to fail three tests.
  */
 import { useSegments } from "expo-router";
+import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { labelledCapsuleExtraHeight } from "@/lib/tab-capsule-metrics";
 import { CAPSULE_CLEARANCE } from "@/theme";
 
 /**
@@ -229,12 +230,19 @@ export function useTabBarClearance({
 	// which exists on every member of the union.
 	const segments: readonly string[] = useSegments();
 	const insets = useSafeAreaInsets();
+	const { fontScale } = useWindowDimensions();
 
 	// Hooks first, branch after: the early return below is ordinary control flow, not a
 	// conditional hook, but only because both of these are above it.
 	if (!drawsTabBar(segments)) return 0;
 
-	return CAPSULE_CLEARANCE + (bottomInsetPaid ? 0 : insets.bottom);
+	return (
+		CAPSULE_CLEARANCE +
+		(segments.includes("(business)")
+			? labelledCapsuleExtraHeight(fontScale)
+			: 0) +
+		(bottomInsetPaid ? 0 : insets.bottom)
+	);
 }
 
 /**

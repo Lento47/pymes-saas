@@ -398,6 +398,7 @@ function Fields({
 		// form just opened is the other, and `products` is small enough that naming the two
 		// separately would be naming the same subtree twice.
 		void cache.invalidateQueries({ queryKey: trpc.products.pathKey() });
+		void cache.invalidateQueries({ queryKey: trpc.business.home.pathKey() });
 		toast.show(message);
 		router.replace(PRODUCTS_ROUTE);
 	};
