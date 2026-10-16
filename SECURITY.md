@@ -7,7 +7,7 @@
 
 ## English
 
-PymesHub is a local-commerce and delivery marketplace connecting customers, merchants, and couriers. It includes a React web application, an Expo/React Native application for iOS and Android, and a Cloudflare Workers API (Hono/tRPC). The NestJS application retained in the repository is legacy code, not the active marketplace API.
+PymesHub is a local-commerce and delivery marketplace connecting customers, merchants, and couriers. Its primary marketplace stack includes a React web application, an Expo/React Native application for iOS and Android, a Tauri desktop client, and a Cloudflare Workers API (Hono/tRPC, D1, KV, R2, and Queues). The older NestJS/Railway service is **not** the primary marketplace API, but the repository documents residual production use for the platform console and client error reporting. Security issues in those still-operated endpoints remain in scope.
 
 We take the confidentiality, integrity, and availability of customer information, merchant data, orders, delivery information, and marketplace operations seriously. We welcome responsible, good-faith vulnerability reports.
 
@@ -15,19 +15,20 @@ We take the confidentiality, integrity, and availability of customer information
 
 | Component / version | Security support |
 | --- | --- |
-| Current production web application and API | ✅ Supported |
-| Current supported iOS and Android releases | ✅ Supported |
-| Latest commit on the default branch | ✅ Maintained; not necessarily deployed |
-| Older releases, builds, and unmaintained legacy code | ❌ Not routinely supported |
+| Current production marketplace web app and Cloudflare Workers API | ✅ Supported |
+| Currently distributed and supported iOS/Android releases | ✅ Supported |
+| PymesHub-operated desktop client and residual NestJS/Railway endpoints, where deployed | ✅ Supported while operated |
+| Default-branch source code not yet deployed or distributed | Development only; **not** a supported release |
+| Superseded client releases and nondeployed, unmaintained legacy code | ❌ Not routinely supported |
 
-Critical issues affecting older clients may still require mitigations, a forced upgrade, or server-side protection. The current production deployment and supported app-store releases determine what is actively supported.
+Critical issues affecting older clients may still require mitigations, a forced upgrade, or server-side protection. Support is determined by actual PymesHub-operated deployments and distributed client releases, not by the existence of code in the repository.
 
 ### Reporting a Vulnerability
 
 **Do not report security vulnerabilities in public GitHub issues, pull requests, discussions, reviews, or social media.**
 
 1. **Preferred:** Use [GitHub Private Vulnerability Reporting](https://github.com/Lento47/pymes-saas/security) via **Security → Report a vulnerability**, if that option is available.
-2. **Alternative:** Email **security@pymeshub.com** using the contact address listed in the previous security policy.
+2. **Alternative (subject to maintainer verification):** Email **security@pymeshub.com**, the address carried forward from the previous policy. Maintainers must confirm this inbox accepts and is monitored for security reports **before merging this policy**; otherwise replace it with a verified private reporting channel.
 
 <!-- Maintainers: before merging, confirm that Private Vulnerability Reporting is enabled and security@pymeshub.com is actively monitored. Replace the fallback email if necessary. -->
 
@@ -63,12 +64,12 @@ We prioritize active exploitation and threats to user safety, sensitive informat
 
 **In scope** (for PymesHub-owned or PymesHub-operated assets):
 
-- Active React web and Expo iOS/Android applications, authenticated sessions, and account recovery
-- Active Cloudflare Workers API, authentication, authorization, and role boundaries for customers, merchant owners/staff, couriers, support, and administrators
+- Active React web, Expo iOS/Android, and PymesHub-distributed Tauri desktop clients, authenticated sessions, and account recovery
+- Cloudflare Workers marketplace API and still-operated NestJS/Railway console or error-report endpoints; authentication, authorization, and role boundaries for customers, merchant owners/staff, couriers, support, and administrators
 - Merchant and location isolation, unauthorized access to other merchants' private data, and insecure direct object references
 - Product and inventory integrity, cart/checkout calculations, delivery fees, promotions, and order-state authorization
-- Payment and settlement **business logic where implemented**; PymesHub currently describes its marketplace checkout as **cash/payment on delivery**, not an online card-processing flow
-- Delivery assignment and tracking, unauthorized location disclosure, customer addresses, courier details, and order-related personal information
+- Payment, merchant subscription, and settlement **business logic where implemented**; the documented marketplace **order checkout is payment on delivery** and does not use an online card gateway. Do not infer from this that every separate billing or legacy integration is absent
+- Delivery assignment and tracking, unauthorized location disclosure, customer addresses, courier details, device/push tokens, and order-related personal information
 - PymesHub-controlled uploads, media access, storage permissions, webhook/event processing, secrets exposure, and cloud-service configuration
 
 A vulnerability in how **our application integrates** a third-party service is in scope. Testing or attacking the third-party service itself is not authorized by this policy.
@@ -108,7 +109,7 @@ We support good-faith research conducted within this policy's scope and rules. F
 
 ## Español
 
-PymesHub es un marketplace de comercio local y entregas que conecta clientes, comercios y repartidores. Incluye una aplicación web en React, una aplicación móvil Expo/React Native para iOS y Android y una API activa en Cloudflare Workers (Hono/tRPC). La aplicación NestJS conservada en el repositorio es código legado y no es la API activa del marketplace.
+PymesHub es un marketplace de comercio local y entregas que conecta clientes, comercios y repartidores. Su arquitectura principal incluye una aplicación web React, una app Expo/React Native para iOS y Android, un cliente de escritorio Tauri y una API en Cloudflare Workers (Hono/tRPC, D1, KV, R2 y Queues). El servicio anterior NestJS/Railway **no** es la API principal del marketplace, pero la documentación del repositorio indica que todavía atiende funciones de consola de plataforma y reportes de errores del cliente. Los endpoints que PymesHub siga operando también están dentro del alcance de seguridad.
 
 Nos tomamos en serio la confidencialidad, integridad y disponibilidad de los datos de clientes y comercios, los pedidos, la información de entregas y las operaciones del marketplace. Agradecemos los reportes responsables y de buena fe.
 
@@ -116,19 +117,20 @@ Nos tomamos en serio la confidencialidad, integridad y disponibilidad de los dat
 
 | Componente / versión | Soporte de seguridad |
 | --- | --- |
-| Aplicación web y API actuales en producción | ✅ Soportadas |
-| Versiones vigentes de iOS y Android con soporte | ✅ Soportadas |
-| Último commit de la rama principal | ✅ Mantenido; no necesariamente desplegado |
-| Versiones antiguas y código legado sin mantenimiento | ❌ Sin soporte habitual |
+| Web del marketplace y API Cloudflare Workers en producción | ✅ Soportadas |
+| Versiones distribuidas de iOS y Android con soporte vigente | ✅ Soportadas |
+| Cliente de escritorio y endpoints residuales NestJS/Railway operados por PymesHub, si están desplegados | ✅ Soportados mientras sigan en operación |
+| Código de la rama principal aún sin desplegar o distribuir | Solo desarrollo; **no** es una versión soportada |
+| Versiones antiguas de clientes y código legado sin desplegar ni mantener | ❌ Sin soporte habitual |
 
-Las vulnerabilidades críticas en clientes antiguos pueden requerir mitigaciones, actualizaciones obligatorias o protección del lado del servidor. El despliegue actual y las versiones móviles vigentes determinan el soporte activo.
+Las vulnerabilidades críticas en clientes antiguos pueden requerir mitigaciones, actualizaciones obligatorias o protección del lado del servidor. El soporte depende de los servicios realmente operados y los clientes distribuidos por PymesHub, no de que el código siga en el repositorio.
 
 ### Cómo Reportar una Vulnerabilidad
 
 **No publique vulnerabilidades en issues, pull requests, discusiones, revisiones de GitHub ni redes sociales.**
 
 1. **Preferido:** Utilice el [reporte privado de vulnerabilidades de GitHub](https://github.com/Lento47/pymes-saas/security) mediante **Security → Report a vulnerability**, si la opción está disponible.
-2. **Alternativa:** Escriba a **security@pymeshub.com**, dirección indicada en la política de seguridad anterior.
+2. **Alternativa (pendiente de verificación por los mantenedores):** Escriba a **security@pymeshub.com**, dirección heredada de la política anterior. Antes de fusionar esta política, los responsables deben confirmar que el buzón recibe y atiende reportes de seguridad; si no es así, deberán sustituirlo por un canal privado verificado.
 
 <!-- Mantenedores: antes de fusionar, confirmar que GitHub Private Vulnerability Reporting esté habilitado y que security@pymeshub.com sea un buzón supervisado. Sustituir la dirección si corresponde. -->
 
@@ -164,12 +166,12 @@ Se priorizan vulnerabilidades explotadas activamente y riesgos para los usuarios
 
 **Dentro del alcance** (activos propios u operados por PymesHub):
 
-- Aplicaciones activas web React y móviles Expo para iOS/Android; sesiones y recuperación de cuentas
-- API activa en Cloudflare Workers; autenticación, autorización y permisos de clientes, propietarios/personal de comercios, repartidores, soporte y administradores
+- Aplicaciones web React y móviles Expo para iOS/Android, cliente de escritorio Tauri distribuido por PymesHub; sesiones y recuperación de cuentas
+- API Cloudflare Workers y endpoints NestJS/Railway de consola o reportes de errores que sigan operativos; autenticación, autorización y permisos de clientes, propietarios/personal de comercios, repartidores, soporte y administradores
 - Aislamiento entre comercios y sucursales, accesos indebidos a datos privados y referencias directas inseguras a objetos
 - Integridad de catálogos e inventario, cálculos de carrito/checkout, tarifas de entrega, promociones y autorización de transiciones de pedidos
-- Lógica de pagos y liquidaciones **cuando esté implementada**; actualmente el flujo descrito para PymesHub utiliza **pago contra entrega**, no procesamiento de tarjetas en línea
-- Asignación y seguimiento de entregas, exposición no autorizada de ubicación, direcciones y datos personales de clientes y repartidores
+- Lógica de pagos, suscripciones de comercios y liquidaciones **cuando esté implementada**; el **checkout de pedidos del marketplace** documentado utiliza pago contra entrega, sin pasarela de tarjetas en ese flujo. Esto no implica que no existan integraciones de cobro independientes o legadas
+- Asignación y seguimiento de entregas, exposición no autorizada de ubicación, direcciones, tokens de dispositivo/notificaciones y datos personales de clientes y repartidores
 - Cargas de archivos, medios, permisos de almacenamiento, webhooks/eventos, exposición de secretos y configuraciones en la nube bajo control de PymesHub
 
 Las fallas en **nuestra integración** con terceros están dentro del alcance. Esta política no autoriza pruebas contra la infraestructura propia de esos proveedores.
