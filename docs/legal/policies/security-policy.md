@@ -2,17 +2,20 @@
 
 ## 1. Proposito
 
-Esta politica establece el marco general de seguridad de la informacion de PymesHub. Su finalidad es proteger la confidencialidad, integridad y disponibilidad del servicio, de los datos de clientes y de la operacion interna de `Otnel S.A.`.
+Esta política establece las **exigencias internas** de seguridad de la información de PymesHub. Protege la confidencialidad, integridad y disponibilidad de las cuentas de clientes, los datos de comercios, pedidos, repartidores, entregas y operaciones del marketplace. La identidad de la entidad jurídica responsable debe confirmarse antes de usar esta política para afirmar compromisos corporativos.
 
 ## 2. Alcance
 
 Aplica a:
 
 - ambientes de desarrollo, staging y produccion;
-- infraestructura, API, frontend, base de datos, storage, colas, OCR, IA, monitoreo y logging;
-- personal interno, contratistas y soporte autorizado;
-- proveedores criticos que participan en la prestacion del servicio;
-- datos del cliente, datos operativos, credenciales, logs y artefactos de continuidad.
+- web React, clientes móviles Expo/React Native, cliente de escritorio Tauri y API Cloudflare Workers;
+- D1, KV, R2, Queues, Durable Objects, secretos, telemetría y servicios de identidad y notificaciones;
+- endpoints de consola de plataforma y reportes de errores de NestJS/Railway, PostgreSQL y colas legadas **mientras sigan operativos**;
+- personal interno, contratistas, soporte autorizado e integraciones de terceros;
+- datos personales, direcciones y ubicaciones, pedidos, catálogos, suscripciones, credenciales, logs y artefactos de continuidad.
+
+La arquitectura de referencia es [`../../../AGENTS.md`](../../../AGENTS.md). La dirección Cloudflare-only es un **objetivo**, no una afirmación de que todos los sistemas legados hayan sido retirados.
 
 ## 3. Definiciones clave
 
@@ -33,7 +36,7 @@ Aplica a:
 
 - menor privilegio;
 - necesidad de conocer;
-- segregacion multi-tenant;
+- aislamiento por comercio, sucursal, usuario y rol, incluidos los endpoints que permanezcan en el backend legado;
 - minimizacion de acceso y de exposicion de datos;
 - trazabilidad de acciones criticas;
 - defensa en profundidad razonable;
@@ -66,13 +69,20 @@ Aplica a:
 
 ## 7. Reglas especificas para PymesHub
 
-- Toda entidad sensible del producto debe quedar scoped por `workspace`.
-- El soporte no debe acceder a datos de cliente sin justificacion operativa razonable y trazabilidad.
-- OCR e IA deben operar con minimizacion de datos compatible con la funcionalidad.
-- Los logs no deben contener secretos ni contenido excesivo de documentos si no es necesario.
-- Las integraciones de terceros deben registrarse y evaluarse como parte del control de vendors.
+- Los recursos privados deben autorizarse **del lado del servidor** según identidad, rol, comercio, sucursal y relación con el pedido; no basta con ocultarlos en la interfaz.
+- Las transiciones de estado de pedidos, asignaciones de reparto, precios, cargos por entrega y límites de suscripciones deben validarse en el backend, sin confiar en importes o roles enviados por el cliente.
+- Las direcciones, posiciones de repartidores, tokens de notificación y datos de terceros deben exponerse solo a actores autorizados y durante el tiempo necesario.
+- R2 y los endpoints de media deben aplicar validación de tipo/tamaño y controles de acceso cuando el recurso no sea público; proteger credenciales de D1, KV, Queues y otros servicios.
+- El soporte no debe acceder a datos de clientes o comercios sin justificación operativa y trazabilidad.
+- Los logs y reportes de errores no deben contener secretos, sesiones, credenciales ni datos personales innecesarios; revisar también el receptor legado de reportes.
+- El checkout de pedidos documentado es **pago contra entrega**. No describir una pasarela de tarjetas como activa en este flujo sin evidencia; evaluar por separado la facturación de suscripciones e integraciones heredadas.
+- Las integraciones con terceros y cualquier componente aún operativo deben incluirse en el inventario y en la respuesta a incidentes.
 
-## 8. Evidencia y registros
+## 8. Estado de controles y evidencia
+
+Esta política define controles **esperados**, no certifica que cada control ya esté desplegado. Antes de declarar cumplimiento, el responsable técnico debe asociar cada control con pruebas, configuración, responsable y fecha. Las brechas deben registrarse como riesgo con acción correctiva.
+
+### Registros
 
 El sistema de seguridad debe poder sostenerse con:
 
@@ -104,4 +114,7 @@ Esta politica se complementa con:
 - [`incident-response-policy.md`](./incident-response-policy.md)
 - [`backup-and-recovery-policy.md`](./backup-and-recovery-policy.md)
 - [`secure-development-policy.md`](./secure-development-policy.md)
-- [`risk-register.md`](./risk-register.md)
+- [`../../risk/risk-register.md`](../../risk/risk-register.md)
+- [`../../../SECURITY.md`](../../../SECURITY.md) — reporte externo y divulgación coordinada de vulnerabilidades; **no** sustituir por el documento interno
+
+Los hallazgos recibidos a través de la política pública deben evaluarse y, cuando corresponda, escalarse mediante [`incident-response-policy.md`](./incident-response-policy.md).
