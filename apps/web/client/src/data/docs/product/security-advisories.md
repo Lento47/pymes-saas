@@ -14,7 +14,7 @@
 **Do not report security vulnerabilities in public GitHub issues, pull requests, discussions, reviews or social media.**
 
 1. **Preferred:** use **GitHub private vulnerability reporting** on the repository (`Security → Report a vulnerability`), when that option is available.
-2. **Alternative:** email **security@pymeshub.com**.
+2. **Alternative:** email **security@pymeshub.lat**.
 3. If neither channel works for you, ask a maintainer through a non-sensitive channel for a secure way to send the details — **without putting the vulnerability in that message**.
 
 We never ask a reporter to hand over passwords, access tokens, payment credentials or personal data that is not needed to reproduce the problem.
@@ -105,7 +105,7 @@ This does not extend to third-party systems, unlawful conduct, privacy violation
 **No reportes vulnerabilidades de seguridad en issues, pull requests, discusiones, revisiones de GitHub ni redes sociales.**
 
 1. **Preferido:** usá el **reporte privado de vulnerabilidades de GitHub** en el repositorio (`Security → Report a vulnerability`), cuando esa opción esté disponible.
-2. **Alternativa:** escribí a **security@pymeshub.com**.
+2. **Alternativa:** escribí a **security@pymeshub.lat**.
 3. Si ningún canal te sirve, pedile a alguien del equipo, por un canal no sensible, una forma segura de enviar los detalles — **sin poner la vulnerabilidad en ese mensaje**.
 
 Nunca le pedimos a quien reporta que entregue contraseñas, tokens de acceso, credenciales de pago ni datos personales que no hagan falta para reproducir el problema.

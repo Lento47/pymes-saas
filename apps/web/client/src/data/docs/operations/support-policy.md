@@ -17,7 +17,7 @@
 | Something you would like the product to do | The feedback form in the app, or hola@pymeshub.com |
 | A privacy question or request | **privacidad@pymeshub.lat** |
 | A contract, invoice or legal question | **legal@pymeshub.lat** |
-| A security vulnerability | **security@pymeshub.com** — privately, never in a public issue. See the security page. |
+| A security vulnerability | **security@pymeshub.lat** — privately, never in a public issue. See the security page. |
 
 Requests that arrive through informal channels may not get a tracked answer. Writing to the address above does.
 
@@ -98,7 +98,7 @@ Never send passwords, one-time codes, or card data. We never ask for them.
 | Algo que te gustaría que el producto haga | El formulario de opiniones en la app, o hola@pymeshub.com |
 | Una consulta o solicitud de privacidad | **privacidad@pymeshub.lat** |
 | Un tema contractual, de facturación o legal | **legal@pymeshub.lat** |
-| Una vulnerabilidad de seguridad | **security@pymeshub.com** — en privado, nunca en un issue público. Ver la página de seguridad. |
+| Una vulnerabilidad de seguridad | **security@pymeshub.lat** — en privado, nunca en un issue público. Ver la página de seguridad. |
 
 Las solicitudes que llegan por canales informales pueden no recibir respuesta registrada. Escribir a la dirección de arriba sí.
 

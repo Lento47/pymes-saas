@@ -25,7 +25,7 @@ Whenever a document says "we", "us" or "our", it is **Otnel** speaking about **P
 | General and business contact | `hola@pymeshub.com` |
 | Legal | `legal@pymeshub.lat` |
 | Privacy | `privacidad@pymeshub.lat` |
-| Security reports | `security@pymeshub.com` |
+| Security reports | `security@pymeshub.lat` |
 
 ### The software and its licence
 
@@ -109,7 +109,7 @@ Cuando un documento dice "nosotros", habla **Otnel** sobre **PymesHub**. Cuando 
 | Contacto general y comercial | `hola@pymeshub.com` |
 | Legal | `legal@pymeshub.lat` |
 | Privacidad | `privacidad@pymeshub.lat` |
-| Reportes de seguridad | `security@pymeshub.com` |
+| Reportes de seguridad | `security@pymeshub.lat` |
 
 ### El software y su licencia
 

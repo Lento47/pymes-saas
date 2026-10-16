@@ -17,7 +17,7 @@ issues ni pull requests. Reportala de forma privada para que podamos
 solucionarla antes de que sea explotada.
 
 **Dónde reportar:**  
-Enviá un email a **security@pymeshub.com** con los detalles.
+Enviá un email a **security@pymeshub.lat** con los detalles.
 
 **Qué incluir:**
 - Descripción clara del problema
