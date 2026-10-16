@@ -107,7 +107,7 @@ export function ListRow({
 	divider?: boolean;
 	style?: React.ComponentProps<typeof View>["style"];
 }) {
-	const { colors, scheme } = useTheme();
+	const { colors } = useTheme();
 
 	// A comma is punctuation rather than copy, so the two parts are joined here rather than
 	// through a key that would need translating into a language that separates them the same
@@ -198,16 +198,10 @@ export function ListRow({
 			}
 			accessibilityLabel={label}
 			accessibilityHint={accessibilityHint}
-			style={({ pressed }) => [
+			style={[
 				styles.row,
 				{ borderBottomColor: colors.border },
 				divider ? styles.divided : styles.undivided,
-				// The pressed background stays a colour rather than becoming the primitive's
-				// dim, because a row is mostly empty space: a 10% opacity change across a
-				// full-width row is the one press answer that is easy to miss.
-				pressed && {
-					backgroundColor: `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`,
-				},
 				style,
 			]}
 		>

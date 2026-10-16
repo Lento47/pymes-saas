@@ -29,7 +29,7 @@ import { Text } from "./text";
  * clearest tell of a prototype, so products group by category, groups are headed, and the
  * storefront carries a rail of those groups that follows the scroll and jumps on tap. This is
  * that rail. It is a *sibling* of `./category-rail`, not a second dialect: the same chip
- * shape, the same `./pressable` spring and Android ripple, the same `accessibilityRole`
+ * shape, the same `./pressable` spring and soft highlight, the same `accessibilityRole`
  * + `accessibilityState` treatment, and no haptic for the navigation it *is*. The difference
  * is one word — a category chip opens a page, a group chip moves the page under the reader —
  * and that difference is why this one fires `selection()` (see below).
@@ -253,7 +253,7 @@ function Chip({
 	selected: boolean;
 	onPress: () => void;
 }) {
-	const { colors, scheme } = useTheme();
+	const { colors } = useTheme();
 
 	return (
 		<Pressable
@@ -262,17 +262,10 @@ function Chip({
 			accessibilityLabel={label}
 			// The position reaches the accessibility tree as a state, not only as a fill.
 			accessibilityState={selected ? { selected: true } : undefined}
-			style={({ pressed }) => [
+			style={[
 				styles.chip,
 				{
-					// A pressed *active* chip keeps its fill: dimming it towards `accent` reads as
-					// the position being given up on the way out. The spring and the opacity step
-					// `./pressable` owns are the feedback there.
-					backgroundColor: selected
-						? colors.primary
-						: pressed
-							? `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`
-							: colors.card,
+					backgroundColor: selected ? colors.primary : colors.card,
 					borderColor: selected ? colors.primary : colors.border,
 				},
 			]}

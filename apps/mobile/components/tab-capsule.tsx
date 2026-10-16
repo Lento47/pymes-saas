@@ -226,8 +226,6 @@ export function useCapsuleScreenOptions({
 			<Pressable
 				onPress={onPress as (() => void) | undefined}
 				onLongPress={(onLongPress ?? undefined) as (() => void) | undefined}
-				// One rounded highlight covers the icon and label on every platform.
-				ripple={false}
 				accessibilityRole={Platform.OS === "ios" ? "button" : "tab"}
 				accessibilityState={{
 					...accessibilityState,
@@ -238,13 +236,12 @@ export function useCapsuleScreenOptions({
 				// Centred, because the primitive floors the box and aligns nothing — an
 				// uncentred disc pins to the top of the 70pt button and the icons read high
 				// with dead air beneath them.
-				style={({ pressed }) => [
+				style={[
 					style as StyleProp<ViewStyle>,
 					styles.tabButton,
 					{
-						backgroundColor: pressed
-							? withAlpha(colors.foreground, 0.08)
-							: (ariaSelected ?? accessibilityState?.selected)
+						backgroundColor:
+							(ariaSelected ?? accessibilityState?.selected)
 								? colors.muted
 								: "transparent",
 					},

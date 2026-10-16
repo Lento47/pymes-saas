@@ -29,10 +29,8 @@ import { Text } from "./text";
 /**
  * The one button in the app.
  *
- * The press feedback — the spring to `PRESS_SCALE`, the dim, and Android's ripple — comes
- * from `./pressable`, so a button and a row answer a thumb the same way. The button adds
- * the colour: pressed is the *pressed* colour of the same variant rather than a hardcoded
- * overlay, so the feedback survives a palette change.
+ * Press feedback comes from `./pressable`: a soft wash follows the button's outline,
+ * preserving its label and variant colour. Rows and tabs use the same highlight.
  *
  * The minimum height is `MIN_TOUCH_TARGET` and it is a floor rather than a wish. The small
  * size exists for a control beside a row of text, and it is still 44 points *tall* with
@@ -277,8 +275,8 @@ export function Button({
 			style={[
 				styles.base,
 				size === "sm" ? styles.sm : size === "lg" ? styles.lg : styles.md,
-				// After the size, so it wins over `base`'s radius. `Pressable` clips its ripple
-				// to whatever radius it is given, so the ripple follows the pill without the
+				// After the size, so it wins over `base`'s radius. `Pressable` clips its wash
+				// to whatever radius it is given, so the highlight follows the pill without the
 				// bar having to say anything.
 				shape === "pill" && styles.pill,
 				fullWidth && styles.fullWidth,

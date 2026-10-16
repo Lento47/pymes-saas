@@ -388,7 +388,7 @@ export default function ShopSettings() {
 								<Text tone="muted">{t("biz.settings.readOnly")}</Text>
 							) : null}
 							<AnimateIn index={0}>
-								<Card elevation="flat" style={styles.section}>
+								<Card elevation="flat" style={styles.accordionCard}>
 									<SettingsFold
 										primary
 										label={t("biz.settings.profile")}
@@ -480,7 +480,7 @@ export default function ShopSettings() {
 							</AnimateIn>
 
 							<AnimateIn index={1}>
-								<Card elevation="flat" style={styles.section}>
+								<Card elevation="flat" style={styles.accordionCard}>
 									<SettingsFold
 										primary
 										label={t("biz.settings.contactPayments")}
@@ -588,7 +588,7 @@ export default function ShopSettings() {
 							</AnimateIn>
 
 							<AnimateIn index={2}>
-								<Card elevation="flat" style={styles.section}>
+								<Card elevation="flat" style={styles.accordionCard}>
 									<SettingsFold
 										primary
 										label={t("biz.settings.address")}
@@ -713,7 +713,7 @@ export default function ShopSettings() {
 								</Card>
 							</AnimateIn>
 							<AnimateIn index={3}>
-								<Card elevation="flat">
+								<Card elevation="flat" style={styles.accordionCard}>
 									<SettingsFold
 										primary
 										label={t("biz.settings.fulfillment")}
@@ -870,7 +870,11 @@ function SettingsFold({
 				accessibilityRole="button"
 				accessibilityLabel={detail && !open ? `${label}, ${detail}` : label}
 				accessibilityState={{ expanded: open }}
-				style={styles.foldButton}
+				style={[
+					styles.foldButton,
+					primary && styles.primaryFoldButton,
+					primary && !open && styles.closedFoldButton,
+				]}
 			>
 				<View style={styles.sinpeText}>
 					<Text
@@ -894,7 +898,11 @@ function SettingsFold({
 					importantForAccessibility="no"
 				/>
 			</Pressable>
-			{open ? <View style={styles.section}>{children}</View> : null}
+			{open ? (
+				<View style={[styles.section, primary && styles.accordionBody]}>
+					{children}
+				</View>
+			) : null}
 		</View>
 	);
 }
@@ -927,6 +935,8 @@ const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg, paddingTop: space.md },
 	section: { gap: space.md },
+	accordionCard: { padding: 0 },
+	accordionBody: { paddingHorizontal: space.lg, paddingBottom: space.lg },
 	sinpe: {
 		padding: space.md,
 		borderRadius: radius.md,
@@ -943,6 +953,19 @@ const styles = StyleSheet.create({
 		gap: space.md,
 		minHeight: MIN_TOUCH_TARGET,
 		paddingVertical: space.sm,
+	},
+	// Keep the full-width header inside its card's bounds during expand/collapse.
+	primaryFoldButton: {
+		paddingHorizontal: space.lg,
+		paddingTop: space.lg + space.sm,
+		borderRadius: radius.md,
+		borderBottomLeftRadius: 0,
+		borderBottomRightRadius: 0,
+	},
+	closedFoldButton: {
+		paddingBottom: space.lg + space.sm,
+		borderBottomLeftRadius: radius.md,
+		borderBottomRightRadius: radius.md,
 	},
 	// One step of the scale, applied only to a row whose parent is also on the
 	// list (`indentFor`). Unscoped here, the sector is present and its children

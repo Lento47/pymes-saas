@@ -104,7 +104,7 @@ export function ProductRow({
 	/** Off on the last row of a card, so the card's own edge is the only line. */
 	divider?: boolean;
 }) {
-	const { colors, scheme } = useTheme();
+	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
 
 	// Availability is the API's word (`availabilityOf`), not a stock number: a row that
@@ -155,13 +155,10 @@ export function ProductRow({
 			scaleTo={PRESS_SCALE_ROW}
 			accessibilityRole="button"
 			accessibilityLabel={spoken}
-			style={({ pressed }) => [
+			style={[
 				styles.row,
 				divider ? styles.divider : null,
 				{ borderBottomColor: colors.border },
-				pressed && {
-					backgroundColor: `${colors.foreground}${scheme === "dark" ? "0D" : "0A"}`,
-				},
 			]}
 		>
 			<Image

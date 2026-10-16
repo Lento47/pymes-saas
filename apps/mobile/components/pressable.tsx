@@ -9,6 +9,7 @@ import {
 	type ViewStyle,
 } from "react-native";
 import Animated, {
+	Easing,
 	useAnimatedStyle,
 	useSharedValue,
 	withSpring,
@@ -24,21 +25,18 @@ import { MIN_TOUCH_TARGET, radius, useTheme } from "@/theme";
  *
  * Every control that answers a finger goes through here so that "did it register" is
  * answered the same way everywhere: a spring to `PRESS_SCALE` (or `PRESS_SCALE_ROW` for a
- * full-width row), an opacity step, and — on Android only, where it is free — the
- * platform's own ripple.
+ * full-width row) and a soft wash covering the control's rounded outline. Labels keep
+ * their opacity, and the highlight fades without a travelling circle or a second fill.
  *
  * ## Reduced motion
  *
  * The scale is a transform and every transform is off when the reader has asked for less
- * motion; the opacity change stays, and it is what carries the feedback on its own. The
- * ripple is turned off with the scale, for the same reason: it is movement. Nothing here
- * is *only* movement — the press still changes the colour, the layout and, where the
- * screen wired one, the haptic.
+ * motion; the wash changes immediately and carries the feedback on its own.
  *
  * ## Why it owns opacity
  *
- * The pressed opacity is animated rather than handed to the caller's style callback, so
- * there is one answer to "how much does a press dim" instead of one per component. A
+ * Controls opting out of the wash retain a subtle opacity response. It is animated here
+ * so there is one answer to "how much does a press dim" instead of one per component. A
  * caller that sets its own `opacity` in `style` will fight this and lose unpredictably —
  * reach for `disabledOpacity` instead.
  *
@@ -83,15 +81,15 @@ type PressableProps = AccessibilityProps & {
 	 */
 	scaleTo?: number;
 	/**
-	 * Opacity at rest while `disabled`. Pressed opacity is `PRESS_OPACITY`, always.
+	 * Opacity at rest while `disabled`. Controls without a wash use `PRESS_OPACITY` on press.
 	 *
 	 * For a *busy* control. An unavailable one wants `muted`/`mutedForeground` and `1` here —
 	 * see the docblock above before reaching for this.
 	 */
 	disabledOpacity?: number;
-	/** Android's ripple. On by default; off under reduced motion regardless of this. */
+	/** Enable the shared press wash. Legacy name retained for existing opt-outs. */
 	ripple?: boolean;
-	/** Optional ripple override; the default is a translucent foreground tint. */
+	/** Optional wash tint; the default is the theme's foreground at low opacity. */
 	rippleColor?: string;
 	hitSlop?: number | Insets;
 	style?: StyleProp<ViewStyle> | ((state: PressState) => StyleProp<ViewStyle>);
@@ -134,6 +132,7 @@ export function Pressable({
 
 	const scale = useSharedValue(0);
 	const fade = useSharedValue(disabled ? disabledOpacity : 1);
+	const highlight = useSharedValue(0);
 
 	useEffect(() => {
 		if (reduceMotion) scale.value = 0;
@@ -155,10 +154,24 @@ export function Pressable({
 
 	useEffect(() => {
 		fade.value = withTiming(
-			disabled ? disabledOpacity : pressed ? PRESS_OPACITY : 1,
+			disabled ? disabledOpacity : pressed && !ripple ? PRESS_OPACITY : 1,
 			{ duration: duration.instant },
 		);
-	}, [disabled, disabledOpacity, fade, pressed]);
+	}, [disabled, disabledOpacity, fade, pressed, ripple]);
+
+	useEffect(() => {
+		highlight.value = withTiming(pressed && !disabled && ripple ? 1 : 0, {
+			duration: reduceMotion
+				? 0
+				: pressed
+					? duration.instant / 2
+					: duration.instant,
+			easing: Easing.out(Easing.quad),
+		});
+	}, [disabled, highlight, pressed, reduceMotion, ripple]);
+	const highlightStyle = useAnimatedStyle(() => ({
+		opacity: highlight.value * (scheme === "dark" ? 0.07 : 0.05),
+	}));
 
 	const animated = useAnimatedStyle(() => ({
 		opacity: fade.value,
@@ -180,21 +193,21 @@ export function Pressable({
 	const resolved = typeof style === "function" ? style({ pressed }) : style;
 	const flat = StyleSheet.flatten(resolved) ?? {};
 	const { clip, radii } = pressOutline(flat);
-	// A translucent tint keeps the underlying surface visible during a press.
-	// `foreground: true` puts the ripple on the view's foreground, which Android
-	// clips to the same rounded outline as `overflow: "hidden"` + `borderRadius`.
-	// Without it the ripple is a rectangular mask the size of the layout box — a
-	// blank square on a pill, a card, or the home shortcuts.
-	const android_ripple =
-		ripple && !reduceMotion
-			? {
-					color:
-						rippleColor ??
-						`${colors.foreground}${scheme === "dark" ? "14" : "10"}`,
-					borderless: false as const,
-					foreground: true,
-				}
-			: undefined;
+	const wash = ripple ? (
+		<Animated.View
+			pointerEvents="none"
+			accessible={false}
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+			style={[
+				StyleSheet.absoluteFill,
+				radii,
+				{ backgroundColor: rippleColor ?? colors.foreground },
+				styles.highlight,
+				highlightStyle,
+			]}
+		/>
+	) : null;
 
 	const shared = {
 		onPress,
@@ -203,7 +216,6 @@ export function Pressable({
 		onPressOut: handlePressOut,
 		disabled,
 		hitSlop,
-		android_ripple,
 		...a11y,
 	};
 
@@ -214,6 +226,7 @@ export function Pressable({
 				style={[styles.base, resolved, clip, animated]}
 			>
 				{children}
+				{wash}
 			</AnimatedPressable>
 		);
 	}
@@ -243,18 +256,17 @@ export function Pressable({
 				style={[styles.base, inner, clip, fills ? styles.fill : null, animated]}
 			>
 				{children}
+				{wash}
 			</AnimatedPressable>
 		</View>
 	);
 }
 
 /**
- * The rounded outline the ripple has to match.
+ * The rounded outline the press wash has to match.
  *
- * Android's ripple is a rectangle the size of the view unless the view both clips
- * (`overflow: "hidden"`) and states the same corner the caller drew. A default
- * `radius.sm` here used to win the outline while the fill used `lg` or `full`, which
- * is the blank square on press. The caller's radius is flattened and applied last.
+ * Clip to the caller's corners, including rows with square bottom corners. The same
+ * outline is applied to the overlay so a pill never flashes a rectangular highlight.
  */
 function pressOutline(flat: ViewStyle): { clip: ViewStyle; radii: ViewStyle } {
 	const radii: ViewStyle = {};
@@ -358,13 +370,8 @@ const styles = StyleSheet.create({
 	base: {
 		minHeight: MIN_TOUCH_TARGET,
 		minWidth: MIN_TOUCH_TARGET,
-		// Transparent, and deliberately so: Android's bounded ripple takes its
-		// shape from the view's background outline, and a view with no background
-		// has no outline — so the ripple falls back to a circle expanding from
-		// the touch point, on every control including filled buttons. A
-		// transparent drawable costs no pixel at rest and gives the ripple the
-		// control's own rounded frame to fill instead.
 		backgroundColor: "transparent",
 	},
+	highlight: { zIndex: 1 },
 	fill: { alignSelf: "stretch", flex: 1 },
 });
