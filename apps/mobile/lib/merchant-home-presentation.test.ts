@@ -72,7 +72,7 @@ describe("merchant home presentation", () => {
 		).toBe(true);
 		expect(
 			showMerchantHomeCommand("promo", SIMPLE_DASHBOARD_PREFERENCES, true),
-		).toBe(true);
+		).toBe(false);
 		for (const key of ["stock", "hours", "pause"])
 			expect(
 				showMerchantHomeCommand(key, SIMPLE_DASHBOARD_PREFERENCES, true),

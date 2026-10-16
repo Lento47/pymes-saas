@@ -1,5 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ScrollView, StyleSheet, View } from "react-native";
+import {
+	ScrollView,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 
 import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
@@ -50,6 +55,8 @@ export function MerchantShortcutRail({
 	compact?: boolean;
 }) {
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
+	const compactGrid = compact && layout === "grid" && shortcuts.length <= 4;
 
 	if (shortcuts.length === 0) return null;
 
@@ -59,7 +66,12 @@ export function MerchantShortcutRail({
 			onPress={item.onPress}
 			accessibilityRole="button"
 			accessibilityLabel={item.label}
-			style={[styles.tile, layout === "grid" && styles.gridTile]}
+			style={[
+				styles.tile,
+				layout === "grid" && styles.gridTile,
+				compactGrid &&
+					(fontScale > 1.3 ? styles.largeTextGridTile : styles.compactGridTile),
+			]}
 		>
 			{/* The disc is the visual and the word beneath names it: `accent`
 			    behind `accentForeground` ink, the palette's quiet tinted pair —
@@ -205,6 +217,8 @@ const styles = StyleSheet.create({
 		marginTop: space.md,
 	},
 	gridTile: { width: "30%", flexGrow: 1 },
+	compactGridTile: { width: 0, flexBasis: 0 },
+	largeTextGridTile: { width: "40%" },
 	list: { paddingHorizontal: space.lg, marginTop: space.md },
 	listRow: {
 		flexDirection: "row",

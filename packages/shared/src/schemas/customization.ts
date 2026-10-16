@@ -209,7 +209,7 @@ export const SIMPLE_DASHBOARD_PREFERENCES: DashboardPreferences = {
 	widgets: [...DEFAULT_DASHBOARD_WIDGETS],
 	hidden: ["insights", "catalog"],
 	metrics: ["orders"],
-	shortcutIds: ["orders", "catalog", "hours"],
+	shortcutIds: ["orders", "catalog", "hours", "promotions"],
 	layouts: {
 		shortcuts: "grid",
 		pulse: "cards",
