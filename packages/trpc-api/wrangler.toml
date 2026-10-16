@@ -412,6 +412,8 @@ service = "pymeshub-routing"
 ENVIRONMENT = "production"
 ROUTING_ENABLED = "true"
 ROUTE_FEE_ENABLED = "true"
+# New orders use separate, recipient-confirmed business and courier payments.
+SEPARATE_PAYMENTS_ENABLED = "true"
 API_VERSION = "0.2.0"
 LOG_LEVEL = "error"
 AUTH_URL = "https://api.pymeshub.lat"
