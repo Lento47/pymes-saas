@@ -436,10 +436,14 @@ export default function MerchantOrderDetail() {
 						<>
 							<MerchantOrderHero
 								status={detail.status}
-								amountLabel={formatMoney(detail.totalMinor, detail.currency, {
-									locale: intlLocale,
-								})}
-								supporting={`${t(detail.fulfilment === "PICKUP" ? "order.pickup" : "order.delivery")} · ${tp("biz.board.items", detail.itemCount)}`}
+								amountLabel={formatMoney(
+									detail.totalMinor - detail.totals.deliveryFeeMinor,
+									detail.currency,
+									{
+										locale: intlLocale,
+									},
+								)}
+								supporting={`${t("payments.merchantAmount")} · ${tp("biz.board.items", detail.itemCount)}`}
 								updatedLabel={
 									updatedAt ? formatRelative(updatedAt, intlLocale) : null
 								}
