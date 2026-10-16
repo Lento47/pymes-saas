@@ -235,6 +235,8 @@ export const customer = {
 	"store.promotion.ready": "Usa este código en tu carrito",
 	"store.promotion.codeLabel": "Código",
 	"store.promotion.off": "de descuento",
+	"store.promotion.yourCoupon": "Tu cupón",
+	"store.promotion.browse": "Ver productos",
 	"store.open": "Abierto",
 	"store.closed": "Cerrado",
 	"store.closed.until": "Cerrado · abre {time}",

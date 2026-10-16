@@ -137,6 +137,8 @@ export const customer = {
 	"store.promotion.ready": "Use this code in your cart",
 	"store.promotion.codeLabel": "Code",
 	"store.promotion.off": "off",
+	"store.promotion.yourCoupon": "Your coupon",
+	"store.promotion.browse": "Browse products",
 	"store.open": "Open",
 	"store.closed": "Closed",
 	"store.closed.until": "Closed · opens {time}",

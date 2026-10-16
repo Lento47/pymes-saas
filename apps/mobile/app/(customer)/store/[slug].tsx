@@ -54,6 +54,7 @@ import { formatAtMostOneDecimal, formatOneDecimal } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
 import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
+import { useReducedMotion } from "@/lib/reduced-motion";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useStoreHoursSummary } from "@/lib/use-store-hours-summary";
@@ -626,6 +627,8 @@ export default function Store() {
 	/** The scroll offset, for `./store-nav` — written on the UI thread, never in React state. */
 	const scrollY = useSharedValue(0);
 	const scrollRef = useRef<ScrollView>(null);
+	const menuTop = useRef(0);
+	const reduceMotion = useReducedMotion();
 	/**
 	 * The rail's own height, which is the distance a heading must clear to count as "under the
 	 * reader". Measured here rather than in state: it is read only inside `onJump`, so a
@@ -879,7 +882,15 @@ export default function Store() {
 
 								{selectedOffer ? (
 									<View style={styles.pad}>
-										<PromoReminder offer={selectedOffer} />
+										<PromoReminder
+											offer={selectedOffer}
+											onBrowse={() =>
+												scrollRef.current?.scrollTo({
+													y: menuTop.current,
+													animated: !reduceMotion,
+												})
+											}
+										/>
 									</View>
 								) : null}
 
@@ -909,6 +920,7 @@ export default function Store() {
 						<View
 							onLayout={(event) => {
 								railHeight.current = event.nativeEvent.layout.height;
+								menuTop.current = event.nativeEvent.layout.y;
 							}}
 						>
 							<StoreNav

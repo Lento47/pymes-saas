@@ -2,8 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { formatMoney, type PromotionCard as Promotion } from "@pymeshub/shared";
 import { router } from "expo-router";
 import type { StyleProp, ViewStyle } from "react-native";
-import { StyleSheet, View } from "react-native";
-import { bandAnchor, mixHex } from "@/lib/color";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useT } from "@/lib/i18n";
 import {
 	type OfferSelection,
@@ -13,7 +12,12 @@ import { promotionCopy } from "@/lib/promotion";
 import { icon, radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
 import { AnimateIn } from "./animate-in";
 import { Card } from "./card";
+import { Pressable } from "./pressable";
 import { Text } from "./text";
+
+// A warm voucher surface, independent of the shop's navigation accent.
+// These ink/surface pairs stay readable in both app color schemes.
+const COUPON = { surface: "#FFE5A3", ink: "#3D2700", detail: "#6D4B10" };
 
 /**
  * A shop's offer, at the size of the thing it is advertising.
@@ -145,11 +149,15 @@ export function PromoHero({
 export function PromoReminder({
 	offer,
 	compact = false,
+	onBrowse,
 }: {
 	offer: OfferSelection;
 	compact?: boolean;
+	onBrowse?: () => void;
 }) {
 	const { colors } = useTheme();
+	const { fontScale, width } = useWindowDimensions();
+	const stackedFooter = fontScale > 1.3 || width < 340;
 	const { t, intlLocale } = useT();
 	const { benefit, minimum, eligibility } = promotionCopy(offer, t, intlLocale);
 	const condition = minimum ?? eligibility;
@@ -161,9 +169,6 @@ export function PromoReminder({
 			: offer.kind === "FIXED"
 				? formatMoney(offer.value, offer.currency, { locale: intlLocale })
 				: null;
-	const offerInk = bandAnchor(colors.price, colors.card);
-	const couponSurface = mixHex(colors.card, colors.price, 0.93);
-	const couponInk = bandAnchor(colors.price, couponSurface);
 
 	if (compact)
 		return (
@@ -202,31 +207,35 @@ export function PromoReminder({
 		);
 
 	return (
-		<Card elevation="flat">
-			<View style={styles.reminderBody}>
+		<View style={[styles.ticket, { backgroundColor: colors.card }]}>
+			<View style={[styles.ticketBenefit, { backgroundColor: COUPON.surface }]}>
+				<Text variant="label" bold style={{ color: COUPON.detail }}>
+					{t("store.promotion.yourCoupon")}
+				</Text>
 				<View style={styles.saving} accessible accessibilityLabel={benefit}>
-					<Text variant="title" bold tabular style={{ color: offerInk }}>
+					<Text
+						variant="display"
+						bold
+						tabular
+						style={[saving ? styles.savingAmount : null, { color: COUPON.ink }]}
+					>
 						{saving ?? benefit}
 					</Text>
 					{saving ? (
-						<Text variant="label" bold>
+						<Text variant="heading" bold style={{ color: COUPON.ink }}>
 							{t("store.promotion.off")}
 						</Text>
 					) : null}
 				</View>
 				{condition ? (
-					<Text variant="caption" tone="muted">
+					<Text variant="caption" style={{ color: COUPON.detail }}>
 						{condition}
 					</Text>
 				) : null}
+			</View>
+			<View style={[styles.ticketFooter, { borderColor: colors.border }]}>
 				<View
-					style={[
-						styles.coupon,
-						{
-							backgroundColor: couponSurface,
-							borderColor: `${couponInk}70`,
-						},
-					]}
+					style={[styles.codeDetail, stackedFooter && styles.footerFullWidth]}
 				>
 					<Text
 						variant="caption"
@@ -237,45 +246,94 @@ export function PromoReminder({
 						{t("store.promotion.codeLabel")}
 					</Text>
 					<Text
-						variant="label"
+						variant="heading"
 						bold
 						tabular
 						selectable
 						accessibilityLabel={codeLabel}
-						style={[styles.couponCode, { color: couponInk }]}
+						style={styles.couponCode}
 					>
 						{offer.code}
 					</Text>
 				</View>
-				<Text variant="caption" tone="muted">
+				{onBrowse ? (
+					<Pressable
+						onPress={onBrowse}
+						scaleTo={1}
+						accessibilityRole="button"
+						accessibilityLabel={t("store.promotion.browse")}
+						accessibilityHint={readyLabel}
+						style={[
+							styles.browseButton,
+							{ backgroundColor: COUPON.surface },
+							stackedFooter && styles.footerFullWidth,
+						]}
+					>
+						<Text
+							variant="label"
+							bold
+							style={[styles.browseLabel, { color: COUPON.ink }]}
+						>
+							{t("store.promotion.browse")}
+						</Text>
+						<Ionicons
+							name="arrow-forward"
+							size={icon.control}
+							color={COUPON.ink}
+							accessibilityElementsHidden
+							importantForAccessibility="no"
+						/>
+					</Pressable>
+				) : null}
+				<Text variant="caption" tone="muted" style={styles.ticketHint}>
 					{readyLabel}
 				</Text>
 			</View>
-		</Card>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	reminderBody: { gap: space.sm },
+	ticket: { borderRadius: radius.lg, overflow: "hidden" },
+	ticketBenefit: { padding: space.lg, gap: space.xs },
+	savingAmount: {
+		fontSize: 52,
+		lineHeight: 60,
+		letterSpacing: -1.5,
+		flexShrink: 1,
+	},
 	saving: {
 		flexDirection: "row",
 		alignItems: "baseline",
 		flexWrap: "wrap",
 		gap: space.sm,
 	},
-	coupon: {
+	ticketFooter: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
 		flexWrap: "wrap",
+		gap: space.md,
+		padding: space.lg,
+		borderTopWidth: 1,
+		borderStyle: "dashed",
+	},
+	codeDetail: { flexGrow: 1, flexShrink: 1, flexBasis: 90, gap: space.xs },
+	footerFullWidth: { width: "100%", flexBasis: "auto" },
+	couponCode: { flexShrink: 1, letterSpacing: 0.6 },
+	browseButton: {
+		minHeight: 44,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
 		gap: space.sm,
 		paddingHorizontal: space.md,
 		paddingVertical: space.sm,
-		borderWidth: 1,
-		borderStyle: "dashed",
-		borderRadius: radius.md,
+		borderRadius: radius.full,
+		flexShrink: 1,
 	},
-	couponCode: { flexShrink: 1, letterSpacing: 0.6 },
+	browseLabel: { flexShrink: 1 },
+	ticketHint: { width: "100%" },
 	// The banner is a hero: `lg` inside as well as out, which is the step
 	// `docs/design-mobile.md` gives "sheets and heroes". The gap is `TEXT_STACK_GAP` because
 	// the lines are one text stack — the same number `./product-tile` stacks its body
