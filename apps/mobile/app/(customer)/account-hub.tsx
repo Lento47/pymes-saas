@@ -1,1 +1,1 @@
-export { default } from "../account";
+export { CustomerAccountScreen as default } from "../account";

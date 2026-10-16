@@ -1,8 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import { useQuery } from "@tanstack/react-query";
-import { type Href, router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { type Href, Redirect, router } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { AnimateIn } from "@/components/animate-in";
@@ -15,20 +15,14 @@ import { Fact, Facts } from "@/components/facts";
 import { Image } from "@/components/image";
 import { ListRow } from "@/components/list-row";
 import { Screen, ScreenSection } from "@/components/screen";
-import { Segmented } from "@/components/segmented";
 import { SignOutSheet } from "@/components/sign-out-sheet";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/lib/auth/session";
-import {
-	type AccountProfile,
-	getAccountProfile,
-	initDevicePrefs,
-	setAccountProfile,
-} from "@/lib/device-prefs";
 import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { NO_VALUE } from "@/lib/no-value";
+import { useResolvedRole } from "@/lib/role";
 import { requestSignOutNavigation } from "@/lib/sign-out-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import {
@@ -55,7 +49,7 @@ import {
 
 /**
  * One door in the account group. The same shape the four rows and the three conditional ones
- * always had; named because three profile branches and two shared rows now build it.
+ * use, with an explicit destination and an accessible label.
  *
  * `hint` is optional on purpose: a hint is the row's *outcome* — the contract the support
  * group's rows state with their `.help` keys — and where the dictionary holds no outcome
@@ -72,103 +66,31 @@ type AccountRow = {
 	state?: string;
 };
 
-/**
- * The word on each profile's segment.
- *
- * Spelled out rather than built from the value, the way `./status-badge`'s map and
- * `app/settings.tsx`'s are: a profile added to `AccountProfile` fails `tsc` here before it
- * fails a customer's screen. Every one of the three is a landed key — the first two are the
- * admin console's own role filter, the third is the fourth membership role's label — and
- * `docs/design-mobile.md:484-489` is why they are read rather than re-invented.
- */
-const PROFILE_LABEL: Record<AccountProfile, MessageKey> = {
-	customer: "admin.users.role.customer",
-	business: "admin.users.role.business",
-	delivery: "biz.staff.role.COURIER",
-};
+/** Shared account links open the account screen for the active app profile. */
+export default function AccountRoute() {
+	const { t } = useT();
+	const role = useResolvedRole();
+	if (role.state === "boot") {
+		return (
+			<Screen scroll contentStyle={styles.gap}>
+				<AccountSkeleton loadingLabel={t("state.loading")} />
+			</Screen>
+		);
+	}
+	if (role.role === "delivery")
+		return <Redirect href="/(delivery)/(tabs)/account" />;
+	if (role.role === "business")
+		return <Redirect href="/(business)/(tabs)/account" />;
+	return <CustomerAccountScreen />;
+}
 
-/**
- * Everything about you, and every door out of here.
- *
- * A distilled hub: one identity header, one account group, one support group,
- * and the way out. Preferences live behind the Ajustes row (`app/settings.tsx`)
- * rather than inline: theme and language are device-level choices, and the
- * hub's job is identity plus the account's doors. The business and admin
- * consoles are rows in the account group rather than buttons; the inbox folds
- * into the same group. No 2x2 shortcut grid — it duplicated the four rows below
- * it with the same four destinations. No payments row: the API has no payments
- * procedure by design (`docs/api-surface.md`), and `account.ts` carries no
- * `wallet.*` key for the same reason.
- *
- * The support group is the dictionary's `account.section.support`, and it is
- * drawn because both of its destinations already existed as routes and were
- * reachable *only* by deep link: `app/help.tsx` and `app/safety.tsx` had no row
- * anywhere, so "Ayuda" and "Seguridad" were screens a customer could not walk
- * to. `account.help`, `account.safety` and their two `.help` hints are the keys
- * this group reads — landed in the dictionary before the screen that wanted
- * them, which is `docs/design-mobile.md` Rule 8 working in the direction it was
- * written for. It is a separate group rather than three more rows in the
- * account group because the account group is *about the customer's own record*
- * (their history, their addresses, their inbox) and these two are about the
- * platform: the dictionary names the distinction `account.section.account` vs
- * `account.section.support`, and a row about how to report a problem does not
- * belong under a heading that means "your account".
- *
- * The profile comes from `users.me`; completeness adds one short read,
- * `users.addresses`, shared with `app/addresses.tsx` via the cache.
- *
- * ## Three profiles, one screen
- *
- * A person can be a customer, the owner of a shop and a courier at once, and this hub used to
- * answer that by drawing every set of rows in one list — "Historial de pedidos" and "Tu negocio"
- * as neighbours, which reads as one account rather than one person wearing three hats. The
- * switch at the top now decides it: **Cliente** draws the four customer doors,
- * **Negocio** draws the owner doors (the console, or the onboarding that leads to it when
- * there is no shop yet), **Repartidor** draws the courier board, profile and invitations,
- * and what stays is what belongs to the person either way — identity, completeness, Ajustes, support
- * and the way out. The choice is remembered on the device (`lib/device-prefs.ts`): a switch that
- * forgot would put an owner back in the customer hub on every visit.
- *
- * Which profiles are *offered* is read from `memberships`, and that is what makes the three
- * exclusive rather than three names for one thing. A `COURIER` row earns Repartidor and nothing
- * else; any other role earns Negocio; a customer with neither is offered one profile and the
- * switch is not drawn at all. So "delivery cannot be business and cannot be a regular user" is
- * not a rule this screen enforces — it is what the data already says, drawn.
- *
- * It decides the *view*, never the permission. `apps/api/src/context.ts` re-reads the caller's
- * memberships on every request and every procedure decides for itself, so switching is a way of
- * looking at the account rather than a claim about it — which is also why the doors are chosen
- * from `me.memberships` rather than from the switch. A signed-in person with no shop who switches
- * to Negocio is not shown a console they cannot open; they are shown the onboarding, which is the
- * same row that was there before the switch existed.
- */
-export default function AccountScreen() {
+/** Customer identity, shopping history, saved addresses and personal preferences. */
+export function CustomerAccountScreen() {
 	const trpc = useTRPC();
 	const { t } = useT();
 	const { colors } = useTheme();
 	const { status: sessionStatus, signOut } = useSession();
 	const [signOutOpen, setSignOutOpen] = useState(false);
-	const requested = useLocalSearchParams<{ profile?: string }>().profile;
-	const requestedProfile: AccountProfile | null =
-		requested === "customer" ||
-		requested === "business" ||
-		requested === "delivery"
-			? requested
-			: null;
-	const [profile, setProfile] = useState<AccountProfile>(
-		requestedProfile ?? "customer",
-	);
-
-	// The stored answer, read once, unless the door that opened this screen named a
-	// profile. The home avatar asks for the customer list; the switcher still offers
-	// Negocio and Repartidor when this person has those memberships.
-	useEffect(() => {
-		if (requestedProfile) {
-			setProfile(requestedProfile);
-			return;
-		}
-		void initDevicePrefs().then(() => setProfile(getAccountProfile()));
-	}, [requestedProfile]);
 
 	const signedIn = sessionStatus === "signed-in";
 	const me = useQuery(
@@ -268,54 +190,8 @@ export default function AccountScreen() {
 		.charAt(0)
 		.toUpperCase();
 
-	/**
-	 * Which profiles this person has, and which one is drawn.
-	 *
-	 * A profile is earned by a membership row, read from `users.me` — the same read the owner
-	 * door has always come from. A courier profile or `COURIER` membership earns the delivery profile; any other
-	 * role earns the business one; and `customer` needs no row at all, because that is what
-	 * everybody is before they are anything else. The three are exclusive by construction:
-	 * nobody is offered delivery without a courier identity, and the switch cannot grant what the
-	 * API would refuse — `apps/api/src/context.ts` re-reads the memberships on every request
-	 * and each procedure decides for itself.
-	 *
-	 * `shown` is the state with the offered set applied. The stored answer can be a profile this
-	 * person no longer has — a courier whose run ended, a shop that was closed — and a screen
-	 * that honoured it would draw an empty board as though it were the truth. It falls to the
-	 * last profile they do have, which for a courier-and-nothing-else is delivery: `docs/domain.md`
-	 * says a courier is not a shopper, so the customer's four doors are not where their account
-	 * opens.
-	 */
-	const isCourier = Boolean(
-		me.data?.courier ||
-			me.data?.memberships.some((one) => one.role === "COURIER"),
-	);
-	const isBusiness = Boolean(
-		me.data?.memberships.some((one) => one.role !== "COURIER"),
-	);
-	const offered: AccountProfile[] = ["customer"];
-	if (isBusiness) offered.push("business");
-	if (isCourier) offered.push("delivery");
-	const shown: AccountProfile = offered.includes(profile)
-		? profile
-		: isCourier && !isBusiness
-			? "delivery"
-			: "customer";
+	// Courier and business tools belong to their dedicated account screens.
 
-	/**
-	 * The rows the chosen profile owns, and the two doors that belong to neither.
-	 *
-	 * The switch above decides the middle of this screen and then moves the app to
-	 * the tree that owns the choice (board, runs, or feed) - staying on the hub
-	 * would leave the menu the reader asked for one navigation away. What stays put
-	 * either way is deliberate: the identity card,
-	 *
-	 * Business and admin rows join only when the API confirms them — a button to a console the
-	 * reader does not have is worse than no button. `users.me` is that confirmation and it
-	 * arrives with the profile: `MeResult` carries every membership with its business name and
-	 * role (`apps/api/src/services/users.ts:44`), resolved from D1 on every request
-	 * (`apps/api/src/context.ts:182`), so the owner profile costs one read rather than two.
-	 */
 	const customerRows: AccountRow[] = [
 		{
 			key: "history",
@@ -347,70 +223,8 @@ export default function AccountScreen() {
 		},
 	];
 
-	// The owner's doors, and which ones they are depends on whether they have a shop yet.
-	// Nothing is drawn while `users.me` is in doubt: an owner whose profile failed to load is
-	// not an owner with no shop, and "Crear negocio" is the wrong sentence for them.
-	//
-	// Two doors once there is a shop, because a shop is two jobs: the day at a glance
-	// (`/(business)`, the feed — the group href, which resolves to the tree's own index,
-	// the same door a cold start and a profile switch both land on) and the menu those
-	// orders are for (`/products`). The feed carries the board as one of its tabs, so
-	// this row opens the whole console rather than one tab of it.
-	const ownerRows: AccountRow[] = me.data
-		? isBusiness
-			? [
-					{
-						key: "business",
-						title: t("biz.dashboard.title"),
-						href: "/(business)",
-						icon: "storefront-outline",
-					},
-					{
-						key: "products",
-						title: t("biz.nav.products"),
-						href: "/products",
-						icon: "fast-food-outline",
-					},
-				]
-			: [
-					{
-						key: "new-business",
-						title: t("biz.onboarding.create"),
-						href: "/new-business",
-						icon: "storefront-outline",
-					},
-				]
-		: [];
-
-	// The courier's own view: the board, the profile that businesses review, and the
-	// invitations that can add this person to a shop.
-	const deliveryRows: AccountRow[] = [
-		{
-			key: "delivery",
-			title: t("biz.staff.role.COURIER"),
-			href: "/delivery",
-			icon: "bicycle-outline",
-		},
-		{
-			key: "courier-profile",
-			title: t("biz.courier.profile"),
-			href: "/courier-profile",
-			icon: "person-circle-outline",
-		},
-		{
-			key: "courier-invites",
-			title: t("biz.courier.invites"),
-			href: "/courier-invites",
-			icon: "mail-outline",
-		},
-	];
-
 	const accountRows: AccountRow[] = [
-		...(shown === "delivery"
-			? deliveryRows
-			: shown === "business"
-				? ownerRows
-				: customerRows),
+		...customerRows,
 
 		// Ajustes is the device's, not a profile's: theme, language and haptics do not change
 		// meaning because you are looking at your runs instead of your orders.
@@ -421,8 +235,7 @@ export default function AccountScreen() {
 			icon: "settings-outline",
 		},
 	];
-	// Neither profile, so it is drawn in both: the admin console is the platform's, and an
-	// administrator who switched to their shop would otherwise have to switch back to reach it.
+	// Platform access remains gated by the server-confirmed administrator permission.
 	if (me.data?.isAdmin) {
 		accountRows.push({
 			key: "admin",
@@ -436,62 +249,6 @@ export default function AccountScreen() {
 		<>
 			<Screen scroll contentStyle={styles.gap}>
 				<BackButton to="/" />
-				{/* Three profiles, one screen. The switch is at the top because it decides what
-				    everything under it is about, and it is a `./segmented` rather than a row
-				    because the set is closed and choosing one changes the screen you are already
-				    on — which is the distinction that component's own docblock draws against
-				    `./category-rail`.
-
-				    Its strings are landed keys rather than new ones: the group's own label is
-				    `account.profile.title` ("Perfil"), the two person names are the dictionary's
-				    `admin.users.role.*` pair ("Cliente", "Negocio"), and the courier's is
-				    `biz.staff.role.COURIER` ("Repartidor"), the fourth membership role's own label.
-				    Those were written for the admin console's user filter and the owner's staff
-				    list; this screen is the next surface reading them, and
-				    `docs/design-mobile.md:484-489` is why that is a promotion rather than an
-				    addition — a lane that needs a string reports it and stops, and a switcher
-				    that invented `account.profile.customer` would not compile until both locales
-				    landed. If the dictionary ever grows that set, this call site moves to it. */}
-				{offered.length > 1 ? (
-					<AnimateIn index={0}>
-						<Segmented
-							label={t("account.profile.title")}
-							value={shown}
-							// The haptic is `./segmented`'s own, on the settle. A switch that only
-							// changes the state would forget by the next visit, which is not a switch.
-							onChange={(value) => {
-								const next = value as AccountProfile;
-								setProfile(next);
-								// Persist first, move second: the write below lands the module
-								// synchronously and the storage asynchronously, and the destination
-								// tree's guard re-reads storage on mount - navigating before the
-								// write lands would let it resolve the old profile and bounce
-								// straight back. The hub rows update from the local state
-								// immediately, so the wait below is invisible.
-								void (async () => {
-									await setAccountProfile(next);
-									// The group href, not a member route: `(business)` resolves to
-									// the tree's own index — the feed — while `/business` names the
-									// orders *tab* inside it. An owner who switches profile wants
-									// the day at a glance, and the board is one tab of it, not the
-									// door; `app/index.tsx`'s resolver redirects to the same group
-									// href on a cold start.
-									router.replace(
-										next === "business"
-											? "/(business)"
-											: next === "delivery"
-												? "/(delivery)"
-												: "/(customer)",
-									);
-								})();
-							}}
-							options={offered.map((one) => ({
-								value: one,
-								label: t(PROFILE_LABEL[one]),
-							}))}
-						/>
-					</AnimateIn>
-				) : null}
 				{/* The screen's one loud thing. The card itself opens `/profile` —
 				    a separate Editar slab under it was the same destination twice.
 				    When `users.me` failed there is no card to draw — not one built from
@@ -592,10 +349,7 @@ export default function AccountScreen() {
 						</Card>
 					</AnimateIn>
 				) : null}
-				{/* The doors themselves are `users.me`'s: which set they are is read from the
-				    memberships, and an errored read has none — so the group waits with the
-				    card above it rather than falling back to the customer doors, which is
-				    the wrong set for the owner a failed read cannot identify. */}
+				{/* Wait for the actual account before showing its available actions. */}
 				{me.isError ? null : (
 					<AnimateIn index={3}>
 						<ScreenSection title={t("account.section.account")}>
