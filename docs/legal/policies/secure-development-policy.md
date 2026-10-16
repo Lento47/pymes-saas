@@ -2,7 +2,7 @@
 
 ## 1. Proposito
 
-Esta politica integra controles basicos de seguridad al ciclo de desarrollo de PymesHub para reducir defectos evitables, exposicion de secretos, fallas de autorizacion y regresiones con impacto en clientes o cumplimiento.
+Esta política integra controles básicos de seguridad al ciclo de desarrollo del marketplace PymesHub para reducir exposición de secretos, fallas de autorización, accesos entre comercios, errores de pedidos, pérdidas de privacidad y regresiones en componentes operativos.
 
 ## 2. Alcance
 
@@ -12,7 +12,8 @@ Aplica a:
 - manejo de dependencias;
 - uso de datos en desarrollo y pruebas;
 - acceso a ambientes;
-- revisiones tecnicas previas a despliegue.
+- revisiones técnicas previas a despliegue;
+- cambios en clientes React/Expo/Tauri, API Cloudflare Workers, D1/KV/R2/Queues y servicios residuales NestJS/Railway que sigan operativos.
 
 ## 3. Reglas obligatorias
 
@@ -27,16 +28,17 @@ Aplica a:
 
 Todo cambio sensible debe revisar, al menos:
 
-- autorizacion y aislamiento por `workspace`;
-- reglas de roles y permisos;
-- exposicion de datos en logs;
-- endpoints de exportacion, borrado, admin o soporte;
-- integraciones con OCR, correo, storage, IA o colas;
-- impacto en aceptacion legal y auditoria cuando aplique.
+- autenticación, autorización por rol, aislamiento de comercios y sucursales, y prevención de acceso directo a objetos de otro usuario;
+- creación y transición de pedidos, asignación de repartidores, precios, promociones, tarifas de entrega e integridad de suscripciones;
+- ubicación, direcciones, datos de clientes/repartidores, tokens de dispositivos y datos expuestos en logs o reportes de errores;
+- endpoints de exportación, borrado, administración, soporte y consola legada que permanezcan activos;
+- validación de uploads, control de acceso en R2, configuración de Worker/D1/KV/Queues, webhooks y servicios externos;
+- segregación entre entornos, secretos, migraciones de D1 y configuración de las integraciones externas;
+- impacto en privacidad, aceptación legal y auditoría cuando corresponda.
 
 ## 5. Vulnerabilidades y dependencias
 
-Las vulnerabilidades detectadas deben clasificarse segun criticidad y resolverse conforme al riesgo del sistema afectado. Deben evitarse dependencias innecesarias, abandonadas o de procedencia dudosa.
+Las vulnerabilidades detectadas deben clasificarse según criticidad y gestionarse conforme al riesgo del servicio realmente expuesto. La política de reporte externo y divulgación coordinada es [`../../../SECURITY.md`](../../../SECURITY.md); la escalada de hallazgos confirmados se rige por [`incident-response-policy.md`](./incident-response-policy.md). Evitar dependencias innecesarias, abandonadas o de procedencia dudosa.
 
 ## 6. Ambientes
 
@@ -49,7 +51,7 @@ PymesHub debe mantener separacion entre desarrollo, staging y produccion, con:
 
 ## 7. Evidencia y seguimiento
 
-El proceso debe poder sostener evidencia de:
+El proceso debe poder sostener evidencia de (sin afirmar que todas las verificaciones están automatizadas o desplegadas):
 
 - revisiones tecnicas relevantes;
 - vulnerabilidades detectadas y remediadas;
