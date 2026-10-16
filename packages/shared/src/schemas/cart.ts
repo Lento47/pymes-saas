@@ -15,6 +15,7 @@
 import { z } from "zod";
 import { productCardSchema } from "./catalog";
 import { currencySchema } from "./common";
+import { deliveryPriceBreakdownSchema } from "./delivery-pricing";
 import { promotionCodeSchema } from "./promotions";
 
 export const CART_STATUSES = ["OPEN", "CHECKED_OUT", "ABANDONED"] as const;
@@ -208,6 +209,7 @@ export const cartTotalsSchema = z.object({
 			distanceMeters: z.number().nonnegative(),
 			durationSeconds: z.number().nonnegative(),
 			baseFeeMinor: z.number().int().nonnegative(),
+			pricingBreakdown: deliveryPriceBreakdownSchema.optional(),
 			geometry: z.object({
 				type: z.literal("LineString"),
 				coordinates: z.array(z.tuple([z.number(), z.number()])),

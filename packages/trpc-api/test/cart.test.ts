@@ -626,6 +626,12 @@ describe("checkout quote", () => {
 			expect(stored?.deliveryFeeMinor).toBe(0);
 			expect(stored?.deliveryFeeBaseMinor).toBe(2_310);
 			expect(stored?.courierFeeMinor).toBe(2_310);
+			expect(stored?.deliveryPricingSnapshot).toMatchObject({
+				fundingSource: "MERCHANT",
+				customerFeeCRC: 0,
+				courierPayoutCRC: 2310,
+				fundedCRC: 2310,
+			});
 		} finally {
 			globalThis.fetch = previousFetch;
 			test.close();

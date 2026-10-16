@@ -887,6 +887,39 @@ function CheckoutForm({
 											})}
 										</Text>
 									) : null}
+									{quote.data?.roadQuote?.pricingBreakdown ? (
+										<>
+											<Text variant="caption" tone="muted">
+												{t("checkout.deliveryBreakdown", {
+													base: formatMoney(
+														quote.data.roadQuote.pricingBreakdown.baseCRC,
+														"CRC",
+														{ locale: intlLocale },
+													),
+													distance: formatMoney(
+														Math.round(
+															quote.data.roadQuote.pricingBreakdown.distanceCRC,
+														),
+														"CRC",
+														{ locale: intlLocale },
+													),
+													driving: formatMoney(
+														quote.data.roadQuote.pricingBreakdown.roadFeeCRC -
+															quote.data.roadQuote.pricingBreakdown.baseCRC -
+															Math.round(
+																quote.data.roadQuote.pricingBreakdown
+																	.distanceCRC,
+															),
+														"CRC",
+														{ locale: intlLocale },
+													),
+												})}
+											</Text>
+											<Text variant="caption" tone="muted">
+												{t("checkout.deliveryFixed")}
+											</Text>
+										</>
+									) : null}
 									{quote.data?.routingStatus === "UNAVAILABLE" ? (
 										<>
 											<Text variant="caption" tone="muted">

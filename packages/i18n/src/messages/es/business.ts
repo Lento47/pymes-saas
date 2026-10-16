@@ -1594,7 +1594,9 @@ export const business = {
 	"biz.settings.delivery.automatic": "Express automático",
 	"biz.settings.delivery.agreed": "Tarifa acordada",
 	"biz.settings.delivery.automaticHelp":
-		"Express calcula el precio según la distancia por carretera y el tiempo de viaje. Una tarifa acordada requiere un plan de pago y un repartidor afiliado.",
+		"Express fija el precio según la ruta estimada. Solo el plan Business permite acordar una tarifa con un repartidor afiliado.",
 	"biz.settings.delivery.affiliatedRequired":
-		"Para fijar una tarifa de entrega, necesitas un plan de pago y un repartidor afiliado que haya aceptado tu invitación.",
+		"Para fijar una tarifa de entrega, necesitas el plan Business y un repartidor afiliado que haya aceptado tu invitación.",
+	"delivery.priceFixed":
+		"Pago fijo por esta entrega. Las demoras no lo cambian.",
 } as const;

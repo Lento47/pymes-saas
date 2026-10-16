@@ -527,6 +527,7 @@ export async function place(
 						: AFFILIATED_PRICING_VERSION
 					: null),
 			deliveryQuoteId: roadPricing?.id ?? null,
+			deliveryPricingSnapshot: roadPricing?.pricingSnapshot ?? null,
 			routeDistanceMeters: roadPricing?.distanceMeters ?? null,
 			routeDurationSeconds: roadPricing?.durationSeconds ?? null,
 			routeGeometry: roadPricing?.geometry ?? null,

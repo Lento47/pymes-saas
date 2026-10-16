@@ -1,20 +1,27 @@
+import {
+	DEFAULT_DELIVERY_PRICING_TERMS,
+	type DeliveryPriceBreakdown,
+	type DeliveryPricingTerms,
+} from "@pymeshub/shared";
+
 /** This app stores CRC as whole colones; see @pymeshub/shared/money. */
 export const EXPRESS_V1 = {
 	version: "express-v1",
-	baseMinor: 850,
-	perKmMinor: 230,
-	perMinuteMinor: 45,
-	nearbyPct: 10,
-	readyPct: 5,
-	maxDiscountPct: 15,
-	maxTopUpMinor: 0,
-	finalPriceCapMinor: null as number | null,
+	baseMinor: DEFAULT_DELIVERY_PRICING_TERMS.baseCRC,
+	perKmMinor: DEFAULT_DELIVERY_PRICING_TERMS.perKmCRC,
+	perMinuteMinor: DEFAULT_DELIVERY_PRICING_TERMS.perEstimatedMinuteCRC,
+	nearbyPct: DEFAULT_DELIVERY_PRICING_TERMS.nearbyMaxPct,
+	readyPct: DEFAULT_DELIVERY_PRICING_TERMS.readyMaxPct,
+	maxDiscountPct: DEFAULT_DELIVERY_PRICING_TERMS.combinedMaxPct,
+	maxTopUpMinor: DEFAULT_DELIVERY_PRICING_TERMS.maxTopUpCRC,
+	finalPriceCapMinor: DEFAULT_DELIVERY_PRICING_TERMS.customerPriceCapCRC,
 } as const;
 
 /** Round once, after both road-distance and driving-time components are added. */
 export function routeFeeMinor(
 	distanceMeters: number,
 	durationSeconds: number,
+	terms: DeliveryPricingTerms = DEFAULT_DELIVERY_PRICING_TERMS,
 ): number {
 	if (
 		!Number.isFinite(distanceMeters) ||
@@ -24,13 +31,49 @@ export function routeFeeMinor(
 	)
 		throw new RangeError("Invalid road route metrics");
 	const fee =
-		EXPRESS_V1.baseMinor +
+		terms.baseCRC +
 		Math.round(
-			(distanceMeters * EXPRESS_V1.perKmMinor) / 1_000 +
-				(durationSeconds * EXPRESS_V1.perMinuteMinor) / 60,
+			(distanceMeters * terms.perKmCRC) / 1_000 +
+				(durationSeconds * terms.perEstimatedMinuteCRC) / 60,
 		);
 	if (!Number.isSafeInteger(fee)) throw new RangeError("Delivery fee overflow");
 	return fee;
+}
+
+/** Only estimated road-driving time enters the quote; elapsed tracking time never does. */
+export function priceBreakdown(input: {
+	policyVersion: string;
+	terms: DeliveryPricingTerms;
+	distanceMeters: number;
+	durationSeconds: number;
+	merchantCoversDelivery: boolean;
+}): DeliveryPriceBreakdown {
+	const roadFeeCRC = routeFeeMinor(
+		input.distanceMeters,
+		input.durationSeconds,
+		input.terms,
+	);
+	const distanceCRC = (input.distanceMeters * input.terms.perKmCRC) / 1000;
+	const estimatedDrivingCRC =
+		(input.durationSeconds * input.terms.perEstimatedMinuteCRC) / 60;
+	return {
+		policyVersion: input.policyVersion,
+		baseCRC: input.terms.baseCRC,
+		perKmCRC: input.terms.perKmCRC,
+		perEstimatedMinuteCRC: input.terms.perEstimatedMinuteCRC,
+		distanceCRC,
+		estimatedDrivingCRC,
+		roundingCRC:
+			roadFeeCRC - input.terms.baseCRC - distanceCRC - estimatedDrivingCRC,
+		roadFeeCRC,
+		nearbyDiscountCRC: 0,
+		readyDiscountCRC: 0,
+		topUpCRC: 0,
+		customerFeeCRC: input.merchantCoversDelivery ? 0 : roadFeeCRC,
+		courierPayoutCRC: roadFeeCRC,
+		fundingSource: input.merchantCoversDelivery ? "MERCHANT" : "CUSTOMER",
+		fundedCRC: input.merchantCoversDelivery ? roadFeeCRC : 0,
+	};
 }
 
 /**

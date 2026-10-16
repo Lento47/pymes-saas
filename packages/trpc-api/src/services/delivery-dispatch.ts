@@ -484,6 +484,7 @@ function offerStatements(
 		deliveryId: string;
 		orderId: string;
 		businessName: string;
+		payoutMinor: number | null;
 		candidate: RankedCandidate;
 		now: Date;
 	},
@@ -500,6 +501,7 @@ function offerStatements(
 				status: "PENDING",
 				distanceToPickupKm: input.candidate.distanceToPickupKm,
 				workloadAtOffer: input.candidate.activeRuns,
+				payoutMinor: input.payoutMinor,
 				ratingAtOffer: input.candidate.rating,
 				expiresAt,
 				createdAt: input.now,
@@ -671,6 +673,7 @@ export async function dispatchNext(
 		deliveryId,
 		orderId: row.delivery.orderId,
 		businessName: business.name,
+		payoutMinor: row.order.courierFeeMinor,
 		candidate,
 		now,
 	});

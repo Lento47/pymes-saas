@@ -24,6 +24,9 @@ import {
 } from "./courier";
 
 export const ADMIN_ACTIONS = [
+	"pricing.draft",
+	"pricing.publish",
+	"pricing.grant_access",
 	"business.suspend",
 	"business.reactivate",
 	"business.verify",
@@ -139,6 +142,8 @@ export type AuditLogEntry = z.infer<typeof auditLogEntrySchema>;
  * their storefront, their account, or their money. The other actions may be silent.
  */
 export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
+	"pricing.draft",
+	"pricing.publish",
 	"business.suspend",
 	"business.delete",
 	"user.suspend",

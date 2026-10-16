@@ -15,7 +15,7 @@ import {
 	world,
 } from "./harness";
 
-test("Express is the default; only an active paid shop with an accepted courier may agree a fee", async () => {
+test("Express is the default; only Business with an accepted courier may agree a fee", async () => {
 	const fixture = world();
 	try {
 		delete fixture.env.ROUTE_FEE_ENABLED;

@@ -74,6 +74,7 @@ import {
 } from "@pymeshub/shared";
 
 import { z } from "zod";
+import { deliveryPricingAdminSchema, deliveryPricingPolicySchema, deliveryPricingDraftInput, publishDeliveryPricingInput, simulateDeliveryPricingInput, deliveryPricingSimulationSchema } from "@pymeshub/shared";
 
 import { trpc } from "./marketplace";
 
@@ -259,6 +260,10 @@ const priceBookList = listOf(priceBookRowSchema);
  * that looks like "no businesses exist". It should be loud.
  */
 export const adminApi = {
+  pricingPolicy: async () => deliveryPricingAdminSchema.parse(await trpc.admin.pricingPolicy.query()),
+  simulatePricingPolicy: async (input: z.infer<typeof simulateDeliveryPricingInput>) => deliveryPricingSimulationSchema.parse(await trpc.admin.simulatePricingPolicy.mutate(simulateDeliveryPricingInput.parse(input))),
+  savePricingPolicyDraft: async (input: z.infer<typeof deliveryPricingDraftInput>) => deliveryPricingPolicySchema.parse(await trpc.admin.savePricingPolicyDraft.mutate(deliveryPricingDraftInput.parse(input))),
+  updatePricingPolicy: async (input: z.infer<typeof publishDeliveryPricingInput>) => deliveryPricingPolicySchema.parse(await trpc.admin.updatePricingPolicy.mutate(publishDeliveryPricingInput.parse(input))),
   /**
    * Who the session belongs to, and whether that session is an admin.
    *

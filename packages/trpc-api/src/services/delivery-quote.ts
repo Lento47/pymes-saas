@@ -5,7 +5,8 @@ import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { rateLimit } from "../context";
 import type { Env } from "../env";
 import { ConflictError, ValidationError } from "../errors";
-import { EXPRESS_V1, routeFeeMinor } from "./delivery-pricing";
+import { EXPRESS_V1, priceBreakdown } from "./delivery-pricing";
+import { activeDeliveryPricing } from "./delivery-pricing-admin";
 import type { UserContext } from "./helpers";
 import {
 	createConfiguredRouting,
@@ -82,7 +83,9 @@ function sameCheckout(row: QuoteRow, input: RoadInputs): boolean {
 		row.routeInputKey ===
 			routeInputKey(input.consistentOrigin, input.consistentDestination) &&
 		row.promotionCode === input.promotionCode &&
-		row.pricingVersion === input.pricingVersion &&
+		(row.pricingVersion === input.pricingVersion ||
+			(input.pricingVersion === EXPRESS_V1.version &&
+				row.pricingSnapshot?.policyVersion === row.pricingVersion)) &&
 		row.currency === input.currency &&
 		row.subtotalMinor === input.subtotalMinor &&
 		row.discountMinor === input.discountMinor
@@ -96,6 +99,7 @@ function payload(row: QuoteRow) {
 		distanceMeters: row.distanceMeters,
 		durationSeconds: row.durationSeconds,
 		baseFeeMinor: row.baseFeeMinor,
+		...(row.pricingSnapshot ? { pricingBreakdown: row.pricingSnapshot } : {}),
 		geometry: row.geometry,
 	};
 }
@@ -167,10 +171,28 @@ export async function createRoadQuote(
 		throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
 	}
 	const providerLatencyMs = Date.now() - startedAt;
-	const baseFeeMinor =
+	const policy =
 		input.pricingVersion === EXPRESS_V1.version
-			? routeFeeMinor(route.distanceMeters, route.durationSeconds)
-			: input.legacyFeeMinor;
+			? await activeDeliveryPricing(ctx)
+			: null;
+	const pricingSnapshot = policy
+		? priceBreakdown({
+				policyVersion: policy.version,
+				terms: policy.terms,
+				distanceMeters: route.distanceMeters,
+				durationSeconds: route.durationSeconds,
+				merchantCoversDelivery: input.freeDelivery,
+			})
+		: null;
+	// A cap refuses an unfunded trip before payment; it never silently cuts courier pay.
+	if (
+		policy?.terms.customerPriceCapCRC !== null &&
+		policy?.terms.customerPriceCapCRC !== undefined &&
+		pricingSnapshot &&
+		pricingSnapshot.customerFeeCRC > policy.terms.customerPriceCapCRC
+	)
+		throw new ValidationError("checkout.refusal.deliveryQuoteUnavailable");
+	const baseFeeMinor = pricingSnapshot?.roadFeeCRC ?? input.legacyFeeMinor;
 	const feeMinor = input.freeDelivery ? 0 : baseFeeMinor;
 	const row: QuoteRow = {
 		id: newId("deliveryQuote"),
@@ -185,7 +207,8 @@ export async function createRoadQuote(
 			input.consistentOrigin,
 			input.consistentDestination,
 		),
-		pricingVersion: input.pricingVersion,
+		pricingVersion: policy?.version ?? input.pricingVersion,
+		pricingSnapshot,
 		currency: input.currency,
 		subtotalMinor: input.subtotalMinor,
 		discountMinor: input.discountMinor,

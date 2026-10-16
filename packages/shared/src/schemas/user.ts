@@ -113,6 +113,7 @@ export const userProfileSchema = z.object({
 	image: z.string().nullable(),
 	phone: z.string().nullable(),
 	isAdmin: z.boolean(),
+	canManagePricing: z.boolean().optional(),
 	createdAt: z.date(),
 });
 export type UserProfile = z.infer<typeof userProfileSchema>;

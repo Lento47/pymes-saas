@@ -210,9 +210,18 @@ describe("delivery creation and dispatch", () => {
 			const order = await placeDelivery(ready, "old_route");
 			const [offer] = await courier.caller.deliveries.offers();
 			if (!offer) throw new Error("Expected a ready delivery offer");
+			// The offered payment survives later fee edits and delivery delays.
+			await test.db
+				.update(orderTable)
+				.set({ courierFeeMinor: 9999 })
+				.where(eq(orderTable.id, order.id));
 			const accepted = await courier.caller.deliveries.acceptOffer({
 				offerId: offer.id,
 			});
+			await test.db
+				.update(deliveryTable)
+				.set({ acceptedAt: new Date(Date.now() - 60 * 60 * 1000) })
+				.where(eq(deliveryTable.id, accepted.id));
 			let calls = 0;
 			test.env.ROUTING_SERVICE = {
 				fetch: async () => {
@@ -1361,6 +1370,7 @@ describe("accepted delivery lifecycle and ratings", () => {
 		expect(delivered.status).toBe("DELIVERED");
 		expect(delivered.orderStatus).toBe("COMPLETED");
 		expect(delivered.deliveredAt).not.toBeNull();
+		expect(delivered.courierFeeMinor).toBe(offer.courierFeeMinor);
 
 		const customerRating = await ready.buyer.deliveries.rate({
 			deliveryId: accepted.id,

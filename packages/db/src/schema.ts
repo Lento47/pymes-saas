@@ -266,6 +266,9 @@ export const user = sqliteTable(
 		 * and no sign-up path can set it. It is set in SQL.
 		 */
 		isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
+		canManagePricing: integer("can_manage_pricing", { mode: "boolean" })
+			.notNull()
+			.default(false),
 		/**
 		 * Set by an admin, cleared by an admin. Better Auth can expire a session,
 		 * but "this person may not trade here" is the marketplace's rule and has to
@@ -1117,6 +1120,39 @@ export const address = sqliteTable(
 	(table) => [index("address_user_idx").on(table.userId)],
 );
 
+/** Published terms are immutable; drafts never affect a customer's quote. */
+export const deliveryPricingPolicy = sqliteTable(
+	"delivery_pricing_policy",
+	{
+		id: text("id").primaryKey(),
+		marketCode: text("market_code").notNull().default("CR"),
+		version: text("version").notNull(),
+		previousVersion: text("previous_version").notNull(),
+		revision: integer("revision").notNull().default(0),
+		status: text("status", { enum: ["DRAFT", "ACTIVE", "RETIRED"] })
+			.notNull()
+			.default("DRAFT"),
+		terms: text("terms", { mode: "json" })
+			.$type<import("@pymeshub/shared").DeliveryPricingTerms>()
+			.notNull(),
+		createdByAdminId: text("created_by_admin_id")
+			.notNull()
+			.references(() => user.id),
+		approvedReason: text("approved_reason").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		activeFrom: integer("active_from", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("delivery_pricing_version_unique").on(table.version),
+		uniqueIndex("delivery_pricing_revision_unique")
+			.on(table.marketCode, table.revision)
+			.where(sql`${table.status} != 'DRAFT'`),
+		uniqueIndex("delivery_pricing_parent_unique")
+			.on(table.marketCode, table.previousVersion)
+			.where(sql`${table.status} != 'DRAFT'`),
+	],
+);
+
 /** A short-lived, server-priced road route bound to one customer's checkout inputs. */
 export const deliveryQuote = sqliteTable(
 	"delivery_quote",
@@ -1141,6 +1177,9 @@ export const deliveryQuote = sqliteTable(
 		promotionCode: text("promotion_code"),
 		routeInputKey: text("route_input_key").notNull(),
 		pricingVersion: text("pricing_version").notNull(),
+		pricingSnapshot: text("pricing_snapshot", { mode: "json" }).$type<
+			import("@pymeshub/shared").DeliveryPriceBreakdown
+		>(),
 		currency: text("currency").$type<Currency>().notNull(),
 		subtotalMinor: integer("subtotal_minor").notNull(),
 		discountMinor: integer("discount_minor").notNull(),
@@ -1233,6 +1272,9 @@ export const order = sqliteTable(
 			.default(false),
 		deliveryPricingVersion: text("delivery_pricing_version"),
 		deliveryQuoteId: text("delivery_quote_id"),
+		deliveryPricingSnapshot: text("delivery_pricing_snapshot", {
+			mode: "json",
+		}).$type<import("@pymeshub/shared").DeliveryPriceBreakdown>(),
 		routeDistanceMeters: real("route_distance_meters"),
 		routeDurationSeconds: real("route_duration_seconds"),
 		routeGeometry: text("route_geometry", { mode: "json" }).$type<{
@@ -1361,6 +1403,7 @@ export const delivery = sqliteTable(
 		startedToPickupAt: integer("started_to_pickup_at", {
 			mode: "timestamp_ms",
 		}),
+		acceptedPayoutMinor: integer("accepted_payout_minor"),
 		arrivedPickupAt: integer("arrived_pickup_at", { mode: "timestamp_ms" }),
 		pickedUpAt: integer("picked_up_at", { mode: "timestamp_ms" }),
 		deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
@@ -1397,6 +1440,7 @@ export const deliveryOffer = sqliteTable(
 			.default("PENDING"),
 		distanceToPickupKm: real("distance_to_pickup_km"),
 		workloadAtOffer: integer("workload_at_offer").notNull().default(0),
+		payoutMinor: integer("payout_minor"),
 		ratingAtOffer: real("rating_at_offer"),
 		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
 		respondedAt: integer("responded_at", { mode: "timestamp_ms" }),

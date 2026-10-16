@@ -34,6 +34,7 @@ export * from "./schemas/courier";
 export * from "./schemas/crash-report";
 export * from "./schemas/customization";
 export * from "./schemas/delivery";
+export * from "./schemas/delivery-pricing";
 export * from "./schemas/device";
 export * from "./schemas/idea";
 export * from "./schemas/identity";

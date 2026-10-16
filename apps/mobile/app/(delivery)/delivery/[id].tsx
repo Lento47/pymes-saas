@@ -595,7 +595,9 @@ function TaskSheet({
 				status={delivery.status}
 				motion={motion}
 			/>
-
+			<Text variant="caption" style={{ color: motion.sheetMuted }}>
+				{t("delivery.priceFixed")}
+			</Text>
 			<View style={styles.contacts}>
 				<ContactButton
 					label={t("delivery.motion.call")}

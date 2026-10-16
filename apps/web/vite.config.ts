@@ -125,6 +125,8 @@ export default defineConfig({
   },
   // Vitest configuration
   test: {
+    // Let Vite's React deduplication cover dependencies during UI tests too.
+    server: { deps: { inline: [/@tanstack\/react-query/, /wouter/, /@radix-ui/, /framer-motion/] } },
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],

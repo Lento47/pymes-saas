@@ -497,7 +497,7 @@ describe("platform console contracts", () => {
 
 			w.close();
 		});
-/**
+		/**
 		 * The aggregate sorts are the ones that build a **correlated subquery**, and they were
 		 * the only sorts never exercised here — `newest` and `name` are a bare column, so the
 		 * suite stayed green while `admin.businesses` answered 500 in production the moment an
@@ -508,7 +508,10 @@ describe("platform console contracts", () => {
 		 */
 		test("sorts by the aggregate columns, which are correlated subqueries", async () => {
 			const w = world();
-			const operator = await seedUser(w.db, { id: "usr_agg_sort", isAdmin: true });
+			const operator = await seedUser(w.db, {
+				id: "usr_agg_sort",
+				isAdmin: true,
+			});
 			const ctx = requireAuthed(await contextFor(w, operator));
 			await seedBusiness(w.db, { id: "biz_agg_a", name: "Alfa" });
 			await seedBusiness(w.db, { id: "biz_agg_b", name: "Zeta" });
@@ -1005,6 +1008,9 @@ describe("platform console contracts", () => {
 				id: "usr_revok_target",
 				isAdmin: true,
 			});
+			w.sqlite
+				.query("UPDATE user SET can_manage_pricing=1 WHERE id=?")
+				.run(target.id);
 			const ctx = requireAuthed(await contextFor(w, operator));
 
 			const row = await admin.revokeAdmin(ctx, {
@@ -1012,6 +1018,11 @@ describe("platform console contracts", () => {
 				reason: "Dejamos de pertenecer al equipo",
 			});
 			expect(row.isAdmin).toBe(false);
+			expect(
+				w.sqlite
+					.query("SELECT can_manage_pricing AS allowed FROM user WHERE id=?")
+					.get(target.id),
+			).toEqual({ allowed: 0 });
 
 			const entry = w.sqlite
 				.query("select action, meta as m from audit_log")

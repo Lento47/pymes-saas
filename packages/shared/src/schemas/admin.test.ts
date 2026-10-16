@@ -13,6 +13,10 @@ import {
 	adminVerificationDecisionInput,
 	affiliationRevokeInput,
 } from "./affiliation";
+import {
+	deliveryPricingDraftInput,
+	publishDeliveryPricingInput,
+} from "./delivery-pricing";
 
 /**
  * An action that demands a reason must have somewhere to put one.
@@ -57,6 +61,8 @@ import {
  * does — the key must exist, its optionality is the service's decision, not this test's.
  */
 const REASON_INPUTS: Record<string, { shape: Record<string, unknown> }> = {
+	"pricing.draft": deliveryPricingDraftInput,
+	"pricing.publish": publishDeliveryPricingInput,
 	"business.suspend": adminActionInput,
 	"business.delete": adminActionInput,
 	"user.suspend": adminActionInput,

@@ -12,13 +12,17 @@ import {
 	adminVerificationDecisionInput,
 	adminVerificationQueueInput,
 	createPriceBookInput,
+	deliveryPricingDraftInput,
+	publishDeliveryPricingInput,
 	recordPaymentInput,
+	simulateDeliveryPricingInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
 
 import * as admin from "../services/admin";
 import * as adminContent from "../services/admin-content";
 import * as businessVerification from "../services/business-verification";
+import * as pricing from "../services/delivery-pricing-admin";
 import * as subscriptions from "../services/subscription";
 import { adminProcedure, router } from "../trpc";
 
@@ -38,6 +42,16 @@ import { adminProcedure, router } from "../trpc";
  * renders from.
  */
 export const adminRouter = router({
+	pricingPolicy: adminProcedure.query(({ ctx }) => pricing.pricingPolicy(ctx)),
+	simulatePricingPolicy: adminProcedure
+		.input(simulateDeliveryPricingInput)
+		.mutation(({ ctx, input }) => pricing.simulatePricingPolicy(ctx, input)),
+	savePricingPolicyDraft: adminProcedure
+		.input(deliveryPricingDraftInput)
+		.mutation(({ ctx, input }) => pricing.savePricingPolicyDraft(ctx, input)),
+	updatePricingPolicy: adminProcedure
+		.input(publishDeliveryPricingInput)
+		.mutation(({ ctx, input }) => pricing.updatePricingPolicy(ctx, input)),
 	metrics: adminProcedure.query(({ ctx }) => admin.metrics(ctx)),
 
 	/**
@@ -92,7 +106,9 @@ export const adminRouter = router({
 	 */
 	verificationQueue: adminProcedure
 		.input(adminVerificationQueueInput)
-		.query(({ ctx, input }) => businessVerification.verificationQueue(ctx, input)),
+		.query(({ ctx, input }) =>
+			businessVerification.verificationQueue(ctx, input),
+		),
 
 	/**
 	 * Approve an application. The queue's yes.

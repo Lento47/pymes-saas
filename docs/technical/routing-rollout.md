@@ -30,11 +30,40 @@ driving-time calculator by default. Explicit `ROUTE_FEE_ENABLED=false` remains
 a legacy compatibility switch. Staging keeps its separate fixed-price rollout.
 
 Businesses start in `EXPRESS` pricing mode (migration `0034_delivery_pricing_mode`).
-`AFFILIATED` fixed fees require a paid effective subscription and an accepted,
+`AFFILIATED` fixed fees require an effective **Business** subscription and an accepted,
 active courier membership. Losing eligibility returns new quotes to Express.
 An affiliated order retains its agreed pricing version and dispatches only to
 active affiliated couriers. Merchant-sponsored delivery charges the customer zero
 while keeping the calculated courier fee payable by the merchant.
+
+Express policy management is in **Admin console → Operaciones → Tarifas express**.
+Apply migration `0035_express_pricing_policy` before deploying its API. General admins
+can read; only an existing admin explicitly granted `user.can_manage_pricing` can
+save drafts, simulate, or publish. No merchant role or subscription grants this power.
+The CR default is ₡850 + ₡230 per road km + ₡45 per estimated driving minute, rounded
+once to whole colones (4 km / 12 min = ₡2,310). Minutes are an input to the initial
+quote, never a running meter.
+
+Publishing requires a reason and expected previous version. Concurrent publications
+have one winner, and the policy change and audit entry share a D1 batch. Published
+terms cannot be edited or deleted. Scheduled terms start at `activeFrom`; the latest
+published history still supplies current prices until then. Restore an older tariff
+by publishing a new version with those terms, preserving the history.
+
+An unexpired checkout quote retains its original policy and financial snapshot after
+a new publication. Expired quotes require reconfirmation. Orders copy that snapshot;
+delivery requests copy the courier payout and acceptance locks that offered payout.
+GPS, delays, tracking ETA and order-status transitions never add charges. Merchant
+free delivery records customer charge ₡0 and the merchant's courier obligation.
+
+Proximity discounts, READY credits and dynamic top-ups are **disabled and rejected
+by validation**, with top-up ₡0. Future enablement requires verified live courier
+eligibility, road-matrix evidence, funded contribution margin and an idempotent
+transactional budget; READY also requires real post-payment credit support. A price
+cap defaults to null. If configured, an over-cap customer charge refuses the route
+before payment rather than silently reducing courier pay. Nothing reserves or spends
+an incentive budget in this initial rollout. Existing routing latency/failure logs
+remain; pricing publication logs only actor/version/date, never addresses or GPS.
 
 Orders enter courier dispatch at `READY`. Saving the order's own missing destination
 pin can recover a legacy waiting delivery; other saved addresses never redirect it.
@@ -77,10 +106,11 @@ a public road-aligned point for that sample. These samples test the private
 graph and refusal behavior; they are not verified customer or shop entrances.
 `packages/trpc-api` rejects even a malformed provider response that reports
 a route farther than 250 m from either selected pin. Staging API version above
-contains that check; production road pricing remains disabled.
+contains that check; production now uses the road pricing configuration described above.
 
-1. Staging has `ROUTING_ENABLED=true` with `ROUTE_FEE_ENABLED` unset. Checkout
-   keeps the shop's fixed delivery charge, but a successful route supplies road
+1. For routing-only verification, set `ROUTING_ENABLED=true` and explicitly set
+   `ROUTE_FEE_ENABLED=false`. In the current API an unset fee flag enables CRC road
+   pricing. With the explicit legacy setting, checkout keeps the shop's fixed delivery charge, but a successful route supplies road
    distance, driving time, and geometry. If the provider fails or a saved pin lacks
    coordinates, checkout keeps the fixed fee and reports `routingStatus: UNAVAILABLE`. Older
    clients can still place orders without a route quote.

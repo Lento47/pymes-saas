@@ -43,6 +43,7 @@ import type { UserContext } from "./helpers";
 export function auditStatement(
 	ctx: UserContext,
 	input: {
+		id?: string;
 		action: AdminAction;
 		targetType: string;
 		targetId: string;
@@ -55,7 +56,7 @@ export function auditStatement(
 	},
 ) {
 	return ctx.db.insert(auditLogTable).values({
-		id: newId("auditLog"),
+		id: input.id ?? newId("auditLog"),
 		actorUserId: ctx.user.id,
 		action: input.action,
 		targetType: input.targetType,

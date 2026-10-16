@@ -1513,7 +1513,9 @@ export const business = {
 	"biz.settings.delivery.automatic": "Automatic Express",
 	"biz.settings.delivery.agreed": "Agreed fee",
 	"biz.settings.delivery.automaticHelp":
-		"Express calculates the price using the road distance and driving time. An agreed fee requires a paid plan and an affiliated courier.",
+		"Express fixes the price using the estimated road route. Only the Business plan allows an agreed fee with an affiliated courier.",
 	"biz.settings.delivery.affiliatedRequired":
-		"To set an agreed delivery fee, use a paid plan and add an affiliated courier who has accepted your invitation.",
+		"To set an agreed delivery fee, you need the Business plan and an affiliated courier who has accepted your invitation.",
+	"delivery.priceFixed":
+		"Fixed pay for this delivery. Delays do not change it.",
 } as const;

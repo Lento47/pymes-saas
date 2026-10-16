@@ -787,7 +787,6 @@ export async function update(
 		if (
 			input.deliveryFeeMinor !== undefined &&
 			input.deliveryFeeMinor > 0 &&
-			input.deliveryFeeMinor !== existing.fee &&
 			!(await canSetDeliveryFee(ctx.db, businessId))
 		)
 			throw new ForbiddenError("biz.settings.delivery.affiliatedRequired");
@@ -993,7 +992,7 @@ export async function create(
 	const located = input.lat !== undefined && input.lng !== undefined;
 
 	await assertLeafCategory(ctx, input.categoryId);
-	if (input.deliveryPricingMode === "AFFILIATED")
+	if (input.deliveryPricingMode === "AFFILIATED" || input.deliveryFeeMinor > 0)
 		throw new ForbiddenError("biz.settings.delivery.affiliatedRequired");
 
 	// Narrowed into locals so the write below reads a `number` and not a `number |

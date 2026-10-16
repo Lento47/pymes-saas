@@ -293,6 +293,10 @@ export const customer = {
 	"checkout.location.routeMap": "Map showing the shop pickup and delivery pins",
 	"checkout.location.none": "This shop has no pickup location available yet.",
 	"checkout.roadRoute": "{distance} km by road · about {minutes} min driving",
+	"checkout.deliveryFixed":
+		"Price fixed at confirmation. Delays do not increase it.",
+	"checkout.deliveryBreakdown":
+		"Base {base} · Distance {distance} · Estimated driving {driving}",
 	"checkout.roadRouteUnavailable":
 		"Road route unavailable. The shop's fixed delivery charge applies.",
 	"checkout.deliveryCoveredByMerchant":

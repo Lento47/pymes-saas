@@ -885,6 +885,7 @@ export function userProfileOf(row: UserRow): UserProfile {
 		image: row.image,
 		phone: row.phone,
 		isAdmin: row.isAdmin,
+		canManagePricing: row.isAdmin && row.canManagePricing,
 		createdAt: row.createdAt,
 	};
 }

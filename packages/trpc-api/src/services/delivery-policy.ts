@@ -3,13 +3,13 @@ import { effectivePlan } from "@pymeshub/shared";
 import { and, eq } from "drizzle-orm";
 import { loadBilling } from "../context";
 
-/** A fixed courier agreement requires a paid subscription and an accepted affiliation. */
+/** A fixed courier agreement requires Business tier and an accepted affiliation. */
 export async function canSetDeliveryFee(
 	db: Db,
 	businessId: string,
 ): Promise<boolean> {
 	const billing = await loadBilling(db, businessId, new Date());
-	if (effectivePlan(billing.plan, billing.status) === "FREE") return false;
+	if (effectivePlan(billing.plan, billing.status) !== "BUSINESS") return false;
 	const [courier] = await db
 		.select({ id: membership.id })
 		.from(membership)

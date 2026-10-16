@@ -328,7 +328,7 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 				.filter(Boolean)
 				.join(", "),
 			distanceToPickupKm: offer.distanceToPickupKm,
-			courierFeeMinor,
+			courierFeeMinor: offer.payoutMinor ?? courierFeeMinor,
 			customerDeliveryFeeMinor,
 			merchantCoversDelivery,
 			expiresAt: offer.expiresAt,
@@ -356,8 +356,12 @@ export async function acceptOffer(
 	if (!offer) throw new NotFoundError();
 	const deliveryRow = (
 		await ctx.db
-			.select({ orderId: deliveryTable.orderId })
+			.select({
+				orderId: deliveryTable.orderId,
+				payoutMinor: orderTable.courierFeeMinor,
+			})
 			.from(deliveryTable)
+			.innerJoin(orderTable, eq(orderTable.id, deliveryTable.orderId))
 			.where(eq(deliveryTable.id, offer.deliveryId))
 			.limit(1)
 	)[0];
@@ -424,6 +428,7 @@ export async function acceptOffer(
 						status: "ACCEPTED",
 						courierUserId: ctx.user.id,
 						acceptedAt: now,
+						acceptedPayoutMinor: offer.payoutMinor ?? deliveryRow.payoutMinor,
 						updatedAt: now,
 					})
 					.where(
@@ -762,6 +767,7 @@ async function readDetail(
 					dropoffPhone: deliveryTable.dropoffPhone,
 					dropoffInstructions: deliveryTable.dropoffInstructions,
 					acceptedAt: deliveryTable.acceptedAt,
+					acceptedPayoutMinor: deliveryTable.acceptedPayoutMinor,
 					arrivedPickupAt: deliveryTable.arrivedPickupAt,
 					pickedUpAt: deliveryTable.pickedUpAt,
 					deliveredAt: deliveryTable.deliveredAt,
@@ -896,7 +902,8 @@ async function readDetail(
 		orderStatus: row.order.status,
 		totalMinor: row.order.totalMinor,
 		currency: row.order.currency,
-		courierFeeMinor: row.order.courierFeeMinor,
+		courierFeeMinor:
+			row.delivery.acceptedPayoutMinor ?? row.order.courierFeeMinor,
 		customerDeliveryFeeMinor: row.order.customerDeliveryFeeMinor,
 		merchantCoversDelivery: row.order.merchantCoversDelivery,
 		acceptedAt: row.delivery.acceptedAt,

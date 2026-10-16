@@ -60,6 +60,7 @@ describe("console groups", () => {
     expect(tabsInGroup("operations")).toEqual([
       "approvals",
       "orders",
+      "express-pricing",
       "billing",
       "support",
     ]);

@@ -585,6 +585,9 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 							area={offer.dropoffArea || t("location.pinned")}
 							motion={motion}
 						/>
+						<Text variant="caption" style={{ color: motion.sheetMuted }}>
+							{t("delivery.priceFixed")}
+						</Text>
 						{offerExpired ? (
 							<Text variant="body" style={{ color: motion.sheetMuted }}>
 								{t("delivery.motion.offer.expired")}

@@ -97,6 +97,7 @@ import {
   type SubscriptionStatus,
 } from "@/lib/admin";
 import { CatalogueTab } from "./console-catalogue";
+import { ExpressPricingTab } from "./console-express-pricing";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { ConsoleEnvBadge } from "./console-env-badge";
 import { money, toMinor } from "./console-money";
@@ -4768,6 +4769,10 @@ function AdminConsole() {
                   <PriceBooksTab />
                 </CardContent>
               </Card>
+            </Panel>
+
+            <Panel when={tab === "express-pricing"}>
+              <ExpressPricingTab />
             </Panel>
 
             <Panel when={tab === "categories"}>

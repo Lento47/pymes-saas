@@ -70,6 +70,7 @@ export const CONSOLE_TABS = [
   { value: "overview", label: "Resumen", group: "general" },
   { value: "approvals", label: "Aprobaciones", group: "operations" },
   { value: "orders", label: "Órdenes", group: "operations" },
+  { value: "express-pricing", label: "Tarifas express", group: "operations" },
   { value: "billing", label: "Cobros", group: "operations" },
   { value: "support", label: "Soporte", group: "operations" },
   { value: "businesses", label: "Negocios", group: "directory" },
@@ -128,6 +129,10 @@ export const TAB_PURPOSE: Record<
     title: "Órdenes",
     description:
       "Cada pedido de la plataforma, con su pago y su historial de estados.",
+  },
+  "express-pricing": {
+    title: "Tarifas express",
+    description: "Precios fijos por entrega. Los cambios se aplican a nuevas cotizaciones.",
   },
   billing: {
     title: "Cobros",
