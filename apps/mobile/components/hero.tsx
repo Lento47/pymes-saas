@@ -108,6 +108,7 @@ type HeroProps = {
 	/** The marketplace's shield, and its word for a screen reader. */
 	verified?: boolean;
 	isOpen: boolean;
+	statusSummary?: { label: string; accessibilityLabel: string } | null;
 	/**
 	 * The shop's facts, already composed: one `./facts` row of formatted chips.
 	 *
@@ -140,6 +141,7 @@ export function Hero({
 	logoUrl,
 	verified = false,
 	isOpen,
+	statusSummary,
 	facts,
 	action,
 	leading,
@@ -259,8 +261,17 @@ export function Hero({
 									{ backgroundColor: isOpen ? ink.open : ink.closed },
 								]}
 							/>
-							<Text variant="label" style={{ color: ink.text }}>
+							<Text
+								variant="caption"
+								style={{ color: ink.text, flex: 1 }}
+								accessibilityLabel={
+									statusSummary
+										? `${open}. ${statusSummary.accessibilityLabel}`
+										: open
+								}
+							>
 								{open}
+								{statusSummary ? ` · ${statusSummary.label}` : ""}
 							</Text>
 						</View>
 					</View>

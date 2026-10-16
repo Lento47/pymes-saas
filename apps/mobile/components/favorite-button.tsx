@@ -7,19 +7,21 @@ import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
 	withSequence,
-	withSpring,
 	withTiming,
 } from "react-native-reanimated";
-
+import { mixHex } from "@/lib/color";
 import { type FavoriteTarget, useFavorites } from "@/lib/favorites";
 import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
-import { duration, STATE_POP, spring } from "@/lib/motion";
+import { duration } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
-import { MIN_TOUCH_TARGET, useTheme } from "@/theme";
+import { MIN_TOUCH_TARGET, radius, useTheme } from "@/theme";
 
 import { Pressable } from "./pressable";
 import { useRollback } from "./rollback-surface";
+
+/** Saved favorites have their own rose ink, independent of brand and danger colors. */
+const FAVORITE_INK = { light: "#B72E55", dark: "#FF8FA9" } as const;
 
 /**
  * The heart on a shop and on a dish.
@@ -42,27 +44,13 @@ import { useRollback } from "./rollback-surface";
  *
  * ## The colour
  *
- * The filled heart is `primary` rather than the conventional red: the palette's red is
- * `destructive`, and it names a danger. A saved shop is not a danger, and a token borrowed
- * for its hue is how one of them gets recoloured and takes the other with it. Filled
- * against outline is the difference that survives a colour-blind reader either way.
+ * Rose identifies saved items independently of brand colors. The round surface is
+ * tinted from the active theme, so the heart stays readable over photographs.
  *
  * ## The heart pops when the state changes, and only then
  *
- * A filled heart appearing under a thumb is easy to miss on a card the reader is already
- * moving past, so the change gets one movement: `lib/motion`'s `STATE_POP`, then
- * `spring.press` back to rest. Three things keep it honest rather than decorative —
- *
- * - It is driven by `favorited`, which is the same value the icon and the accessibility
- *   state read, so it cannot celebrate a change that did not happen. That includes the
- *   **rollback**: when `@/lib/favorites` takes an optimistic add back because the API
- *   refused it, this pops in the other direction, which is the visual half of the
- *   `warning()` haptic that fires beside it.
- * - The first render is skipped. A feed of twelve cards mounts twelve of these, and all
- *   twelve would otherwise pop at once on arrival — a screen-wide twitch that says nothing.
- * - Reduced motion drops the travel and keeps the state. The icon still goes outline to
- *   filled and still changes colour, which is the signal; the pop is the echo. Nothing
- *   here is left off, because nothing here is the only way to read the state.
+ * Saving gives the icon one restrained pulse; removing or rolling back restores
+ * the outline immediately. Initial renders and reduced motion never animate.
  */
 export function FavoriteButton({
 	target,
@@ -72,7 +60,8 @@ export function FavoriteButton({
 	/** Layout only — a caller pinning the heart to a corner passes the pinning. */
 	style?: StyleProp<ViewStyle>;
 }) {
-	const { colors } = useTheme();
+	const { colors, scheme } = useTheme();
+	const favoriteInk = FAVORITE_INK[scheme];
 	const { t } = useT();
 	const { isFavorited, toggle, signedIn, isPending, error } = useFavorites();
 	const rollback = useRollback();
@@ -81,10 +70,7 @@ export function FavoriteButton({
 	const name =
 		target.kind === "business" ? target.card.name : target.card.title;
 
-	/**
-	 * The pop. See the docblock's "The heart pops when the state changes" for the three
-	 * things that make it honest; the magnitudes are `lib/motion`'s and none is typed here.
-	 */
+	/** Only the icon moves; the touch target stays still. */
 	const scale = useSharedValue(1);
 	const reduceMotion = useReducedMotion();
 	// Seeded with the value this heart mounted at, so the first render is not a change —
@@ -102,9 +88,14 @@ export function FavoriteButton({
 		}
 		if (shown.current === favorited) return;
 		shown.current = favorited;
+		if (!favorited) {
+			cancelAnimation(scale);
+			scale.value = 1;
+			return;
+		}
 		scale.value = withSequence(
-			withTiming(STATE_POP, { duration: duration.instant }),
-			withSpring(1, spring.press),
+			withTiming(1.08, { duration: duration.instant }),
+			withTiming(1, { duration: duration.standard }),
 		);
 	}, [favorited, reduceMotion, scale]);
 
@@ -133,6 +124,7 @@ export function FavoriteButton({
 
 	return (
 		<Pressable
+			scaleTo={1}
 			onPress={() => {
 				if (!signedIn) {
 					router.push("/sign-in");
@@ -149,13 +141,26 @@ export function FavoriteButton({
 			// favoritos" alone does not say which one is about to be saved.
 			accessibilityHint={name}
 			accessibilityState={{ selected: favorited, busy: isPending }}
-			style={[styles.button, style]}
+			style={[
+				styles.button,
+				{
+					backgroundColor: favorited
+						? mixHex(colors.card, favoriteInk, scheme === "dark" ? 0.76 : 0.94)
+						: mixHex(
+								colors.card,
+								colors.foreground,
+								scheme === "dark" ? 0.88 : 0.99,
+							),
+					borderColor: favorited ? `${favoriteInk}50` : colors.border,
+				},
+				style,
+			]}
 		>
 			<Animated.View style={pop}>
 				<Ionicons
 					name={favorited ? "heart" : "heart-outline"}
-					size={22}
-					color={favorited ? colors.action : colors.mutedForeground}
+					size={24}
+					color={favorited ? favoriteInk : colors.foreground}
 					// The label is on the button and already says the state; an icon announced
 					// beside it would read the same thing twice.
 					accessibilityElementsHidden
@@ -178,5 +183,7 @@ const styles = StyleSheet.create({
 		// `Ionicons` above rather than by `icon`, because its box is this one and not a role.
 		width: MIN_TOUCH_TARGET,
 		height: MIN_TOUCH_TARGET,
+		borderRadius: radius.full,
+		borderWidth: StyleSheet.hairlineWidth,
 	},
 });

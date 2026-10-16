@@ -50,16 +50,13 @@ import { Text } from "@/components/text";
 import { toApiFailure } from "@/lib/api-error";
 import { useSession } from "@/lib/auth/session";
 import { bandAnchor, contrastRatio } from "@/lib/color";
-import {
-	formatAtMostOneDecimal,
-	formatMinuteOfDay,
-	formatOneDecimal,
-} from "@/lib/format";
+import { formatAtMostOneDecimal, formatOneDecimal } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
 import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { useStoreHoursSummary } from "@/lib/use-store-hours-summary";
 import {
 	radius,
 	space,
@@ -235,41 +232,6 @@ const NO_IDS: readonly string[] = [];
 
 /** The offset key for a menu that is not grouped — a shop whose products have no category. */
 const ALL_GROUPS_KEY = "__all";
-
-/**
- * When the shop opens, for a shop that is closed now — or `null`.
- *
- * The formatted time rather than a key and params, because one sentence is left and the `t()`
- * call stays at the call site. It used to answer a closed *day* with `store.hours.closedToday`
- * ("Hoy cerrado") as well; that line repeated the hero's own "Cerrado" and the "Hoy" row
- * `./hours-table` prints just below, so the state keeps one voice per surface now: the hero
- * states it, the table gives the reason, and this line only says when the shop opens. See the
- * docblock above for the weekday.
- */
-function closedUntil(
-	hours: readonly BusinessHoursEntry[],
-	isOpen: boolean,
-	intlLocale: string,
-): string | null {
-	// Open now is the hero's own word; this line exists only to say when a shut shop opens.
-	if (isOpen) return null;
-
-	const today = new Date().getDay();
-	const entry = hours.find((row) => row.day === today);
-	if (!entry) return null;
-
-	// A closed day has nothing to add: `./hours-table`'s "Hoy" row already reads "Cerrado", and
-	// a range that `businessHoursEntrySchema` would have rejected is the same silence.
-	if (entry.isClosed || entry.closesMinute <= entry.opensMinute) return null;
-
-	const now = new Date();
-	const minutesNow = now.getHours() * 60 + now.getMinutes();
-	// Already past today's opening: the shop has opened and closed since, and the honest next
-	// answer would be tomorrow's row — which is the timezone claim this screen does not make.
-	if (entry.opensMinute <= minutesNow) return null;
-
-	return formatMinuteOfDay(entry.opensMinute, intlLocale);
-}
 
 /**
  * The shop's facts, composed once for the hero.
@@ -576,7 +538,7 @@ export default function Store() {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const offerSelection = useOfferSelection();
-	const { t, tp, locale, intlLocale } = useT();
+	const { t, tp, locale } = useT();
 	const { status } = useSession();
 	const bar = useActionBarClearance();
 	/**
@@ -740,7 +702,7 @@ export default function Store() {
 
 	const hours = store.data?.hours ?? NO_HOURS;
 	const isOpen = store.data?.isOpen ?? false;
-	const opensAt = closedUntil(hours, isOpen, intlLocale);
+	const statusSummary = useStoreHoursSummary(hours, isOpen);
 
 	/**
 	 * The rail's groups, in the page's own order.
@@ -854,6 +816,7 @@ export default function Store() {
 										logoUrl={card.logoUrl}
 										verified={card.isVerified}
 										isOpen={isOpen}
+										statusSummary={statusSummary}
 										facts={<StoreFacts card={card} />}
 										leading={<BackButton to="/" surface />}
 										action={
@@ -898,9 +861,16 @@ export default function Store() {
 												<Text variant="title" bold style={{ color: brandInk }}>
 													{card.name}
 												</Text>
-												<Text variant="body" style={{ color: brandInk }}>
-													{isOpen ? t("store.open") : t("store.closed")} ·{" "}
+												<Text variant="caption" style={{ color: brandInk }}>
 													{card.city}
+												</Text>
+												<Text
+													variant="caption"
+													style={{ color: brandInk }}
+													accessibilityLabel={`${isOpen ? t("store.open") : t("store.closed")}. ${statusSummary?.accessibilityLabel ?? ""}`}
+												>
+													{isOpen ? t("store.open") : t("store.closed")}
+													{statusSummary ? ` · ${statusSummary.label}` : ""}
 												</Text>
 											</View>
 										</View>
@@ -913,22 +883,9 @@ export default function Store() {
 									</View>
 								) : null}
 
-								{/* When the shut shop opens — the hero says "Cerrado" and this says
-							    when that ends. A closed day draws nothing: the "Hoy" row in
-							    `./hours-table` below is its reason. */}
-								{opensAt === null ? null : (
-									<View style={styles.pad}>
-										<Text variant="body" tone="muted">
-											{t("store.closed.until", { time: opensAt })}
-										</Text>
-									</View>
-								)}
-
 								<ShopCustomizationSections
 									appearance={appearance}
 									card={card}
-									hours={hours}
-									isOpen={isOpen}
 								/>
 
 								{/* The field sits last in the head, immediately above the menu it

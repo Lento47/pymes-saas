@@ -9,6 +9,7 @@ import {
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { bandAnchor, contrastRatio } from "@/lib/color";
 import { useT } from "@/lib/i18n";
+import { useStoreHoursSummary } from "@/lib/use-store-hours-summary";
 import { radius, space, ThemeColorsOverrideProvider, useTheme } from "@/theme";
 import { Image } from "./image";
 import { ShopBrandAccent } from "./shop-brand-accent";
@@ -26,6 +27,10 @@ export function ShopCustomizationPreview({
 	products: ProductCard[];
 }) {
 	const { t, intlLocale } = useT();
+	const statusSummary = useStoreHoursSummary(
+		storefront.hours,
+		storefront.isOpen,
+	);
 	const { colors } = useTheme();
 	const { fontScale } = useWindowDimensions();
 	const largeText = fontScale >= 1.5;
@@ -120,9 +125,15 @@ export function ShopCustomizationPreview({
 									{storefront.card.name}
 								</Text>
 								<Text variant="caption" style={{ color: headerInk }}>
-									{storefront.isOpen ? t("store.open") : t("store.closed")}
-									{" · "}
 									{storefront.card.city}
+								</Text>
+								<Text
+									variant="caption"
+									style={{ color: headerInk }}
+									accessibilityLabel={`${storefront.isOpen ? t("store.open") : t("store.closed")}. ${statusSummary?.accessibilityLabel ?? ""}`}
+								>
+									{storefront.isOpen ? t("store.open") : t("store.closed")}
+									{statusSummary ? ` · ${statusSummary.label}` : ""}
 								</Text>
 							</View>
 						</View>
@@ -132,8 +143,6 @@ export function ShopCustomizationPreview({
 					<ShopCustomizationSections
 						appearance={appearance}
 						card={storefront.card}
-						hours={storefront.hours}
-						isOpen={storefront.isOpen}
 						preview
 					/>
 				</View>

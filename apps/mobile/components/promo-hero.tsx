@@ -1,9 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import type { PromotionCard as Promotion } from "@pymeshub/shared";
+import { formatMoney, type PromotionCard as Promotion } from "@pymeshub/shared";
 import { router } from "expo-router";
 import type { StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, View } from "react-native";
-
+import { bandAnchor, mixHex } from "@/lib/color";
 import { useT } from "@/lib/i18n";
 import {
 	type OfferSelection,
@@ -149,14 +149,21 @@ export function PromoReminder({
 	offer: OfferSelection;
 	compact?: boolean;
 }) {
-	const { colors, scheme } = useTheme();
+	const { colors } = useTheme();
 	const { t, intlLocale } = useT();
-	const spotlightInk =
-		scheme === "dark" ? colors.accentForeground : colors.background;
 	const { benefit, minimum, eligibility } = promotionCopy(offer, t, intlLocale);
 	const condition = minimum ?? eligibility;
 	const codeLabel = t("home.promotion.code", { code: offer.code });
 	const readyLabel = t("store.promotion.ready");
+	const saving =
+		offer.kind === "PERCENT"
+			? `${offer.value}%`
+			: offer.kind === "FIXED"
+				? formatMoney(offer.value, offer.currency, { locale: intlLocale })
+				: null;
+	const offerInk = bandAnchor(colors.price, colors.card);
+	const couponSurface = mixHex(colors.card, colors.price, 0.93);
+	const couponInk = bandAnchor(colors.price, couponSurface);
 
 	if (compact)
 		return (
@@ -195,30 +202,80 @@ export function PromoReminder({
 		);
 
 	return (
-		<Card tone="spotlight">
-			<View style={styles.body}>
-				<Text variant="heading" bold style={{ color: spotlightInk }}>
-					{benefit}
-				</Text>
-				<View style={[styles.chip, { backgroundColor: colors.primary }]}>
-					<Text variant="label" tone="inverse" bold tabular>
-						{codeLabel}
+		<Card elevation="flat">
+			<View style={styles.reminderBody}>
+				<View style={styles.saving} accessible accessibilityLabel={benefit}>
+					<Text variant="title" bold tabular style={{ color: offerInk }}>
+						{saving ?? benefit}
 					</Text>
+					{saving ? (
+						<Text variant="label" bold>
+							{t("store.promotion.off")}
+						</Text>
+					) : null}
 				</View>
-				<Text variant="caption" style={{ color: spotlightInk }}>
-					{readyLabel}
-				</Text>
 				{condition ? (
-					<Text variant="caption" style={{ color: spotlightInk }}>
+					<Text variant="caption" tone="muted">
 						{condition}
 					</Text>
 				) : null}
+				<View
+					style={[
+						styles.coupon,
+						{
+							backgroundColor: couponSurface,
+							borderColor: `${couponInk}70`,
+						},
+					]}
+				>
+					<Text
+						variant="caption"
+						tone="muted"
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					>
+						{t("store.promotion.codeLabel")}
+					</Text>
+					<Text
+						variant="label"
+						bold
+						tabular
+						selectable
+						accessibilityLabel={codeLabel}
+						style={[styles.couponCode, { color: couponInk }]}
+					>
+						{offer.code}
+					</Text>
+				</View>
+				<Text variant="caption" tone="muted">
+					{readyLabel}
+				</Text>
 			</View>
 		</Card>
 	);
 }
 
 const styles = StyleSheet.create({
+	reminderBody: { gap: space.sm },
+	saving: {
+		flexDirection: "row",
+		alignItems: "baseline",
+		flexWrap: "wrap",
+		gap: space.sm,
+	},
+	coupon: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		flexWrap: "wrap",
+		gap: space.sm,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
+		borderWidth: 1,
+		borderStyle: "dashed",
+		borderRadius: radius.md,
+	},
+	couponCode: { flexShrink: 1, letterSpacing: 0.6 },
 	// The banner is a hero: `lg` inside as well as out, which is the step
 	// `docs/design-mobile.md` gives "sheets and heroes". The gap is `TEXT_STACK_GAP` because
 	// the lines are one text stack — the same number `./product-tile` stacks its body

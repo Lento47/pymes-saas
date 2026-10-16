@@ -1,6 +1,5 @@
 import type {
 	BusinessCard,
-	BusinessHoursEntry,
 	ProductCard,
 	StorefrontAppearance,
 } from "@pymeshub/shared";
@@ -11,25 +10,20 @@ import { useT } from "@/lib/i18n";
 import { useTRPC } from "@/lib/trpc/context";
 import { radius, space, useTheme } from "@/theme";
 import { ErrorState } from "./error-state";
-import { HoursTable } from "./hours-table";
 import { ProductRail } from "./product-rail";
 import { ProductRow } from "./product-row";
-import { ProductRowsSkeleton } from "./skeletons";
 import { SectionHeader } from "./section-header";
+import { ProductRowsSkeleton } from "./skeletons";
 import { Text } from "./text";
 
 /** The same optional content in the editor preview and the customer's shop. */
 export function ShopCustomizationSections({
 	appearance,
 	card,
-	hours,
-	isOpen,
 	preview = false,
 }: {
 	appearance: StorefrontAppearance;
 	card: BusinessCard;
-	hours: readonly BusinessHoursEntry[];
-	isOpen: boolean;
 	preview?: boolean;
 }) {
 	const { t } = useT();
@@ -61,6 +55,7 @@ export function ShopCustomizationSections({
 			{appearance.sections
 				.filter((id) => !appearance.hidden.includes(id))
 				.map((id) => {
+					if (id === "information" && !card.description) return null;
 					if (id === "information")
 						return (
 							<View
@@ -72,7 +67,6 @@ export function ShopCustomizationSections({
 										{card.description}
 									</Text>
 								) : null}
-								<HoursTable hours={hours} isOpen={isOpen} />
 							</View>
 						);
 					const query = id === "offers" ? offers : featured;
