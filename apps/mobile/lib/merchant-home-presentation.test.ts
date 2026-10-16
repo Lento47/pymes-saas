@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-	DEFAULT_DASHBOARD_PREFERENCES,
+	DETAILED_DASHBOARD_PREFERENCES,
 	SIMPLE_DASHBOARD_PREFERENCES,
 } from "@pymeshub/shared";
 import {
@@ -49,8 +49,8 @@ describe("merchant home presentation", () => {
 		expect(merchantHomeWidgets(custom)).toEqual(
 			custom.widgets.filter((id) => !custom.hidden.includes(id)),
 		);
-		expect(merchantHomeWidgets(DEFAULT_DASHBOARD_PREFERENCES)).toEqual(
-			DEFAULT_DASHBOARD_PREFERENCES.widgets,
+		expect(merchantHomeWidgets(DETAILED_DASHBOARD_PREFERENCES)).toEqual(
+			DETAILED_DASHBOARD_PREFERENCES.widgets,
 		);
 	});
 	test("minimal dashboards keep their theme and density choices", () => {

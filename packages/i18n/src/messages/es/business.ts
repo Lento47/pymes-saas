@@ -637,6 +637,8 @@ export const business = {
 	"biz.nav.products": "Productos",
 	"biz.nav.analytics": "Análisis",
 	"biz.nav.more": "Más",
+	"biz.shortcuts.more": "Más",
+	"biz.shortcuts.less": "Menos",
 	/* The tab, which names the job rather than the stock: the screen behind it
 	 * is the menu the kitchen reads, and "Productos" is what the stockroom calls
 	 * the same rows. One word for the way in, another for the thing. */

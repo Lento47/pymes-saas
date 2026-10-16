@@ -1,11 +1,20 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useState } from "react";
 import {
 	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
+import Animated, {
+	FadeIn,
+	FadeOut,
+	LinearTransition,
+} from "react-native-reanimated";
 
+import { useT } from "@/lib/i18n";
+import { duration } from "@/lib/motion";
+import { useReducedMotion } from "@/lib/reduced-motion";
 import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 import { Pressable } from "./pressable";
@@ -55,8 +64,11 @@ export function MerchantShortcutRail({
 	compact?: boolean;
 }) {
 	const { colors } = useTheme();
+	const { t } = useT();
 	const { fontScale } = useWindowDimensions();
-	const compactGrid = compact && layout === "grid" && shortcuts.length <= 4;
+	const reduceMotion = useReducedMotion();
+	const [expanded, setExpanded] = useState(false);
+	const columns = fontScale > 1.3 ? 2 : 4;
 
 	if (shortcuts.length === 0) return null;
 
@@ -66,12 +78,7 @@ export function MerchantShortcutRail({
 			onPress={item.onPress}
 			accessibilityRole="button"
 			accessibilityLabel={item.label}
-			style={[
-				styles.tile,
-				layout === "grid" && styles.gridTile,
-				compactGrid &&
-					(fontScale > 1.3 ? styles.largeTextGridTile : styles.compactGridTile),
-			]}
+			style={[styles.tile, layout === "grid" && styles.gridTile]}
 		>
 			{/* The disc is the visual and the word beneath names it: `accent`
 			    behind `accentForeground` ink, the palette's quiet tinted pair —
@@ -106,7 +113,7 @@ export function MerchantShortcutRail({
 			<Text
 				variant="caption"
 				tone="muted"
-				numberOfLines={compact ? undefined : 1}
+				numberOfLines={compact || layout === "grid" ? undefined : 1}
 				style={styles.tileLabel}
 			>
 				{item.label}
@@ -165,10 +172,68 @@ export function MerchantShortcutRail({
 	}
 
 	if (layout === "grid") {
+		const rows = [];
+		for (let index = 0; index < tiles.length; index += columns) {
+			const rowTiles = tiles.slice(index, index + columns);
+			rows.push(
+				<View key={shortcuts[index]?.key} style={styles.gridRow}>
+					{rowTiles}
+					{["first", "second", "third"]
+						.slice(0, columns - rowTiles.length)
+						.map((slot) => (
+							<View key={slot} style={styles.gridTile} />
+						))}
+				</View>,
+			);
+		}
+		const canExpand = rows.length > 1;
+		const toggleLabel = t(
+			expanded ? "biz.shortcuts.less" : "biz.shortcuts.more",
+		);
 		return (
-			<View style={styles.grid} accessibilityRole="menubar">
-				{tiles}
-			</View>
+			<Animated.View
+				style={styles.grid}
+				layout={
+					reduceMotion
+						? undefined
+						: LinearTransition.duration(duration.standard)
+				}
+			>
+				{rows[0]}
+				{expanded && canExpand ? (
+					<Animated.View
+						style={styles.extraRows}
+						entering={
+							reduceMotion ? undefined : FadeIn.duration(duration.standard)
+						}
+						exiting={
+							reduceMotion ? undefined : FadeOut.duration(duration.instant)
+						}
+					>
+						{rows.slice(1)}
+					</Animated.View>
+				) : null}
+				{canExpand ? (
+					<Pressable
+						onPress={() => setExpanded((value) => !value)}
+						accessibilityRole="button"
+						accessibilityLabel={`${toggleLabel}: ${t("customize.shortcuts")}`}
+						accessibilityState={{ expanded }}
+						style={styles.moreButton}
+					>
+						<Ionicons
+							name={expanded ? "chevron-up" : "add"}
+							size={icon.control}
+							color={colors.action}
+							accessibilityElementsHidden
+							importantForAccessibility="no"
+						/>
+						<Text variant="caption" tone="action" bold>
+							{toggleLabel}
+						</Text>
+					</Pressable>
+				) : null}
+			</Animated.View>
 		);
 	}
 
@@ -210,15 +275,22 @@ const styles = StyleSheet.create({
 	},
 	tileLabel: { textAlign: "center" },
 	grid: {
-		flexDirection: "row",
-		flexWrap: "wrap",
 		paddingHorizontal: space.lg,
 		gap: space.md,
 		marginTop: space.md,
 	},
-	gridTile: { width: "30%", flexGrow: 1 },
-	compactGridTile: { width: 0, flexBasis: 0 },
-	largeTextGridTile: { width: "40%" },
+	gridRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
+	gridTile: { width: 0, flexBasis: 0, flexGrow: 1, minWidth: MIN_TOUCH_TARGET },
+	extraRows: { gap: space.md },
+	moreButton: {
+		alignSelf: "center",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: space.xs,
+		paddingHorizontal: space.md,
+		borderRadius: radius.md,
+	},
 	list: { paddingHorizontal: space.lg, marginTop: space.md },
 	listRow: {
 		flexDirection: "row",

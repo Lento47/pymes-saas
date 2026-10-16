@@ -3,6 +3,7 @@ import {
 	brandAccentCheck,
 	DEFAULT_DASHBOARD_PREFERENCES,
 	DEFAULT_STOREFRONT_APPEARANCE,
+	DETAILED_DASHBOARD_PREFERENCES,
 	dashboardPreferencesSchema,
 	REQUIRED_DASHBOARD_WIDGETS,
 	resolveDashboardPreferences,
@@ -13,6 +14,20 @@ import {
 } from "./customization";
 
 describe("saved customization compatibility", () => {
+	test("new dashboards start simple while saved detailed dashboards stay configurable", () => {
+		const fresh = resolveDashboardPreferences(undefined);
+		expect(fresh.hidden).toEqual(["insights", "catalog"]);
+		expect(fresh.metrics).toEqual(["orders"]);
+		expect(fresh.shortcutIds).toEqual([
+			"orders",
+			"catalog",
+			"hours",
+			"promotions",
+		]);
+		expect(resolveDashboardPreferences(DETAILED_DASHBOARD_PREFERENCES)).toEqual(
+			DETAILED_DASHBOARD_PREFERENCES,
+		);
+	});
 	test("operational slots stay fixed when any optional widget order is saved", () => {
 		const permutations = <T>(items: T[]): T[][] =>
 			items.length === 0
@@ -130,6 +145,7 @@ describe("saved customization compatibility", () => {
 			metrics: ["net_sales", "active_orders"],
 			productPreviewCount: 6,
 			themeId: "coral",
+			layouts: DETAILED_DASHBOARD_PREFERENCES.layouts,
 		});
 	});
 
@@ -162,7 +178,7 @@ describe("saved customization compatibility", () => {
 			shortcutIds: ["orders", "reviews"],
 		});
 		expect(resolved.layouts).toEqual({
-			...DEFAULT_DASHBOARD_PREFERENCES.layouts,
+			...DETAILED_DASHBOARD_PREFERENCES.layouts,
 			pulse: "cards",
 			catalog: "tiles",
 		});
@@ -191,7 +207,7 @@ describe("saved customization compatibility", () => {
 				layouts: { pulse: "neon", shortcuts: "grid" },
 			}).layouts,
 		).toEqual({
-			...DEFAULT_DASHBOARD_PREFERENCES.layouts,
+			...DETAILED_DASHBOARD_PREFERENCES.layouts,
 			shortcuts: "grid",
 		});
 	});

@@ -192,7 +192,7 @@ export const dashboardPreferencesSchema = z.object({
 	),
 });
 export type DashboardPreferences = z.infer<typeof dashboardPreferencesSchema>;
-export const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
+export const DETAILED_DASHBOARD_PREFERENCES: DashboardPreferences = {
 	version: 1,
 	widgets: [...DEFAULT_DASHBOARD_WIDGETS],
 	hidden: [],
@@ -205,7 +205,7 @@ export const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
 	commandColors: DEFAULT_DASHBOARD_COMMAND_COLORS,
 };
 export const SIMPLE_DASHBOARD_PREFERENCES: DashboardPreferences = {
-	...DEFAULT_DASHBOARD_PREFERENCES,
+	...DETAILED_DASHBOARD_PREFERENCES,
 	widgets: [...DEFAULT_DASHBOARD_WIDGETS],
 	hidden: ["insights", "catalog"],
 	metrics: ["orders"],
@@ -220,6 +220,10 @@ export const SIMPLE_DASHBOARD_PREFERENCES: DashboardPreferences = {
 		catalog: "tiles",
 	},
 };
+
+/** New dashboards and Restore default start with the essentials. */
+export const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences =
+	SIMPLE_DASHBOARD_PREFERENCES;
 
 /**
  * Insert widgets a saved board does not know yet, in the default relative
