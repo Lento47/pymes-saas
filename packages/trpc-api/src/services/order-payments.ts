@@ -110,13 +110,22 @@ export async function savePaymentAccount(
 	ctx: UserContext,
 	input: z.infer<typeof savePaymentAccountInput>,
 ) {
+	await ctx.db.batch(batchOf(await paymentAccountStatements(ctx, input)));
+	return paymentAccount(ctx, input);
+}
+
+/** Shared preparation lets business contact and SINPE changes commit in one D1 batch. */
+export async function paymentAccountStatements(
+	ctx: UserContext,
+	input: z.infer<typeof savePaymentAccountInput>,
+): Promise<BatchItem<"sqlite">[]> {
 	const current = await paymentAccount(ctx, input);
 	if (!current.canEdit) throw new ForbiddenError();
 	const id = input.businessId
 		? `payacct_business_${input.businessId}`
 		: `payacct_user_${ctx.user.id}`;
 	const now = new Date();
-	await ctx.db.batch([
+	return [
 		input.account
 			? ctx.db
 					.insert(account)
@@ -141,8 +150,7 @@ export async function savePaymentAccount(
 			reason: null,
 			now,
 		}),
-	]);
-	return paymentAccount(ctx, input);
+	];
 }
 
 /** One immutable set of obligations. A cash advance is reimbursed inside the customer's collection. */

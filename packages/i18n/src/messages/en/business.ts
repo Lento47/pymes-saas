@@ -317,6 +317,8 @@ export const business = {
 	"biz.reviews.reply.yours": "Your reply",
 
 	"biz.settings.title": "Settings",
+	"biz.settings.configuration": "Business settings",
+	"biz.settings.fulfillment": "Delivery and pickup",
 
 	// The merchant console palette. The four names are colour words rather than product
 	// names, because the control chooses a colour and a flattering name makes the swatch
@@ -351,6 +353,15 @@ export const business = {
 		"Pick one from your gallery or take one with the camera.",
 	"biz.settings.category": "Main category",
 	"biz.settings.contact": "Contact",
+	"biz.settings.contactPayments": "Contact and payments",
+	"biz.settings.sinpe.enable": "Accept SINPE",
+	"biz.settings.sinpe.phoneHelp":
+		"Use the business phone without entering it again.",
+	"biz.settings.sinpe.number": "SINPE will use {phone}",
+	"biz.settings.sinpe.phoneInvalid":
+		"For SINPE, enter an 8-digit Costa Rican phone number.",
+	"biz.settings.sinpe.nameHelp":
+		"Enter the name as it appears on the bank account.",
 	"biz.settings.phone": "Phone",
 	"biz.settings.whatsapp": "WhatsApp",
 	"biz.settings.email": "Contact email",
@@ -373,6 +384,10 @@ export const business = {
 	"biz.settings.delivery.cover.off": "Customer pays",
 	"biz.settings.delivery.cover.help":
 		"Customers pay no delivery fee. Your shop still owes the courier the amount above for each delivery.",
+	"biz.settings.delivery.cover.customerHelp":
+		"Customers pay the delivery fee to the courier.",
+	"biz.settings.delivery.expressHelp":
+		"The delivery fee is calculated automatically from the route.",
 	"biz.settings.delivery.courierFeeRequired":
 		"Set a courier fee above zero before offering delivery.",
 	"biz.settings.delivery.freeOver": "Free delivery over",
@@ -985,7 +1000,7 @@ export const business = {
 	"biz.more.empty.action": "Create business",
 	"biz.more.settingsDelivery": "Settings and delivery",
 	"biz.more.settingsFallback": "Business configuration",
-	"biz.more.shopSubtitle": "Name, photos, category and address",
+	"biz.more.shopSubtitle": "Details, SINPE, location and delivery",
 	"biz.more.hoursSubtitle": "Opening and closing each day",
 	"biz.more.catalog": "Catalog",
 	"biz.more.catalogSubtitle": "Products, stock and availability",

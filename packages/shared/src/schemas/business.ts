@@ -24,6 +24,7 @@ import {
 	shortText,
 	slugSchema,
 } from "./common";
+import { sinpeAccountInput } from "./order-payment";
 import { membershipRoleSchema } from "./user";
 
 export const BUSINESS_STATUSES = [
@@ -131,6 +132,11 @@ export const businessUpdateInput = businessCreateInput
 		 * `services/businesses.ts`'s `assignIfPresent` writes whatever is sent.
 		 */
 		phone: phoneSchema.nullable().optional(),
+		/** Explicitly receive SINPE at the business phone; omission preserves existing setup. */
+		sinpeAccount: sinpeAccountInput
+			.pick({ recipientName: true })
+			.nullable()
+			.optional(),
 		email: z.string().email().max(200).nullable().optional(),
 		hours: businessHoursSchema.optional(),
 		// Zod keeps create defaults through .partial(); patches must omit untouched fields.

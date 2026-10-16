@@ -187,29 +187,18 @@ export default function MenuScreen() {
 							})
 						}
 					/>
-					{/* The shop's identity first, and the delivery numbers second: the
-					    name and the two pictures are what a customer sees before they
-					    see a fee. The identity row opens `./merchant-settings`, the one
-					    place either is set; the delivery row carries the shop it is
-					    editing, because `app/business-delivery.tsx` reads that
-					    parameter and a push without one used to bounce straight back
-					    here. */}
+					{/* One editor for identity, contact, SINPE, location and delivery. */}
 					<ListRow
-						title={t("biz.settings.profile")}
+						title={t("biz.settings.configuration")}
 						subtitle={t("biz.more.shopSubtitle")}
 						chevron
 						onPress={() =>
 							router.push({
-								pathname: "/(business)/merchant-settings",
+								pathname: "/(business)/shop-settings",
 								params: { businessId },
 							})
 						}
 					/>
-					{/* Hours beside the identity, and not beside delivery: the week is
-				    something a merchant sets once and corrects, the way the shop's name
-				    is — the three delivery numbers on the row below are the ones that
-				    move with a busy night. `architecture.md` lists Business hours under
-				    More for the same reason. */}
 					<ListRow
 						title={t("biz.settings.hours")}
 						subtitle={t("biz.more.hoursSubtitle")}
@@ -217,21 +206,6 @@ export default function MenuScreen() {
 						onPress={() =>
 							router.push({
 								pathname: "/(business)/shop-hours",
-								params: { businessId },
-							})
-						}
-					/>
-					<ListRow
-						title={t("biz.more.settingsDelivery")}
-						subtitle={
-							settings.data
-								? t(`biz.status.${settings.data.status}`)
-								: t("biz.more.settingsFallback")
-						}
-						chevron
-						onPress={() =>
-							router.push({
-								pathname: "/business-delivery",
 								params: { businessId },
 							})
 						}

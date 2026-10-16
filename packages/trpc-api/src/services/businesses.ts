@@ -40,6 +40,7 @@ import {
 	type StaffMember,
 	type Subscription,
 	scoreCandidate,
+	sinpeAccountInput,
 } from "@pymeshub/shared";
 import {
 	and,
@@ -88,6 +89,7 @@ import {
 	productCardOf,
 	staffMemberOf,
 } from "./mappers";
+import { paymentAccountStatements } from "./order-payments";
 import { checkCount } from "./plan-limits";
 import * as subscriptionService from "./subscription";
 
@@ -869,11 +871,36 @@ export async function update(
 						),
 					)
 			: [];
+	let sinpeStatements: BatchItem<"sqlite">[] = [];
+	if (input.sinpeAccount !== undefined) {
+		let destination = null;
+		if (input.sinpeAccount !== null) {
+			const [existing] = await ctx.db
+				.select({ phone: businessTable.phone })
+				.from(businessTable)
+				.where(eq(businessTable.id, businessId))
+				.limit(1);
+			const parsed = sinpeAccountInput.safeParse({
+				phone: input.phone !== undefined ? input.phone : existing?.phone,
+				recipientName: input.sinpeAccount.recipientName,
+			});
+			if (!parsed.success)
+				throw new ValidationError("payments.accountInvalid", {
+					field: "phone",
+				});
+			destination = parsed.data;
+		}
+		sinpeStatements = await paymentAccountStatements(ctx, {
+			businessId,
+			account: destination,
+		});
+	}
 	await ctx.db.batch([
 		ctx.db
 			.update(businessTable)
 			.set(patch)
 			.where(eq(businessTable.id, businessId)),
+		...sinpeStatements,
 		ctx.db
 			.update(locationTable)
 			.set(defaultLocationPatch)

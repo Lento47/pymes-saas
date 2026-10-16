@@ -341,6 +341,8 @@ export const business = {
 	"biz.reviews.reply.yours": "Tu respuesta",
 
 	"biz.settings.title": "Configuración",
+	"biz.settings.configuration": "Configuración del negocio",
+	"biz.settings.fulfillment": "Entrega y retiro",
 
 	// La paleta de la consola del comercio. Los cuatro nombres son palabras de color y no
 	// nombres de producto: el control elige un color, y un nombre que halaga a una paleta
@@ -382,6 +384,15 @@ export const business = {
 		"Elige una de tu galería o toma una con la cámara.",
 	"biz.settings.category": "Categoría principal",
 	"biz.settings.contact": "Contacto",
+	"biz.settings.contactPayments": "Contacto y cobros",
+	"biz.settings.sinpe.enable": "Recibir SINPE",
+	"biz.settings.sinpe.phoneHelp":
+		"Usa el teléfono del negocio, sin escribirlo de nuevo.",
+	"biz.settings.sinpe.number": "SINPE usará {phone}",
+	"biz.settings.sinpe.phoneInvalid":
+		"Para SINPE, ingresa un número de Costa Rica de 8 dígitos.",
+	"biz.settings.sinpe.nameHelp":
+		"Escríbelo como aparece en la cuenta del banco.",
 	"biz.settings.phone": "Teléfono",
 	"biz.settings.whatsapp": "WhatsApp",
 	"biz.settings.email": "Correo de contacto",
@@ -404,6 +415,10 @@ export const business = {
 	"biz.settings.delivery.cover.off": "Paga el cliente",
 	"biz.settings.delivery.cover.help":
 		"El cliente no paga envío. Tu negocio sigue debiendo al repartidor el monto indicado por cada entrega.",
+	"biz.settings.delivery.cover.customerHelp":
+		"El cliente paga el envío al repartidor.",
+	"biz.settings.delivery.expressHelp":
+		"El envío se calcula automáticamente según la ruta.",
 	"biz.settings.delivery.courierFeeRequired":
 		"Define un pago al repartidor mayor que cero antes de ofrecer entregas.",
 	"biz.settings.delivery.freeOver": "Envío gratis desde",
@@ -1055,7 +1070,7 @@ export const business = {
 	"biz.more.empty.action": "Crear negocio",
 	"biz.more.settingsDelivery": "Configuración y entrega",
 	"biz.more.settingsFallback": "Configuración del negocio",
-	"biz.more.shopSubtitle": "Nombre, fotos, categoría y dirección",
+	"biz.more.shopSubtitle": "Datos, SINPE, ubicación y entrega",
 	"biz.more.hoursSubtitle": "Apertura y cierre cada día",
 	"biz.more.catalog": "Catálogo",
 	"biz.more.catalogSubtitle": "Productos, existencias y disponibilidad",

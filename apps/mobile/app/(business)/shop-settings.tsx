@@ -1,4 +1,6 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName } from "@pymeshub/i18n";
+import { sinpeAccountInput } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,25 +14,33 @@ import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
-import { PaymentAccountSettings } from "@/components/payment-account-settings";
-import { Screen, ScreenSection } from "@/components/screen";
+import { MerchantDeliverySettings } from "@/components/merchant-delivery-settings";
+import { Pressable } from "@/components/pressable";
+import { Screen } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { line } from "@/components/skeletons";
+import { Switch } from "@/components/switch";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
 import { categoryPickerRows, indentFor } from "@/lib/category-scope";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import {
+	type DeliveryDraft,
+	deliveryDraft,
+	deliveryUpdate,
+} from "@/lib/merchant-delivery-settings";
 import { useMerchantScope } from "@/lib/merchant-scope";
 import { useTRPC } from "@/lib/trpc/context";
-import { MIN_TOUCH_TARGET, space } from "@/theme";
+import { icon, MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
-/** Business details, contact and pickup address. Photos are edited in Personalization. */
+/** One settings editor. Photos stay in Personalization and hours in the schedule. */
 export default function ShopSettings() {
 	const { t, locale } = useT();
+	const { colors } = useTheme();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
@@ -47,6 +57,13 @@ export default function ShopSettings() {
 	const shop =
 		shopList.find((one) => one.businessId === scope.businessId) ?? shopList[0];
 	const businessId = shop?.businessId ?? "";
+	const canManage = shop?.role === "OWNER" || shop?.role === "MANAGER";
+	const paymentAccount = useQuery(
+		trpc.orders.paymentAccount.queryOptions(
+			{ businessId },
+			{ enabled: Boolean(businessId) },
+		),
+	);
 
 	const settings = useQuery(
 		trpc.business.settings.queryOptions(
@@ -60,23 +77,43 @@ export default function ShopSettings() {
 	const [description, setDescription] = useState("");
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [phone, setPhone] = useState("");
+	const [sinpeEnabled, setSinpeEnabled] = useState(false);
+	const [recipientName, setRecipientName] = useState("");
+	const [descriptionOpen, setDescriptionOpen] = useState(false);
+	const [contactOpen, setContactOpen] = useState(false);
 	const [email, setEmail] = useState("");
 	const [line1, setLine1] = useState("");
 	const [line2, setLine2] = useState("");
 	const [city, setCity] = useState("");
 	const [region, setRegion] = useState("");
 	const [postalCode, setPostalCode] = useState("");
+	const [country, setCountry] = useState("CR");
+	const [expandedSection, setExpandedSection] = useState<
+		"profile" | "contact" | "address" | "delivery" | null
+	>(null);
+	const [delivery, setDelivery] = useState<DeliveryDraft | null>(null);
+	const [deliveryDirty, setDeliveryDirty] = useState(false);
 	const [editingAddress, setEditingAddress] = useState(false);
+	const [addressOpen, setAddressOpen] = useState(false);
 	const [categoryOpen, setCategoryOpen] = useState(false);
 	const [openSectorId, setOpenSectorId] = useState<string | undefined>(
 		undefined,
 	);
 	const [submitted, setSubmitted] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const prefilled = useRef(false);
+	const prefilled = useRef<string | null>(null);
+	const paymentPrefilled = useRef<string | null>(null);
 
 	const update = useMutation(trpc.business.update.mutationOptions());
-	const failure = useApiFailure(update.error);
+	const status = useMutation(
+		trpc.business.setStatus.mutationOptions({
+			onSuccess: async () => {
+				await cache.invalidateQueries({ queryKey: trpc.business.pathKey() });
+				toast.show(t("biz.settings.saved"));
+			},
+		}),
+	);
+	const failure = useApiFailure(update.error ?? status.error);
 
 	// `isLoading`, not `isPending`: `settings` is `enabled: businessId.length > 0`,
 	// and a disabled query reports `isPending` forever — which would hold the
@@ -89,8 +126,21 @@ export default function ShopSettings() {
 	// refetch after the save must not stomp typing.
 	//
 	useEffect(() => {
-		if (prefilled.current || !settings.data) return;
-		prefilled.current = true;
+		if (
+			prefilled.current === businessId ||
+			!settings.data ||
+			settings.data.id !== businessId
+		)
+			return;
+		prefilled.current = businessId;
+		setSubmitted(false);
+		setDescriptionOpen(false);
+		setContactOpen(false);
+		setEditingAddress(false);
+		setAddressOpen(false);
+		setExpandedSection(null);
+		setDelivery(deliveryDraft(settings.data));
+		setDeliveryDirty(false);
 		setName(settings.data.name);
 		setDescription(settings.data.description ?? "");
 		setCategoryId(settings.data.categoryId);
@@ -101,7 +151,14 @@ export default function ShopSettings() {
 		setCity(settings.data.city);
 		setRegion(settings.data.region);
 		setPostalCode(settings.data.postalCode ?? "");
-	}, [settings.data]);
+		setCountry(settings.data.country);
+	}, [businessId, settings.data]);
+	useEffect(() => {
+		if (paymentPrefilled.current === businessId || !paymentAccount.data) return;
+		paymentPrefilled.current = businessId;
+		setSinpeEnabled(Boolean(paymentAccount.data.account));
+		setRecipientName(paymentAccount.data.account?.recipientName ?? "");
+	}, [businessId, paymentAccount.data]);
 
 	/*
 	 * The taxonomy is two levels — 18 sectors and their 224 children — and a
@@ -133,7 +190,15 @@ export default function ShopSettings() {
 	const problems = useMemo(() => {
 		const found: Partial<
 			Record<
-				"name" | "categoryId" | "phone" | "email" | "line1" | "city" | "region",
+				| "name"
+				| "categoryId"
+				| "phone"
+				| "email"
+				| "line1"
+				| "city"
+				| "region"
+				| "country"
+				| "recipientName",
 				string
 			>
 		> = {};
@@ -142,6 +207,8 @@ export default function ShopSettings() {
 		if (editingAddress && !line1.trim()) found.line1 = t("form.required");
 		if (editingAddress && !city.trim()) found.city = t("form.required");
 		if (editingAddress && !region.trim()) found.region = t("form.required");
+		if (editingAddress && country.trim().length !== 2)
+			found.country = t("biz.settings.country.invalid");
 		// The words count what the check counts: digits, so the phone pair is its
 		// own sentence and not the character-counting one the other fields borrow.
 		const digits = phone.replace(/\D/g, "");
@@ -153,13 +220,79 @@ export default function ShopSettings() {
 		if (email.trim() && !EMAIL_SHAPE.test(email.trim())) {
 			found.email = t("form.invalidEmail");
 		}
+		if (sinpeEnabled) {
+			const parsed = sinpeAccountInput.safeParse({
+				phone: phone.replace(/[^\d+]/g, ""),
+				recipientName,
+			});
+			if (!parsed.success) {
+				for (const issue of parsed.error.issues) {
+					if (issue.path[0] === "phone")
+						found.phone = t("biz.settings.sinpe.phoneInvalid");
+					else found.recipientName = t("biz.settings.sinpe.nameHelp");
+				}
+			}
+		}
 		return found;
-	}, [name, categoryId, line1, city, region, editingAddress, phone, email, t]);
+	}, [
+		name,
+		categoryId,
+		line1,
+		city,
+		region,
+		country,
+		editingAddress,
+		phone,
+		email,
+		sinpeEnabled,
+		recipientName,
+		t,
+	]);
 
+	const deliveryResult =
+		delivery && settings.data
+			? deliveryUpdate(
+					delivery,
+					settings.data.currency,
+					Boolean(settings.data.canSetDeliveryFee),
+				)
+			: null;
+	const deliveryErrors = Object.fromEntries(
+		Object.entries(deliveryResult?.errors ?? {}).map(([key, message]) => [
+			key,
+			t(message),
+		]),
+	);
 	const submit = () => {
-		if (update.isPending) return;
+		if (
+			update.isPending ||
+			status.isPending ||
+			!canManage ||
+			!paymentAccount.isSuccess
+		)
+			return;
 		setSubmitted(true);
-		if (Object.keys(problems).length > 0) return;
+		if (problems.email) setContactOpen(true);
+		if (problems.line1 || problems.city || problems.region)
+			setAddressOpen(true);
+		if (problems.name || problems.categoryId) setExpandedSection("profile");
+		else if (problems.phone || problems.email || problems.recipientName)
+			setExpandedSection("contact");
+		else if (
+			problems.line1 ||
+			problems.city ||
+			problems.region ||
+			problems.country
+		) {
+			setExpandedSection("address");
+			setAddressOpen(true);
+		} else if (deliveryDirty && Object.keys(deliveryErrors).length > 0)
+			setExpandedSection("delivery");
+		if (
+			Object.keys(problems).length > 0 ||
+			(deliveryDirty && Object.keys(deliveryErrors).length > 0)
+		)
+			return;
 		setSaving(true);
 		update.mutate(
 			{
@@ -176,7 +309,11 @@ export default function ShopSettings() {
 				// file docblock on why an emptied contact box is a write and not a
 				// no-op.
 				phone: phone.trim() || null,
+				sinpeAccount: sinpeEnabled
+					? { recipientName: recipientName.trim() }
+					: null,
 				email: email.trim() || null,
+				...(deliveryDirty ? deliveryResult?.data : {}),
 				...(editingAddress
 					? {
 							line1: line1.trim(),
@@ -184,16 +321,22 @@ export default function ShopSettings() {
 							city: city.trim(),
 							region: region.trim(),
 							postalCode: postalCode.trim(),
+							country: country.trim().toUpperCase(),
 						}
 					: {}),
 			},
 			{
 				onSuccess: async () => {
 					setSaving(false);
+					setDeliveryDirty(false);
 					toast.show(t("biz.settings.saved"));
-					await cache.invalidateQueries({
-						queryKey: trpc.business.pathKey(),
-					});
+					await Promise.all([
+						cache.invalidateQueries({ queryKey: trpc.business.pathKey() }),
+						cache.invalidateQueries({ queryKey: trpc.orders.pathKey() }),
+						cache.invalidateQueries({
+							queryKey: trpc.cart.paymentMethods.queryKey(),
+						}),
+					]);
 				},
 				onError: () => setSaving(false),
 			},
@@ -204,6 +347,17 @@ export default function ShopSettings() {
 		apply();
 		if (update.isError) update.reset();
 	};
+	const toggleAddress = () => {
+		if (!addressOpen && !editingAddress && settings.data) {
+			setLine1(settings.data.line1);
+			setLine2(settings.data.line2 ?? "");
+			setCity(settings.data.city);
+			setRegion(settings.data.region);
+			setPostalCode(settings.data.postalCode ?? "");
+			setCountry(settings.data.country);
+		}
+		setAddressOpen(!addressOpen);
+	};
 
 	const failed = shops.error ?? settings.error;
 	const ready = businessId.length > 0 && !!settings.data && !waiting;
@@ -211,7 +365,7 @@ export default function ShopSettings() {
 	return (
 		<View style={styles.root}>
 			<Screen
-				title={t("biz.settings.title")}
+				title={t("biz.settings.configuration")}
 				leading={<BackButton to="/(business)/menu" />}
 				scroll
 				keyboardInsets
@@ -230,198 +384,374 @@ export default function ShopSettings() {
 						/>
 					) : settings.data ? (
 						<>
+							{!canManage ? (
+								<Text tone="muted">{t("biz.settings.readOnly")}</Text>
+							) : null}
 							<AnimateIn index={0}>
-								<ScreenSection title={t("biz.settings.profile")}>
-									<Field
-										label={t("biz.settings.name")}
-										value={name}
-										onChangeText={(value) => edited(() => setName(value))}
-										error={submitted ? (problems.name ?? null) : null}
-										// The one field a customer reads on every card and every
-										// header, so the ceiling is stated rather than left to
-										// the round trip: `shortText(120)` is what the API trims
-										// and refuses, restated here so the box catches it.
-										help={t("form.tooLong", { max: 120 })}
-										maxLength={120}
-									/>
-
-									<Field
-										label={t("biz.settings.description")}
-										value={description}
-										onChangeText={(value) =>
-											edited(() => setDescription(value))
+								<Card elevation="flat" style={styles.section}>
+									<SettingsFold
+										primary
+										label={t("biz.settings.profile")}
+										detail={name}
+										open={expandedSection === "profile"}
+										onToggle={() =>
+											setExpandedSection(
+												expandedSection === "profile" ? null : "profile",
+											)
 										}
-										help={t("form.tooLong", { max: 600 })}
-										multiline
-										maxLength={600}
-									/>
-								</ScreenSection>
-							</AnimateIn>
-
-							{/* The vertical the shop sells in. Its own section rather than a
-							    row inside the one above: it is a choice about where the shop
-							    appears in the marketplace, not a fact about its face. */}
-							<AnimateIn index={1}>
-								<ScreenSection title={t("biz.settings.category")}>
-									<Text variant="caption" tone="muted">
-										{t("biz.new.category.help")}
-									</Text>
-									<Card>
+									>
+										<Field
+											label={t("biz.settings.name")}
+											value={name}
+											onChangeText={(value) => edited(() => setName(value))}
+											error={submitted ? problems.name : undefined}
+											maxLength={120}
+											editable={canManage}
+										/>
 										<ListRow
-											title={
+											title={t("biz.settings.category")}
+											subtitle={
 												chosen
 													? localizedName(chosen, locale)
-													: // The id can be set while `catalog.categories` is still in
-														// flight; saying "pick one" then would be a lie about a
-														// value the row already holds.
-														categoryId
-														? t("state.loading")
-														: t("biz.new.category.placeholder")
+													: t("biz.new.category.placeholder")
 											}
-											state={chosen ? t("biz.new.selected") : undefined}
-											chevron
+											onPress={
+												canManage ? () => setCategoryOpen(true) : undefined
+											}
+											chevron={canManage}
 											divider={false}
-											accessibilityHint={t("biz.new.category.open")}
-											onPress={() => setCategoryOpen(true)}
 										/>
-									</Card>
-									{submitted && problems.categoryId ? (
-										<Text
-											variant="body"
-											tone="destructive"
-											accessibilityRole="alert"
+										{submitted && problems.categoryId ? (
+											<Text
+												variant="caption"
+												tone="destructive"
+												accessibilityRole="alert"
+											>
+												{problems.categoryId}
+											</Text>
+										) : null}
+										<SettingsFold
+											label={t("biz.settings.description")}
+											open={descriptionOpen}
+											onToggle={() => setDescriptionOpen(!descriptionOpen)}
 										>
-											{problems.categoryId}
+											<Field
+												label={t("biz.settings.description")}
+												value={description}
+												onChangeText={(value) =>
+													edited(() => setDescription(value))
+												}
+												multiline
+												maxLength={600}
+												editable={canManage}
+											/>
+										</SettingsFold>
+										<Text variant="caption" tone="muted">
+											{t("biz.settings.currency")} · {settings.data.currency}
 										</Text>
-									) : null}
-								</ScreenSection>
+										{shop?.role === "OWNER" ? (
+											<>
+												<Text variant="caption" tone="muted">
+													{t(`biz.status.${settings.data.status}`)}
+												</Text>
+												<Button
+													variant="secondary"
+													label={t(
+														settings.data.status === "ACTIVE"
+															? "biz.settings.pause"
+															: "biz.settings.publish",
+													)}
+													loading={status.isPending}
+													disabled={saving}
+													onPress={() =>
+														status.mutate({
+															businessId,
+															status:
+																settings.data?.status === "ACTIVE"
+																	? "CLOSED"
+																	: "ACTIVE",
+														})
+													}
+												/>
+											</>
+										) : null}
+									</SettingsFold>
+								</Card>
 							</AnimateIn>
 
-							{/* The two details a customer uses to reach a person rather than
-							    a screen. They share a section because they answer the same
-							    question, and because neither is part of the address a courier
-							    drives to. */}
+							<AnimateIn index={1}>
+								<Card elevation="flat" style={styles.section}>
+									<SettingsFold
+										primary
+										label={t("biz.settings.contactPayments")}
+										detail={phone || t("biz.settings.phone")}
+										open={expandedSection === "contact"}
+										onToggle={() =>
+											setExpandedSection(
+												expandedSection === "contact" ? null : "contact",
+											)
+										}
+									>
+										<Field
+											label={t("biz.settings.phone")}
+											value={phone}
+											onChangeText={(value) => edited(() => setPhone(value))}
+											error={submitted ? problems.phone : undefined}
+											keyboardType="phone-pad"
+											autoComplete="tel"
+											maxLength={24}
+											editable={canManage}
+										/>
+										{paymentAccount.isPending ? (
+											<Text variant="caption" tone="muted">
+												{t("state.loading")}
+											</Text>
+										) : paymentAccount.isError ? (
+											<ErrorState
+												error={paymentAccount.error}
+												onRetry={() => void paymentAccount.refetch()}
+											/>
+										) : (
+											<View
+												style={[
+													styles.sinpe,
+													{
+														backgroundColor: colors.background,
+														borderColor: colors.border,
+													},
+												]}
+											>
+												<View style={styles.sinpeRow}>
+													<View style={styles.sinpeText}>
+														<Text variant="body" bold>
+															{t("biz.settings.sinpe.enable")}
+														</Text>
+														<Text variant="caption" tone="muted">
+															{t("biz.settings.sinpe.phoneHelp")}
+														</Text>
+													</View>
+													<Switch
+														checked={sinpeEnabled}
+														onChange={(next) =>
+															edited(() => setSinpeEnabled(next))
+														}
+														label={t("biz.settings.sinpe.enable")}
+														disabled={!canManage || saving}
+													/>
+												</View>
+												{sinpeEnabled ? (
+													<View style={styles.sinpeFields}>
+														<Text variant="label" bold>
+															{phone.trim()
+																? t("biz.settings.sinpe.number", {
+																		phone: phone.trim(),
+																	})
+																: t("biz.settings.sinpe.phoneInvalid")}
+														</Text>
+														<Field
+															label={t("payments.accountName")}
+															value={recipientName}
+															onChangeText={(value) =>
+																edited(() => setRecipientName(value))
+															}
+															error={
+																submitted ? problems.recipientName : undefined
+															}
+															help={t("biz.settings.sinpe.nameHelp")}
+															maxLength={120}
+															editable={canManage}
+														/>
+													</View>
+												) : null}
+											</View>
+										)}
+										<SettingsFold
+											label={t("biz.settings.email")}
+											detail={email || t("form.optional")}
+											open={contactOpen}
+											onToggle={() => setContactOpen(!contactOpen)}
+										>
+											<Field
+												label={t("biz.settings.email")}
+												value={email}
+												onChangeText={(value) => edited(() => setEmail(value))}
+												error={submitted ? problems.email : undefined}
+												keyboardType="email-address"
+												autoComplete="email"
+												autoCapitalize="none"
+												maxLength={200}
+												editable={canManage}
+											/>
+										</SettingsFold>
+									</SettingsFold>
+								</Card>
+							</AnimateIn>
+
 							<AnimateIn index={2}>
-								<ScreenSection title={t("biz.settings.contact")}>
-									<Field
-										label={t("biz.settings.phone")}
-										value={phone}
-										onChangeText={(value) => edited(() => setPhone(value))}
-										error={submitted ? (problems.phone ?? null) : null}
-										help={t("form.optional")}
-										keyboardType="phone-pad"
-										autoComplete="tel"
-										maxLength={24}
-									/>
-									<Field
-										label={t("biz.settings.email")}
-										value={email}
-										onChangeText={(value) => edited(() => setEmail(value))}
-										error={submitted ? (problems.email ?? null) : null}
-										help={t("form.optional")}
-										keyboardType="email-address"
-										autoComplete="email"
-										autoCapitalize="none"
-										maxLength={200}
-									/>
-								</ScreenSection>
-							</AnimateIn>
-
-							{/* The shop's own address, which `biz.settings.address.help`
-							    states the two uses of: where a customer comes to pick an
-							    order up, and the centre the delivery radius is measured from.
-							    Three of the five are the create path's required set, so they
-							    refuse an emptied box rather than clearing it. */}
-							<AnimateIn index={3}>
-								<ScreenSection title={t("payments.accountTitle")}>
-									<PaymentAccountSettings
-										businessId={businessId}
-										showTitle={false}
-									/>
-								</ScreenSection>
-							</AnimateIn>
-							<AnimateIn index={3}>
-								<ScreenSection title={t("biz.settings.address")}>
-									<Text variant="caption" tone="muted">
-										{t("biz.settings.address.help")}
-									</Text>
-									<Button
-										label={t("biz.order.dispatch.setPickupPin")}
-										variant="secondary"
-										fullWidth
-										onPress={() => router.push("/(business)/shop-location")}
-									/>
-									{settings.data ? (
-										<Text variant="body" tone="muted">
-											{[
+								<Card elevation="flat" style={styles.section}>
+									<SettingsFold
+										primary
+										label={t("biz.settings.address")}
+										detail={settings.data.city}
+										open={expandedSection === "address"}
+										onToggle={() =>
+											setExpandedSection(
+												expandedSection === "address" ? null : "address",
+											)
+										}
+									>
+										<ListRow
+											title={t("biz.order.dispatch.setPickupPin")}
+											subtitle={[
 												settings.data.line1,
-												settings.data.line2,
 												settings.data.city,
 												settings.data.region,
 											]
 												.filter(Boolean)
 												.join(", ")}
-										</Text>
-									) : null}
-									<Button
-										label={t("biz.settings.address.editManually")}
-										variant="ghost"
-										fullWidth
-										onPress={() => {
-											if (!editingAddress && settings.data) {
-												setLine1(settings.data.line1);
-												setLine2(settings.data.line2 ?? "");
-												setCity(settings.data.city);
-												setRegion(settings.data.region);
-												setPostalCode(settings.data.postalCode ?? "");
+											leading={
+												<Ionicons
+													name="location-outline"
+													size={icon.control}
+													color={colors.action}
+													accessibilityElementsHidden
+													importantForAccessibility="no"
+												/>
 											}
-											setEditingAddress(!editingAddress);
-										}}
-									/>
-									{editingAddress ? (
-										<>
+											onPress={
+												canManage
+													? () => router.push("/(business)/shop-location")
+													: undefined
+											}
+											chevron={canManage}
+											divider={false}
+										/>
+										<SettingsFold
+											label={t("biz.settings.address.editManually")}
+											open={addressOpen}
+											onToggle={toggleAddress}
+										>
 											<Field
 												label={t("biz.settings.line1")}
 												value={line1}
-												onChangeText={(value) => edited(() => setLine1(value))}
-												error={submitted ? (problems.line1 ?? null) : null}
+												onChangeText={(value) =>
+													edited(() => {
+														setEditingAddress(true);
+														setLine1(value);
+													})
+												}
+												error={submitted ? problems.line1 : undefined}
 												maxLength={200}
+												editable={canManage}
 											/>
 											<Field
 												label={t("biz.settings.line2")}
 												value={line2}
-												onChangeText={(value) => edited(() => setLine2(value))}
-												help={t("form.optional")}
+												onChangeText={(value) =>
+													edited(() => {
+														setEditingAddress(true);
+														setLine2(value);
+													})
+												}
 												maxLength={200}
+												editable={canManage}
 											/>
 											<Field
 												label={t("biz.settings.city")}
 												value={city}
-												onChangeText={(value) => edited(() => setCity(value))}
-												error={submitted ? (problems.city ?? null) : null}
+												onChangeText={(value) =>
+													edited(() => {
+														setEditingAddress(true);
+														setCity(value);
+													})
+												}
+												error={submitted ? problems.city : undefined}
 												maxLength={80}
+												editable={canManage}
 											/>
 											<Field
 												label={t("biz.settings.region")}
 												value={region}
-												onChangeText={(value) => edited(() => setRegion(value))}
-												error={submitted ? (problems.region ?? null) : null}
+												onChangeText={(value) =>
+													edited(() => {
+														setEditingAddress(true);
+														setRegion(value);
+													})
+												}
+												error={submitted ? problems.region : undefined}
 												maxLength={80}
+												editable={canManage}
+											/>
+											<Field
+												label={t("biz.settings.country")}
+												value={country}
+												onChangeText={(value) =>
+													edited(() => {
+														setEditingAddress(true);
+														setCountry(value.toUpperCase());
+													})
+												}
+												error={submitted ? problems.country : undefined}
+												maxLength={2}
+												autoCapitalize="characters"
+												editable={canManage}
 											/>
 											<Field
 												label={t("biz.settings.postalCode")}
 												value={postalCode}
 												onChangeText={(value) =>
-													edited(() => setPostalCode(value))
+													edited(() => {
+														setEditingAddress(true);
+														setPostalCode(value);
+													})
 												}
-												help={t("form.optional")}
 												maxLength={16}
+												editable={canManage}
 											/>
-										</>
-									) : null}
-								</ScreenSection>
+										</SettingsFold>
+									</SettingsFold>
+								</Card>
 							</AnimateIn>
-
+							<AnimateIn index={3}>
+								<Card elevation="flat">
+									<SettingsFold
+										primary
+										label={t("biz.settings.fulfillment")}
+										detail={[
+											delivery?.deliveryEnabled
+												? t("biz.settings.delivery")
+												: null,
+											delivery?.pickupEnabled ? t("biz.settings.pickup") : null,
+										]
+											.filter(Boolean)
+											.join(" · ")}
+										open={expandedSection === "delivery"}
+										onToggle={() =>
+											setExpandedSection(
+												expandedSection === "delivery" ? null : "delivery",
+											)
+										}
+									>
+										{delivery ? (
+											<MerchantDeliverySettings
+												value={delivery}
+												onChange={(next) =>
+													edited(() => {
+														setDelivery(next);
+														setDeliveryDirty(true);
+													})
+												}
+												errors={submitted ? deliveryErrors : {}}
+												canSetDeliveryFee={Boolean(
+													settings.data.canSetDeliveryFee,
+												)}
+												disabled={!canManage || saving}
+												currency={settings.data.currency}
+											/>
+										) : null}
+									</SettingsFold>
+								</Card>
+							</AnimateIn>
 							{failure.message ? (
 								<AnimateIn index={4}>
 									<Text
@@ -500,14 +830,14 @@ export default function ShopSettings() {
 				</Card>
 			</Sheet>
 
-			{ready ? (
+			{ready && canManage ? (
 				<ActionBar
 					docked
 					primary={{
 						label: t("biz.settings.save"),
 						onPress: submit,
 						loading: saving,
-						disabled: saving,
+						disabled: saving || status.isPending || !paymentAccount.isSuccess,
 					}}
 				/>
 			) : null}
@@ -515,80 +845,73 @@ export default function ShopSettings() {
 	);
 }
 
-/**
- * The form in grey, in the shape it will have: each field's triple — label, box,
- * reserved message row — under its own real `ScreenSection` title, and the
- * category's help line and the one row the list toggles open.
- * The order is the real form's, so the skeleton and the form it stands in for
- * are the same page. The heights are the real form's at the reader's text scale,
- * which is why every line goes through `line()` rather than through a fixed
- * number, and the page does not jump when the values land.
- *
- * The section headings are the screen's own copy — facts a read does not carry —
- * so the sections are drawn real and only the values are grey. The category's
- * help line and the address's help line are grey for the same reason the field
- * labels are not: their words carry what the shop is and where it sits, which is
- * exactly what a read that is still in flight has not answered yet.
- */
-function ShopSettingsSkeleton({ loadingLabel }: { loadingLabel: string }) {
-	const { t } = useT();
-	const { fontScale } = useWindowDimensions();
-
-	// One `./list-row`: the category row's `space.md` of vertical padding twice
-	// around its title's `body` line, over the row's own touch floor — the box the
-	// closed row pays.
-	const categoryRow = Math.max(
-		MIN_TOUCH_TARGET,
-		space.md * 2 + line("body", fontScale).height,
+/** Optional fields stay folded, with expansion announced to screen readers. */
+function SettingsFold({
+	primary = false,
+	label,
+	detail,
+	open,
+	onToggle,
+	children,
+}: {
+	primary?: boolean;
+	label: string;
+	detail?: string;
+	open: boolean;
+	onToggle: () => void;
+	children: React.ReactNode;
+}) {
+	const { colors } = useTheme();
+	return (
+		<View style={styles.fold}>
+			<Pressable
+				onPress={onToggle}
+				scaleTo={1}
+				accessibilityRole="button"
+				accessibilityLabel={detail && !open ? `${label}, ${detail}` : label}
+				accessibilityState={{ expanded: open }}
+				style={styles.foldButton}
+			>
+				<View style={styles.sinpeText}>
+					<Text
+						variant={primary ? "body" : "label"}
+						tone={primary ? undefined : "muted"}
+						bold={primary}
+					>
+						{label}
+					</Text>
+					{detail && !open ? (
+						<Text variant="caption" tone="muted">
+							{detail}
+						</Text>
+					) : null}
+				</View>
+				<Ionicons
+					name={open ? "chevron-up" : "chevron-down"}
+					size={icon.inline}
+					color={colors.mutedForeground}
+					accessibilityElementsHidden
+					importantForAccessibility="no"
+				/>
+			</Pressable>
+			{open ? <View style={styles.section}>{children}</View> : null}
+		</View>
 	);
+}
 
+function ShopSettingsSkeleton({ loadingLabel }: { loadingLabel: string }) {
+	const { fontScale } = useWindowDimensions();
 	return (
 		<View style={styles.content}>
-			<ScreenSection title={t("biz.settings.profile")}>
-				<View style={formStyles.field}>
+			{[0, 1, 2, 3].map((index) => (
+				<Card key={index} elevation="flat" style={styles.section}>
 					<Skeleton
-						label={loadingLabel}
-						style={[formStyles.label, line("label", fontScale)]}
+						label={index === 0 ? loadingLabel : undefined}
+						style={{ ...line("heading", fontScale), width: "55%" }}
 					/>
-					<Skeleton style={formStyles.input} />
-					<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				</View>
-
-				{/* The description's box is `multiline` and blank it sits at the same
-				    floor — the box grows with what is typed into it, not with being
-				    empty, which is the sum the note field's block draws in `./skeletons`
-				    for the same multiline `./field`. */}
-				<View style={formStyles.field}>
-					<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-					<Skeleton style={formStyles.input} />
-					<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				</View>
-			</ScreenSection>
-
-			<ScreenSection title={t("biz.settings.category")}>
-				<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				<Card>
-					<Skeleton style={{ height: categoryRow }} />
+					<Skeleton style={{ ...line("label", fontScale), width: "75%" }} />
 				</Card>
-			</ScreenSection>
-
-			<ScreenSection title={t("biz.settings.contact")}>
-				{[0, 1].map((index) => (
-					<View key={index} style={formStyles.field}>
-						<Skeleton style={[formStyles.label, line("label", fontScale)]} />
-						<Skeleton style={formStyles.input} />
-						<Skeleton
-							style={[formStyles.message, line("caption", fontScale)]}
-						/>
-					</View>
-				))}
-			</ScreenSection>
-
-			<ScreenSection title={t("biz.settings.address")}>
-				<Skeleton style={[formStyles.message, line("caption", fontScale)]} />
-				<Skeleton style={formStyles.input} />
-				<Skeleton style={[formStyles.message, line("body", fontScale)]} />
-			</ScreenSection>
+			))}
 		</View>
 	);
 }
@@ -602,23 +925,27 @@ const MAX_PHONE_DIGITS = 15;
 
 const styles = StyleSheet.create({
 	root: { flex: 1 },
-	content: { gap: space.lg },
+	content: { gap: space.lg, paddingTop: space.md },
+	section: { gap: space.md },
+	sinpe: {
+		padding: space.md,
+		borderRadius: radius.md,
+		borderWidth: StyleSheet.hairlineWidth,
+		gap: space.sm,
+	},
+	sinpeRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+	sinpeText: { flex: 1, gap: space.xs },
+	sinpeFields: { gap: space.md, paddingTop: space.sm },
+	fold: { gap: space.sm },
+	foldButton: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: space.md,
+		minHeight: MIN_TOUCH_TARGET,
+		paddingVertical: space.sm,
+	},
 	// One step of the scale, applied only to a row whose parent is also on the
 	// list (`indentFor`). Unscoped here, the sector is present and its children
 	// step in under it. This is air, never a second row shape.
 	indent: { width: space.lg },
-});
-
-/**
- * The grey field's own rows: `./field`'s `wrap` gap between the label, the box and
- * the message row (`components/field.tsx`'s `wrap`), the box at the floor the real
- * input pays (`components/field.tsx`'s `input`), and a line each for the label and
- * the message — the label's width is a stand-in for a word the read does not carry,
- * and the message row is reserved, so it is a line rather than an empty box.
- */
-const formStyles = StyleSheet.create({
-	field: { gap: space.sm },
-	label: { width: "35%" },
-	input: { minHeight: MIN_TOUCH_TARGET },
-	message: { width: "60%" },
 });
