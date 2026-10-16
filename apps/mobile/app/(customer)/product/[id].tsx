@@ -1,10 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { localizedName, type MessageKey } from "@pymeshub/i18n";
-import {
-	type Cart,
-	MAX_LINE_QUANTITY,
-	type ProductBadge,
-} from "@pymeshub/shared";
+import type { Cart, ProductBadge } from "@pymeshub/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -162,12 +158,8 @@ const NOTES_MAX_LENGTH = 300;
  * subtracted.
  *
  * They are drawn as `./facts` chips rather than as a second badge primitive, because that is
- * what Rule 2 says a fact is, and two more facts join them: `soldCount`, a real column the
- * payload has always carried and this page never drew, and the remaining stock when that count
- * is the ceiling on what can be ordered (`lowStock`, and `./product-row` makes the same
- * measurement for the same reason). Every one appears only when it exists — `Facts` returns
- * nothing for a row whose children all filtered out, and a product nobody has bought prints no
- * count rather than "0 vendidos". The tags are a second row of the same chips, next to the
+ * what Rule 2 says a fact is. The sold count appears only after a sale; inventory
+ * quantities stay in merchant tools. The tags are a second row of the same chips, next to the
  * description they belong to: a badge is derived from a column and moves with the product's
  * state, while a tag is a word the shop chose and reads as part of what the dish *is*.
  *
@@ -471,33 +463,6 @@ export default function Product() {
 		.map((group) => group.name);
 
 	/**
-	 * How many are left, when that number is the ceiling on the order — and only then.
-	 *
-	 * The same measurement `./product-row` makes and for the same reason: `availabilityOf`
-	 * (`packages/shared/src/schemas/catalog.ts`) sets `maxOrderQuantity` to
-	 * `min(MAX_LINE_QUANTITY, stockQuantity)` when a shop tracks inventory, so stock at or
-	 * above the line ceiling can satisfy any order a customer can build and the count says
-	 * nothing the stepper's own maximum does not. Below it the ceiling *is* the stock, and
-	 * this page is where the stepper the customer will hit it on is drawn.
-	 *
-	 * Two more conditions, and both exist to stop the row contradicting itself. `null` stock
-	 * is a shop that does not track inventory, so there is no count to print; a count of zero
-	 * is the absence of stock, which the "Agotado" chip and the bar's own sentence already
-	 * say — "Quedan 0" beside "Agotado" is one fact written twice, in the form that reads as
-	 * an error; and a dish that is not orderable at all is exactly the case where a remaining
-	 * count is a lie, because the shop can hold stock of something it has switched off. So the
-	 * count is drawn only while the product is actually orderable.
-	 */
-	const stockQuantity = data?.availability.quantity ?? null;
-	const lowStock =
-		data?.availability.inStock &&
-		stockQuantity !== null &&
-		stockQuantity > 0 &&
-		stockQuantity < MAX_LINE_QUANTITY
-			? stockQuantity
-			: null;
-
-	/**
 	 * Why the add cannot be made, in the dictionary's words, or `null` when it can.
 	 *
 	 * Out of stock wins over an empty group, because it is the one the customer cannot fix:
@@ -590,7 +555,7 @@ export default function Product() {
 							</Text>
 						</AnimateIn>
 
-						{/* The badges, the sold count and the remaining stock, in the dictionary's
+						{/* The badges and the sold count, in the dictionary's
 						    words. `./facts` draws nothing at all when every child is filtered out,
 						    so a new product with no badge and no sale leaves no gap behind. */}
 						<AnimateIn index={1} style={styles.pad}>
@@ -621,14 +586,6 @@ export default function Product() {
 									<Fact
 										value={tp("product.sold", data.soldCount)}
 										iconName="bag-check-outline"
-									/>
-								) : null}
-								{lowStock !== null ? (
-									<Fact
-										// `tp`: the count can be 1, and *quedar* agrees with it. See
-										// `./product-row`, which draws the same fact on the menu row.
-										value={tp("product.lowStock", lowStock)}
-										iconName="alert-circle-outline"
 									/>
 								) : null}
 							</Facts>

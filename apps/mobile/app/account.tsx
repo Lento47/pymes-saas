@@ -272,10 +272,10 @@ export default function AccountScreen() {
 	 * Which profiles this person has, and which one is drawn.
 	 *
 	 * A profile is earned by a membership row, read from `users.me` — the same read the owner
-	 * door has always come from. A `COURIER` membership earns the delivery profile; any other
+	 * door has always come from. A courier profile or `COURIER` membership earns the delivery profile; any other
 	 * role earns the business one; and `customer` needs no row at all, because that is what
 	 * everybody is before they are anything else. The three are exclusive by construction:
-	 * nobody is offered delivery without a `COURIER` row, and the switch cannot grant what the
+	 * nobody is offered delivery without a courier identity, and the switch cannot grant what the
 	 * API would refuse — `apps/api/src/context.ts` re-reads the memberships on every request
 	 * and each procedure decides for itself.
 	 *
@@ -287,7 +287,8 @@ export default function AccountScreen() {
 	 * opens.
 	 */
 	const isCourier = Boolean(
-		me.data?.memberships.some((one) => one.role === "COURIER"),
+		me.data?.courier ||
+			me.data?.memberships.some((one) => one.role === "COURIER"),
 	);
 	const isBusiness = Boolean(
 		me.data?.memberships.some((one) => one.role !== "COURIER"),
@@ -404,19 +405,12 @@ export default function AccountScreen() {
 		},
 	];
 
-	const courierSetupRow: AccountRow = {
-		key: "courier-profile",
-		title: t("biz.courier.profile"),
-		href: "/courier-profile",
-		icon: "bicycle-outline",
-	};
 	const accountRows: AccountRow[] = [
 		...(shown === "delivery"
 			? deliveryRows
 			: shown === "business"
 				? ownerRows
 				: customerRows),
-		...(shown === "delivery" ? [] : [courierSetupRow]),
 
 		// Ajustes is the device's, not a profile's: theme, language and haptics do not change
 		// meaning because you are looking at your runs instead of your orders.

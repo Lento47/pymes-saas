@@ -1,9 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-	formatMoney,
-	MAX_LINE_QUANTITY,
-	type ProductCard,
-} from "@pymeshub/shared";
+import { formatMoney, type ProductCard } from "@pymeshub/shared";
 import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
@@ -75,19 +71,8 @@ import { Text } from "./text";
  * has and invents no reason for it: "Agotado" is a fact about this card, and a reason would
  * be a sentence the API cannot answer.
  *
- * The one availability fact beyond the flag is the count, and it is only worth saying when it
- * is a *constraint*. `availabilityOf` sets `maxOrderQuantity` to `min(20, stockQuantity)` when
- * a shop tracks inventory (`packages/shared/src/schemas/catalog.ts`), and 20 is
- * `MAX_LINE_QUANTITY` — the most a single line may hold (`cart.addToCartInput.quantity`). A
- * stock at or above that ceiling can satisfy any line a customer can build, so printing
- * "Quedan 25" says nothing the stepper will not. Below it the ceiling *is* the stock, the
- * last unit is one tap away, and `product.lowStock` says how many are left.
- *
- * Neither state is decoration, so neither is only ink: each is drawn as a sentence in the
- * same slot, and the row's spoken `accessibilityLabel` carries the state too. It used to be
- * `product.title` and nothing else, which meant an explicit label swallowed the drawn
- * "Agotado" on the one row where the word is the point — a reader who cannot see the row got
- * a product with no availability at all.
+ * Consumers see sold-out status; inventory counts stay in merchant tools.
+ * The row's accessibility label includes the same availability state.
  *
  * ## One target, and it is the row
  *
@@ -120,7 +105,7 @@ export function ProductRow({
 	divider?: boolean;
 }) {
 	const { colors } = useTheme();
-	const { t, tp, intlLocale } = useT();
+	const { t, intlLocale } = useT();
 
 	// Availability is the API's word (`availabilityOf`), not a stock number: a row that
 	// computed `soldOut` locally from a count would disagree with the detail screen the
@@ -128,36 +113,14 @@ export function ProductRow({
 	const unavailable = !product.availability.inStock;
 
 	/**
-	 * The remaining count, and only when it is the ceiling on what can be ordered.
-	 *
-	 * `null` for a product whose shop does not track inventory (`availabilityOf` sends
-	 * `quantity: null` there) and for one with stock at or above `MAX_LINE_QUANTITY`; see the
-	 * docblock. Read from the field rather than remembered, because it moves as other
-	 * customers order and the query that drew this row is the only thing that knows.
-	 */
-	const remaining =
-		product.availability.quantity !== null &&
-		product.availability.quantity < MAX_LINE_QUANTITY
-			? product.availability.quantity
-			: null;
-
-	/**
 	 * What the row says about itself, and the same words it says out loud.
 	 *
 	 * One string, used twice, so the drawn line and the spoken one cannot drift — the row is a
 	 * single `Pressable` whose explicit label *replaces* its children for a screen reader
 	 * (`./status-badge` pays the same price and answers it the same way, by composing the
-	 * sentence it draws). Sold out wins over the count when both are true, because a count of
-	 * zero is not "Quedan 0".
+	 * sentence it draws).
 	 */
-	const availability = unavailable
-		? t("product.soldOut")
-		: remaining !== null
-			? // `tp`, not `t`: *quedar* agrees with what is left, so the last unit is "Queda 1"
-				// and every count above it is "Quedan 3" — one key with a `_plural` sibling rather
-				// than one form bent over both. See the Spanish file's note on the pair.
-				tp("product.lowStock", remaining)
-			: null;
+	const availability = unavailable ? t("product.soldOut") : null;
 	const price = formatMoney(product.priceMinor, product.currency, {
 		locale: intlLocale,
 	});
@@ -283,13 +246,7 @@ export function ProductRow({
 					) : null}
 				</View>
 
-				{/* One slot for the two availability states, so a row can never draw both and a
-				    row with neither draws nothing. The string is `availability` above, which is
-				    also what the row says out loud — `product.soldOut` for the flag,
-				    `product.lowStock` for the count that caps what can be ordered. It is not
-				    the ternary that stood here, which tested the same expression `unavailable`
-				    already held. `product.unavailable` keeps its caller — `./option-card` uses
-				    it for the option-level case, which is a per-option fact this row never has. */}
+				{/* Stock quantities stay private; sold-out status remains visible and spoken. */}
 				{availability ? (
 					<Text variant="caption" tone="muted">
 						{availability}
