@@ -120,6 +120,10 @@ export const business = {
 		"This order has no pickup pin, so couriers cannot receive it. Set your shop location to start looking for a courier.",
 	"biz.order.dispatch.setPickupPin": "Set shop location",
 	"biz.order.dispatch.searching": "Looking for an available courier nearby.",
+	"biz.order.dispatch.whenReady":
+		"Mark the order ready to send it to couriers in the area.",
+	"biz.order.dispatch.noDestinationPin":
+		"The delivery pin is missing. The customer needs to save the map point on this order's address to notify couriers.",
 	"biz.order.dispatch.offered": "An offer is waiting for a courier's response.",
 	"biz.order.dispatch.assigned": "A courier has accepted this delivery.",
 	"biz.order.dispatch.self": "Your business is delivering this order.",
@@ -1210,32 +1214,32 @@ export const business = {
 	"biz.manage.actor": "Person",
 	"biz.manage.target": "Target",
 	"delivery.board.title": "Deliveries",
-	"delivery.board.subtitle": "Offers and active deliveries",
-	"delivery.board.offers": "Offers to accept",
+	"delivery.board.subtitle": "Available and active deliveries",
+	"delivery.board.offers": "Deliveries to accept",
 	"delivery.offer.expiresSoon": "Expires soon",
 	"delivery.offer.expiresMinutes": "{count} min left",
 	"delivery.board.active": "Active deliveries",
 	"delivery.board.active.body":
-		"Your current orders from every business, including accepted offers and direct assignments.",
+		"Your current orders from every business, including accepted deliveries and direct assignments.",
 	"delivery.board.active.empty": "No active deliveries",
 	"delivery.board.active.emptyBody":
 		"Orders you accept or a business assigns to you will appear here.",
 	"delivery.board.openRun": "Open delivery",
 	"delivery.board.zone.title": "Choose your delivery zone",
 	"delivery.board.zone.body":
-		"Pin where you want to work. Until then, your current nearby-offer matching continues.",
+		"Pin where you want to work. Until then, your current nearby-delivery request matching continues.",
 	"delivery.board.zone.action": "Set zone on map",
 	"delivery.board.history": "Recent completed deliveries",
-	"delivery.board.empty": "No new offers right now",
+	"delivery.board.empty": "No new deliveries right now",
 	"delivery.board.offers.busy":
-		"Finish your current delivery to receive another offer.",
+		"Finish your current delivery to receive another delivery request.",
 	"delivery.board.empty.body":
 		"Matching deliveries will appear here while you are available.",
 
 	/*
 	 * The second board, and why it exists apart from the first.
 	 *
-	 * `/delivery` reads two different pipelines: `deliveries.offers` (an offer the courier
+	 * `/delivery` reads two different pipelines: `deliveries.offers` (a delivery request the courier
 	 * accepts) and `orders.list` with `assignedToMe` (an order a business assigns by hand).
 	 * `services/orders.ts` writes `order.courierUserId` and `deliveryTable.courierUserId` in the
 	 * same assignment, so one delivery lives in both lists at once — with two state vocabularies
@@ -1245,30 +1249,30 @@ export const business = {
 	 */
 	"delivery.board.assigned": "Assigned orders",
 	"delivery.board.assigned.body":
-		"A business can assign you an order directly, without going through offers.",
+		"A business can assign you an order directly, without going through deliveries.",
 	"delivery.board.assigned.empty": "No assigned orders",
 	"delivery.board.assigned.emptyBody":
 		"Orders a business assigns you without asking you to accept them will appear here.",
 
 	/*
-	 * Whether the courier is available for offers, in their pinned zone or nearby.
+	 * Whether the courier is available for deliveries, in their pinned zone or nearby.
 	 */
-	"delivery.board.receiving.on": "Available for offers",
-	"delivery.board.receiving.off": "Offers paused",
+	"delivery.board.receiving.on": "Available for deliveries",
+	"delivery.board.receiving.off": "Deliveries paused",
 	"delivery.board.availability.change": "Change status",
 	/* Couriers without a pinned zone need a fresh nearby location. */
 	"delivery.board.presence.action": "Turn on location",
 	"delivery.board.presence.body":
-		"Without your location businesses cannot tell that you are nearby, so no offers reach you. Turn it on to start receiving them again.",
+		"Without your location businesses cannot tell that you are nearby, so no deliveries reach you. Turn it on to start receiving them again.",
 	"delivery.board.locationUnavailable":
-		"Your location is unavailable. Check location services to receive offers.",
+		"Your location is unavailable. Check location services to receive deliveries.",
 	"delivery.board.presenceFailed":
-		"We couldn't update your location for offers.",
+		"We couldn't update your location for deliveries.",
 	"delivery.board.zoneDispatchFailed":
-		"Couldn't check your delivery zone for offers.",
+		"Couldn't check your delivery zone for deliveries.",
 
 	/*
-	 * How offers reach you, and every sentence is a condition of `candidateFor`.
+	 * How deliveries reach you, and every sentence is a condition of `candidateFor`.
 	 *
 	 * Shown while `mine` holds no `DELIVERED` delivery — the courier's own record, not a
 	 * dismissal flag — so it cannot be swiped away and still be true.
@@ -1278,11 +1282,11 @@ export const business = {
 	 * changes in `services/delivery-dispatch.ts` these sentences go stale, and a test on this row
 	 * is what should say so.
 	 */
-	"delivery.board.how.title": "How offers reach you",
+	"delivery.board.how.title": "How deliveries reach you",
 	"delivery.board.how.body":
-		"PymesHub looks for you, not the other way around. A business opens a delivery and it goes to the nearest verified, available courier.",
+		"When a business marks an order ready, PymesHub finds a verified, available courier in the area.",
 	"delivery.board.how.detail":
-		"With a pinned zone, both stops must fit inside it. Without one, keep location on within 15 km. Each offer lasts 2 minutes.",
+		"With a pinned zone, both stops must fit inside it. Without one, keep location on within 15 km. You have 2 minutes to accept.",
 
 	/*
 	 * The courier's record, and the only card on that screen that is not about the next
@@ -1313,9 +1317,11 @@ export const business = {
 		"A promotion covers the customer's charge; the courier fee is still owed.",
 	"delivery.offer.decline": "Decline",
 	"delivery.offer.distance": "{value} km from the business",
-	"delivery.offer.unavailable": "This offer is no longer available.",
+	"delivery.offer.unavailable": "This delivery request is no longer available.",
 	"delivery.detail.title": "Delivery details",
 	"delivery.map.label": "Map of the pickup and drop-off",
+	"delivery.map.routeUnavailable":
+		"Road route unavailable. You can still open directions.",
 	"delivery.map.courierLocation": "Your location: {status}",
 	"delivery.map.locationWaiting": "Waiting for a location update",
 	"delivery.map.locationUnavailable": "Location unavailable. Pull to retry.",
@@ -1327,7 +1333,7 @@ export const business = {
 	"delivery.navigate.unavailable":
 		"Could not open directions. Check your maps or browser app.",
 	"delivery.status.SEARCHING": "Finding a courier",
-	"delivery.status.OFFERED": "Offer sent",
+	"delivery.status.OFFERED": "Delivery request sent",
 	"delivery.status.ACCEPTED": "Accepted",
 	"delivery.status.TO_PICKUP": "Going to the business",
 	"delivery.status.AT_PICKUP": "At the business",
@@ -1346,14 +1352,14 @@ export const business = {
 		"This rating is used for safety and service metrics.",
 	"delivery.rateCustomer.submit": "Send rating",
 	"delivery.rateCustomer.thanks": "Rating saved",
-	"delivery.presence.denied": "Turn on location to receive nearby offers.",
+	"delivery.presence.denied": "Turn on location to receive nearby deliveries.",
 
 	"delivery.motion.wordmark": "pymeshub",
 	"delivery.motion.hero.connect": "Connect",
 	"delivery.motion.hero.with": "with your ",
 	"delivery.motion.hero.city": "city",
-	"delivery.motion.availability.receiving": "Receiving offers",
-	"delivery.motion.availability.paused": "Offers paused",
+	"delivery.motion.availability.receiving": "Receiving deliveries",
+	"delivery.motion.availability.paused": "Deliveries paused",
 	"delivery.motion.availability.pause": "Pause",
 	"delivery.motion.availability.resume": "Resume",
 	"delivery.motion.metric.month": "This month",
@@ -1362,11 +1368,11 @@ export const business = {
 	"delivery.motion.metric.none": "—",
 	"delivery.motion.zone": "Active zone",
 	"delivery.motion.zone.unset": "No zone pinned",
-	"delivery.motion.offer.title": "New offer",
+	"delivery.motion.offer.title": "New delivery request",
 	"delivery.motion.offer.drop": "Deliver to",
 	"delivery.motion.offer.accept": "Accept",
-	"delivery.motion.offer.waiting": "Waiting for nearby offers",
-	"delivery.motion.offer.expired": "This offer expired",
+	"delivery.motion.offer.waiting": "Waiting for nearby deliveries",
+	"delivery.motion.offer.expired": "This delivery request expired",
 	"delivery.motion.headline.pickup": "Pickup",
 	"delivery.motion.headline.dropoff": "Delivery",
 	"delivery.motion.headline.enRoute": "en route",
@@ -1389,15 +1395,16 @@ export const business = {
 	"delivery.motion.continue": "Continue delivery",
 	"delivery.motion.availability.title": "Availability",
 	"delivery.motion.availability.online.body":
-		"You are receiving offers in your zone.",
-	"delivery.motion.availability.offline.body": "Resume to receive new offers.",
+		"You are receiving deliveries in your zone.",
+	"delivery.motion.availability.offline.body":
+		"Resume to receive new deliveries.",
 	"delivery.motion.availability.pauseConfirm":
-		"You won't receive new offers until you turn this back on.",
-	"delivery.motion.availability.goOffline": "Pause offers",
-	"delivery.motion.availability.goOnline": "Receive offers",
+		"You won't receive new deliveries until you turn this back on.",
+	"delivery.motion.availability.goOffline": "Pause deliveries",
+	"delivery.motion.availability.goOnline": "Receive deliveries",
 	"delivery.motion.account": "Account",
 	"delivery.motion.contact.unavailable": "No phone number to contact.",
-	"delivery.motion.offer.concurrent": "A new offer is available",
+	"delivery.motion.offer.concurrent": "A new delivery request is available",
 	"delivery.motion.slice.expand": "Show recent deliveries",
 	"delivery.motion.slice.collapse": "Hide recent deliveries",
 	"delivery.motion.slice.empty": "No completed deliveries yet",
@@ -1502,4 +1509,11 @@ export const business = {
 	"customize.remove": "Remove",
 	"customize.done": "Done",
 	"customize.headerStyle": "Header style",
+	"biz.settings.delivery.pricing": "Delivery price",
+	"biz.settings.delivery.automatic": "Automatic Express",
+	"biz.settings.delivery.agreed": "Agreed fee",
+	"biz.settings.delivery.automaticHelp":
+		"Express calculates the price using the road distance and driving time. An agreed fee requires a paid plan and an affiliated courier.",
+	"biz.settings.delivery.affiliatedRequired":
+		"To set an agreed delivery fee, use a paid plan and add an affiliated courier who has accepted your invitation.",
 } as const;

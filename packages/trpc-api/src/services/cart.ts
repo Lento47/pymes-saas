@@ -33,7 +33,9 @@ import {
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
+import { usesExpressCalculator } from "./delivery-policy";
 import {
+	AFFILIATED_PRICING_VERSION,
 	checkoutPriceFingerprint,
 	createRoadQuote,
 	roadFeeEnabled,
@@ -153,7 +155,14 @@ export async function quote(
 		cart.totals.subtotalMinor,
 	);
 	if (promotion.error) throw new ValidationError(promotion.error);
-	if (input.fulfilment === "DELIVERY" && business.deliveryFeeMinor <= 0)
+	const automatic =
+		input.fulfilment === "DELIVERY" &&
+		(await usesExpressCalculator(ctx.db, business));
+	if (
+		input.fulfilment === "DELIVERY" &&
+		!automatic &&
+		business.deliveryFeeMinor <= 0
+	)
 		throw new ValidationError("checkout.refusal.courierFeeUnavailable");
 	const deliveryFeeMinor =
 		input.fulfilment === "DELIVERY" &&
@@ -171,10 +180,15 @@ export async function quote(
 	};
 	const pricingVersion =
 		input.fulfilment === "DELIVERY"
-			? routingPricingVersion(ctx.env, business.currency)
+			? automatic
+				? routingPricingVersion(ctx.env, business.currency)
+				: ctx.env.ROUTING_ENABLED === "true"
+					? AFFILIATED_PRICING_VERSION
+					: null
 			: null;
 	if (pricingVersion) {
-		const dynamicPricing = roadFeeEnabled(ctx.env, business.currency);
+		const dynamicPricing =
+			automatic && roadFeeEnabled(ctx.env, business.currency);
 		if (!address && dynamicPricing)
 			throw new ValidationError("checkout.refusal.addressNotFound", {
 				field: "addressId",

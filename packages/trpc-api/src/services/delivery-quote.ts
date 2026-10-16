@@ -16,12 +16,13 @@ import {
 const QUOTE_TTL_MS = 2 * 60 * 1000;
 type QuoteRow = typeof quoteTable.$inferSelect;
 
-/** Only CRC has a configured road tariff. Absence of the flag preserves legacy pricing. */
+/** CRC has a configured road tariff. Explicit false is reserved for legacy environments. */
 export function roadFeeEnabled(env: Env, currency: Currency): boolean {
-	return env.ROUTE_FEE_ENABLED === "true" && currency === "CRC";
+	return env.ROUTE_FEE_ENABLED !== "false" && currency === "CRC";
 }
 
 export const LEGACY_ROUTED_VERSION = "legacy-routed-v1";
+export const AFFILIATED_PRICING_VERSION = "affiliated-fixed-v1";
 
 /** Routing can be observed with fixed prices before the road tariff is enabled. */
 export function routingPricingVersion(

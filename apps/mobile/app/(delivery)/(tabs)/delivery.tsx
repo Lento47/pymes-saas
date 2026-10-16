@@ -581,7 +581,10 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 								</Text>
 							) : null}
 						</View>
-						<OfferDestination area={offer.dropoffArea} motion={motion} />
+						<OfferDestination
+							area={offer.dropoffArea || t("location.pinned")}
+							motion={motion}
+						/>
 						{offerExpired ? (
 							<Text variant="body" style={{ color: motion.sheetMuted }}>
 								{t("delivery.motion.offer.expired")}

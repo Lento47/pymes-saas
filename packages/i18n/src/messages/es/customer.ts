@@ -546,6 +546,10 @@ export const customer = {
 	"checkout.delivery": "Entrega a domicilio",
 	"checkout.pickup": "Retiro en el local",
 	"checkout.location": "Local de retiro",
+	"checkout.express": "Entrega Express",
+	"order.courier.plate": "Placa: {plate}",
+	"checkout.pickupInstead": "Prefiero retirar en el local",
+	"checkout.origin": "Sale de este negocio",
 	"checkout.location.pickupMap": "Mapa con el punto de recogida del comercio",
 	"checkout.location.routeMap": "Mapa con los puntos de recogida y entrega",
 	"checkout.location.none":
@@ -843,7 +847,7 @@ export const customer = {
 	"location.providerUnavailable":
 		"La ubicación del dispositivo no está disponible. Revisa los servicios de ubicación e inténtalo de nuevo.",
 	"location.applyPin": "Usar esta ubicación",
-	"location.saveAddress": "Guardar como dirección de entrega",
+	"location.saveAddress": "Añadir indicaciones de entrega (opcional)",
 	"location.done": "Listo",
 	"location.denied": "No pudimos obtener tu ubicación. Escribe tu dirección.",
 	"location.manual": "Escribir dirección",

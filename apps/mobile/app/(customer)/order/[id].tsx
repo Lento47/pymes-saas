@@ -509,6 +509,25 @@ function OrderDetail() {
 						{t("order.number", { code: order.reference })}
 					</Text>
 				</AnimateIn>
+				{order.courier?.name ? (
+					<Card>
+						<Text variant="body" bold>
+							{t("order.track.courier", { name: order.courier.name })}
+						</Text>
+						{order.courier.vehiclePlate ? (
+							<Text variant="body">
+								{t("order.courier.plate", {
+									plate: order.courier.vehiclePlate,
+								})}
+							</Text>
+						) : null}
+						{order.courier.vehicleName ? (
+							<Text variant="caption" tone="muted">
+								{order.courier.vehicleName}
+							</Text>
+						) : null}
+					</Card>
+				) : null}
 				<AnimateIn index={1}>
 					<Text variant="heading">{order.business.name}</Text>
 				</AnimateIn>
@@ -767,12 +786,6 @@ function OrderDetail() {
 									</Text>
 								) : null}
 							</View>
-						) : null}
-
-						{order.courier?.name ? (
-							<Text variant="body">
-								{t("order.track.courier", { name: order.courier.name })}
-							</Text>
 						) : null}
 
 						{/* The trip's fixed endpoints and the courier's latest foreground ping.

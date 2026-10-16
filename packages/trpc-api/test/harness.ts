@@ -443,6 +443,9 @@ export function world(): TestWorld {
 			}),
 		},
 		ENVIRONMENT: "test",
+		// Most legacy fixtures deliberately exercise fixed-price compatibility.
+		// Road-pricing tests enable the calculator and provide a routing service.
+		ROUTE_FEE_ENABLED: "false",
 		API_VERSION: "test",
 		RATE_LIMIT_ROOM: limiter.namespace,
 	} as unknown as Env;

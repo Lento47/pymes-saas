@@ -499,6 +499,11 @@ export const business = sqliteTable(
 			.notNull()
 			.default(true),
 		deliveryFeeMinor: integer("delivery_fee_minor").notNull().default(0),
+		deliveryPricingMode: text("delivery_pricing_mode", {
+			enum: ["EXPRESS", "AFFILIATED"],
+		})
+			.notNull()
+			.default("EXPRESS"),
 		merchantCoversDelivery: integer("merchant_covers_delivery", {
 			mode: "boolean",
 		})

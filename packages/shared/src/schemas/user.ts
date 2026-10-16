@@ -125,29 +125,45 @@ export const updateProfileInput = z.object({
 export type UpdateProfileInput = z.infer<typeof updateProfileInput>;
 
 /**
- * An address, with coordinates when the browser or the phone could supply them.
- *
- * Coordinates are optional on purpose: a customer typing an address in a barangay
- * with no map coverage must still be able to order, and a delivery whose address is
- * text-only is a driver phone call rather than a blocked checkout.
+ * A delivery pin is enough to save a destination; street details are optional
+ * when a map cannot name them. Legacy text addresses remain editable.
  */
-export const addressInput = z.object({
-	label: shortText(40).default("Casa"),
-	line1: shortText(200),
-	line2: z.string().trim().max(200).optional(),
-	city: shortText(80),
-	region: shortText(80),
-	country: z.string().trim().length(2).default("CR"),
-	postalCode: z.string().trim().max(16).optional(),
-	lat: latitudeSchema.optional(),
-	lng: longitudeSchema.optional(),
-	phone: phoneSchema.optional(),
-	instructions: z.string().trim().max(300).optional(),
-	isDefault: z.boolean().default(false),
-});
+export const addressInput = z
+	.object({
+		label: shortText(40).default("Casa"),
+		line1: z.string().trim().max(200).default(""),
+		line2: z.string().trim().max(200).optional(),
+		city: z.string().trim().max(80).default(""),
+		region: z.string().trim().max(80).default(""),
+		country: z.string().trim().length(2).default("CR"),
+		postalCode: z.string().trim().max(16).optional(),
+		lat: latitudeSchema.optional(),
+		lng: longitudeSchema.optional(),
+		phone: phoneSchema.optional(),
+		instructions: z.string().trim().max(300).optional(),
+		isDefault: z.boolean().default(false),
+	})
+	.superRefine((address, ctx) => {
+		if ((address.lat == null) !== (address.lng == null)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["lat"],
+				message: "A map pin needs both coordinates",
+			});
+		}
+		if (address.lat != null && address.lng != null) return;
+		for (const field of ["line1", "city", "region"] as const) {
+			if (!address[field])
+				ctx.addIssue({
+					code: "custom",
+					path: [field],
+					message: "Add an address or choose a map pin",
+				});
+		}
+	});
 export type AddressInput = z.infer<typeof addressInput>;
 
-export const addressSchema = addressInput.extend({
+export const addressSchema = addressInput.safeExtend({
 	id: z.string(),
 	createdAt: z.date(),
 });

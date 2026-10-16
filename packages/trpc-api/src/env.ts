@@ -80,13 +80,13 @@ export type Env = {
 	CORS_ORIGINS?: string;
 	/** Operator-controlled HTTPS routing endpoint; never a public demo server. */
 	ROUTING_BASE_URL?: string;
-	/** Private, staging-only Worker service binding to the routing container. */
+	/** Private Worker service binding to this environment's routing container. */
 	ROUTING_SERVICE?: Fetcher;
 	/** `osrm` (default) or `valhalla`; a typo fails closed when routing is used. */
 	ROUTING_PROVIDER?: string;
 	/** Fetch road geometry without changing the legacy delivery fee. */
 	ROUTING_ENABLED?: string;
-	/** Road-priced CRC deliveries are opt-in; absent or false keeps the legacy fee. */
+	/** CRC Express uses road pricing by default; explicit false preserves legacy environments. */
 	ROUTE_FEE_ENABLED?: string;
 	/** ETA-first courier ranking; absent keeps the legacy ordering. */
 	AFFINITY_V2_ENABLED?: string;

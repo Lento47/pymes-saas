@@ -43,7 +43,7 @@ export const usersRouter = router({
 	// a create that quietly adds a duplicate when the client meant to edit — is the bug this
 	// shape prevents.
 	saveAddress: protectedProcedure
-		.input(addressInput.extend({ id: z.string().optional() }))
+		.input(addressInput.safeExtend({ id: z.string().optional() }))
 		.mutation(({ ctx, input }) => users.saveAddress(ctx, input)),
 
 	deleteAddress: protectedProcedure

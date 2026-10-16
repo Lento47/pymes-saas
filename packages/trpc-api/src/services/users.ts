@@ -2,6 +2,7 @@ import {
 	address as addressTable,
 	business as businessTable,
 	courierProfile as courierProfileTable,
+	delivery as deliveryTable,
 	membership as membershipTable,
 	notification as notificationTable,
 	order as orderTable,
@@ -21,9 +22,20 @@ import {
 	type UpdateProfileInput,
 	type UserProfile,
 } from "@pymeshub/shared";
-import { and, desc, eq, lt, ne, notInArray, or } from "drizzle-orm";
+import {
+	and,
+	desc,
+	eq,
+	inArray,
+	isNull,
+	lt,
+	ne,
+	notInArray,
+	or,
+} from "drizzle-orm";
 
 import { ConflictError } from "../errors";
+import { dispatchNext } from "./delivery-dispatch";
 import type { UserContext } from "./helpers";
 import { batchOf, orNotFound } from "./helpers";
 import {
@@ -323,7 +335,35 @@ export async function saveAddress(
 				),
 			)
 			.limit(1);
-		return addressOf(orNotFound(updated[0]));
+		const saved = orNotFound(updated[0]);
+		if (saved.lat != null && saved.lng != null) {
+			// Old orders could be placed without a destination pin. Saving that same
+			// address releases their waiting offers; other addresses and customers stay untouched.
+			try {
+				const waiting = await ctx.db
+					.select({ id: deliveryTable.id })
+					.from(deliveryTable)
+					.innerJoin(orderTable, eq(orderTable.id, deliveryTable.orderId))
+					.where(
+						and(
+							eq(orderTable.addressId, saved.id),
+							eq(orderTable.customerId, ctx.user.id),
+							inArray(orderTable.status, ["READY", "OUT_FOR_DELIVERY"]),
+							eq(deliveryTable.status, "SEARCHING"),
+							or(
+								isNull(deliveryTable.dropoffLat),
+								isNull(deliveryTable.dropoffLng),
+							),
+						),
+					)
+					.limit(10);
+				for (const delivery of waiting)
+					await dispatchNext(ctx.db, delivery.id, ctx.env);
+			} catch (error) {
+				ctx.logger.warn("delivery.address_pin_dispatch_failed", { error });
+			}
+		}
+		return addressOf(saved);
 	}
 
 	const owned = await ctx.db

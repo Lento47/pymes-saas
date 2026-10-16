@@ -3,6 +3,7 @@ import {
 	business as businessTable,
 	delivery as deliveryTable,
 	haversineKm,
+	membership as membershipTable,
 	deliveryOffer as offerTable,
 	order as orderTable,
 	courierPresence as presenceTable,
@@ -26,6 +27,7 @@ import {
 	gte,
 	inArray,
 	isNotNull,
+	isNull,
 	lte,
 	ne,
 	sql,
@@ -37,9 +39,11 @@ import {
 	OFFER_RADIUS_KM,
 	sweepExpiredOffers,
 } from "./delivery-dispatch";
+import { AFFILIATED_PRICING_VERSION } from "./delivery-quote";
 import type { UserContext } from "./helpers";
 import { batchOf } from "./helpers";
 import * as orders from "./orders";
+import { createConfiguredRouting } from "./routing";
 
 const VISIBLE_MINE_STATUSES = [
 	"ACCEPTED",
@@ -296,6 +300,7 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 				eq(offerTable.status, "PENDING"),
 				gt(offerTable.expiresAt, now),
 				eq(deliveryTable.status, "OFFERED"),
+				inArray(orderTable.status, ["READY", "OUT_FOR_DELIVERY"]),
 			),
 		)
 		.orderBy(desc(offerTable.createdAt));
@@ -392,6 +397,17 @@ export async function acceptOffer(
 		and ${offerTable.status} = 'PENDING'
 		and ${offerTable.expiresAt} > ${now.getTime()}
 	)`;
+	const readyOrder = sql`exists (
+		select 1 from ${orderTable}
+		where ${orderTable.id} = ${deliveryRow.orderId}
+		and ${orderTable.status} in ('READY', 'OUT_FOR_DELIVERY')
+		and (${orderTable.deliveryPricingVersion} is null
+			or ${orderTable.deliveryPricingVersion} != ${AFFILIATED_PRICING_VERSION}
+			or exists (select 1 from ${membershipTable}
+				where ${membershipTable.businessId} = ${orderTable.businessId}
+				and ${membershipTable.userId} = ${ctx.user.id}
+				and ${membershipTable.role} = 'COURIER' and ${membershipTable.status} = 'ACTIVE'))
+	)`;
 	const acceptedDelivery = sql`exists (
 		select 1 from ${deliveryTable}
 		where ${deliveryTable.id} = ${offer.deliveryId}
@@ -415,6 +431,7 @@ export async function acceptOffer(
 							eq(deliveryTable.id, offer.deliveryId),
 							eq(deliveryTable.status, "OFFERED"),
 							validOffer,
+							readyOrder,
 						),
 					),
 				ctx.db
@@ -534,7 +551,7 @@ export async function byId(
 	ctx: UserContext,
 	input: { deliveryId: string },
 ): Promise<DeliveryDetail> {
-	return readDetail(ctx, input.deliveryId);
+	return readDetail(ctx, input.deliveryId, true);
 }
 
 export async function byOrder(
@@ -704,6 +721,7 @@ async function transition(
 async function readDetail(
 	ctx: UserContext,
 	deliveryId: string,
+	resolveRoute = false,
 ): Promise<DeliveryDetail> {
 	// Whole-table selections across three joins used to sit here, and D1 answers that
 	// with "too many columns in result set": the delivery, order and business rows
@@ -783,6 +801,48 @@ async function readDetail(
 			(member) => member.businessId === row.delivery.businessId,
 		);
 	if (!mayRead) throw new NotFoundError();
+	// Deliveries created before road quotes were enabled have stops but no shape.
+	// Resolve their real road route once, without repricing an accepted order.
+	if (
+		resolveRoute &&
+		!row.order.routeGeometry &&
+		row.delivery.pickupLat != null &&
+		row.delivery.pickupLng != null &&
+		row.delivery.dropoffLat != null &&
+		row.delivery.dropoffLng != null
+	) {
+		const routing = createConfiguredRouting(ctx.env);
+		if (routing) {
+			try {
+				const route = await routing.route({
+					origin: { lat: row.delivery.pickupLat, lng: row.delivery.pickupLng },
+					destination: {
+						lat: row.delivery.dropoffLat,
+						lng: row.delivery.dropoffLng,
+					},
+					profile: "car",
+				});
+				await ctx.db
+					.update(orderTable)
+					.set({
+						routeGeometry: route.geometry,
+						routeDistanceMeters: route.distanceMeters,
+						routeDurationSeconds: route.durationSeconds,
+					})
+					.where(
+						and(
+							eq(orderTable.id, row.delivery.orderId),
+							isNull(orderTable.routeGeometry),
+						),
+					);
+				row.order.routeGeometry = route.geometry;
+				row.order.routeDistanceMeters = route.distanceMeters;
+				row.order.routeDurationSeconds = route.durationSeconds;
+			} catch (error) {
+				ctx.logger.error("delivery.route_unavailable", { error });
+			}
+		}
+	}
 
 	const [customer, courier, ratings] = await Promise.all([
 		ctx.db

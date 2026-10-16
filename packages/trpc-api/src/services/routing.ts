@@ -198,7 +198,8 @@ export function createOsrmRouting(input: {
 		try {
 			response = await fetcher(new URL(path, base), {
 				signal: AbortSignal.timeout(timeoutMs),
-				redirect: "error",
+				// Workers Request supports manual redirects; reject any 3xx via response.ok below.
+				redirect: "manual",
 			});
 		} catch {
 			throw new RoutingUnavailableError();
@@ -281,7 +282,7 @@ export function createValhallaRouting(input: {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(payload),
 				signal: AbortSignal.timeout(timeoutMs),
-				redirect: "error",
+				redirect: "manual",
 			});
 		} catch {
 			throw new RoutingUnavailableError();

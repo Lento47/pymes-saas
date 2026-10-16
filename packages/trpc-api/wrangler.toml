@@ -322,10 +322,6 @@ enabled = true
 [env.staging]
 name = "pymeshub-api-staging"
 
-[[env.staging.services]]
-binding = "ROUTING_SERVICE"
-service = "pymeshub-routing-staging"
-
 # The hostname this Worker is reached at, bound as a Cloudflare **custom domain** so that
 # the deploy creates the DNS record and the route with it. `AUTH_URL` below names the same
 # origin, `CORS_ORIGINS` allows it as a browser origin, and the smoke test in
@@ -343,6 +339,10 @@ service = "pymeshub-routing-staging"
 # production's: one entry up there would bind the local dev environment to a production
 # hostname.
 routes = [{ pattern = "api-staging.pymeshub.lat", custom_domain = true }]
+
+[[env.staging.services]]
+binding = "ROUTING_SERVICE"
+service = "pymeshub-routing-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
@@ -398,18 +398,20 @@ class_name = "RateLimitRoom"
 [env.production]
 name = "pymeshub-api"
 
-[[env.production.services]]
-binding = "ROUTING_SERVICE"
-service = "pymeshub-routing"
-
 # Production's own hostname, bound for the reasons the staging block above gives and one
 # more: `apps/web/wrangler.jsonc` compiles this origin into the browser bundle as `API_URL`,
 # so a deploy with no route would ship a web app whose every request, and the documented
 # `curl`, go to a name that answers nothing.
 routes = [{ pattern = "api.pymeshub.lat/*", zone_name = "pymeshub.lat" }]
 
+[[env.production.services]]
+binding = "ROUTING_SERVICE"
+service = "pymeshub-routing"
+
 [env.production.vars]
 ENVIRONMENT = "production"
+ROUTING_ENABLED = "true"
+ROUTE_FEE_ENABLED = "true"
 API_VERSION = "0.2.0"
 LOG_LEVEL = "error"
 AUTH_URL = "https://api.pymeshub.lat"

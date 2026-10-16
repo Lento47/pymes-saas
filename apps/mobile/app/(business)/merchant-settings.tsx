@@ -48,6 +48,7 @@ type SettingsForm = {
 	deliveryEnabled: boolean;
 	pickupEnabled: boolean;
 	deliveryFeeMinor: string;
+	deliveryPricingMode: "EXPRESS" | "AFFILIATED";
 	merchantCoversDelivery: boolean;
 	deliveryRadiusKm: string;
 	prepTimeMinutes: string;
@@ -116,6 +117,9 @@ function initialForm(settings: BusinessSettings): SettingsForm {
 		deliveryEnabled: settings.deliveryEnabled,
 		pickupEnabled: settings.pickupEnabled,
 		deliveryFeeMinor: moneyInput(settings.deliveryFeeMinor, settings.currency),
+		deliveryPricingMode: settings.canSetDeliveryFee
+			? (settings.deliveryPricingMode ?? "EXPRESS")
+			: "EXPRESS",
 		merchantCoversDelivery: settings.merchantCoversDelivery ?? false,
 		deliveryRadiusKm: settings.deliveryRadiusKm?.toString() ?? "",
 		prepTimeMinutes: settings.prepTimeMinutes.toString(),
@@ -150,6 +154,7 @@ function validate(
 	}
 	if (
 		!errors.deliveryFeeMinor &&
+		form.deliveryPricingMode === "AFFILIATED" &&
 		form.deliveryEnabled &&
 		moneyValue(form.deliveryFeeMinor, currency) <= 0
 	) {
@@ -198,7 +203,11 @@ function asSettingsUpdate(
 		postalCode: form.postalCode.trim() || undefined,
 		deliveryEnabled: form.deliveryEnabled,
 		pickupEnabled: form.pickupEnabled,
-		deliveryFeeMinor: moneyValue(form.deliveryFeeMinor, currency),
+		deliveryFeeMinor:
+			form.deliveryPricingMode === "AFFILIATED"
+				? moneyValue(form.deliveryFeeMinor, currency)
+				: undefined,
+		deliveryPricingMode: form.deliveryPricingMode,
 		merchantCoversDelivery: form.merchantCoversDelivery,
 		deliveryRadiusKm: numberValue(form.deliveryRadiusKm),
 		prepTimeMinutes: numberValue(form.prepTimeMinutes) ?? 0,
@@ -554,15 +563,43 @@ function SettingsForm({
 								]}
 								disabled={!canEdit}
 							/>
-							<Field
-								label={t("biz.settings.delivery.fee")}
-								value={form.deliveryFeeMinor}
-								onChangeText={(value) => change("deliveryFeeMinor", value)}
-								error={errors.deliveryFeeMinor}
-								help={t("biz.settings.delivery.fee.help")}
-								keyboardType="decimal-pad"
-								editable={canEdit}
-							/>
+							{settings.canSetDeliveryFee ? (
+								<Segmented
+									label={t("biz.settings.delivery.pricing")}
+									value={form.deliveryPricingMode}
+									onChange={(value) =>
+										change(
+											"deliveryPricingMode",
+											value as "EXPRESS" | "AFFILIATED",
+										)
+									}
+									options={[
+										{
+											value: "EXPRESS",
+											label: t("biz.settings.delivery.automatic"),
+										},
+										{
+											value: "AFFILIATED",
+											label: t("biz.settings.delivery.agreed"),
+										},
+									]}
+									disabled={!canEdit}
+								/>
+							) : null}
+							<Text variant="caption" tone="muted">
+								{t("biz.settings.delivery.automaticHelp")}
+							</Text>
+							{form.deliveryPricingMode === "AFFILIATED" ? (
+								<Field
+									label={t("biz.settings.delivery.fee")}
+									value={form.deliveryFeeMinor}
+									onChangeText={(value) => change("deliveryFeeMinor", value)}
+									error={errors.deliveryFeeMinor}
+									help={t("biz.settings.delivery.fee.help")}
+									keyboardType="decimal-pad"
+									editable={canEdit}
+								/>
+							) : null}
 							{form.deliveryEnabled ? (
 								<>
 									<Text variant="label" bold>

@@ -365,6 +365,15 @@ function CourierRun({
 										.join(" · ")}
 								</Text>
 							) : null}
+							{mapAvailable && !delivery.routeGeometry ? (
+								<Text
+									variant="caption"
+									style={{ color: motion.muted }}
+									accessibilityLiveRegion="polite"
+								>
+									{t("delivery.map.routeUnavailable")}
+								</Text>
+							) : null}
 						</View>
 						{kind !== "done" && kind !== "cancelled" ? (
 							<CircleIconButton
@@ -582,6 +591,7 @@ function TaskSheet({
 			<RouteStops
 				pickup={delivery.pickup}
 				dropoff={delivery.dropoff}
+				customerName={delivery.customer.name}
 				status={delivery.status}
 				motion={motion}
 			/>
@@ -773,11 +783,13 @@ function openDirections(stop: DeliveryStop, unavailableMessage: string) {
 export function RouteStops({
 	pickup,
 	dropoff,
+	customerName,
 	status,
 	motion,
 }: {
 	pickup: DeliveryStop;
 	dropoff: DeliveryStop;
+	customerName?: string;
 	status: DeliveryStatus;
 	motion: ReturnType<typeof courierMotionTokens>;
 }) {
@@ -794,6 +806,7 @@ export function RouteStops({
 			<StopRow
 				kind="dropoff"
 				stop={dropoff}
+				customerName={customerName}
 				active={active === "dropoff"}
 				motion={motion}
 			/>
@@ -804,12 +817,14 @@ export function RouteStops({
 function StopRow({
 	kind,
 	stop,
+	customerName,
 	active,
 	connect = false,
 	motion,
 }: {
 	kind: "pickup" | "dropoff";
 	stop: DeliveryStop;
+	customerName?: string;
 	active: boolean;
 	connect?: boolean;
 	motion: ReturnType<typeof courierMotionTokens>;
@@ -847,11 +862,11 @@ function StopRow({
 					{label}
 				</Text>
 				<Text variant="body" bold style={{ color: motion.sheetInk }}>
-					{kind === "dropoff" ? stop.city || stop.name : stop.name}
+					{kind === "dropoff" ? customerName || stop.name : stop.name}
 				</Text>
 				{kind === "dropoff" ? (
 					<Text variant="caption" style={{ color: motion.sheetMuted }}>
-						{t("delivery.motion.customer")}
+						{street || stop.city || t("delivery.motion.customer")}
 					</Text>
 				) : street ? (
 					<Text variant="caption" style={{ color: motion.sheetMuted }}>

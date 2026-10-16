@@ -135,8 +135,12 @@ export const business = {
 		"Este pedido no tiene punto de recogida y no llegará a los repartidores. Ubica tu negocio para empezar a buscar repartidor.",
 	"biz.order.dispatch.setPickupPin": "Ubicar el negocio",
 	"biz.order.dispatch.searching": "Buscando un repartidor disponible cerca.",
+	"biz.order.dispatch.whenReady":
+		"Al marcarlo como listo, el pedido llega a los repartidores de la zona.",
+	"biz.order.dispatch.noDestinationPin":
+		"Falta la ubicación de entrega. El cliente debe guardar el punto en su dirección para avisar a los repartidores.",
 	"biz.order.dispatch.offered":
-		"Una oferta espera la respuesta de un repartidor.",
+		"Un pedido espera la respuesta de un repartidor.",
 	"biz.order.dispatch.assigned": "Un repartidor aceptó esta entrega.",
 	"biz.order.dispatch.self": "Tu negocio está repartiendo este pedido.",
 	"biz.order.selfDelivery.start": "Repartir nosotros",
@@ -734,7 +738,7 @@ export const business = {
 		"Guardar un cambio vuelve a poner tu perfil en revisión y te saca del directorio hasta que se apruebe.",
 	"biz.courier.reviewReset.title": "¿Guardar y volver a revisión?",
 	"biz.courier.reviewReset.body":
-		"Tu perfil ya está verificado. Al guardar, dejas de recibir ofertas hasta que PymesHub apruebe los cambios.",
+		"Tu perfil ya está verificado. Al guardar, dejas de recibir pedidos hasta que PymesHub apruebe los cambios.",
 	"biz.courier.reviewReset.confirm": "Guardar y revisar",
 	"biz.courier.reviewPending": "Revisión pendiente",
 	"biz.courier.reviewPending.body":
@@ -1292,32 +1296,32 @@ export const business = {
 	"biz.manage.actor": "Persona",
 	"biz.manage.target": "Destino",
 	"delivery.board.title": "Repartos",
-	"delivery.board.subtitle": "Ofertas y entregas activas",
-	"delivery.board.offers": "Ofertas para aceptar",
+	"delivery.board.subtitle": "Pedidos disponibles y entregas activas",
+	"delivery.board.offers": "Pedidos para aceptar",
 	"delivery.offer.expiresSoon": "Vence pronto",
 	"delivery.offer.expiresMinutes": "Quedan {count} min",
 	"delivery.board.active": "Entregas activas",
 	"delivery.board.active.body":
-		"Tus pedidos actuales de todos los negocios, incluidas las ofertas aceptadas y asignaciones directas.",
+		"Tus pedidos actuales de todos los negocios, tanto aceptados como asignados directamente.",
 	"delivery.board.active.empty": "No tienes entregas activas",
 	"delivery.board.active.emptyBody":
 		"Aquí aparecerán los pedidos que aceptes o que un negocio te asigne.",
 	"delivery.board.openRun": "Abrir entrega",
 	"delivery.board.zone.title": "Elige tu zona de reparto",
 	"delivery.board.zone.body":
-		"Marca en el mapa dónde quieres trabajar. Hasta entonces seguirás recibiendo ofertas cercanas como ahora.",
+		"Marca en el mapa dónde quieres trabajar. Hasta entonces seguirás recibiendo pedidos cercanos como ahora.",
 	"delivery.board.zone.action": "Marcar zona en el mapa",
 	"delivery.board.history": "Entregas terminadas recientes",
-	"delivery.board.empty": "No hay ofertas nuevas por ahora",
+	"delivery.board.empty": "No hay pedidos nuevos por ahora",
 	"delivery.board.offers.busy":
-		"Termina tu entrega actual para recibir otra oferta.",
+		"Termina tu entrega actual para recibir otro pedido.",
 	"delivery.board.empty.body":
 		"Las entregas que coincidan aparecerán aquí mientras estés disponible.",
 
 	/*
 	 * El segundo tablero, y por qué existe aparte del primero.
 	 *
-	 * `/delivery` lee dos flujos distintos: `deliveries.offers` (una oferta que el repartidor
+	 * `/delivery` lee dos flujos distintos: `deliveries.offers` (un pedido que el repartidor
 	 * acepta) y `orders.list` con `assignedToMe` (un pedido que un negocio asigna por su cuenta).
 	 * `services/orders.ts` escribe `order.courierUserId` y `deliveryTable.courierUserId` en la
 	 * misma asignación, así que una sola entrega vive en las dos listas a la vez — con dos
@@ -1327,7 +1331,7 @@ export const business = {
 	 */
 	"delivery.board.assigned": "Pedidos asignados",
 	"delivery.board.assigned.body":
-		"Un negocio puede asignarte un pedido directamente, sin pasar por las ofertas.",
+		"Un negocio puede asignarte una entrega directamente.",
 	"delivery.board.assigned.empty": "No tienes pedidos asignados",
 	"delivery.board.assigned.emptyBody":
 		"Aquí aparecerán los pedidos que un negocio te asigne sin pedirte que los aceptes.",
@@ -1335,22 +1339,22 @@ export const business = {
 	/*
 	 * Disponibilidad para ofertas en la zona marcada o cerca de la ubicación actual.
 	 */
-	"delivery.board.receiving.on": "Disponible para ofertas",
-	"delivery.board.receiving.off": "Ofertas pausadas",
+	"delivery.board.receiving.on": "Disponible para pedidos",
+	"delivery.board.receiving.off": "Pedidos pausados",
 	"delivery.board.availability.change": "Cambiar estado",
 	/* Sin zona marcada hace falta una ubicación cercana y reciente. */
 	"delivery.board.presence.action": "Activar ubicación",
 	"delivery.board.presence.body":
-		"Sin tu ubicación los negocios no pueden saber que estás cerca, así que no te llegan ofertas. Actívala para volver a recibirlas.",
+		"Sin tu ubicación los negocios no pueden saber que estás cerca, así que no te llegan pedidos. Actívala para volver a recibirlas.",
 	"delivery.board.locationUnavailable":
-		"Tu ubicación no está disponible. Revisa los servicios de ubicación para recibir ofertas.",
+		"Tu ubicación no está disponible. Revisa los servicios de ubicación para recibir pedidos.",
 	"delivery.board.presenceFailed":
-		"No pudimos actualizar tu ubicación para recibir ofertas.",
+		"No pudimos actualizar tu ubicación para recibir pedidos.",
 	"delivery.board.zoneDispatchFailed":
-		"No pudimos buscar ofertas en tu zona de reparto.",
+		"No pudimos buscar pedidos en tu zona de reparto.",
 
 	/*
-	 * Cómo llegan las ofertas, y cada frase es una condición de `candidateFor`.
+	 * Cómo llegan los pedidos, y cada frase es una condición de `candidateFor`.
 	 *
 	 * Se muestra mientras `mine` no tiene ninguna entrega `DELIVERED` — el propio historial del
 	 * repartidor, no un flag descartado — así que no se puede cerrar y seguir siendo cierta.
@@ -1360,11 +1364,11 @@ export const business = {
 	 * `services/delivery-dispatch.ts`, estas frases quedan vieja y el test de esta fila es lo
 	 * que debería avisar.
 	 */
-	"delivery.board.how.title": "Cómo te llegan las ofertas",
+	"delivery.board.how.title": "Cómo te llegan los pedidos",
 	"delivery.board.how.body":
-		"PymesHub te busca a ti, no al revés. Un negocio abre una entrega y se ofrece al repartidor verificado y disponible que esté más cerca.",
+		"Cuando un negocio marca un pedido como listo, PymesHub busca un repartidor verificado y disponible en la zona.",
 	"delivery.board.how.detail":
-		"Con zona marcada, ambos puntos deben estar dentro. Sin zona, mantén la ubicación activa a menos de 15 km. Cada oferta dura 2 minutos.",
+		"Con zona marcada, ambos puntos deben estar dentro. Sin zona, mantén la ubicación activa a menos de 15 km. Tienes 2 minutos para aceptar.",
 
 	/*
 	 * El historial del repartidor, y la única tarjeta de la pantalla que no es sobre el
@@ -1391,9 +1395,11 @@ export const business = {
 		"Una promoción cubre el cobro al cliente; el pago al repartidor sigue pendiente.",
 	"delivery.offer.decline": "Rechazar",
 	"delivery.offer.distance": "A {value} km del negocio",
-	"delivery.offer.unavailable": "Esta oferta ya no está disponible.",
+	"delivery.offer.unavailable": "Este pedido ya no está disponible.",
 	"delivery.detail.title": "Detalle de la entrega",
 	"delivery.map.label": "Mapa de la recogida y la entrega",
+	"delivery.map.routeUnavailable":
+		"La ruta por carretera no está disponible. Puedes abrir las indicaciones.",
 	"delivery.map.courierLocation": "Tu ubicación: {status}",
 	"delivery.map.locationWaiting": "Esperando una actualización de ubicación",
 	"delivery.map.locationUnavailable":
@@ -1406,7 +1412,7 @@ export const business = {
 	"delivery.navigate.unavailable":
 		"No se pudieron abrir las indicaciones. Revisa tu app de mapas o navegador.",
 	"delivery.status.SEARCHING": "Buscando repartidor",
-	"delivery.status.OFFERED": "Oferta enviada",
+	"delivery.status.OFFERED": "Esperando al repartidor",
 	"delivery.status.ACCEPTED": "Aceptada",
 	"delivery.status.TO_PICKUP": "En camino al negocio",
 	"delivery.status.AT_PICKUP": "En el negocio",
@@ -1426,14 +1432,14 @@ export const business = {
 	"delivery.rateCustomer.submit": "Enviar calificación",
 	"delivery.rateCustomer.thanks": "Calificación guardada",
 	"delivery.presence.denied":
-		"Activa la ubicación para recibir ofertas cercanas.",
+		"Activa la ubicación para recibir pedidos cercanos.",
 
 	"delivery.motion.wordmark": "pymeshub",
 	"delivery.motion.hero.connect": "Conectá",
 	"delivery.motion.hero.with": "con tu ",
 	"delivery.motion.hero.city": "ciudad",
-	"delivery.motion.availability.receiving": "Recibiendo ofertas",
-	"delivery.motion.availability.paused": "Ofertas pausadas",
+	"delivery.motion.availability.receiving": "Recibiendo pedidos",
+	"delivery.motion.availability.paused": "Pedidos pausados",
 	"delivery.motion.availability.pause": "Pausar",
 	"delivery.motion.availability.resume": "Reanudar",
 	"delivery.motion.metric.month": "Este mes",
@@ -1442,11 +1448,11 @@ export const business = {
 	"delivery.motion.metric.none": "—",
 	"delivery.motion.zone": "Zona activa",
 	"delivery.motion.zone.unset": "Sin zona marcada",
-	"delivery.motion.offer.title": "Nueva oferta",
+	"delivery.motion.offer.title": "Nuevo pedido",
 	"delivery.motion.offer.drop": "Entregar en",
 	"delivery.motion.offer.accept": "Aceptar",
-	"delivery.motion.offer.waiting": "Esperando ofertas cerca de ti",
-	"delivery.motion.offer.expired": "Esta oferta venció",
+	"delivery.motion.offer.waiting": "Esperando pedidos cerca de ti",
+	"delivery.motion.offer.expired": "Este pedido venció",
 	"delivery.motion.headline.pickup": "Recogida",
 	"delivery.motion.headline.dropoff": "Entrega",
 	"delivery.motion.headline.enRoute": "en camino",
@@ -1469,16 +1475,16 @@ export const business = {
 	"delivery.motion.continue": "Continuar entrega",
 	"delivery.motion.availability.title": "Disponibilidad",
 	"delivery.motion.availability.online.body":
-		"Estás recibiendo ofertas en tu zona.",
+		"Estás recibiendo pedidos en tu zona.",
 	"delivery.motion.availability.offline.body":
-		"Reanudá para recibir nuevas ofertas.",
+		"Reanudá para recibir nuevos pedidos.",
 	"delivery.motion.availability.pauseConfirm":
-		"No recibirás nuevas ofertas hasta que vuelvas a activarlo.",
-	"delivery.motion.availability.goOffline": "Pausar ofertas",
-	"delivery.motion.availability.goOnline": "Recibir ofertas",
+		"No recibirás nuevos pedidos hasta que vuelvas a activarlo.",
+	"delivery.motion.availability.goOffline": "Pausar pedidos",
+	"delivery.motion.availability.goOnline": "Recibir pedidos",
 	"delivery.motion.account": "Cuenta",
 	"delivery.motion.contact.unavailable": "No hay un teléfono para contactar.",
-	"delivery.motion.offer.concurrent": "Hay una oferta nueva",
+	"delivery.motion.offer.concurrent": "Hay un pedido nueva",
 	"delivery.motion.slice.expand": "Ver entregas recientes",
 	"delivery.motion.slice.collapse": "Ocultar entregas recientes",
 	"delivery.motion.slice.empty": "Todavía no hay entregas terminadas",
@@ -1584,4 +1590,11 @@ export const business = {
 	"customize.remove": "Quitar",
 	"customize.done": "Listo",
 	"customize.headerStyle": "Estilo de portada",
+	"biz.settings.delivery.pricing": "Precio del envío",
+	"biz.settings.delivery.automatic": "Express automático",
+	"biz.settings.delivery.agreed": "Tarifa acordada",
+	"biz.settings.delivery.automaticHelp":
+		"Express calcula el precio según la distancia por carretera y el tiempo de viaje. Una tarifa acordada requiere un plan de pago y un repartidor afiliado.",
+	"biz.settings.delivery.affiliatedRequired":
+		"Para fijar una tarifa de entrega, necesitas un plan de pago y un repartidor afiliado que haya aceptado tu invitación.",
 } as const;

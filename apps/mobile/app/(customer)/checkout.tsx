@@ -46,11 +46,12 @@ import { StepProgress } from "@/components/step-progress";
 import { BarTotal, SummaryCard } from "@/components/summary-card";
 import { Text } from "@/components/text";
 import { toApiFailure } from "@/lib/api-error";
-import { getDefaultFulfilment, initDevicePrefs } from "@/lib/device-prefs";
+import { useBrowseLocation } from "@/lib/browse-location";
 import { selection, success } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { newClientRequestId } from "@/lib/ids";
 import { useTRPC } from "@/lib/trpc/context";
+import { useDefaultDeliveryLocation } from "@/lib/use-default-delivery-location";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -232,28 +233,50 @@ function CheckoutForm({
 	const cache = useQueryClient();
 	const requestId = useRef<string | null>(null);
 	const [step, setStep] = useState(0);
-	const [fulfilment, setFulfilment] = useState<FulfilmentKind>("PICKUP");
+	const [fulfilment, setFulfilment] = useState<FulfilmentKind>("DELIVERY");
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
 	const [addressId, setAddressId] = useState<string>();
 	const [locationId, setLocationId] = useState<string>();
 	const [notes, setNotes] = useState("");
 	const [notesOpen, setNotesOpen] = useState(false);
 
-	// The customer's own default, read once. Until storage answers the screen
-	// holds PICKUP — the same value a fresh install behaves as — so the first
-	// frame is never wrong, only possibly stale for milliseconds. The init is
-	// awaited rather than trusted: the layout fires it without waiting, so a
-	// checkout opened cold could otherwise read the default before storage
-	// lands and pin the wrong kind under the reader.
-	useEffect(() => {
-		void initDevicePrefs().then(() => {
-			setFulfilment(getDefaultFulfilment());
-		});
-	}, []);
-
 	const cart = useQuery(trpc.cart.get.queryOptions());
 	const locations = useQuery(trpc.cart.pickupLocations.queryOptions());
 	const addresses = useQuery(trpc.users.addresses.queryOptions());
+	const browseLocation = useBrowseLocation();
+	const { ensureDefaultPoint, error: pinSaveError } =
+		useDefaultDeliveryLocation();
+	const pinAttempt = useRef<string | null>(null);
+	const [pinRetry, setPinRetry] = useState(0);
+	const defaultAddress =
+		addresses.data?.find((address) => address.isDefault) ?? addresses.data?.[0];
+	// Recover a map choice made by an older app, without replacing an explicitly
+	// selected address or an already pinned default from another device.
+	const syncingPin =
+		fulfilment === "DELIVERY" &&
+		!addressId &&
+		(!browseLocation.ready ||
+			Boolean(
+				browseLocation.pinned &&
+					(addresses.isPending ||
+						!defaultAddress ||
+						defaultAddress.lat == null ||
+						defaultAddress.lng == null),
+			));
+	useEffect(() => {
+		const point = browseLocation.pinned;
+		if (!syncingPin || !point || !addresses.isSuccess) return;
+		const key = `${point.lat}:${point.lng}:${pinRetry}`;
+		if (pinAttempt.current === key) return;
+		pinAttempt.current = key;
+		void ensureDefaultPoint(point).catch(() => {});
+	}, [
+		syncingPin,
+		browseLocation.pinned,
+		addresses.isSuccess,
+		ensureDefaultPoint,
+		pinRetry,
+	]);
 	const selectedLocation =
 		locations.data?.find((location) => location.id === locationId) ??
 		locations.data?.find((location) => location.isDefault) ??
@@ -271,6 +294,7 @@ function CheckoutForm({
 			},
 			{
 				enabled:
+					!syncingPin &&
 					Boolean(selectedLocation) &&
 					(fulfilment !== "DELIVERY" || Boolean(selectedAddress)),
 				refetchInterval: 15000,
@@ -320,14 +344,8 @@ function CheckoutForm({
 	const collects = business.data?.card.pickupEnabled ?? true;
 	const delivers = business.data?.card.deliveryEnabled ?? true;
 
-	// Two reads decide the kind — the customer's stored default and the shop's flags — and they
-	// arrive in either order, neither before the other by rule. So the default can leave this on
-	// a kind the shop does not do (the device remembers DELIVERY from a shop that delivers), and
-	// the correction belongs in one effect rather than at either read.
-	//
-	// Equal flags mean there is nothing to correct: a shop that does both takes either one, so
-	// the customer's own default stands, and a shop that does neither is not a shop the API will
-	// quote for — picking for them there would only be a loop between the two branches below.
+	// Delivery is the default. Only a shop that explicitly supports pickup alone
+	// changes it automatically; no asynchronous device preference can override it.
 	useEffect(() => {
 		if (collects === delivers) return;
 		const only: FulfilmentKind = delivers ? "DELIVERY" : "PICKUP";
@@ -595,6 +613,8 @@ function CheckoutForm({
 	 * it is, and repeating it a screen-width lower would be the same sentence twice.
 	 */
 	function blockedReason(): string | null {
+		if (syncingPin)
+			return t(pinSaveError ? "state.error.title" : "state.loading");
 		if (short && quote.data && hasItems) {
 			return t("cart.minOrderMissing", {
 				amount: formatMoney(
@@ -723,19 +743,28 @@ function CheckoutForm({
 							    (`docs/design-mobile.md`), so "this shop doesn't deliver" is not a
 							    sentence this lane may add — and a greyed segment whose reason is a
 							    missing sentence is worse than a pair that simply does not exist. */}
-							<Segmented
-								label={t("checkout.fulfilment")}
-								value={fulfilment}
-								onChange={pickFulfilment}
-								options={[
-									...(collects
-										? [{ value: "PICKUP", label: t("checkout.pickup") }]
-										: []),
-									...(delivers
-										? [{ value: "DELIVERY", label: t("checkout.delivery") }]
-										: []),
-								]}
-							/>
+							<Text variant="title" accessibilityRole="header">
+								{t(
+									fulfilment === "DELIVERY"
+										? "checkout.express"
+										: "checkout.pickup",
+								)}
+							</Text>
+							{delivers && collects ? (
+								<Button
+									variant="ghost"
+									label={t(
+										fulfilment === "DELIVERY"
+											? "checkout.pickupInstead"
+											: "checkout.express",
+									)}
+									onPress={() =>
+										pickFulfilment(
+											fulfilment === "DELIVERY" ? "PICKUP" : "DELIVERY",
+										)
+									}
+								/>
+							) : null}
 							{locations.isError ? (
 								<ErrorState
 									error={locations.error}
@@ -749,7 +778,11 @@ function CheckoutForm({
 							) : locations.data?.length ? (
 								<View style={styles.group}>
 									<Text variant="body" bold>
-										{t("checkout.location")}
+										{t(
+											fulfilment === "DELIVERY"
+												? "checkout.origin"
+												: "checkout.location",
+										)}
 									</Text>
 									<PickupLocationPicker
 										locations={locations.data}
@@ -787,7 +820,15 @@ function CheckoutForm({
 									{t("checkout.location.none")}
 								</Text>
 							)}
-							{hasItems && (addressNeedsPin || (quote.isError && quoteless)) ? (
+							{syncingPin && pinSaveError ? (
+								<ErrorState
+									error={pinSaveError}
+									onRetry={() => setPinRetry((value) => value + 1)}
+								/>
+							) : null}
+							{hasItems &&
+							!syncingPin &&
+							(addressNeedsPin || (quote.isError && quoteless)) ? (
 								<View style={styles.group}>
 									{addressNeedsPin ? (
 										<Text variant="body" accessibilityRole="alert">
@@ -1150,6 +1191,7 @@ function CheckoutForm({
 								onPress: submit,
 								loading: place.isPending,
 								disabled:
+									syncingPin ||
 									!hasItems ||
 									quoteless ||
 									short ||
@@ -1164,6 +1206,7 @@ function CheckoutForm({
 								label: t("action.continue"),
 								onPress: () => goToStep(step + 1),
 								disabled:
+									syncingPin ||
 									!hasItems ||
 									quoteless ||
 									short ||

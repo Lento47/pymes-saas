@@ -1,5 +1,6 @@
 import type { Db } from "@pymeshub/db";
 import {
+	address as addressTable,
 	boundingBox,
 	business as businessTable,
 	delivery as deliveryTable,
@@ -32,6 +33,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 
 import type { Env } from "../env";
 import { createLogger } from "../logging";
+import { AFFILIATED_PRICING_VERSION } from "./delivery-quote";
 import { batchOf } from "./helpers";
 import { createConfiguredRouting, type GeoPoint } from "./routing";
 
@@ -192,6 +194,7 @@ async function candidateFor(
 	input: {
 		deliveryId: string;
 		businessId: string;
+		affiliatedOnly?: boolean;
 		pickupLat: number | null;
 		pickupLng: number | null;
 		dropoffLat: number | null;
@@ -352,6 +355,7 @@ async function candidateFor(
 	const candidates: RankedCandidate[] = rows
 		.filter(
 			(row) =>
+				(!input.affiliatedOnly || preferred.has(row.userId)) &&
 				!excluded.has(row.userId) &&
 				(active.get(row.userId) ?? 0) === 0 &&
 				(pending.get(row.userId) ?? 0) === 0,
@@ -541,31 +545,9 @@ export async function prepareDeliveryForOrder(
 		dropoff: StopInput;
 		now: Date;
 	},
-	env?: Env,
+	_env?: Env,
 ): Promise<{ deliveryId: string; statements: BatchItem<"sqlite">[] }> {
 	const deliveryId = newId("delivery");
-	const candidate = await candidateFor(
-		db,
-		{
-			deliveryId,
-			businessId: input.businessId,
-			pickupLat: input.location.lat,
-			pickupLng: input.location.lng,
-			dropoffLat: input.dropoff.lat,
-			dropoffLng: input.dropoff.lng,
-			now: input.now,
-		},
-		env,
-	);
-	const offer = candidate
-		? offerStatements(db, {
-				deliveryId,
-				orderId: input.orderId,
-				businessName: input.businessName,
-				candidate,
-				now: input.now,
-			})
-		: null;
 
 	return {
 		deliveryId,
@@ -575,7 +557,8 @@ export async function prepareDeliveryForOrder(
 				orderId: input.orderId,
 				businessId: input.businessId,
 				customerId: input.customerId,
-				status: offer ? "OFFERED" : "SEARCHING",
+				// The merchant's READY transition starts courier dispatch.
+				status: "SEARCHING",
 				pickupName: input.location.name,
 				pickupLine1: input.location.line1 ?? input.businessName,
 				pickupLine2: input.location.line2,
@@ -599,7 +582,6 @@ export async function prepareDeliveryForOrder(
 				createdAt: input.now,
 				updatedAt: input.now,
 			}),
-			...(offer?.statements ?? []),
 		],
 	};
 }
@@ -619,12 +601,61 @@ export async function dispatchNext(
 			.limit(1)
 	)[0];
 	if (row?.delivery.status !== "SEARCHING") return;
+	if (row.order.status !== "READY" && row.order.status !== "OUT_FOR_DELIVERY")
+		return;
+	// Repair only a missing legacy snapshot, from this order's own customer's address.
+	// A later address edit must never redirect an assigned delivery or replace a valid pin.
+	if (row.delivery.dropoffLat == null || row.delivery.dropoffLng == null) {
+		const address = row.order.addressId
+			? (
+					await db
+						.select()
+						.from(addressTable)
+						.where(
+							and(
+								eq(addressTable.id, row.order.addressId),
+								eq(addressTable.userId, row.order.customerId),
+							),
+						)
+						.limit(1)
+				)[0]
+			: undefined;
+		if (address?.lat == null || address.lng == null) return;
+		const repaired = await db
+			.update(deliveryTable)
+			.set({
+				dropoffLat: address.lat,
+				dropoffLng: address.lng,
+				updatedAt: new Date(),
+			})
+			.where(
+				and(
+					eq(deliveryTable.id, deliveryId),
+					eq(deliveryTable.status, "SEARCHING"),
+					or(
+						isNull(deliveryTable.dropoffLat),
+						isNull(deliveryTable.dropoffLng),
+					),
+				),
+			)
+			.returning();
+		if (!repaired[0]) return;
+		row.delivery = repaired[0];
+	}
 
+	const [business] = await db
+		.select()
+		.from(businessTable)
+		.where(eq(businessTable.id, row.delivery.businessId))
+		.limit(1);
+	if (!business) return;
 	const candidate = await candidateFor(
 		db,
 		{
 			deliveryId,
 			businessId: row.delivery.businessId,
+			affiliatedOnly:
+				row.order.deliveryPricingVersion === AFFILIATED_PRICING_VERSION,
 			pickupLat: row.delivery.pickupLat,
 			pickupLng: row.delivery.pickupLng,
 			dropoffLat: row.delivery.dropoffLat,
@@ -635,18 +666,11 @@ export async function dispatchNext(
 	);
 	if (!candidate) return;
 
-	const businessName = (
-		await db
-			.select({ name: businessTable.name })
-			.from(businessTable)
-			.where(eq(businessTable.id, row.delivery.businessId))
-			.limit(1)
-	)[0]?.name;
 	const now = new Date();
 	const offer = offerStatements(db, {
 		deliveryId,
 		orderId: row.delivery.orderId,
-		businessName: businessName ?? "PymesHub",
+		businessName: business.name,
 		candidate,
 		now,
 	});

@@ -56,6 +56,7 @@ import { clearRecentSearches, rememberSearch } from "@/lib/recent-searches";
 import { type RoleDegradation, takeDegradation } from "@/lib/role";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { useDefaultDeliveryLocation } from "@/lib/use-default-delivery-location";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -146,6 +147,7 @@ export default function HomeScreen() {
 	const { session } = useSession();
 	const { coords, request, status: locationStatus } = useDeviceLocation();
 	const browseLocation = useBrowseLocation();
+	const deliveryLocation = useDefaultDeliveryLocation();
 	const activeCoords = browseLocation.pinned ?? coords;
 	const [locationPickerOpen, setLocationPickerOpen] = useState(false);
 	const toast = useToast();
@@ -586,17 +588,24 @@ export default function HomeScreen() {
 				pinned={browseLocation.pinned}
 				onClose={() => setLocationPickerOpen(false)}
 				onRequestCurrent={request}
-				onUseCurrent={() => {
+				onUseCurrent={async () => {
+					if (!coords) return;
+					await deliveryLocation.ensureDefaultPoint(coords);
 					browseLocation.chooseCurrent();
 					setLocationPickerOpen(false);
 				}}
-				onApplyPin={(selected) => browseLocation.choosePin(selected)}
+				onApplyPin={async (selected) => {
+					await deliveryLocation.ensureDefaultPoint(selected);
+					browseLocation.choosePin(selected);
+				}}
 				onSaveAddress={(selected) => {
 					setLocationPickerOpen(false);
 					router.push({
 						pathname: "/addresses",
 						params: {
-							create: "1",
+							...(deliveryLocation.address
+								? { edit: deliveryLocation.address.id }
+								: { create: "1" }),
 							lat: String(selected.lat),
 							lng: String(selected.lng),
 						},

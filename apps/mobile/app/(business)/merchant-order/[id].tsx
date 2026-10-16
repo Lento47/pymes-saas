@@ -765,9 +765,15 @@ export default function MerchantOrderDetail() {
 															? t("biz.order.dispatch.assigned")
 															: run.pickup.lat == null || run.pickup.lng == null
 																? t("biz.order.dispatch.noPickupPin")
-																: run.status === "OFFERED"
-																	? t("biz.order.dispatch.offered")
-																	: t("biz.order.dispatch.searching")}
+																: detail.status !== "READY" &&
+																		detail.status !== "OUT_FOR_DELIVERY"
+																	? t("biz.order.dispatch.whenReady")
+																	: run.dropoff.lat == null ||
+																			run.dropoff.lng == null
+																		? t("biz.order.dispatch.noDestinationPin")
+																		: run.status === "OFFERED"
+																			? t("biz.order.dispatch.offered")
+																			: t("biz.order.dispatch.searching")}
 											</Text>
 											{mayTakeOver &&
 											(run.pickup.lat == null || run.pickup.lng == null) ? (

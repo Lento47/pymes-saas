@@ -98,7 +98,9 @@ import { type OrderEventEnvelope, orderEvent, outboxRowOf } from "../events";
 import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
 import { dispatchNext, prepareDeliveryForOrder } from "./delivery-dispatch";
+import { usesExpressCalculator } from "./delivery-policy";
 import {
+	AFFILIATED_PRICING_VERSION,
 	checkoutPriceFingerprint,
 	roadFeeEnabled,
 	roadQuoteForOrder,
@@ -345,18 +347,29 @@ export async function place(
 	const discountMinor = promotion.discount
 		? discountAmountOf(subtotalMinor, promotion.discount)
 		: 0;
-	if (input.fulfilment === "DELIVERY" && business.deliveryFeeMinor <= 0)
+	const automatic =
+		input.fulfilment === "DELIVERY" &&
+		(await usesExpressCalculator(ctx.db, business));
+	if (
+		input.fulfilment === "DELIVERY" &&
+		!automatic &&
+		business.deliveryFeeMinor <= 0
+	)
 		throw new ValidationError("checkout.refusal.courierFeeUnavailable");
 	const pricingVersion =
 		input.fulfilment === "DELIVERY"
-			? routingPricingVersion(ctx.env, business.currency)
+			? automatic
+				? routingPricingVersion(ctx.env, business.currency)
+				: ctx.env.ROUTING_ENABLED === "true"
+					? AFFILIATED_PRICING_VERSION
+					: null
 			: null;
 	if (!pricingVersion && input.quoteId)
 		throw new ConflictError("checkout.refusal.totalChanged");
 	let roadPricing: Awaited<ReturnType<typeof roadQuoteForOrder>> | null = null;
 	if (
 		pricingVersion &&
-		(input.quoteId || roadFeeEnabled(ctx.env, business.currency))
+		(input.quoteId || (automatic && roadFeeEnabled(ctx.env, business.currency)))
 	) {
 		if (
 			!deliveryAddress ||
@@ -486,6 +499,7 @@ export async function place(
 			locationId: location.id,
 			addressId,
 			fulfilment: input.fulfilment,
+			deliverySpeed: input.fulfilment === "DELIVERY" ? "EXPRESS" : "STANDARD",
 			status: "PENDING",
 			// The first version. Every move after this is a compare-and-set on the column,
 			// so the number an event carries means something.
@@ -497,13 +511,21 @@ export async function place(
 			discountMinor,
 			deliveryFeeMinor,
 			courierFeeMinor:
-				input.fulfilment === "DELIVERY" ? business.deliveryFeeMinor : null,
+				input.fulfilment === "DELIVERY"
+					? automatic
+						? (roadPricing?.baseFeeMinor ?? business.deliveryFeeMinor)
+						: business.deliveryFeeMinor
+					: null,
 			merchantCoversDelivery:
 				input.fulfilment === "DELIVERY" &&
 				(business.merchantCoversDelivery || Boolean(promotion.freeDelivery)),
 			deliveryPricingVersion:
 				roadPricing?.pricingVersion ??
-				(input.fulfilment === "DELIVERY" ? "legacy-fixed" : null),
+				(input.fulfilment === "DELIVERY"
+					? automatic
+						? "legacy-fixed"
+						: AFFILIATED_PRICING_VERSION
+					: null),
 			deliveryQuoteId: roadPricing?.id ?? null,
 			routeDistanceMeters: roadPricing?.distanceMeters ?? null,
 			routeDurationSeconds: roadPricing?.durationSeconds ?? null,
@@ -2765,8 +2787,24 @@ async function detail(
 		]);
 
 	const nameOf = new Map(staff.map((user) => [user.id, user.name]));
+	const [courier] = row.courierUserId
+		? await ctx.db
+				.select({
+					name: courierProfileTable.displayName,
+					phone: userTable.phone,
+					vehiclePlate: courierProfileTable.vehiclePlate,
+					vehicleName: courierProfileTable.vehicleName,
+				})
+				.from(userTable)
+				.leftJoin(
+					courierProfileTable,
+					eq(courierProfileTable.userId, userTable.id),
+				)
+				.where(eq(userTable.id, row.courierUserId))
+				.limit(1)
+		: [];
 
-	return orderDetailOf({
+	const detail = orderDetailOf({
 		order: row,
 		items,
 		business: orNotFound(business[0]),
@@ -2786,6 +2824,12 @@ async function detail(
 		review: review[0] ?? null,
 		actor,
 	});
+	return {
+		...detail,
+		courier: courier
+			? { ...courier, name: courier.name ?? row.courierName }
+			: detail.courier,
+	};
 }
 
 // ---------------------------------------------------------------------------

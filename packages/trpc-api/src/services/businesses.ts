@@ -47,7 +47,6 @@ import {
 	desc,
 	eq,
 	exists,
-	gt,
 	gte,
 	inArray,
 	isNotNull,
@@ -67,6 +66,7 @@ import type { Context } from "../context";
 import { ConflictError, ForbiddenError, ValidationError } from "../errors";
 import { auditStatement } from "./audit";
 import { dispatchNext } from "./delivery-dispatch";
+import { canSetDeliveryFee } from "./delivery-policy";
 import type { BusinessContext, UserContext } from "./helpers";
 import {
 	assertRole,
@@ -458,10 +458,7 @@ export async function list(
 	if (input.categoryId)
 		conditions.push(inCategory(businessTable.categoryId, input.categoryId));
 	if (input.deliveryOnly)
-		conditions.push(
-			eq(businessTable.deliveryEnabled, true),
-			gt(businessTable.deliveryFeeMinor, 0),
-		);
+		conditions.push(eq(businessTable.deliveryEnabled, true));
 	if (input.search)
 		conditions.push(like(businessTable.name, likePattern(input.search)));
 
@@ -712,10 +709,13 @@ async function settingsOf(
 		.limit(1);
 
 	const row = orNotFound(rows[0]);
-	return businessSettingsOf(row.business, {
-		categoryName: row.categoryName,
-		categoryNameEn: row.categoryNameEn,
-	});
+	return {
+		...businessSettingsOf(row.business, {
+			categoryName: row.categoryName,
+			categoryNameEn: row.categoryNameEn,
+		}),
+		canSetDeliveryFee: await canSetDeliveryFee(ctx.db, businessId),
+	};
 }
 
 /**
@@ -751,6 +751,7 @@ export async function update(
 	assignIfPresent(patch, "deliveryEnabled", input.deliveryEnabled);
 	assignIfPresent(patch, "pickupEnabled", input.pickupEnabled);
 	assignIfPresent(patch, "deliveryFeeMinor", input.deliveryFeeMinor);
+	assignIfPresent(patch, "deliveryPricingMode", input.deliveryPricingMode);
 	assignIfPresent(
 		patch,
 		"merchantCoversDelivery",
@@ -769,12 +770,14 @@ export async function update(
 		await assertLeafCategory(ctx, input.categoryId);
 	if (
 		input.merchantCoversDelivery !== undefined ||
+		input.deliveryPricingMode !== undefined ||
 		input.deliveryFeeMinor !== undefined ||
 		input.deliveryEnabled !== undefined
 	) {
 		const [current] = await ctx.db
 			.select({
 				fee: businessTable.deliveryFeeMinor,
+				mode: businessTable.deliveryPricingMode,
 				deliveryEnabled: businessTable.deliveryEnabled,
 			})
 			.from(businessTable)
@@ -782,6 +785,19 @@ export async function update(
 			.limit(1);
 		const existing = orNotFound(current);
 		if (
+			input.deliveryFeeMinor !== undefined &&
+			input.deliveryFeeMinor > 0 &&
+			input.deliveryFeeMinor !== existing.fee &&
+			!(await canSetDeliveryFee(ctx.db, businessId))
+		)
+			throw new ForbiddenError("biz.settings.delivery.affiliatedRequired");
+		if (
+			input.deliveryPricingMode === "AFFILIATED" &&
+			!(await canSetDeliveryFee(ctx.db, businessId))
+		)
+			throw new ForbiddenError("biz.settings.delivery.affiliatedRequired");
+		if (
+			(input.deliveryPricingMode ?? existing.mode) === "AFFILIATED" &&
 			(input.deliveryEnabled ?? existing.deliveryEnabled) &&
 			(input.deliveryFeeMinor ?? existing.fee) === 0
 		)
@@ -977,10 +993,8 @@ export async function create(
 	const located = input.lat !== undefined && input.lng !== undefined;
 
 	await assertLeafCategory(ctx, input.categoryId);
-	if (input.merchantCoversDelivery && input.deliveryFeeMinor === 0)
-		throw new ValidationError("biz.settings.delivery.courierFeeRequired", {
-			field: "deliveryFeeMinor",
-		});
+	if (input.deliveryPricingMode === "AFFILIATED")
+		throw new ForbiddenError("biz.settings.delivery.affiliatedRequired");
 
 	// Narrowed into locals so the write below reads a `number` and not a `number |
 	// undefined`: `noUncheckedIndexedAccess` is off for these, but the pair still has to
@@ -1361,7 +1375,12 @@ export async function inviteStaff(
 				targetType: "membership",
 				targetId: row?.id ?? id,
 				before: row ? { status: row.status } : null,
-				after: { status: "ACTIVE", role: input.role, userId: user.id, businessId },
+				after: {
+					status: "ACTIVE",
+					role: input.role,
+					userId: user.id,
+					businessId,
+				},
 				reason: null,
 				now,
 			}),

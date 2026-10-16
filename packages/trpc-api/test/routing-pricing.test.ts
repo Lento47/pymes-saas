@@ -18,6 +18,24 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe("OSRM road routing boundary", () => {
+	test("uses the edge-compatible redirect mode and refuses a redirected route", async () => {
+		let calls = 0;
+		const routing = createOsrmRouting({
+			baseUrl: endpoint,
+			fetcher: async (_url, init) => {
+				calls += 1;
+				expect(init.redirect).toBe("manual");
+				return new Response(null, {
+					status: 302,
+					headers: { Location: "https://other.example.test/" },
+				});
+			},
+		});
+		await expect(
+			routing.route({ origin, destination, profile: "car" }),
+		).rejects.toThrow(RoutingUnavailableError);
+		expect(calls).toBe(1);
+	});
 	test("returns validated metres, seconds, and GeoJSON in longitude-latitude order", async () => {
 		let requested = "";
 		const routing = createOsrmRouting({

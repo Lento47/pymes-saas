@@ -228,7 +228,7 @@ describe("checkout quote", () => {
 		test.close();
 	});
 
-	test("delivery is unavailable until the shop sets a courier fee", async () => {
+	test("automatic Express requires a road quote rather than a merchant-configured fee", async () => {
 		const test = world();
 		const { first, caller, coffee } = await twoShops(test);
 		await test.db
@@ -236,8 +236,12 @@ describe("checkout quote", () => {
 			.set({ deliveryFeeMinor: 0 })
 			.where(eq(businessTable.id, first));
 		await caller.cart.addItem({ productId: coffee.id, quantity: 1 });
-		const error = await refused(caller.cart.quote({ fulfilment: "DELIVERY" }));
-		expect(error.message).toBe("checkout.refusal.courierFeeUnavailable");
+		delete test.env.ROUTE_FEE_ENABLED;
+		const address = await caller.users.saveAddress({ lat: 9.94, lng: -84.07 });
+		const error = await refused(
+			caller.cart.quote({ fulfilment: "DELIVERY", addressId: address.id }),
+		);
+		expect(error.message).toBe("checkout.refusal.deliveryQuoteUnavailable");
 		test.close();
 	});
 
@@ -621,7 +625,7 @@ describe("checkout quote", () => {
 				.where(eq(orderTable.id, placed.id));
 			expect(stored?.deliveryFeeMinor).toBe(0);
 			expect(stored?.deliveryFeeBaseMinor).toBe(2_310);
-			expect(stored?.courierFeeMinor).toBe(850);
+			expect(stored?.courierFeeMinor).toBe(2_310);
 		} finally {
 			globalThis.fetch = previousFetch;
 			test.close();
@@ -717,7 +721,7 @@ describe("checkout quote", () => {
 				.from(orderTable)
 				.where(eq(orderTable.id, placed.id));
 			expect(stored?.merchantCoversDelivery).toBe(true);
-			expect(stored?.courierFeeMinor).toBe(850);
+			expect(stored?.courierFeeMinor).toBe(2_310);
 			expect(stored?.deliveryFeeMinor).toBe(0);
 		} finally {
 			globalThis.fetch = previousFetch;

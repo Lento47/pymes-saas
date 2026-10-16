@@ -251,7 +251,12 @@ export const orderDetailSchema = orderSummarySchema.extend({
 		.optional(),
 	pickupCode: z.string().nullable(),
 	courier: z
-		.object({ name: z.string().nullable(), phone: z.string().nullable() })
+		.object({
+			name: z.string().nullable(),
+			phone: z.string().nullable(),
+			vehiclePlate: z.string().nullable().optional(),
+			vehicleName: z.string().nullable().optional(),
+		})
 		.nullable(),
 	customerNotes: z.string().nullable(),
 	events: z.array(orderEventSchema),

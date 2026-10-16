@@ -283,6 +283,10 @@ export const customer = {
 	"checkout.title": "Confirm order",
 	"checkout.fulfilment": "How do you want it?",
 	"checkout.delivery": "Deliver to my address",
+	"checkout.express": "Express delivery",
+	"order.courier.plate": "Plate: {plate}",
+	"checkout.pickupInstead": "I prefer to pick up in store",
+	"checkout.origin": "From this business",
 	"checkout.pickup": "Pick up in store",
 	"checkout.location": "Pickup location",
 	"checkout.location.pickupMap": "Map showing the shop pickup pin",
@@ -480,7 +484,7 @@ export const customer = {
 	"location.providerUnavailable":
 		"Your device location is unavailable right now. Check location services and try again.",
 	"location.applyPin": "Use this location",
-	"location.saveAddress": "Save as delivery address",
+	"location.saveAddress": "Add delivery details (optional)",
 	"location.done": "Done",
 	"location.denied":
 		"We couldn't get your location. Type your address instead.",

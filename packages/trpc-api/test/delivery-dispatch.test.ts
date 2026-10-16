@@ -134,6 +134,9 @@ async function shopWithBasket(test: TestWorld, tag: string) {
 		phone: "+506 6000 0001",
 	});
 	const buyer = appRouter.createCaller(await authed(test, customer)) as Caller;
+	const owner = await seedUser(test.db, { id: `usr_sweep_${tag}_owner` });
+	await seedMembership(test.db, owner.id, businessId, "OWNER");
+	const merchant = appRouter.createCaller(await authed(test, owner)) as Caller;
 	const address = await buyer.users.saveAddress({
 		label: "Casa",
 		line1: "Calle 5, casa 12",
@@ -143,7 +146,7 @@ async function shopWithBasket(test: TestWorld, tag: string) {
 		lng: -84.09,
 		phone: "+506 6000 0001",
 	});
-	return { businessId, locationId, product, buyer, address };
+	return { businessId, locationId, product, buyer, address, merchant };
 }
 
 /**
@@ -195,8 +198,7 @@ async function courierAt(
 }
 
 /**
- * Place one delivery order, which creates the `delivery` row and dispatches it in the same
- * batch.
+ * Place a delivery order and let the merchant release it when ready.
  *
  * **The basket is filled here rather than in the fixture**, because `orders.place` empties
  * it: a fixture that stocked the cart once could place exactly one order, and a test that
@@ -218,6 +220,9 @@ async function placeAndRead(
 		paymentMethod: "CASH",
 		clientRequestId: `request_sweep_${orderTag}`,
 	});
+	for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+		await ready.merchant.orders.advance({ orderId: order.id, to });
+	}
 	const delivery = (
 		await test.db
 			.select()

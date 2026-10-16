@@ -49,11 +49,7 @@ export const DAYS_OF_WEEK = [0, 1, 2, 3, 4, 5, 6] as const;
  * (lunch, a pause). Several windows may share a day. Older rows omit `kind` and
  * are treated as `open`.
  */
-export const businessHoursKindSchema = z.enum([
-	"open",
-	"break",
-	"unavailable",
-]);
+export const businessHoursKindSchema = z.enum(["open", "break", "unavailable"]);
 export type BusinessHoursKind = z.infer<typeof businessHoursKindSchema>;
 
 export const businessHoursEntrySchema = z
@@ -109,6 +105,7 @@ export const businessCreateInput = z.object({
 	deliveryEnabled: z.boolean().default(true),
 	pickupEnabled: z.boolean().default(true),
 	deliveryFeeMinor: z.number().int().min(0).max(10_000_000).default(0),
+	deliveryPricingMode: z.enum(["EXPRESS", "AFFILIATED"]).default("EXPRESS"),
 	merchantCoversDelivery: z.boolean().default(false),
 	deliveryRadiusKm: z.number().min(0).max(80).default(6),
 	prepTimeMinutes: z.number().int().min(0).max(600).default(25),
@@ -141,6 +138,7 @@ export const businessUpdateInput = businessCreateInput
 		deliveryEnabled: z.boolean().optional(),
 		pickupEnabled: z.boolean().optional(),
 		deliveryFeeMinor: z.number().int().min(0).max(10_000_000).optional(),
+		deliveryPricingMode: z.enum(["EXPRESS", "AFFILIATED"]).optional(),
 		merchantCoversDelivery: z.boolean().optional(),
 		deliveryRadiusKm: z.number().min(0).max(80).optional(),
 		prepTimeMinutes: z.number().int().min(0).max(600).optional(),
@@ -213,6 +211,8 @@ export const businessCardSchema = z.object({
 export type BusinessCard = z.infer<typeof businessCardSchema>;
 
 export const businessSettingsSchema = businessCardSchema.extend({
+	deliveryPricingMode: z.enum(["EXPRESS", "AFFILIATED"]).optional(),
+	canSetDeliveryFee: z.boolean().optional(),
 	status: z.enum(BUSINESS_STATUSES),
 	phone: z.string().nullable(),
 	email: z.string().nullable(),

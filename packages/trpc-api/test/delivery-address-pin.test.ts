@@ -10,6 +10,31 @@ import {
 } from "./harness";
 
 describe("delivery destination pin", () => {
+	test("a customer can save a default map pin without typing an address", async () => {
+		const test = world();
+		try {
+			const customer = await seedUser(test.db);
+			const caller = appRouter.createCaller(await authed(test, customer));
+			const saved = await caller.users.saveAddress({
+				lat: 9.94,
+				lng: -84.07,
+				isDefault: true,
+			});
+			expect(saved).toMatchObject({
+				lat: 9.94,
+				lng: -84.07,
+				isDefault: true,
+				line1: "",
+				city: "",
+				region: "",
+			});
+			expect((await caller.users.addresses())[0]?.id).toBe(saved.id);
+			await expect(caller.users.saveAddress({ lat: 9.94 })).rejects.toThrow();
+			await expect(caller.users.saveAddress({})).rejects.toThrow();
+		} finally {
+			test.close();
+		}
+	});
 	for (const routing of [false, true]) {
 		test(`a missing pin refuses quote and placement before writes (routing ${routing})`, async () => {
 			const test = world();

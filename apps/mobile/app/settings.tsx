@@ -4,7 +4,6 @@ import {
 	type MessageKey,
 	SUPPORTED_LOCALES,
 } from "@pymeshub/i18n";
-import type { FulfilmentKind } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
@@ -26,9 +25,7 @@ import { marketplaceAuth } from "@/lib/auth/client";
 import { authErrorKey, useSession } from "@/lib/auth/session";
 import {
 	areHapticsEnabled,
-	getDefaultFulfilment,
 	initDevicePrefs,
-	setDefaultFulfilment,
 	setHapticsEnabled,
 } from "@/lib/device-prefs";
 import { warning } from "@/lib/haptics";
@@ -68,7 +65,6 @@ export default function Settings() {
 	const toast = useToast();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
-	const [fulfilment, setFulfilment] = useState<FulfilmentKind>("PICKUP");
 	const [haptics, setHaptics] = useState(true);
 	const [revoking, setRevoking] = useState(false);
 	const [revokeFailure, setRevokeFailure] = useState<string | null>(null);
@@ -77,12 +73,9 @@ export default function Settings() {
 
 	const signedIn = status === "signed-in";
 
-	// The device's own answers, read once. The defaults match a fresh install
-	// (`true`, `"PICKUP"`), so the first frame is never wrong, only possibly
-	// stale for the milliseconds storage takes.
+	// Read the device's haptic preference once.
 	useEffect(() => {
 		void initDevicePrefs().then(() => {
-			setFulfilment(getDefaultFulfilment());
 			setHaptics(areHapticsEnabled());
 		});
 	}, []);
@@ -256,28 +249,6 @@ export default function Settings() {
 									value: option,
 									label: t(option === "es" ? "locale.es" : "locale.en"),
 								}))}
-							/>
-						</View>
-
-						{/* Which of the two closed options checkout opens on. Stored on
-					    the device beside the locale; checkout reads it as its
-					    initial state rather than hardcoding PICKUP. */}
-						<View style={styles.setting}>
-							<Text variant="label" bold>
-								{t("settings.fulfilment")}
-							</Text>
-							<Segmented
-								label={t("settings.fulfilment")}
-								value={fulfilment}
-								onChange={(value) => {
-									const next = value as FulfilmentKind;
-									setFulfilment(next);
-									void setDefaultFulfilment(next);
-								}}
-								options={[
-									{ value: "PICKUP", label: t("checkout.pickup") },
-									{ value: "DELIVERY", label: t("checkout.delivery") },
-								]}
 							/>
 						</View>
 

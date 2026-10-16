@@ -159,7 +159,7 @@ export function businessCardOf(
 		currency: currencyOf(row.currency),
 		ratingAvg: row.ratingAvg,
 		ratingCount: row.ratingCount,
-		deliveryEnabled: row.deliveryEnabled && row.deliveryFeeMinor > 0,
+		deliveryEnabled: row.deliveryEnabled,
 		pickupEnabled: row.pickupEnabled,
 		deliveryFeeMinor: row.deliveryFeeMinor,
 		merchantCoversDelivery: row.merchantCoversDelivery,
@@ -183,9 +183,9 @@ export function businessSettingsOf(
 ): BusinessSettings {
 	return {
 		...businessCardOf(row, options),
-		// Owners must see the switch they actually saved, even while the courier fee
-		// still needs configuring before customers can request delivery.
+		// Express calculates its fee at checkout; a shop needs no manual tariff.
 		deliveryEnabled: row.deliveryEnabled,
+		deliveryPricingMode: row.deliveryPricingMode,
 		status: row.status,
 		phone: row.phone,
 		email: row.email,

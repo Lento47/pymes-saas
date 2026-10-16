@@ -24,9 +24,30 @@ configuration that builds from the Dockerfile.
 The `standard-1` container is limited to one instance and sleeps after ten
 idle minutes; cold requests can take longer. This is a paid Cloudflare
 Containers service, so check account billing and measure active hours before
-leaving it enabled. The binding alone does not enable road quotes or pricing;
-production routing and route-fee flags remain off until route quality and latency
-pass acceptance. Staging has route-only quotes enabled with the fixed-fee policy.
+leaving it enabled. As of 2026-10-15, production has `ROUTING_ENABLED=true` and
+`ROUTE_FEE_ENABLED=true`: CRC Express uses the existing road-distance and
+driving-time calculator by default. Explicit `ROUTE_FEE_ENABLED=false` remains
+a legacy compatibility switch. Staging keeps its separate fixed-price rollout.
+
+Businesses start in `EXPRESS` pricing mode (migration `0034_delivery_pricing_mode`).
+`AFFILIATED` fixed fees require a paid effective subscription and an accepted,
+active courier membership. Losing eligibility returns new quotes to Express.
+An affiliated order retains its agreed pricing version and dispatches only to
+active affiliated couriers. Merchant-sponsored delivery charges the customer zero
+while keeping the calculated courier fee payable by the merchant.
+
+Orders enter courier dispatch at `READY`. Saving the order's own missing destination
+pin can recover a legacy waiting delivery; other saved addresses never redirect it.
+Opening a legacy delivery resolves and stores its missing road shape without changing
+its price. The live binding rejected `Request.redirect="error"` before OSRM was
+called; both adapters now use `manual` and reject non-success responses, including
+redirects. The deployment routes also belong to each environment, outside its
+`services` table. Production diagnostics on 2026-10-15 returned a 2,406.5 m / 263.2 s route
+with 57 geometry points for the active delivery. The Android emulator then visibly
+drew the road-following line and showed 2.4 km / 4 min, the customer's name and
+the unchanged accepted courier fee. The availability label reads “Recibiendo pedidos”.
+Consumer order details now include the assigned courier's profile name, vehicle
+plate and vehicle name; API regression coverage checks these owned-order fields.
 
 Production deployment check (2026-10-12): routing Worker version
 `38ab4861-72df-48b5-b71e-bfe1bf5a9a3c` and API version

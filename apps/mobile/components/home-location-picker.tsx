@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
 
 import { Button } from "@/components/button";
+import { ErrorState } from "@/components/error-state";
 import { isMapAvailable, MapView } from "@/components/map";
 import { Sheet } from "@/components/sheet";
 import { useTabBarClearance } from "@/components/tab-bar";
@@ -30,8 +31,8 @@ export function HomeLocationPicker({
 	pinned: DeviceLocation;
 	onClose: () => void;
 	onRequestCurrent: () => void;
-	onUseCurrent: () => void;
-	onApplyPin: (coords: NonNullable<DeviceLocation>) => void;
+	onUseCurrent: () => Promise<void>;
+	onApplyPin: (coords: NonNullable<DeviceLocation>) => Promise<void>;
 	onSaveAddress: (coords: NonNullable<DeviceLocation>) => void;
 }) {
 	const { t } = useT();
@@ -50,12 +51,32 @@ export function HomeLocationPicker({
 	const [draft, setDraft] = useState<DeviceLocation>(null);
 	const [applied, setApplied] = useState<DeviceLocation>(null);
 	const [mapTouching, setMapTouching] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [saveError, setSaveError] = useState<unknown>(null);
+	const apply = async (
+		point: NonNullable<DeviceLocation>,
+		useCurrent = false,
+	) => {
+		setSaving(true);
+		setSaveError(null);
+		try {
+			if (useCurrent) await onUseCurrent();
+			else await onApplyPin(point);
+			setApplied(point);
+		} catch (error) {
+			setSaveError(error);
+		} finally {
+			setSaving(false);
+		}
+	};
 	const knownPosition = pinned ?? current;
 	const center = knownPosition ?? OVERVIEW_CENTER;
 	const mapAvailable = isMapAvailable();
 	const pick = (coords: NonNullable<DeviceLocation>) => {
+		if (saving) return;
 		setDraft(coords);
 		setApplied(null);
+		setSaveError(null);
 	};
 
 	useEffect(() => {
@@ -63,6 +84,7 @@ export function HomeLocationPicker({
 			setDraft(null);
 			setApplied(null);
 			setMapTouching(false);
+			setSaveError(null);
 		}
 	}, [open]);
 
@@ -126,7 +148,7 @@ export function HomeLocationPicker({
 							? "state.loading"
 							: "location.use",
 					)}
-					loading={locationStatus === "asking" && !current}
+					loading={saving || (locationStatus === "asking" && !current)}
 					variant="secondary"
 					fullWidth
 					onPress={() => {
@@ -134,9 +156,18 @@ export function HomeLocationPicker({
 							onRequestCurrent();
 							return;
 						}
-						onUseCurrent();
+						void apply(current, true);
 					}}
 				/>
+				{saveError ? (
+					<ErrorState
+						error={saveError}
+						onRetry={() => {
+							if (draft) void apply(draft);
+							else if (current) void apply(current, true);
+						}}
+					/>
+				) : null}
 
 				{draft ? (
 					applied ? (
@@ -152,10 +183,10 @@ export function HomeLocationPicker({
 					) : (
 						<Button
 							label={t("location.applyPin")}
+							loading={saving}
 							fullWidth
 							onPress={() => {
-								onApplyPin(draft);
-								setApplied(draft);
+								void apply(draft);
 							}}
 						/>
 					)

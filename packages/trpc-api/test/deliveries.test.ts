@@ -71,20 +71,32 @@ async function orderReadyToPlace(test: TestWorld, tag: string) {
 		instructions: "Portón azul",
 	});
 
-	return { businessId, locationId, customer, buyer, address };
+	return { businessId, locationId, customer, buyer, address, test };
 }
 
 async function placeDelivery(
 	ready: Awaited<ReturnType<typeof orderReadyToPlace>>,
 	tag: string,
+	release = true,
 ) {
-	return ready.buyer.orders.place({
+	const order = await ready.buyer.orders.place({
 		fulfilment: "DELIVERY",
 		locationId: ready.locationId,
 		addressId: ready.address.id,
 		paymentMethod: "CASH",
 		clientRequestId: `request_delivery_${tag}`,
 	});
+	if (release) {
+		const merchant = await seedOwner(
+			ready.test,
+			ready.businessId,
+			`${tag}_ready`,
+		);
+		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
+			await merchant.orders.advance({ orderId: order.id, to });
+		}
+	}
+	return ready.buyer.orders.byId({ id: order.id });
 }
 
 async function seedCourier(
@@ -141,6 +153,205 @@ async function seedOwner(test: TestWorld, businessId: string, tag: string) {
 }
 
 describe("delivery creation and dispatch", () => {
+	test("agreed fees reach affiliated couriers only and a revoked affiliation cannot accept", async () => {
+		const test = world();
+		try {
+			const ready = await orderReadyToPlace(test, "agreed_fee");
+			const affiliated = await seedCourier(test, {
+				businessId: ready.businessId,
+				id: "usr_agreed_affiliated",
+				lat: 9.931,
+				lng: -84.081,
+			});
+			const independent = await seedCourier(test, {
+				businessId: ready.businessId,
+				id: "usr_agreed_independent",
+				lat: 9.93,
+				lng: -84.08,
+			});
+			await test.db
+				.delete(membershipTable)
+				.where(eq(membershipTable.userId, independent.user.id));
+			await test.db
+				.update(businessTable)
+				.set({ deliveryPricingMode: "AFFILIATED", deliveryFeeMinor: 1500 })
+				.where(eq(businessTable.id, ready.businessId));
+			const order = await placeDelivery(ready, "agreed_fee");
+			expect(await independent.caller.deliveries.offers()).toEqual([]);
+			const [offer] = await affiliated.caller.deliveries.offers();
+			expect(offer?.courierFeeMinor).toBe(1500);
+			if (!offer) throw new Error("Expected an affiliated delivery request");
+			const [stored] = await test.db
+				.select()
+				.from(orderTable)
+				.where(eq(orderTable.id, order.id));
+			expect(stored?.deliveryPricingVersion).toBe("affiliated-fixed-v1");
+			await test.db
+				.update(membershipTable)
+				.set({ status: "REVOKED" })
+				.where(eq(membershipTable.userId, affiliated.user.id));
+			await expect(
+				affiliated.caller.deliveries.acceptOffer({ offerId: offer.id }),
+			).rejects.toThrow();
+		} finally {
+			test.close();
+		}
+	});
+	test("an older courier delivery loads and caches its real road route without changing the fee", async () => {
+		const test = world();
+		try {
+			const ready = await orderReadyToPlace(test, "old_route");
+			const courier = await seedCourier(test, {
+				businessId: ready.businessId,
+				id: "usr_old_route_courier",
+				lat: 9.9301,
+				lng: -84.0801,
+			});
+			const order = await placeDelivery(ready, "old_route");
+			const [offer] = await courier.caller.deliveries.offers();
+			if (!offer) throw new Error("Expected a ready delivery offer");
+			const accepted = await courier.caller.deliveries.acceptOffer({
+				offerId: offer.id,
+			});
+			let calls = 0;
+			test.env.ROUTING_SERVICE = {
+				fetch: async () => {
+					calls += 1;
+					return Response.json({
+						code: "Ok",
+						routes: [
+							{
+								distance: 4000,
+								duration: 720,
+								geometry: {
+									type: "LineString",
+									coordinates: [
+										[-84.08, 9.93],
+										[-84.085, 9.935],
+										[-84.09, 9.94],
+									],
+								},
+							},
+						],
+					});
+				},
+			} as unknown as Fetcher;
+			const route = await courier.caller.deliveries.byId({
+				deliveryId: accepted.id,
+			});
+			expect(route.routeGeometry?.coordinates).toHaveLength(3);
+			expect(route.courierFeeMinor).toBe(850);
+			await test.db
+				.update(profileTable)
+				.set({ vehiclePlate: "ABC123", vehicleName: "Moto azul" })
+				.where(eq(profileTable.userId, courier.user.id));
+			const customerOrder = await ready.buyer.orders.byId({ id: order.id });
+			expect(customerOrder.courier).toMatchObject({
+				name: `Courier ${courier.user.id}`,
+				vehiclePlate: "ABC123",
+				vehicleName: "Moto azul",
+			});
+			expect(route.customer.name).toBe(ready.customer.name);
+			await courier.caller.deliveries.byId({ deliveryId: accepted.id });
+			expect(calls).toBe(1);
+			expect(
+				(await ready.buyer.orders.byId({ id: order.id })).totals
+					.deliveryFeeMinor,
+			).toBe(850);
+		} finally {
+			test.close();
+		}
+	});
+	test("saving the same customer's pin recovers a ready legacy delivery only", async () => {
+		const test = world();
+		try {
+			const ready = await orderReadyToPlace(test, "legacy_pin");
+			const order = await placeDelivery(ready, "legacy_pin");
+			const courier = await seedCourier(test, {
+				businessId: ready.businessId,
+				id: "usr_legacy_pin_courier",
+				lat: 9.9301,
+				lng: -84.0801,
+			});
+			await test.db
+				.update(deliveryTable)
+				.set({ dropoffLat: null, dropoffLng: null })
+				.where(eq(deliveryTable.orderId, order.id));
+			await expect(
+				courier.caller.users.saveAddress({
+					...ready.address,
+					lat: 9.94,
+					lng: -84.09,
+				}),
+			).rejects.toThrow();
+			expect(await courier.caller.deliveries.offers()).toEqual([]);
+			await ready.buyer.users.saveAddress({
+				...ready.address,
+				lat: 9.94,
+				lng: -84.09,
+			});
+			const offers = await courier.caller.deliveries.offers();
+			expect(offers).toHaveLength(1);
+			const delivery = (
+				await test.db
+					.select()
+					.from(deliveryTable)
+					.where(eq(deliveryTable.orderId, order.id))
+			)[0];
+			expect(delivery?.dropoffLat).toBe(9.94);
+			expect(delivery?.dropoffLng).toBe(-84.09);
+			await ready.buyer.users.saveAddress({
+				...ready.address,
+				lat: 9.95,
+				lng: -84.1,
+			});
+			const unchanged = (
+				await test.db
+					.select()
+					.from(deliveryTable)
+					.where(eq(deliveryTable.orderId, order.id))
+			)[0];
+			expect(unchanged?.dropoffLat).toBe(9.94);
+			expect(unchanged?.dropoffLng).toBe(-84.09);
+		} finally {
+			test.close();
+		}
+	});
+	test("only the merchant's ready action releases express orders to couriers", async () => {
+		const test = world();
+		try {
+			const ready = await orderReadyToPlace(test, "ready_gate");
+			const merchant = await seedOwner(test, ready.businessId, "ready_gate");
+			const courier = await seedCourier(test, {
+				businessId: ready.businessId,
+				id: "usr_delivery_ready_gate",
+				lat: 9.9301,
+				lng: -84.0801,
+			});
+			const order = await placeDelivery(ready, "ready_gate", false);
+			expect(await courier.caller.deliveries.offers()).toEqual([]);
+			await courier.caller.couriers.saveZone({
+				lat: 9.935,
+				lng: -84.085,
+				radiusKm: 5,
+				label: "San José",
+			});
+			for (const to of ["ACCEPTED", "PREPARING"] as const) {
+				await merchant.orders.advance({ orderId: order.id, to });
+				await courier.caller.deliveries.requestOffers();
+				expect(await courier.caller.deliveries.offers()).toEqual([]);
+			}
+			await merchant.orders.advance({ orderId: order.id, to: "READY" });
+			expect(await courier.caller.deliveries.offers()).toHaveLength(1);
+			expect(
+				test.sqlite
+					.prepare('SELECT delivery_speed FROM "order" WHERE id = ?')
+					.get(order.id),
+			).toEqual({ delivery_speed: "EXPRESS" });
+		} finally {
+			test.close();
+		}
+	});
 	test("creates the delivery in the order batch and rolls both rows back together", async () => {
 		const success = world();
 		const ready = await orderReadyToPlace(success, "atomic_success");
@@ -944,7 +1155,12 @@ describe("delivery offer authorization", () => {
 		const offer = (await courier.caller.deliveries.offers())[0];
 		if (!offer) throw new Error("Courier did not receive an offer");
 
-		await ready.buyer.orders.cancel({ orderId: order.id });
+		const merchant = await seedOwner(
+			test,
+			ready.businessId,
+			"cancel_ready_offer",
+		);
+		await merchant.orders.advance({ orderId: order.id, to: "CANCELLED" });
 		expect(await courier.caller.deliveries.offers()).toEqual([]);
 		await expect(
 			courier.caller.deliveries.acceptOffer({ offerId: offer.id }),
@@ -1018,11 +1234,7 @@ describe("accepted delivery lifecycle and ratings", () => {
 		const test = world();
 		test.env.DELIVERY_ETA_ENABLED = "true";
 		const ready = await orderReadyToPlace(test, "dual_role");
-		const owner = await seedOwner(test, ready.businessId, "dual_role");
 		const order = await placeDelivery(ready, "dual_role");
-		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
 		const [run] = await test.db
 			.select({ id: deliveryTable.id })
 			.from(deliveryTable)
@@ -1099,7 +1311,6 @@ describe("accepted delivery lifecycle and ratings", () => {
 	test("the courier collects and delivers, then both people rate once", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "lifecycle");
-		const owner = await seedOwner(test, ready.businessId, "lifecycle");
 		const courier = await seedCourier(test, {
 			businessId: ready.businessId,
 			id: "usr_delivery_lifecycle_courier",
@@ -1124,10 +1335,6 @@ describe("accepted delivery lifecycle and ratings", () => {
 		});
 		expect(atPickup.status).toBe("AT_PICKUP");
 		expect(atPickup.arrivedPickupAt).not.toBeNull();
-
-		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
 
 		const pickedUp = await courier.caller.deliveries.advance({
 			deliveryId: accepted.id,
@@ -1248,9 +1455,6 @@ describe("releasing an order onto the road", () => {
 		const ready = await orderReadyToPlace(test, "self_delivery");
 		const owner = await seedOwner(test, ready.businessId, "self_delivery");
 		const order = await placeDelivery(ready, "self_delivery");
-		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
 		const started = await owner.orders.startSelfDelivery({
 			orderId: order.id,
 			expectedStatus: "READY",
@@ -1283,9 +1487,6 @@ describe("releasing an order onto the road", () => {
 		const order = await placeDelivery(ready, "takeover");
 		const offer = (await courier.caller.deliveries.offers())[0];
 		if (!offer) throw new Error("Courier did not receive an offer");
-		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
 		await owner.orders.startSelfDelivery({
 			orderId: order.id,
 			expectedStatus: "READY",
@@ -1306,14 +1507,7 @@ describe("releasing an order onto the road", () => {
 		const ready = await orderReadyToPlace(test, "late_takeover");
 		const owner = await seedOwner(test, ready.businessId, "late_takeover");
 		const order = await placeDelivery(ready, "late_takeover");
-		for (const to of [
-			"ACCEPTED",
-			"PREPARING",
-			"READY",
-			"OUT_FOR_DELIVERY",
-		] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
+		await owner.orders.advance({ orderId: order.id, to: "OUT_FOR_DELIVERY" });
 		await owner.orders.startSelfDelivery({
 			orderId: order.id,
 			expectedStatus: "OUT_FOR_DELIVERY",
@@ -1337,10 +1531,6 @@ describe("releasing an order onto the road", () => {
 		expect(before).toBeDefined();
 		expect(before?.courierUserId ?? null).toBeNull();
 
-		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
-
 		const released = await owner.orders.advance({
 			orderId: order.id,
 			to: "OUT_FOR_DELIVERY",
@@ -1362,14 +1552,7 @@ describe("releasing an order onto the road", () => {
 		const owner = await seedOwner(test, ready.businessId, "noclose");
 		const order = await placeDelivery(ready, "noclose");
 
-		for (const to of [
-			"ACCEPTED",
-			"PREPARING",
-			"READY",
-			"OUT_FOR_DELIVERY",
-		] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
+		await owner.orders.advance({ orderId: order.id, to: "OUT_FOR_DELIVERY" });
 
 		// The shop got the order onto the road and still cannot declare that it arrived.
 		await expect(
@@ -1395,10 +1578,6 @@ describe("releasing an order onto the road", () => {
 		await courier.caller.deliveries.acceptOffer({ offerId: offer.id });
 
 		expect((await runFor(test, order.id))?.courierUserId).toBe(courier.user.id);
-
-		for (const to of ["ACCEPTED", "PREPARING", "READY"] as const) {
-			await owner.orders.advance({ orderId: order.id, to });
-		}
 
 		await expect(
 			owner.orders.advance({ orderId: order.id, to: "OUT_FOR_DELIVERY" }),
