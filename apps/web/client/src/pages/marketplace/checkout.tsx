@@ -362,6 +362,11 @@ export default function MarketplaceCheckoutPage() {
           <AmberButton className="mt-4 w-full" disabled={!canPlace || placeOrder.isPending} onClick={onPlace}>
             {placeOrder.isPending ? "Enviando…" : "Confirmar pedido"}
           </AmberButton>
+          {effectiveFulfilment === "DELIVERY" && quote.data ? <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><span>Productos del comercio</span><strong>{money(quote.data.totalMinor-quote.data.deliveryFeeMinor,quote.data.currency)}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>{paymentMethod === "CASH" ? "Al repartidor: productos + entrega" : "Entrega al repartidor"}</span><strong>{money(paymentMethod === "CASH" ? quote.data.totalMinor : quote.data.deliveryFeeMinor,quote.data.currency)}</strong></div>
+            <p className="text-xs text-muted-foreground">{paymentMethod === "CASH" ? "El repartidor adelanta los productos al comercio. Paga el total al repartidor al recibir; ese adelanto ya está incluido." : "Paga primero solo los productos al comercio por SINPE. Tras su confirmación, paga la entrega al repartidor por separado."}</p>
+          </div> : null}
           {!canPlace && effectiveFulfilment === "DELIVERY" && !selectedAddress ? (
             <p className="mt-2 text-xs text-link">Elegí una dirección para entrega a domicilio.</p>
           ) : null}

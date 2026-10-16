@@ -574,7 +574,7 @@ export const customer = {
 	"checkout.payment.cash": "Efectivo",
 	"checkout.payment.sinpe": "SINPE Móvil",
 	"checkout.payment.note":
-		"El pago se coordina con el negocio. Todavía no cobramos en la app.",
+		"La app no mueve dinero. Cada pago lo confirma quien lo recibe.",
 	"checkout.tip": "Propina para el negocio",
 	"checkout.tip.none": "Sin propina",
 	"checkout.notes": "Notas del pedido",

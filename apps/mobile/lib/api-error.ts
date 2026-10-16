@@ -1,4 +1,5 @@
 import type { MessageKey, TranslateParams } from "@pymeshub/i18n";
+import { PAYMENT_ERROR_KEYS } from "@pymeshub/shared";
 import { TRPCClientError } from "@trpc/client";
 import { useEffect } from "react";
 import { useSession } from "@/lib/auth/session";
@@ -143,6 +144,8 @@ function resolveMessage(
 	failure: ApiFailure,
 	overrides?: FailureOverrides,
 ): FailureMessage {
+	if ((PAYMENT_ERROR_KEYS as readonly string[]).includes(failure.serverMessage))
+		return failure.serverMessage as MessageKey;
 	// The domain code is consulted first and wins over the tRPC code, because it is the
 	// more specific statement: `PROMOTION_EXPIRED` is a sentence a customer can act on,
 	// `BAD_REQUEST` is not.
@@ -273,8 +276,11 @@ export function useApiFailure(
 
 	return {
 		failure,
-		message:
-			!error ? "" : quota ? t(quota.key, { ...quota.params, limit: t(quota.limitKey) }) : t(sentence.key, sentence.params),
+		message: !error
+			? ""
+			: quota
+				? t(quota.key, { ...quota.params, limit: t(quota.limitKey) })
+				: t(sentence.key, sentence.params),
 		supportLine: failure.requestId
 			? t("state.error.requestId", { requestId: failure.requestId })
 			: null,

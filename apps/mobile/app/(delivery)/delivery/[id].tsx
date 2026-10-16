@@ -598,6 +598,16 @@ function TaskSheet({
 			<Text variant="caption" style={{ color: motion.sheetMuted }}>
 				{t("delivery.priceFixed")}
 			</Text>
+			<Button
+				variant="secondary"
+				label={t("payments.open")}
+				onPress={() =>
+					router.push({
+						pathname: "/order-payments",
+						params: { orderId: delivery.orderId },
+					})
+				}
+			/>
 			<View style={styles.contacts}>
 				<ContactButton
 					label={t("delivery.motion.call")}

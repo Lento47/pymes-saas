@@ -12,6 +12,7 @@ import {
 	notification as notificationTable,
 	orderEvent as orderEventTable,
 	orderItem as orderItemTable,
+	orderPayment as orderPaymentTable,
 	order as orderTable,
 	outboxEvent as outboxTable,
 	product as productTable,
@@ -84,7 +85,6 @@ import {
 	sql,
 } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
-
 import { rateLimit } from "../context";
 import type { OrderRoom } from "../durable/order-room";
 import { orderRoomFor } from "../env";
@@ -121,6 +121,11 @@ import {
 	orderTrackingOf,
 	productCardOf,
 } from "./mappers";
+import {
+	merchantAccountForCheckout,
+	paymentRows,
+	requirePaymentStage,
+} from "./order-payments";
 import { QuotaExceededError } from "./plan-limits";
 
 /**
@@ -484,6 +489,23 @@ export async function place(
 			)
 		: null;
 
+	const paymentFlow = ctx.env.SEPARATE_PAYMENTS_ENABLED === "true";
+	const merchantAccount = paymentFlow
+		? await merchantAccountForCheckout(ctx, business.id)
+		: null;
+	if (
+		paymentFlow &&
+		input.paymentMethod === "SINPE_MOVIL" &&
+		totalMinor - deliveryFeeMinor > 0 &&
+		!merchantAccount
+	)
+		throw new ValidationError("payments.refusal.noSinpe");
+	const courierFeeMinor =
+		input.fulfilment === "DELIVERY"
+			? automatic
+				? (roadPricing?.baseFeeMinor ?? business.deliveryFeeMinor)
+				: business.deliveryFeeMinor
+			: null;
 	const claimRow = await claim(ctx, input.clientRequestId);
 	if (!claimRow) return existingOrderFor(ctx, input.clientRequestId);
 
@@ -505,17 +527,15 @@ export async function place(
 			// so the number an event carries means something.
 			version: 1,
 			paymentMethod: input.paymentMethod,
-			paymentStatus: "UNPAID",
+			paymentStatus: paymentFlow && totalMinor === 0 ? "PAID" : "UNPAID",
+			paymentFlowVersion: paymentFlow ? 1 : 0,
+			merchantPaymentConfirmed:
+				paymentFlow && totalMinor - deliveryFeeMinor === 0,
 			currency: business.currency,
 			subtotalMinor,
 			discountMinor,
 			deliveryFeeMinor,
-			courierFeeMinor:
-				input.fulfilment === "DELIVERY"
-					? automatic
-						? (roadPricing?.baseFeeMinor ?? business.deliveryFeeMinor)
-						: business.deliveryFeeMinor
-					: null,
+			courierFeeMinor,
 			merchantCoversDelivery:
 				input.fulfilment === "DELIVERY" &&
 				(business.merchantCoversDelivery || Boolean(promotion.freeDelivery)),
@@ -543,6 +563,21 @@ export async function place(
 			updatedAt: now,
 		}),
 		...(preparedDelivery?.statements ?? []),
+		...(paymentFlow
+			? paymentRows({
+					orderId,
+					customerId: ctx.user.id,
+					businessName: business.name,
+					businessAccount: merchantAccount,
+					totalMinor,
+					deliveryFeeMinor,
+					courierFeeMinor,
+					fulfilment: input.fulfilment,
+					paymentMethod: input.paymentMethod,
+					currency: business.currency,
+					now,
+				}).map((row) => ctx.db.insert(orderPaymentTable).values(row))
+			: []),
 		...priced.map((line) =>
 			ctx.db.insert(orderItemTable).values({
 				id: newId("orderItem"),
@@ -1090,7 +1125,7 @@ export async function startSelfDelivery(
 	ctx: UserContext,
 	input: SelfDeliveryOrderInput,
 ): Promise<OrderDetail> {
-	const order = await reachableOrder(ctx, input.orderId);
+	let order = await reachableOrder(ctx, input.orderId);
 	const actor = actorFor(ctx, order);
 	if (actor !== "BUSINESS")
 		throw new ForbiddenError("Solo el negocio puede repartir este pedido");
@@ -1102,6 +1137,67 @@ export async function startSelfDelivery(
 		throw new ConflictError("El pedido ya no está listo para reparto propio");
 	}
 	const now = new Date();
+	if (order.paymentFlowVersion > 0) {
+		if (order.selfDeliveryUserId && order.selfDeliveryUserId !== ctx.user.id)
+			throw new ConflictError("Un compañero ya tomó este reparto propio");
+		if (!order.selfDeliveryUserId) {
+			const reserved = await ctx.db
+				.update(deliveryTable)
+				.set({ status: "ACCEPTED", updatedAt: now })
+				.where(
+					and(
+						eq(deliveryTable.orderId, order.id),
+						isNull(deliveryTable.courierUserId),
+						inArray(deliveryTable.status, ["SEARCHING", "OFFERED"]),
+					),
+				)
+				.returning({ id: deliveryTable.id });
+			if (!reserved[0])
+				throw new ConflictError("Un repartidor ya tomó esta entrega");
+			try {
+				await ctx.db.batch([
+					ctx.db
+						.update(orderTable)
+						.set({
+							selfDeliveryUserId: ctx.user.id,
+							courierName: ctx.user.name,
+							courierPhone: ctx.user.phone,
+							updatedAt: now,
+						})
+						.where(eq(orderTable.id, order.id)),
+					ctx.db
+						.update(deliveryOfferTable)
+						.set({ status: "CANCELLED", respondedAt: now })
+						.where(
+							and(
+								eq(deliveryOfferTable.deliveryId, reserved[0].id),
+								eq(deliveryOfferTable.status, "PENDING"),
+							),
+						),
+				]);
+			} catch (error) {
+				await ctx.db
+					.update(deliveryTable)
+					.set({ status: "SEARCHING", updatedAt: now })
+					.where(
+						and(
+							eq(deliveryTable.id, reserved[0].id),
+							eq(deliveryTable.status, "ACCEPTED"),
+							isNull(deliveryTable.courierUserId),
+						),
+					);
+				throw error;
+			}
+			order = {
+				...order,
+				selfDeliveryUserId: ctx.user.id,
+				courierName: ctx.user.name,
+				courierPhone: ctx.user.phone,
+			};
+		}
+		// Claim the driver before payment so a cash advance has an identified payer.
+		if (!order.merchantPaymentConfirmed) return detail(ctx, order.id, actor);
+	}
 	// This conditional claim wins or loses against acceptOffer's OFFERED -> ACCEPTED write.
 	// Once it succeeds, neither acceptance nor dispatch can offer the run again.
 	const claimed = await ctx.db
@@ -1111,7 +1207,10 @@ export async function startSelfDelivery(
 			and(
 				eq(deliveryTable.orderId, order.id),
 				isNull(deliveryTable.courierUserId),
-				inArray(deliveryTable.status, ["SEARCHING", "OFFERED"]),
+				inArray(
+					deliveryTable.status,
+					order.selfDeliveryUserId ? ["ACCEPTED"] : ["SEARCHING", "OFFERED"],
+				),
 			),
 		)
 		.returning({ id: deliveryTable.id });
@@ -1149,7 +1248,11 @@ export async function startSelfDelivery(
 		if (current?.status === "READY") {
 			const restored = await ctx.db
 				.update(deliveryTable)
-				.set({ status: "SEARCHING", pickedUpAt: null, updatedAt: new Date() })
+				.set({
+					status: order.selfDeliveryUserId ? "ACCEPTED" : "SEARCHING",
+					pickedUpAt: null,
+					updatedAt: new Date(),
+				})
 				.where(
 					and(
 						eq(deliveryTable.id, claimed[0].id),
@@ -1527,6 +1630,11 @@ async function applyMove(
 	},
 ): Promise<OrderDetail> {
 	const now = new Date();
+	if (move.to === "READY") await requirePaymentStage(ctx, order, "READY");
+	if (move.to === "OUT_FOR_DELIVERY")
+		await requirePaymentStage(ctx, order, "PICKUP");
+	if (move.to === "COMPLETED")
+		await requirePaymentStage(ctx, order, "COMPLETE");
 
 	// Reserve this move's version before writing anything, as a compare-and-set.
 	//
@@ -1596,7 +1704,11 @@ async function applyMove(
 		// Completing a cash or SINPE order is the moment the money changes hands — nobody
 		// hands over food unpaid. A payment status left UNPAID on a finished order is a
 		// payout report that never reconciles. See `requiresCollection`.
-		if (requiresCollection(order.paymentStatus)) patch.paymentStatus = "PAID";
+		if (
+			order.paymentFlowVersion === 0 &&
+			requiresCollection(order.paymentStatus)
+		)
+			patch.paymentStatus = "PAID";
 	}
 	if (move.to === "CANCELLED" || move.to === "REJECTED") {
 		patch.cancelledAt = now;

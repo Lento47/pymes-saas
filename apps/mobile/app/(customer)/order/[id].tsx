@@ -28,6 +28,7 @@ import { Field } from "@/components/field";
 import { Image } from "@/components/image";
 import { isMapAvailable, MapView } from "@/components/map";
 import { MoneyLine } from "@/components/money-line";
+import { OrderPayments } from "@/components/order-payments";
 import { OrderTimeline } from "@/components/order-timeline";
 import { Price } from "@/components/price";
 import { useRefreshControl } from "@/components/pull-refresh";
@@ -751,6 +752,7 @@ function OrderDetail() {
 								{t(paymentKey)}
 							</Text>
 						</View>
+						<OrderPayments orderId={order.id} audience="CUSTOMER" compact />
 
 						{order.pickupLocation ? (
 							<View style={styles.stack}>

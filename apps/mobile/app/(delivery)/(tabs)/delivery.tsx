@@ -585,6 +585,26 @@ function MotionBoard({ profile }: { profile: CourierProfile }) {
 							area={offer.dropoffArea || t("location.pinned")}
 							motion={motion}
 						/>
+						{(offer.merchantAdvanceMinor ?? 0) > 0 ? (
+							<View style={{ gap: space.xs }}>
+								<Text variant="label" bold style={{ color: motion.sheetInk }}>
+									{t("payments.courierAdvance")}:{" "}
+									{formatMoney(
+										offer.merchantAdvanceMinor ?? 0,
+										offer.currency ?? "CRC",
+										{ locale: intlLocale },
+									)}
+								</Text>
+								<Text variant="label" bold style={{ color: motion.sheetInk }}>
+									{t("payments.collectFromCustomer")}:{" "}
+									{formatMoney(
+										offer.customerCollectionMinor ?? 0,
+										offer.currency ?? "CRC",
+										{ locale: intlLocale },
+									)}
+								</Text>
+							</View>
+						) : null}
 						<Text variant="caption" style={{ color: motion.sheetMuted }}>
 							{t("delivery.priceFixed")}
 						</Text>

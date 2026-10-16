@@ -88,6 +88,7 @@ export type Env = {
 	ROUTING_ENABLED?: string;
 	/** CRC Express uses road pricing by default; explicit false preserves legacy environments. */
 	ROUTE_FEE_ENABLED?: string;
+	SEPARATE_PAYMENTS_ENABLED?: string;
 	/** ETA-first courier ranking; absent keeps the legacy ordering. */
 	AFFINITY_V2_ENABLED?: string;
 	/** Show a quoted-road arrival estimate only after courier pickup. */

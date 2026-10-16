@@ -12,6 +12,7 @@ import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { ListRow } from "@/components/list-row";
+import { PaymentAccountSettings } from "@/components/payment-account-settings";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
@@ -331,6 +332,14 @@ export default function ShopSettings() {
 							    order up, and the centre the delivery radius is measured from.
 							    Three of the five are the create path's required set, so they
 							    refuse an emptied box rather than clearing it. */}
+							<AnimateIn index={3}>
+								<ScreenSection title={t("payments.accountTitle")}>
+									<PaymentAccountSettings
+										businessId={businessId}
+										showTitle={false}
+									/>
+								</ScreenSection>
+							</AnimateIn>
 							<AnimateIn index={3}>
 								<ScreenSection title={t("biz.settings.address")}>
 									<Text variant="caption" tone="muted">

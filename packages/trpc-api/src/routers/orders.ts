@@ -2,16 +2,22 @@ import {
 	advanceOrderInput,
 	assignCourierInput,
 	cancelOrderInput,
+	choosePaymentMethodInput,
 	createReviewInput,
 	orderListInput,
+	paymentAccountTarget,
+	paymentPurposeSchema,
 	placeOrderInput,
 	purchasedProductsInput,
 	reorderOrderInput,
 	reportLocationInput,
+	reviewPaymentInput,
+	savePaymentAccountInput,
 	selfDeliveryOrderInput,
+	submitPaymentProofInput,
 } from "@pymeshub/shared";
 import { z } from "zod";
-
+import * as payments from "../services/order-payments";
 import * as orders from "../services/orders";
 import * as reviews from "../services/reviews";
 import { businessProcedure, protectedProcedure, router } from "../trpc";
@@ -32,6 +38,33 @@ import { businessProcedure, protectedProcedure, router } from "../trpc";
  * tapping twice must not be charged twice.
  */
 export const ordersRouter = router({
+	paymentAccount: protectedProcedure
+		.input(paymentAccountTarget)
+		.query(({ ctx, input }) => payments.paymentAccount(ctx, input)),
+	savePaymentAccount: protectedProcedure
+		.input(savePaymentAccountInput)
+		.mutation(({ ctx, input }) => payments.savePaymentAccount(ctx, input)),
+	payments: protectedProcedure
+		.input(z.object({ orderId: z.string().startsWith("ord_") }))
+		.query(({ ctx, input }) => payments.payments(ctx, input)),
+	choosePaymentMethod: protectedProcedure
+		.input(choosePaymentMethodInput)
+		.mutation(({ ctx, input }) => payments.chooseMethod(ctx, input)),
+	submitPaymentProof: protectedProcedure
+		.input(submitPaymentProofInput)
+		.mutation(({ ctx, input }) => payments.submitProof(ctx, input)),
+	reviewPayment: protectedProcedure
+		.input(reviewPaymentInput)
+		.mutation(({ ctx, input }) => payments.reviewPayment(ctx, input)),
+	paymentProof: protectedProcedure
+		.input(
+			z.object({
+				orderId: z.string().startsWith("ord_"),
+				purpose: paymentPurposeSchema,
+				proofId: z.string().optional(),
+			}),
+		)
+		.query(({ ctx, input }) => payments.paymentProof(ctx, input)),
 	place: protectedProcedure
 		.input(placeOrderInput)
 		.mutation(({ ctx, input }) => orders.place(ctx, input)),

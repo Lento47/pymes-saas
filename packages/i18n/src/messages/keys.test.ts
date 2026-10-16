@@ -9,6 +9,7 @@ import { common as commonEn } from "./en/common";
 import { customer as customerEn } from "./en/customer";
 import { discovery as discoveryEn } from "./en/discovery";
 import { en } from "./en/index";
+import { payments as paymentsEn } from "./en/payments";
 import { settings as settingsEn } from "./en/settings";
 import { storefront as storefrontEn } from "./en/storefront";
 import { tracking as trackingEn } from "./en/tracking";
@@ -21,6 +22,7 @@ import { common as commonEs } from "./es/common";
 import { customer as customerEs } from "./es/customer";
 import { discovery as discoveryEs } from "./es/discovery";
 import { es } from "./es/index";
+import { payments as paymentsEs } from "./es/payments";
 import { settings as settingsEs } from "./es/settings";
 import { storefront as storefrontEs } from "./es/storefront";
 import { tracking as trackingEs } from "./es/tracking";
@@ -57,6 +59,7 @@ const DOMAINS_ES = {
 	basket: basketEs,
 	tracking: trackingEs,
 	settings: settingsEs,
+	payments: paymentsEs,
 };
 const DOMAINS_EN = {
 	account: accountEn,
@@ -70,6 +73,7 @@ const DOMAINS_EN = {
 	basket: basketEn,
 	tracking: trackingEn,
 	settings: settingsEn,
+	payments: paymentsEn,
 };
 
 /** `["auth", "auth.title"]` — the file a key came from, so a collision names it. */

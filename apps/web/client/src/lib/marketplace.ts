@@ -22,6 +22,8 @@
  */
 
 import { createMarketplaceAuthClient } from "@pymeshub/auth/marketplace-client";
+import { createTranslator, type MessageKey } from "@pymeshub/i18n";
+import { PAYMENT_ERROR_KEYS } from "@pymeshub/shared";
 import {
   type Address,
   addressSchema,
@@ -579,6 +581,7 @@ export function useRemovePromotion() {
 /** The refusals a cart write can carry, in the reader's words. */
 export function cartErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
+  if ((PAYMENT_ERROR_KEYS as readonly string[]).includes(message)) return createTranslator("es").t(message as MessageKey);
   if (message.includes("CONFLICT")) return "Tu carrito tiene productos de otra tienda.";
   if (isUnauthorized(error)) return "Iniciá sesión para usar el carrito.";
   return "No se pudo actualizar el carrito. Intentá de nuevo.";

@@ -288,6 +288,9 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 			courierFeeMinor: orderTable.courierFeeMinor,
 			customerDeliveryFeeMinor: orderTable.deliveryFeeMinor,
 			merchantCoversDelivery: orderTable.merchantCoversDelivery,
+			orderPaymentMethod: orderTable.paymentMethod,
+			orderTotalMinor: orderTable.totalMinor,
+			paymentFlowVersion: orderTable.paymentFlowVersion,
 			businessName: businessTable.name,
 		})
 		.from(offerTable)
@@ -315,6 +318,9 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 			courierFeeMinor,
 			customerDeliveryFeeMinor,
 			merchantCoversDelivery,
+			orderPaymentMethod,
+			orderTotalMinor,
+			paymentFlowVersion,
 		}) => ({
 			id: offer.id,
 			deliveryId: delivery.id,
@@ -331,6 +337,14 @@ export async function offers(ctx: UserContext): Promise<DeliveryOffer[]> {
 			courierFeeMinor: offer.payoutMinor ?? courierFeeMinor,
 			customerDeliveryFeeMinor,
 			merchantCoversDelivery,
+			merchantAdvanceMinor:
+				paymentFlowVersion > 0 && orderPaymentMethod === "CASH"
+					? orderTotalMinor - customerDeliveryFeeMinor
+					: 0,
+			customerCollectionMinor:
+				paymentFlowVersion > 0 && orderPaymentMethod === "CASH"
+					? orderTotalMinor
+					: customerDeliveryFeeMinor,
 			expiresAt: offer.expiresAt,
 			createdAt: offer.createdAt,
 		}),

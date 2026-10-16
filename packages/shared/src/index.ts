@@ -42,6 +42,7 @@ export * from "./schemas/location";
 export * from "./schemas/merchant-home";
 export * from "./schemas/notification";
 export * from "./schemas/order";
+export * from "./schemas/order-payment";
 export * from "./schemas/promotions";
 export * from "./schemas/subscription";
 export * from "./schemas/support";

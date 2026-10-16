@@ -6,6 +6,7 @@ import { business } from "./business";
 import { common } from "./common";
 import { customer } from "./customer";
 import { discovery } from "./discovery";
+import { payments } from "./payments";
 import { settings } from "./settings";
 import { storefront } from "./storefront";
 import { tracking } from "./tracking";
@@ -43,4 +44,5 @@ export const es = {
 	...basket,
 	...tracking,
 	...settings,
+	...payments,
 } as const;

@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { EmptyState, ErrorState, money } from "@/components/marketplace/cards";
 import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CustomerOrderPayments } from "@/components/marketplace/order-payments";
 import { useToast } from "@/hooks/use-toast";
 import { useCancelOrder, useMarketplaceSession, useOrder } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
@@ -156,6 +157,7 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
             </dl>
           </div>
 
+          <CustomerOrderPayments orderId={data.id}/>
           {data.deliveryAddress ? (
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
               <p className="mb-1 font-semibold text-foreground">Entrega</p>

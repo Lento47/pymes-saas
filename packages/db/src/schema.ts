@@ -1254,6 +1254,16 @@ export const order = sqliteTable(
 			.$type<PaymentStatus>()
 			.notNull()
 			.default("UNPAID"),
+		paymentFlowVersion: integer("payment_flow_version").notNull().default(0),
+		merchantPaymentConfirmed: integer("merchant_payment_confirmed", {
+			mode: "boolean",
+		})
+			.notNull()
+			.default(false),
+		selfDeliveryUserId: text("self_delivery_user_id").references(
+			() => user.id,
+			{ onDelete: "restrict" },
+		),
 		currency: text("currency").$type<Currency>().notNull(),
 		/**
 		 * Totals are stored rather than recomputed from the lines. They are what the
@@ -1359,6 +1369,90 @@ export const order = sqliteTable(
  * One physical delivery for one DELIVERY order. Both stops are snapshots: an
  * edited address must not move a run that a courier already accepted.
  */
+/** Explicit SINPE destinations; contact telephone numbers are never payment instructions. */
+export const paymentAccount = sqliteTable(
+	"payment_account",
+	{
+		id: text("id").primaryKey(),
+		businessId: text("business_id").references(() => business.id, {
+			onDelete: "cascade",
+		}),
+		userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+		phone: text("phone").notNull(),
+		recipientName: text("recipient_name").notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("payment_account_business_unique").on(table.businessId),
+		uniqueIndex("payment_account_user_unique").on(table.userId),
+	],
+);
+
+export const orderPayment = sqliteTable(
+	"order_payment",
+	{
+		id: text("id").primaryKey(),
+		orderId: text("order_id")
+			.notNull()
+			.references(() => order.id, { onDelete: "restrict" }),
+		purpose: text("purpose")
+			.$type<import("@pymeshub/shared").OrderPayment["purpose"]>()
+			.notNull(),
+		amountMinor: integer("amount_minor").notNull(),
+		currency: text("currency").$type<Currency>().notNull(),
+		payer: text("payer")
+			.$type<import("@pymeshub/shared").OrderPayment["payer"]>()
+			.notNull(),
+		payee: text("payee")
+			.$type<import("@pymeshub/shared").OrderPayment["payee"]>()
+			.notNull(),
+		method: text("method").$type<"CASH" | "SINPE_MOVIL">().notNull(),
+		status: text("status")
+			.$type<import("@pymeshub/shared").OrderPayment["status"]>()
+			.notNull(),
+		payeeName: text("payee_name").notNull(),
+		sinpePhone: text("sinpe_phone"),
+		currentProofId: text("current_proof_id"),
+		rejectionReason: text("rejection_reason"),
+		version: integer("version").notNull().default(0),
+		confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }),
+		reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("order_payment_purpose_unique").on(
+			table.orderId,
+			table.purpose,
+		),
+	],
+);
+
+/** Append-only submissions retain rejected evidence and prevent reusing the same receipt. */
+export const orderPaymentProof = sqliteTable(
+	"order_payment_proof",
+	{
+		id: text("id").primaryKey(),
+		paymentId: text("payment_id")
+			.notNull()
+			.references(() => orderPayment.id, { onDelete: "restrict" }),
+		uploaderUserId: text("uploader_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		key: text("key").notNull(),
+		mimeType: text("mime_type").notNull(),
+		sha256: text("sha256").notNull(),
+		reference: text("reference"),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("order_payment_proof_hash_unique").on(table.sha256),
+		index("order_payment_proof_payment_idx").on(table.paymentId),
+	],
+);
+
 export const delivery = sqliteTable(
 	"delivery",
 	{

@@ -78,6 +78,8 @@ export const deliveryOfferSchema = z.object({
 	courierFeeMinor: z.number().int().nonnegative().nullable().optional(),
 	customerDeliveryFeeMinor: z.number().int().nonnegative().optional(),
 	merchantCoversDelivery: z.boolean().optional(),
+	merchantAdvanceMinor: z.number().int().nonnegative().optional(),
+	customerCollectionMinor: z.number().int().nonnegative().optional(),
 	expiresAt: z.date(),
 	createdAt: z.date(),
 });

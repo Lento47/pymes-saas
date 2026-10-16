@@ -614,7 +614,22 @@ export function orderSummaryOf(input: {
 		// Computed from the shared state machine rather than from a per-screen list, so
 		// the button a business sees and the transition the API will accept are the
 		// same fact.
-		nextStatuses: nextStatusesFrom(order.status, input.actor, order.fulfilment),
+		nextStatuses: nextStatusesFrom(
+			order.status,
+			input.actor,
+			order.fulfilment,
+		).filter((next) => {
+			if (order.paymentFlowVersion === 0) return true;
+			if (
+				next === "READY" &&
+				order.paymentMethod === "SINPE_MOVIL" &&
+				order.fulfilment === "DELIVERY"
+			)
+				return order.merchantPaymentConfirmed;
+			if (next === "OUT_FOR_DELIVERY") return order.merchantPaymentConfirmed;
+			if (next === "COMPLETED") return order.paymentStatus === "PAID";
+			return true;
+		}),
 		canCancel: canTransition({
 			from: order.status,
 			to: "CANCELLED",

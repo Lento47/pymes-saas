@@ -13,7 +13,7 @@ import { createAuth, parseSignUpConsent, withoutConsentFlags } from "./auth";
 import { createContext } from "./context";
 import { corsOrigins, type Env, orderRoomFor } from "./env";
 import { DomainError, InternalError } from "./errors";
-import { createLogger, LogLevel, requestIdFrom } from "./logging";
+import { createLogger, type LogLevel, requestIdFrom } from "./logging";
 import { appRouter } from "./routers";
 import * as uploads from "./services/uploads";
 import { exchangeSupabaseSession } from "./supabase-exchange";
@@ -377,7 +377,12 @@ export function createApp() {
 	 */
 	app.get("/uploads/*", async (c) => {
 		const key = c.req.param("*");
-		if (!key || key.startsWith("/") || key.includes(".."))
+		if (
+			!key ||
+			key.startsWith("/") ||
+			key.startsWith("private/") ||
+			key.includes("..")
+		)
 			return c.json({ error: "not_found" }, 404);
 
 		const object = await c.env.MEDIA.get(key);

@@ -311,7 +311,7 @@ export const customer = {
 	"checkout.payment.cash": "Cash",
 	"checkout.payment.sinpe": "SINPE Móvil",
 	"checkout.payment.note":
-		"Payment is arranged with the business. We don't charge in the app yet.",
+		"The app does not move money. Each recipient confirms their own payment.",
 	"checkout.tip": "Tip for the business",
 	"checkout.tip.none": "No tip",
 	"checkout.notes": "Order notes",

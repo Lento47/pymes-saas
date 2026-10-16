@@ -10,7 +10,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
-
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
@@ -19,6 +18,7 @@ import { isMapAvailable, MapView } from "@/components/map";
 import { MerchantModule } from "@/components/merchant-module";
 import { MerchantOrderHero } from "@/components/merchant-order-hero";
 import { MerchantRejectSheet } from "@/components/merchant-reject-sheet";
+import { OrderPayments } from "@/components/order-payments";
 import {
 	type OrderNoteEvent,
 	OrderTimeline,
@@ -667,16 +667,6 @@ export default function MerchantOrderDetail() {
 										)}
 									/>
 								) : null}
-								{detail.fulfilment === "DELIVERY" ? (
-									<TotalRow
-										label={t("biz.order.customerDeliveryCharge")}
-										amount={formatMoney(
-											detail.totals.deliveryFeeMinor,
-											detail.currency,
-											{ locale: intlLocale },
-										)}
-									/>
-								) : null}
 								{detail.totals.taxMinor > 0 ? (
 									<TotalRow
 										label={t("cart.tax")}
@@ -707,12 +697,16 @@ export default function MerchantOrderDetail() {
 								/>
 								<View style={styles.totalRow}>
 									<Text variant="body" bold>
-										{t("cart.total")}
+										{t("payments.merchantAmount")}
 									</Text>
 									<Text variant="body" tone="price" bold tabular>
-										{formatMoney(detail.totals.totalMinor, detail.currency, {
-											locale: intlLocale,
-										})}
+										{formatMoney(
+											detail.totals.totalMinor - detail.totals.deliveryFeeMinor,
+											detail.currency,
+											{
+												locale: intlLocale,
+											},
+										)}
 									</Text>
 								</View>
 								{detail.totals.merchantCoversDelivery &&
@@ -733,6 +727,7 @@ export default function MerchantOrderDetail() {
 								) : null}
 							</MerchantModule>
 
+							<OrderPayments orderId={detail.id} audience="BUSINESS" compact />
 							{/* The rail, not a list of cards: `./order-timeline`'s merchant
 							    variant, which is the same `customerTimeline` this app's tracker
 							    and the web both draw. */}

@@ -1102,6 +1102,7 @@ function CheckoutForm({
 											// does not flash a receipt's worth of placeholders on its way in.
 											totals={quoting ? undefined : quote.data}
 											showDelivery={fulfilment === "DELIVERY"}
+											paymentMethod={paymentMethod}
 										/>
 									)}
 

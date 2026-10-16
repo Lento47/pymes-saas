@@ -25,6 +25,7 @@ import { CourierDirectoryCard } from "@/components/courier-directory-card";
 import { ErrorState } from "@/components/error-state";
 import { Field } from "@/components/field";
 import { isMapAvailable, MapView } from "@/components/map";
+import { PaymentAccountSettings } from "@/components/payment-account-settings";
 import { Screen, ScreenSection } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
 import { SignOutSheet } from "@/components/sign-out-sheet";
@@ -991,6 +992,9 @@ function ProfileForm({
 				/>
 			</ScreenSection>
 			{/* Vehicle identity is reviewed with the name and bio. */}
+			<ScreenSection title={t("payments.accountTitle")}>
+				<PaymentAccountSettings showTitle={false} />
+			</ScreenSection>
 			<ScreenSection title={t("biz.courier.vehicle")}>
 				<Field
 					label={t("biz.courier.vehicleName")}

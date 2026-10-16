@@ -570,6 +570,9 @@ importers:
       '@pymeshub/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@pymeshub/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@pymeshub/shared':
         specifier: workspace:*
         version: link:../../packages/shared

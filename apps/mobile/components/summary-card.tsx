@@ -1,4 +1,9 @@
-import { type CartTotals, type Currency, formatMoney } from "@pymeshub/shared";
+import {
+	type CartTotals,
+	type Currency,
+	formatMoney,
+	type PaymentMethod,
+} from "@pymeshub/shared";
 import { StyleSheet, View } from "react-native";
 
 import { useT } from "@/lib/i18n";
@@ -57,6 +62,7 @@ export function SummaryCard({
 	totals,
 	showDelivery = false,
 	beforeFulfilment = false,
+	paymentMethod,
 }: {
 	/**
 	 * The cart's totals or the checkout's quote — the API's own `CartTotals`, imported rather
@@ -74,6 +80,7 @@ export function SummaryCard({
 	/** Draw the delivery row even at zero. See the note above. */
 	showDelivery?: boolean;
 	beforeFulfilment?: boolean;
+	paymentMethod?: PaymentMethod;
 }) {
 	const { t } = useT();
 	const currency = totals?.currency;
@@ -135,6 +142,35 @@ export function SummaryCard({
 					<Text variant="caption" tone="muted">
 						{t("cart.deliveryAtCheckout")}
 					</Text>
+				) : null}
+				{showDelivery && paymentMethod && totals ? (
+					<>
+						<MoneyLine
+							label={t("payments.merchantAmount")}
+							amountMinor={totals.totalMinor - totals.deliveryFeeMinor}
+							currency={currency}
+						/>
+						<MoneyLine
+							label={t(
+								paymentMethod === "CASH"
+									? "payments.courierCollection"
+									: "payments.deliveryAmount",
+							)}
+							amountMinor={
+								paymentMethod === "CASH"
+									? totals.totalMinor
+									: totals.deliveryFeeMinor
+							}
+							currency={currency}
+						/>
+						<Text variant="caption" tone="muted">
+							{t(
+								paymentMethod === "CASH"
+									? "payments.cashCustomer"
+									: "payments.sinpeCustomer",
+							)}
+						</Text>
+					</>
 				) : null}
 			</View>
 		</Card>
