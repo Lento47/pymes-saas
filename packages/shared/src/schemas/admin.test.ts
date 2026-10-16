@@ -8,7 +8,11 @@ import {
 	REASON_MIN_LENGTH,
 	REASON_REQUIRED_ACTIONS,
 } from "./admin";
-import { createPriceBookInput, recordPaymentInput } from "./admin-subscription";
+import {
+	assignPlanInput,
+	createPriceBookInput,
+	recordPaymentInput,
+} from "./admin-subscription";
 import {
 	adminVerificationDecisionInput,
 	affiliationRevokeInput,
@@ -73,6 +77,13 @@ const REASON_INPUTS: Record<string, { shape: Record<string, unknown> }> = {
 	"courier.reject": adminCourierDecisionInput,
 	"subscription.record_payment": recordPaymentInput,
 	"subscription.create_price_book": createPriceBookInput,
+	/**
+	 * The manual plan placement's input, and the same shape of claim the price book's
+	 * makes: the schema carries a required `reason`, the service re-checks it through
+	 * `requireReason`, and both read the one requirement from the action's place in
+	 * `REASON_REQUIRED_ACTIONS`.
+	 */
+	"subscription.assign_plan": assignPlanInput,
 	"category.delete": adminDeleteCategoryInput,
 	/**
 	 * Phase 2's three, and the two shapes behind them.

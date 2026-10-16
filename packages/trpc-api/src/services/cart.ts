@@ -1,4 +1,5 @@
 import type { ChosenOption, Db, PromotionKind } from "@pymeshub/db";
+import { requireMobileProcedure } from "./mobile-configuration";
 import {
 	address as addressTable,
 	business as businessTable,
@@ -290,6 +291,7 @@ export async function addItem(
 	input: AddToCartInput,
 ): Promise<Cart> {
 	const product = await readBuyableProduct(ctx.db, input.productId);
+	await requireMobileProcedure(ctx, "cart.addItem");
 	const chosen = await chosenOptionsOf(ctx.db, product.id, input.optionIds);
 
 	const existing = await openCartOf(ctx.db, ctx.user.id);
@@ -449,6 +451,7 @@ export async function applyPromotion(
 	input: { code: string },
 ): Promise<Cart> {
 	const cart = await requiredCart(ctx);
+	await requireMobileProcedure(ctx, "cart.applyPromotion");
 
 	const promotion = await ctx.db
 		.select()

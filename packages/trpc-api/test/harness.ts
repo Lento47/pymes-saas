@@ -42,7 +42,6 @@ import type {
 import {
 	CADENCES,
 	type Cadence,
-	DEFAULT_PLAN,
 	effectivePlan,
 	LAUNCH_PRICE_BOOK,
 	PLANS,
@@ -531,19 +530,28 @@ export async function seedPriceBook(
 
 	// `FREE` is skipped, matching the launch book: a free shop is never charged, and a row
 	// priced at 0 would let a spec assert that a free subscription costs nothing instead of
-	// asserting that it is never charged.
+	// asserting that it is never charged. A tier the book leaves **unpriced** is skipped too,
+	// for the rule it states: `BUSINESS` is customized, its price comes from a deal, not
+	// from a book — and seeding it would invent an offer the product does not make. An
+	// explicit override (`"BUSINESS:MONTHLY": n`) can still seed the pair, because a spec
+	// about a pricing agreement is exactly the spec entitled to place one.
 	for (const plan of PLANS) {
 		if (plan === "FREE") continue;
 		for (const cadence of CADENCES) {
+			const override = overrides.prices?.[`${plan}:${cadence}`];
+			if (
+				override === undefined &&
+				LAUNCH_PRICE_BOOK.prices[plan]?.[cadence] === undefined
+			) {
+				continue;
+			}
 			await db
 				.insert(priceBookPriceTable)
 				.values({
 					priceBookId: id,
 					plan,
 					cadence,
-					minor:
-						overrides.prices?.[`${plan}:${cadence}`] ??
-						priceMinorFor(plan, cadence, LAUNCH_PRICE_BOOK),
+					minor: override ?? priceMinorFor(plan, cadence, LAUNCH_PRICE_BOOK),
 				})
 				.onConflictDoNothing();
 		}
@@ -599,15 +607,18 @@ export async function seedSubscription(
 ): Promise<string> {
 	const id = input.id ?? `sub_test_${input.businessId}`;
 	/**
-	 * The tier, defaulting to `BUSINESS` rather than to the product's `FREE` floor.
+	 * The tier, defaulting to `GROWTH` — the top rung the launch book **prices**.
 	 *
 	 * A fixture default is not a product default: `FREE` is the right floor for a business
 	 * and the wrong one for a billing spec, because a free subscription has **no dates at
 	 * all** and every spec about grace, arrears or listing would silently be testing a row
 	 * the deriver short-circuits before it reads a date. A spec that wants the free tier
-	 * says `plan: "FREE"`, and that is a sentence worth writing.
+	 * says `plan: "FREE"`, and that is a sentence worth writing. The default was `BUSINESS`
+	 * while that tier was the priced ladder's top rung; since the relaunch made it a
+	 * customized tier — deliberately absent from every book — defaulting to it would hand
+	 * every spec a row the charge path refuses to price.
 	 */
-	const plan = input.plan ?? "BUSINESS";
+	const plan = input.plan ?? "GROWTH";
 	// A free subscription has no period at all — see `PLAN_PERIOD_DAYS`, where it is
 	// `null` and not zero precisely so nothing can bill it.
 	const cadence =

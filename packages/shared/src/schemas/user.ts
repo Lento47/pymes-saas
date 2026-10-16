@@ -114,6 +114,7 @@ export const userProfileSchema = z.object({
 	phone: z.string().nullable(),
 	isAdmin: z.boolean(),
 	canManagePricing: z.boolean().optional(),
+	canPublishMobile: z.boolean().optional(),
 	createdAt: z.date(),
 });
 export type UserProfile = z.infer<typeof userProfileSchema>;

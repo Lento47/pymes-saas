@@ -39,7 +39,10 @@ type Caller = ReturnType<typeof appRouter.createCaller>;
 /** A shop on `plan`, with an owner who can act for it. */
 async function shop(plan: Plan) {
 	const w = world();
-	const businessId = await seedBusiness(w.db, { id: `biz_express_${plan}`, plan });
+	const businessId = await seedBusiness(w.db, {
+		id: `biz_express_${plan}`,
+		plan,
+	});
 	const owner = await seedUser(w.db, { id: `usr_express_${plan}` });
 	await seedMembership(w.db, owner.id, businessId, "OWNER");
 	const caller = appRouter.createCaller(await authed(w, owner)) as Caller;
@@ -70,7 +73,12 @@ describe("the express quota", () => {
 		const { w, businessId, caller } = await shop("FREE");
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay, customer.id);
+		await acceptedExpress(
+			w,
+			businessId,
+			PLAN_LIMITS.FREE.expressPerDay,
+			customer.id,
+		);
 
 		// The order it cannot take. Seeded `PENDING` with no acceptance, so nothing but the
 		// quota stands between it and `ACCEPTED`.
@@ -113,7 +121,12 @@ describe("the express quota", () => {
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
 		// One fewer than the cap, so this acceptance is the one that *reaches* it.
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay - 1, customer.id);
+		await acceptedExpress(
+			w,
+			businessId,
+			PLAN_LIMITS.FREE.expressPerDay - 1,
+			customer.id,
+		);
 
 		const pending = await seedOrder(w.db, {
 			id: "ord_express_last",
@@ -124,7 +137,10 @@ describe("the express quota", () => {
 			acceptedAt: null,
 		});
 
-		const moved = await caller.orders.advance({ orderId: pending, to: "ACCEPTED" });
+		const moved = await caller.orders.advance({
+			orderId: pending,
+			to: "ACCEPTED",
+		});
 		expect(moved.status).toBe("ACCEPTED");
 
 		w.close();
@@ -135,7 +151,12 @@ describe("the express quota", () => {
 		const customer = await seedUser(w.db, { id: "usr_express_buyer" });
 
 		// The shop is at its express ceiling...
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay, customer.id);
+		await acceptedExpress(
+			w,
+			businessId,
+			PLAN_LIMITS.FREE.expressPerDay,
+			customer.id,
+		);
 
 		// ...and an ordinary order still goes through. This is `NEVER_GATED` read literally:
 		// a shop must always be able to take the order a customer is waiting on, and the
@@ -149,7 +170,10 @@ describe("the express quota", () => {
 			acceptedAt: null,
 		});
 
-		const moved = await caller.orders.advance({ orderId: standard, to: "ACCEPTED" });
+		const moved = await caller.orders.advance({
+			orderId: standard,
+			to: "ACCEPTED",
+		});
 		expect(moved.status).toBe("ACCEPTED");
 
 		w.close();
@@ -184,7 +208,10 @@ describe("the express quota", () => {
 		// A full day of yesterday's express does not follow the shop into today. The
 		// window is the day and **not** the billing period, so a monthly merchant is not
 		// working off a month's allowance divided by thirty.
-		const moved = await caller.orders.advance({ orderId: pending, to: "ACCEPTED" });
+		const moved = await caller.orders.advance({
+			orderId: pending,
+			to: "ACCEPTED",
+		});
 		expect(moved.status).toBe("ACCEPTED");
 
 		w.close();
@@ -217,7 +244,10 @@ describe("the express quota", () => {
 			acceptedAt: null,
 		});
 
-		const moved = await caller.orders.advance({ orderId: pending, to: "ACCEPTED" });
+		const moved = await caller.orders.advance({
+			orderId: pending,
+			to: "ACCEPTED",
+		});
 		expect(moved.status).toBe("ACCEPTED");
 
 		w.close();
@@ -240,7 +270,10 @@ describe("the express quota", () => {
 			acceptedAt: null,
 		});
 
-		const moved = await caller.orders.advance({ orderId: pending, to: "ACCEPTED" });
+		const moved = await caller.orders.advance({
+			orderId: pending,
+			to: "ACCEPTED",
+		});
 		expect(moved.status).toBe("ACCEPTED");
 		expect(PLAN_LIMITS.BUSINESS.expressPerDay).toBe(Infinity);
 
@@ -253,13 +286,22 @@ describe("the express quota", () => {
 
 		// 45 days past a period end: past grace, inside the hidden window. `effectivePlan`
 		// sends it to `FREE`, so the cap that applies is ten and not the tier it paid for.
+		// `BUSINESS` is a customized tier — the launch book does not price it — so the
+		// fixture states the agreed figure explicitly, the way `admin.assignPlan` captures
+		// one on a real row.
 		await seedSubscription(w.db, {
 			businessId,
 			plan: "BUSINESS",
 			cadence: "MONTHLY",
+			priceMinor: 59_900,
 			daysUntilDue: -45,
 		});
-		await acceptedExpress(w, businessId, PLAN_LIMITS.FREE.expressPerDay, customer.id);
+		await acceptedExpress(
+			w,
+			businessId,
+			PLAN_LIMITS.FREE.expressPerDay,
+			customer.id,
+		);
 
 		const pending = await seedOrder(w.db, {
 			id: "ord_express_lapsed",

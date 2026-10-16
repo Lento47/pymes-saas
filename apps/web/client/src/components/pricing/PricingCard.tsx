@@ -78,6 +78,17 @@ export function PricingCard({ tier }: PricingCardProps) {
           <span className="text-3xl font-semibold tracking-[-0.05em] text-foreground">
             Gratis
           </span>
+        ) : tier.monthlyMinor === null ? (
+          /*
+            The customized tier prints an answer, not a blank: a missing price here would
+            read as "not loaded yet", and "A medida" is what the absence means — the tier
+            is quoted per merchant, so there is nothing to type. `monthlyMinor` is `null`
+            anywhere only where `isCustomized` put it, which is why no other branch is
+            guarded.
+          */
+          <span className="text-3xl font-semibold tracking-[-0.05em] text-foreground">
+            A medida
+          </span>
         ) : (
           <>
             <span className="text-3xl font-semibold tracking-[-0.05em] text-foreground tabular-nums">
@@ -95,7 +106,11 @@ export function PricingCard({ tier }: PricingCardProps) {
       */}
       <p className="mt-1 text-[11px] text-muted-foreground">
         {tier.yearlyMinor === null ? (
-          "Sin costo, para siempre"
+          tier.isCustomized ? (
+            "Precio a convenir · IVA incluido"
+          ) : (
+            "Sin costo, para siempre"
+          )
         ) : (
           <>
             IVA incluido · {formatColones(tier.yearlyMinor)} al año
@@ -152,10 +167,18 @@ export function PricingCard({ tier }: PricingCardProps) {
               expira y no pedimos tarjeta para usarlo. Si algún día querés más, subís de nivel y el cambio
               aplica de inmediato.
             </>
+          ) : tier.isCustomized ? (
+            <>
+              <span className="font-semibold text-foreground">Cotizado a medida:</span> el precio depende
+              de lo que tu operación necesita. Hablemos, te emitimos la factura con lo acordado y la
+              pagás por transferencia bancaria —{' '}
+              <span className="font-semibold text-foreground">no guardamos tu tarjeta ni hacemos cargos
+              automáticos</span>.
+            </>
           ) : (
             <>
               <span className="font-semibold text-foreground">Renovación:</span> cada 30 días por{' '}
-              {formatColones(tier.monthlyMinor)}, o cada 365 días por{' '}
+              {formatColones(tier.monthlyMinor as number)}, o cada 365 días por{' '}
               {formatColones(tier.yearlyMinor ?? 0)} — el año cuesta diez meses. IVA incluido. Emitimos la
               factura y la pagás por transferencia bancaria: para estos planes{' '}
               <span className="font-semibold text-foreground">no guardamos tu tarjeta ni hacemos cargos

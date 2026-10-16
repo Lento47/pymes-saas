@@ -1,61 +1,68 @@
-import platformOverviewRaw from "./architecture/platform-overview.md?raw";
-import trustCenterOverviewRaw from "./security/trust-center-overview.md?raw";
-import workspaceLaunchGuideRaw from "./operations/workspace-launch-guide.md?raw";
-import supportPolicyRaw from "./operations/support-policy.md?raw";
+import backupAndRecoveryPolicyRaw from "./security/backup-and-recovery-policy.md?raw";
+
+import customerComplaintsProcessRaw from "./operations/customer-complaints-process.md?raw";
+import releaseCommunicationPolicyRaw from "./operations/release-communication-policy.md?raw";
 import slaRaw from "./operations/sla.md?raw";
+import supportPolicyRaw from "./operations/support-policy.md?raw";
 
-import securityPolicyRaw from "./security/security-policy.md?raw";
-import incidentResponsePolicyRaw from "./security/incident-response-policy.md?raw";
-import accessControlPolicyRaw from "./security/access-control-policy.md?raw";
-import dataRetentionAndDeletionPolicyRaw from "./security/data-retention-and-deletion-policy.md?raw";
-
-import onboardingProcessRaw from "./operations/onboarding-process.md?raw";
-import offboardingProcessRaw from "./operations/offboarding-process.md?raw";
-
-import legalAcceptanceRequirementsRaw from "./product-compliance/legal-acceptance-requirements.md?raw";
-import auditLoggingRequirementsRaw from "./product-compliance/audit-logging-requirements.md?raw";
-import aiUsageAndDisclosureRaw from "./product-compliance/ai-usage-and-disclosure.md?raw";
-import multiTenantDataIsolationNotesRaw from "./product-compliance/multi-tenant-data-isolation-notes.md?raw";
 import windowsInstallerLicenseRequirementsRaw from "./product-compliance/windows-installer-license-requirements.md?raw";
 
-import costaRicaTaxInvoicingGuideRaw from "./business/costa-rica-tax-invoicing-guide.md?raw";
-import pricingBillingPolicyRaw from "./business/pricing-billing-policy.md?raw";
+import legalEntityPlanCrRaw from "./business/legal-entity-plan-cr.md?raw";
+import trademarkDomainReviewRaw from "./business/trademark-domain-review.md?raw";
 
-import dataFlowDiagramRaw from "./architecture/data-flow-diagram.md?raw";
+import pymeshubOverviewRaw from "./product/pymeshub-overview.md?raw";
+import gettingStartedRaw from "./product/getting-started.md?raw";
+import orderingAndTrackingRaw from "./product/ordering-and-tracking.md?raw";
+import sellingOnPymeshubRaw from "./product/selling-on-pymeshub.md?raw";
+import deliveringOnPymeshubRaw from "./product/delivering-on-pymeshub.md?raw";
+import howDiscoveryAndRankingWorkRaw from "./product/how-discovery-and-ranking-work.md?raw";
+import dataAndPrivacyRaw from "./product/data-and-privacy.md?raw";
+import supportedAndUnsupportedRaw from "./product/supported-and-unsupported.md?raw";
+import openSourceCreditsRaw from "./product/open-source-credits.md?raw";
+import softwarePolicyRaw from "./product/software-policy.md?raw";
+import changelogRaw from "./product/changelog.md?raw";
+import securityAdvisoriesRaw from "./product/security-advisories.md?raw";
+import plansAndBillingRaw from "./product/plans-and-billing.md?raw";
+import faqRaw from "./product/faq.md?raw";
 
+/**
+ * The doc-center pages that live in this folder. Legal documents are **not** listed
+ * here: they are published by the Legal Center (`data/legal/legal-content.ts`) and the
+ * document page reads that map as well, so one copy of each legal text serves both
+ * surfaces.
+ */
 export const DOCS_CONTENT: Record<string, string> = {
-  // Public — architecture
-  "platform-overview": platformOverviewRaw,
-
-  // Public — security
-  "trust-center-overview": trustCenterOverviewRaw,
+  // Public — product
+  "product-overview": pymeshubOverviewRaw,
+  "getting-started": gettingStartedRaw,
+  "ordering-and-tracking": orderingAndTrackingRaw,
+  "selling-on-pymeshub": sellingOnPymeshubRaw,
+  "delivering-on-pymeshub": deliveringOnPymeshubRaw,
+  "how-discovery-and-ranking-work": howDiscoveryAndRankingWorkRaw,
+  "data-and-privacy": dataAndPrivacyRaw,
+  "supported-and-unsupported": supportedAndUnsupportedRaw,
+  "open-source-credits": openSourceCreditsRaw,
+  "software-policy": softwarePolicyRaw,
+  changelog: changelogRaw,
+  "security-advisories": securityAdvisoriesRaw,
+  "plans-and-billing": plansAndBillingRaw,
+  faq: faqRaw,
 
   // Public — operations
-  "workspace-launch-guide": workspaceLaunchGuideRaw,
   "support-policy": supportPolicyRaw,
-  "sla": slaRaw,
-
-  // Internal — security
-  "security-policy": securityPolicyRaw,
-  "incident-response-policy": incidentResponsePolicyRaw,
-  "access-control-policy": accessControlPolicyRaw,
-  "data-retention-and-deletion-policy": dataRetentionAndDeletionPolicyRaw,
+  sla: slaRaw,
 
   // Internal — operations
-  "onboarding-process": onboardingProcessRaw,
-  "offboarding-process": offboardingProcessRaw,
+  "customer-complaints-process": customerComplaintsProcessRaw,
+  "release-communication-policy": releaseCommunicationPolicyRaw,
+
+  // Internal — security
+  "backup-and-recovery-policy": backupAndRecoveryPolicyRaw,
 
   // Internal — product-compliance
-  "legal-acceptance-requirements": legalAcceptanceRequirementsRaw,
-  "audit-logging-requirements": auditLoggingRequirementsRaw,
-  "ai-usage-and-disclosure": aiUsageAndDisclosureRaw,
-  "multi-tenant-data-isolation-notes": multiTenantDataIsolationNotesRaw,
   "windows-installer-license-requirements": windowsInstallerLicenseRequirementsRaw,
 
   // Internal — business
-  "costa-rica-tax-invoicing-guide": costaRicaTaxInvoicingGuideRaw,
-  "pricing-billing-policy": pricingBillingPolicyRaw,
-
-  // Internal — architecture
-  "data-flow-diagram": dataFlowDiagramRaw,
+  "legal-entity-plan-cr": legalEntityPlanCrRaw,
+  "trademark-domain-review": trademarkDomainReviewRaw,
 };

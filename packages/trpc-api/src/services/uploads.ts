@@ -51,6 +51,7 @@ export async function create(
 	ctx: UserContext,
 	input: UploadCreateInput,
 ): Promise<UploadRef> {
+	if (input.purpose === "mobile-content" && (!ctx.user.isAdmin || input.businessId)) throw new ForbiddenError();
 	const bytes = decodeBase64(input.base64);
 	// Measured after decode, not from the string's length: base64 of an empty input
 	// and base64 of a truncated one both look like "a short string", and the ceiling

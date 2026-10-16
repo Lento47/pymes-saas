@@ -229,9 +229,7 @@ describe("a plan's limits", () => {
 				"select count(*) as n from membership where business_id = ? and role <> 'COURIER'",
 			)
 			.get(businessId) as { n: number };
-		expect(employees.n).toBeGreaterThanOrEqual(
-			PLAN_LIMITS.FREE.staffAccounts,
-		);
+		expect(employees.n).toBeGreaterThanOrEqual(PLAN_LIMITS.FREE.staffAccounts);
 
 		// Two riders, not one. The second is the assertion that matters: a fix that merely
 		// let the first one through would satisfy a shop which only ever needs one rider at
@@ -539,7 +537,10 @@ describe("price", () => {
 		// past `effectiveFrom` precisely so a rise cannot be retroactive, and a spec must
 		// not route around that guard to set one up.
 		const laterClock = new Date(Date.now() + 31 * 86_400_000);
-		const book = await subscriptions.activePriceBookWithPrices(w.db, laterClock);
+		const book = await subscriptions.activePriceBookWithPrices(
+			w.db,
+			laterClock,
+		);
 		expect(book.label).toBe("2027");
 		expect(priceMinorFor("STARTER", "MONTHLY", book)).toBe(14_000);
 		// The pair the old book priced is still readable through the new one, which is the
@@ -590,7 +591,9 @@ describe("price", () => {
 
 	test("the plan picker shows the effective plan and the IVA split", async () => {
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_picker",
 			plan: "STARTER",
@@ -611,10 +614,13 @@ describe("price", () => {
 
 		// **One entry per (tier, cadence) pair**, plus the free one — not one per tier. A
 		// picker keyed by tier alone cannot say which invoice it is quoting, and the pair is
-		// the unit a merchant actually chooses. The fixture seeds a complete book, so this is
-		// four tiers × two cadences + `FREE`.
-		expect(options).toHaveLength(9);
-		expect(options.filter((option) => option.cadence === "YEARLY")).toHaveLength(4);
+		// the unit a merchant actually chooses. The fixture seeds a complete book, so this
+		// is the launch book's three priced tiers × two cadences + `FREE` — the customized
+		// tier is absent because no book prices it.
+		expect(options).toHaveLength(7);
+		expect(
+			options.filter((option) => option.cadence === "YEARLY"),
+		).toHaveLength(3);
 		const free = options.find((option) => option.isFree);
 		const emprende = options.find((option) => option.plan === "EMPRENDE");
 		const starter = options.find((option) => option.plan === "STARTER");
@@ -639,13 +645,15 @@ describe("price", () => {
 		expect(emprende?.isCurrent).toBe(false);
 		expect(free?.isCurrent).toBe(false);
 
-		// `STARTER` has tiers above it, so it is not a ceiling; `BUSINESS` is the top and
-		// must not be sold as a step up. **The ceiling is a property of the tier, not of the
-		// cadence** — both `BUSINESS` pairs carry it, because neither one buys more shop.
+		// `STARTER` has priced tiers above it, so it is not a ceiling. The ceiling follows
+		// **priced** rungs now: `BUSINESS` is customized, absent from every book, so
+		// `GROWTH` is the top of what the picker sells — both its pairs carry the flag,
+		// because the ceiling is a property of the tier, not of the cadence, and neither
+		// pair buys more shop.
 		expect(starter?.isCeiling).toBe(false);
 		const ceilings = options.filter((option) => option.isCeiling);
 		expect(ceilings).toHaveLength(2);
-		expect(ceilings.every((option) => option.plan === "BUSINESS")).toBe(true);
+		expect(ceilings.every((option) => option.plan === "GROWTH")).toBe(true);
 
 		w.close();
 	});
@@ -663,7 +671,9 @@ describe("the admin's view of money owed", () => {
 		// path nobody exercised. `adminSubscriptionsInput` has always allowed `search`; the
 		// console's `BillingTab` has always sent it.
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 		const businessId = await seedBusiness(w.db, {
 			id: "biz_search_arrears",
 			name: "Pulpería La Esquina",
@@ -722,7 +732,9 @@ describe("the admin's view of money owed", () => {
 
 	test("arrears counts whole periods at the price the merchant joined under", async () => {
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 
 		// Current: nothing owed.
 		const currentId = await seedBusiness(w.db, {
@@ -823,7 +835,9 @@ describe("the admin's view of money owed", () => {
 		// outside the old 30-day window and inside this one. If someone shortens it back to 30
 		// the dashboard silently loses its comparison and every total still looks plausible.
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 		const businessId = await seedBusiness(w.db, { id: "biz_series_window" });
 		const customer = await seedUser(w.db, { id: "usr_series_window" });
 
@@ -869,7 +883,9 @@ describe("the admin's view of money owed", () => {
 		// there" includes a cancelled order, "how much completed volume" does not. The series
 		// answers the first and carries `cancelled` so the console can see the second's shadow.
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 		const businessId = await seedBusiness(w.db, { id: "biz_series_cancel" });
 		const customer = await seedUser(w.db, { id: "usr_series_cancel" });
 		await seedOrder(w.db, {
@@ -909,7 +925,9 @@ describe("the admin's view of money owed", () => {
 		// If someone edits one branch and not the other, this fails — rather than the console
 		// quietly filtering on something the rest of the platform does not believe.
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 
 		// One subscription per status, dated so each branch is the deciding one:
 		// ACTIVE     periodEnd in the future
@@ -982,7 +1000,9 @@ describe("the admin's view of money owed", () => {
 		// Four subscriptions, one per status. `total` must now answer "how many are in this
 		// filtered view", which for any single status is 1 — not 4.
 		const w = world();
-		await seedPriceBook(w.db, { prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 } });
+		await seedPriceBook(w.db, {
+			prices: { "EMPRENDE:MONTHLY": 2_000, "STARTER:MONTHLY": 10_000 },
+		});
 
 		for (const [id, daysUntilDue] of [
 			["biz_count_active", 10],

@@ -39,6 +39,7 @@ import type {
 	IdeaRole,
 	IdeaStatus,
 	LocationPauseReason,
+	MobileConfiguration,
 	Plan,
 	StorefrontAppearance,
 	SubscriptionStatus,
@@ -269,6 +270,7 @@ export const user = sqliteTable(
 		canManagePricing: integer("can_manage_pricing", { mode: "boolean" })
 			.notNull()
 			.default(false),
+		canPublishMobile: integer("can_publish_mobile", { mode: "boolean" }).notNull().default(false),
 		/**
 		 * Set by an admin, cleared by an admin. Better Auth can expire a session,
 		 * but "this person may not trade here" is the marketplace's rule and has to
@@ -2493,3 +2495,24 @@ export type NewCrashReport = typeof crashReport.$inferInsert;
 
 export type Idea = typeof idea.$inferSelect;
 export type NewIdea = typeof idea.$inferInsert;
+
+/** One editable draft; publication history is append-only in SQLite. */
+export const mobileConfigurationState = sqliteTable("mobile_configuration_state", {
+	id: text("id").primaryKey(),
+	draftVersion: integer("draft_version").notNull().default(0),
+	draft: text("draft", { mode: "json" }).$type<MobileConfiguration>(),
+	publishedRevisionId: text("published_revision_id"),
+	updatedByUserId: text("updated_by_user_id").references(() => user.id),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+export const mobileConfigurationRevision = sqliteTable("mobile_configuration_revision", {
+	id: text("id").primaryKey(),
+	revision: integer("revision").notNull(),
+	previousRevisionId: text("previous_revision_id"),
+	expectedDraftVersion: integer("expected_draft_version").notNull(),
+	configuration: text("configuration", { mode: "json" }).$type<MobileConfiguration>().notNull(),
+	publishedByUserId: text("published_by_user_id").notNull().references(() => user.id),
+	reason: text("reason").notNull(),
+	restoredFromId: text("restored_from_id"),
+	createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});

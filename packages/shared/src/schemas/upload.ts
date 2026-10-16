@@ -36,6 +36,7 @@ export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const MAX_UPLOAD_BASE64_CHARS = Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 4;
 
 export const UPLOAD_PURPOSES = [
+	"mobile-content",
 	"product",
 	"promotion",
 	"business-logo",

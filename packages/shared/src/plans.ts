@@ -20,9 +20,9 @@
  *   is the whole mechanism behind "raise the price as the app grows" — it is
  *   enforceable, and no existing merchant's price moves as a side effect.
  *
- * The limits below are the *only* thing that makes the monthly plan worth ₡16,000
- * more per year than the weekly one, so they are not decoration. If nothing enforces
- * them, every merchant picks the cheaper plan and the tier means nothing.
+ * The limits below are the *only* thing that makes one tier worth more than the one
+ * below it, so they are not decoration. If nothing enforces them, every merchant picks
+ * the cheapest plan and the tier means nothing.
  */
 
 /**
@@ -33,15 +33,23 @@
  * products billed monthly. `Cadence` is that second axis, below, and limits depend on
  * the tier alone.
  *
- * The four names and their price points are inherited from the retired `apps/api` billing
- * — `Emprende`, `Starter`, `Growth`, `Business` at ₡6 900 / ₡12 900 / ₡29 900 / ₡59 900 —
- * so a merchant who has read one price page has not met a new product when they arrive at
- * this one. Only the *system* is Cloudflare; the vocabulary was already paid for.
+ * The four names are inherited from the retired `apps/api` billing — `Emprende`,
+ * `Starter`, `Growth`, `Business` — so a merchant who has read one price page has not met
+ * a new product when they arrive at this one. Only the *system* is Cloudflare; the
+ * vocabulary was already paid for. `Business` is the odd one out: it is a **customized
+ * plan** — quoted per merchant, never printed on a page — so no price book carries it
+ * (see `LAUNCH_PRICE_BOOK`).
  *
  * `FREE` is **permanent**, not a trial: see `subscriptionStatusAt`, which is why it is
  * listed first and why `DEFAULT_PLAN` points at it.
  */
-export const PLANS = ["FREE", "EMPRENDE", "STARTER", "GROWTH", "BUSINESS"] as const;
+export const PLANS = [
+	"FREE",
+	"EMPRENDE",
+	"STARTER",
+	"GROWTH",
+	"BUSINESS",
+] as const;
 export type Plan = (typeof PLANS)[number];
 
 /**
@@ -104,18 +112,26 @@ export type PriceBookPrices = Partial<
 >;
 
 /**
- * The launch price book: the four paid tiers, monthly and annual, IVA-inclusive.
+ * The launch price book: the three self-serve paid tiers, monthly and annual, IVA-inclusive.
  *
  * **Annual is ten months of monthly for every tier** — 16.7% off, one rule, so the pricing
- * page states a single saving instead of three unrelated discounts. The two bottom tiers are
- * the retired `apps/api` figures **raised** (₡6 900→₡10 900, ₡12 900→₡19 900); the top two
- * are unchanged, so `Growth` and `Business` still match what that catalogue quoted and the
- * ladder stays monotonic — the rungs are ₡10 900, ₡19 900, ₡29 900, ₡59 900, which is a
- * tighter spread at the bottom and a wider one at the top than before.
+ * page states a single saving instead of three unrelated discounts. The 2026 relaunch
+ * repricing cut the three self-serve rungs (₡10 900→₡4 900, ₡19 900→₡9 900,
+ * ₡29 900→₡19 900 — the same ladder, drawn lower), and the rungs stay monotonic and
+ * distinct: ₡4 900, ₡9 900, ₡19 900.
  *
  * `FREE` is **absent from every cadence**, not present at zero. A `FREE` row priced at 0
  * would satisfy `priceMinorFor` and then be charged 0 forever; absence is what makes the
  * free plan's "never charged" property checkable.
+ *
+ * `BUSINESS` is **absent too, and for a different reason**: it is a **customized plan**.
+ * Its price is quoted per merchant, not printed on a page, so leaving it out of the book
+ * is the sales rule stated as data — `planOptions` skips a pair the book does not price,
+ * `changePlan` throws on a missing pair, and neither can put a merchant on `Business` at a
+ * made-up figure. Placing one is an operator's act with an agreed price, which is what
+ * `admin.assignPlan` (the audited manual placement, reason required) is for. Absence is
+ * also what keeps the last book that did carry `Business` from being mistakable for a
+ * public offer.
  *
  * These numbers are **not** read at runtime — a deployed Worker prices from the
  * `price_book_price` table, so raising a price is an insert and not a release. Keeping them
@@ -134,12 +150,14 @@ export const LAUNCH_PRICE_BOOK: {
 	 * Annotated rather than left to infer: a literal type would forget the key exists, and
 	 * a caller asserting `prices.FREE?.[cadence]` is undefined — which is how "a free shop
 	 * is never charged" becomes checkable — could not write that assertion at all.
+	 *
+	 * `BUSINESS` is absent the same way — see the block's docentry — because a customized
+	 * plan has no printed price to be absent from.
 	 */
 	prices: {
-		EMPRENDE: { MONTHLY: 10_900, YEARLY: 109_000 },
-		STARTER: { MONTHLY: 19_900, YEARLY: 199_000 },
-		GROWTH: { MONTHLY: 29_900, YEARLY: 299_000 },
-		BUSINESS: { MONTHLY: 59_900, YEARLY: 599_000 },
+		EMPRENDE: { MONTHLY: 4_900, YEARLY: 49_000 },
+		STARTER: { MONTHLY: 9_900, YEARLY: 99_000 },
+		GROWTH: { MONTHLY: 19_900, YEARLY: 199_000 },
 	},
 };
 
@@ -207,10 +225,7 @@ export function ivaOn(grossMinor: number): number {
  *   charge path would bill a free shop on every sweep, and a *number* here would read as
  *   "periods of zero length" in any caller that forgot to special-case it.
  */
-export const PLAN_PERIOD_DAYS: Record<
-	Plan,
-	Record<Cadence, number | null>
-> = {
+export const PLAN_PERIOD_DAYS: Record<Plan, Record<Cadence, number | null>> = {
 	FREE: { MONTHLY: null, YEARLY: null },
 	EMPRENDE: { MONTHLY: 30, YEARLY: 365 },
 	STARTER: { MONTHLY: 30, YEARLY: 365 },
@@ -231,11 +246,7 @@ export function periodDaysFor(plan: Plan, cadence: Cadence): number | null {
  * infinite one — both put a free shop one step from being charged. The refusal names the
  * reason so the caller can branch on the plan instead.
  */
-export function periodEndFrom(
-	start: Date,
-	plan: Plan,
-	cadence: Cadence,
-): Date {
+export function periodEndFrom(start: Date, plan: Plan, cadence: Cadence): Date {
 	const days = periodDaysFor(plan, cadence);
 	if (days === null) {
 		throw new Error(
@@ -506,10 +517,7 @@ export function expressWindowStart(at: Date): Date {
  * nothing is ever refused — which is why this returns a plain boolean and leaves the
  * message to the caller.
  */
-export function canAcceptExpress(
-	plan: Plan,
-	usedToday: number,
-): boolean {
+export function canAcceptExpress(plan: Plan, usedToday: number): boolean {
 	return usedToday < PLAN_LIMITS[plan].expressPerDay;
 }
 

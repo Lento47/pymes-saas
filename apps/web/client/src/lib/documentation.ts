@@ -1,4 +1,4 @@
-export type DocumentationCategory = "legal" | "business" | "security" | "operations" | "product-compliance" | "architecture";
+export type DocumentationCategory = "product" | "legal" | "business" | "security" | "operations" | "product-compliance";
 
 export type DocumentationVisibility = "public" | "internal";
 
@@ -21,6 +21,11 @@ export interface DocumentationEntry {
 }
 
 export const DOCUMENTATION_CATEGORIES: Record<DocumentationCategory, { title: string; description: string }> = {
+  product: {
+    title: "Producto",
+    description:
+      "Qué es PymesHub hoy: el marketplace de comercio local y entregas, sus reglas, sus datos, su política de software y sus cambios. Todo en inglés y español.",
+  },
   legal: {
     title: "Legal y contratos",
     description: "Documentos que el cliente puede leer, aceptar o firmar.",
@@ -35,34 +40,287 @@ export const DOCUMENTATION_CATEGORIES: Record<DocumentationCategory, { title: st
   },
   operations: {
     title: "Operación y soporte",
-    description: "SOPs ligeros para soporte, onboarding, offboarding, SLA y cambios.",
+    description: "Cómo se pide ayuda, qué se atiende y qué continuidad se ofrece.",
   },
   "product-compliance": {
     title: "Cumplimiento de producto",
     description: "Requisitos que el producto debe implementar para sostener lo prometido.",
   },
-  architecture: {
-    title: "Arquitectura y terceros",
-    description: "Mapa de datos, límites del sistema y dependencias críticas.",
-  },
 };
 
 export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
-    slug: "platform-overview",
-    title: "Platform Overview",
-    summary: "Resumen público de cómo PymesHub organiza customer ops, facturación, documentación y gobernanza para equipos multiárea.",
-    purpose: "Explicar a prospectos, clientes y procurement cómo se conecta la plataforma antes de una implementación.",
-    category: "architecture",
+    slug: "product-overview",
+    title: "PymesHub: descripción general del producto",
+    summary:
+      "Qué es PymesHub hoy y cómo funciona: el marketplace de comercio local y entregas, quién le paga a quién, los planes, el ciclo de un pedido y quién puede hacer qué. En inglés y español.",
+    purpose:
+      "Dar a clientes, comercios, repartidores y compradores una referencia pública y verificable del producto actual, sin mezclarlo con la etapa SaaS anterior.",
+    category: "product",
     visibility: "public",
     audience: "Cliente e interno",
-    repoPath: "docs/architecture/platform-overview.md",
+    repoPath: "apps/web/client/src/data/docs/product/pymeshub-overview.md",
     highlights: [
-      "Customer operations, revenue workflows y documentación en un solo sistema",
-      "Gobernanza por roles, handoffs y visibilidad operativa compartida",
-      "Preparación para rollout, soporte y revisión de stakeholders enterprise",
+      "El cliente paga al negocio por los productos y al repartidor por la entrega; PymesHub cobra una tarifa fija, sin comisión por pedido",
+      "Pago contra entrega en efectivo o SINPE Móvil; la tarjeta existe en el modelo pero no está habilitada",
+      "Cinco planes (FREE, EMPRENDE, STARTER, GROWTH, BUSINESS) con precios en colones, IVA incluido",
+      "El ciclo del pedido, sus estados, formas de entrega y quién puede mover cada paso",
+      "Un solo backend: un Cloudflare Worker (Hono + tRPC) sobre D1, con web, iOS/Android y escritorio como clientes",
     ],
   },
+  {
+    slug: "getting-started",
+    title: "Primeros pasos",
+    summary:
+      "Tres recorridos cortos — comprar, vender y repartir — paso por paso, con lo que el producto realmente pide y en el orden en que lo pide. En inglés y español.",
+    purpose:
+      "Dar a cada tipo de usuario un punto de entrada único que lleve del registro al primer pedido, al primer producto publicado o al primer viaje.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "apps/web/client/src/data/docs/product/getting-started.md",
+    highlights: [
+      "Comprar: cuenta, búsqueda, carrito de un solo negocio, retiro o entrega, pago y reseña",
+      "Vender: negocio, horarios, entrega y retiro, catálogo, equipo, repartidores y tablero de pedidos",
+      "Repartir: perfil, verificación, ofertas de 2 minutos, los cuatro pasos del viaje y el cobro",
+      "Qué necesita cada rol antes de empezar y qué hacer si algo no sale como se esperaba",
+    ],
+  },
+  {
+    slug: "ordering-and-tracking",
+    title: "Pedir, pagar y seguir un pedido",
+    summary:
+      "El carrito y sus límites, el checkout y por qué puede rechazar un pedido, los tres pagos de un pedido a domicilio, el seguimiento en vivo y hasta dónde puede cancelar el cliente. En inglés y español.",
+    purpose:
+      "Explicar al comprador las reglas que aplica la plataforma en cada paso de un pedido, con las claves y los estados reales.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "apps/web/client/src/data/docs/product/ordering-and-tracking.md",
+    highlights: [
+      "Un carrito pertenece a un solo negocio: 20 unidades por línea y 40 líneas como máximo",
+      "Los totales los devuelve el servidor y el checkout no acepta precios del cliente",
+      "Los diez motivos por los que el checkout puede rechazar un pedido",
+      "Un pedido a domicilio son tres pagos, y con efectivo el repartidor cobra el total en la puerta",
+      "La propina es del negocio; el cobro del repartidor es el costo de la entrega",
+      "Hasta dónde llega el cliente al cancelar, estado por estado",
+    ],
+  },
+  {
+    slug: "selling-on-pymeshub",
+    title: "Vender en PymesHub",
+    summary:
+      "Publicar un negocio, horarios y pausas por sucursal, ajustes de entrega, catálogo y promociones, roles e invitaciones del equipo, repartidores, el tablero de pedidos y la facturación. En inglés y español.",
+    purpose:
+      "Dar al comerciante una referencia verificable de lo que la plataforma aplica del lado del negocio.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "apps/web/client/src/data/docs/product/selling-on-pymeshub.md",
+    highlights: [
+      "Solo los negocios ACTIVE y CLOSED son visibles; SUSPENDED lo decide la plataforma",
+      "La categoría es obligatoria y debe ser una hoja de la taxonomía; la moneda queda fija al crear",
+      "Dos radios distintos: el del negocio hacia el comprador y los 15 km de la plataforma hacia el repartidor",
+      "La tabla de capacidades por rol y las invitaciones de 14 días, que nunca cubren COURIER",
+      "Un repartidor verificado se invita y solo su aceptación crea la membresía",
+      "Tarifa fija sin comisión por pedido y sin corridas de liquidación",
+    ],
+  },
+  {
+    slug: "delivering-on-pymeshub",
+    title: "Repartir en PymesHub",
+    summary:
+      "Cómo se verifica un repartidor, cómo se le ofrece un viaje, cómo lo ejecuta, cómo comparte ubicación y cómo cobra, incluido el efectivo contra entrega. En inglés y español.",
+    purpose:
+      "Documentar el trabajo de reparto y su pago con las reglas reales de despacho y tarifa.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "apps/web/client/src/data/docs/product/delivering-on-pymeshub.md",
+    highlights: [
+      "Ofertas a repartidores verificados a 15 km del retiro, con 2 minutos de vigencia",
+      "El orden por ETA al retiro; la afinidad solo rompe una diferencia competitiva y la equidad usa 7 días",
+      "La zona de trabajo fijada nunca cuenta como posición del repartidor",
+      "Tarifa publicada: ₡850 base + ₡230 por km + ₡45 por minuto estimado",
+      "Con efectivo, el repartidor cobra el total en la puerta y liquida la parte del negocio",
+      "Calificación en ambas direcciones y estadísticas propias con conteos reales",
+    ],
+  },
+  {
+    slug: "how-discovery-and-ranking-work",
+    title: "Cómo se encuentra y se ordena un negocio",
+    summary:
+      "Los filtros y órdenes de la tienda, la taxonomía de dos niveles y la regla `best`: sus tres señales, sus pesos versionados y lo que tiene prohibido leer. En inglés y español.",
+    purpose:
+      "Explicar de forma pública cómo se decide qué negocio se muestra y en qué orden.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/how-discovery-and-ranking-work.md",
+    highlights: [
+      "Filtros de búsqueda, categoría, radio, abierto ahora y solo con entrega, y los cinco órdenes",
+      "`best-v1` es una media ponderada de distancia (0.4), calificación (0.4) y preparación (0.2)",
+      "Faltante no es cero: un negocio sin reseñas entra con el prior de la plataforma (4.3)",
+      "El orden orgánico nunca lee dinero: ni comisión, ni tarifa, ni pago",
+      "El cliente ve un motivo, nunca el puntaje ni un peso",
+      "La señal de preparación está documentada y todavía no se alimenta",
+    ],
+  },
+  {
+    slug: "data-and-privacy",
+    title: "Datos y privacidad",
+    summary:
+      "Qué datos guarda PymesHub, dónde viven, quién los ve, cuánto duran y cómo se eliminan, en lenguaje claro. En inglés y español.",
+    purpose:
+      "Explicar de forma pública y verificable el tratamiento de datos del marketplace actual, sin jerga interna.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/data-and-privacy.md",
+    highlights: [
+      "Qué se guarda por cada cuenta, dirección, pedido, entrega, pago, reseña y reporte",
+      "Dónde vive: base de datos, almacenamiento de archivos, caché, colas y respaldos del proveedor de nube",
+      "Cuánto dura: ventanas anunciadas para cotizaciones, ofertas y ubicación en vivo; datos vinculados a la cuenta hasta que se elimina",
+      "Qué se conserva sin identidad directa después de eliminar la cuenta y por qué",
+      "Qué es público por diseño y qué nunca se devuelve (evidencia de verificación, notas internas)",
+      "Controles del usuario: interruptores de avisos, permiso de ubicación, eliminación con 7 días de espera",
+    ],
+  },
+  {
+    slug: "supported-and-unsupported",
+    title: "Qué está soportado y qué no",
+    summary:
+      "Plataformas, idiomas y funciones que PymesHub soporta hoy, y las que existen en el modelo pero están apagadas o fuera de alcance. En inglés y español.",
+    purpose:
+      "Evitar promesas ambiguas: una lista honesta de lo soportado, lo no soportado y lo pendiente.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/supported-and-unsupported.md",
+    highlights: [
+      "Web, iOS y Android soportados; escritorio en Windows; requisitos de sesión y de conexión",
+      "Español como idioma por defecto e inglés disponible en toda la aplicación",
+      "Efectivo y SINPE Móvil soportados; tarjeta no habilitada; no se procesan pagos en línea",
+      "Funciones apagadas a propósito: descuentos dinámicos, recargos, tracking de preparación",
+      "Lo que la plataforma no hace: vender, transportar, emplear repartidores ni retener el pago del cliente",
+      "Nada de versiones anteriores: solo la versión actual recibe soporte y correcciones de seguridad",
+    ],
+  },
+  {
+    slug: "open-source-credits",
+    title: "Créditos de software libre",
+    summary:
+      "El software libre y de código abierto que hace funcionar PymesHub, con su licencia y su papel, y cómo se citan sus avisos. En inglés y español.",
+    purpose:
+      "Dar crédito a los proyectos de los que depende el producto y dejar constancia de sus licencias.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/open-source-credits.md",
+    highlights: [
+      "El marco y las librerías principales de web, móvil, escritorio y backend",
+      "Licencia y papel de cada proyecto, agrupados por capa",
+      "El software propio de PymesHub se publica bajo licencia MIT",
+      "Cómo se mantiene la lista y cómo se reportan avisos de licencia faltantes",
+    ],
+  },
+  {
+    slug: "software-policy",
+    title: "Política de software",
+    summary:
+      "Quién es quién (Otnel y PymesHub), qué licencia tiene el software, qué se puede y qué no se puede hacer con la plataforma, la etapa beta y el idioma. En inglés y español.",
+    purpose:
+      "Reunir en un solo lugar público las reglas de uso del software, sin repetir el detalle de los documentos legales.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/software-policy.md",
+    highlights: [
+      "Otnel S.A. es la empresa; PymesHub es el producto; cada documento dice cuál de los dos habla",
+      "El código propio se publica bajo licencia MIT, con aviso de copyright de Otnel",
+      "Uso permitido y prohibido, cuentas y accesos, y conducta esperada",
+      "Etapa beta y acceso anticipado: qué se promete y qué no",
+      "Idioma de trabajo: español e inglés en la aplicación; documentos legales en los dos idiomas que publique el Centro Legal",
+    ],
+  },
+  {
+    slug: "changelog",
+    title: "Registro de cambios",
+    summary:
+      "Los cambios que PymesHub fue publicando, en orden y en lenguaje de usuario, solo con información que ya es pública. En inglés y español.",
+    purpose:
+      "Dar a clientes y comercios un historial verificable de lo publicado, sin detalles internos ni correcciones sin divulgar.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/changelog.md",
+    highlights: [
+      "Qué cambió y cuándo, agrupado por fecha",
+      "Solo información ya pública: cero detalles internos y cero correcciones sin divulgar",
+      "Cómo se numera el producto y qué significa una versión mayor",
+      "Dónde se anuncian los cambios y cómo seguir el historial",
+    ],
+  },
+  {
+    slug: "security-advisories",
+    title: "Reportar problemas de seguridad y avisos",
+    summary:
+      "Cómo reportar una vulnerabilidad en privado, qué esperar, qué queda dentro y fuera del alcance, y cómo se publican los avisos. En inglés y español.",
+    purpose:
+      "Dar a quien investiga un canal privado y reglas claras, y publicar los avisos verificados sin exponer a los usuarios.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/security-advisories.md",
+    highlights: [
+      "Canales privados y qué incluir en el reporte",
+      "Plazos objetivo de acuse, triage y corrección por severidad",
+      "Alcance: qué probar y qué no, y qué queda fuera por completo",
+      "Divulgación coordinada, créditos y puerto seguro",
+      "Formato del identificador de avisos y dónde se publican",
+    ],
+  },
+  {
+    slug: "plans-and-billing",
+    title: "Planes y facturación",
+    summary:
+      "Qué paga un negocio, los cinco planes con sus precios y periodicidades, qué pasa si se atrasa, qué no le quita nunca un plan y cómo funciona una factura. En inglés y español.",
+    purpose:
+      "Explicar la mecánica de cobro del marketplace sin comisiones, con precios en colones IVA incluido y reglas públicas de cambio de precio.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "apps/web/client/src/data/docs/product/plans-and-billing.md",
+    highlights: [
+      "Tarifa fija por usar la aplicación, sin comisión por pedido ni retención del pago del cliente",
+      "Precios en colones con IVA incluido: FREE, EMPRENDE, STARTER, GROWTH y BUSINESS, en mensual o anual",
+      "Un año cuesta diez meses y los límites dependen solo del nivel, no de la periodicidad",
+      "Qué pasa al atrasarse: 30 días de gracia, luego límites de FREE, y solo a los 90 días deja de listarse",
+      "Lo que ningún plan quita: tomar pedidos, horarios, reseñas, ver tu facturación y eliminar la cuenta",
+      "Subir un precio es una lista nueva: una suscripción conserva la suya",
+    ],
+  },
+  {
+    slug: "faq",
+    title: "Preguntas frecuentes",
+    summary:
+      "Respuestas cortas sobre cuenta, compras, pedidos, entregas, pagos, planes, vender, repartir, privacidad y soporte, con los estados y los límites reales. En inglés y español.",
+    purpose:
+      "Resolver en un solo lugar las dudas repetidas de clientes, negocios y repartidores, enlazando a la página que trae el detalle.",
+    category: "product",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "apps/web/client/src/data/docs/product/faq.md",
+    highlights: [
+      "Edad mínima, eliminación de cuenta y qué necesita cada rol para empezar",
+      "Por qué un carrito pertenece a un solo negocio y qué pasa si un cupón no aplica",
+      "Los ocho estados de un pedido y hasta dónde llega el cliente al cancelar",
+      "Efectivo y SINPE Móvil, sin comisión por pedido y sin pago con tarjeta",
+      "Ofertas de 2 minutos a 15 km, pago del repartidor y hasta cuándo se comparte ubicación",
+      "Qué documentos del Centro Legal son vinculantes y qué páginas son descriptivas",
+    ],
+  },
+
   {
     slug: "marketplace-terms",
     title: "Términos del Marketplace",
@@ -72,7 +330,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/contracts/marketplace-terms.md",
+    repoPath: "apps/web/client/src/data/legal/marketplace-terms.md",
     highlights: [
       "PymesHub conecta, no vende ni transporta",
       "Un carrito pertenece a un negocio; los precios los calcula el servidor",
@@ -89,7 +347,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/contracts/delivery-and-orders-policy.md",
+    repoPath: "apps/web/client/src/data/legal/delivery-and-orders-policy.md",
     highlights: [
       "Los ocho estados de un pedido y sus transiciones registradas",
       "Envío, radio, pedido mínimo y tiempo estimado",
@@ -105,7 +363,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/contracts/buyer-cancellation-refunds-policy.md",
+    repoPath: "apps/web/client/src/data/legal/buyer-cancellation-refunds-policy.md",
     highlights: [
       "Cancelación sin costo antes de preparar el pedido",
       "Reembolso al mismo medio de pago o devolución en efectivo",
@@ -121,7 +379,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/contracts/merchant-policy.md",
+    repoPath: "apps/web/client/src/data/legal/merchant-policy.md",
     highlights: [
       "Estados de la tienda y qué es visible al público",
       "Catálogo, horario, entrega y pedido mínimo",
@@ -138,7 +396,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/terms-and-conditions.md",
+    repoPath: "apps/web/client/src/data/legal/terms-of-service.md",
     highlights: [
       "Acceso anticipado gratuito durante beta cerrada",
       "Uso empresarial por usuarios mayores de 18 años",
@@ -232,7 +490,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/privacy-policy.md",
+    repoPath: "apps/web/client/src/data/legal/privacy-policy.md",
     highlights: [
       "Identidad del responsable y datos de contacto",
       "Categorías de datos, finalidades y base de legitimación",
@@ -323,7 +581,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/contracts/location-use.md",
+    repoPath: "apps/web/client/src/data/legal/location-use.md",
     highlights: [
       "El seguimiento solo inicia cuando el repartidor comienza una entrega asignada",
       "La ubicación se comparte únicamente con participantes de la entrega",
@@ -339,7 +597,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/contracts/account-deletion.md",
+    repoPath: "apps/web/client/src/data/legal/account-deletion.md",
     highlights: [
       "Solicitud y estado disponibles dentro de la aplicación",
       "Periodo de siete días para cancelar la solicitud",
@@ -355,7 +613,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/data-processing-addendum.md",
+    repoPath: "apps/web/client/src/data/legal/data-processing-addendum.md",
     highlights: [
       "Objeto, duración y categorías de datos tratados por cuenta del cliente",
       "Instrucciones documentadas y confidencialidad del personal",
@@ -373,44 +631,12 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/acceptable-use-policy.md",
+    repoPath: "apps/web/client/src/data/legal/acceptable-use-policy.md",
     highlights: [
       "Prohibición de uso ilegal, spam, malware y fraude",
       "Restricciones sobre datos sensibles sin autorización",
       "Reglas específicas de WhatsApp e inteligencia artificial",
       "Consecuencias por incumplimiento",
-    ],
-  },
-  {
-    slug: "cancellation-refund-policy",
-    title: "Cancelación y Reembolsos",
-    summary: "Ciclos de cobro, renovación, impuestos, cancelación, downgrade y política de reembolsos.",
-    purpose: "Establecer reglas claras y predecibles sobre los aspectos económicos del servicio.",
-    category: "legal",
-    visibility: "public",
-    audience: "Cliente",
-    repoPath: "docs/legal/cancellation-refund-policy.md",
-    highlights: [
-      "Planes, ciclos de facturación y renovación automática",
-      "Impuestos aplicables y emisión de comprobantes electrónicos",
-      "Reembolsos y ventana de cancelación",
-      "Chargebacks, downgrades y upgrades",
-    ],
-  },
-  {
-    slug: "subprocessors-list",
-    title: "Aviso de Subencargados",
-    summary: "Lista pública de terceros que tratan datos por cuenta de PymesHub, con función, categorías y región.",
-    purpose: "Dar transparencia sobre la cadena de tratamiento y permitir al cliente evaluar riesgos.",
-    category: "legal",
-    visibility: "public",
-    audience: "Cliente",
-    repoPath: "docs/security/subprocessors-list.md",
-    highlights: [
-      "Proveedor, función, categorías de datos y región de tratamiento",
-      "Base contractual aplicable con cada subencargado",
-      "Procedimiento de actualización y aviso previo al cliente",
-      "Derecho de objeción por motivos razonables de privacidad",
     ],
   },
   {
@@ -421,7 +647,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/whatsapp-ai-policy.md",
+    repoPath: "apps/web/client/src/data/legal/whatsapp-ai-policy.md",
     highlights: [
       "Opt-in obligatorio y verificable para mensajes en todos los canales",
       "Respeto de opt-out y ventanas de conversación por canal",
@@ -439,7 +665,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/cookies-policy.md",
+    repoPath: "apps/web/client/src/data/legal/cookies-policy.md",
     highlights: [
       "Cookies estrictamente necesarias para sesión y seguridad",
       "Cookies de analítica (Google Analytics) con consentimiento",
@@ -457,128 +683,12 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "legal",
     visibility: "public",
     audience: "Cliente",
-    repoPath: "docs/legal/copyright-and-infringement.md",
+    repoPath: "apps/web/client/src/data/legal/copyright-and-infringement.md",
     highlights: [
       "Contacto con nombre y correo para recibir avisos de titularidad",
       "Los cinco elementos que un aviso debe traer para no pedir información adicional",
       "La advertencia de que no es un registro ni una exención de responsabilidad",
       "Qué pasa con el material publicado por usuarios frente al de la plataforma",
-    ],
-  },
-  {
-    slug: "costa-rica-tax-invoicing-guide",
-    title: "Guía Fiscal y de Facturación CR",
-    summary: "Marco operativo para facturar PymesHub en Costa Rica con trazabilidad comercial y fiscal.",
-    purpose: "Alinear producto, pricing, comprobantes, ajustes y coordinación con contador.",
-    category: "business",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/business/costa-rica-tax-invoicing-guide.md",
-    highlights: [
-      "Inscripción fiscal, actividad económica y facturación electrónica",
-      "Suscripciones, upgrades, downgrades y notas de crédito",
-      "Evidencia mínima para conciliar cliente, plan, pago y comprobante",
-    ],
-  },
-  {
-    slug: "pricing-billing-policy",
-    title: "Pricing y Billing",
-    summary: "Reglas operativas para planes, cobro, descuentos, mora, suspensión y reactivación.",
-    purpose: "Mantener una única lógica entre ventas, facturación, soporte y producto.",
-    category: "business",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/business/pricing-billing-policy.md",
-    highlights: ["Ciclos de cobro y límites por plan", "Upgrades, downgrades, prorrateos y descuentos", "Mora, suspensión y reactivación del servicio"],
-  },
-  {
-    slug: "trust-center-overview",
-    title: "Trust Center Overview",
-    summary: "Resumen público de controles de acceso, continuidad operativa, documentación legal y postura general de seguridad.",
-    purpose: "Acelerar revisiones de IT, seguridad y compras sin depender de explicaciones ad hoc en cada proceso.",
-    category: "security",
-    visibility: "public",
-    audience: "Cliente",
-    repoPath: "docs/security/trust-center-overview.md",
-    highlights: [
-      "Acceso estructurado, trazabilidad operativa y referencias de soporte",
-      "SLA, privacidad, DPA y material legal público al alcance",
-      "Puente entre evaluación comercial, seguridad y procurement",
-    ],
-  },
-  {
-    slug: "security-policy",
-    title: "Política de Seguridad",
-    summary: "Marco general de seguridad de la información de PymesHub.",
-    purpose: "Definir controles preventivos, detectivos y correctivos sobre servicio, datos y operación.",
-    category: "security",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/security/security-policy.md",
-    highlights: [
-      "Principios de menor privilegio y segregación multi-tenant",
-      "Controles sobre ambientes, secretos, logging y vendors",
-      "Excepciones, evidencias y revisión periódica",
-    ],
-  },
-  {
-    slug: "incident-response-policy",
-    title: "Respuesta a Incidentes",
-    summary: "Procedimiento para detectar, clasificar, contener, investigar y comunicar incidentes.",
-    purpose: "Permitir una respuesta consistente ante eventos de seguridad o disponibilidad.",
-    category: "security",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/security/incident-response-policy.md",
-    highlights: [
-      "Severidades SEV-1 a SEV-4 y tiempos objetivo",
-      "Contención, preservación de evidencia e investigación",
-      "Comunicación a clientes y expediente mínimo del incidente",
-    ],
-  },
-  {
-    slug: "access-control-policy",
-    title: "Control de Acceso",
-    summary: "Reglas de alta, baja, cambio y revisión de accesos al producto y a la infraestructura.",
-    purpose: "Asegurar menor privilegio, trazabilidad y revocación oportuna.",
-    category: "security",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/security/access-control-policy.md",
-    highlights: [
-      "Roles OWNER, ADMIN, AGENT y VIEWER",
-      "Accesos internos, temporales y de soporte",
-      "Revisiones periódicas y revocación inmediata al cerrar acceso",
-    ],
-  },
-  {
-    slug: "data-retention-and-deletion-policy",
-    title: "Retención y Eliminación",
-    summary: "Criterios de retención, anonimización y borrado por categoría de datos.",
-    purpose: "Evitar retención indefinida no justificada y ordenar servicio activo, baja y backups.",
-    category: "security",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/security/data-retention-and-deletion-policy.md",
-    highlights: [
-      "Usuarios, conversaciones, documentos, OCR, logs e IA",
-      "Borrado físico, supresión lógica y anonimización",
-      "Diferencia entre datos activos y copias residuales",
-    ],
-  },
-  {
-    slug: "workspace-launch-guide",
-    title: "Workspace Launch Guide",
-    summary: "Guía pública para arrancar un workspace con roles, canales, documentación y seguimiento inicial.",
-    purpose: "Dar a equipos nuevos una referencia clara para activar el workspace con menos fricción y más orden.",
-    category: "operations",
-    visibility: "public",
-    audience: "Cliente e interno",
-    repoPath: "docs/operations/workspace-launch-guide.md",
-    highlights: [
-      "Checklist de preparación antes del go-live",
-      "Roles, canales y handoffs mínimos para operar con claridad",
-      "Referencias rápidas a soporte, SLA y documentos de confianza",
     ],
   },
   {
@@ -589,7 +699,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "operations",
     visibility: "public",
     audience: "Cliente e interno",
-    repoPath: "docs/operations/support-policy.md",
+    repoPath: "apps/web/client/src/data/docs/operations/support-policy.md",
     highlights: [
       "Canales autorizados y horario de atención",
       "Prioridades P1 a P4 y tiempos orientativos",
@@ -604,94 +714,8 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "operations",
     visibility: "public",
     audience: "Cliente e interno",
-    repoPath: "docs/operations/sla.md",
+    repoPath: "apps/web/client/src/data/docs/operations/sla.md",
     highlights: ["Disponibilidad objetivo mensual", "Exclusiones por terceros, fuerza mayor o uso indebido", "Tratamiento prioritario de incidentes críticos"],
-  },
-  {
-    slug: "onboarding-process",
-    title: "Onboarding de Clientes",
-    summary: "Proceso de alta de workspace, aceptación documental y configuración inicial.",
-    purpose: "Estandarizar la activación inicial del cliente y sus evidencias mínimas.",
-    category: "operations",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/operations/onboarding-process.md",
-    highlights: [
-      "Entradas mínimas para arrancar onboarding",
-      "Alta del workspace, roles, canales y aceptación documental",
-      "Criterios de cierre del proceso y evidencia",
-    ],
-  },
-  {
-    slug: "offboarding-process",
-    title: "Offboarding de Clientes",
-    summary: "Procedimiento de salida del cliente con exportación, cierre, retención y evidencia.",
-    purpose: "Gestionar bajas sin perder control de datos, saldos o riesgos.",
-    category: "operations",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/operations/offboarding-process.md",
-    highlights: [
-      "Cancelación, verificación y revisión de saldos",
-      "Exportación, periodo de gracia y cierre técnico",
-      "Decisión de borrado o retención residual",
-    ],
-  },
-  {
-    slug: "legal-acceptance-requirements",
-    title: "Aceptación Legal en Producto",
-    summary: "Especificación de cómo el producto debe registrar aceptación de documentos legales.",
-    purpose: "Convertir la aceptación documental en evidencia técnica verificable.",
-    category: "product-compliance",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/product-compliance/legal-acceptance-requirements.md",
-    highlights: ["Registro documental versionado", "Evento de aceptación con usuario, workspace y versión", "Re-aceptación al cambiar documentos materiales"],
-  },
-  {
-    slug: "audit-logging-requirements",
-    title: "Audit Logging",
-    summary: "Eventos y campos mínimos que el producto debe auditar.",
-    purpose: "Asegurar trazabilidad de acciones críticas para soporte, seguridad y cumplimiento.",
-    category: "product-compliance",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/product-compliance/audit-logging-requirements.md",
-    highlights: [
-      "Login, cambios de rol, documentos, exportación y automatizaciones",
-      "Actor, workspace, objeto, resultado y timestamp",
-      "Reglas para no filtrar secretos ni payload sensible innecesario",
-    ],
-  },
-  {
-    slug: "ai-usage-and-disclosure",
-    title: "Uso de IA y Disclosure",
-    summary: "Qué debe informar PymesHub al usar IA y qué controles mínimos debe sostener.",
-    purpose: "Reducir sobreuso de datos y confusión sobre outputs automatizados.",
-    category: "product-compliance",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/product-compliance/ai-usage-and-disclosure.md",
-    highlights: [
-      "Minimización de contexto enviado a modelos",
-      "Disclosures claros en UI y documentación",
-      "Separación entre output automatizado y decisión humana final",
-    ],
-  },
-  {
-    slug: "multi-tenant-data-isolation-notes",
-    title: "Aislamiento Multi-tenant",
-    summary: "Requisitos de scoping, autorización y pruebas para evitar acceso cruzado entre workspaces.",
-    purpose: "Convertir el aislamiento multi-tenant en criterio verificable de producto.",
-    category: "product-compliance",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/product-compliance/multi-tenant-data-isolation-notes.md",
-    highlights: [
-      "Filtro obligatorio por workspace y control por rol",
-      "Zonas de riesgo como workers, storage y reportes",
-      "Pruebas negativas de acceso cruzado",
-    ],
   },
   {
     slug: "windows-installer-license-requirements",
@@ -701,168 +725,11 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     category: "product-compliance",
     visibility: "internal",
     audience: "Interno",
-    repoPath: "docs/product-compliance/windows-installer-license-requirements.md",
+    repoPath: "apps/web/client/src/data/docs/product-compliance/windows-installer-license-requirements.md",
     highlights: [
       "Mostrar licencia y privacidad antes de finalizar la instalación",
       "Identificar proveedor, soporte y telemetría si existe",
       "Documentar la aceptación cuando el modelo legal lo requiera",
-    ],
-  },
-  {
-    slug: "data-flow-diagram",
-    title: "Flujo de Datos",
-    summary: "Mapa narrativo y visual de entradas, procesamiento, almacenamiento y salida de datos.",
-    purpose: "Apoyar revisión de cumplimiento, arquitectura y terceros.",
-    category: "architecture",
-    visibility: "internal",
-    audience: "Interno",
-    repoPath: "docs/architecture/data-flow-diagram.md",
-    highlights: [
-      "Entradas desde frontend y canales externos",
-      "API, base de datos, storage, OCR, IA y monitoreo",
-      "Puntos de salida, backups y notas de cumplimiento",
-    ],
-  },
-  {
-    slug: "modelo-emprende",
-    title: "Modelo Emprende — Para emprendedores que arrancan solos",
-    summary:
-      "Cómo PymesHub apoya a solopreneurs y micronegocios: qué incluye el plan Emprende, cómo conectar WhatsApp propio y qué cargos corresponden a Meta.",
-    purpose: "Explicar a pequeños emprendedores exactamente qué obtienen con el plan Emprende y cómo empezar sin complicaciones.",
-    category: "business",
-    visibility: "public",
-    audience: "Cliente",
-    repoPath: "docs/business/modelo-emprende.md",
-    highlights: [
-      "WhatsApp Business incluido — conectás tu propio número, PymesHub opera como capa de software",
-      "CRM básico para llevar contactos, historial de conversaciones y notas",
-      "Facturación básica y pipeline de pedidos para gestionar ventas",
-      "Facturación ilimitada — sin tope mensual de facturas",
-      "Los cargos de plantillas WhatsApp los cobra Meta a tu cuenta — no están en el plan",
-    ],
-    sections: [
-      {
-        title: "¿Para quién es el plan Emprende?",
-        body: [
-          "El plan Emprende está diseñado para dueños de negocio que trabajan solos o con un equipo muy pequeño: tiendas, servicios independientes, freelancers con clientes, o cualquier PyME en sus primeros pasos operativos.",
-          "Si recibís pedidos o consultas por WhatsApp, necesitás llevar un registro de clientes y emitir facturas ocasionalmente, este plan cubre lo esencial sin pagar por funcionalidades que no vas a usar todavía.",
-        ],
-      },
-      {
-        title: "Qué incluye",
-        body: [
-          "Bandeja de WhatsApp: recibís y enviás mensajes desde PymesHub. Podés ver el historial, asignar conversaciones (solo vos) y usar plantillas de respuesta.",
-          "CRM básico: un registro de tus contactos — clientes, proveedores, leads — con historial de conversaciones, notas y etiquetas.",
-          "Facturación básica: creación de facturas simples, envío por WhatsApp o email, y seguimiento de estado (pendiente, pagada, vencida).",
-          "Pipeline de pedidos: seguimiento de pedidos por estado (Recibido → En proceso → Completado).",
-          "Límites del plan: 1 usuario, facturas ilimitadas, 5 automatizaciones básicas, 2 GB de almacenamiento.",
-        ],
-      },
-      {
-        title: "WhatsApp y costos de Meta",
-        body: [
-          "PymesHub conecta con tu propia cuenta de WhatsApp Business (WABA) via la API oficial de Meta. Vos sos el dueño del número y la cuenta — PymesHub opera como capa de software que envía y recibe mensajes en tu nombre.",
-          "Los mensajes de plantilla (como confirmaciones de pedido o recordatorios de pago) tienen cargos establecidos por Meta que se cobran directamente a tu cuenta de Meta Business Manager. Estos costos no están incluidos en el plan Emprende.",
-          "Para habilitar el envío de plantillas, necesitás agregar un método de pago en tu Meta Business Manager antes de usar esa funcionalidad. Los mensajes dentro de la ventana de servicio de 24 horas generalmente no tienen costo adicional.",
-          "Si tu cuenta de Meta no tiene método de pago, PymesHub te mostrará un aviso claro cuando intentés enviar una plantilla, con instrucciones para completar la configuración en Meta.",
-        ],
-      },
-      {
-        title: "Cómo empezar",
-        body: [
-          "1. Registrate en PymesHub y creá tu workspace.",
-          "2. En Settings > Canales, conectá tu número de WhatsApp Business mediante el flujo de configuración.",
-          "3. Completá el onboarding básico: nombre del negocio, productos o servicios principales.",
-          "4. Empezá a responder desde el inbox y registrar tus contactos.",
-          "Cuando tu negocio crezca y necesités más usuarios, automatizaciones o funcionalidades avanzadas, podés actualizar al plan Starter o Growth desde Settings > Facturación.",
-        ],
-      },
-    ],
-  },
-  {
-    slug: "whatsapp-billing-model",
-    title: "Modelo de facturación de WhatsApp y Telegram",
-    summary: "Cómo se cobran los mensajes de WhatsApp Business y Telegram en PymesHub: quién paga a Meta y qué incluye la suscripción.",
-    purpose: "Aclarar a clientes y operadores qué cargos gestiona PymesHub y cuáles corresponden directamente al negocio ante Meta.",
-    category: "business",
-    visibility: "public",
-    audience: "Cliente e interno",
-    repoPath: "docs/business/whatsapp-billing-model.md",
-    highlights: [
-      "PymesHub opera como capa de software/API — no revende mensajes de WhatsApp",
-      "Los cargos por mensajes de plantilla (templates) los cobra Meta directamente a la cuenta WABA del cliente",
-      "El cliente debe tener un método de pago activo en su Meta Business Manager para enviar plantillas",
-      "Telegram no genera cargos adicionales por mensajes en uso normal de Bot API",
-      "PymesHub cobra únicamente el plan SaaS y créditos de IA",
-    ],
-    sections: [
-      {
-        title: "WhatsApp Business",
-        body: [
-          "PymesHub se conecta con la cuenta de WhatsApp Business (WABA) propia del cliente mediante WhatsApp Business Cloud API y Embedded Signup de Meta. PymesHub actúa como capa de software: envía y recibe mensajes, gestiona el inbox y ejecuta automatizaciones en nombre del cliente.",
-          "Los cargos por mensajes de plantilla (Utility, Marketing, Authentication) son establecidos y cobrados por Meta directamente a la cuenta WABA del cliente. PymesHub no financia ni re-vende esos cargos. El cliente debe mantener un método de pago activo en su Meta Business Manager para poder enviar plantillas.",
-          "Si una plantilla falla por ausencia de método de pago, PymesHub mostrará un mensaje específico indicando que la cuenta de Meta requiere configuración de pago — no un error genérico.",
-          "Los mensajes dentro de la ventana de servicio de 24 horas (respuestas a mensajes iniciados por el usuario) generalmente no tienen costo de plantilla, pero esto depende de las políticas actuales de Meta y puede variar.",
-        ],
-      },
-      {
-        title: "Telegram",
-        body: [
-          "Telegram Bot API es gratuita para uso normal. El cliente crea un bot con @BotFather, pega el token en PymesHub, y PymesHub configura el webhook. Telegram no cobra por conversación ni por mensaje en este modelo.",
-          "El uso de IA en conversaciones de Telegram consume créditos IA de PymesHub (si el workspace tiene un agente IA activo con channel_scope TELEGRAM o ALL). Los créditos IA están incluidos según el plan o add-on contratado.",
-          "Para bots de volumen muy alto (más de 30 mensajes por segundo sostenidos), Telegram tiene un modelo de Paid Broadcasts que requiere condiciones específicas que no aplican al uso operativo normal de una PyME.",
-        ],
-      },
-      {
-        title: "Qué incluye la suscripción de PymesHub",
-        body: [
-          "La suscripción de PymesHub incluye: plan de software (inbox, CRM, facturación, automatizaciones), infraestructura de API, almacenamiento, soporte de la plataforma y créditos de IA según el plan.",
-          "No incluye: cargos por mensajes de plantilla de Meta WhatsApp, costos de otros proveedores que el cliente conecte independientemente, ni saldo de campañas.",
-        ],
-      },
-    ],
-  },
-  {
-    slug: "ai-agents",
-    title: "Agentes IA — Flowise y soporte por tiers",
-    summary: "Cómo funcionan los agentes IA de PymesHub: provisión en Flowise, alcance por canal, tiers de soporte técnico y ciclo de vida.",
-    purpose: "Documentar la arquitectura de agentes IA para clientes que quieren entender qué puede hacer cada agente y cómo configurarlos.",
-    category: "architecture",
-    visibility: "public",
-    audience: "Cliente e interno",
-    repoPath: "docs/agents/ai-agents-overview.md",
-    highlights: [
-      "Cada agente IA es un agentflow en Flowise provisionado automáticamente al crear o activar el agente",
-      "Los agentes se limitan por canal: ALL, WHATSAPP, TELEGRAM, EMAIL, WEB o MANUAL",
-      "El LLM orquestador selecciona el agente correcto según el contexto de la conversación",
-      "Soporte técnico de la plataforma en 4 tiers según el plan del workspace",
-      "Tier 4 (Business+) puede crear branches, commits y PRs automáticamente para resolver incidentes",
-    ],
-    sections: [
-      {
-        title: "Ciclo de vida de un agente",
-        body: [
-          "Al crear un agente en PymesHub (Settings > Agentes IA), el sistema provisiona automáticamente un agentflow en Flowise con las instrucciones del sistema definidas por el usuario. El agente inicia en estado DRAFT.",
-          "Al activar el agente (botón Play), su estado cambia a ACTIVE. Solo los agentes ACTIVE participan en conversaciones. Pueden desactivarse en cualquier momento (estado INACTIVE) sin borrar el chatflow en Flowise.",
-          "Al eliminar un agente, PymesHub borra también el chatflow correspondiente en Flowise para mantener consistencia.",
-        ],
-      },
-      {
-        title: "Alcance por canal (channel_scope)",
-        body: [
-          "Cada agente tiene un channel_scope que determina en qué canales puede responder: ALL (todos), WHATSAPP, TELEGRAM, EMAIL, WEB o MANUAL.",
-          "Cuando llega un mensaje, el orquestador consulta los agentes ACTIVE con channel_scope compatible y le presenta la lista al LLM. El LLM decide si delegar al agente o responder directamente.",
-          "Si el agente tiene una descripción clara de su propósito, el LLM puede seleccionarlo con mayor precisión.",
-        ],
-      },
-      {
-        title: "Soporte técnico por tiers",
-        body: [
-          "PymesHub incluye un sistema de soporte técnico IA accesible desde Settings > Soporte. Los 5 agentes especializados (WhatsApp, Telegram, Facturación, Agentes IA, Workspace) están respaldados por agentflows en Flowise.",
-          "El tier de soporte depende del plan del workspace: Tier 1 (Free) solo confirma recepción. Tier 2 (Starter) lee logs de Railway y extrae errores. Tier 3 (Business) además lee código fuente y detecta regresiones, proponiendo fixes para aprobación manual. Tier 4 (Business+) aplica fixes automáticamente creando un PR en draft.",
-          "Todo PR generado por un agente Tier 4 es forzado a draft y lleva las etiquetas ai-generated y needs-human-review. Los agentes nunca hacen merge, nunca force-push, y no pueden tocar archivos sensibles (.env, CI, credenciales).",
-        ],
-      },
     ],
   },
 ];

@@ -97,6 +97,7 @@ import {
 import { type OrderEventEnvelope, orderEvent, outboxRowOf } from "../events";
 import { publishEvents } from "../outbox";
 import * as cartService from "./cart";
+import { requireMobileProcedure } from "./mobile-configuration";
 import { dispatchNext, prepareDeliveryForOrder } from "./delivery-dispatch";
 import { usesExpressCalculator } from "./delivery-policy";
 import {
@@ -236,6 +237,7 @@ export async function place(
 	// mechanism exists for. It is a read, not the concurrency control: the claim below is.
 	const settled = await orderIdForDedupeKey(ctx, input.clientRequestId);
 	if (settled) return detail(ctx, settled, "CUSTOMER");
+	await requireMobileProcedure(ctx, "orders.place");
 
 	// No open cart is not a "not found": nothing here takes an id a probe could guess, and
 	// the honest answer for a customer whose basket was cleared on another device is the one
@@ -2518,6 +2520,7 @@ export async function reorder(
 		)[0],
 	);
 
+	await requireMobileProcedure(ctx, "orders.reorder");
 	// Before any write, and that ordering is the point: a suspended or deleted shop must
 	// not leave a cart behind. `cart.addItem` would refuse the first line anyway — same
 	// check, same `isPublicBusiness` — but by then the cart may already exist from an

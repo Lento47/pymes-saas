@@ -1030,14 +1030,14 @@ export async function revokeAdmin(
 	await ctx.db.batch([
 		ctx.db
 			.update(userTable)
-			.set({ isAdmin: false, canManagePricing: false, updatedAt: now })
+			.set({ isAdmin: false, canManagePricing: false, canPublishMobile: false, updatedAt: now })
 			.where(eq(userTable.id, input.userId)),
 		auditStatement(ctx, {
 			action: "user.revoke_admin",
 			targetType: "user",
 			targetId: input.userId,
-			before: { isAdmin: true, canManagePricing: target.canManagePricing },
-			after: { isAdmin: false, canManagePricing: false },
+			before: { isAdmin: true, canManagePricing: target.canManagePricing, canPublishMobile: target.canPublishMobile },
+			after: { isAdmin: false, canManagePricing: false, canPublishMobile: false },
 			reason,
 			now,
 		}),

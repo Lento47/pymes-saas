@@ -179,6 +179,144 @@ describe("platform console contracts", () => {
 		w.close();
 	});
 
+	test("a manual plan placement writes the row, syncs the business, and stages the audit", async () => {
+		const w = world();
+		const admin = await seedUser(w.db, {
+			id: "usr_assign_admin",
+			isAdmin: true,
+		});
+		const businessId = await seedBusiness(w.db, { id: "biz_assign_plan" });
+		await seedPriceBook(w.db);
+		const ctx = requireAuthed(await contextFor(w, admin));
+
+		const subscription = await subscriptions.assignPlan(
+			ctx,
+			{
+				businessId,
+				plan: "BUSINESS",
+				cadence: "MONTHLY",
+				priceMinor: 40_000,
+				reason:
+					"Plan a medida acordado: tres sucursales y volumen alto, precio pactado",
+			},
+			new Date(),
+		);
+
+		// **The agreed figure is the row.** A placement is a deal: the book does not price
+		// `BUSINESS` and must not, so the service keeps the number the operator stated
+		// rather than deriving one — and the period starts now, `ACTIVE`.
+		expect(subscription.plan).toBe("BUSINESS");
+		expect(subscription.priceMinor).toBe(40_000);
+		expect(subscription.status).toBe("ACTIVE");
+		expect(subscription.periodStart).not.toBeNull();
+		// And `lastPaidAt` stays null: an agreement to pay and money received are
+		// different facts, and `recordPayment` is the only writer of the latter.
+		expect(subscription.lastPaidAt).toBeNull();
+
+		// The denormalised copy is written in the same batch — read it straight from the
+		// table, because a service returning its own write proves nothing.
+		const business = w.sqlite
+			.query("select plan, listed from business where id = ?")
+			.get(businessId) as { plan: string; listed: number };
+		expect(business.plan).toBe("BUSINESS");
+		expect(business.listed).toBe(1);
+
+		const rows = w.sqlite
+			.query(
+				"select actor_user_id as actor, meta from audit_log where action = 'subscription.assign_plan'",
+			)
+			.all() as { actor: string; meta: string }[];
+		const [entry] = rows;
+		expect(rows).toHaveLength(1);
+		expect(entry?.actor).toBe(admin.id);
+		const meta = JSON.parse(entry?.meta ?? "{}") as {
+			reason: string;
+			after: { plan: string; cadence: string; priceMinor: number };
+		};
+		expect(meta.reason).toBe(
+			"Plan a medida acordado: tres sucursales y volumen alto, precio pactado",
+		);
+		expect(meta.after.plan).toBe("BUSINESS");
+		expect(meta.after.cadence).toBe("MONTHLY");
+		expect(meta.after.priceMinor).toBe(40_000);
+
+		w.close();
+	});
+
+	test("a manual placement without a reason is refused, and writes nothing", async () => {
+		const w = world();
+		const admin = await seedUser(w.db, {
+			id: "usr_assign_noreason",
+			isAdmin: true,
+		});
+		const businessId = await seedBusiness(w.db, { id: "biz_assign_noreason" });
+		await seedPriceBook(w.db);
+		const ctx = requireAuthed(await contextFor(w, admin));
+
+		const error = await refused(
+			subscriptions.assignPlan(
+				ctx,
+				{
+					businessId,
+					plan: "BUSINESS",
+					cadence: "MONTHLY",
+					priceMinor: 40_000,
+					reason: "   ",
+				},
+				new Date(),
+			),
+		);
+		expect(error.code).toBe("BAD_REQUEST");
+
+		// The same two-sided claim the price-rise refusal makes: no subscription row and
+		// no audit row can outlive the refusal.
+		expect(
+			w.sqlite.query("select count(*) as n from subscription").get() as {
+				n: number;
+			},
+		).toEqual({ n: 0 });
+		expect(
+			w.sqlite.query("select count(*) as n from audit_log").get() as {
+				n: number;
+			},
+		).toEqual({ n: 0 });
+
+		w.close();
+	});
+
+	test("the free plan is not a placement: the merchant picks it without an operator", async () => {
+		const w = world();
+		const admin = await seedUser(w.db, {
+			id: "usr_assign_free",
+			isAdmin: true,
+		});
+		const businessId = await seedBusiness(w.db, { id: "biz_assign_free" });
+		await seedPriceBook(w.db);
+		const ctx = requireAuthed(await contextFor(w, admin));
+
+		const error = await refused(
+			subscriptions.assignPlan(
+				ctx,
+				{
+					businessId,
+					plan: "FREE",
+					cadence: "MONTHLY",
+					priceMinor: 0,
+					reason: "Degradar por solicitud del comercio",
+				},
+				new Date(),
+			),
+		);
+		expect(error.code).toBe("BAD_REQUEST");
+		expect(
+			w.sqlite.query("select count(*) as n from subscription").get() as {
+				n: number;
+			},
+		).toEqual({ n: 0 });
+
+		w.close();
+	});
+
 	test("a business reads as the detail envelope the console parses", async () => {
 		const w = world();
 		const adminUser = await seedUser(w.db, { id: "usr_detail", isAdmin: true });

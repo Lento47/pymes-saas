@@ -9,6 +9,7 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { getDocumentationBySlug } from "@/lib/documentation";
 import { DOCS_CONTENT } from "@/data/docs/docs-content";
+import { LEGAL_CONTENT } from "@/data/legal/legal-content";
 
 /**
  * GitHub-style heading slug. Lowercases, strips diacritics, replaces
@@ -42,7 +43,9 @@ export default function DocumentationDocumentPage({
   const { messages } = useI18n();
   const copy = messages.documentation;
   const doc = getDocumentationBySlug(slug);
-  const markdown = DOCS_CONTENT[slug] ?? "";
+  // Legal entries resolve through the Legal Center map: one copy of each legal
+  // document, published by both surfaces.
+  const markdown = DOCS_CONTENT[slug] ?? LEGAL_CONTENT[slug] ?? "";
 
   // After the markdown finishes rendering, jump to the hash target
   // (e.g. /documentation/workspace-launch-guide#51-whatsapp). The browser

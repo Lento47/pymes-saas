@@ -90,7 +90,7 @@ import { Text } from "./text";
  * heading is a heading with a shrug under it.
  */
 export function CategoryRail({
-	categories,
+	categories: rawCategories,
 	selectedSlug,
 	allHref,
 }: {
@@ -106,6 +106,7 @@ export function CategoryRail({
 	allHref?: Href;
 }) {
 	const { t, locale } = useT();
+	const categories = useVisibleMobileCategories(rawCategories);
 
 	if (categories.length === 0) return null;
 

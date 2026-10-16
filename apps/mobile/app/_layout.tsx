@@ -15,6 +15,10 @@ import { crashRoutePath, setCrashRoute } from "@/lib/crash-payload";
 import { initDevicePrefs } from "@/lib/device-prefs";
 import { env } from "@/lib/env";
 import { I18nProvider } from "@/lib/i18n";
+import {
+	MobileConfigurationProvider,
+	useMobileConfiguration,
+} from "@/lib/mobile-configuration";
 import { PurchaseAccentProvider } from "@/lib/purchase-accent";
 import { PushNotificationsProvider } from "@/lib/push-notifications";
 import { useResolvedRole } from "@/lib/role";
@@ -151,7 +155,9 @@ function RootLayout() {
 														<RollbackProvider>
 															<ToastProvider>
 																<SignOutGate />
-																<ThemedStack />
+																<MobileConfigurationProvider>
+																	<ThemedStack />
+																</MobileConfigurationProvider>
 																<WelcomeAnimation />
 															</ToastProvider>
 														</RollbackProvider>
@@ -253,6 +259,7 @@ function SignOutGate() {
 
 function ThemedStack() {
 	const { colors, scheme } = useTheme();
+	const { enabled } = useMobileConfiguration();
 	const resolved = useResolvedRole();
 	const role = resolved.state === "ready" ? resolved.role : null;
 	// The same two inputs `useTheme()` reads, asked a second question. The status bar is chrome
@@ -331,6 +338,9 @@ function ThemedStack() {
 				    inside the customer, merchant, or courier tree can still open them. */}
 				<Stack.Screen name="account" />
 				<Stack.Screen name="profile" />
+				<Stack.Protected guard={enabled("courier.invitations")}>
+					<Stack.Screen name="courier-invites" />
+				</Stack.Protected>
 			</Stack>
 		</>
 	);

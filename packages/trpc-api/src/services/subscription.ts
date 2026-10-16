@@ -333,7 +333,7 @@ export async function planOptions(ctx: BusinessContext): Promise<PlanOption[]> {
 			inventoryTracking: PLAN_LIMITS[plan].inventoryTracking,
 		};
 		const isCurrent = plan === currentPlan;
-		const isCeiling = !hasAnyHeadroomAbove(plan);
+		const isCeiling = !hasAnyPricedTierAbove(plan, book);
 
 		if (plan === "FREE") {
 			options.push({
@@ -372,19 +372,27 @@ export async function planOptions(ctx: BusinessContext): Promise<PlanOption[]> {
 	return options;
 }
 
-function hasAnyHeadroomAbove(plan: Plan): boolean {
+/**
+ * Whether a **priced** tier exists above this one.
+ *
+ * Kin to what it replaced — a limits comparison over `PLAN_ORDER` — with one decisive
+ * difference: the walk only considers tiers **the book prices**. A customized tier
+ * (`BUSINESS`) sits above `GROWTH` with higher limits, but it is not sold from a book,
+ * so for the picker it is not a rung a merchant can step to; the plan that would make
+ * `GROWTH` "not the ceiling" cannot be bought through this picker at all. A tier with
+ * nothing priced above it is the ceiling, and `isCeiling` is what the client renders as
+ * "beyond this, talk to us" — exactly what a customized top rung means.
+ */
+function hasAnyPricedTierAbove(
+	plan: Plan,
+	book: { prices: PriceBookPrices },
+): boolean {
 	const index = PLAN_ORDER.indexOf(plan);
-	return PLAN_ORDER.slice(index + 1).some((higher) => {
-		const a = PLAN_LIMITS[plan];
-		const b = PLAN_LIMITS[higher];
-		return (Object.keys(a) as (keyof typeof a)[]).some((key) => {
-			const left = a[key];
-			const right = b[key];
-			return typeof left === "number" && typeof right === "number"
-				? right > left
-				: right !== left;
-		});
-	});
+	return PLAN_ORDER.slice(index + 1).some(
+		(higher) =>
+			typeof book.prices[higher]?.MONTHLY === "number" ||
+			typeof book.prices[higher]?.YEARLY === "number",
+	);
 }
 
 /**
@@ -742,7 +750,21 @@ export async function recordPayment(
 		);
 	}
 	const book = await activePriceBookWithPrices(db, now);
-	const price = priceMinorFor(row.plan, cadence, book);
+	/**
+	 * The book prices every tier a merchant can self-serve — and deliberately not a
+	 * customized one (`BUSINESS`), so `priceMinorFor`'s throw on a missing pair is the
+	 * sales rule stated as data rather than a failure discovered at the till. A plan the
+	 * book *does* price renews from it, exactly as before; a plan it does not renews at
+	 * its own captured figure, which is what `assignPlan` wrote when the deal was
+	 * agreed. Reaching the `null` arm is a subscription that should not exist — paid
+	 * plan, unpriced, with nothing captured — and that is refused, not guessed.
+	 */
+	const price = book.prices[row.plan]?.[cadence] ?? row.priceMinor ?? null;
+	if (typeof price !== "number") {
+		throw new ValidationError("La suscripción no tiene precio para renovar.", {
+			field: "subscriptionId",
+		});
+	}
 
 	await db
 		.update(subscriptionTable)
@@ -763,6 +785,149 @@ export async function recordPayment(
 }
 
 /**
+ * Placing a merchant on a plan **by hand, at an agreed price**.
+ *
+ * The gap this fills is the customized tier: `BUSINESS` carries no price-book pairs
+ * *on purpose* — `planOptions` skips a pair the book does not price and `changePlan`
+ * throws on a missing pair, so the absence is the sales rule stated as data — and
+ * without a manual path the tier would be unsellable rather than just unpublished.
+ * This is the sanctioned way in: an operator states the plan, the cadence and the
+ * **agreed** price, and `subscription.assign_plan` being in both `ADMIN_ACTIONS` and
+ * `REASON_REQUIRED_ACTIONS` means the audit row names the operator, the figure and the
+ * reason — the only place "why is this shop paying a price nobody printed" is
+ * answerable from.
+ *
+ * It is also the **renewal** path for a customized deal: `recordPayment` renews a plan
+ * the book prices from the book, but a customized plan's figure is the agreement, so
+ * the operator re-runs this with the same inputs when the period ends. An upsert for
+ * the same reason: a merchant joining at a deal has no subscription row yet.
+ *
+ * The shape mirrors `changePlan` deliberately — same `db.batch`, same
+ * `business.plan` sync, same `ACTIVE`-from-now period — because an operator placement
+ * and a merchant upgrade are the same turn of the same machine; only who supplies the
+ * price differs. The one thing it does **not** do is touch `lastPaidAt`: an agreement
+ * to pay and money received are different facts, and `recordPayment` is the only
+ * writer of the latter.
+ */
+export async function assignPlan(
+	ctx: UserContext,
+	input: {
+		businessId: string;
+		plan: Plan;
+		cadence: Cadence;
+		priceMinor: number;
+		reason: string;
+	},
+	now: Date,
+): Promise<Subscription> {
+	const reason = requireReason("subscription.assign_plan", input.reason);
+	const db = ctx.db;
+
+	// The subscription row would fail its foreign key on its own, but the `business` row
+	// is updated by id in the same batch and that update would *silently* no-op — which
+	// is exactly the "limits and record disagree" shape the sync exists to prevent. Fail
+	// loud at the door instead.
+	const businessRows = await db
+		.select({ id: businessTable.id })
+		.from(businessTable)
+		.where(eq(businessTable.id, input.businessId))
+		.limit(1);
+	orNotFound(businessRows[0]);
+
+	const existing = await dbSubscription(db, input.businessId);
+	const book = await activePriceBookWithPrices(db, now);
+
+	// The period arithmetic is the plan's business and `periodDaysFor` is where it lives;
+	// `priceMinorFor` is deliberately **not** consulted — a customized plan has no book
+	// pair, and the price comes from the operator's input, agreed with the merchant.
+	const periodDays = periodDaysFor(input.plan, input.cadence);
+	if (periodDays === null) {
+		throw new ValidationError(
+			"El plan gratuito no se asigna a mano: el comercio puede elegirlo.",
+			{ field: "plan" },
+		);
+	}
+	const periodStart = now;
+	const periodEnd = new Date(now.getTime() + periodDays * DAY_MS);
+
+	const row = existing.length === 0 ? null : orNotFound(existing[0]);
+	const subscriptionId = row?.id ?? newId("subscription");
+
+	const before = row
+		? {
+				plan: row.plan,
+				cadence: row.cadence,
+				priceMinor: row.priceMinor,
+				periodStart: row.periodStart?.toISOString() ?? null,
+				periodEnd: row.periodEnd?.toISOString() ?? null,
+				lastPaidAt: row.lastPaidAt?.toISOString() ?? null,
+			}
+		: null;
+	const after = {
+		plan: input.plan,
+		cadence: input.cadence,
+		priceMinor: input.priceMinor,
+		periodStart: periodStart.toISOString(),
+		periodEnd: periodEnd.toISOString(),
+		lastPaidAt: row?.lastPaidAt?.toISOString() ?? null,
+	};
+
+	await db.batch(
+		batchOf([
+			row
+				? db
+						.update(subscriptionTable)
+						.set({
+							plan: input.plan,
+							cadence: input.cadence,
+							priceMinor: input.priceMinor,
+							priceBookId: book.id,
+							status: "ACTIVE",
+							periodStart,
+							periodEnd,
+							gracedUntil: null,
+							updatedAt: now,
+						})
+						.where(eq(subscriptionTable.id, row.id))
+				: db.insert(subscriptionTable).values({
+						id: subscriptionId,
+						businessId: input.businessId,
+						plan: input.plan,
+						cadence: input.cadence,
+						priceMinor: input.priceMinor,
+						priceBookId: book.id,
+						status: "ACTIVE",
+						periodStart,
+						periodEnd,
+						gracedUntil: null,
+						lastPaidAt: null,
+						createdAt: now,
+						updatedAt: now,
+					}),
+			db
+				.update(businessTable)
+				.set({
+					plan: effectivePlan(input.plan, "ACTIVE"),
+					listed: STATUS_IS_LISTED.ACTIVE,
+				})
+				.where(eq(businessTable.id, input.businessId)),
+			auditStatement(ctx, {
+				action: "subscription.assign_plan",
+				targetType: "subscription",
+				targetId: subscriptionId,
+				before,
+				after,
+				reason,
+				now,
+			}),
+		]),
+	);
+
+	const updated = await dbSubscription(db, input.businessId);
+	return shapeSubscription(orNotFound(updated[0]), now);
+}
+
+/**
  * The current price, and the next one staged — what an operator needs to see to raise it.
  *
  * The prices come back as **pairs**, one row per (tier, cadence), because the book no longer
@@ -772,11 +937,17 @@ export async function recordPayment(
  */
 export async function priceBooks(ctx: UserContext, now: Date) {
 	const [books, prices] = await Promise.all([
-		ctx.db.select().from(priceBookTable).orderBy(desc(priceBookTable.effectiveFrom)),
+		ctx.db
+			.select()
+			.from(priceBookTable)
+			.orderBy(desc(priceBookTable.effectiveFrom)),
 		ctx.db.select().from(priceBookPriceTable),
 	]);
 
-	const byBook = new Map<string, { plan: Plan; cadence: Cadence; minor: number }[]>();
+	const byBook = new Map<
+		string,
+		{ plan: Plan; cadence: Cadence; minor: number }[]
+	>();
 	for (const price of prices) {
 		const list = byBook.get(price.priceBookId) ?? [];
 		list.push({ plan: price.plan, cadence: price.cadence, minor: price.minor });

@@ -45,12 +45,21 @@ export type PricingTier = {
 	plan: Plan;
 	/** The tier's own name, which is the retired `apps/api` vocabulary. */
 	name: string;
-	/** What the merchant pays per month, in colones, IVA included. `0` on `FREE`. */
-	monthlyMinor: number;
-	/** The annual price, or `null` on the tier that is never charged. */
+	/**
+	 * What the merchant pays per month, in colones, IVA included: `0` on `FREE`,
+	 * `null` on a customized tier the book does not price. `null` is not "free by
+	 * accident" — see `isCustomized`.
+	 */
+	monthlyMinor: number | null;
+	/** The annual price, or `null` on the free and customized tiers. */
 	yearlyMinor: number | null;
 	/** True only on the free tier, so the page renders it as a sign-up rather than a price. */
 	isFree: boolean;
+	/**
+	 * True only on a tier whose price is quoted per merchant — `BUSINESS`. Neither free
+	 * nor listed, it is the tier this page tells the reader to talk to us about.
+	 */
+	isCustomized: boolean;
 	description: string;
 	features: string[];
 	/** The countable limits, in the words the page shows rather than the column names. */
@@ -97,9 +106,10 @@ function gibibytes(bytes: number): string {
  * The tiers, named the way the retired `apps/api` catalogue named them.
  *
  * `Emprende` is a Costa Rican verb before it is a plan: it is what somebody opening a soda
- * says they are doing. `Starter` and `Growth` are the two rungs a shop climbs, and `Business`
- * is where a merchant with more than one location lands. The vocabulary is inherited so a
- * merchant who read the old price page has not met a new product here.
+ * says they are doing. `Starter` and `Growth` are the two rungs a shop climbs, and
+ * `Business` is the customized top rung — quoted per merchant, so its card asks the reader
+ * to talk to us rather than print a number the book does not carry. The vocabulary is
+ * inherited so a merchant who read the old price page has not met a new product here.
  */
 const TIER_COPY: Record<
 	Plan,
@@ -151,8 +161,8 @@ const TIER_COPY: Record<
 	},
 	BUSINESS: {
 		name: "Business",
-		description: "Para una operación con varias sucursales y mucho volumen.",
-		cta: "Empezar con Business",
+		description: "A medida. Para una operación con varias sucursales y mucho volumen.",
+		cta: "Hablar del plan Business",
 		features: [
 			"Todo lo de Growth",
 			"Hasta 1 000 productos y cinco sucursales",
@@ -177,14 +187,28 @@ function expressLabel(perDay: number): string {
 export const PRICING_TIERS: PricingTier[] = PLAN_ORDER.map((plan) => {
 	const limits = PLAN_LIMITS[plan];
 	const isFree = plan === "FREE";
+	// A customized tier ("a medida") has no price to print: `LAUNCH_PRICE_BOOK` carries no
+	// `BUSINESS` pairs, and `priceMinorFor` would throw on the absence it is stating. The
+	// page renders it as a talk-to-us card instead of inventing a figure the agreement
+	// could be corrected out of — which is also what keeps this a projection of the book
+	// rather than a second source of prices that could disagree with it.
+	const isCustomized = plan === "BUSINESS";
+	// `0` on the free tier rather than a missing price: a page that showed no number for
+	// it would read as a tier whose price had not loaded.
 	return {
 		plan,
 		name: TIER_COPY[plan].name,
-		// `0` on the free tier rather than a missing price: a page that showed no number for
-		// it would read as a tier whose price had not loaded.
-		monthlyMinor: isFree ? 0 : priceMinorFor(plan, "MONTHLY", LAUNCH_PRICE_BOOK),
-		yearlyMinor: isFree ? null : priceMinorFor(plan, "YEARLY", LAUNCH_PRICE_BOOK),
+		monthlyMinor: isFree
+			? 0
+			: isCustomized
+				? null
+				: priceMinorFor(plan, "MONTHLY", LAUNCH_PRICE_BOOK),
+		yearlyMinor:
+			isFree || isCustomized
+				? null
+				: priceMinorFor(plan, "YEARLY", LAUNCH_PRICE_BOOK),
 		isFree,
+		isCustomized,
 		description: TIER_COPY[plan].description,
 		features: TIER_COPY[plan].features,
 		limits: [
@@ -288,7 +312,11 @@ export const FEATURE_COMPARISON: { feature: string; values: string[] }[] = [
 	{
 		feature: "Precio mensual (IVA incluido)",
 		values: PRICING_TIERS.map((tier) =>
-			tier.isFree ? "Gratis" : formatColones(tier.monthlyMinor),
+			tier.isFree
+				? "Gratis"
+				: tier.isCustomized
+					? "A medida"
+					: formatColones(tier.monthlyMinor as number),
 		),
 	},
 	{
@@ -296,7 +324,11 @@ export const FEATURE_COMPARISON: { feature: string; values: string[] }[] = [
 		// monthly price" is — see `plans.ts`'s `LAUNCH_PRICE_BOOK`.
 		feature: "Precio anual (IVA incluido)",
 		values: PRICING_TIERS.map((tier) =>
-			tier.yearlyMinor === null ? "—" : formatColones(tier.yearlyMinor),
+			tier.yearlyMinor === null
+				? tier.isCustomized
+					? "A medida"
+					: "—"
+				: formatColones(tier.yearlyMinor),
 		),
 	},
 	...PRICING_TIERS[0].limits.map((limit, index) => ({

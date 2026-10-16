@@ -11,6 +11,7 @@ import {
 	adminSupportTicketResolveInput,
 	adminVerificationDecisionInput,
 	adminVerificationQueueInput,
+	assignPlanInput,
 	createPriceBookInput,
 	deliveryPricingDraftInput,
 	publishDeliveryPricingInput,
@@ -275,6 +276,12 @@ export const adminRouter = router({
 		.input(createPriceBookInput)
 		.mutation(({ ctx, input }) =>
 			subscriptions.createPriceBook(ctx, input, new Date()),
+		),
+
+	assignPlan: adminProcedure
+		.input(assignPlanInput)
+		.mutation(({ ctx, input }) =>
+			subscriptions.assignPlan(ctx, input, new Date()),
 		),
 
 	categories: adminProcedure.query(({ ctx }) => admin.categories(ctx)),

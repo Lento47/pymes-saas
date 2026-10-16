@@ -14,6 +14,7 @@ import { healthRouter } from "./health";
 import { ideaRouter } from "./idea";
 import { identityRouter } from "./identity";
 import { notificationsRouter } from "./notifications";
+import { mobileRouter } from "./mobile";
 import { ordersRouter } from "./orders";
 import { productsRouter } from "./products";
 import { promotionsRouter } from "./promotions";
@@ -36,6 +37,7 @@ import { usersRouter } from "./users";
  * named here is a router no client can call, and the type will not mention it.
  */
 export const appRouter = router({
+	mobile: mobileRouter,
 	health: healthRouter,
 	catalog: catalogRouter,
 	businesses: businessesRouter,

@@ -79,6 +79,7 @@ export const CONSOLE_TABS = [
   { value: "catalogue", label: "Catálogo", group: "commerce" },
   { value: "prices", label: "Planes", group: "commerce" },
   { value: "categories", label: "Categorías", group: "commerce" },
+  { value: "mobile", label: "App móvil", group: "system" },
   { value: "audit", label: "Auditoría", group: "system" },
 ] as const;
 
@@ -115,6 +116,7 @@ export const TAB_PURPOSE: Record<
   ConsoleTab,
   { title: string; description: string }
 > = {
+  mobile: { title: "App móvil", description: "Visibilidad por perfil, campañas, avisos y publicaciones de la app." },
   overview: {
     title: "Resumen",
     description:

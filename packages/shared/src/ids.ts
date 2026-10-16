@@ -14,6 +14,7 @@
 
 export const ID_PREFIXES = {
 	user: "usr",
+	mobileConfigurationRevision: "mcr",
 	business: "biz",
 	location: "loc",
 	membership: "mem",

@@ -444,6 +444,13 @@ export function CustomerAccountScreen() {
 						style={styles.signOut}
 						onPress={() => setSignOutOpen(true)}
 					/>
+					<Button
+						label={t("account.deletion.title")}
+						variant="ghost"
+						fullWidth
+						style={{ marginTop: space.md }}
+						onPress={() => router.push("/delete-account")}
+					/>
 				</AnimateIn>
 			</Screen>
 			{/* Last in the screen's root and a sibling of the scroller: `./sheet` has no portal,

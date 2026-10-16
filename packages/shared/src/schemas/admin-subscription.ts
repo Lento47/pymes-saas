@@ -167,3 +167,44 @@ export const createPriceBookInput = z.object({
 	reason: z.string().trim().min(REASON_MIN_LENGTH).max(500),
 });
 export type CreatePriceBookInput = z.infer<typeof createPriceBookInput>;
+
+/**
+ * Placing a merchant on a plan **by hand, at an agreed price**.
+ *
+ * This is the operator's lever for a customized plan — `BUSINESS` — and for moving a
+ * shop the self-serve picker cannot serve. It is deliberately shaped like a deal, not
+ * like a picker choice: the operator states the plan, the cadence and the **agreed**
+ * price, because a customized plan has no book entry to capture from (
+ * `priceMinorFor` throws on the absence that is the sales rule) and inventing a number
+ * server-side would make the platform the one negotiating.
+ *
+ * `plan` must be paid: the picker already offers `FREE` and `changePlan` already
+ * performs that move, so an operator here is doing something the merchant could not
+ * — and being explicit about money is where the operator's difference lives.
+ *
+ * The same `min`/`max` band as `createPriceBookInput`'s pairs, because a figure outside
+ * it is a data-entry accident rather than a deal either way. The reason is required
+ * (`subscription.assign_plan` is in `REASON_REQUIRED_ACTIONS`) — the audit row is where
+ * "why is this shop paying a price nobody printed" is answered from.
+ */
+export const assignPlanInput = z
+	.object({
+		businessId: z.string(),
+		plan: planSchema,
+		cadence: cadenceSchema,
+		priceMinor: z.number().int().min(100).max(100_000_000),
+		reason: z.string().trim().min(REASON_MIN_LENGTH).max(500),
+	})
+	/**
+	 * `FREE` is not an operator's placement: the picker already offers it and
+	 * `changePlan` already performs it, so a downgrade by hand would be an operator
+	 * doing what the merchant can — with a price field that has no meaning for it.
+	 * Refining the composed object rather than replacing `planSchema`, because every
+	 * other message this schema can raise should still name the field it is about.
+	 */
+	.refine((input) => input.plan !== "FREE", {
+		message:
+			"El plan gratuito no se asigna a mano: el comercio puede elegirlo.",
+		path: ["plan"],
+	});
+export type AssignPlanInput = z.infer<typeof assignPlanInput>;

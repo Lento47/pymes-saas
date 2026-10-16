@@ -16,6 +16,7 @@ export * from "./dispatch";
 export * from "./ids";
 export * from "./market-time";
 export * from "./money";
+export * from "./mobile-controls";
 export * from "./options";
 export * from "./order-state";
 export * from "./pagination";

@@ -8,6 +8,7 @@ import {
 	notification as notificationTable,
 	user as userTable,
 } from "@pymeshub/db";
+import { requireMobileProcedure } from "./mobile-configuration";
 import type {
 	CourierBusinessInvitesInput,
 	CourierCancelInviteInput,
@@ -186,6 +187,7 @@ export async function saveProfile(
 		.where(eq(profileTable.userId, ctx.user.id))
 		.limit(1);
 	const current = rows[0];
+	if (input.isAvailable && !current?.isAvailable) await requireMobileProcedure(ctx, "couriers.goAvailable");
 	const now = new Date();
 	const bio = input.bio?.trim() || null;
 	const vehicleName = input.vehicleName?.trim() || null;

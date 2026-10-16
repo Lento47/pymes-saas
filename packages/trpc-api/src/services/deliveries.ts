@@ -11,6 +11,7 @@ import {
 	deliveryRating as ratingTable,
 	user as userTable,
 } from "@pymeshub/db";
+import { requireMobileProcedure } from "./mobile-configuration";
 import type {
 	CourierPresenceInput,
 	DeliveryDetail,
@@ -368,6 +369,7 @@ export async function acceptOffer(
 			.limit(1)
 	)[0];
 	if (!offer) throw new NotFoundError();
+	if (offer.status === "PENDING") await requireMobileProcedure(ctx, "deliveries.acceptOffer");
 	const deliveryRow = (
 		await ctx.db
 			.select({

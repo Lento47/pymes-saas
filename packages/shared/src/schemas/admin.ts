@@ -24,6 +24,10 @@ import {
 } from "./courier";
 
 export const ADMIN_ACTIONS = [
+	"mobile.draft",
+	"mobile.discard",
+	"mobile.publish",
+	"mobile.restore",
 	"pricing.draft",
 	"pricing.publish",
 	"pricing.grant_access",
@@ -50,6 +54,15 @@ export const ADMIN_ACTIONS = [
 	 * merchant and the courier, and the platform invoices a flat subscription.
 	 */
 	"subscription.record_payment",
+	/**
+	 * Placing a merchant on a plan **by hand, at an agreed price**. It exists because
+	 * `BUSINESS` is a customized tier: no price book carries it, so `planOptions` never
+	 * offers it and `changePlan` throws on it — absence is the sales rule stated as data.
+	 * The manual placement is the only sanctioned way in, and it is audited with the
+	 * agreed figure and the reason, because the audit log is where "why is this shop
+	 * paying a price nobody printed" must be answerable.
+	 */
+	"subscription.assign_plan",
 	"subscription.create_price_book",
 	"category.create",
 	"category.update",
@@ -178,6 +191,12 @@ export const REASON_REQUIRED_ACTIONS: readonly AdminAction[] = [
 	 * answered from.
 	 */
 	"subscription.create_price_book",
+	/**
+	 * The manual plan placement is the same family: it charges a merchant a price no
+	 * published page states, so an entry saying who agreed it and why is what keeps a
+	 * customized deal reconcileable later.
+	 */
+	"subscription.assign_plan",
 	"courier.reject",
 	/**
 	 * A category is the marketplace's first tile for a whole sector, and deleting one

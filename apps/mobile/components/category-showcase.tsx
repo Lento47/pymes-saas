@@ -76,7 +76,7 @@ import { Text } from "./text";
  * the finger is already on leaves that screen twice on the stack.
  */
 export function CategoryShowcase({
-	categories,
+	categories: rawCategories,
 	selectedSlug,
 	allHref,
 }: {

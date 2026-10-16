@@ -182,6 +182,13 @@ export default function BusinessAccountScreen() {
 							style={styles.signOut}
 							onPress={() => setSignOutOpen(true)}
 						/>
+						<Button
+							label={t("account.deletion.title")}
+							variant="ghost"
+							fullWidth
+							style={{ marginTop: space.md }}
+							onPress={() => router.push("/delete-account")}
+						/>
 					</>
 				)}
 			</Screen>

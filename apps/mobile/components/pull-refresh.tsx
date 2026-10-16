@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { RefreshControl, type RefreshControlProps } from "react-native";
-
+import { useMobileConfiguration } from "@/lib/mobile-configuration";
 import { useTheme } from "@/theme";
 
 /**
@@ -46,14 +46,18 @@ export function useRefreshControl(
 	onRefresh: (() => unknown) | undefined,
 ): React.ReactElement<RefreshControlProps> | undefined {
 	const { colors } = useTheme();
+	const { refresh: refreshConfiguration } = useMobileConfiguration();
 	const [refreshing, setRefreshing] = useState(false);
 
 	const refresh = useCallback(() => {
 		setRefreshing(true);
-		void Promise.resolve(onRefresh?.())
+		void Promise.allSettled([
+			Promise.resolve(onRefresh?.()),
+			refreshConfiguration(),
+		])
 			.catch(() => {})
 			.finally(() => setRefreshing(false));
-	}, [onRefresh]);
+	}, [onRefresh, refreshConfiguration]);
 
 	if (!onRefresh) return undefined;
 

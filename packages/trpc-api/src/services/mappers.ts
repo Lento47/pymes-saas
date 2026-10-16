@@ -901,6 +901,7 @@ export function userProfileOf(row: UserRow): UserProfile {
 		phone: row.phone,
 		isAdmin: row.isAdmin,
 		canManagePricing: row.isAdmin && row.canManagePricing,
+		canPublishMobile: row.isAdmin && row.canPublishMobile,
 		createdAt: row.createdAt,
 	};
 }

@@ -4,11 +4,13 @@ import { formatMoney } from "./money";
 import {
 	CADENCES,
 	type Cadence,
-	canAcceptExpress,
 	type CountablePlanLimit,
+	cadencesFor,
+	canAcceptExpress,
 	DEFAULT_PLAN,
-	effectivePlan,
 	EXPRESS_WINDOW_DAYS,
+	effectivePlan,
+	expressWindowStart,
 	GATED_CAPABILITIES,
 	GRACE_DAYS,
 	HIDDEN_AFTER_DAYS,
@@ -18,21 +20,19 @@ import {
 	LAUNCH_PRICE_BOOK,
 	NEVER_GATED,
 	netOfIva,
-	periodDaysFor,
 	PLAN_LIMITS,
 	PLAN_ORDER,
 	PLANS,
 	type Plan,
+	periodDaysFor,
 	periodEndFrom,
 	planSatisfying,
 	priceMinorFor,
 	STATUS_GRANTS_FULL_ACCESS,
 	STATUS_IS_LISTED,
-	subscriptionStatusAt,
 	SUBSCRIPTION_STATUSES,
+	subscriptionStatusAt,
 	upgradeTarget,
-	cadencesFor,
-	expressWindowStart,
 } from "./plans";
 
 /**
@@ -62,9 +62,14 @@ import {
  *    payment ever requested.
  */
 
-/** Every paid (tier, cadence) pair, for the loops that must hold across all of them. */
-const PAID_PAIRS: [Plan, Cadence][] = PLANS.filter((plan) => plan !== "FREE").flatMap(
-	(plan) => CADENCES.map((cadence) => [plan, cadence] as [Plan, Cadence]),
+/** The tiers `LAUNCH_PRICE_BOOK` actually prices, for the loops that must hold across all of them. */
+const PRICED_PLANS: Plan[] = PLANS.filter(
+	(plan) => LAUNCH_PRICE_BOOK.prices[plan] !== undefined,
+);
+
+/** Every priced (tier, cadence) pair in the launch book. */
+const PAID_PAIRS: [Plan, Cadence][] = PRICED_PLANS.flatMap((plan) =>
+	CADENCES.map((cadence) => [plan, cadence] as [Plan, Cadence]),
 );
 
 describe("what a merchant pays", () => {
@@ -86,49 +91,66 @@ describe("what a merchant pays", () => {
 		// the headline numbers a merchant reads and an invoice charges, and the seed, the
 		// pricing page and this file all read the same object — so a figure that moved
 		// without anyone deciding it did would otherwise be invisible until an invoice.
-		expect(priceMinorFor("EMPRENDE", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(10_900);
-		expect(priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(19_900);
-		expect(priceMinorFor("GROWTH", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(29_900);
-		expect(priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(59_900);
+		// The 2026 relaunch repricing dropped the three self-serve rungs; `BUSINESS` is not
+		// pinned to a number because it is customized — it is pinned to *absence*, below.
+		expect(priceMinorFor("EMPRENDE", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(4_900);
+		expect(priceMinorFor("STARTER", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(9_900);
+		expect(priceMinorFor("GROWTH", "MONTHLY", LAUNCH_PRICE_BOOK)).toBe(19_900);
 
-		// The ladder stays strictly increasing, which the top two tiers being unchanged and
-		// the bottom two rising is exactly the kind of edit that can quietly break.
-		const monthly = PLAN_ORDER.filter((plan) => plan !== "FREE").map((plan) =>
+		// The ladder stays strictly increasing, which the relaunch repricing — every rung
+		// moving, by different proportion — is exactly the kind of edit that can quietly
+		// break. It loops the priced tiers, since a customized tier has no rung to sort.
+		const monthly = PRICED_PLANS.map((plan) =>
 			priceMinorFor(plan, "MONTHLY", LAUNCH_PRICE_BOOK),
 		);
 		expect(monthly).toEqual([...monthly].sort((a, b) => a - b));
 		expect(new Set(monthly).size).toBe(monthly.length);
 
-		// CRC has no céntimos: ₡59 900 is stored as 59900. The 100× book (5 990 000)
+		// CRC has no céntimos: ₡19 900 is stored as 19900. The 100× book (1 990 000)
 		// formatted as millions, which is the bug this pin exists to catch.
 		expect(
 			formatMoney(
-				priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK),
+				priceMinorFor("GROWTH", "MONTHLY", LAUNCH_PRICE_BOOK),
 				"CRC",
 			).replace(/\D/g, ""),
-		).toBe("59900");
+		).toBe("19900");
 		expect(
 			formatMoney(
 				priceMinorFor("EMPRENDE", "YEARLY", LAUNCH_PRICE_BOOK),
 				"CRC",
 			).replace(/\D/g, ""),
-		).toBe("109000");
+		).toBe("49000");
+
+		// `BUSINESS` is absent from the book — the customized plan has no printed price, and
+		// absence is the sales rule stated as data. The chain this protects: `planOptions`
+		// skips the pair, `changePlan` throws, and only `admin.assignPlan` (an operator with
+		// a reason and an agreed price) can place a merchant on `Business`.
+		for (const cadence of CADENCES) {
+			expect(LAUNCH_PRICE_BOOK.prices.BUSINESS?.[cadence]).toBeUndefined();
+		}
+		expect(() =>
+			priceMinorFor("BUSINESS", "MONTHLY", LAUNCH_PRICE_BOOK),
+		).toThrow();
 	});
 
 	test("the launch book is the one the seed and a fresh install run on", () => {
 		expect(LAUNCH_PRICE_BOOK.priceBookId).toBeTruthy();
-		// Every paid tier carries both cadences. A tier missing one is a picker offering a
-		// plan the charge path cannot price.
+		// Every tier the book prices carries both cadences. A tier missing one is a picker
+		// offering a plan the charge path cannot price.
 		for (const plan of PLANS) {
-			if (plan === "FREE") continue;
+			if (!PRICED_PLANS.includes(plan)) continue;
 			for (const cadence of CADENCES) {
 				expect(typeof LAUNCH_PRICE_BOOK.prices[plan]?.[cadence]).toBe("number");
 			}
 		}
-		// And FREE is absent from every one, rather than present at zero: a free shop is
-		// never charged, and absence is what makes that checkable.
-		for (const cadence of CADENCES) {
-			expect(LAUNCH_PRICE_BOOK.prices.FREE?.[cadence]).toBeUndefined();
+		// And the unpriced tiers are absent from every one, rather than present at zero:
+		// `FREE` is never charged, and absence is what makes that checkable. `BUSINESS` is
+		// absent for the opposite reason — a customized plan has nothing to be charged at
+		// until someone agrees a price for it.
+		for (const plan of ["FREE", "BUSINESS"] as const) {
+			for (const cadence of CADENCES) {
+				expect(LAUNCH_PRICE_BOOK.prices[plan]?.[cadence]).toBeUndefined();
+			}
 		}
 	});
 
@@ -141,10 +163,10 @@ describe("what a merchant pays", () => {
 
 	test("annual is ten months of monthly, on every tier", () => {
 		// One rule rather than three unrelated discounts, so the pricing page can state a
-		// single saving. Asserted per tier because three tiers agreeing by accident is not
-		// the claim — the claim is that they all do it.
-		for (const plan of PLANS) {
-			if (plan === "FREE") continue;
+		// single saving. Asserted per priced tier because three tiers agreeing by accident
+		// is not the claim — the claim is that they all do it. A customized tier has no
+		// printed price, so it has no annual multiple to state either.
+		for (const plan of PRICED_PLANS) {
 			const monthly = priceMinorFor(plan, "MONTHLY", LAUNCH_PRICE_BOOK);
 			const yearly = priceMinorFor(plan, "YEARLY", LAUNCH_PRICE_BOOK);
 			expect(yearly).toBe(monthly * 10);
@@ -190,8 +212,12 @@ describe("what a merchant pays", () => {
 			// Priced per day, an annual tier is a *premium* rather than a rounding, and it
 			// carries no more shop. If a limit ever started following the cadence, the second
 			// assertion below would be the one to move — so both are named here.
-			expect(priceMinorFor("GROWTH", cadence, LAUNCH_PRICE_BOOK)).toBeGreaterThan(0);
-			expect(PLAN_LIMITS[PLAN_ORDER[PLAN_ORDER.length - 1] as Plan]).toBeDefined();
+			expect(
+				priceMinorFor("GROWTH", cadence, LAUNCH_PRICE_BOOK),
+			).toBeGreaterThan(0);
+			expect(
+				PLAN_LIMITS[PLAN_ORDER[PLAN_ORDER.length - 1] as Plan],
+			).toBeDefined();
 		}
 		// The concrete shape of "no more shop": a paid tier's numbers do not vary, and the
 		// free tier's are the same whichever cadence it is asked about (it has none).
@@ -204,15 +230,17 @@ describe("what a merchant pays", () => {
 
 describe("the plans", () => {
 	test("a tier is never cheaper than the one above it, on either cadence", () => {
-		const ordered: Plan[] = [...PLAN_ORDER];
+		// The priced tiers, in `PLAN_ORDER` order: a customized tier has no printed price,
+		// so it is not a rung that can be mis-ordered.
+		const ordered = PRICED_PLANS;
 		for (let i = 1; i < ordered.length; i += 1) {
 			const lower = ordered[i - 1] as Plan;
 			const upper = ordered[i] as Plan;
 			for (const cadence of CADENCES) {
 				if (lower === "FREE" || upper === "FREE") continue;
-				expect(priceMinorFor(upper, cadence, LAUNCH_PRICE_BOOK)).toBeGreaterThan(
-					priceMinorFor(lower, cadence, LAUNCH_PRICE_BOOK),
-				);
+				expect(
+					priceMinorFor(upper, cadence, LAUNCH_PRICE_BOOK),
+				).toBeGreaterThan(priceMinorFor(lower, cadence, LAUNCH_PRICE_BOOK));
 				// Per day, not per period, so an annual tier is not merely "twelve months at
 				// a higher number" — it is dearer per day too, which is what makes it a
 				// premium rather than a rounding.
@@ -267,7 +295,9 @@ describe("the plans", () => {
 	test("the express quota rises with the tier and is daily, not per period", () => {
 		const ordered: Plan[] = [...PLAN_ORDER];
 		for (let i = 1; i < ordered.length; i += 1) {
-			expect(PLAN_LIMITS[ordered[i] as Plan].expressPerDay).toBeGreaterThanOrEqual(
+			expect(
+				PLAN_LIMITS[ordered[i] as Plan].expressPerDay,
+			).toBeGreaterThanOrEqual(
 				PLAN_LIMITS[ordered[i - 1] as Plan].expressPerDay,
 			);
 		}
@@ -402,7 +432,9 @@ describe("the limits", () => {
 		// annual: limits follow the tier alone, so an annual shop holds the same numbers
 		// and "go annual" would be selling it nothing.
 		expect(upgradeTarget("FREE", "expressPerDay", 10)?.plan).toBe("EMPRENDE");
-		expect(upgradeTarget("EMPRENDE", "expressPerDay", 30)?.plan).toBe("STARTER");
+		expect(upgradeTarget("EMPRENDE", "expressPerDay", 30)?.plan).toBe(
+			"STARTER",
+		);
 		expect(upgradeTarget("STARTER", "expressPerDay", 90)?.plan).toBe("GROWTH");
 		// The top tier is `Infinity`, so nothing is ever refused and nothing is offered.
 		expect(upgradeTarget("BUSINESS", "expressPerDay", 1_000_000)).toBeNull();

@@ -9,6 +9,7 @@ import { categoryIcon } from "@/lib/category-icon";
 import { sortCategoriesByName } from "@/lib/category-order";
 import { chunkPairs } from "@/lib/chunk-pairs";
 import { useT } from "@/lib/i18n";
+import { useVisibleMobileCategories } from "@/lib/mobile-configuration";
 import { icon, space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
 import { AnimateIn } from "./animate-in";
@@ -22,7 +23,8 @@ import { Text } from "./text";
  * that tab is not a one-row rail over an empty canvas. `lib/chunk-pairs` owns the lone
  * trailing tile. Callers filter to sectors (`parentId === null`); this draws what it is handed.
  */
-export function CategoryGrid({ items }: { items: Category[] }) {
+export function CategoryGrid({ items: rawItems }: { items: Category[] }) {
+	const items = useVisibleMobileCategories(rawItems);
 	const { locale } = useT();
 	const rows = useMemo(
 		() => chunkPairs(sortCategoriesByName(items, locale)),

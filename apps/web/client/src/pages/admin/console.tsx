@@ -1,4 +1,10 @@
-import type { Category, UserProfile } from "@pymeshub/shared";
+import {
+  type Cadence,
+  type Category,
+  LAUNCH_PRICE_BOOK,
+  type Plan,
+  type UserProfile,
+} from "@pymeshub/shared";
 import {
   type UseQueryResult,
   useMutation,
@@ -98,6 +104,7 @@ import {
 } from "@/lib/admin";
 import { CatalogueTab } from "./console-catalogue";
 import { ExpressPricingTab } from "./console-express-pricing";
+import { MobileAppTab } from "./console-mobile";
 import { DateRangeFilter, useDateRange } from "./console-date-range";
 import { ConsoleEnvBadge } from "./console-env-badge";
 import { money, toMinor } from "./console-money";
@@ -3142,6 +3149,175 @@ function RecordPaymentDialog({
 }
 
 /**
+ * Placing a merchant on a plan **by hand, at an agreed price**.
+ *
+ * The dialog for `admin.assignPlan`, and it exists because the customized `BUSINESS`
+ * tier cannot be sold any other way: no price book prices it (absence is the sales
+ * rule), so no picker offers it and no supplier-side plan change can reach it. Here the
+ * operator states the plan, the cadence and the figure agreed with the merchant, and
+ * the reason is required — the audit row is where "why is this shop paying a price
+ * nobody printed" is answered from.
+ *
+ * The service starts a fresh `ACTIVE` period from now and does **not** touch
+ * `lastPaidAt`, which is stated to the operator because it is different from what the
+ * payment dialog does: this is an agreement, not money received — collecting comes
+ * through "Registrar pago", which renews a customized plan at its own captured figure.
+ */
+function AssignPlanDialog({
+  businessId,
+  businessName,
+  onDone,
+}: {
+  businessId: string;
+  businessName: string;
+  onDone: () => void;
+}) {
+  const [plan, setPlan] = useState<Exclude<Plan, "FREE">>("BUSINESS");
+  const [cadence, setCadence] = useState<Cadence>("MONTHLY");
+  const [price, setPrice] = useState("");
+  const [reason, setReason] = useState("");
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+
+  const priceMinor = toMinor(price);
+  // The launch book's own figure for the self-serve tiers, as a round-trippable hint —
+  // the same use `parseMoney`'s "accepts what `money` prints" contract serves elsewhere.
+  // A customized tier prices nothing here because that is what customized means.
+  const hint = plan === "BUSINESS" ? null : LAUNCH_PRICE_BOOK.prices[plan]?.[cadence];
+  const canSubmit = priceMinor !== null && reason.trim().length >= REASON_MIN_LENGTH;
+
+  const assign = useMutation({
+    mutationFn: () =>
+      adminApi.assignPlan({
+        businessId,
+        plan,
+        cadence,
+        priceMinor: priceMinor as number,
+        reason: reason.trim(),
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      setPrice("");
+      setReason("");
+      toast({ title: "Plan asignado" });
+      onDone();
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "No se pudo asignar",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+
+  return (
+    <>
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        Asignar plan
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Plan de {businessName}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Coloca al comercio en un plan con el precio que acordaron. El plan
+              Business se cobra a medida: no se elige en la página pública, solo aquí,
+              con el motivo registrado en la auditoría.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Plan</p>
+                <Select
+                  value={plan}
+                  onValueChange={(next) => {
+                    const nextPlan = next as Exclude<Plan, "FREE">;
+                    setPlan(nextPlan);
+                    // A pair change is a different figure: re-hint to the number the
+                    // merchant would see, so a stale amount does not survive a plan
+                    // change — typing over it is cheaper than auditing a typo later.
+                    setPrice((prev) =>
+                      prev === "" || nextPlan === "BUSINESS"
+                        ? ""
+                        : LAUNCH_PRICE_BOOK.prices[nextPlan]?.[cadence] === undefined
+                          ? prev
+                          : String(LAUNCH_PRICE_BOOK.prices[nextPlan]?.[cadence]),
+                    );
+                  }}
+                >
+                  <SelectTrigger aria-label="Plan a asignar">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["EMPRENDE", "STARTER", "GROWTH", "BUSINESS"] as const).map(
+                      (paid) => (
+                        <SelectItem key={paid} value={paid}>
+                          {PRICED_PLAN_LABEL[paid] ?? paid}
+                          {paid === "BUSINESS" ? " (a medida)" : ""}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">
+                  Periodicidad
+                </p>
+                <Select
+                  value={cadence}
+                  onValueChange={(next) => setCadence(next as Cadence)}
+                >
+                  <SelectTrigger aria-label="Periodicidad">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MONTHLY">Mensual</SelectItem>
+                    <SelectItem value="YEARLY">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Input
+                label="Precio acordado (IVA incluido, ₡)"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                inputMode="decimal"
+                placeholder={hint === undefined || hint === null ? "Precio a medida" : money(hint, "CRC")}
+              />
+              {hint !== undefined && hint !== null ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Público: {money(hint, "CRC")} ·{" "}
+                  {cadence === "YEARLY" ? "anual cuesta diez meses" : "cada 30 días"}.
+                </p>
+              ) : null}
+            </div>
+            <Textarea
+              label="Motivo (obligatorio)"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              placeholder="El acuerdo y por qué ese precio"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!canSubmit || assign.isPending}
+              onClick={() => assign.mutate()}
+            >
+              Asignar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+/**
  * Cobros — who owes the platform money.
  *
  * This is the platform's whole billing surface, and the router is blunt about why it is
@@ -3400,9 +3576,9 @@ function BillingTab() {
               key: "actions",
               label: "Acción",
               sortable: false,
-              width: "120px",
+              width: "200px",
               render: (_v, s) => (
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   {s.arrearsMinor > 0 ? (
                     <RecordPaymentDialog
                       subscriptionId={s.id}
@@ -3413,9 +3589,18 @@ function BillingTab() {
                       currency={s.currency}
                       onDone={() => queryClient.invalidateQueries()}
                     />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
+                  ) : null}
+                  {/*
+                    Available on every row, not only the owing ones: placing a merchant
+                    on the customized `BUSINESS` tier is not a debt action, and withholding
+                    it until someone owes money would put the wrong precondition on the
+                    one lever that can sell it.
+                  */}
+                  <AssignPlanDialog
+                    businessId={s.businessId}
+                    businessName={s.businessName}
+                    onDone={() => queryClient.invalidateQueries()}
+                  />
                 </div>
               ),
             },
@@ -3450,13 +3635,44 @@ function BillingTab() {
  * explaining exactly that outcome, and duplicating the rule here would mean two places to
  * disagree about the boundary — the clock is the service's to judge, and its message is
  * better than any `min` attribute.
+ *
+ * The form is seeded from the book it rises **on top of** — the next staged book if one is
+ * scheduled, else the current one — because editing deltas is a different act from filling
+ * six blanks, and only the first of those can be reviewed pair by pair before "Programar".
  */
+/*
+  The pairs a rise is staged over: the launch book's own tiers × both cadences, read
+  from the constant rather than typed, so a tier the book stops or starts pricing moves
+  this form with it. A customized tier is deliberately not here — its price is a
+  `subscription.assign_plan` deal, which is where an operator and a merchant agree a
+  figure; a book listing it would put it back in every storefront picker.
+*/
+const PRICED_PAIRS: readonly { plan: Plan; cadence: Cadence }[] = (
+  Object.keys(LAUNCH_PRICE_BOOK.prices) as Plan[]
+).flatMap((plan) =>
+  (["MONTHLY", "YEARLY"] as const).map((cadence) => ({ plan, cadence })),
+);
+
+const PRICED_PLAN_LABEL: Partial<Record<Plan, string>> = {
+  EMPRENDE: "Emprende",
+  STARTER: "Starter",
+  GROWTH: "Growth",
+  BUSINESS: "Business",
+};
+
 function PriceBooksTab() {
   const [label, setLabel] = useState("");
-  const [weekly, setWeekly] = useState("");
-  const [monthly, setMonthly] = useState("");
   const [from, setFrom] = useState("");
   const [reason, setReason] = useState("");
+  /**
+    The typed figures, one string per (plan, cadence) pair, keyed `"PLAN:CADENCE"`.
+
+    `null` rather than `{}` until the loading book arrives, because "blank" and "not yet
+    seeded from a book" are different states: seeding has to happen exactly once, and an
+    empty object would look like an operator who had already chosen to clear everything.
+    A `useEffect` writes the seed and never rewrites it — the operator's edits win.
+  */
+  const [typed, setTyped] = useState<Record<string, string> | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -3465,21 +3681,60 @@ function PriceBooksTab() {
     queryFn: adminApi.priceBooks,
   });
 
-  const weeklyMinor = toMinor(weekly);
-  const monthlyMinor = toMinor(monthly);
+  /**
+    The rise is staged **on top of** a book, and this is the one it stages on top of:
+    the next book if one is already scheduled (the price new merchants will soon pay),
+    else the current one. Prefilling from it turns the form into an editor of deltas —
+    an operator changes what changes and leaves the rest — which is the difference
+    between a six-field price grid that gets used and one that gets fat-fingered.
+  */
+  const baseBook = data?.find((book) => book.isStaged) ?? data?.find((book) => book.isCurrent) ?? null;
+  const baseFor = (pair: { plan: string; cadence: string }): number | null =>
+    baseBook?.prices.find((p) => p.plan === pair.plan && p.cadence === pair.cadence)?.minor ?? null;
+
+  useEffect(() => {
+    if (typed !== null || baseBook === null) return;
+    const seed: Record<string, string> = {};
+    for (const pair of PRICED_PAIRS) {
+      const base = baseFor(pair);
+      seed[`${pair.plan}:${pair.cadence}`] = base === null ? "" : String(base);
+    }
+    setTyped(seed);
+    // `baseFor` closes over `baseBook`; the guard `typed !== null` is what makes the
+    // effect a one-time seed rather than a live-controlled form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typed, baseBook]);
+
+  /**
+    Every pair must carry a figure, without exception — `priceMinorFor` throws on a
+    missing pair, and `priceMinorFor` is what `changePlan` charges from. A rise that
+    quietly leaves an annual cadence blank would be a picker offering a plan the till
+    cannot price, discovered at checkout by a merchant.
+  */
+  const pairs: { plan: Plan; cadence: Cadence; text: string; minor: number | null }[] =
+    typed === null
+      ? []
+      : PRICED_PAIRS.map((pair) => ({
+          ...pair,
+          text: typed[`${pair.plan}:${pair.cadence}`] ?? "",
+          minor: toMinor(typed[`${pair.plan}:${pair.cadence}`] ?? ""),
+        }));
+  const allPriced = typed !== null && pairs.every((pair) => pair.minor !== null);
   const canSubmit =
     label.trim().length >= 2 &&
-    weeklyMinor !== null &&
-    monthlyMinor !== null &&
     from !== "" &&
+    allPriced &&
     reason.trim().length >= REASON_MIN_LENGTH;
 
   const create = useMutation({
     mutationFn: () =>
       adminApi.createPriceBook({
         label: label.trim(),
-        weeklyMinor: weeklyMinor as number,
-        monthlyMinor: monthlyMinor as number,
+        prices: pairs.map((pair) => ({
+          plan: pair.plan,
+          cadence: pair.cadence,
+          minor: pair.minor as number,
+        })),
         // `new Date("YYYY-MM-DD")` is UTC midnight; a local-time parse of the same string
         // would shift the effective date by a day either side of it.
         effectiveFrom: new Date(`${from}T00:00:00Z`),
@@ -3487,8 +3742,7 @@ function PriceBooksTab() {
       }),
     onSuccess: () => {
       setLabel("");
-      setWeekly("");
-      setMonthly("");
+      setTyped(null);
       setFrom("");
       setReason("");
       toast({ title: "Precio staged" });
@@ -3626,7 +3880,7 @@ function PriceBooksTab() {
           consistent label position. The search inputs further up this file are **not** migrated,
           for the opposite reason — see `SearchInput`.
         */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Input
             label="Etiqueta"
             value={label}
@@ -3634,23 +3888,88 @@ function PriceBooksTab() {
             placeholder="2026-Q2"
           />
           <Input
-            label="Semanal (₡)"
-            value={weekly}
-            onChange={(e) => setWeekly(e.target.value)}
-            inputMode="decimal"
-          />
-          <Input
-            label="Mensual (₡)"
-            value={monthly}
-            onChange={(e) => setMonthly(e.target.value)}
-            inputMode="decimal"
-          />
-          <Input
             label="Vigente desde"
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
           />
+        </div>
+        {/*
+          **One field per (tier, cadence) pair, preseeded from the base book.**
+
+          It was two fields — "Semanal" and "Mensual" — reading shapes the book has not had
+          since the prices moved to a child table, so every staged rise failed at the parse
+          the server does before its clock check. The pairs are what a book is now, so the
+          grid is the pairs.
+
+          Each field is **seeded**, not labelled with a hint: the operator edits deltas off
+          the current figures, and editing ₡4 900 → ₡5 900 in place is not the act a blank
+          field invites. A pair the base book does not price seeds blank, and submitting is
+          refused until it is filled — a book the charge path cannot price is worse than no
+          book.
+        */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {pairs.length === 0 && typed === null ? (
+            <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+              {isPending
+                ? "Cargando los precios vigentes…"
+                : "Sin libro de precio de referencia: elige las cifras."}
+            </p>
+          ) : (
+            pairs.map((pair) => {
+              const base = baseFor(pair);
+              const delta =
+                base === null || pair.minor === null ? null : pair.minor - base;
+              const deltaPct =
+                delta === null || base === null || base === 0
+                  ? null
+                  : Math.round((delta / base) * 100);
+              return (
+                <div key={`${pair.plan}:${pair.cadence}`}>
+                  <Input
+                    label={`${PRICED_PLAN_LABEL[pair.plan] ?? pair.plan} · ${pair.cadence === "YEARLY" ? "anual (₡)" : "mensual (₡)"}`}
+                    value={pair.text}
+                    onChange={(e) =>
+                      setTyped((prev) =>
+                        prev === null
+                          ? prev
+                          : {
+                              ...prev,
+                              [`${pair.plan}:${pair.cadence}`]: e.target.value,
+                            },
+                      )
+                    }
+                    inputMode="decimal"
+                    placeholder={base === null ? "Cifra obligatoria" : void 0}
+                  />
+                  {/*
+                    The base, and the delta against it. A change without its consequence
+                    beside it is a change made blind — this is the same reasoning the
+                    write-off line in the payment dialog carries, applied to a price: the
+                    operator sees +10% while typing +10%.
+                  */}
+                  <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
+                    {base === null
+                      ? "Sin precio previo. "
+                      : `Vigente: ${money(base, "CRC")}. `}
+                    {delta === null || delta === 0 || deltaPct === null ? null : (
+                      <span
+                        className={
+                          delta > 0
+                            ? "text-amber-600 dark:text-amber-500"
+                            : "text-emerald-600 dark:text-emerald-500"
+                        }
+                      >
+                        {delta > 0 ? "+" : "−"}
+                        {money(Math.abs(delta), "CRC")} ({Math.abs(deltaPct)}%{" "}
+                        {delta > 0 ? "más" : "menos"})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              );
+            })
+          )}
         </div>
         {/*
             The reason, and it is required. `subscription.create_price_book` is in
@@ -4773,6 +5092,10 @@ function AdminConsole() {
 
             <Panel when={tab === "express-pricing"}>
               <ExpressPricingTab />
+            </Panel>
+
+            <Panel when={tab === "mobile"}>
+              <MobileAppTab />
             </Panel>
 
             <Panel when={tab === "categories"}>

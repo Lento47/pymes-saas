@@ -41,10 +41,12 @@ import {
   adminSupportTicketRowSchema,
   adminUserDetailSchema,
   adminUserRowSchema,
+  assignPlanInput,
   auditLogEntrySchema,
   BUSINESS_STATUSES,
   type BusinessStatus,
   COURIER_VERIFICATION_STATUSES,
+  type Cadence,
   type CourierVerificationStatus,
   type CrashReport,
   type CrashReportListInput,
@@ -59,6 +61,7 @@ import {
   type IdeaRow,
   ideaListInput,
   ideaRowSchema,
+  type Plan,
   PLANS,
   REASON_MIN_LENGTH,
   REASON_REQUIRED_ACTIONS,
@@ -579,13 +582,38 @@ export const adminApi = {
   priceBooks: async (): Promise<PriceBookRow[]> =>
     priceBookList(await trpc.admin.priceBooks.query()),
 
+  /**
+   * Staging a price rise. **Matches the schema, not a legacy shape.**
+   *
+   * The input is a list of (plan, cadence, minor) pairs — the three self-serve tiers ×
+   * two cadences — because the book has been a child table since the tier/cadence split.
+   * This client used to send `weeklyMinor`/`monthlyMinor`, which the server schema
+   * stripped and the required `prices` list was then missing, so every staged rise
+   * failed at parse: the console asked for semanal/mensual figures, got them, and
+   * could not send them anywhere.
+   */
   createPriceBook: (input: {
     label: string;
-    weeklyMinor: number;
-    monthlyMinor: number;
+    prices: { plan: Plan; cadence: Cadence; minor: number }[];
     effectiveFrom: Date;
     reason: string;
   }) => trpc.admin.createPriceBook.mutate(createPriceBookInput.parse(input)),
+
+  /**
+   * Placing a merchant on a plan **by hand, at an agreed price** — the only way into
+   * the customized `BUSINESS` tier, which no price book prices on purpose.
+   *
+   * The client is a thin pass-through with `assignPlanInput.parse` as its only act:
+   * the reason requirement, the price band and the `FREE` refusal live in the schema
+   * and the service, so the console cannot be looser than the server about any of it.
+   */
+  assignPlan: (input: {
+    businessId: string;
+    plan: Exclude<Plan, "FREE">;
+    cadence: Cadence;
+    priceMinor: number;
+    reason: string;
+  }) => trpc.admin.assignPlan.mutate(assignPlanInput.parse(input)),
 
   // ── Catalogue taxonomy ───────────────────────────────────────────────────
 
