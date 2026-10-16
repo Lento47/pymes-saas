@@ -410,8 +410,8 @@ export const business = {
 	"biz.settings.hours.remove": "Remove",
 	"biz.settings.hours.removed": "Block removed",
 	"biz.settings.hours.another": "Add another block",
-	"biz.settings.hours.help":
-		"Start empty. Pick the days, the opening time, and the closing time. You can add a break, lunch, or a stretch when you are not available.",
+	"biz.settings.hours.help": "Tap a block to edit it. Swipe left to remove it.",
+	"biz.settings.hours.everyDay": "Every day",
 	"biz.settings.readOnly": "Only the owner or the manager can save changes",
 	"biz.settings.suspended":
 		"PymesHub suspended this business. Write to us to have it looked at.",

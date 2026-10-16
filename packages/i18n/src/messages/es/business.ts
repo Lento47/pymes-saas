@@ -434,7 +434,8 @@ export const business = {
 		"La hora de cierre tiene que ser después de la de apertura",
 	"biz.settings.hours.add": "Agregar horario",
 	"biz.settings.hours.help":
-		"Empieza vacío. Elige los días, la hora de inicio y la de cierre. Puedes agregar un descanso, un almuerzo o un tramo en el que no atiendes.",
+		"Toca un tramo para editarlo. Desliza a la izquierda para quitarlo.",
+	"biz.settings.hours.everyDay": "Todos los días",
 	"biz.settings.hours.kind.open": "Atiendo",
 	"biz.settings.hours.kind.break": "Descanso o almuerzo",
 	"biz.settings.hours.kind.unavailable": "No disponible",

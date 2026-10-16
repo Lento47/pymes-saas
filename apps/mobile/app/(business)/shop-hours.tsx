@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { weekdayName } from "@pymeshub/i18n";
 import type { BusinessHoursKind } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,10 +13,10 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	cancelAnimation,
 	Easing,
+	LinearTransition,
 	runOnJS,
 	useAnimatedStyle,
 	useSharedValue,
-	withSpring,
 	withTiming,
 } from "react-native-reanimated";
 
@@ -25,7 +26,7 @@ import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Pressable } from "@/components/pressable";
-import { Screen, ScreenSection } from "@/components/screen";
+import { Screen } from "@/components/screen";
 import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
@@ -35,7 +36,7 @@ import { useApiFailure } from "@/lib/api-error";
 import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
-import { duration, exitDuration, spring } from "@/lib/motion";
+import { duration, exitDuration } from "@/lib/motion";
 import { useReducedMotion } from "@/lib/reduced-motion";
 import { useTRPC } from "@/lib/trpc/context";
 import { MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
@@ -375,8 +376,8 @@ export default function ShopHours() {
 						/>
 					) : blocks === null ? null : (
 						<AnimateIn index={0}>
-							<ScreenSection title={t("biz.settings.hours")}>
-								<Text variant="body" tone="muted">
+							<View style={styles.schedule}>
+								<Text variant="caption" tone="muted">
 									{t("biz.settings.hours.help")}
 								</Text>
 								{blocks.length === 0 && composer === null ? (
@@ -440,7 +441,7 @@ export default function ShopHours() {
 										}}
 									/>
 								) : null}
-							</ScreenSection>
+							</View>
 						</AnimateIn>
 					)}
 
@@ -488,7 +489,7 @@ export default function ShopHours() {
 				}
 				closeLabel={t("action.close")}
 				scrollEnabled={false}
-				snapPoints={[0.46]}
+				snapPoints={[0.62]}
 			>
 				{composer && clock ? (
 					<ClockWheels
@@ -673,7 +674,11 @@ function HoursBlockCard({
 	const { t, intlLocale } = useT();
 	const { colors } = useTheme();
 	const reduceMotion = useReducedMotion();
-	const { width } = useWindowDimensions();
+	const { width, fontScale } = useWindowDimensions();
+	const revealWidth = Math.min(
+		width - space.lg * 2,
+		REVEAL_WIDTH * Math.max(1, fontScale),
+	);
 	const translateX = useSharedValue(0);
 	const slide = useSharedValue(0);
 	const progress = useSharedValue(0);
@@ -686,6 +691,11 @@ function HoursBlockCard({
 		removeRef.current = onRemove;
 	}, [onRemove]);
 	const fireRemove = useCallback(() => removeRef.current(), []);
+	const stopMotion = useCallback(() => {
+		cancelAnimation(progress);
+		cancelAnimation(slide);
+		cancelAnimation(translateX);
+	}, [progress, slide, translateX]);
 
 	// One clock for the whole removal: the bar on the panel and the card's exit
 	// read from the same `progress`, and cancelling is one `cancelAnimation`.
@@ -695,9 +705,14 @@ function HoursBlockCard({
 			cancelAnimation(slide);
 			progress.value = 0;
 			slide.value = 0;
-			translateX.value = withSpring(0, spring.layout);
-			return;
+			translateX.value = reduceMotion
+				? 0
+				: withTiming(0, { duration: duration.standard });
+			return stopMotion;
 		}
+		translateX.value = reduceMotion
+			? 0
+			: withTiming(-revealWidth, { duration: duration.standard });
 		progress.value = withTiming(
 			1,
 			{ duration: REMOVE_COUNTDOWN, easing: Easing.linear },
@@ -716,51 +731,65 @@ function HoursBlockCard({
 				);
 			},
 		);
-	}, [armed, fireRemove, progress, reduceMotion, slide, translateX]);
+		return stopMotion;
+	}, [
+		armed,
+		fireRemove,
+		progress,
+		reduceMotion,
+		revealWidth,
+		slide,
+		stopMotion,
+		translateX,
+	]);
 
 	// `components/merchant-order-row`'s pan, except this one follows: the drag
 	// itself is the question the removal asks, so it is drawn as it is asked.
 	const pan = Gesture.Pan()
 		.enabled(!armed)
-		.activeOffsetX(-24)
-		.failOffsetY(12)
+		.activeOffsetX(-16)
+		.failOffsetY([-12, 12])
 		.onUpdate((event) => {
-			// One-to-one up to the panel, with a little rubber band past it, so
-			// a drag that means it is visibly past the reveal before it lets go.
+			// Follow the finger up to the panel edge without overshooting it.
 			translateX.value = Math.max(
-				-REVEAL_WIDTH - 24,
+				-revealWidth,
 				Math.min(0, event.translationX),
 			);
 		})
 		.onEnd((event) => {
 			const arming =
-				event.translationX <= -ARM_DISTANCE ||
-				event.velocityX <= -FLING_VELOCITY;
+				event.translationX <= -((revealWidth * ARM_DISTANCE) / REVEAL_WIDTH) ||
+				(event.translationX <= -24 && event.velocityX <= -FLING_VELOCITY);
 			if (!arming) {
-				translateX.value = withSpring(0, spring.layout);
+				translateX.value = withTiming(0, { duration: duration.standard });
 				return;
 			}
-			if (reduceMotion) {
-				runOnJS(onArm)();
-				return;
-			}
-			translateX.value = withSpring(-REVEAL_WIDTH, spring.layout);
 			runOnJS(onArm)();
+		})
+		.onFinalize((_event, success) => {
+			if (!success)
+				translateX.value = withTiming(0, { duration: duration.standard });
 		});
 
 	const cardStyle = useAnimatedStyle(() => {
 		const offset = translateX.value - slide.value * width;
 		return { transform: [{ translateX: reduceMotion ? 0 : offset }] };
 	});
+	const underlayStyle = useAnimatedStyle(() => ({
+		opacity: armed ? 1 : Math.min(1, Math.abs(translateX.value) / 24),
+	}));
 	const barStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: progress.value * REVEAL_WIDTH }],
+		width: `${(1 - progress.value) * 100}%` as `${number}%`,
 	}));
 
 	const kind = t(`biz.settings.hours.kind.${block.kind}`);
-	const days = block.days
-		.map((day) => weekdayName(day, intlLocale))
-		.filter((name): name is string => name !== null)
-		.join(", ");
+	const days =
+		block.days.length === 7
+			? t("biz.settings.hours.everyDay")
+			: WEEK_DAYS.filter((day) => block.days.includes(day))
+					.map((day) => weekdayName(day, intlLocale))
+					.filter((name): name is string => name !== null)
+					.join(", ");
 	// What a reader hears is what the card draws, in that order. The swipe has
 	// no vocabulary for a screen reader, so `remove` below is the door instead.
 	const opens = `${t("biz.settings.hours.from")} ${block.opens}`;
@@ -773,37 +802,54 @@ function HoursBlockCard({
 	];
 
 	return (
-		<View style={styles.shell}>
-			<Pressable
-				onPress={onCancelArm}
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				style={[styles.underlay, { backgroundColor: colors.destructive }]}
+		<Animated.View
+			style={styles.shell}
+			layout={
+				reduceMotion ? undefined : LinearTransition.duration(duration.standard)
+			}
+		>
+			<Animated.View
+				style={[
+					styles.underlay,
+					{
+						width: reduceMotion && armed ? "100%" : revealWidth,
+						backgroundColor: colors.destructive,
+					},
+					underlayStyle,
+				]}
 			>
-				<Text
-					variant="label"
-					bold
-					style={{ color: colors.destructiveForeground }}
+				<Pressable
+					onPress={onCancelArm}
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+					style={styles.underlayAction}
 				>
-					{armed ? t("action.cancel") : t("biz.settings.hours.remove")}
-				</Text>
-				{armed ? (
-					<View style={styles.underlayTrack}>
-						<Animated.View
-							style={[
-								styles.underlayBar,
-								{ backgroundColor: colors.destructiveForeground },
-								barStyle,
-							]}
-						/>
-					</View>
-				) : null}
-			</Pressable>
+					<Text
+						variant="label"
+						bold
+						style={{ color: colors.destructiveForeground }}
+					>
+						{armed ? t("action.cancel") : t("biz.settings.hours.remove")}
+					</Text>
+					{armed ? (
+						<View style={styles.underlayTrack}>
+							<Animated.View
+								style={[
+									styles.underlayBar,
+									{ backgroundColor: colors.destructiveForeground },
+									barStyle,
+								]}
+							/>
+						</View>
+					) : null}
+				</Pressable>
+			</Animated.View>
 			<GestureDetector gesture={pan}>
 				<Animated.View
 					style={[cardStyle, { opacity: armed ? (reduceMotion ? 0 : 0.6) : 1 }]}
 				>
 					<Pressable
+						scaleTo={1}
 						onPress={armed ? onCancelArm : onEdit}
 						accessibilityRole="button"
 						accessibilityLabel={armed ? t("action.cancel") : facts}
@@ -817,19 +863,28 @@ function HoursBlockCard({
 							{ borderColor: colors.border, backgroundColor: colors.card },
 						]}
 					>
-						<Text variant="body" bold>
-							{kind}
+						<View style={styles.blockHead}>
+							<Text variant="label" bold style={styles.blockKind}>
+								{kind}
+							</Text>
+							<Ionicons
+								name="create-outline"
+								size={18}
+								color={colors.mutedForeground}
+								accessibilityElementsHidden
+								importantForAccessibility="no"
+							/>
+						</View>
+						<Text variant="heading" bold tabular>
+							{block.opens}–{block.closes}
 						</Text>
 						<Text variant="caption" tone="muted">
 							{days}
 						</Text>
-						<Text variant="body" tabular>
-							{block.opens}–{block.closes}
-						</Text>
 					</Pressable>
 				</Animated.View>
 			</GestureDetector>
-		</View>
+		</Animated.View>
 	);
 }
 
@@ -859,7 +914,13 @@ function HoursComposer({
 	const { t } = useT();
 	const { colors } = useTheme();
 	return (
-		<View style={[styles.block, { borderColor: colors.border }]}>
+		<View
+			style={[
+				styles.block,
+				styles.composer,
+				{ borderColor: colors.border, backgroundColor: colors.card },
+			]}
+		>
 			<Text variant="label" bold>
 				{t("biz.settings.hours.days")}
 			</Text>
@@ -1000,17 +1061,21 @@ function TimeChoice({
 	onPress: () => void;
 }) {
 	const { colors } = useTheme();
+	const { fontScale } = useWindowDimensions();
 	return (
 		<Pressable
 			onPress={onPress}
 			accessibilityRole="button"
 			accessibilityLabel={`${label}, ${value}`}
-			style={[styles.timeChoice, { borderColor: colors.border }]}
+			style={[
+				styles.timeChoice,
+				{ borderColor: colors.border, flexBasis: 120 * fontScale },
+			]}
 		>
 			<Text variant="caption" tone="muted">
 				{label}
 			</Text>
-			<Text variant="title" bold tabular>
+			<Text variant="heading" bold tabular>
 				{value}
 			</Text>
 		</Pressable>
@@ -1153,45 +1218,25 @@ function parseClock(text: string): number | null {
  * actually draws and a taller stand-in for a reserved row is still a jump.
  */
 function ShopHoursSkeleton({ loadingLabel }: { loadingLabel: string }) {
-	const { t } = useT();
+	const { colors } = useTheme();
 	return (
-		<View style={styles.content}>
-			<ScreenSection title={t("biz.settings.hours")}>
-				{[0, 1, 2, 3, 4, 5, 6].map((day, index) => (
-					<View
-						key={day}
-						style={[
-							styles.day,
-							index < 6 && {
-								borderBottomWidth: StyleSheet.hairlineWidth,
-								borderBottomColor: "transparent",
-							},
-						]}
-					>
-						<View style={styles.dayHead}>
-							<Skeleton
-								label={day === 0 ? loadingLabel : undefined}
-								style={styles.skeletonName}
-							/>
-						</View>
-						<View style={styles.dayTimes}>
-							<View style={styles.time}>
-								<Skeleton style={styles.skeletonLabel} />
-								<Skeleton style={styles.skeletonInput} />
-								<Skeleton style={styles.skeletonMessage} />
-							</View>
-							<View style={styles.time}>
-								<Skeleton style={styles.skeletonLabel} />
-								<Skeleton style={styles.skeletonInput} />
-								<Skeleton style={styles.skeletonMessage} />
-							</View>
-						</View>
-						<View style={styles.dayFoot}>
-							<Skeleton style={styles.skeletonFoot} />
-						</View>
-					</View>
-				))}
-			</ScreenSection>
+		<View style={styles.schedule}>
+			{["open", "break", "unavailable"].map((kind) => (
+				<View
+					key={kind}
+					style={[
+						styles.block,
+						{ borderColor: colors.border, backgroundColor: colors.card },
+					]}
+				>
+					<Skeleton
+						label={kind === "open" ? loadingLabel : undefined}
+						style={styles.skeletonName}
+					/>
+					<Skeleton style={styles.skeletonLabel} />
+					<Skeleton style={styles.skeletonMessage} />
+				</View>
+			))}
 		</View>
 	);
 }
@@ -1199,10 +1244,11 @@ function ShopHoursSkeleton({ loadingLabel }: { loadingLabel: string }) {
 const styles = StyleSheet.create({
 	root: { flex: 1 },
 	content: { gap: space.lg },
-	add: { marginTop: space.md },
+	schedule: { gap: space.md, paddingTop: space.sm },
+	add: { marginTop: space.xs },
 	block: {
-		gap: space.md,
-		padding: space.md,
+		gap: space.sm,
+		padding: space.lg,
 		borderWidth: 1,
 		borderRadius: radius.lg,
 	},
@@ -1210,16 +1256,21 @@ const styles = StyleSheet.create({
 	// column's edge instead of over the gutter, and the panel it uncovers sits
 	// flush with that edge — square where the card meets it, rounded where the
 	// screen ends it.
-	shell: { overflow: "hidden" },
+	shell: { overflow: "hidden", borderRadius: radius.lg },
+	blockHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
+	blockKind: { flex: 1 },
+	composer: { gap: space.lg },
 	underlay: {
 		position: "absolute",
 		top: 0,
 		bottom: 0,
 		right: 0,
-		width: REVEAL_WIDTH,
+	},
+	underlayAction: {
+		flex: 1,
 		alignItems: "center",
 		justifyContent: "center",
-		paddingHorizontal: space.xs,
+		paddingHorizontal: space.md,
 		borderTopRightRadius: radius.lg,
 		borderBottomRightRadius: radius.lg,
 	},
@@ -1239,7 +1290,6 @@ const styles = StyleSheet.create({
 		left: 0,
 		top: 0,
 		bottom: 0,
-		right: 0,
 	},
 	days: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
 	dayChip: {
@@ -1276,14 +1326,14 @@ const styles = StyleSheet.create({
 	time: { flex: 1, minWidth: 120 },
 	timeChoice: {
 		flex: 1,
-		minWidth: 120,
+		minWidth: 0,
 		minHeight: MIN_TOUCH_TARGET,
 		alignItems: "center",
 		justifyContent: "center",
 		gap: space.xs,
 		borderWidth: 1,
 		borderRadius: radius.lg,
-		paddingVertical: space.sm,
+		padding: space.md,
 	},
 	wheels: { flexDirection: "row", gap: space.md, height: WHEEL_ITEM * 5 },
 	wheel: { flex: 1, height: WHEEL_ITEM * 5 },
