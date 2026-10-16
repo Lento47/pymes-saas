@@ -315,6 +315,7 @@ export default function CustomizeShop() {
 				</View>
 			</Screen>
 			<Sheet
+				modal
 				open={photosOpen}
 				onClose={() => setPhotosOpen(false)}
 				title={t("customize.photos")}

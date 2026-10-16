@@ -744,6 +744,7 @@ export default function CustomizeDashboard() {
 				</View>
 			</Screen>
 			<Sheet
+				modal
 				open={editor?.kind === "theme"}
 				onClose={closeEditor}
 				title={t("customize.theme")}
@@ -762,6 +763,7 @@ export default function CustomizeDashboard() {
 				/>
 			</Sheet>
 			<Sheet
+				modal
 				open={editor?.kind === "paintAll"}
 				onClose={closeEditor}
 				title={t("customize.paintAll")}
@@ -786,6 +788,7 @@ export default function CustomizeDashboard() {
 				/>
 			</Sheet>
 			<Sheet
+				modal
 				open={editingWidget != null}
 				onClose={closeEditor}
 				title={

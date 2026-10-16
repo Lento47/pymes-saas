@@ -17,7 +17,7 @@ Status: implementation published; native acceptance is incomplete. Updated 2026-
 | Public small-screen rendering | Published photos and compact hours inspected at 720×1280 with 200% text, Spanish/light and English/dark on the spare emulator |
 | Home business card | Photo and details now share one clipped surface and press target; joined layout inspected in English/dark on the spare emulator |
 | Cover header readability and brand decoration | Rounded identity panel overlaps the cover, with a subtle brand wash, decorative arc and framed logo; the preview uses the same styling. At large text the logo stacks above the name, preserving full text width. Inspected in Spanish/light at normal size and Spanish/dark at 200% on 720×1280. Status icons have an opaque theme canvas over bright covers |
-| Reduced-motion drag settling | Tiles return immediately to rest when reduced motion is enabled; mobile TypeScript and 16 focused checks pass. Native editor gesture acceptance remains pending |
+| Reduced-motion drag settling | With Android transition animations disabled, native long-press, drag reorder and tile removal worked; fixed operational tiles stayed in place. Saved test layout was restored exactly. Mobile TypeScript and 16 focused checks pass |
 | Fresh editor entry | Direct launches without a business parameter now fall back to the account's first business; explicit route/scope selections take priority. Saved photos load after a fresh bundle reload, and business-list failures have a retry action |
 | Large-text controls | Photo editor now opens full height; logo and Done can scroll fully into view at 200%. Dashboard Compact/Detailed cards stack with complete labels; header, metric and widget-layout choices use the same large-text treatment |
 | Photo picker entry/cancel/removal | Native gallery and 16:9 crop frame opened at 200%; crop canceled before upload. Local cover removal and Done checked; no draft saved or published |
@@ -27,6 +27,8 @@ Status: implementation published; native acceptance is incomplete. Updated 2026-
 | Native Publish and public visibility | Saved the visually identical color spelling `#0891b2`; unauthenticated public API still returned published `#0891B2`. Native Publish then exposed the saved spelling. Restored and published the exact original configuration, verified original logo/cover paths and no draft at revision 15. Atomic photo publication is covered by the 5 API tests |
 | Photo action dismissal and local discard | Square logo crop opened and canceled; actions closed automatically. Local logo removal also closed actions. Discarding that unsaved removal left D1 unchanged at revision 15 |
 | Customer navigation on the published cover layout | Native product search returned the real matching product; product details, reviews, cart and the first checkout step were reachable. No order was submitted; the test item was removed and the empty cart restored. Other header/section permutations remain pending |
+| Orders with optional widgets hidden/reordered | Saved a native layout with all four optional widgets hidden and a changed optional order. The dashboard retained shop status, order queue and order actions; View all opened the order list. Restored the exact original configuration, verified read-only in D1 at revision 18 |
+| Editor focus isolation | Reproduced Tab focusing the dimmed page behind an open theme sheet. Customization sheets now opt into a native modal window: background nodes are absent from its accessibility tree, Tab reaches theme choices, Enter selects and Android Back dismisses. Checked with TalkBack bound; spoken traversal and custom tile actions still need acceptance |
 
 Photo controls now live only in Personalization → Customer shop. Uploaded asset paths use the app's image resolver. Photo changes remain private until Publish; settings forms no longer send stale image values.
 
@@ -37,7 +39,7 @@ Photo controls now live only in Personalization → Customer shop. Uploaded asse
 - [ ] Check the final editors in both color schemes and languages, on a small screen with 200% text.
 - [x] Recheck the revised cover header in dark mode at 200% text, including status icons over a bright cover.
 - [ ] Check TalkBack focus/actions and reduced motion, including fixed operational widgets.
-- [ ] Confirm orders remain reachable with optional dashboard widgets hidden and reordered.
+- [x] Confirm orders remain reachable with optional dashboard widgets hidden and reordered.
 - [ ] Confirm product browsing, search, cart, reviews and checkout remain reachable with both shop headers and all optional sections hidden/reordered.
 
 Native verification is unblocked. The main emulator's release APK was backed up to `%TEMP%/pymeshub-main-before-verification.apk`, then the existing `%TEMP%/pymeshub-verification.apk` was installed with `adb install -r -d`, retaining the merchant login. Its development host is `localhost:8081` with ADB reverse. No APK was generated. Use the native Reload control when checking file changes: Fast Refresh did not reliably apply them during this session. The setup question is superseded; a new login is unnecessary on this device.
@@ -46,4 +48,4 @@ The main emulator was restored to 1080×2400, density 420, font scale 1.0, Spani
 
 The upload API deliberately has no delete procedure. One unreferenced verification upload (`upl_8ea8417d-20b3-4a94-a282-263b3a73fe3b`, a rotated copy of the already-public cover) remains under that existing retention policy; it was never published or attached to canonical business media.
 
-TalkBack was enabled for setup, but its Android notification-permission window did not settle reliably through the automated controls. App focus traversal and tile actions remain unverified; enabling the service alone is not acceptance evidence.
+TalkBack successfully bound during the focus check. Native keyboard focus and selection were verified, including isolation from the dimmed page; spoken traversal and tile custom actions remain unverified. The service was disabled again after the check.

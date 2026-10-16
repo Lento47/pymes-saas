@@ -10,13 +10,18 @@ import {
 	BackHandler,
 	KeyboardAvoidingView,
 	type LayoutChangeEvent,
+	Modal,
 	Platform,
 	ScrollView,
 	StyleSheet,
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+	Gesture,
+	GestureDetector,
+	GestureHandlerRootView,
+} from "react-native-gesture-handler";
 import Animated, {
 	cancelAnimation,
 	Easing,
@@ -127,9 +132,9 @@ import { Text } from "./text";
  * Nothing about the sheet is conveyed only by movement: it is visible, it is on top, and
  * `accessibilityViewIsModal` says so.
  *
- * ## No portal: it renders exactly where it is mounted
+ * ## Inline by default; native modal for isolated editors
  *
- * This is not rendered into a root-level host. It is an absolutely-positioned view inside
+ * By default this is not rendered into a root-level host. It is an absolutely-positioned view inside
  * whatever its screen put it in, so it inherits that parent's coordinate space, its clipping
  * and its paint order. Four consequences, roughly in the order a screen hits them:
  *
@@ -150,7 +155,11 @@ import { Text } from "./text";
  *   drawn underneath it. The sheet belongs last in the screen's root.
  *
  * What it does not inherit is the tab bar or a navigator header: those are siblings of the
- * whole screen, so a sheet cannot cover them however it is mounted.
+ * whole screen, so an inline sheet cannot cover them however it is mounted.
+ *
+ * `modal` opts an editor into a native window instead. Android keyboard and TalkBack
+ * focus then stay in that window. Its gesture root preserves handle drags on Android;
+ * existing inline callers keep their navigation and layout behavior.
  *
  * ## What it does not do
  *
@@ -240,6 +249,8 @@ type SheetProps = {
 	title?: string;
 	/** Required: a customer-visible string. This app never defaults one in a language. */
 	closeLabel: string;
+	/** Isolate editor controls in a native window for screen-reader and keyboard focus. */
+	modal?: boolean;
 	/**
 	 * Fractions of screen height, ascending. `[0.5, 1]` — half, then full. One value makes
 	 * the sheet fixed; the default is a single half-height snap. Each fraction is resolved
@@ -284,6 +295,7 @@ export function Sheet({
 	onClose,
 	title,
 	closeLabel,
+	modal = false,
 	snapPoints = [0.5],
 	initialSnapIndex = 0,
 	variant = "panel",
@@ -618,7 +630,7 @@ export function Sheet({
 		</ScrollView>
 	);
 
-	return (
+	const content = (
 		<View style={StyleSheet.absoluteFill} pointerEvents="box-none">
 			{/* The backdrop is a target, so it is a `Pressable` like everything else that
 			    answers a finger — with `scaleTo={1}`, because a full-screen dim that shrinks
@@ -719,6 +731,22 @@ export function Sheet({
 				{footer ? <View style={styles.footer}>{footer}</View> : null}
 			</Animated.View>
 		</View>
+	);
+	return modal ? (
+		<Modal
+			transparent
+			visible={mounted}
+			animationType="none"
+			statusBarTranslucent
+			navigationBarTranslucent
+			onRequestClose={dismiss}
+		>
+			<GestureHandlerRootView style={{ flex: 1 }}>
+				{content}
+			</GestureHandlerRootView>
+		</Modal>
+	) : (
+		content
 	);
 }
 

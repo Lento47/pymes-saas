@@ -1,8 +1,23 @@
 import { weekdayName } from "@pymeshub/i18n";
 import type { BusinessHoursKind } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	ScrollView,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+	cancelAnimation,
+	Easing,
+	runOnJS,
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+	withTiming,
+} from "react-native-reanimated";
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
@@ -10,17 +25,19 @@ import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Pressable } from "@/components/pressable";
-import { Sheet } from "@/components/sheet";
 import { Screen, ScreenSection } from "@/components/screen";
+import { Sheet } from "@/components/sheet";
 import { SignedIn } from "@/components/signed-in";
 import { Skeleton, useSkeletonHold } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
+import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { useMerchantScope } from "@/lib/merchant-scope";
+import { duration, exitDuration, spring } from "@/lib/motion";
+import { useReducedMotion } from "@/lib/reduced-motion";
 import { useTRPC } from "@/lib/trpc/context";
-import { selection } from "@/lib/haptics";
 import { MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
 
 /**
@@ -80,6 +97,50 @@ import { MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
  * nothing reaches `business.update` until `biz.settings.save` — so a copy that went somewhere
  * unintended is undone by typing, not by a confirmation dialog.
  *
+ * ## The card's two verbs: a tap edits, and the swipe removes
+ *
+ * `biz.settings.hours.edit` and `biz.settings.hours.remove` are the card's two controls, and
+ * both are the card itself: it is the surface they act on, and a head that carries the kind's
+ * name should not also carry a control bar. A tap opens the same composer the "add" button
+ * gives — same kind chips, same day chips, same clocks, prefilled from the block and placed
+ * where that block's card stood. `editingKey` is what tells the composer's two jobs apart —
+ * the key of the block it was opened from, or `null` while it is adding one — and a commit
+ * replaces that key in place or appends. The write is untouched: the draft is still the whole
+ * week and `business.update` still sees it only when the save bar is pressed — which is why
+ * the commit in an edit reads `action.save` and the bar keeps `biz.settings.save`.
+ *
+ * Cancel is new in both places. The add composer could previously be left only by adding the
+ * block, which was survivable while its contents were a row the merchant had just decided to
+ * create — and became untenable once the composer could hold the hours a shop has been trading
+ * on. `action.cancel` puts the list back exactly as it was, because editing never removed the
+ * block to begin with.
+ *
+ * ## Removing a card asks twice, and the second answer is `Deshacer`
+ *
+ * A block is days and two clocks, so a delete is never one gesture away from happening. The
+ * swipe walks through two windows instead. The card follows the finger, uncovering a
+ * `biz.settings.hours.remove` panel behind it, and a release past three quarters of that panel
+ * — or fast enough to be a fling — *arms* the removal: the card parks on the panel with
+ * `action.cancel` in place and a bar draining the seconds that are left — the four in which
+ * the thumb that started all this can still change its mind. When the bar empties the card
+ * slides off and the block leaves the draft, and §46's toast — the app's own undo, eight
+ * seconds of `action.undo` — holds it.
+ *
+ * The first window is the gesture's: "did I mean to swipe that far" is answered while the
+ * answer is still under the thumb. The second is for the merchant who noticed later, and it is
+ * the same undo the rest of the app offers. Neither is a confirmation dialog, and neither
+ * touches the server: the draft is local, a save during the countdown sends the list as drawn
+ * — the counting block included — and a restored block lands at the index it left, unsaved
+ * like every other edit here.
+ *
+ * A screen reader never swipes. The card is a button whose label is the block's own facts, and
+ * `remove` rides in its `accessibilityActions` beside the double-tap that edits; choosing it
+ * skips the countdown and lands on the toast, because the countdown exists for a thumb still
+ * on the glass and the announced `Deshacer` is the reader's equal of it. Under reduced motion
+ * nothing travels: the card fades out of the way and the panel — its bar included, because a
+ * bar that says how much time is left is information rather than movement — stands in its
+ * place, the swap `components/merchant-order-row` makes for its help slot.
+ *
  * ## Overnight is refused, and `biz.settings.hours.overnight` is why that is written down here
  *
  * `businessHoursEntrySchema` refines `isClosed || closesMinute > opensMinute` away, so a shop that
@@ -114,7 +175,6 @@ import { MIN_TOUCH_TARGET, radius, space, type, useTheme } from "@/theme";
  */
 export default function ShopHours() {
 	const { t, intlLocale } = useT();
-	const { colors } = useTheme();
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const toast = useToast();
@@ -146,6 +206,14 @@ export default function ShopHours() {
 	const [blocks, setBlocks] = useState<HoursBlock[] | null>(null);
 	const [composer, setComposer] = useState<HoursBlock | null>(null);
 	const [composerError, setComposerError] = useState<string | null>(null);
+	// The key of the block the composer is editing, or `null` while it is adding
+	// one. The two are always set together, and this is the key a commit files
+	// under — the block it was opened from, replaced in place.
+	const [editingKey, setEditingKey] = useState<string | null>(null);
+	// The key of the block counting down its removal, or `null` while no removal
+	// is pending. One at a time: arming a second block lets the first one go,
+	// its countdown cancelled with it — `removeBlock` below is the timer's end.
+	const [armedKey, setArmedKey] = useState<string | null>(null);
 	const [clock, setClock] = useState<"opens" | "closes" | null>(null);
 	// The device's weekday, the same call `components/hours-table` makes for the
 	// same reason: a business row carries no timezone, so the shop's own today
@@ -186,15 +254,64 @@ export default function ShopHours() {
 		return null;
 	};
 
+	/**
+	 * Editing opens the composer where the block stands. The block is copied rather
+	 * than held — the composer is the draft, and cancelling has to leave the list
+	 * exactly as it was — and its key is remembered, because that is what a commit
+	 * files the block back under.
+	 */
+	const openEditor = (block: HoursBlock) => {
+		setComposerError(null);
+		setEditingKey(block.key);
+		setComposer({ ...block, days: [...block.days] });
+	};
+
+	const cancelComposer = () => {
+		setComposer(null);
+		setComposerError(null);
+		setEditingKey(null);
+	};
+
 	const commitComposer = () => {
 		if (!composer) return;
 		const error = blockError(composer);
 		setComposerError(error);
 		if (error) return;
-		setBlocks((current) => [...(current ?? []), composer]);
+		const editing = editingKey;
+		setBlocks((current) =>
+			editing === null
+				? [...(current ?? []), composer]
+				: (current ?? []).map((one) => (one.key === editing ? composer : one)),
+		);
 		setComposer(null);
 		setComposerError(null);
+		setEditingKey(null);
 		if (update.isError) update.reset();
+	};
+
+	/**
+	 * The block leaves the draft, and the toast holds it for eight seconds.
+	 *
+	 * The countdown on the card is the first answer to a change of mind and this
+	 * is the second: a countdown belongs to the thumb still on the glass, and
+	 * `action.undo` is for the merchant who noticed afterwards. Nothing is saved
+	 * either way — the same local draft every edit here lives in — so `Deshacer`
+	 * puts the block back at the index it left, unsaved like the rest of them.
+	 */
+	const removeBlock = (key: string) => {
+		const list = blocks ?? [];
+		const index = list.findIndex((one) => one.key === key);
+		const removed = list[index];
+		if (!removed) return;
+		setArmedKey(null);
+		setBlocks(list.filter((one) => one.key !== key));
+		toast.show(t("biz.settings.hours.removed"), () => {
+			setBlocks((current) => {
+				const next = [...(current ?? [])];
+				next.splice(Math.min(index, next.length), 0, removed);
+				return next;
+			});
+		});
 	};
 
 	const blocksOk = (blocks ?? []).every((block) => blockError(block) === null);
@@ -202,6 +319,10 @@ export default function ShopHours() {
 	const submit = () => {
 		if (update.isPending) return;
 		if (blocks === null || !blocksOk || composer !== null) return;
+		// A pending removal is not part of the draft yet: the counting card is
+		// still in `blocks`, so the save keeps the block and the countdown is
+		// cancelled with it. What the merchant saw is what lands.
+		if (armedKey !== null) setArmedKey(null);
 		setSaving(true);
 		update.mutate(
 			{
@@ -263,46 +384,36 @@ export default function ShopHours() {
 										{t("biz.settings.hours.pickDays")}
 									</Text>
 								) : null}
-								{blocks.map((block) => (
-									<View
-										key={block.key}
-										style={[
-											styles.block,
-											{
-												borderColor: colors.border,
-												backgroundColor: colors.card,
-											},
-										]}
-									>
-										<View style={styles.blockHead}>
-											<Text variant="body" bold>
-												{t(`biz.settings.hours.kind.${block.kind}`)}
-											</Text>
-											<Button
-												label={t("biz.settings.hours.remove")}
-												variant="ghost"
-												size="sm"
-												onPress={() =>
-													setBlocks((current) =>
-														(current ?? []).filter(
-															(one) => one.key !== block.key,
-														),
-													)
-												}
-											/>
-										</View>
-										<Text variant="caption" tone="muted">
-											{block.days
-												.map((day) => weekdayName(day, intlLocale))
-												.filter((name): name is string => name !== null)
-												.join(", ")}
-										</Text>
-										<Text variant="body" tabular>
-											{block.opens}–{block.closes}
-										</Text>
-									</View>
-								))}
-								{composer ? (
+								{blocks.map((block) =>
+									composer !== null && editingKey === block.key ? (
+										<HoursComposer
+											key={block.key}
+											block={composer}
+											editing
+											error={composerError}
+											locale={intlLocale}
+											bounds={openBounds(blocks)}
+											onChange={setComposer}
+											onCommit={commitComposer}
+											onCancel={cancelComposer}
+											onOpenClock={setClock}
+										/>
+									) : (
+										<HoursBlockCard
+											key={block.key}
+											block={block}
+											armed={armedKey === block.key}
+											onEdit={() => openEditor(block)}
+											onArm={() => {
+												selection();
+												setArmedKey(block.key);
+											}}
+											onCancelArm={() => setArmedKey(null)}
+											onRemove={() => removeBlock(block.key)}
+										/>
+									),
+								)}
+								{composer !== null && editingKey === null ? (
 									<HoursComposer
 										block={composer}
 										error={composerError}
@@ -310,9 +421,10 @@ export default function ShopHours() {
 										bounds={openBounds(blocks)}
 										onChange={setComposer}
 										onCommit={commitComposer}
+										onCancel={cancelComposer}
 										onOpenClock={setClock}
 									/>
-								) : (
+								) : composer === null ? (
 									<Button
 										label={
 											blocks.length === 0
@@ -327,7 +439,7 @@ export default function ShopHours() {
 											setComposer(emptyBlock());
 										}}
 									/>
-								)}
+								) : null}
 							</ScreenSection>
 						</AnimateIn>
 					)}
@@ -386,9 +498,7 @@ export default function ShopHours() {
 								: composer.closes || "18:00"
 						}
 						allowEndOfDay={clock === "closes"}
-						onChange={(next) =>
-							setComposer({ ...composer, [clock]: next })
-						}
+						onChange={(next) => setComposer({ ...composer, [clock]: next })}
 					/>
 				) : null}
 			</Sheet>
@@ -398,6 +508,14 @@ export default function ShopHours() {
 
 const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 const HOURS_KINDS = ["open", "break", "unavailable"] as const;
+
+/** How wide the panel behind a card is — and what a full reveal uncovers. */
+const REVEAL_WIDTH = 128;
+/** Past three quarters of the reveal — or a fling's speed — a release arms. */
+const ARM_DISTANCE = 96;
+const FLING_VELOCITY = 800;
+/** The whole countdown an armed card gives the thumb to change its mind. */
+const REMOVE_COUNTDOWN = 4000;
 
 type HoursBlock = {
 	key: string;
@@ -512,22 +630,230 @@ function windowsOf(block: HoursBlock): {
 	return [{ opensMinute: opens, closesMinute: closes }];
 }
 
+/**
+ * One block in the draft: its facts, the tap that edits them, and the swipe that
+ * removes them.
+ *
+ * The swipe is a real pan — the card follows the finger, one-to-one and clamped
+ * to the width of the panel it uncovers — and then a question with a deadline: a
+ * release past `ARM_DISTANCE`, or a fling's own speed, parks the card on the
+ * panel, whose face swaps `biz.settings.hours.remove` for `action.cancel` while
+ * the bar drains `REMOVE_COUNTDOWN`. When the bar empties the card slides off
+ * and `onRemove` fires; a tap before that cancels and springs the card back, and
+ * a cancelled removal never happened. The screen's own note has the why; this is
+ * the mechanical half.
+ *
+ * ## Reduced motion and the screen reader
+ *
+ * With reduced motion there is no travel: the card fades out and the panel
+ * stands in its place — the swap `components/merchant-order-row` makes for its
+ * help slot — and the bar still drains, because a bar that says how much time is
+ * left is information rather than movement. A screen reader never swipes: the
+ * card is the button, its label is the block's own facts, and choosing `remove`
+ * in its `accessibilityActions` skips the countdown and lands on the announced
+ * Undo, which the toast owns.
+ */
+function HoursBlockCard({
+	block,
+	armed,
+	onEdit,
+	onArm,
+	onCancelArm,
+	onRemove,
+}: {
+	block: HoursBlock;
+	/** This card is the one counting down — the list arms one removal at a time. */
+	armed: boolean;
+	onEdit: () => void;
+	onArm: () => void;
+	onCancelArm: () => void;
+	/** The countdown ran out, or a reader asked for the removal outright. */
+	onRemove: () => void;
+}) {
+	const { t, intlLocale } = useT();
+	const { colors } = useTheme();
+	const reduceMotion = useReducedMotion();
+	const { width } = useWindowDimensions();
+	const translateX = useSharedValue(0);
+	const slide = useSharedValue(0);
+	const progress = useSharedValue(0);
+
+	// `onRemove` is a fresh closure every render and the countdown must not
+	// restart because of that, so the worklet goes through this stable
+	// indirection while the ref carries the latest callback.
+	const removeRef = useRef(onRemove);
+	useEffect(() => {
+		removeRef.current = onRemove;
+	}, [onRemove]);
+	const fireRemove = useCallback(() => removeRef.current(), []);
+
+	// One clock for the whole removal: the bar on the panel and the card's exit
+	// read from the same `progress`, and cancelling is one `cancelAnimation`.
+	useEffect(() => {
+		if (!armed) {
+			cancelAnimation(progress);
+			cancelAnimation(slide);
+			progress.value = 0;
+			slide.value = 0;
+			translateX.value = withSpring(0, spring.layout);
+			return;
+		}
+		progress.value = withTiming(
+			1,
+			{ duration: REMOVE_COUNTDOWN, easing: Easing.linear },
+			(finished) => {
+				if (!finished) return;
+				if (reduceMotion) {
+					runOnJS(fireRemove)();
+					return;
+				}
+				slide.value = withTiming(
+					1,
+					{ duration: exitDuration(duration.entering) },
+					(gone) => {
+						if (gone) runOnJS(fireRemove)();
+					},
+				);
+			},
+		);
+	}, [armed, fireRemove, progress, reduceMotion, slide, translateX]);
+
+	// `components/merchant-order-row`'s pan, except this one follows: the drag
+	// itself is the question the removal asks, so it is drawn as it is asked.
+	const pan = Gesture.Pan()
+		.enabled(!armed)
+		.activeOffsetX(-24)
+		.failOffsetY(12)
+		.onUpdate((event) => {
+			// One-to-one up to the panel, with a little rubber band past it, so
+			// a drag that means it is visibly past the reveal before it lets go.
+			translateX.value = Math.max(
+				-REVEAL_WIDTH - 24,
+				Math.min(0, event.translationX),
+			);
+		})
+		.onEnd((event) => {
+			const arming =
+				event.translationX <= -ARM_DISTANCE ||
+				event.velocityX <= -FLING_VELOCITY;
+			if (!arming) {
+				translateX.value = withSpring(0, spring.layout);
+				return;
+			}
+			if (reduceMotion) {
+				runOnJS(onArm)();
+				return;
+			}
+			translateX.value = withSpring(-REVEAL_WIDTH, spring.layout);
+			runOnJS(onArm)();
+		});
+
+	const cardStyle = useAnimatedStyle(() => {
+		const offset = translateX.value - slide.value * width;
+		return { transform: [{ translateX: reduceMotion ? 0 : offset }] };
+	});
+	const barStyle = useAnimatedStyle(() => ({
+		transform: [{ translateX: progress.value * REVEAL_WIDTH }],
+	}));
+
+	const kind = t(`biz.settings.hours.kind.${block.kind}`);
+	const days = block.days
+		.map((day) => weekdayName(day, intlLocale))
+		.filter((name): name is string => name !== null)
+		.join(", ");
+	// What a reader hears is what the card draws, in that order. The swipe has
+	// no vocabulary for a screen reader, so `remove` below is the door instead.
+	const opens = `${t("biz.settings.hours.from")} ${block.opens}`;
+	const closes = `${t("biz.settings.hours.to")} ${block.closes}`;
+	const facts = [kind, days, `${opens}, ${closes}`]
+		.filter((part) => part.length > 0)
+		.join(". ");
+	const removeAction = [
+		{ name: "remove", label: t("biz.settings.hours.remove") },
+	];
+
+	return (
+		<View style={styles.shell}>
+			<Pressable
+				onPress={onCancelArm}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				style={[styles.underlay, { backgroundColor: colors.destructive }]}
+			>
+				<Text
+					variant="label"
+					bold
+					style={{ color: colors.destructiveForeground }}
+				>
+					{armed ? t("action.cancel") : t("biz.settings.hours.remove")}
+				</Text>
+				{armed ? (
+					<View style={styles.underlayTrack}>
+						<Animated.View
+							style={[
+								styles.underlayBar,
+								{ backgroundColor: colors.destructiveForeground },
+								barStyle,
+							]}
+						/>
+					</View>
+				) : null}
+			</Pressable>
+			<GestureDetector gesture={pan}>
+				<Animated.View
+					style={[cardStyle, { opacity: armed ? (reduceMotion ? 0 : 0.6) : 1 }]}
+				>
+					<Pressable
+						onPress={armed ? onCancelArm : onEdit}
+						accessibilityRole="button"
+						accessibilityLabel={armed ? t("action.cancel") : facts}
+						accessibilityHint={armed ? undefined : t("action.edit")}
+						accessibilityActions={armed ? undefined : removeAction}
+						onAccessibilityAction={(event) => {
+							if (event.nativeEvent.actionName === "remove") onRemove();
+						}}
+						style={[
+							styles.block,
+							{ borderColor: colors.border, backgroundColor: colors.card },
+						]}
+					>
+						<Text variant="body" bold>
+							{kind}
+						</Text>
+						<Text variant="caption" tone="muted">
+							{days}
+						</Text>
+						<Text variant="body" tabular>
+							{block.opens}–{block.closes}
+						</Text>
+					</Pressable>
+				</Animated.View>
+			</GestureDetector>
+		</View>
+	);
+}
+
 function HoursComposer({
 	block,
+	editing = false,
 	error,
 	locale,
 	bounds,
 	onChange,
 	onCommit,
+	onCancel,
 	onOpenClock,
 }: {
 	block: HoursBlock;
+	/** The composer is holding a block from the list rather than one being added. */
+	editing?: boolean;
 	error: string | null;
 	locale: string;
 	/** Opening and closing of the days the shop actually serves. */
 	bounds: { start: string; end: string };
 	onChange: (next: HoursBlock) => void;
 	onCommit: () => void;
+	onCancel: () => void;
 	onOpenClock: (which: "opens" | "closes") => void;
 }) {
 	const { t } = useT();
@@ -570,9 +896,7 @@ function HoursComposer({
 								variant="label"
 								bold
 								style={{
-									color: chosen
-										? colors.primaryForeground
-										: colors.foreground,
+									color: chosen ? colors.primaryForeground : colors.foreground,
 								}}
 							>
 								{t(`biz.settings.hours.kind.${kind}`)}
@@ -612,9 +936,7 @@ function HoursComposer({
 								variant="label"
 								bold
 								style={{
-									color: chosen
-										? colors.primaryForeground
-										: colors.foreground,
+									color: chosen ? colors.primaryForeground : colors.foreground,
 								}}
 							>
 								{name}
@@ -655,9 +977,15 @@ function HoursComposer({
 				</Text>
 			) : null}
 			<Button
-				label={t("biz.settings.hours.add")}
+				label={editing ? t("action.save") : t("biz.settings.hours.add")}
 				onPress={onCommit}
 			/>
+			{/* Under the action, not beside it — `./confirm-sheet`'s rule for a pair of
+			    answers, and it holds here for the same two reasons: a row of two buttons
+			    at 200% text wraps into this column anyway, and the way out belongs where
+			    a thumb reaches without aiming. A ghost, because the filled control on
+			    this card is the commit. */}
+			<Button label={t("action.cancel")} variant="ghost" onPress={onCancel} />
 		</View>
 	);
 }
@@ -751,7 +1079,7 @@ function Wheel({
 	};
 	useEffect(() => {
 		ref.current?.scrollTo({ y: index * WHEEL_ITEM, animated: false });
-	}, [index, values]);
+	}, [index]);
 	return (
 		<View style={styles.wheel}>
 			<View
@@ -765,7 +1093,9 @@ function Wheel({
 				decelerationRate="fast"
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={styles.wheelPad}
-				onMomentumScrollEnd={(event) => settle(event.nativeEvent.contentOffset.y)}
+				onMomentumScrollEnd={(event) =>
+					settle(event.nativeEvent.contentOffset.y)
+				}
 				onScrollEndDrag={(event) => settle(event.nativeEvent.contentOffset.y)}
 			>
 				{values.map((item) => (
@@ -876,11 +1206,40 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderRadius: radius.lg,
 	},
-	blockHead: {
-		flexDirection: "row",
+	// The swipe's stage: the shell clips so a card travelling left goes under the
+	// column's edge instead of over the gutter, and the panel it uncovers sits
+	// flush with that edge — square where the card meets it, rounded where the
+	// screen ends it.
+	shell: { overflow: "hidden" },
+	underlay: {
+		position: "absolute",
+		top: 0,
+		bottom: 0,
+		right: 0,
+		width: REVEAL_WIDTH,
 		alignItems: "center",
-		justifyContent: "space-between",
-		gap: space.sm,
+		justifyContent: "center",
+		paddingHorizontal: space.xs,
+		borderTopRightRadius: radius.lg,
+		borderBottomRightRadius: radius.lg,
+	},
+	// The countdown: a track pinned to the panel's foot, and a bar that travels
+	// `barStyle`'s width as `progress` runs 0 to 1 — left to right, the direction
+	// the card itself will leave in.
+	underlayTrack: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 4,
+		overflow: "hidden",
+	},
+	underlayBar: {
+		position: "absolute",
+		left: 0,
+		top: 0,
+		bottom: 0,
+		right: 0,
 	},
 	days: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
 	dayChip: {
