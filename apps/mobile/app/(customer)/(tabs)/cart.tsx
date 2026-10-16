@@ -2,7 +2,7 @@ import { formatMoney } from "@pymeshub/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router, useNavigation } from "expo-router";
 import { useEffect, useEffectEvent, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, View } from "react-native";
 
 import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
@@ -255,7 +255,10 @@ function Basket() {
 	 * sheet — dropping the keyboard and wiping the field — mid-keystroke.
 	 */
 	const [promoSession, setPromoSession] = useState(0);
-	const promo = usePromoCode();
+	const promo = usePromoCode(() => {
+		Keyboard.dismiss();
+		setPromoOpen(false);
+	});
 
 	/**
 	 * Something else from the same shop, read from the public catalogue.

@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { MessageKey } from "@pymeshub/i18n";
 import type { Cart } from "@pymeshub/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,13 +10,14 @@ import { useT } from "@/lib/i18n";
 import { clearOfferSelection, type OfferSelection } from "@/lib/offer-intent";
 import { promotionCopy } from "@/lib/promotion";
 import { useTRPC } from "@/lib/trpc/context";
-import { space } from "@/theme";
+import { icon, space, useTheme } from "@/theme";
 
 import { ActionBar } from "./action-bar";
 import { Button } from "./button";
 import { Field } from "./field";
 import { ListRow } from "./list-row";
 import { Sheet } from "./sheet";
+import { Text } from "./text";
 import { useToast } from "./toast";
 
 /**
@@ -89,7 +91,7 @@ import { useToast } from "./toast";
  * field and in the row behind it, and a toast saying "that code did not work" next to the
  * sentence saying *why* would be the same news twice, the second time without the reason.
  */
-export function usePromoCode() {
+export function usePromoCode(onConfirmed?: () => void) {
 	const trpc = useTRPC();
 	const cache = useQueryClient();
 	const { t } = useT();
@@ -117,6 +119,7 @@ export function usePromoCode() {
 				// is the second term because the sentence needs the code the *server* stored, and
 				// it is the server's uppercase form rather than the customer's draft.
 				if (!cart.promotionError && cart.promotionCode) {
+					onConfirmed?.();
 					show(t("cart.promotion.applied", { code: cart.promotionCode }));
 				}
 			},
@@ -135,7 +138,10 @@ export function usePromoCode() {
 				// claims. A cart that still carries one — another device applied a code between the
 				// tap and the answer — gets no toast rather than a sentence that contradicts the row
 				// behind it.
-				if (!cart.promotionCode) show(t("cart.promotion.removed"));
+				if (!cart.promotionCode) {
+					onConfirmed?.();
+					show(t("cart.promotion.removed"));
+				}
 			},
 		}),
 	);
@@ -190,6 +196,7 @@ export function PromoInput({
 	onPress: () => void;
 }) {
 	const { t, intlLocale } = useT();
+	const { colors } = useTheme();
 	const selectedCopy = suggestedOffer
 		? promotionCopy(suggestedOffer, t, intlLocale)
 		: null;
@@ -207,11 +214,35 @@ export function PromoInput({
 		(error ? t(error) : undefined) ??
 		(code ? t("cart.promotion.applied", { code }) : undefined) ??
 		suggestedDetail;
+	const applied = Boolean(code && !error);
 
 	return (
 		<ListRow
-			title={t("cart.promotion")}
-			subtitle={detail}
+			title={
+				applied
+					? t("cart.promotion.applied", { code: code ?? "" })
+					: t("cart.promotion")
+			}
+			subtitle={applied ? undefined : detail}
+			leading={
+				applied ? (
+					<Ionicons
+						name="checkmark-circle-outline"
+						size={icon.control}
+						color={colors.action}
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					/>
+				) : undefined
+			}
+			trailing={
+				applied ? (
+					<Text variant="caption" tone="muted">
+						{t("cart.promotion.change")}
+					</Text>
+				) : undefined
+			}
+			style={applied ? styles.applied : undefined}
 			// The detail is the whole point of the row and a subtitle is not read as part of its
 			// label, so it is joined here the way `./list-row` joins a state: name first, fact
 			// after, comma between. Without it a reader hears "Código de descuento, botón" and
@@ -220,7 +251,7 @@ export function PromoInput({
 				detail ? `${t("cart.promotion")}, ${detail}` : undefined
 			}
 			onPress={onPress}
-			chevron
+			chevron={!applied}
 		/>
 	);
 }
@@ -401,6 +432,7 @@ export function PromoSheet({
 }
 
 const styles = StyleSheet.create({
+	applied: { paddingVertical: space.sm },
 	// The field and the button that removes it are one form, so they are one block with one gap.
 	body: { gap: space.md },
 });

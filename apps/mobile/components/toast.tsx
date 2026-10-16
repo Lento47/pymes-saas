@@ -64,7 +64,7 @@ import { Text } from "./text";
  *
  * ## The timing, and the one place reduced motion appears
  *
- * 240ms in and `exitDuration(240)` — 168ms — out, both read from `lib/motion` rather than
+ * 180ms in and `exitDuration(180)` — 126ms — out, both read from `lib/motion` rather than
  * typed here, because a duration typed at a call site is how an app grows a fifth step. The
  * exit is 0.7× its entrance by `EXIT_RATIO`: leaving slower than arriving is what makes an
  * app feel sticky.
@@ -144,7 +144,7 @@ import { Text } from "./text";
  * Leave time to read a wrapping message and more time to choose Undo. Android's
  * accessibility timeout can extend both; screen-reader users dismiss explicitly.
  */
-const AUTO_DISMISS = 5000;
+const AUTO_DISMISS = 2500;
 const UNDO_DISMISS = 8000;
 
 // The sentence's measure is `./error-state`'s exported `MEASURE` — the same cap the error
@@ -223,7 +223,7 @@ function ToastSurface({ children }: { children: ReactNode }) {
 			shown.current = next;
 			setCurrent(next);
 			progress.value = withTiming(1, {
-				duration: duration.entering,
+				duration: duration.standard,
 				easing: Easing.out(Easing.cubic),
 			});
 		},
@@ -237,7 +237,7 @@ function ToastSurface({ children }: { children: ReactNode }) {
 		if (!shown.current) return;
 		progress.value = withTiming(
 			0,
-			{ duration: exitDuration(duration.entering) },
+			{ duration: exitDuration(duration.standard) },
 			(finished) => {
 				// `false` is an interrupted exit: a replacement arrived mid-flight and owns the
 				// screen now. Clearing here would unmount the toast that replaced this one.
@@ -367,7 +367,7 @@ function ToastSurface({ children }: { children: ReactNode }) {
 								importantForAccessibility="no"
 							/>
 							<Text
-								variant="body"
+								variant="label"
 								style={[styles.sentence, { color: colors.background }]}
 							>
 								{current.message}
@@ -431,9 +431,9 @@ const styles = StyleSheet.create({
 	// `./pressable`'s 44-point floor has to be paid.
 	surface: {
 		flexDirection: "row",
-		width: "100%",
 		maxWidth: MEASURE,
-		borderRadius: radius.md,
+		flexShrink: 1,
+		borderRadius: radius.lg,
 	},
 	/**
 	 * The sentence's half: the mark and the words, as one tappable row.
@@ -442,15 +442,16 @@ const styles = StyleSheet.create({
 	 * otherwise push the mark to the middle of the block, away from the words it marks.
 	 */
 	message: {
-		flex: 1,
+		flexShrink: 1,
 		flexDirection: "row",
 		alignItems: "flex-start",
 		gap: space.sm,
-		padding: space.md,
+		paddingHorizontal: space.md,
+		paddingVertical: space.sm,
 		minHeight: MIN_TOUCH_TARGET,
 	},
 	/** The sentence takes the rest of the row and wraps. Never a `numberOfLines`. */
-	sentence: { flex: 1 },
+	sentence: { flexShrink: 1 },
 	// §46's trailing action. The word is the whole of it; the padding is the target, and the
 	// floor is `./pressable`'s.
 	undo: {
