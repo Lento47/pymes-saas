@@ -75,7 +75,7 @@ export default function SecurityAdvisoriesPage() {
 
 	return (
 		<MarketingShell>
-			<ProductPageHero badge={t.page.badge} title={t.page.title} subtitle={t.page.subtitle} />
+			<ProductPageHero badge={t.page.badge} title={t.page.title} subtitle={t.page.subtitle} hideCtas />
 			<section className="px-4 pb-24 sm:px-6 lg:px-8 lg:pb-32">
 				<div className="mx-auto max-w-3xl space-y-6">
 					{securityAdvisories.length === 0 ? (

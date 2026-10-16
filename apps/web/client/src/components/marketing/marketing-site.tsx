@@ -521,12 +521,15 @@ export function ProductPageHero({
   titleNode,
   subtitle,
   subtitleNode,
+  hideCtas,
 }: {
   badge: string;
   title: string;
   titleNode?: React.ReactNode;
   subtitle: string;
   subtitleNode?: React.ReactNode;
+  /** Where to omit commerce CTAs, like the advisories page. */
+  hideCtas?: boolean;
 }) {
   const { messages } = useI18n();
   const t = messages.site;
@@ -541,10 +544,12 @@ export function ProductPageHero({
           {titleNode ?? title}
         </h1>
         <p className="mx-auto mt-7 max-w-2xl text-balance text-lg leading-8 text-slate-400">{subtitleNode ?? subtitle}</p>
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <ChamferedCta href={SITE_ROUTES.categories}>{t.cta.startFree}</ChamferedCta>
-          <ChamferedCtaGhost href={SITE_ROUTES.pricing}>{t.cta.viewPricing}</ChamferedCtaGhost>
-        </div>
+        {!hideCtas && (
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <ChamferedCta href={SITE_ROUTES.categories}>{t.cta.startFree}</ChamferedCta>
+            <ChamferedCtaGhost href={SITE_ROUTES.pricing}>{t.cta.viewPricing}</ChamferedCtaGhost>
+          </div>
+        )}
       </div>
     </section>
   );
