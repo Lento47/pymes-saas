@@ -700,9 +700,9 @@ export const translations = {
     },
     documentation: {
       eyebrow: "Documentation center",
-      title: "Public references for rollout, trust, and procurement.",
+      title: "Documentation center",
       description:
-        "Review platform overviews, security posture, support expectations, and customer-facing legal documents before your team signs in.",
+        "Everything PymesHub publishes about the product: how ordering, selling and delivery work, what is supported and what is not, how your data is handled, the plans, the changelog and the security advisories — each page in English and Spanish, plus the legal documents you accept.",
       back: "Back to landing",
       openWorkspace: "Log in",
       openLegal: "Legal center",
@@ -1837,11 +1837,11 @@ export const translations = {
       },
     },
     documentation: {
-      eyebrow: "Cómo empezar",
-      title: "Guías, API y referencia de seguridad.",
+      eyebrow: "Centro de documentación",
+      title: "Centro de documentación",
       description:
-        "Implementa en 5 minutos. Integra WhatsApp, email, facturas. Usa automaciones. Todo documentado.",
-      back: "Volver al landing",
+        "Todo lo que PymesHub publica sobre el producto: cómo funcionan los pedidos, la venta y la entrega, qué está soportado y qué no, cómo se tratan tus datos, los planes, el registro de cambios y los avisos de seguridad — cada página en inglés y español, más los documentos legales que aceptás.",
+      back: "Volver al inicio",
       openWorkspace: "Entrar",
       openLegal: "Centro legal",
       publicBadge: "Público",

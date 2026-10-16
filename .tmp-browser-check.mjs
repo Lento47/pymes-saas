@@ -67,7 +67,7 @@ const norm = (s) => decode(s).replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, 
 function dom(url) {
   return execFileSync(
     CHROME,
-    ["--headless=new", "--disable-gpu", "--no-sandbox", "--virtual-time-budget=4000", "--dump-dom", url],
+    ["--headless=new", "--disable-gpu", "--no-sandbox", "--no-first-run", "--disable-extensions", "--user-data-dir=L:/PROJECTS/pymes-saas/pymes-saas/.tmp-chrome-profile", "--virtual-time-budget=4000", "--dump-dom", url],
     { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 * 1024 * 1024, timeout: 60_000 },
   );
 }
@@ -90,7 +90,7 @@ const fail = (route, why) => results.push({ route, ok: false, why });
 {
   process.stdout.write("checking /documentation ... ");
   const html = tryDom("/documentation");
-  if (!html) { server.close(); console.error("the center itself did not render"); process.exit(1); }
+  if (!html) { server.close(); console.error("the center itself did not render:", results.at(-1)?.why); process.exit(1); }
   const text = norm(html);
   if (/Document not available|Documento no disponible/.test(decode(html))) fail("/documentation", "rendered the not-found copy");
   const cards = (html.match(/href="\/documentation\/[a-z0-9-]+"/g) || []).length;
