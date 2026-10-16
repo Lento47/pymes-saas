@@ -297,7 +297,7 @@ export const customer = {
 	"checkout.address.add": "Add address",
 	"checkout.address.none": "You need an address to have it delivered",
 	"checkout.address.pinRequired":
-		"This address needs a map pin before we can quote the road delivery price.",
+		"Pin the delivery destination on the map so couriers can receive this order.",
 	"checkout.address.editPin": "Pin this address",
 	"checkout.payment": "Payment method",
 	"checkout.payment.cash": "Cash",
@@ -333,6 +333,8 @@ export const customer = {
 		"We couldn't find where to send this order.",
 	"checkout.refusal.addressNotFound":
 		"Choose one of your saved delivery addresses.",
+	"checkout.refusal.addressPinRequired":
+		"Pin the delivery destination on the map so couriers can receive this order.",
 	"checkout.refusal.deliveryQuoteUnavailable":
 		"We couldn't price a road route right now. Try again or choose pickup.",
 	"checkout.refusal.courierFeeUnavailable":

@@ -35,6 +35,7 @@ import {
 	discountAmountOf,
 	effectivePlan,
 	encodeCursor,
+	expressWindowStart,
 	isExpress,
 	isPaymentMethodEnabled,
 	isTerminalStatus,
@@ -66,7 +67,6 @@ import {
 	type SelfDeliveryOrderInput,
 	startOfMarketDay,
 	upgradeTarget,
-	expressWindowStart,
 } from "@pymeshub/shared";
 import {
 	and,
@@ -751,6 +751,11 @@ async function resolveAddress(
 	// The same answer for "no such address" and "not yours"; see `orNotFound`.
 	if (!address) {
 		throw new ValidationError("checkout.refusal.addressNotFound", {
+			field: "addressId",
+		});
+	}
+	if (address.lat == null || address.lng == null) {
+		throw new ValidationError("checkout.refusal.addressPinRequired", {
 			field: "addressId",
 		});
 	}

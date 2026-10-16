@@ -560,7 +560,7 @@ export const customer = {
 	"checkout.address.add": "Agregar dirección",
 	"checkout.address.none": "Necesitas una dirección para que te lo entreguen",
 	"checkout.address.pinRequired":
-		"Esta dirección necesita un pin en el mapa para cotizar la entrega por carretera.",
+		"Marca el destino en el mapa para que los repartidores puedan recibir este pedido.",
 	"checkout.address.editPin": "Marcar esta dirección",
 	"checkout.payment": "Forma de pago",
 	"checkout.payment.cash": "Efectivo",
@@ -599,6 +599,8 @@ export const customer = {
 		"No pudimos encontrar a dónde enviar este pedido.",
 	"checkout.refusal.addressNotFound":
 		"Elige una de tus direcciones de entrega guardadas.",
+	"checkout.refusal.addressPinRequired":
+		"Marca el destino en el mapa para que los repartidores puedan recibir este pedido.",
 	"checkout.refusal.deliveryQuoteUnavailable":
 		"No pudimos cotizar una ruta por carretera. Inténtalo de nuevo o elige retiro.",
 	"checkout.refusal.courierFeeUnavailable":

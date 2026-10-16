@@ -146,6 +146,8 @@ describe("orders.assign", () => {
 			line1: "Calle 1, casa 2",
 			city: "San José",
 			region: "San José",
+			lat: 9.9281,
+			lng: -84.0907,
 		});
 		const order = await buyer.orders.place({
 			fulfilment: "DELIVERY",

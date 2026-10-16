@@ -65,6 +65,8 @@ async function shop(test: Test, fulfilment: "PICKUP" | "DELIVERY") {
 						line1: "Calle 1, Avenida 2",
 						city: "San José",
 						region: "San José",
+						lat: 9.9281,
+						lng: -84.0907,
 					}),
 				)
 			: null;

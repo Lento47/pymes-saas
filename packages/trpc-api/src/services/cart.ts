@@ -140,6 +140,10 @@ export async function quote(
 			throw new ValidationError("checkout.refusal.addressNotFound", {
 				field: "addressId",
 			});
+		if (address.lat == null || address.lng == null)
+			throw new ValidationError("checkout.refusal.addressPinRequired", {
+				field: "addressId",
+			});
 	}
 
 	const cart = await buildCart(ctx.db, row);

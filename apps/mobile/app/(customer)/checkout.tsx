@@ -420,7 +420,8 @@ function CheckoutForm({
 		quoteFailure.serverMessage === "checkout.refusal.deliveryQuoteUnavailable";
 	const addressMissingPin =
 		chosenAddress && (chosenAddress.lat == null || chosenAddress.lng == null);
-	const addressNeedsPin = roadUnavailable && addressMissingPin;
+	const addressNeedsPin =
+		fulfilment === "DELIVERY" && Boolean(addressMissingPin);
 	const editAddressPin = () => {
 		if (!chosenAddress) return;
 		router.push({
@@ -606,6 +607,7 @@ function CheckoutForm({
 			});
 		}
 		if (needsAddress && step > 0) return t("checkout.address.none");
+		if (addressNeedsPin) return t("checkout.address.pinRequired");
 		return null;
 	}
 
@@ -785,17 +787,19 @@ function CheckoutForm({
 									{t("checkout.location.none")}
 								</Text>
 							)}
-							{quote.isError && quoteless && hasItems ? (
+							{hasItems && (addressNeedsPin || (quote.isError && quoteless)) ? (
 								<View style={styles.group}>
-									<ErrorState
-										error={quote.error}
-										body={
-											addressNeedsPin
-												? t("checkout.address.pinRequired")
-												: quoteErrorBody
-										}
-										onRetry={() => void quote.refetch()}
-									/>
+									{addressNeedsPin ? (
+										<Text variant="body" accessibilityRole="alert">
+											{t("checkout.address.pinRequired")}
+										</Text>
+									) : (
+										<ErrorState
+											error={quote.error}
+											body={quoteErrorBody}
+											onRetry={() => void quote.refetch()}
+										/>
+									)}
 									{addressNeedsPin ? (
 										<Button
 											variant="secondary"
@@ -803,7 +807,7 @@ function CheckoutForm({
 											onPress={editAddressPin}
 										/>
 									) : null}
-									{roadUnavailable && collects ? (
+									{(roadUnavailable || addressNeedsPin) && collects ? (
 										<Button
 											variant="secondary"
 											label={t("checkout.pickup")}
@@ -1150,6 +1154,7 @@ function CheckoutForm({
 									quoteless ||
 									short ||
 									needsAddress ||
+									addressNeedsPin ||
 									needsLocation,
 								// The same sentence the strip carries, for a reader who reached the
 								// button without passing it.
@@ -1163,6 +1168,7 @@ function CheckoutForm({
 									quoteless ||
 									short ||
 									needsAddress ||
+									addressNeedsPin ||
 									needsLocation,
 								accessibilityHint:
 									blocked ??

@@ -181,6 +181,8 @@ describe("checkout quote", () => {
 			line1: "Street",
 			city: "San José",
 			region: "San José",
+			lat: 9.94,
+			lng: -84.07,
 		});
 		const quote = await caller.cart.quote({
 			fulfilment: "DELIVERY",

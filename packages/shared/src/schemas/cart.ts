@@ -134,6 +134,7 @@ export const CHECKOUT_REFUSAL_KEYS = [
 	// No branch this shop can take the order at, and no `locationId` that names one.
 	"checkout.refusal.locationNotFound",
 	"checkout.refusal.addressNotFound",
+	"checkout.refusal.addressPinRequired",
 	"checkout.refusal.deliveryQuoteUnavailable",
 	"checkout.refusal.emptyCart",
 	"checkout.refusal.minOrder",

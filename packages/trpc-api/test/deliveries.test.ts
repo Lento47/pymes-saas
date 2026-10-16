@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-	address as addressTable,
 	business as businessTable,
 	delivery as deliveryTable,
 	merchantLocation as locationTable,
@@ -535,9 +534,16 @@ describe("a courier the shop never added", () => {
 	test("a pinned zone does not offer a destination without coordinates", async () => {
 		const test = world();
 		const ready = await orderReadyToPlace(test, "zone_no_destination");
+		const placed = await placeDelivery(ready, "zone_no_destination");
+		// Legacy requests can predate the checkout pin requirement.
+		await test.db
+			.update(deliveryTable)
+			.set({ dropoffLat: null, dropoffLng: null })
+			.where(eq(deliveryTable.orderId, placed.id));
 		const courier = await seedCourier(test, {
 			businessId: ready.businessId,
 			id: "usr_delivery_zone_no_destination",
+			isAvailable: false,
 			lat: 9.9301,
 			lng: -84.0801,
 		});
@@ -548,10 +554,10 @@ describe("a courier the shop never added", () => {
 			label: "San José",
 		});
 		await test.db
-			.update(addressTable)
-			.set({ lat: null, lng: null })
-			.where(eq(addressTable.id, ready.address.id));
-		await placeDelivery(ready, "zone_no_destination");
+			.update(profileTable)
+			.set({ isAvailable: true })
+			.where(eq(profileTable.userId, courier.user.id));
+		await courier.caller.deliveries.requestOffers();
 		expect(await courier.caller.deliveries.offers()).toHaveLength(0);
 		test.close();
 	});
