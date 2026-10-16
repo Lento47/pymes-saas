@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import {
+	StyleSheet,
+	useWindowDimensions,
+	View,
+	type ViewStyle,
+} from "react-native";
 
 import { useT } from "@/lib/i18n";
 import { radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
@@ -65,12 +70,22 @@ export function KeyValue({
 	value: ReactNode;
 	tone?: Tone;
 }) {
+	const { width, fontScale } = useWindowDimensions();
+	const stacked = width < 380 || fontScale >= 1.3;
 	return (
-		<View style={styles.keyValue}>
-			<Text variant="label" tone="muted">
+		<View style={[styles.keyValue, stacked && styles.keyValueStacked]}>
+			<Text
+				variant="label"
+				tone="muted"
+				style={stacked ? undefined : styles.keyLabel}
+			>
 				{label}
 			</Text>
-			<Text bold tone={tone === "destructive" ? "destructive" : undefined}>
+			<Text
+				bold
+				tone={tone === "destructive" ? "destructive" : undefined}
+				style={stacked ? undefined : styles.keyText}
+			>
 				{value}
 			</Text>
 		</View>
@@ -206,13 +221,16 @@ const styles = StyleSheet.create({
 		gap: space.xs,
 	},
 	keyValue: {
-		alignItems: "center",
+		alignItems: "flex-start",
 		flexDirection: "row",
 		justifyContent: "space-between",
 		gap: space.md,
 		paddingVertical: space.sm,
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
+	keyValueStacked: { flexDirection: "column", gap: space.xs },
+	keyLabel: { flexBasis: "38%", flexShrink: 1 },
+	keyText: { flex: 1, textAlign: "right" },
 	status: {
 		alignSelf: "flex-start",
 		borderRadius: radius.full,
