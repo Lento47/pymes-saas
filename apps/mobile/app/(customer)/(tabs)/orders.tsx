@@ -44,6 +44,7 @@ import { light } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { PRESS_SCALE_ROW } from "@/lib/motion";
 import { useTRPC } from "@/lib/trpc/context";
+import { useTabScroll } from "@/lib/use-tab-scroll";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -255,6 +256,7 @@ const TERMINAL_STATUSES: OrderStatus[] =
  */
 
 export default function OrdersScreen() {
+	const onTabScroll = useTabScroll();
 	const trpc = useTRPC();
 	const { t, tp, intlLocale } = useT();
 	const { colors } = useTheme();
@@ -481,6 +483,8 @@ export default function OrdersScreen() {
 				<OrdersSkeleton label={t("state.loading")} segment={segment} />
 			) : (
 				<FlatList
+					onScroll={onTabScroll}
+					scrollEventThrottle={32}
 					data={items}
 					keyExtractor={(order) => order.id}
 					// `space.huge` for the tail, plus the capsule. `./screen` pads only the

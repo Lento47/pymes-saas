@@ -14,6 +14,7 @@ import { type Edge, SafeAreaView } from "react-native-safe-area-context";
 import { usePurchaseAccent } from "@/lib/purchase-accent";
 import { purchaseBand, statusBarStyleForInk } from "@/lib/purchase-colors";
 import type { PurchaseStage } from "@/lib/purchase-state";
+import { useTabScroll } from "@/lib/use-tab-scroll";
 import { space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
 import { useRefreshControl } from "./pull-refresh";
@@ -135,6 +136,7 @@ export function Screen({
 	// where those three decisions live so that a screen bringing its own scroller
 	// gets the same three. See that file for why it is a hook returning an element.
 	const refreshControl = useRefreshControl(onRefresh);
+	const onTabScroll = useTabScroll(scroll);
 	// The capsule floating over this scroll, if there is one. Measured from the bar's own
 	// tokens rather than the navigator's reported height, and aware that `bottomInset`
 	// above has already spent the home-indicator inset on this screen's behalf.
@@ -227,6 +229,8 @@ export function Screen({
 			) : null}
 			{scroll ? (
 				<FormScrollView
+					onScroll={onTabScroll}
+					scrollEventThrottle={32}
 					contentContainerStyle={scrollPadding}
 					keyboardShouldPersistTaps="handled"
 					// Dragging the form away is how a thumb puts a keyboard down, and the value

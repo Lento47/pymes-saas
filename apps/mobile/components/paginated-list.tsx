@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
+import { useTabScroll } from "@/lib/use-tab-scroll";
 
 import { space } from "@/theme";
 
@@ -167,6 +168,7 @@ export function PaginatedList<Item>({
 	// The pull, both tints and its own flag, from the one place that holds the three rules —
 	// the same call `./screen` makes for the scroller it owns. See `./pull-refresh`.
 	const refreshControl = useRefreshControl(onRefresh);
+	const onTabScroll = useTabScroll();
 	// And the floating bar over this list, if the tree has one. See `./tab-bar`.
 	const tabClearance = useTabBarClearance({ bottomInsetPaid: bottomInset });
 	// The list's own foot, and the same two terms `./screen`'s scroller pays: the page's
@@ -180,6 +182,8 @@ export function PaginatedList<Item>({
 
 	return (
 		<FlatList
+			onScroll={onTabScroll}
+			scrollEventThrottle={32}
 			data={data}
 			keyExtractor={keyExtractor}
 			renderItem={({ item, index }) => (

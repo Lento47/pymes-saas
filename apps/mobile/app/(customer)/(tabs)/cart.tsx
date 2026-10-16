@@ -29,6 +29,7 @@ import { useCartLineQuantity } from "@/lib/cart-mutations";
 import { useT } from "@/lib/i18n";
 import { offerForBusiness, useOfferSelection } from "@/lib/offer-intent";
 import { useTRPC } from "@/lib/trpc/context";
+import { useTabScroll } from "@/lib/use-tab-scroll";
 import { media, radius, space, TEXT_STACK_GAP, useTheme } from "@/theme";
 
 /**
@@ -197,6 +198,7 @@ const SUGGESTION_SHOWN = 3;
 const POLL_MS = 15_000;
 
 function Basket() {
+	const onTabScroll = useTabScroll();
 	const { t, intlLocale } = useT();
 	const trpc = useTRPC();
 	const { colors } = useTheme();
@@ -373,6 +375,8 @@ function Basket() {
 	return (
 		<>
 			<ScrollView
+				onScroll={onTabScroll}
+				scrollEventThrottle={32}
 				// `space.lg` for the tail, plus the capsule. The clearance is added here rather
 				// than left to `./screen` because `./screen` only pads the `ScrollView` it draws
 				// itself, and this one is the cart's own — see the hook's docblock.

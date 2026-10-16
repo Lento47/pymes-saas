@@ -17,6 +17,7 @@ import {
 	CAPSULE_LABEL_LINE_HEIGHT,
 	labelledCapsuleExtraHeight,
 } from "@/lib/tab-capsule-metrics";
+import { useCapsuleScrollScale } from "@/lib/use-tab-scroll";
 import { CAPSULE_HEIGHT, CAPSULE_LIFT, radius, space, useTheme } from "@/theme";
 
 /**
@@ -195,6 +196,7 @@ export function useCapsuleScreenOptions({
 	const { colors } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { width: windowWidth, fontScale } = useWindowDimensions();
+	const scrollScale = useCapsuleScrollScale(fontScale);
 	const capsuleWidth = labelled
 		? Math.min(
 				windowWidth - 32,
@@ -256,6 +258,7 @@ export function useCapsuleScreenOptions({
 		tabBarStyle: [
 			{
 				position: "absolute",
+				transform: [{ scale: scrollScale }],
 				left: 0,
 				right: 0,
 				marginHorizontal: Math.max(0, (windowWidth - capsuleWidth) / 2),

@@ -26,6 +26,7 @@ import { useT } from "@/lib/i18n";
 import { useDeviceLocation } from "@/lib/location";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { useTabScroll } from "@/lib/use-tab-scroll";
 import { radius, space, type } from "@/theme";
 
 /**
@@ -172,6 +173,7 @@ import { radius, space, type } from "@/theme";
 type SearchMode = "all" | "products" | "businesses";
 
 export default function SearchScreen() {
+	const onTabScroll = useTabScroll();
 	const trpc = useTRPC();
 	const { t, tp } = useT();
 	const { coords } = useDeviceLocation();
@@ -362,6 +364,8 @@ export default function SearchScreen() {
 
 			{settled.length < 2 ? (
 				<ScrollView
+					onScroll={onTabScroll}
+					scrollEventThrottle={32}
 					contentContainerStyle={[
 						styles.scroll,
 						{ paddingBottom: space.huge + capsule },
@@ -404,6 +408,8 @@ export default function SearchScreen() {
 				</View>
 			) : waiting || !results.data ? (
 				<ScrollView
+					onScroll={onTabScroll}
+					scrollEventThrottle={32}
 					contentContainerStyle={[
 						styles.scroll,
 						{ paddingBottom: space.huge + capsule },
@@ -433,6 +439,8 @@ export default function SearchScreen() {
 				</View>
 			) : (
 				<ScrollView
+					onScroll={onTabScroll}
+					scrollEventThrottle={32}
 					contentContainerStyle={[
 						styles.scroll,
 						{ paddingBottom: space.huge + capsule },

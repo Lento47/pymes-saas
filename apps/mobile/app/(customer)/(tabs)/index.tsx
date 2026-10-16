@@ -57,6 +57,7 @@ import { type RoleDegradation, takeDegradation } from "@/lib/role";
 import { useTRPC } from "@/lib/trpc/context";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useDefaultDeliveryLocation } from "@/lib/use-default-delivery-location";
+import { useTabScroll } from "@/lib/use-tab-scroll";
 import {
 	icon,
 	MIN_TOUCH_TARGET,
@@ -292,6 +293,7 @@ export default function HomeScreen() {
 	const [query, setQuery] = useState("");
 	const [recents, setRecents] = useState<string[]>([]);
 	const scrollerRef = useRef<ScrollView>(null);
+	const onTabScroll = useTabScroll();
 	const trimmed = query.trim();
 	const settled = useDebouncedValue(trimmed, 300);
 	const searchResults = useQuery(
@@ -454,6 +456,8 @@ export default function HomeScreen() {
 				<View style={styles.sheet}>
 					{/* One scroll view for all three branches, and one `RefreshControl` (`Rule 6`). */}
 					<ScrollView
+						onScroll={onTabScroll}
+						scrollEventThrottle={32}
 						ref={scrollerRef}
 						style={styles.scroller}
 						contentContainerStyle={{
