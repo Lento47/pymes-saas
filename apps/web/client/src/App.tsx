@@ -63,6 +63,7 @@ import BillingMarketingPage from "@/pages/marketing/billing-page";
 import WorkflowsPage from "@/pages/workflows";
 import InsightsPage from "@/pages/insights-page";
 import SecurityPage from "@/pages/marketing/security-page";
+import SecurityAdvisoriesPage from "@/pages/marketing/security-advisories-page";
 import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
 import Agent from "@/pages/agent";
@@ -327,6 +328,9 @@ function AppRouter() {
       </Route>
       <Route path="/security">
         {() => <SecurityPage />}
+      </Route>
+      <Route path="/security/advisories">
+        {() => <SecurityAdvisoriesPage />}
       </Route>
       <Route path="/map">
         {() => <MapPage />}

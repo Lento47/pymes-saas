@@ -6,6 +6,7 @@
   <url><loc>https://pymeshub.lat/ai-agents</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>
   <url><loc>https://pymeshub.lat/billing-workflows</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
   <url><loc>https://pymeshub.lat/security</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://pymeshub.lat/security/advisories</loc><priority>0.5</priority><changefreq>monthly</changefreq></url>
   <url><loc>https://pymeshub.lat/whatsapp-shared-inbox</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
   <url><loc>https://pymeshub.lat/crm-for-smbs</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
   <url><loc>https://pymeshub.lat/client-management</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>

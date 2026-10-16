@@ -1071,6 +1071,30 @@ export const translations = {
           audit: { title: "Traceable orders", body: "Every order is recorded end to end." },
           guardrails: { title: "Local support", body: "A team in Costa Rica when something goes wrong." },
         },
+        advisories: {
+          page: {
+            badge: "Security advisories",
+            title: "Published security advisories.",
+            subtitle:
+              "Verified fixes for vulnerabilities in PymesHub, released inside the disclosure timelines and credited to the reporter.",
+          },
+          severityLabel: "Severity",
+          severity: { critical: "Critical", high: "High", medium: "Medium", low: "Low" },
+          affectedLabel: "Affected versions",
+          fixedLabel: "Fixed in",
+          publishedLabel: "Published",
+          creditLabel: "Reported by",
+          summaryLabel: "What happened",
+          emptyBadge: "None published",
+          emptyTitle: "No advisories published yet.",
+          emptyBody:
+            "No vulnerability has earned an OTL-SA identifier so far — and that is the list's first rule, not a promise of perfection. When a verified advisory is published, it appears here with its identifier, its severity, the affected versions, the fix, and the reporter's credit.",
+          reportingTitle: "Found something?",
+          reportingBody:
+            "Report it privately — never in a public issue. The full policy, response timelines and testing rules live in the advisories document.",
+          reportingCta: "How to report",
+          backCta: "Security overview",
+        },
       },
       faq: {
         eyebrow: "Questions",
@@ -2208,6 +2232,30 @@ export const translations = {
           rbac: { title: "Tus datos, tuyos", body: "Tu información solo se usa para tu pedido." },
           audit: { title: "Pedidos trazables", body: "Cada pedido queda registrado de punta a punta." },
           guardrails: { title: "Soporte local", body: "Equipo en Costa Rica cuando algo sale mal." },
+        },
+        advisories: {
+          page: {
+            badge: "Avisos de seguridad",
+            title: "Avisos de seguridad publicados.",
+            subtitle:
+              "Correcciones verificadas para vulnerabilidades en PymesHub, publicadas dentro de los plazos acordados y con crédito al reportante.",
+          },
+          severityLabel: "Severidad",
+          severity: { critical: "Crítica", high: "Alta", medium: "Media", low: "Baja" },
+          affectedLabel: "Versiones afectadas",
+          fixedLabel: "Corregido en",
+          publishedLabel: "Publicación",
+          creditLabel: "Reportado por",
+          summaryLabel: "Qué pasó",
+          emptyBadge: "Ninguno publicado",
+          emptyTitle: "Todavía no hay avisos publicados.",
+          emptyBody:
+            "Ninguna vulnerabilidad ganó todavía un identificador OTL-SA — y eso es la primera regla de esta lista, no una promesa de perfección. Cuando un aviso verificado se publique, aparecerá aquí con su identificador, su severidad, las versiones afectadas, la corrección y el crédito al reportante.",
+          reportingTitle: "¿Encontraste algo?",
+          reportingBody:
+            "Reportalo de forma privada — nunca en un issue público. La política completa, los plazos de respuesta y las reglas de prueba están en el documento de avisos.",
+          reportingCta: "Cómo reportar",
+          backCta: "Resumen de seguridad",
         },
       },
       faq: {

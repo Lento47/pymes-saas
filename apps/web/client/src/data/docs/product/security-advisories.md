@@ -77,10 +77,10 @@ A vulnerability in **how our application integrates** a third-party service is i
 
 - Give us a reasonable chance to investigate, mitigate and release a fix before publishing technical details. **We coordinate the timeline with you** rather than requiring an indefinite embargo.
 - When appropriate, verified advisories are published through **GitHub Security Advisories** for the repository.
-- The proposed identifier format is **`OTL-SA-YYYY-NNN`** (for example `OTL-SA-2026-001`). An identifier is assigned **only to an advisory that is actually published**. PymesHub may also publish advisories on this site once that page is operational and verified — it is not live yet.
+- The proposed identifier format is **`OTL-SA-YYYY-NNN`** (for example `OTL-SA-2026-001`). An identifier is assigned **only to an advisory that is actually published**. PymesHub also publishes advisories on this site's advisories page, at [`https://pymeshub.lat/security/advisories`](https://pymeshub.lat/security/advisories).
 - Reporters may ask for public credit or for anonymity. Work found internally is credited as **Reported by PymesHub Security**.
 
-**Published advisories: none yet.** When there is one, it appears here with its identifier, its severity, the affected versions, the fixed version, and the credit.
+**Published advisories: none yet.** When there is one, it appears on [the advisories page](https://pymeshub.lat/security/advisories) with its identifier, its severity, the affected versions, the fixed version, and the credit.
 
 ### Safe harbour
 
@@ -91,7 +91,7 @@ This does not extend to third-party systems, unlawful conduct, privacy violation
 ### What this page does not claim
 
 - The authoritative security policy is the repository's `SECURITY.md`, and it is **being updated to match this page** — the marketplace-aligned version is prepared and awaiting publication. While both exist, the targets above are the ones we work to, and if the repository's file states a shorter commitment for any stage, that shorter one applies.
-- The advisory identifier scheme and a dedicated advisories page on the site are **proposed, not live**; today, advisories are published through GitHub Security Advisories.
+- Advisories are published through GitHub Security Advisories for the repository, and the dedicated advisories page on the site — `https://pymeshub.lat/security/advisories` — mirrors them, identifier scheme included.
 - No security measure is absolute, and this page creates no warranty.
 
 ---
@@ -168,10 +168,10 @@ Una vulnerabilidad en **cómo nuestra aplicación integra** un servicio de terce
 
 - Danos una oportunidad razonable de investigar, mitigar y publicar una corrección antes de difundir detalles técnicos. **Coordinamos el calendario con vos** en vez de exigir un embargo indefinido.
 - Cuando corresponde, los avisos verificados se publican a través de los **avisos de seguridad de GitHub** del repositorio.
-- El formato de identificador propuesto es **`OTL-SA-AAAA-NNN`** (por ejemplo `OTL-SA-2026-001`). Un identificador se asigna **solo a un aviso realmente publicado**. PymesHub también podría publicar avisos en este sitio una vez que esa página esté operativa y verificada — todavía no está activa.
+- El formato de identificador propuesto es **`OTL-SA-AAAA-NNN`** (por ejemplo `OTL-SA-2026-001`). Un identificador se asigna **solo a un aviso realmente publicado**. PymesHub también publica los avisos en la página de avisos del sitio, en [`https://pymeshub.lat/security/advisories`](https://pymeshub.lat/security/advisories).
 - Quien reporta puede pedir crédito público o anonimato. Lo que se encuentra internamente se acredita como **Reportado por PymesHub Security**.
 
-**Avisos publicados: ninguno todavía.** Cuando haya uno, aparece acá con su identificador, su severidad, las versiones afectadas, la versión corregida y el crédito.
+**Avisos publicados: ninguno todavía.** Cuando haya uno, aparece en [la página de avisos](https://pymeshub.lat/security/advisories) con su identificador, su severidad, las versiones afectadas, la versión corregida y el crédito.
 
 ### Puerto seguro
 
@@ -182,5 +182,5 @@ Esto no se extiende a sistemas de terceros, conductas ilícitas, violaciones de 
 ### Lo que esta página no afirma
 
 - La política de seguridad autoritativa es el `SECURITY.md` del repositorio, y **está en proceso de actualización para coincidir con esta página** — la versión alineada al marketplace está preparada y esperando su publicación. Mientras existan las dos, los objetivos de arriba son los que trabajamos, y si el archivo del repositorio declara un compromiso más corto para alguna etapa, aplica ese más corto.
-- El esquema de identificadores y una página de avisos propia en el sitio están **propuestos, no activos**; hoy los avisos se publican por los avisos de seguridad de GitHub.
+- Los avisos se publican por los avisos de seguridad de GitHub del repositorio, y la página de avisos propia del sitio — `https://pymeshub.lat/security/advisories` — los refleja, con el esquema de identificadores incluido.
 - Ninguna medida de seguridad es absoluta, y esta página no genera ninguna garantía.
