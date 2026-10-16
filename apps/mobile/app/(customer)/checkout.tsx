@@ -241,6 +241,18 @@ function CheckoutForm({
 	const [notesOpen, setNotesOpen] = useState(false);
 
 	const cart = useQuery(trpc.cart.get.queryOptions());
+	const paymentMethods = useQuery(
+		trpc.cart.paymentMethods.queryOptions(undefined, {
+			enabled: Boolean(cart.data?.items.length),
+			staleTime: 0,
+		}),
+	);
+	const methodsReady =
+		paymentMethods.isSuccess &&
+		paymentMethods.data.businessId === cart.data?.businessId;
+	const sinpeAvailable =
+		methodsReady && paymentMethods.data.methods.includes("SINPE_MOVIL");
+	const paymentBlocked = paymentMethod === "SINPE_MOVIL" && !sinpeAvailable;
 	const locations = useQuery(trpc.cart.pickupLocations.queryOptions());
 	const addresses = useQuery(trpc.users.addresses.queryOptions());
 	const browseLocation = useBrowseLocation();
@@ -397,6 +409,10 @@ function CheckoutForm({
 			 */
 			onError: (error) => {
 				requestId.current = null;
+				if (toApiFailure(error).serverMessage === "payments.refusal.noSinpe") {
+					void paymentMethods.refetch();
+					setStep(1);
+				}
 				if (
 					toApiFailure(error).serverMessage === "checkout.refusal.totalChanged"
 				)
@@ -528,7 +544,10 @@ function CheckoutForm({
 	}
 
 	function pickPayment(next: string) {
-		if (next === "CASH" || next === "SINPE_MOVIL") setPaymentMethod(next);
+		if (next === "CASH" || (next === "SINPE_MOVIL" && sinpeAvailable)) {
+			place.reset();
+			setPaymentMethod(next);
+		}
 	}
 
 	function pickAddress(next: string) {
@@ -550,7 +569,8 @@ function CheckoutForm({
 	}
 
 	function submit() {
-		if (place.isPending || quote.isError || !quote.data) return;
+		if (place.isPending || quote.isError || !quote.data || paymentBlocked)
+			return;
 		requestId.current ??= newClientRequestId();
 		place.mutate({
 			fulfilment,
@@ -613,6 +633,14 @@ function CheckoutForm({
 	 * it is, and repeating it a screen-width lower would be the same sentence twice.
 	 */
 	function blockedReason(): string | null {
+		if (step > 0 && paymentBlocked)
+			return t(
+				methodsReady
+					? "checkout.payment.sinpeUnavailable"
+					: paymentMethods.isError
+						? "checkout.payment.checkFailed"
+						: "state.loading",
+			);
 		if (syncingPin)
 			return t(pinSaveError ? "state.error.title" : "state.loading");
 		if (short && quote.data && hasItems) {
@@ -999,12 +1027,35 @@ function CheckoutForm({
 								onChange={pickPayment}
 								options={[
 									{ value: "CASH", label: t("checkout.payment.cash") },
-									{ value: "SINPE_MOVIL", label: t("checkout.payment.sinpe") },
+									...(sinpeAvailable
+										? [
+												{
+													value: "SINPE_MOVIL",
+													label: t("checkout.payment.sinpe"),
+												},
+											]
+										: []),
 								]}
 							/>
 							<Text variant="label" tone="muted">
-								{t("checkout.payment.note")}
+								{t(
+									sinpeAvailable
+										? "checkout.payment.note"
+										: methodsReady
+											? "checkout.payment.sinpeUnavailable"
+											: paymentMethods.isError
+												? "checkout.payment.checkFailed"
+												: "state.loading",
+								)}
 							</Text>
+							{!sinpeAvailable ? (
+								<Button
+									variant="ghost"
+									label={t("checkout.payment.checkAgain")}
+									loading={paymentMethods.isFetching}
+									onPress={() => void paymentMethods.refetch()}
+								/>
+							) : null}
 							{quote.isError && quoteless && hasItems ? (
 								<ErrorState
 									error={quote.error}
@@ -1225,6 +1276,7 @@ function CheckoutForm({
 								onPress: submit,
 								loading: place.isPending,
 								disabled:
+									paymentBlocked ||
 									syncingPin ||
 									!hasItems ||
 									quoteless ||
@@ -1240,6 +1292,7 @@ function CheckoutForm({
 								label: t("action.continue"),
 								onPress: () => goToStep(step + 1),
 								disabled:
+									(step > 0 && paymentBlocked) ||
 									syncingPin ||
 									!hasItems ||
 									quoteless ||

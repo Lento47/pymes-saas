@@ -27,6 +27,9 @@ export const cartRouter = router({
 		.input(cartQuoteInput)
 		.query(({ ctx, input }) => cart.quote(ctx, input)),
 	get: protectedProcedure.query(({ ctx }) => cart.get(ctx)),
+	paymentMethods: protectedProcedure.query(({ ctx }) =>
+		cart.paymentMethods(ctx),
+	),
 	pickupLocations: protectedProcedure.query(({ ctx }) =>
 		cart.pickupLocations(ctx),
 	),

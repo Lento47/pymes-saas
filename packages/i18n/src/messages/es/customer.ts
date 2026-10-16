@@ -581,6 +581,11 @@ export const customer = {
 		"Marca el destino en el mapa para que los repartidores puedan recibir este pedido.",
 	"checkout.address.editPin": "Marcar esta dirección",
 	"checkout.payment": "Forma de pago",
+	"checkout.payment.sinpeUnavailable":
+		"Este negocio todavía no recibe SINPE. Puedes pagar en efectivo.",
+	"checkout.payment.checkFailed":
+		"No pudimos comprobar si el negocio recibe SINPE. Puedes pagar en efectivo o volver a comprobarlo.",
+	"checkout.payment.checkAgain": "Comprobar SINPE",
 	"checkout.payment.cash": "Efectivo",
 	"checkout.payment.sinpe": "SINPE Móvil",
 	"checkout.payment.note":

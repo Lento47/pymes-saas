@@ -318,6 +318,11 @@ export const customer = {
 		"Pin the delivery destination on the map so couriers can receive this order.",
 	"checkout.address.editPin": "Pin this address",
 	"checkout.payment": "Payment method",
+	"checkout.payment.sinpeUnavailable":
+		"This shop does not accept SINPE yet. You can pay with cash.",
+	"checkout.payment.checkFailed":
+		"We couldn't check whether this shop accepts SINPE. You can pay with cash or check again.",
+	"checkout.payment.checkAgain": "Check SINPE availability",
 	"checkout.payment.cash": "Cash",
 	"checkout.payment.sinpe": "SINPE Móvil",
 	"checkout.payment.note":

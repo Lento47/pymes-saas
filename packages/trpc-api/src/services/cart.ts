@@ -45,6 +45,7 @@ import type { UserContext } from "./helpers";
 import { batchOf, isPublicBusiness, orNotFound } from "./helpers";
 import { operationalStatus } from "./locations";
 import { cartItemOf } from "./mappers";
+import { merchantAccountForCheckout } from "./order-payments";
 
 /**
  * The cart, and the one rule that shapes all of it: **one cart belongs to one
@@ -68,6 +69,21 @@ export async function get(ctx: UserContext): Promise<Cart> {
 	if (!cart) return emptyCartOf();
 
 	return buildCart(ctx.db, cart);
+}
+
+/** Expose availability, never the recipient's private payment account, for the caller's cart. */
+export async function paymentMethods(ctx: UserContext) {
+	const cart = await openCartOf(ctx.db, ctx.user.id);
+	const methods: ("CASH" | "SINPE_MOVIL")[] = [];
+	if (cart) {
+		methods.push("CASH");
+		if (
+			ctx.env.SEPARATE_PAYMENTS_ENABLED !== "true" ||
+			(await merchantAccountForCheckout(ctx, cart.businessId))
+		)
+			methods.push("SINPE_MOVIL");
+	}
+	return { businessId: cart?.businessId ?? null, methods };
 }
 
 /** Pickup branches for the caller's current cart, never another shop's locations. */

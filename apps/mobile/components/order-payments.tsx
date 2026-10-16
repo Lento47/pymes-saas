@@ -1,10 +1,5 @@
 import type { MessageKey } from "@pymeshub/i18n";
-import {
-	formatMoney,
-	MAX_UPLOAD_BYTES,
-	type OrderPayment,
-	UPLOAD_MIME_TYPES,
-} from "@pymeshub/shared";
+import { formatMoney, type OrderPayment } from "@pymeshub/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -18,6 +13,7 @@ import { Text } from "@/components/text";
 import { useToast } from "@/components/toast";
 import { useApiFailure } from "@/lib/api-error";
 import { useT } from "@/lib/i18n";
+import { paymentProofImage } from "@/lib/payment-proof-image";
 import { useTRPC } from "@/lib/trpc/context";
 import { space } from "@/theme";
 
@@ -221,6 +217,9 @@ function PaymentStep({
 					: "payments.deliveryAmount";
 	const paid = pay.status === "CONFIRMED" || pay.status === "NOT_REQUIRED";
 	const pick = async () => {
+		if (busy) return;
+		upload.reset();
+		setLocalError(null);
 		try {
 			const result = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ["images"],
@@ -229,20 +228,15 @@ function PaymentStep({
 			});
 			if (result.canceled) return;
 			const asset = result.assets[0];
-			if (
-				!asset?.base64 ||
-				(asset.fileSize ?? 0) > MAX_UPLOAD_BYTES ||
-				!asset.mimeType ||
-				!(UPLOAD_MIME_TYPES as readonly string[]).includes(asset.mimeType)
-			) {
+			const image = paymentProofImage(asset?.base64);
+			if (!image) {
 				setLocalError("payments.refusal.image");
 				return;
 			}
 			setLocalError(null);
 			upload.mutate({
 				...target,
-				base64: asset.base64,
-				mimeType: asset.mimeType as (typeof UPLOAD_MIME_TYPES)[number],
+				...image,
 				reference: reference.trim() || undefined,
 			});
 		} catch {
