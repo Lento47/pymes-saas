@@ -49,6 +49,7 @@ export const placeOrderInput = z
 		/** Required for road-priced deliveries; binds the accepted price to the route. */
 		quoteId: z.string().optional(),
 		paymentMethod: paymentMethodSchema,
+		paymentProofId: z.string().regex(/^payproof_[0-9a-f-]{36}$/).optional(),
 		tipMinor: z.number().int().min(0).max(MAX_TIP_MINOR).default(0),
 		customerNotes: z.string().trim().max(500).optional(),
 		/** Promo code re-sent at checkout so the discount is applied against a fresh read. */

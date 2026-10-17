@@ -3,6 +3,7 @@ import {
 	assignCourierInput,
 	cancelOrderInput,
 	choosePaymentMethodInput,
+	checkoutPaymentProofInput,
 	createReviewInput,
 	orderListInput,
 	paymentAccountTarget,
@@ -38,6 +39,9 @@ import { businessProcedure, protectedProcedure, router } from "../trpc";
  * tapping twice must not be charged twice.
  */
 export const ordersRouter = router({
+	checkoutPaymentAccount: protectedProcedure.query(({ ctx }) => payments.checkoutPaymentAccount(ctx)),
+	uploadCheckoutProof: protectedProcedure.input(checkoutPaymentProofInput)
+		.mutation(({ ctx, input }) => payments.uploadCheckoutProof(ctx, input)),
 	paymentAccount: protectedProcedure
 		.input(paymentAccountTarget)
 		.query(({ ctx, input }) => payments.paymentAccount(ctx, input)),

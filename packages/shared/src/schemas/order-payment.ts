@@ -12,6 +12,15 @@ export const sinpeAccountInput = z
 		recipientName: z.string().trim().min(2).max(120),
 	})
 	.strict();
+/** Receipt bytes remain private and are uploaded before any order is created. */
+export const checkoutPaymentAccountSchema = z.object({ businessId: z.string().nullable(), account: sinpeAccountInput.nullable() });
+export const checkoutPaymentProofInput = z.object({
+	businessId: z.string().min(1), amountMinor: z.number().int().positive(),
+	account: sinpeAccountInput,
+	mimeType: z.enum(UPLOAD_MIME_TYPES), base64: z.string().min(1).max(MAX_UPLOAD_BASE64_CHARS),
+	reference: z.string().trim().max(120).optional(),
+}).strict();
+export const checkoutPaymentProofRefSchema = z.object({ proofId: z.string().regex(/^payproof_[0-9a-f-]{36}$/) });
 export const PAYMENT_PURPOSES = [
 	"MERCHANT_ORDER",
 	"COURIER_COLLECTION",
@@ -103,6 +112,7 @@ export const PAYMENT_ERROR_KEYS = [
 	"payments.refusal.methodLocked",
 	"payments.refusal.noSinpe",
 	"payments.refusal.image",
+	"payments.refusal.proofRequired",
 	"payments.refusal.reusedProof",
 	"payments.refusal.reason",
 	"payments.refusal.businessUnpaid",

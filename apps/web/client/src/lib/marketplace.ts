@@ -643,6 +643,7 @@ export function usePlaceOrder() {
       quoteId?: string;
       expectedTotalMinor?: number;
       paymentMethod: "CASH" | "SINPE_MOVIL";
+      paymentProofId?: string;
       tipMinor?: number;
       customerNotes?: string;
       promotionCode?: string;

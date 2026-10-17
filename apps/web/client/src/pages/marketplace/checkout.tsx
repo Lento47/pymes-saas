@@ -1,4 +1,5 @@
-import type { Address } from "@pymeshub/shared";
+import { checkoutPaymentAccountSchema, type Address } from "@pymeshub/shared";
+import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -9,6 +10,7 @@ import {
   MarketplaceShell,
 } from "@/components/marketplace/public-shell";
 import { Input } from "@/components/ui/input";
+import { CheckoutSinpePayment } from "@/components/marketplace/checkout-sinpe-payment";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -20,6 +22,7 @@ import {
   usePickupLocations,
   usePlaceOrder,
   useSaveAddress,
+  trpc,
 } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +51,14 @@ export default function MarketplaceCheckoutPage() {
   const [addressId, setAddressId] = useState<string | undefined>(undefined);
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [checkoutProof, setCheckoutProof] = useState<{ id: string; scope: string } | null>(null);
+  const [proofBusy, setProofBusy] = useState(false);
+  const checkoutAccount = useQuery({
+    queryKey: ["checkout-payment-account", cart.data?.businessId],
+    queryFn: async () => checkoutPaymentAccountSchema.parse(await trpc.orders.checkoutPaymentAccount.query()),
+    enabled: Boolean(session && cart.data?.items.length && paymentMethod === "SINPE_MOVIL"),
+    staleTime: 0,
+  });
   const [notes, setNotes] = useState("");
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -135,10 +146,16 @@ export default function MarketplaceCheckoutPage() {
   }
 
   const effectiveFulfilment = fulfilment;
+  const account = checkoutAccount.data?.businessId === data.businessId ? checkoutAccount.data?.account : null;
+  const merchantAmount = (quote.data?.totalMinor ?? 0) - (fulfilment === "DELIVERY" ? quote.data?.deliveryFeeMinor ?? 0 : 0);
+  const proofScope = JSON.stringify([data.id, merchantAmount, account?.phone, account?.recipientName]);
+  const proofId = checkoutProof?.scope === proofScope ? checkoutProof.id : undefined;
+  const needsProof = paymentMethod === "SINPE_MOVIL" && merchantAmount > 0 && !proofId;
   const canPlace = Boolean(
     selectedLocation &&
     quote.data &&
     !quote.isError &&
+    !needsProof && !proofBusy &&
     (effectiveFulfilment === "PICKUP" || selectedAddress),
   );
 
@@ -154,6 +171,7 @@ export default function MarketplaceCheckoutPage() {
         quoteId: quote.data.roadQuote?.quoteId,
         expectedTotalMinor: quote.data.totalMinor,
         paymentMethod,
+        paymentProofId: paymentMethod === "SINPE_MOVIL" ? proofId : undefined,
         customerNotes: notes.trim() || undefined,
         promotionCode: data.promotionCode ?? undefined,
         clientRequestId: clientRequestId.current,
@@ -427,6 +445,16 @@ export default function MarketplaceCheckoutPage() {
                 </label>
               ))}
             </div>
+            {paymentMethod === "SINPE_MOVIL" && merchantAmount > 0 && data.businessId && quote.data ? (
+              account ? <CheckoutSinpePayment businessId={data.businessId} amountMinor={merchantAmount}
+                currency={quote.data.currency} account={account} scope={proofScope} ready={Boolean(proofId)}
+                onUploaded={(id, scope) => setCheckoutProof({ id, scope })} onBusyChange={setProofBusy} />
+              : <p role={checkoutAccount.isError ? "alert" : "status"} className="mt-3 text-sm text-muted-foreground">
+                {checkoutAccount.isPending ? "Cargando cuenta SINPE…" : checkoutAccount.isError
+                  ? "No pudimos cargar la cuenta SINPE. Vuelve a seleccionar SINPE para intentar de nuevo."
+                  : "Este comercio no tiene SINPE habilitado. Selecciona efectivo."}
+              </p>
+            ) : null}
           </fieldset>
 
           <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">

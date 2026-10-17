@@ -1,6 +1,7 @@
 import {
 	paymentAccount as account,
 	courierProfile,
+	cart as cartTable,
 	delivery,
 	order,
 	orderPayment as payment,
@@ -8,6 +9,7 @@ import {
 } from "@pymeshub/db";
 import {
 	type choosePaymentMethodInput,
+	type checkoutPaymentProofInput,
 	MAX_UPLOAD_BYTES,
 	type OrderPayment,
 	type OrderPayments,
@@ -166,6 +168,7 @@ export function paymentRows(input: {
 	paymentMethod: string;
 	currency: typeof order.$inferSelect.currency;
 	now: Date;
+	proofId?: string;
 }): PaymentRow[] {
 	const split = splitOrderPayment(input);
 	const rows: {
@@ -213,16 +216,16 @@ export function paymentRows(input: {
 		payer: row.payer,
 		payee: row.payee,
 		method: row.method,
-		status: row.amount === 0 ? "NOT_REQUIRED" : "AWAITING_PAYMENT",
+		status: row.amount === 0 ? "NOT_REQUIRED" : row.purpose === "MERCHANT_ORDER" && input.proofId ? "AWAITING_VERIFICATION" : "AWAITING_PAYMENT",
 		payeeName:
 			row.payee === "MERCHANT"
 				? (input.businessAccount?.recipientName ?? input.businessName)
 				: "",
 		sinpePhone:
 			row.payee === "MERCHANT" ? (input.businessAccount?.phone ?? null) : null,
-		currentProofId: null,
+		currentProofId: row.purpose === "MERCHANT_ORDER" ? input.proofId ?? null : null,
 		rejectionReason: null,
-		version: 0,
+		version: row.purpose === "MERCHANT_ORDER" && input.proofId ? 1 : 0,
 		confirmedAt: null,
 		reviewedByUserId: null,
 		createdAt: input.now,
@@ -500,6 +503,123 @@ function imageBytes(base64: string, mimeType: string) {
 	)
 		throw new ValidationError("payments.refusal.image");
 	return bytes;
+}
+async function checkoutCart(ctx: UserContext) {
+	const [cart] = await ctx.db
+		.select()
+		.from(cartTable)
+		.where(and(eq(cartTable.userId, ctx.user.id), eq(cartTable.status, "OPEN")))
+		.limit(1);
+	return cart ?? null;
+}
+export async function checkoutPaymentAccount(ctx: UserContext) {
+	const cart = await checkoutCart(ctx);
+	const destination = cart
+		? await accountFor(ctx, { businessId: cart.businessId })
+		: null;
+	return {
+		businessId: cart?.businessId ?? null,
+		account: destination
+			? { phone: destination.phone, recipientName: destination.recipientName }
+			: null,
+	};
+}
+const checkoutProofKey = (id: string) =>
+	`private/checkout-payment-proofs/${id}`;
+export async function uploadCheckoutProof(
+	ctx: UserContext,
+	input: z.infer<typeof checkoutPaymentProofInput>,
+) {
+	await rateLimit(ctx.env, "payments:checkout-proof", ctx.user.id, 8, 60);
+	const cart = await checkoutCart(ctx);
+	if (!cart || cart.businessId !== input.businessId) throw new NotFoundError();
+	const destination = await accountFor(ctx, { businessId: cart.businessId });
+	if (!destination) throw new ValidationError("payments.refusal.noSinpe");
+	if (
+		input.account.phone !== destination.phone ||
+		input.account.recipientName !== destination.recipientName
+	)
+		throw new ConflictError("payments.refusal.changed");
+	const bytes = imageBytes(input.base64, input.mimeType);
+	const hash = Array.from(
+		new Uint8Array(
+			await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer),
+		),
+		(byte) => byte.toString(16).padStart(2, "0"),
+	).join("");
+	const [used] = await ctx.db
+		.select({ id: proof.id })
+		.from(proof)
+		.where(eq(proof.sha256, hash))
+		.limit(1);
+	if (used) throw new ConflictError("payments.refusal.reusedProof");
+	const id = `payproof_${crypto.randomUUID()}`;
+	await ctx.env.MEDIA.put(checkoutProofKey(id), bytes, {
+		httpMetadata: { contentType: input.mimeType },
+		customMetadata: {
+			customerId: ctx.user.id,
+			cartId: cart.id,
+			businessId: cart.businessId,
+			amountMinor: String(input.amountMinor),
+			phone: destination.phone,
+			recipientName: destination.recipientName,
+			sha256: hash,
+			reference: input.reference ?? "",
+			uploadedAt: new Date().toISOString(),
+		},
+	});
+	return { proofId: id };
+}
+/** The receipt must already exist, belong to this checkout and match the amount and recipient. */
+export async function checkoutProofForOrder(
+	ctx: UserContext,
+	input: {
+		proofId?: string;
+		orderId: string;
+		cartId: string;
+		businessId: string;
+		amountMinor: number;
+		account: AccountRow | null;
+	},
+): Promise<typeof proof.$inferInsert> {
+	if (!input.proofId)
+		throw new ValidationError("payments.refusal.proofRequired");
+	const key = checkoutProofKey(input.proofId);
+	const stored = await ctx.env.MEDIA.head(key);
+	const metadata = stored?.customMetadata;
+	if (
+		!stored ||
+		!metadata ||
+		metadata.customerId !== ctx.user.id ||
+		metadata.cartId !== input.cartId ||
+		metadata.businessId !== input.businessId ||
+		!metadata.sha256 ||
+		!metadata.uploadedAt ||
+		!Number.isFinite(Date.parse(metadata.uploadedAt))
+	)
+		throw new ValidationError("payments.refusal.proofRequired");
+	if (
+		metadata.amountMinor !== String(input.amountMinor) ||
+		metadata.phone !== input.account?.phone ||
+		metadata.recipientName !== input.account?.recipientName
+	)
+		throw new ConflictError("payments.refusal.changed");
+	const [used] = await ctx.db
+		.select({ id: proof.id })
+		.from(proof)
+		.where(eq(proof.sha256, metadata.sha256 ?? ""))
+		.limit(1);
+	if (used) throw new ConflictError("payments.refusal.reusedProof");
+	return {
+		id: input.proofId,
+		paymentId: paymentId(input.orderId, "MERCHANT_ORDER"),
+		uploaderUserId: ctx.user.id,
+		key,
+		mimeType: stored.httpMetadata?.contentType ?? "image/png",
+		sha256: metadata.sha256,
+		reference: metadata.reference || null,
+		createdAt: new Date(metadata.uploadedAt),
+	};
 }
 export async function submitProof(
 	ctx: UserContext,

@@ -29,6 +29,7 @@ import { ActionBar } from "@/components/action-bar";
 import { AnimateIn } from "@/components/animate-in";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
+import { CheckoutSinpePayment } from "@/components/checkout-sinpe-payment";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Fact, Facts } from "@/components/facts";
@@ -235,6 +236,8 @@ function CheckoutForm({
 	const [step, setStep] = useState(0);
 	const [fulfilment, setFulfilment] = useState<FulfilmentKind>("DELIVERY");
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+	const [checkoutProof, setCheckoutProof] = useState<{ id: string; scope: string } | null>(null);
+	const [proofBusy, setProofBusy] = useState(false);
 	const [addressId, setAddressId] = useState<string>();
 	const [locationId, setLocationId] = useState<string>();
 	const [notes, setNotes] = useState("");
@@ -253,6 +256,7 @@ function CheckoutForm({
 	const sinpeAvailable =
 		methodsReady && paymentMethods.data.methods.includes("SINPE_MOVIL");
 	const paymentBlocked = paymentMethod === "SINPE_MOVIL" && !sinpeAvailable;
+	const checkoutAccount = useQuery(trpc.orders.checkoutPaymentAccount.queryOptions(undefined, { enabled: paymentMethod === "SINPE_MOVIL", staleTime: 0 }));
 	const locations = useQuery(trpc.cart.pickupLocations.queryOptions());
 	const addresses = useQuery(trpc.users.addresses.queryOptions());
 	const browseLocation = useBrowseLocation();
@@ -421,6 +425,11 @@ function CheckoutForm({
 		}),
 	);
 
+	const account = checkoutAccount.data?.businessId === cart.data?.businessId ? checkoutAccount.data?.account : null;
+	const merchantAmount = (quote.data?.totalMinor ?? 0) - (fulfilment === "DELIVERY" ? quote.data?.deliveryFeeMinor ?? 0 : 0);
+	const proofScope = JSON.stringify([cart.data?.id, merchantAmount, account?.phone, account?.recipientName]);
+	const proofId = checkoutProof?.scope === proofScope ? checkoutProof.id : undefined;
+	const needsProof = paymentMethod === "SINPE_MOVIL" && merchantAmount > 0 && !proofId;
 	const needsAddress = fulfilment === "DELIVERY" && !selectedAddress;
 	const needsLocation = !selectedLocation;
 	const short = (quote.data?.missingForMinOrderMinor ?? 0) > 0;
@@ -569,7 +578,7 @@ function CheckoutForm({
 	}
 
 	function submit() {
-		if (place.isPending || quote.isError || !quote.data || paymentBlocked)
+		if (place.isPending || quote.isError || !quote.data || paymentBlocked || needsProof || proofBusy)
 			return;
 		requestId.current ??= newClientRequestId();
 		place.mutate({
@@ -577,6 +586,7 @@ function CheckoutForm({
 			quoteId: quote.data.roadQuote?.quoteId,
 			locationId: selectedLocation?.id,
 			paymentMethod,
+			paymentProofId: paymentMethod === "SINPE_MOVIL" ? proofId : undefined,
 			addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
 			customerNotes: notes.trim() || undefined,
 			clientRequestId: requestId.current,
@@ -633,6 +643,7 @@ function CheckoutForm({
 	 * it is, and repeating it a screen-width lower would be the same sentence twice.
 	 */
 	function blockedReason(): string | null {
+		if (step > 0 && (needsProof || proofBusy)) return t("payments.refusal.proofRequired");
 		if (step > 0 && paymentBlocked)
 			return t(
 				methodsReady
@@ -1048,6 +1059,13 @@ function CheckoutForm({
 												: "state.loading",
 								)}
 							</Text>
+							{paymentMethod === "SINPE_MOVIL" && merchantAmount > 0 && cart.data?.businessId && quote.data ? (
+								account ? <CheckoutSinpePayment businessId={cart.data.businessId} amountMinor={merchantAmount}
+									currency={quote.data.currency} account={account} scope={proofScope} ready={Boolean(proofId)}
+									onUploaded={(id, scope) => setCheckoutProof({ id, scope })} onBusyChange={setProofBusy} />
+								: checkoutAccount.isError ? <ErrorState error={checkoutAccount.error} onRetry={() => void checkoutAccount.refetch()} />
+								: <Text variant="body" tone="muted">{t(checkoutAccount.isPending ? "state.loading" : "payments.refusal.noSinpe")}</Text>
+							) : null}
 							{!sinpeAvailable ? (
 								<Button
 									variant="ghost"
@@ -1276,7 +1294,7 @@ function CheckoutForm({
 								onPress: submit,
 								loading: place.isPending,
 								disabled:
-									paymentBlocked ||
+									needsProof || proofBusy || paymentBlocked ||
 									syncingPin ||
 									!hasItems ||
 									quoteless ||
@@ -1292,7 +1310,7 @@ function CheckoutForm({
 								label: t("action.continue"),
 								onPress: () => goToStep(step + 1),
 								disabled:
-									(step > 0 && paymentBlocked) ||
+									(step > 0 && (paymentBlocked || needsProof || proofBusy)) ||
 									syncingPin ||
 									!hasItems ||
 									quoteless ||

@@ -330,7 +330,7 @@ function raiseLimit(
 function r2(): R2Bucket {
 	const store = new Map<
 		string,
-		{ body: ArrayBuffer; httpMetadata?: unknown }
+		{ body: ArrayBuffer; httpMetadata?: unknown; customMetadata?: Record<string, string> }
 	>();
 	return {
 		put: async (
@@ -341,9 +341,11 @@ function r2(): R2Bucket {
 			store.set(key, {
 				body: toArrayBuffer(value),
 				httpMetadata: (options as { httpMetadata?: unknown })?.httpMetadata,
+				customMetadata: (options as { customMetadata?: Record<string, string> })?.customMetadata,
 			});
 			return { key };
 		},
+		head: async (key: string) => { const found = store.get(key); return found ? { ...found, key } as unknown as R2Object : null; },
 		get: async (key: string) => {
 			const found = store.get(key);
 			if (!found) return null;

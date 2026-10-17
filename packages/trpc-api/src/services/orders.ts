@@ -13,6 +13,7 @@ import {
 	orderEvent as orderEventTable,
 	orderItem as orderItemTable,
 	orderPayment as orderPaymentTable,
+	orderPaymentProof as orderPaymentProofTable,
 	order as orderTable,
 	outboxEvent as outboxTable,
 	product as productTable,
@@ -124,6 +125,7 @@ import {
 } from "./mappers";
 import {
 	merchantAccountForCheckout,
+	checkoutProofForOrder,
 	paymentRows,
 	requirePaymentStage,
 } from "./order-payments";
@@ -508,6 +510,20 @@ export async function place(
 				? (roadPricing?.baseFeeMinor ?? business.deliveryFeeMinor)
 				: business.deliveryFeeMinor
 			: null;
+	let checkoutProof: Awaited<ReturnType<typeof checkoutProofForOrder>> | null = null;
+	if (paymentFlow && input.paymentMethod === "SINPE_MOVIL" && totalMinor - deliveryFeeMinor > 0) {
+		try {
+			checkoutProof = await checkoutProofForOrder(ctx, {
+				proofId: input.paymentProofId, orderId, cartId: cart.id,
+				businessId: business.id, amountMinor: totalMinor - deliveryFeeMinor, account: merchantAccount,
+			});
+		} catch (error) {
+			// Another retry may have committed while this request was validating the receipt.
+			const replay = await orderIdForDedupeKey(ctx, input.clientRequestId);
+			if (replay) return detail(ctx, replay, "CUSTOMER");
+			throw error;
+		}
+	}
 	const claimRow = await claim(ctx, input.clientRequestId);
 	if (!claimRow) return existingOrderFor(ctx, input.clientRequestId);
 
@@ -529,7 +545,7 @@ export async function place(
 			// so the number an event carries means something.
 			version: 1,
 			paymentMethod: input.paymentMethod,
-			paymentStatus: paymentFlow && totalMinor === 0 ? "PAID" : "UNPAID",
+			paymentStatus: paymentFlow && totalMinor === 0 ? "PAID" : checkoutProof ? "PENDING" : "UNPAID",
 			paymentFlowVersion: paymentFlow ? 1 : 0,
 			merchantPaymentConfirmed:
 				paymentFlow && totalMinor - deliveryFeeMinor === 0,
@@ -571,6 +587,7 @@ export async function place(
 					customerId: ctx.user.id,
 					businessName: business.name,
 					businessAccount: merchantAccount,
+					proofId: checkoutProof?.id,
 					totalMinor,
 					deliveryFeeMinor,
 					courierFeeMinor,
@@ -580,6 +597,7 @@ export async function place(
 					now,
 				}).map((row) => ctx.db.insert(orderPaymentTable).values(row))
 			: []),
+		...(checkoutProof ? [ctx.db.insert(orderPaymentProofTable).values(checkoutProof)] : []),
 		...priced.map((line) =>
 			ctx.db.insert(orderItemTable).values({
 				id: newId("orderItem"),
@@ -653,7 +671,10 @@ export async function place(
 		// The trigger evaluates the location inside the order's write transaction.
 		// A pause that commits after the read above but before this insert must refuse
 		// the order and release this attempt's empty idempotency claim for a retry.
-		if (!String(error).includes("LOCATION_NOT_ACCEPTING_ORDERS")) throw error;
+		const [usedProof] = checkoutProof ? await ctx.db.select({ paymentId: orderPaymentProofTable.paymentId })
+			.from(orderPaymentProofTable).where(eq(orderPaymentProofTable.sha256, checkoutProof.sha256)).limit(1) : [];
+		const reusedProof = usedProof && usedProof.paymentId !== checkoutProof?.paymentId;
+		if (!String(error).includes("LOCATION_NOT_ACCEPTING_ORDERS") && !reusedProof) throw error;
 		await ctx.db
 			.delete(notificationTable)
 			.where(
@@ -666,6 +687,7 @@ export async function place(
 					isNull(notificationTable.data),
 				),
 			);
+		if (reusedProof) throw new ConflictError("payments.refusal.reusedProof");
 		// The same fact the pre-batch check above refuses with, arriving from the trigger instead:
 		// a pause that committed between the read and this insert. One key for both, because to
 		// the customer it is one sentence - the shop is not taking orders right now.

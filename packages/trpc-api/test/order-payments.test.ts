@@ -119,11 +119,16 @@ async function setup(
 				addressId: address.id,
 			})
 		: null;
+	const checkoutProof = method === "SINPE_MOVIL" ? await buyer.orders.uploadCheckoutProof({
+		businessId, amountMinor: 2500, mimeType: "image/png", base64: PNG,
+		account: { phone: "+50688881111", recipientName: "Titular comercio" },
+	}) : null;
 	const order = await buyer.orders.place({
 		fulfilment: "DELIVERY",
 		locationId: `loc_${businessId}`,
 		addressId: address.id,
 		paymentMethod: method,
+		paymentProofId: checkoutProof?.proofId,
 		clientRequestId: `payments-${method}`,
 		quoteId: routeQuote?.roadQuote?.quoteId,
 		expectedTotalMinor: routeQuote?.totalMinor,
