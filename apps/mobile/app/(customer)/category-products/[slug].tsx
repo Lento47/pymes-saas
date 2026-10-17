@@ -1,7 +1,7 @@
 import { localizedName } from "@pymeshub/i18n";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { BackButton } from "@/components/back-button";
@@ -15,6 +15,10 @@ import { ProductGridSkeleton } from "@/components/skeletons";
 import { Text } from "@/components/text";
 import { chunkPairs } from "@/lib/chunk-pairs";
 import { useT } from "@/lib/i18n";
+import {
+	useMobileConfiguration,
+	useVisibleMobileCategories,
+} from "@/lib/mobile-configuration";
 import { useTRPC } from "@/lib/trpc/context";
 import { space } from "@/theme";
 
@@ -26,7 +30,14 @@ export default function CategoryProducts() {
 	const trpc = useTRPC();
 
 	const categories = useQuery(trpc.catalog.categories.queryOptions());
-	const category = categories.data?.find((entry) => entry.slug === slug);
+	const visibleCategories = useVisibleMobileCategories(categories.data ?? []);
+	const category = visibleCategories.find((entry) => entry.slug === slug);
+	const { refresh } = useMobileConfiguration();
+	useFocusEffect(
+		useCallback(() => {
+			void refresh();
+		}, [refresh]),
+	);
 	const products = useInfiniteQuery(
 		trpc.products.list.infiniteQueryOptions(
 			{
@@ -50,7 +61,7 @@ export default function CategoryProducts() {
 	);
 	const rows = useMemo(() => chunkPairs(items), [items]);
 	const shown =
-		waitingForProducts || (products.isError && !products.data) ? [] : rows;
+		!category || waitingForProducts || (products.isError && !products.data) ? [] : rows;
 
 	return (
 		<Screen padded={false} bottomInset contentStyle={styles.fill}>
@@ -137,6 +148,7 @@ export default function CategoryProducts() {
 				onRefresh={() =>
 					Promise.all([
 						categories.refetch(),
+						refresh(),
 						...(category ? [products.refetch()] : []),
 					])
 				}

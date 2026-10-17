@@ -204,6 +204,7 @@ export const customer = {
 	"search.recent": "Búsquedas recientes",
 	"search.clear": "Limpiar",
 
+	"category.subcategories": "Subcategorías",
 	"category.all": "Todo",
 	"category.showAll": "Ver más subcategorías",
 	"category.showLess": "Ver menos subcategorías",

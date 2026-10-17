@@ -29,6 +29,17 @@ const es = readFileSync(
 );
 
 describe("category discovery", () => {
+	test("published visibility applies before resolving category routes or building children", () => {
+		for (const source of [screen, products]) {
+			expect(source).toContain("useVisibleMobileCategories(categories.data ?? [])");
+			expect(source).toContain("visibleCategories.find((entry) => entry.slug === slug)");
+			expect(source).not.toContain("categories.data?.find");
+			expect(source).toContain("!category ||");
+			expect(source).toContain("useFocusEffect");
+			expect(source).toContain("refresh(),");
+		}
+		expect(screen).toContain("visibleCategories.filter(");
+	});
 	test("shows what can be bought before offering a route to other sectors", () => {
 		expect(screen).not.toContain("<CategoryRail");
 		expect(screen).toContain("showDisclosure");

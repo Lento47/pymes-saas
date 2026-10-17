@@ -108,6 +108,7 @@ export const customer = {
 	"search.recent": "Recent searches",
 	"search.clear": "Clear",
 
+	"category.subcategories": "Subcategories",
 	"category.all": "All",
 	"category.showAll": "Show more subcategories",
 	"category.showLess": "Show fewer subcategories",

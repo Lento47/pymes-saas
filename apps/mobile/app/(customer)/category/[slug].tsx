@@ -1,13 +1,13 @@
 import { localizedName } from "@pymeshub/i18n";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AnimateIn } from "@/components/animate-in";
 import { BackButton } from "@/components/back-button";
 import { BusinessCard } from "@/components/business-card";
 import { Button } from "@/components/button";
-import { Card } from "@/components/card";
+import { SubcategoryGrid } from "@/components/subcategory-grid";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -16,7 +16,6 @@ import {
 	effectiveBusinessFilters,
 	FilterSheet,
 } from "@/components/filter-sheet";
-import { ListRow } from "@/components/list-row";
 import { PaginatedList } from "@/components/paginated-list";
 import { ProductRow } from "@/components/product-row";
 import { Screen } from "@/components/screen";
@@ -32,6 +31,10 @@ import { selection } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { leaveScreen } from "@/lib/leave";
 import { useDeviceLocation } from "@/lib/location";
+import {
+	useMobileConfiguration,
+	useVisibleMobileCategories,
+} from "@/lib/mobile-configuration";
 import { useTRPC } from "@/lib/trpc/context";
 import { radius, space, useTheme } from "@/theme";
 
@@ -118,12 +121,19 @@ import { radius, space, useTheme } from "@/theme";
 export default function Category() {
 	const { slug } = useLocalSearchParams<{ slug: string }>();
 	const trpc = useTRPC();
-	const { t, tp, locale } = useT();
+	const { t, locale } = useT();
 	const { colors } = useTheme();
 	const { coords } = useDeviceLocation();
 
 	const categories = useQuery(trpc.catalog.categories.queryOptions());
-	const category = categories.data?.find((entry) => entry.slug === slug);
+	const visibleCategories = useVisibleMobileCategories(categories.data ?? []);
+	const category = visibleCategories.find((entry) => entry.slug === slug);
+	const { refresh } = useMobileConfiguration();
+	useFocusEffect(
+		useCallback(() => {
+			void refresh();
+		}, [refresh]),
+	);
 
 	/*
 	 * The taxonomy's second level, on the page that owns the first.
@@ -136,12 +146,12 @@ export default function Category() {
 	const children = useMemo(
 		() =>
 			sortCategoriesByName(
-				(categories.data ?? []).filter(
+				visibleCategories.filter(
 					(entry) => entry.parentId === category?.id,
 				),
 				locale,
 			),
-		[categories.data, category?.id, locale],
+		[visibleCategories, category?.id, locale],
 	);
 	const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
 	const expanded = expandedSlug === slug;
@@ -209,7 +219,7 @@ export default function Category() {
 	// past the arrival of the answer on purpose, so a row appearing in that window would be
 	// the skeleton and the content disagreeing about what is on screen.
 	const shown =
-		waitingForShops || shops.isError || items.length === 0 ? [] : items;
+		!category || waitingForShops || shops.isError || items.length === 0 ? [] : items;
 
 	// Back, or the feed for a link opened cold — `lib/leave` owns the pair, and why the
 	// fallback is an argument rather than a default.
@@ -236,13 +246,14 @@ export default function Category() {
 							/>
 						</AnimateIn>
 					)}
-					hasNextPage={shops.hasNextPage}
+					hasNextPage={Boolean(category) && shops.hasNextPage}
 					loadingMore={shops.isFetchingNextPage}
 					onLoadMore={() => void shops.fetchNextPage()}
 					// The flag behind the spinner is `./paginated-list`'s own state.
 					onRefresh={() =>
 						Promise.all([
 							categories.refetch(),
+							refresh(),
 							shops.refetch(),
 							...(category ? [categoryProducts.refetch()] : []),
 						])
@@ -332,43 +343,14 @@ export default function Category() {
 
 									{children.length > 0 ? (
 										<View style={styles.pad}>
-											<Card>
-												{shownChildren.map((child, index) => (
-													<ListRow
-														key={child.id}
-														title={localizedName(child, locale)}
-														divider={index < shownChildren.length - 1}
-														// The same number the grid's tiles print, through the same
-														// landed plural pair, so a category's size reads the same
-														// wherever it is drawn. `productCount` is optional, so a
-														// row without one states nothing rather than a zero.
-														state={
-															child.productCount && child.productCount > 0
-																? tp("store.category.count", child.productCount)
-																: undefined
-														}
-														chevron
-														onPress={() =>
-															router.push({
-																pathname: "/category/[slug]" as const,
-																params: { slug: child.slug },
-															})
-														}
-													/>
-												))}
-											</Card>
+											<SubcategoryGrid items={shownChildren} />
 											{children.length > shownChildren.length || expanded ? (
 												<Button
-													variant="secondary"
+													variant="ghost"
 													size="sm"
-													fullWidth
 													style={styles.moreCategories}
-													label={t(
-														expanded ? "category.showLess" : "category.showAll",
-													)}
-													onPress={() =>
-														setExpandedSlug(expanded ? null : slug)
-													}
+													label={t(expanded ? "category.showLess" : "category.showAll")}
+													onPress={() => setExpandedSlug(expanded ? null : slug)}
 												/>
 											) : null}
 										</View>
