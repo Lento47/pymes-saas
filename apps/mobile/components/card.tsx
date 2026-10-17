@@ -23,6 +23,7 @@ export function Card({
 	children,
 	cover,
 	onPress,
+	disabled = false,
 	accessibilityLabel,
 	accessibilityHint,
 	tone = "surface",
@@ -33,6 +34,7 @@ export function Card({
 	/** Edge-to-edge media, clipped to the card; content keeps the standard padding. */
 	cover?: React.ReactNode;
 	onPress?: () => void;
+	disabled?: boolean;
 	accessibilityLabel?: string;
 	accessibilityHint?: string;
 	/**
@@ -95,6 +97,9 @@ export function Card({
 	return (
 		<Pressable
 			onPress={onPress}
+			disabled={disabled}
+			disabledOpacity={1}
+			accessibilityState={{ disabled }}
 			accessibilityRole="button"
 			accessibilityLabel={accessibilityLabel}
 			accessibilityHint={accessibilityHint}

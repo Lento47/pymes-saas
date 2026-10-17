@@ -11,6 +11,7 @@ import {
 
 import { categoryIcon } from "@/lib/category-icon";
 import { useT } from "@/lib/i18n";
+import { useVisibleMobileCategories } from "@/lib/mobile-configuration";
 import { radius, space, useTheme } from "@/theme";
 
 import { Image } from "./image";

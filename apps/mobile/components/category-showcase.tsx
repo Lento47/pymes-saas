@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { categoryIcon } from "@/lib/category-icon";
 import { useT } from "@/lib/i18n";
+import { useVisibleMobileCategories } from "@/lib/mobile-configuration";
 import { MIN_TOUCH_TARGET, radius, space, useTheme } from "@/theme";
 
 import { Card } from "./card";
@@ -101,8 +102,9 @@ export function CategoryShowcase({
 }) {
 	const { t, tp, locale } = useT();
 	const { colors } = useTheme();
+	const categories = useVisibleMobileCategories(rawCategories);
 
-	// Both hooks run before the guard below, which is what makes the early return legal.
+	// All hooks run before the guard below, which is what makes the early return legal.
 
 	if (categories.length === 0) return null;
 

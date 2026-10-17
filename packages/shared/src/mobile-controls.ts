@@ -37,6 +37,20 @@ function control(
 	};
 }
 
+/** Home shortcuts are independent rollout choices; they do not change the catalogue. */
+export const MOBILE_HOME_CATEGORY_CONTROLS = ([
+	["comida", "Comida", "Food"],
+	["supermercado", "Supermercado", "Groceries"],
+	["tiendas", "Tiendas", "Shops"],
+	["farmacia", "Farmacia", "Pharmacy"],
+	["express", "Express", "Express"],
+	["more", "Ver más categorías", "More categories"],
+] as const).map(([id, es, en]) => control(
+	`customer.homeCategory.${id}`, "customer", "Categorías de Inicio", "section", es, en,
+	"Muestra este acceso en Inicio. Puedes habilitarlo cuando esté listo para el lanzamiento.",
+	"Shows this Home shortcut. Enable it when it is ready to launch.", [], "categories",
+));
+
 /** Supported visibility only. Authentication, support and transaction completion are never switches. */
 const baseControls: MobileControl[] = [
 	control(
@@ -235,6 +249,7 @@ const merchantTools = [
 ] as const;
 export const MOBILE_CONTROLS: readonly MobileControl[] = [
 	...baseControls,
+	...MOBILE_HOME_CATEGORY_CONTROLS,
 	...merchantTools.map(([id, es, en, ...routes]) =>
 		control(
 			`merchant.${id}`,

@@ -1,13 +1,12 @@
 import {
   activeMobileContent,
-  type Category,
   formatMoney,
   type MobileConfiguration,
-  mobileCategoryVisible,
   mobileControlEnabled,
   mobilePreviewSchema,
   type MobileRole,
   MOBILE_CONTROLS,
+  MOBILE_HOME_CATEGORY_CONTROLS,
 } from "@pymeshub/shared";
 import { useQuery } from "@tanstack/react-query";
 import type { z } from "zod";
@@ -23,10 +22,8 @@ const roles = {
 } as const;
 export function MobileControlPreview({
   configuration,
-  categories,
 }: {
   configuration: MobileConfiguration;
-  categories: Category[];
 }) {
   const [role, setRole] = useState<MobileRole>("customer");
   const [locale, setLocale] = useState<"es" | "en">("es");
@@ -203,18 +200,15 @@ export function MobileControlPreview({
                 </div>
               ))}
               {role === "customer" && enabled("categories") ? (
-                <div className="flex flex-wrap gap-2">
-                  {categories
-                    .filter((one) =>
-                      mobileCategoryVisible(configuration, one, categories),
-                    )
-                    .slice(0, 5)
+                <div className="flex flex-wrap gap-2" aria-label="Categorías de inicio en la vista previa">
+                  {MOBILE_HOME_CATEGORY_CONTROLS
+                    .filter((one) => enabled(one.id))
                     .map((one) => (
                       <span
                         key={one.id}
                         className="rounded-full border px-3 py-1 text-xs"
                       >
-                        {locale === "en" ? one.nameEn || one.name : one.name}
+                        {one.label[locale]}
                       </span>
                     ))}
                 </div>

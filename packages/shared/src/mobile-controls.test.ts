@@ -3,6 +3,7 @@ import {
 	activeMobileContent,
 	DEFAULT_MOBILE_CONFIGURATION as defaults,
 	MOBILE_CONTROLS,
+	MOBILE_HOME_CATEGORY_CONTROLS,
 	mobileCategoryVisible,
 	mobileConfigurationSchema,
 	mobileControlEnabled,
@@ -10,6 +11,17 @@ import {
 } from "./mobile-controls";
 
 describe("shared mobile control policy", () => {
+	test("home rollout choices survive draft validation and can be released one at a time", () => {
+		const visibility = Object.fromEntries(MOBILE_HOME_CATEGORY_CONTROLS.map((item) => [item.id, false]));
+		const phase = { ...defaults, visibility: { ...visibility, "customer.homeCategory.comida": true } };
+		const saved = mobileDraftInput.parse({ expectedVersion: 0, configuration: phase }).configuration;
+		const visible = (configuration: typeof defaults) => MOBILE_HOME_CATEGORY_CONTROLS
+			.filter((item) => mobileControlEnabled(configuration, item.id)).map((item) => item.label.es);
+		expect(visible(saved)).toEqual(["Comida"]);
+		expect(visible({ ...phase, visibility: { ...phase.visibility, "customer.homeCategory.supermercado": true } })).toEqual(["Comida", "Supermercado"]);
+		expect(visible({ ...phase, visibility: { ...phase.visibility, categories: false } })).toEqual([]);
+		expect(saved.hiddenCategoryIds).toEqual(defaults.hiddenCategoryIds);
+	});
 	test("registered controls are unique, default on, and cannot name mandatory completion routes", () => {
 		expect(new Set(MOBILE_CONTROLS.map((item) => item.id)).size).toBe(
 			MOBILE_CONTROLS.length,

@@ -33,10 +33,8 @@ import { Text } from "./text";
  * be one: the API decides what a card contains, and a client that asks for more is a
  * client that will one day ask for a field the list query does not join.
  *
- * The **closed** state is a word, not a greyed-out card. Dimming is the reflex and it is
- * wrong here: a shop that is closed is a shop you can still look at and plan for, and the
- * one thing the customer needs to know is that an order placed now will not be accepted —
- * so that fact is a sentence with the opening time in it.
+ * Closed businesses are dimmed and cannot be opened outside the API's working hours.
+ * The explicit closed label stays visible and is included in the accessible name.
  *
  * The picture is `./image`, so the logo's box is the right size from the first frame and
  * the logo fades in over it — and the heart is `./favorite-button`, which owns the write.
@@ -59,11 +57,8 @@ import { Text } from "./text";
  * cut.
  *
  * Open and closed stays where it was — a dot, a word, and a tone — because it is the one
- * item on the card that is a *state* rather than a fact, and a state needs a reason before
- * it needs to be comparable. The card's own docblock has argued since it was written that
- * this is a sentence and not a greyed-out surface; putting it in the chip row would have
- * undone that, and putting the rating in the chip row while leaving the *count* behind
- * would have made "4.8" a claim with no depth.
+ * item on the card that is a *state* rather than a fact. Dimming supplements the explicit
+ * status; the rating and its count remain together in the facts row.
  *
  * ## The score, the count, and the words for both
  *
@@ -268,9 +263,10 @@ export function BusinessCard({
 		.join(" · ");
 
 	return (
-		<View style={styles.wrap}>
+		<View style={[styles.wrap, !business.isOpen && styles.closed]}>
 			<Card
 				onPress={onPress}
+				disabled={!business.isOpen}
 				accessibilityLabel={spoken}
 				cover={
 					business.coverUrl ? (
@@ -432,6 +428,7 @@ const styles = StyleSheet.create({
 	 * positioned ancestor, and this is the only one that is the card's own box.
 	 */
 	wrap: { position: "relative" },
+	closed: { opacity: 0.6 },
 	// Card clips the outer corners; the photo meets its details without an inset or gap.
 	cover: {
 		width: "100%",

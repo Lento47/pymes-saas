@@ -1,6 +1,8 @@
 import {
   type MobileConfiguration,
   MOBILE_CONTROLS,
+  MOBILE_HOME_CATEGORY_CONTROLS,
+  mobileControlEnabled,
   mobileDraftInput,
 } from "@pymeshub/shared";
 import {
@@ -125,6 +127,18 @@ export function MobileAppTab() {
     resetErrors();
     setConfiguration(next);
   }
+  function changeHomeCategories(id: string | null, checked: boolean) {
+    if (!configuration) return;
+    const visibility = { ...configuration.visibility };
+    // Enabling one shortcut after the global switch was off restores only that choice.
+    if (id === null || (checked && visibility.categories === false)) {
+      for (const control of MOBILE_HOME_CATEGORY_CONTROLS)
+        visibility[control.id] = id === null ? checked : false;
+    }
+    if (id !== null) visibility[id] = checked;
+    if (checked) visibility.categories = true;
+    change({ ...configuration, visibility });
+  }
   function saveDraft() {
     resetErrors();
     const parsed = mobileDraftInput.safeParse({
@@ -170,6 +184,9 @@ export function MobileAppTab() {
         .toLowerCase()
         .includes(search.toLowerCase().trim()),
   );
+  const isHomeCategory = (id: string) =>
+    MOBILE_HOME_CATEGORY_CONTROLS.some((control) => control.id === id);
+  const homeCategories = controls.filter((control) => isHomeCategory(control.id));
   return (
     <div className="space-y-6">
       <header className="space-y-2">
@@ -304,9 +321,55 @@ export function MobileAppTab() {
                 </select>
               </label>
             </div>
+            {homeCategories.length > 0 ? (
+              <section
+                aria-labelledby="mobile-home-categories-heading"
+                className="space-y-4 rounded-xl border p-4"
+              >
+                <div>
+                  <h3 id="mobile-home-categories-heading" className="font-semibold">
+                    Categorías de inicio
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Oculta todas y activa solo Comida para empezar. Puedes habilitar
+                    las demás por etapas. Estos controles cambian los accesos de Inicio.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={busy || stale}
+                    onClick={() => changeHomeCategories(null, false)}
+                  >
+                    Ocultar todas
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy || stale}
+                    onClick={() => changeHomeCategories(null, true)}
+                  >
+                    Mostrar todas
+                  </Button>
+                </div>
+                {homeCategories.map((control) => (
+                  <label
+                    key={control.id}
+                    className="flex min-h-12 items-center justify-between gap-4 border-t pt-3"
+                  >
+                    <span>{control.label.es}</span>
+                    <Switch
+                      aria-label={`Mostrar ${control.label.es} en Inicio`}
+                      checked={mobileControlEnabled(configuration, control.id)}
+                      disabled={busy || stale}
+                      onCheckedChange={(checked) => changeHomeCategories(control.id, checked)}
+                    />
+                  </label>
+                ))}
+              </section>
+            ) : null}
             {Object.entries(roleNames).map(([group, label]) => {
               const groupControls = controls.filter(
-                (control) => control.role === group,
+                (control) => control.role === group && !isHomeCategory(control.id),
               );
               if (!groupControls.length) return null;
               return (
@@ -502,10 +565,7 @@ export function MobileAppTab() {
             ) : null}
           </section>
         </div>
-        <MobileControlPreview
-          configuration={configuration}
-          categories={categories.data ?? []}
-        />
+        <MobileControlPreview configuration={configuration} />
       </div>
       <AlertDialog
         open={confirmation !== null}

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { useT } from "@/lib/i18n";
+import { useMobileConfiguration } from "@/lib/mobile-configuration";
 import { icon, space, useTheme } from "@/theme";
 
 import { Pressable } from "./pressable";
@@ -34,6 +35,7 @@ const PHOTO = {
  */
 const ITEMS: {
 	id: keyof typeof PHOTO;
+	controlId: string;
 	labelKey:
 		| "home.editorial.cat.comida"
 		| "home.editorial.cat.supermercado"
@@ -48,6 +50,7 @@ const ITEMS: {
 }[] = [
 	{
 		id: "comida",
+		controlId: "customer.homeCategory.comida",
 		labelKey: "home.editorial.cat.comida",
 		tint: "#F3C7B0",
 		href: { pathname: "/category/[slug]", params: { slug: "food-beverage" } },
@@ -57,6 +60,7 @@ const ITEMS: {
 	},
 	{
 		id: "super",
+		controlId: "customer.homeCategory.supermercado",
 		labelKey: "home.editorial.cat.supermercado",
 		tint: "#C5D4B8",
 		href: { pathname: "/category/[slug]", params: { slug: "groceries" } },
@@ -66,6 +70,7 @@ const ITEMS: {
 	},
 	{
 		id: "tiendas",
+		controlId: "customer.homeCategory.tiendas",
 		labelKey: "home.editorial.cat.tiendas",
 		tint: "#E4D4C2",
 		href: "/nearby",
@@ -75,6 +80,7 @@ const ITEMS: {
 	},
 	{
 		id: "farmacia",
+		controlId: "customer.homeCategory.farmacia",
 		labelKey: "home.editorial.cat.farmacia",
 		tint: "#D5E3F0",
 		href: {
@@ -87,6 +93,7 @@ const ITEMS: {
 	},
 	{
 		id: "express",
+		controlId: "customer.homeCategory.express",
 		labelKey: "home.editorial.cat.express",
 		tint: "#D4D0EA",
 		href: "/nearby",
@@ -99,6 +106,11 @@ const ITEMS: {
 export function AngledCategoryRail() {
 	const { t } = useT();
 	const { colors } = useTheme();
+	const { enabled } = useMobileConfiguration();
+
+	const items = ITEMS.filter((item) => enabled(item.controlId));
+	const showMore = enabled("customer.homeCategory.more");
+	if (items.length === 0 && !showMore) return null;
 
 	return (
 		<ScrollView
@@ -107,7 +119,7 @@ export function AngledCategoryRail() {
 			contentContainerStyle={styles.row}
 			style={styles.scroller}
 		>
-			{ITEMS.map((item) => (
+			{items.map((item) => (
 				<Panel
 					key={item.id}
 					label={t(item.labelKey)}
@@ -121,13 +133,15 @@ export function AngledCategoryRail() {
 					labelFill={colors.card}
 				/>
 			))}
-			<MorePanel
-				label={t("home.editorial.cat.more")}
-				ink={colors.foreground}
-				labelFill={colors.card}
-				tileFill={colors.muted}
-				iconColor={colors.foreground}
-			/>
+			{showMore ? (
+				<MorePanel
+					label={t("home.editorial.cat.more")}
+					ink={colors.foreground}
+					labelFill={colors.card}
+					tileFill={colors.muted}
+					iconColor={colors.foreground}
+				/>
+			) : null}
 		</ScrollView>
 	);
 }
