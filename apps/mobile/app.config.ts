@@ -93,7 +93,7 @@ process.env.EXPO_PUBLIC_SENTRY_DSN = sentryDsn;
 export default ({ config }: ConfigContext): ExpoConfig => ({
 	...config,
 	owner: "otnel",
-	name: "PymesHub",
+	name: "Scyte",
 	slug: "pymeshub",
 	version: "0.2.0",
 	orientation: "portrait",
@@ -321,9 +321,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 			"expo-location",
 			{
 				locationWhenInUsePermission:
-					"PymesHub usa tu ubicación para mostrar negocios cercanos y compartir tu posición durante una entrega activa.",
+					"Scyte usa tu ubicación para mostrar negocios cercanos y compartir tu posición durante una entrega activa.",
 				locationAlwaysAndWhenInUsePermission:
-					"Durante una entrega activa, PymesHub comparte tu ubicación con la tienda y el cliente aunque la pantalla esté bloqueada. El seguimiento se detiene al terminar o cancelar la entrega.",
+					"Durante una entrega activa, Scyte comparte tu ubicación con la tienda y el cliente aunque la pantalla esté bloqueada. El seguimiento se detiene al terminar o cancelar la entrega.",
 				locationAlwaysPermission: false,
 				isIosBackgroundLocationEnabled: true,
 				isAndroidBackgroundLocationEnabled: true,
@@ -357,9 +357,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 			"expo-image-picker",
 			{
 				photosPermission:
-					"PymesHub usa tus fotos para que puedas agregar imágenes a tus productos.",
+					"Scyte usa tus fotos para que puedas agregar imágenes a tus productos.",
 				cameraPermission:
-					"PymesHub usa tu cámara para que puedas tomar fotos de tus productos.",
+					"Scyte usa tu cámara para que puedas tomar fotos de tus productos.",
 				microphonePermission: false,
 			},
 		],
