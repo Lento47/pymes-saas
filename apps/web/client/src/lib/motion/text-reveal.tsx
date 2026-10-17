@@ -13,7 +13,7 @@ import { SPRINGS } from "./springs";
 /**
  * The text engine.
  *
- * A block of type is split into units — words, or letters for short runs — and each
+ * A block of type is split into units - words, or letters for short runs - and each
  * unit runs its own spring from an out-state to an in-state, offset by a per-unit
  * stagger. It is the reason a headline on this page reads as arriving rather than
  * appearing, and it is why the same primitive serves a display name, a paragraph and a
@@ -126,12 +126,20 @@ export function TextReveal({
   // its own stagger window. The word's position in `units` is that count.
   const from = outState(unit);
 
+  // The stagger and hold are milliseconds in this API - every call site spells them
+  // that way - but framer-motion's `transition.delay` is seconds. Dividing here is the
+  // one place the units meet: a call site passing 120 for 120ms reads what it wrote,
+  // and framer gets 0.12s. Without the conversion the headline waits two minutes (and
+  // a `delay={520}` panel waits eight and a half) before its first frame moves, which
+  // is what had the hero rendering as an empty page.
+  const perUnit = (atMs: number) => (delay + atMs) / 1000;
+
   return (
     <Tag className={className} id={id} ref={ref}>
       <span className="sr-only">{text}</span>
       <span aria-hidden="true" className="inline-flex flex-wrap" style={{ columnGap: `${gap}em` }}>
         {units.map((entry, wordIndex) => {
-          const at = delay + wordIndex * stagger;
+          const at = perUnit(wordIndex * stagger);
 
           return (
             <span key={`${wordIndex}-${entry.word}`} className="inline-flex">
@@ -144,7 +152,7 @@ export function TextReveal({
                       animate={active ? IN_STATE : from}
                       // The stagger belongs to the entrance only. Reversing with the
                       // same per-unit delay would make a hover-out crawl.
-                      transition={active ? { ...spring, delay: at + letterIndex * 12 } : spring}
+                      transition={active ? { ...spring, delay: at + (letterIndex * 12) / 1000 } : spring}
                     >
                       {letter}
                     </motion.span>
@@ -198,6 +206,7 @@ type RevealProps = {
   children: ReactNode;
   /** Where the block starts, as a `translateY` length. */
   from?: string;
+  /** Milliseconds before the entrance starts. */
   delay?: number;
   spring?: Transition;
   className?: string;
@@ -220,7 +229,7 @@ export function Reveal({ children, from = "1.25rem", delay = 0, spring = SPRINGS
       className={className}
       initial={{ opacity: 0, y: from }}
       animate={inView ? { opacity: 1, y: "0rem" } : { opacity: 0, y: from }}
-      transition={{ ...spring, delay }}
+      transition={{ ...spring, delay: delay / 1000 }}
     >
       {children}
     </motion.div>
