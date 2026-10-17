@@ -3,7 +3,13 @@ import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 
-import { EmptyState, ErrorState, LoadMore, LoadingGrid, Section } from "@/components/marketplace/cards";
+import {
+  EmptyState,
+  ErrorState,
+  LoadMore,
+  LoadingGrid,
+  Section,
+} from "@/components/marketplace/cards";
 import { MarketplaceShell } from "@/components/marketplace/public-shell";
 import { useCategories } from "@/lib/marketplace";
 
@@ -55,7 +61,9 @@ export default function MarketplaceCategoriesPage() {
     const position = new Map<string, number>();
 
     for (const category of items) {
-      const parent = category.parentId ? byId.get(category.parentId) : undefined;
+      const parent = category.parentId
+        ? byId.get(category.parentId)
+        : undefined;
 
       if (parent) {
         const at = position.get(parent.id);
@@ -83,13 +91,18 @@ export default function MarketplaceCategoriesPage() {
 
   return (
     <MarketplaceShell>
-      <h1 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-foreground">Categorías</h1>
+      <h1 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-foreground">
+        Categorías
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Elegí una categoría para ver los negocios disponibles.
       </p>
 
       {isError ? (
-        <ErrorState message="No pudimos cargar las categorías." onRetry={() => void refetch()} />
+        <ErrorState
+          message="No pudimos cargar las categorías."
+          onRetry={() => void refetch()}
+        />
       ) : isLoading || !data ? (
         <LoadingGrid count={12} />
       ) : data.length === 0 ? (
@@ -116,7 +129,7 @@ export default function MarketplaceCategoriesPage() {
                     // screen reader, so each one says what it opens. The visible text stays
                     // short because the heading directly beside it already names the sector.
                     aria-label={`Ver todo en ${group.root.name}`}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-link transition hover:underline"
+                    className="market-section-link"
                   >
                     Ver todo
                     <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -132,9 +145,11 @@ export default function MarketplaceCategoriesPage() {
                     <li key={child.id}>
                       <Link
                         href={`/category/${child.slug}`}
-                        className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5 transition hover:border-primary/50"
+                        className="market-card flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3"
                       >
-                        <span className="truncate text-sm text-foreground">{child.name}</span>
+                        <span className="min-w-0 break-words text-sm font-medium text-foreground">
+                          {child.name}
+                        </span>
                         {child.productCount ? (
                           <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                             {child.productCount}
@@ -152,7 +167,9 @@ export default function MarketplaceCategoriesPage() {
             hasNextPage={shownGroups < groups.length}
             isLoadingMore={false}
             pages={shownGroups}
-            onLoadMore={() => setShownGroups((current) => current + GROUPS_PER_PAGE)}
+            onLoadMore={() =>
+              setShownGroups((current) => current + GROUPS_PER_PAGE)
+            }
             total={data.length}
             label="Mostrar más sectores"
             singular="categoría"

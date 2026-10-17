@@ -2,11 +2,20 @@ import { Check, Circle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 import { EmptyState, ErrorState, money } from "@/components/marketplace/cards";
-import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  AmberButton,
+  BackLink,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomerOrderPayments } from "@/components/marketplace/order-payments";
 import { useToast } from "@/hooks/use-toast";
-import { useCancelOrder, useMarketplaceSession, useOrder } from "@/lib/marketplace";
+import { ConfirmAction } from "@/components/marketplace/confirm-action";
+import {
+  useCancelOrder,
+  useMarketplaceSession,
+  useOrder,
+} from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -23,7 +32,10 @@ const STATUS_LABELS: Record<string, string> = {
 function formatDate(value: unknown): string {
   const date = value instanceof Date ? value : new Date(String(value));
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("es-CR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 export default function MarketplaceOrderPage({ id }: { id: string }) {
@@ -44,7 +56,10 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
   if (isError) {
     return (
       <MarketplaceShell>
-        <ErrorState message="No pudimos cargar este pedido." onRetry={() => void refetch()} />
+        <ErrorState
+          message="No pudimos cargar este pedido."
+          onRetry={() => void refetch()}
+        />
       </MarketplaceShell>
     );
   }
@@ -55,19 +70,31 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
         <EmptyState
           title="No encontramos ese pedido."
           description="Puede que el enlace esté vencido o no sea tuyo."
-          action={<AmberButton onClick={() => navigate("/orders")}>Ver mis pedidos</AmberButton>}
+          action={
+            <AmberButton onClick={() => navigate("/orders")}>
+              Ver mis pedidos
+            </AmberButton>
+          }
         />
       </MarketplaceShell>
     );
   }
 
-  const isFinished = data.status === "COMPLETED" || data.status === "CANCELLED" || data.status === "REJECTED";
+  const isFinished =
+    data.status === "COMPLETED" ||
+    data.status === "CANCELLED" ||
+    data.status === "REJECTED";
 
   return (
     <MarketplaceShell>
+      <div className="mb-3">
+        <BackLink href="/orders">Mis pedidos</BackLink>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">{data.headline}</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
+            {data.headline}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {data.reference} · {formatDate(data.placedAt)}
           </p>
@@ -77,16 +104,21 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
         </span>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <div className="flex flex-col gap-5">
-          <ol className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <ol
+            aria-label="Estado del pedido"
+            className="market-timeline flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6"
+          >
             {data.events.map((event) => (
               <li key={event.id} className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-link">
+                <span className="market-timeline-dot mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-link">
                   <Check aria-hidden="true" className="h-3 w-3" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{STATUS_LABELS[event.status] ?? event.status}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {STATUS_LABELS[event.status] ?? event.status}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDate(event.createdAt)}
                     {event.note ? ` · ${event.note}` : ""}
@@ -102,8 +134,10 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
             ) : null}
           </ol>
 
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold text-foreground">Productos</h2>
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <h2 className="mb-5 text-lg font-semibold text-foreground">
+              Productos
+            </h2>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {data.items.map((item) => (
                 <li key={item.id} className="flex justify-between gap-3">
@@ -115,15 +149,17 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
                       </span>
                     ) : null}
                   </span>
-                  <span className="shrink-0">{money(item.lineTotalMinor, data.currency)}</span>
+                  <span className="shrink-0">
+                    {money(item.lineTotalMinor, data.currency)}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <aside className="flex h-fit flex-col gap-4">
-          <div className="rounded-xl border border-border bg-card p-4">
+        <aside className="flex h-fit min-w-0 flex-col gap-4">
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
             <Link
               href={`/store/${data.business.slug}`}
               className="text-sm font-semibold text-link hover:text-link/80"
@@ -142,7 +178,9 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
                 </div>
               ) : null}
               {data.totals.merchantCoversDelivery ? (
-                <p className="text-xs text-muted-foreground">El comercio cubrió tu envío y debe pagar al repartidor.</p>
+                <p className="text-xs text-muted-foreground">
+                  El comercio cubrió tu envío y debe pagar al repartidor.
+                </p>
               ) : null}
               {data.totals.discountMinor > 0 ? (
                 <div className="flex justify-between">
@@ -157,7 +195,7 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
             </dl>
           </div>
 
-          <CustomerOrderPayments orderId={data.id}/>
+          <CustomerOrderPayments orderId={data.id} />
           {data.deliveryAddress ? (
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
               <p className="mb-1 font-semibold text-foreground">Entrega</p>
@@ -167,9 +205,14 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
             </div>
           ) : data.pickupCode ? (
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-              <p className="mb-1 font-semibold text-foreground">Retiro en tienda</p>
+              <p className="mb-1 font-semibold text-foreground">
+                Retiro en tienda
+              </p>
               <p>
-                Código: <span className="font-mono font-semibold text-foreground">{data.pickupCode}</span>
+                Código:{" "}
+                <span className="font-mono font-semibold text-foreground">
+                  {data.pickupCode}
+                </span>
               </p>
             </div>
           ) : null}
@@ -182,25 +225,29 @@ export default function MarketplaceOrderPage({ id }: { id: string }) {
           ) : null}
 
           {data.canCancel && !isFinished ? (
-            <button
-              type="button"
-              disabled={cancelOrder.isPending}
-              onClick={() =>
-                cancelOrder.mutate(
-                  { orderId: data.id },
-                  {
-                    onSuccess: () => toast({ title: "Pedido cancelado" }),
-                    onError: () => toast({ title: "No pudimos cancelar el pedido", variant: "destructive" }),
-                  },
-                )
-              }
-              className={cn(
-                "min-h-11 rounded-md border border-destructive/30 px-4 text-sm font-semibold text-destructive transition",
-                "hover:bg-destructive/10 disabled:opacity-60",
-              )}
+            <ConfirmAction
+              key={data.id}
+              title="¿Cancelar este pedido?"
+              description="El comercio recibirá la cancelación. Para recibir tu pedido, elegí mantenerlo."
+              confirmLabel="Cancelar pedido"
+              cancelLabel="Mantener pedido"
+              errorMessage="No pudimos cancelar el pedido. Intentá de nuevo."
+              onConfirm={async () => {
+                await cancelOrder.mutateAsync({ orderId: data.id });
+                toast({ title: "Pedido cancelado" });
+              }}
             >
-              {cancelOrder.isPending ? "Cancelando…" : "Cancelar pedido"}
-            </button>
+              <button
+                type="button"
+                disabled={cancelOrder.isPending}
+                className={cn(
+                  "min-h-11 rounded-md border border-destructive/30 px-4 text-sm font-semibold text-destructive transition",
+                  "hover:bg-destructive/10 disabled:opacity-60",
+                )}
+              >
+                {cancelOrder.isPending ? "Cancelando…" : "Cancelar pedido"}
+              </button>
+            </ConfirmAction>
           ) : null}
 
           {!session ? (

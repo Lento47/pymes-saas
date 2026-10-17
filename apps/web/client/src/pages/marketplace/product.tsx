@@ -5,11 +5,18 @@ import { Link, useLocation } from "wouter";
 import {
   EmptyState,
   ErrorState,
+  MarketplaceImage,
+  ProductCardView,
+  ProductGrid,
   Rating,
+  Section,
   money,
-  imageSrc,
 } from "@/components/marketplace/cards";
-import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  AmberButton,
+  BackLink,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +27,7 @@ import {
   useProduct,
 } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "@/components/marketplace/favorite-button";
 
 export default function MarketplaceProductPage({ id }: { id: string }) {
   const { data, isLoading, isError, refetch } = useProduct(id);
@@ -34,19 +42,26 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
 
   const missingRequired = useMemo(
     () =>
-      groups.some((group) => group.isRequired && (selected[group.id]?.length ?? 0) < Math.max(1, group.minSelect)),
+      groups.some(
+        (group) =>
+          group.isRequired &&
+          (selected[group.id]?.length ?? 0) < Math.max(1, group.minSelect),
+      ),
     [groups, selected],
   );
 
   if (isError) {
     return (
       <MarketplaceShell>
-        <ErrorState message="No pudimos cargar este producto." onRetry={() => void refetch()} />
+        <ErrorState
+          message="No pudimos cargar este producto."
+          onRetry={() => void refetch()}
+        />
       </MarketplaceShell>
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <MarketplaceShell>
         <div className="grid gap-6 lg:grid-cols-2">
@@ -57,6 +72,25 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
             <Skeleton className="h-24 w-full bg-foreground/[0.07]" />
           </div>
         </div>
+      </MarketplaceShell>
+    );
+  }
+
+  if (!data) {
+    return (
+      <MarketplaceShell>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">
+          Producto no disponible
+        </h1>
+        <EmptyState
+          title="No encontramos este producto."
+          description="Puede que ya no esté disponible. Explorá otras opciones en el catálogo."
+          action={
+            <Link href="/categories" className="market-section-link">
+              Explorar categorías
+            </Link>
+          }
+        />
       </MarketplaceShell>
     );
   }
@@ -85,8 +119,10 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
     addToCart.mutate(
       { productId: data.id, quantity, optionIds },
       {
-        onSuccess: () => toast({ title: `${quantity}× ${data.title} agregado al carrito` }),
-        onError: (error) => toast({ title: cartErrorMessage(error), variant: "destructive" }),
+        onSuccess: () =>
+          toast({ title: `${quantity}× ${data.title} agregado al carrito` }),
+        onError: (error) =>
+          toast({ title: cartErrorMessage(error), variant: "destructive" }),
       },
     );
   };
@@ -95,24 +131,37 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
 
   return (
     <MarketplaceShell>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="mb-4">
+        <BackLink href={`/store/${data.seller.slug}`}>
+          Volver a {data.seller.name}
+        </BackLink>
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-10">
+        <div className="overflow-hidden rounded-3xl border border-border bg-card">
           <div className="relative aspect-[4/3] w-full bg-elevated">
-            {data.imageUrl ? (
-              <img src={imageSrc(data.imageUrl) ?? ""} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-muted-foreground/50">
-                {data.title.slice(0, 1).toUpperCase()}
-              </div>
-            )}
+            <MarketplaceImage
+              src={data.imageUrl}
+              alt={data.title}
+              className="h-full w-full object-cover"
+            />
+            <FavoriteButton
+              productId={data.id}
+              name={data.title}
+              className="absolute right-4 top-4"
+            />
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-6">
           <div>
-            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">{data.title}</h1>
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
+              {data.title}
+            </h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              <Link href={`/store/${data.seller.slug}`} className="inline-flex items-center gap-1.5 text-link hover:text-link/80">
+              <Link
+                href={`/store/${data.seller.slug}`}
+                className="inline-flex min-h-11 items-center gap-1.5 text-link hover:text-link/80"
+              >
                 <Store aria-hidden="true" className="h-4 w-4" />
                 {data.seller.name}
               </Link>
@@ -120,8 +169,8 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
             </div>
           </div>
 
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold tabular-nums text-foreground">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-[1.75rem] font-semibold tabular-nums tracking-tight text-foreground">
               {money(data.priceMinor, data.currency)}
             </span>
             {data.compareAtPriceMinor ? (
@@ -136,44 +185,58 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
             ) : null}
           </div>
 
-          {data.description ? <p className="text-sm leading-6 text-muted-foreground">{data.description}</p> : null}
+          {data.description ? (
+            <p className="max-w-prose text-sm leading-6 text-muted-foreground">
+              {data.description}
+            </p>
+          ) : null}
 
           {groups.map((group) => {
             const multi = group.kind === "MULTI";
             return (
-              <fieldset key={group.id} className="rounded-xl border border-border bg-card p-4">
+              <fieldset
+                key={group.id}
+                className="rounded-xl border border-border bg-card p-4"
+              >
                 <legend className="px-1 text-sm font-semibold text-foreground">
                   {group.name}
-                  {group.isRequired ? <span className="ml-1 text-link">*</span> : null}
+                  {group.isRequired ? (
+                    <span className="ml-1 text-link">*</span>
+                  ) : null}
                 </legend>
                 <div className="mt-2 flex flex-col gap-1.5">
                   {group.options.map((option) => {
-                    const checked = (selected[group.id] ?? []).includes(option.id);
+                    const checked = (selected[group.id] ?? []).includes(
+                      option.id,
+                    );
                     const delta = option.priceDeltaMinor;
                     return (
                       <label
                         key={option.id}
                         className={cn(
-                          "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 text-sm transition",
+                          "flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm transition-colors",
                           checked
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                          !option.isAvailable && "cursor-not-allowed opacity-50",
+                          !option.isAvailable &&
+                            "cursor-not-allowed opacity-50",
                         )}
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex min-w-0 items-center gap-2.5">
                           <input
                             type={multi ? "checkbox" : "radio"}
                             name={group.id}
                             checked={checked}
                             disabled={!option.isAvailable}
-                            onChange={() => toggleOption(group.id, option.id, multi)}
-                            className="h-4 w-4 accent-primary"
+                            onChange={() =>
+                              toggleOption(group.id, option.id, multi)
+                            }
+                            className="h-4 w-4 shrink-0 accent-primary"
                           />
                           {option.name}
                         </span>
                         {delta !== 0 ? (
-                          <span className="text-xs text-muted-foreground tabular-nums">
+                          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                             {delta > 0 ? "+" : ""}
                             {money(delta, data.currency)}
                           </span>
@@ -186,8 +249,8 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
             );
           })}
 
-          <div className="flex items-center gap-4">
-            <div className="inline-flex items-center rounded-md border border-border">
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
+            <div className="inline-flex shrink-0 items-center rounded-xl border border-border">
               <Button
                 type="button"
                 variant="ghost"
@@ -199,7 +262,10 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
               >
                 <Minus aria-hidden="true" className="h-4 w-4" />
               </Button>
-              <span aria-live="polite" className="w-10 text-center text-sm font-semibold tabular-nums text-foreground">
+              <span
+                aria-live="polite"
+                className="w-10 text-center text-sm font-semibold tabular-nums text-foreground"
+              >
                 {quantity}
               </span>
               <Button
@@ -218,7 +284,7 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
             <AmberButton
               onClick={onAdd}
               disabled={soldOut || addToCart.isPending || missingRequired}
-              className="flex-1"
+              className="min-w-[10rem] flex-1"
             >
               {soldOut
                 ? "Agotado"
@@ -231,28 +297,13 @@ export default function MarketplaceProductPage({ id }: { id: string }) {
       </div>
 
       {data.related.length > 0 ? (
-        <section className="mt-10">
-          <h2 className="mb-3 text-xl font-semibold tracking-[-0.01em] text-foreground">
-            Más de {data.seller.name}
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <Section title={`Más de ${data.seller.name}`}>
+          <ProductGrid>
             {data.related.map((product) => (
-              <Link
-                key={product.id}
-                href={`/product/${product.id}`}
-                className="rounded-lg border border-border bg-card p-3 text-sm text-foreground transition hover:border-primary/50"
-              >
-                {product.title}
-              </Link>
+              <ProductCardView key={product.id} product={product} />
             ))}
-          </div>
-        </section>
-      ) : null}
-
-      {data.tags.length === 0 && groups.length === 0 && !data.description ? (
-        <div className="mt-8">
-          <EmptyState title="Este producto todavía no tiene más detalles." />
-        </div>
+          </ProductGrid>
+        </Section>
       ) : null}
     </MarketplaceShell>
   );

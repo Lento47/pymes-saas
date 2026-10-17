@@ -7,7 +7,10 @@ import {
   LoadMore,
   LoadingGrid,
 } from "@/components/marketplace/cards";
-import { MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  BackLink,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { useBrowserLocation } from "@/hooks/use-browser-location";
 import { useBusinessesInfinite, useCategories } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
@@ -26,7 +29,12 @@ import { cn } from "@/lib/utils";
  * for `!data` first would show a spinner forever on a category that does not exist.
  */
 export default function MarketplaceCategoryPage({ slug }: { slug: string }) {
-  const { data: categories, isLoading: loadingCategories } = useCategories();
+  const {
+    data: categories,
+    isLoading: loadingCategories,
+    isError: categoriesFailed,
+    refetch: refetchCategories,
+  } = useCategories();
   const { coords } = useBrowserLocation();
 
   const category = useMemo(
@@ -62,13 +70,26 @@ export default function MarketplaceCategoryPage({ slug }: { slug: string }) {
 
   return (
     <MarketplaceShell>
+      <div className="mb-3">
+        <BackLink href="/categories">Todas las categorías</BackLink>
+      </div>
       <h1 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-foreground">
         {category?.name ?? "Categoría"}
       </h1>
-      <p className="mb-6 text-sm text-muted-foreground">Negocios disponibles en esta categoría.</p>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Negocios disponibles en esta categoría.
+      </p>
 
-      {isError ? (
-        <ErrorState message="No pudimos cargar los negocios." onRetry={() => void refetch()} />
+      {categoriesFailed ? (
+        <ErrorState
+          message="No pudimos cargar esta categoría."
+          onRetry={() => void refetchCategories()}
+        />
+      ) : isError ? (
+        <ErrorState
+          message="No pudimos cargar los negocios."
+          onRetry={() => void refetch()}
+        />
       ) : waitForCategory ? (
         <LoadingGrid count={6} />
       ) : !category ? (

@@ -11,8 +11,9 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
-import { trpc } from "@/lib/marketplace";
-import { money } from "./cards";
+import { marketplaceKeys, trpc } from "@/lib/marketplace";
+import { ErrorState, money } from "./cards";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AmberButton } from "./public-shell";
 
 const { t } = createTranslator("es");
@@ -31,20 +32,28 @@ export function CustomerOrderPayments({ orderId }: { orderId: string }) {
       orderPaymentsSchema.parse(await trpc.orders.payments.query({ orderId })),
     refetchInterval: 5000,
   });
-  if (query.isPending) return <p role="status">Cargando pagos…</p>;
+  if (query.isPending)
+    return (
+      <div
+        role="status"
+        aria-label="Cargando pagos…"
+        className="space-y-3 rounded-2xl border border-border bg-card p-5"
+      >
+        <Skeleton className="h-5 w-1/2 bg-foreground/[0.07]" />
+        <Skeleton className="h-14 w-full bg-foreground/[0.07]" />
+      </div>
+    );
   if (query.isError)
     return (
-      <div role="alert">
-        <p>{failure(query.error)}</p>
-        <button onClick={() => query.refetch()} className="min-h-11 underline">
-          Intentar de nuevo
-        </button>
-      </div>
+      <ErrorState
+        message={failure(query.error)}
+        onRetry={() => void query.refetch()}
+      />
     );
   return (
     <section className="space-y-4" aria-label={t("payments.title")}>
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h2 className="font-semibold">{t("payments.title")}</h2>
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <h2 className="text-lg font-semibold">{t("payments.title")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           {t(
             query.data.legacy
@@ -88,7 +97,7 @@ function CustomerPaymentStep({
   const refresh = async () => {
     setView(false);
     await cache.invalidateQueries({ queryKey: queryKey(orderId) });
-    await cache.invalidateQueries({ queryKey: ["order", orderId] });
+    await cache.invalidateQueries({ queryKey: marketplaceKeys.order(orderId) });
   };
   const method = useMutation({
     mutationFn: async (value: "CASH" | "SINPE_MOVIL") =>
@@ -174,7 +183,7 @@ function CustomerPaymentStep({
     }
   };
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+    <div className="space-y-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
       <div className="flex flex-wrap justify-between gap-2">
         <h3 className="font-semibold">{t(title)}</h3>
         <strong className="tabular-nums">
@@ -226,7 +235,9 @@ function CustomerPaymentStep({
               <label className="block space-y-1 text-sm">
                 <span>{t("payments.reference")}</span>
                 <input
-                  className="min-h-11 w-full rounded-md border border-border bg-background px-3"
+                  className="min-h-12 w-full rounded-xl border border-border bg-background px-3"
+                  name="paymentReference"
+                  autoComplete="off"
                   value={reference}
                   maxLength={120}
                   onChange={(event) => setReference(event.target.value)}
@@ -264,6 +275,11 @@ function CustomerPaymentStep({
           src={`data:${proof.data.mimeType};base64,${proof.data.base64}`}
           alt={t("payments.proofLabel")}
         />
+      ) : null}
+      {view && proof.isFetching ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Cargando comprobante…
+        </p>
       ) : null}
       {upload.isPending ? <p role="status">Enviando comprobante…</p> : null}
       {localError || method.error || upload.error || proof.error ? (

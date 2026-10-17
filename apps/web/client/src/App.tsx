@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect, useLocation } from "wouter";
@@ -7,13 +7,11 @@ import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { OfflineBanner } from "@/components/shared/offline-banner";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { DisplayPreferencesProvider, useDisplayPreferences } from "@/components/providers/display-preferences";
-import AccountPage from "@/pages/account";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { CallProvider, useCallContext } from "@/features/calls/CallProvider";
@@ -22,67 +20,8 @@ import { ActiveCallBar } from "@/features/calls/ActiveCallBar";
 import { CallErrorFallback } from "@/features/calls/CallErrorFallback";
 import { CallPage } from "@/features/calls/CallPage";
 
-import AcceptInvite from "@/pages/accept-invite";
-import VerifyEmail from "@/pages/verify-email";
-import ResetPassword from "@/pages/reset-password";
-import Pricing from "@/pages/pricing";
-import ProductPage from "@/pages/product";
-import SeoLandingPage from "@/pages/seo-landing-page";
-import Dashboard from "@/pages/dashboard";
-import Inbox from "@/pages/inbox";
-import Contacts from "@/pages/contacts";
-import ContactDetail from "@/pages/contact-detail";
-import Tasks from "@/pages/tasks";
-import Documents from "@/pages/documents";
-import Invoices from "@/pages/invoices";
-import Automations from "@/pages/automations";
-import Notifications from "@/pages/notifications";
-import Pipeline from "@/pages/pipeline";
-import WorkspaceSettingsPage from "@/pages/settings/workspace";
-import MembersSettingsPage from "@/pages/settings/members";
-import ChannelsSettingsPage from "@/pages/settings/channels";
-import DepartmentsSettingsPage from "@/pages/settings/departments";
-import IntegrationsSettingsPage from "@/pages/settings/integrations";
-import AiSettingsPage from "@/pages/settings/ai";
-import CreditsSettingsPage from "@/pages/settings/credits";
-import TemplatesSettingsPage from "@/pages/settings/templates";
-import AuditLogPage from "@/pages/settings/audit";
-import PlatformSettingsPage from "@/pages/settings/platform";
-import Billing from "@/pages/billing";
-import HelpPage from "@/pages/help";
-import HelpCenterPage from "@/pages/help-center";
-import HelpDocumentPage from "@/pages/help-document";
-import DocumentationCenterPage from "@/pages/documentation";
-import DocumentationDocumentPage from "@/pages/documentation-document";
-import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
-import DataRequestPage from "@/pages/data-request";
-import AccessibilityPage from "@/pages/accessibility";
-import PlatformPage from "@/pages/marketing/platform-page";
-import AiAgentsPage from "@/pages/marketing/ai-agents-page";
-import BillingMarketingPage from "@/pages/marketing/billing-page";
-import WorkflowsPage from "@/pages/workflows";
-import InsightsPage from "@/pages/insights-page";
-import SecurityPage from "@/pages/marketing/security-page";
-import SecurityAdvisoriesPage from "@/pages/marketing/security-advisories-page";
 import NotFound from "@/pages/not-found";
-import Chat from "@/pages/chat";
-import Agent from "@/pages/agent";
-import OnboardingPage from "@/pages/onboarding";
-import SetupPage from "@/pages/setup";
-import SupportPage from "@/pages/support";
-import InventoryPage from "@/pages/inventory";
-import InventoryDetailPage from "@/pages/inventory-detail";
-import InventoryMovementsPage from "@/pages/inventory-movements";
-import AgentsPage from "@/pages/agents/AgentsPage";
-import AgentDetailPage from "@/pages/agents/AgentDetailPage";
-import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
-import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
-import SolutionPage from "@/pages/solutions/SolutionPage";
-import ComingSoonPage from "@/pages/coming-soon";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
-import AdminConsolePage from "@/pages/admin/console";
-import BusinessProfilePage from "@/pages/business-profile";
-import MapPage from "@/pages/map";
 import MarketplaceHomePage from "@/pages/marketplace/home";
 import MarketplaceCategoriesPage from "@/pages/marketplace/categories";
 import MarketplaceCategoryPage from "@/pages/marketplace/category";
@@ -96,6 +35,70 @@ import MarketplaceOrderPage from "@/pages/marketplace/order";
 import MarketplaceFavoritesPage from "@/pages/marketplace/favorites";
 import MarketplaceSignInPage from "@/pages/marketplace/sign-in";
 
+// Keep shopping routes eager; load merchant tools and marketing only when opened.
+const AppSidebar = lazy(() => import("@/components/layout/sidebar").then(module => ({ default: module.AppSidebar })));
+const LegalCenterPage = lazy(() => import("@/pages/legal-center").then(module => ({ default: module.LegalCenterPage })));
+const LegalDocumentPage = lazy(() => import("@/pages/legal-center").then(module => ({ default: module.LegalDocumentPage })));
+const AccountPage = lazy(() => import("@/pages/account"));
+const AcceptInvite = lazy(() => import("@/pages/accept-invite"));
+const VerifyEmail = lazy(() => import("@/pages/verify-email"));
+const ResetPassword = lazy(() => import("@/pages/reset-password"));
+const Pricing = lazy(() => import("@/pages/pricing"));
+const ProductPage = lazy(() => import("@/pages/product"));
+const SeoLandingPage = lazy(() => import("@/pages/seo-landing-page"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Inbox = lazy(() => import("@/pages/inbox"));
+const Contacts = lazy(() => import("@/pages/contacts"));
+const ContactDetail = lazy(() => import("@/pages/contact-detail"));
+const Tasks = lazy(() => import("@/pages/tasks"));
+const Documents = lazy(() => import("@/pages/documents"));
+const Invoices = lazy(() => import("@/pages/invoices"));
+const Automations = lazy(() => import("@/pages/automations"));
+const Notifications = lazy(() => import("@/pages/notifications"));
+const Pipeline = lazy(() => import("@/pages/pipeline"));
+const WorkspaceSettingsPage = lazy(() => import("@/pages/settings/workspace"));
+const MembersSettingsPage = lazy(() => import("@/pages/settings/members"));
+const ChannelsSettingsPage = lazy(() => import("@/pages/settings/channels"));
+const DepartmentsSettingsPage = lazy(() => import("@/pages/settings/departments"));
+const IntegrationsSettingsPage = lazy(() => import("@/pages/settings/integrations"));
+const AiSettingsPage = lazy(() => import("@/pages/settings/ai"));
+const CreditsSettingsPage = lazy(() => import("@/pages/settings/credits"));
+const TemplatesSettingsPage = lazy(() => import("@/pages/settings/templates"));
+const AuditLogPage = lazy(() => import("@/pages/settings/audit"));
+const PlatformSettingsPage = lazy(() => import("@/pages/settings/platform"));
+const Billing = lazy(() => import("@/pages/billing"));
+const HelpPage = lazy(() => import("@/pages/help"));
+const HelpCenterPage = lazy(() => import("@/pages/help-center"));
+const HelpDocumentPage = lazy(() => import("@/pages/help-document"));
+const DocumentationCenterPage = lazy(() => import("@/pages/documentation"));
+const DocumentationDocumentPage = lazy(() => import("@/pages/documentation-document"));
+const DataRequestPage = lazy(() => import("@/pages/data-request"));
+const AccessibilityPage = lazy(() => import("@/pages/accessibility"));
+const PlatformPage = lazy(() => import("@/pages/marketing/platform-page"));
+const AiAgentsPage = lazy(() => import("@/pages/marketing/ai-agents-page"));
+const BillingMarketingPage = lazy(() => import("@/pages/marketing/billing-page"));
+const WorkflowsPage = lazy(() => import("@/pages/workflows"));
+const InsightsPage = lazy(() => import("@/pages/insights-page"));
+const SecurityPage = lazy(() => import("@/pages/marketing/security-page"));
+const SecurityAdvisoriesPage = lazy(() => import("@/pages/marketing/security-advisories-page"));
+const Chat = lazy(() => import("@/pages/chat"));
+const Agent = lazy(() => import("@/pages/agent"));
+const OnboardingPage = lazy(() => import("@/pages/onboarding"));
+const SetupPage = lazy(() => import("@/pages/setup"));
+const SupportPage = lazy(() => import("@/pages/support"));
+const InventoryPage = lazy(() => import("@/pages/inventory"));
+const InventoryDetailPage = lazy(() => import("@/pages/inventory-detail"));
+const InventoryMovementsPage = lazy(() => import("@/pages/inventory-movements"));
+const AgentsPage = lazy(() => import("@/pages/agents/AgentsPage"));
+const AgentDetailPage = lazy(() => import("@/pages/agents/AgentDetailPage"));
+const AgentTemplatesPage = lazy(() => import("@/pages/agents/AgentTemplatesPage"));
+const PlaybookSuggestionsPage = lazy(() => import("@/pages/agents/PlaybookSuggestionsPage"));
+const SolutionPage = lazy(() => import("@/pages/solutions/SolutionPage"));
+const ComingSoonPage = lazy(() => import("@/pages/coming-soon"));
+const AdminConsolePage = lazy(() => import("@/pages/admin/console"));
+const BusinessProfilePage = lazy(() => import("@/pages/business-profile"));
+const MapPage = lazy(() => import("@/pages/map"));
+
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [location]);
@@ -104,9 +107,9 @@ function ScrollToTop() {
 
 function AppLoader() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3" role="status" aria-label="Cargando página…">
       <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
-      <span className="text-muted-foreground text-sm">Cargando...</span>
+      <span className="text-muted-foreground text-sm">Cargando…</span>
     </div>
   );
 }
@@ -232,6 +235,7 @@ function AppRouter() {
   const pageKey = "/" + (location.split("/")[1] ?? "");
 
   return (
+    <Suspense fallback={<AppLoader />}>
     <motion.div
       key={pageKey}
       initial={reduceMotion ? false : { opacity: 0 }}
@@ -516,7 +520,7 @@ function AppRouter() {
         {(params) => <MarketplaceStorePage slug={params.slug!} />}
       </Route>
       <Route path="/product/:id">
-        {(params) => <MarketplaceProductPage id={params.id!} />}
+        {(params) => <MarketplaceProductPage key={params.id} id={params.id!} />}
       </Route>
       <Route path="/cart" component={MarketplaceCartPage} />
       <Route path="/checkout" component={MarketplaceCheckoutPage} />
@@ -530,6 +534,7 @@ function AppRouter() {
       <Route component={NotFound} />
     </Switch>
     </motion.div>
+    </Suspense>
   );
 }
 

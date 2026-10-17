@@ -39,8 +39,8 @@
     <meta name="twitter:description" content="Pedí de negocios cerca de vos y seguí tu pedido en vivo. Tu tienda con catálogo, delivery y retiro, por una tarifa fija y sin comisión." />
     <meta name="twitter:image" content="https://pymeshub.lat/images/pymesHub.png" />
 
-    <link rel="icon" type="image/png" href="/images/appIcon-192.png" />
-    <link rel="shortcut icon" type="image/png" href="/images/appIcon-192.png" />
+    <link rel="icon" type="image/png" href="/images/pymeshub-logo.png" />
+    <link rel="shortcut icon" type="image/png" href="/images/pymeshub-logo.png" />
     <link rel="apple-touch-icon" href="/images/appIcon-180.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/images/appIcon-180.png" />
 
@@ -73,10 +73,10 @@
       (function () {
         var STOREFRONT_ROUTES = [
           "/", "/categories", "/category", "/search", "/store", "/cart",
-          "/checkout", "/orders", "/order", "/favorites", "/sign-in"
+          "/checkout", "/orders", "/order", "/favorites", "/sign-in", "/login", "/register"
         ];
         var path = window.location.pathname || "/";
-        var isStorefront = STOREFRONT_ROUTES.some(function (route) {
+        var isStorefront = path.indexOf("/product/") === 0 || STOREFRONT_ROUTES.some(function (route) {
           return path === route || path.indexOf(route + "/") === 0;
         });
         var stored = null;

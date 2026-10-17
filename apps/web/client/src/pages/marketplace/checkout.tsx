@@ -3,7 +3,11 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 import { EmptyState, ErrorState, money } from "@/components/marketplace/cards";
-import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  AmberButton,
+  BackLink,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -38,7 +42,9 @@ export default function MarketplaceCheckoutPage() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  const [fulfilment, setFulfilment] = useState<"PICKUP" | "DELIVERY">("DELIVERY");
+  const [fulfilment, setFulfilment] = useState<"PICKUP" | "DELIVERY">(
+    "DELIVERY",
+  );
   const [addressId, setAddressId] = useState<string | undefined>(undefined);
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
@@ -47,16 +53,35 @@ export default function MarketplaceCheckoutPage() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   const clientRequestId = useRef<string | null>(null);
-  const locations = usePickupLocations(Boolean(session && cart.data?.items.length));
-  const selectedLocation = locations.data?.find((location) => location.id === locationId)
-    ?? locations.data?.find((location) => location.isDefault)
-    ?? locations.data?.[0];
-  const selectedAddress = addressId ?? addresses.data?.find((address) => address.isDefault)?.id ?? addresses.data?.[0]?.id;
-  const selectedAddressRow = addresses.data?.find((address) => address.id === selectedAddress);
-  const editingAddress = addresses.data?.find((address) => address.id === editingAddressId);
+  const locations = usePickupLocations(
+    Boolean(session && cart.data?.items.length),
+  );
+  const selectedLocation =
+    locations.data?.find((location) => location.id === locationId) ??
+    locations.data?.find((location) => location.isDefault) ??
+    locations.data?.[0];
+  const selectedAddress =
+    addressId ??
+    addresses.data?.find((address) => address.isDefault)?.id ??
+    addresses.data?.[0]?.id;
+  const selectedAddressRow = addresses.data?.find(
+    (address) => address.id === selectedAddress,
+  );
+  const editingAddress = addresses.data?.find(
+    (address) => address.id === editingAddressId,
+  );
   const quote = useCartQuote(
-    { fulfilment, locationId: selectedLocation?.id, addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined },
-    Boolean(session && cart.data?.items.length && selectedLocation && (fulfilment === "PICKUP" || selectedAddress)),
+    {
+      fulfilment,
+      locationId: selectedLocation?.id,
+      addressId: fulfilment === "DELIVERY" ? selectedAddress : undefined,
+    },
+    Boolean(
+      session &&
+      cart.data?.items.length &&
+      selectedLocation &&
+      (fulfilment === "PICKUP" || selectedAddress),
+    ),
   );
 
   if (loadingSession || (session && cart.isLoading)) {
@@ -72,7 +97,11 @@ export default function MarketplaceCheckoutPage() {
       <MarketplaceShell>
         <EmptyState
           title="Iniciá sesión para finalizar tu pedido."
-          action={<AmberButton onClick={() => navigate("/sign-in")}>Ingresar</AmberButton>}
+          action={
+            <AmberButton onClick={() => navigate("/sign-in")}>
+              Ingresar
+            </AmberButton>
+          }
         />
       </MarketplaceShell>
     );
@@ -81,7 +110,10 @@ export default function MarketplaceCheckoutPage() {
   if (cart.isError) {
     return (
       <MarketplaceShell>
-        <ErrorState message="No pudimos cargar tu carrito." onRetry={() => void cart.refetch()} />
+        <ErrorState
+          message="No pudimos cargar tu carrito."
+          onRetry={() => void cart.refetch()}
+        />
       </MarketplaceShell>
     );
   }
@@ -90,13 +122,25 @@ export default function MarketplaceCheckoutPage() {
   if (!data || data.items.length === 0) {
     return (
       <MarketplaceShell>
-        <EmptyState title="No hay nada para pagar." action={<AmberButton onClick={() => navigate("/")}>Volver al inicio</AmberButton>} />
+        <EmptyState
+          title="No hay nada para pagar."
+          action={
+            <AmberButton onClick={() => navigate("/")}>
+              Volver al inicio
+            </AmberButton>
+          }
+        />
       </MarketplaceShell>
     );
   }
 
   const effectiveFulfilment = fulfilment;
-  const canPlace = Boolean(selectedLocation && quote.data && !quote.isError && (effectiveFulfilment === "PICKUP" || selectedAddress));
+  const canPlace = Boolean(
+    selectedLocation &&
+    quote.data &&
+    !quote.isError &&
+    (effectiveFulfilment === "PICKUP" || selectedAddress),
+  );
 
   const onPlace = () => {
     if (!canPlace || !quote.data) return;
@@ -105,7 +149,8 @@ export default function MarketplaceCheckoutPage() {
       {
         fulfilment: effectiveFulfilment,
         locationId: selectedLocation?.id,
-        addressId: effectiveFulfilment === "DELIVERY" ? selectedAddress : undefined,
+        addressId:
+          effectiveFulfilment === "DELIVERY" ? selectedAddress : undefined,
         quoteId: quote.data.roadQuote?.quoteId,
         expectedTotalMinor: quote.data.totalMinor,
         paymentMethod,
@@ -129,43 +174,62 @@ export default function MarketplaceCheckoutPage() {
 
   return (
     <MarketplaceShell>
-      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">Finalizar pedido</h1>
+      <div className="mb-3">
+        <BackLink href="/cart">Volver al carrito</BackLink>
+      </div>
+      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">
+        Finalizar pedido
+      </h1>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <div className="flex flex-col gap-5">
-          <fieldset className="rounded-xl border border-border bg-card p-4">
-            <legend className="px-1 text-sm font-semibold text-foreground">Entrega</legend>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <fieldset className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <legend className="px-1 text-sm font-semibold text-foreground">
+              Entrega
+            </legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {(["DELIVERY", "PICKUP"] as const).map((value) => (
                 <button
                   key={value}
                   type="button"
+                  aria-pressed={effectiveFulfilment === value}
                   onClick={() => setFulfilment(value)}
                   className={cn(
-                    "min-h-12 rounded-md border px-4 text-left text-sm transition",
+                    "min-h-14 rounded-xl border px-4 py-3 text-left text-sm transition-colors",
                     effectiveFulfilment === value
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
                   )}
                 >
-                  <span className="font-medium">{value === "DELIVERY" ? "A domicilio" : "Retiro en tienda"}</span>
+                  <span className="font-medium">
+                    {value === "DELIVERY" ? "A domicilio" : "Retiro en tienda"}
+                  </span>
                 </button>
               ))}
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-sm font-semibold text-foreground">Local de retiro</p>
+              <p className="mb-2 text-sm font-semibold text-foreground">
+                Local de retiro
+              </p>
               {locations.isError ? (
-                <ErrorState message="No pudimos cargar los locales." onRetry={() => void locations.refetch()} />
+                <ErrorState
+                  message="No pudimos cargar los locales."
+                  onRetry={() => void locations.refetch()}
+                />
               ) : locations.isLoading ? (
                 <Skeleton className="h-12 w-full rounded-md" />
               ) : locations.data?.length ? (
-                <div className="grid gap-2" role="radiogroup" aria-label="Local de retiro">
+                <div
+                  className="grid gap-2"
+                  role="radiogroup"
+                  aria-label="Local de retiro"
+                >
                   {locations.data.map((location) => (
                     <label
                       key={location.id}
                       className={cn(
-                        "min-h-12 cursor-pointer rounded-md border px-4 py-2 text-left text-sm transition focus-within:ring-2 focus-within:ring-primary",
+                        "min-h-14 cursor-pointer rounded-xl border px-4 py-3 text-left text-sm transition-colors focus-within:ring-2 focus-within:ring-primary",
                         selectedLocation?.id === location.id
                           ? "border-primary bg-primary/10 text-foreground"
                           : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -180,24 +244,45 @@ export default function MarketplaceCheckoutPage() {
                         onChange={() => setLocationId(location.id)}
                       />
                       <span className="font-medium">{location.name}</span>
-                      {location.line1 ? <span className="ml-2 text-xs">{location.line1}{location.city ? `, ${location.city}` : ""}</span> : null}
+                      {location.line1 ? (
+                        <span className="ml-2 text-xs">
+                          {location.line1}
+                          {location.city ? `, ${location.city}` : ""}
+                        </span>
+                      ) : null}
                     </label>
                   ))}
                 </div>
-              ) : <p className="text-sm text-muted-foreground">Esta tienda aún no tiene un local disponible.</p>}
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Esta tienda aún no tiene un local disponible.
+                </p>
+              )}
             </div>
 
             {effectiveFulfilment === "DELIVERY" ? (
               <div className="mt-4">
-                {addresses.data && addresses.data.length > 0 ? (
+                {addresses.isError ? (
+                  <ErrorState
+                    message="No pudimos cargar tus direcciones."
+                    onRetry={() => void addresses.refetch()}
+                  />
+                ) : addresses.isLoading ? (
+                  <Skeleton
+                    aria-label="Cargando direcciones…"
+                    role="status"
+                    className="h-20 w-full rounded-xl bg-foreground/[0.07]"
+                  />
+                ) : addresses.data && addresses.data.length > 0 ? (
                   <div className="flex flex-col gap-2">
                     {addresses.data.map((address) => (
                       <button
                         key={address.id}
                         type="button"
+                        aria-pressed={selectedAddress === address.id}
                         onClick={() => setAddressId(address.id)}
                         className={cn(
-                          "min-h-12 rounded-md border px-4 text-left text-sm transition",
+                          "min-h-14 rounded-xl border px-4 py-3 text-left text-sm transition-colors",
                           selectedAddress === address.id
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -211,10 +296,19 @@ export default function MarketplaceCheckoutPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Todavía no tenés direcciones guardadas.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Todavía no tenés direcciones guardadas.
+                  </p>
                 )}
-                {(quote.isError || quote.data?.routingStatus === "UNAVAILABLE") && selectedAddressRow && (selectedAddressRow.lat == null || selectedAddressRow.lng == null) ? (
-                  <p className="mt-3 text-xs text-muted-foreground">Marcá esta dirección en el mapa para obtener una cotización por carretera.</p>
+                {(quote.isError ||
+                  quote.data?.routingStatus === "UNAVAILABLE") &&
+                selectedAddressRow &&
+                (selectedAddressRow.lat == null ||
+                  selectedAddressRow.lng == null) ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Marcá esta dirección en el mapa para obtener una cotización
+                    por carretera.
+                  </p>
                 ) : null}
 
                 {showAddressForm ? (
@@ -222,7 +316,15 @@ export default function MarketplaceCheckoutPage() {
                     key={editingAddressId ?? "new"}
                     existing={editingAddress}
                     saving={saveAddress.isPending}
-                    center={selectedLocation?.lat != null && selectedLocation.lng != null ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : null}
+                    center={
+                      selectedLocation?.lat != null &&
+                      selectedLocation.lng != null
+                        ? {
+                            lat: selectedLocation.lat,
+                            lng: selectedLocation.lng,
+                          }
+                        : null
+                    }
                     onCancel={() => {
                       setShowAddressForm(false);
                       setEditingAddressId(null);
@@ -235,7 +337,11 @@ export default function MarketplaceCheckoutPage() {
                           setEditingAddressId(null);
                           toast({ title: "Dirección guardada" });
                         },
-                        onError: () => toast({ title: "No pudimos guardar la dirección", variant: "destructive" }),
+                        onError: () =>
+                          toast({
+                            title: "No pudimos guardar la dirección",
+                            variant: "destructive",
+                          }),
                       })
                     }
                   />
@@ -243,7 +349,10 @@ export default function MarketplaceCheckoutPage() {
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
                     <button
                       type="button"
-                      onClick={() => { setEditingAddressId(null); setShowAddressForm(true); }}
+                      onClick={() => {
+                        setEditingAddressId(null);
+                        setShowAddressForm(true);
+                      }}
                       className="min-h-11 text-sm font-semibold text-link hover:text-link/80"
                     >
                       + Agregar dirección
@@ -251,7 +360,10 @@ export default function MarketplaceCheckoutPage() {
                     {selectedAddressRow ? (
                       <button
                         type="button"
-                        onClick={() => { setEditingAddressId(selectedAddressRow.id); setShowAddressForm(true); }}
+                        onClick={() => {
+                          setEditingAddressId(selectedAddressRow.id);
+                          setShowAddressForm(true);
+                        }}
                         className="min-h-11 text-sm font-semibold text-link hover:text-link/80"
                       >
                         Editar dirección y pin
@@ -260,13 +372,26 @@ export default function MarketplaceCheckoutPage() {
                   </div>
                 )}
 
-                {quote.data?.roadQuote && !quote.isError && selectedLocation?.lat != null && selectedLocation.lng != null && selectedAddressRow?.lat != null && selectedAddressRow.lng != null ? (
+                {quote.data?.roadQuote &&
+                !quote.isError &&
+                selectedLocation?.lat != null &&
+                selectedLocation.lng != null &&
+                selectedAddressRow?.lat != null &&
+                selectedAddressRow.lng != null ? (
                   <div className="mt-4">
-                    <Suspense fallback={<Skeleton className="h-56 w-full rounded-lg" />}>
+                    <Suspense
+                      fallback={<Skeleton className="h-56 w-full rounded-lg" />}
+                    >
                       <CheckoutRouteMap
                         key={quote.data.roadQuote.quoteId}
-                        pickup={{ lat: selectedLocation.lat, lng: selectedLocation.lng }}
-                        destination={{ lat: selectedAddressRow.lat, lng: selectedAddressRow.lng }}
+                        pickup={{
+                          lat: selectedLocation.lat,
+                          lng: selectedLocation.lng,
+                        }}
+                        destination={{
+                          lat: selectedAddressRow.lat,
+                          lng: selectedAddressRow.lng,
+                        }}
                         geometry={quote.data.roadQuote.geometry}
                       />
                     </Suspense>
@@ -276,14 +401,16 @@ export default function MarketplaceCheckoutPage() {
             ) : null}
           </fieldset>
 
-          <fieldset className="rounded-xl border border-border bg-card p-4">
-            <legend className="px-1 text-sm font-semibold text-foreground">Forma de pago</legend>
+          <fieldset className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <legend className="px-1 text-sm font-semibold text-foreground">
+              Forma de pago
+            </legend>
             <div className="mt-2 flex flex-col gap-2">
               {PAYMENT_METHODS.map((method) => (
                 <label
                   key={method.value}
                   className={cn(
-                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-4 text-sm transition",
+                    "flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors",
                     paymentMethod === method.value
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -302,8 +429,11 @@ export default function MarketplaceCheckoutPage() {
             </div>
           </fieldset>
 
-          <div className="rounded-xl border border-border bg-card p-4">
-            <label className="text-sm font-semibold text-foreground" htmlFor="checkout-notes">
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <label
+              className="text-sm font-semibold text-foreground"
+              htmlFor="checkout-notes"
+            >
               Notas para la tienda
             </label>
             <textarea
@@ -313,62 +443,125 @@ export default function MarketplaceCheckoutPage() {
               rows={3}
               maxLength={500}
               placeholder="Sin cebolla, timbre roto, etc."
-              className="mt-2 w-full rounded-md border border-border bg-background p-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
         </div>
 
-        <aside className="h-fit rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Resumen del pedido</h2>
-          <ul className="mb-3 space-y-1.5 text-sm text-muted-foreground">
+        <aside className="h-fit min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6 lg:sticky lg:top-40">
+          <h2 className="mb-5 text-lg font-semibold tracking-tight text-foreground">
+            Resumen del pedido
+          </h2>
+          <ul className="mb-5 space-y-3 text-sm text-muted-foreground">
             {data.items.map((item) => (
               <li key={item.id} className="flex justify-between gap-3">
-                <span className="min-w-0 truncate">
+                <span className="min-w-0 break-words">
                   {item.quantity}× {item.name}
                 </span>
-                <span className="shrink-0">{money(item.lineTotalMinor, data.currency)}</span>
+                <span className="shrink-0">
+                  {money(item.lineTotalMinor, data.currency)}
+                </span>
               </li>
             ))}
           </ul>
           {quote.isError ? (
             <div className="mb-3 space-y-2">
-              <ErrorState message="No pudimos cotizar esta entrega. Reintentá o elegí retiro en tienda." onRetry={() => void quote.refetch()} />
-              {fulfilment === "DELIVERY" ? <AmberButton onClick={() => setFulfilment("PICKUP")}>Elegir retiro</AmberButton> : null}
+              <ErrorState
+                message="No pudimos cotizar esta entrega. Reintentá o elegí retiro en tienda."
+                onRetry={() => void quote.refetch()}
+              />
+              {fulfilment === "DELIVERY" ? (
+                <AmberButton onClick={() => setFulfilment("PICKUP")}>
+                  Elegir retiro
+                </AmberButton>
+              ) : null}
             </div>
           ) : null}
           {quote.data && fulfilment === "DELIVERY" ? (
             <div className="flex justify-between gap-3 border-t border-border py-2 text-sm text-muted-foreground">
-              <span>Envío</span><span>{money(quote.data.deliveryFeeMinor, quote.data.currency)}</span>
+              <span>Envío</span>
+              <span>
+                {money(quote.data.deliveryFeeMinor, quote.data.currency)}
+              </span>
             </div>
           ) : null}
           {quote.data?.merchantCoversDelivery && fulfilment === "DELIVERY" ? (
             <p className="mb-2 text-xs text-muted-foreground">
-              El comercio cubre tu envío y sigue debiendo el pago al repartidor por la entrega.
+              El comercio cubre tu envío y sigue debiendo el pago al repartidor
+              por la entrega.
             </p>
           ) : null}
           {quote.data?.roadQuote && !quote.isError ? (
             <p className="mb-2 text-xs text-muted-foreground">
-              {new Intl.NumberFormat("es-CR", { maximumFractionDigits: 1 }).format(quote.data.roadQuote.distanceMeters / 1000)} km por carretera · aprox. {Math.ceil(quote.data.roadQuote.durationSeconds / 60)} min de manejo
+              {new Intl.NumberFormat("es-CR", {
+                maximumFractionDigits: 1,
+              }).format(quote.data.roadQuote.distanceMeters / 1000)}{" "}
+              km por carretera · aprox.{" "}
+              {Math.ceil(quote.data.roadQuote.durationSeconds / 60)} min de
+              manejo
             </p>
           ) : null}
           {quote.data?.routingStatus === "UNAVAILABLE" && !quote.isError ? (
-            <p className="mb-2 text-xs text-muted-foreground">Ruta vial no disponible. Se aplica la tarifa fija de entrega del comercio.</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Ruta vial no disponible. Se aplica la tarifa fija de entrega del
+              comercio.
+            </p>
           ) : null}
           <div className="flex items-center justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
             <span>Total</span>
-            <span>{quote.data && !quote.isError ? money(quote.data.totalMinor, quote.data.currency) : "—"}</span>
+            <span>
+              {quote.data && !quote.isError
+                ? money(quote.data.totalMinor, quote.data.currency)
+                : "—"}
+            </span>
           </div>
 
-          <AmberButton className="mt-4 w-full" disabled={!canPlace || placeOrder.isPending} onClick={onPlace}>
+          <AmberButton
+            className="mt-4 w-full"
+            disabled={!canPlace || placeOrder.isPending}
+            onClick={onPlace}
+          >
             {placeOrder.isPending ? "Enviando…" : "Confirmar pedido"}
           </AmberButton>
-          {effectiveFulfilment === "DELIVERY" && quote.data ? <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
-            <div className="flex flex-wrap justify-between gap-2"><span>Productos del comercio</span><strong>{money(quote.data.totalMinor-quote.data.deliveryFeeMinor,quote.data.currency)}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>{paymentMethod === "CASH" ? "Al repartidor: productos + entrega" : "Entrega al repartidor"}</span><strong>{money(paymentMethod === "CASH" ? quote.data.totalMinor : quote.data.deliveryFeeMinor,quote.data.currency)}</strong></div>
-            <p className="text-xs text-muted-foreground">{paymentMethod === "CASH" ? "El repartidor adelanta los productos al comercio. Paga el total al repartidor al recibir; ese adelanto ya está incluido." : "Paga primero solo los productos al comercio por SINPE. Tras su confirmación, paga la entrega al repartidor por separado."}</p>
-          </div> : null}
-          {!canPlace && effectiveFulfilment === "DELIVERY" && !selectedAddress ? (
-            <p className="mt-2 text-xs text-link">Elegí una dirección para entrega a domicilio.</p>
+          {effectiveFulfilment === "DELIVERY" && quote.data ? (
+            <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+              <div className="flex flex-wrap justify-between gap-2">
+                <span>Productos del comercio</span>
+                <strong>
+                  {money(
+                    quote.data.totalMinor - quote.data.deliveryFeeMinor,
+                    quote.data.currency,
+                  )}
+                </strong>
+              </div>
+              <div className="flex flex-wrap justify-between gap-2">
+                <span>
+                  {paymentMethod === "CASH"
+                    ? "Al repartidor: productos + entrega"
+                    : "Entrega al repartidor"}
+                </span>
+                <strong>
+                  {money(
+                    paymentMethod === "CASH"
+                      ? quote.data.totalMinor
+                      : quote.data.deliveryFeeMinor,
+                    quote.data.currency,
+                  )}
+                </strong>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {paymentMethod === "CASH"
+                  ? "El repartidor adelanta los productos al comercio. Paga el total al repartidor al recibir; ese adelanto ya está incluido."
+                  : "Paga primero solo los productos al comercio por SINPE. Tras su confirmación, paga la entrega al repartidor por separado."}
+              </p>
+            </div>
+          ) : null}
+          {!canPlace &&
+          effectiveFulfilment === "DELIVERY" &&
+          !selectedAddress ? (
+            <p className="mt-2 text-xs text-link">
+              Elegí una dirección para entrega a domicilio.
+            </p>
           ) : null}
         </aside>
       </div>
@@ -394,55 +587,83 @@ function AddressForm({
   const [city, setCity] = useState(existing?.city ?? "");
   const [region, setRegion] = useState(existing?.region ?? "");
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(
-    existing?.lat != null && existing.lng != null ? { lat: existing.lat, lng: existing.lng } : null,
+    existing?.lat != null && existing.lng != null
+      ? { lat: existing.lat, lng: existing.lng }
+      : null,
   );
 
   return (
-    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
+    <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-border bg-background p-4">
       <Suspense fallback={<Skeleton className="h-64 w-full rounded-lg" />}>
         <CheckoutPinMap center={center} point={pin} onPick={setPin} />
       </Suspense>
-      {!pin ? <p className="text-xs text-muted-foreground">Marcá un punto para calcular la ruta y el precio de entrega por carretera.</p> : null}
-      <Input
-        value={label}
-        onChange={(event) => setLabel(event.target.value)}
-        placeholder="Etiqueta (Casa, Oficina)"
-        className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
-      />
-      <Input
-        value={line1}
-        onChange={(event) => setLine1(event.target.value)}
-        placeholder="Dirección"
-        className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
-      />
-      <div className="grid grid-cols-2 gap-2">
+      {!pin ? (
+        <p className="text-xs text-muted-foreground">
+          Marcá un punto para calcular la ruta y el precio de entrega por
+          carretera.
+        </p>
+      ) : null}
+      <label className="flex flex-col gap-2 text-sm">
+        <span>Etiqueta</span>
         <Input
-          value={city}
-          onChange={(event) => setCity(event.target.value)}
-          placeholder="Ciudad"
+          name="addressLabel"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          placeholder="Etiqueta (Casa, Oficina)"
           className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
         />
+      </label>
+      <label className="flex flex-col gap-2 text-sm">
+        <span>Dirección</span>
         <Input
-          value={region}
-          onChange={(event) => setRegion(event.target.value)}
-          placeholder="Provincia"
+          name="street-address"
+          autoComplete="street-address"
+          value={line1}
+          onChange={(event) => setLine1(event.target.value)}
+          placeholder="Dirección"
           className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
         />
+      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-2 text-sm">
+          <span>Ciudad</span>
+          <Input
+            name="address-level2"
+            autoComplete="address-level2"
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            placeholder="Ciudad"
+            className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
+          />
+        </label>
+        <label className="flex flex-col gap-2 text-sm">
+          <span>Provincia</span>
+          <Input
+            name="address-level1"
+            autoComplete="address-level1"
+            value={region}
+            onChange={(event) => setRegion(event.target.value)}
+            placeholder="Provincia"
+            className="h-10 border-border bg-card text-sm placeholder:text-muted-foreground"
+          />
+        </label>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <AmberButton
           disabled={saving || !line1.trim() || !city.trim() || !region.trim()}
           onClick={() =>
             onSave({
-              ...(existing ? {
-                id: existing.id,
-                country: existing.country,
-                line2: existing.line2,
-                postalCode: existing.postalCode,
-                phone: existing.phone,
-                instructions: existing.instructions,
-                isDefault: existing.isDefault,
-              } : {}),
+              ...(existing
+                ? {
+                    id: existing.id,
+                    country: existing.country,
+                    line2: existing.line2,
+                    postalCode: existing.postalCode,
+                    phone: existing.phone,
+                    instructions: existing.instructions,
+                    isDefault: existing.isDefault,
+                  }
+                : {}),
               label: label.trim() || "Casa",
               line1: line1.trim(),
               city: city.trim(),

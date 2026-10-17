@@ -1,6 +1,6 @@
 import { Search as SearchIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch as useLocationSearch } from "wouter";
 
 import {
   BusinessCardView,
@@ -50,6 +50,8 @@ function initialQuery(): string {
  * tick and the tRPC `httpBatchLink` puts a batch into a single HTTP request.
  */
 export default function MarketplaceSearchPage() {
+  const queryString = useLocationSearch();
+  const [, navigate] = useLocation();
   const [term, setTerm] = useState(initialQuery);
   const [debounced, setDebounced] = useState(term);
   const { coords } = useBrowserLocation();
@@ -78,9 +80,22 @@ export default function MarketplaceSearchPage() {
   // One debounce for the whole page: the input stays responsive while the queries wait for
   // the customer to stop typing.
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(term), 300);
+    const timer = window.setTimeout(() => {
+      setDebounced(term);
+      const params = new URLSearchParams(window.location.search);
+      if (term.trim()) params.set("q", term.trim());
+      else params.delete("q");
+      const next = params.toString();
+      navigate(`/search${next ? `?${next}` : ""}`, { replace: true });
+    }, 300);
     return () => window.clearTimeout(timer);
-  }, [term]);
+  }, [term, navigate]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(queryString).get("q") ?? "";
+    setTerm(query);
+    setDebounced(query);
+  }, [queryString]);
 
   const products = productPages?.pages.flatMap((page) => page.items) ?? [];
   const productsPending = productsFetching && productPages === undefined;
@@ -95,7 +110,13 @@ export default function MarketplaceSearchPage() {
     (data?.categories.length ?? 0) === 0;
 
   return (
-    <MarketplaceShell>
+    <MarketplaceShell hideSearch>
+      <h1 className="mb-2 text-2xl font-semibold tracking-tight">
+        Encontrá lo que buscás
+      </h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Productos, negocios y categorías, en un solo lugar.
+      </p>
       <label className="relative block">
         <span className="sr-only">Buscar productos, negocios o categorías</span>
         <SearchIcon
@@ -103,19 +124,34 @@ export default function MarketplaceSearchPage() {
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
-          autoFocus
+          type="search"
+          name="q"
+          autoComplete="off"
           value={term}
           onChange={(event) => setTerm(event.target.value)}
           placeholder="Buscar productos, negocios o categorías"
-          className="h-12 border-border bg-card pl-9 text-base placeholder:text-muted-foreground focus-visible:ring-primary"
+          className="h-12 rounded-2xl border-border bg-card pl-10 text-base placeholder:text-muted-foreground focus-visible:ring-primary"
         />
       </label>
 
       {trimmed.length === 0 ? (
-        <p className="mt-6 text-sm text-muted-foreground">Escribí algo para empezar a buscar.</p>
+        <div className="mt-6">
+          <EmptyState
+            title="Tu próximo descubrimiento empieza acá."
+            description="Buscá un producto o negocio, o elegí una categoría para explorar."
+            action={
+              <Link href="/categories" className="market-section-link">
+                Explorar categorías
+              </Link>
+            }
+          />
+        </div>
       ) : isError ? (
         <div className="mt-6">
-          <ErrorState message="No pudimos completar la búsqueda." onRetry={() => void refetch()} />
+          <ErrorState
+            message="No pudimos completar la búsqueda."
+            onRetry={() => void refetch()}
+          />
         </div>
       ) : isLoading || !data ? (
         <div className="mt-6">
@@ -147,7 +183,7 @@ export default function MarketplaceSearchPage() {
                   <Link
                     key={category.id}
                     href={`/category/${category.slug}`}
-                    className="min-h-9 rounded-md border border-border bg-card px-4 text-sm leading-9 text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
+                    className="inline-flex min-h-11 items-center rounded-xl border border-border bg-card px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                   >
                     {category.name}
                   </Link>
@@ -165,13 +201,17 @@ export default function MarketplaceSearchPage() {
                 onRetry={() => void refetchProducts()}
               />
             ) : products.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin productos para esta búsqueda.</p>
+              <p className="text-sm text-muted-foreground">
+                Sin productos para esta búsqueda.
+              </p>
             ) : (
               <>
                 <div
                   aria-busy={productsFetching}
                   className={
-                    productsFetching ? "opacity-60 transition-opacity" : "transition-opacity"
+                    productsFetching
+                      ? "opacity-60 transition-opacity"
+                      : "transition-opacity"
                   }
                 >
                   <ProductGrid>
@@ -186,7 +226,10 @@ export default function MarketplaceSearchPage() {
                                 { productId: item.id },
                                 {
                                   onError: (error) =>
-                                    toast({ title: cartErrorMessage(error), variant: "destructive" }),
+                                    toast({
+                                      title: cartErrorMessage(error),
+                                      variant: "destructive",
+                                    }),
                                 },
                               )
                             : (window.location.href = "/sign-in")

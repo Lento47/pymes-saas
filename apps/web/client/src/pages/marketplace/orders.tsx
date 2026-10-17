@@ -2,7 +2,10 @@ import { Bike, ChevronRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 import { EmptyState, ErrorState, money } from "@/components/marketplace/cards";
-import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  AmberButton,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMarketplaceSession, useMyOrders } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
@@ -32,7 +35,10 @@ function statusLabel(status: string): string {
 function formatDate(value: unknown): string {
   const date = value instanceof Date ? value : new Date(String(value));
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("es-CR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 export default function MarketplaceOrdersPage() {
@@ -53,7 +59,11 @@ export default function MarketplaceOrdersPage() {
       <MarketplaceShell>
         <EmptyState
           title="Iniciá sesión para ver tus pedidos."
-          action={<AmberButton onClick={() => navigate("/sign-in")}>Ingresar</AmberButton>}
+          action={
+            <AmberButton onClick={() => navigate("/sign-in")}>
+              Ingresar
+            </AmberButton>
+          }
         />
       </MarketplaceShell>
     );
@@ -62,7 +72,10 @@ export default function MarketplaceOrdersPage() {
   if (isError) {
     return (
       <MarketplaceShell>
-        <ErrorState message="No pudimos cargar tus pedidos." onRetry={() => void refetch()} />
+        <ErrorState
+          message="No pudimos cargar tus pedidos."
+          onRetry={() => void refetch()}
+        />
       </MarketplaceShell>
     );
   }
@@ -73,7 +86,11 @@ export default function MarketplaceOrdersPage() {
         <EmptyState
           title="Todavía no hiciste pedidos."
           description="Cuando hagas tu primer pedido, acá vas a poder seguir su estado."
-          action={<AmberButton onClick={() => navigate("/")}>Explorar negocios</AmberButton>}
+          action={
+            <AmberButton onClick={() => navigate("/")}>
+              Explorar negocios
+            </AmberButton>
+          }
         />
       </MarketplaceShell>
     );
@@ -81,31 +98,43 @@ export default function MarketplaceOrdersPage() {
 
   return (
     <MarketplaceShell>
-      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">Mis pedidos</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-foreground">
+        Mis pedidos
+      </h1>
       <ul className="flex flex-col gap-3">
         {data.map((order) => (
           <li key={order.id}>
             <Link
               href={`/order/${order.id}`}
-              className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition hover:border-primary/50"
+              className="market-card grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-2xl border border-border bg-card p-4 sm:flex sm:p-5"
             >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-link">
                 <Bike aria-hidden="true" className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-1 text-sm font-medium text-foreground">{order.headline}</p>
+                <p className="line-clamp-1 text-sm font-medium text-foreground">
+                  {order.headline}
+                </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {order.reference} · {formatDate(order.placedAt)}
                 </p>
-                <p className={cn("mt-1 text-xs font-medium", STATUS_TONE[order.status] ?? "text-link")}>
+                <p
+                  className={cn(
+                    "mt-1 text-xs font-medium",
+                    STATUS_TONE[order.status] ?? "text-link",
+                  )}
+                >
                   {statusLabel(order.status)}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="col-start-2 flex shrink-0 items-center justify-between gap-2 sm:ml-auto">
                 <span className="text-sm font-semibold tabular-nums text-foreground">
                   {money(order.totalMinor, order.currency)}
                 </span>
-                <ChevronRight aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight
+                  aria-hidden="true"
+                  className="h-4 w-4 text-muted-foreground"
+                />
               </div>
             </Link>
           </li>

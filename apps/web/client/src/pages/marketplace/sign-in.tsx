@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
-import { AmberButton, MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  AmberButton,
+  BackLink,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { marketplaceAuth } from "@/lib/marketplace";
@@ -11,12 +15,18 @@ type Mode = "sign-in" | "sign-up";
 
 function authErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  if (message === "auth.error.invalidCredentials") return "Email o contraseña incorrectos.";
-  if (message === "auth.error.rateLimited") return "Demasiados intentos. Probá en unos minutos.";
+  if (message === "auth.error.invalidCredentials")
+    return "Email o contraseña incorrectos.";
+  if (message === "auth.error.rateLimited")
+    return "Demasiados intentos. Probá en unos minutos.";
   return "No pudimos completar la operación. Intentá de nuevo.";
 }
 
-export default function MarketplaceSignInPage({ initialMode = "sign-in" }: { initialMode?: Mode }) {
+export default function MarketplaceSignInPage({
+  initialMode = "sign-in",
+}: {
+  initialMode?: Mode;
+}) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,143 +59,178 @@ export default function MarketplaceSignInPage({ initialMode = "sign-in" }: { ini
       window.location.assign("/orders");
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
-      setError(message === "auth.error.weakPassword" ? "La contraseña debe tener al menos 8 caracteres." : authErrorMessage(caught));
+      setError(
+        message === "auth.error.weakPassword"
+          ? "La contraseña debe tener al menos 8 caracteres."
+          : authErrorMessage(caught),
+      );
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <MarketplaceShell>
+    <MarketplaceShell hideSearch>
       <div className="mx-auto max-w-md">
-        <h1 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-foreground">
-          {mode === "sign-in" ? "Ingresá a tu cuenta" : "Creá tu cuenta"}
-        </h1>
-        <p className="mb-6 text-sm text-muted-foreground">
-          {mode === "sign-in"
-            ? "Para ver tus pedidos, favoritos y direcciones."
-            : "Es rápido: solo tu nombre, email y contraseña."}
-        </p>
-
-        <div className="mb-5 grid grid-cols-2 rounded-md border border-border bg-card p-1">
-          {(["sign-in", "sign-up"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setMode(value);
-                setError(null);
-              }}
-              className={cn(
-                "min-h-10 rounded text-sm font-medium transition",
-                mode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {value === "sign-in" ? "Ingresar" : "Crear cuenta"}
-            </button>
-          ))}
+        <div className="mb-4">
+          <BackLink href="/">Seguir explorando</BackLink>
         </div>
+        <div className="rounded-3xl border border-border bg-card p-5 sm:p-8">
+          <h1 className="mb-1 text-2xl font-semibold tracking-[-0.02em] text-foreground">
+            {mode === "sign-in" ? "Ingresá a tu cuenta" : "Creá tu cuenta"}
+          </h1>
+          <p className="mb-6 text-sm text-muted-foreground">
+            {mode === "sign-in"
+              ? "Para ver tus pedidos, favoritos y direcciones."
+              : "Es rápido: solo tu nombre, email y contraseña."}
+          </p>
 
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          {mode === "sign-up" ? (
+          <div className="mb-6 grid grid-cols-2 rounded-xl border border-border bg-background p-1">
+            {(["sign-in", "sign-up"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                disabled={busy}
+                onClick={() => {
+                  setMode(value);
+                  setError(null);
+                }}
+                className={cn(
+                  "min-h-11 rounded-lg px-2 text-sm font-medium transition-colors",
+                  mode === value
+                    ? "bg-elevated text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {value === "sign-in" ? "Ingresar" : "Crear cuenta"}
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={submit}
+            className="flex flex-col gap-5"
+            aria-busy={busy}
+          >
+            {mode === "sign-up" ? (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm text-muted-foreground">Nombre</span>
+                <Input
+                  value={name}
+                  name="name"
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  autoComplete="name"
+                  className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
+                />
+              </label>
+            ) : null}
+
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-muted-foreground">Nombre</span>
+              <span className="text-sm text-muted-foreground">Email</span>
               <Input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                type="email"
+                name="email"
+                spellCheck={false}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 required
-                autoComplete="name"
+                autoComplete="email"
                 className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
               />
             </label>
-          ) : null}
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-muted-foreground">Email</span>
-            <Input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              autoComplete="email"
-              className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
-            />
-          </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-muted-foreground">Contraseña</span>
+              <Input
+                type="password"
+                name="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={8}
+                autoComplete={
+                  mode === "sign-in" ? "current-password" : "new-password"
+                }
+                className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
+              />
+            </label>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-muted-foreground">Contraseña</span>
-            <Input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              minLength={8}
-              autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-              className="h-11 border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
-            />
-          </label>
+            {mode === "sign-up" ? (
+              <div className="flex flex-col gap-3">
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 py-2">
+                  <Checkbox
+                    checked={ageConfirmed}
+                    onCheckedChange={(value) => setAgeConfirmed(value === true)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-xs leading-5 text-muted-foreground">
+                    Confirmo que tengo 18 años o más.
+                  </span>
+                </label>
 
-          {mode === "sign-up" ? (
-            <div className="flex flex-col gap-3">
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <Checkbox
-                  checked={ageConfirmed}
-                  onCheckedChange={(value) => setAgeConfirmed(value === true)}
-                  className="mt-0.5"
-                />
-                <span className="text-xs leading-5 text-muted-foreground">
-                  Confirmo que tengo 18 años o más.
-                </span>
-              </label>
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 py-2">
+                  <Checkbox
+                    checked={termsAccepted}
+                    onCheckedChange={(value) =>
+                      setTermsAccepted(value === true)
+                    }
+                    className="mt-0.5"
+                  />
+                  <span className="text-xs leading-5 text-muted-foreground">
+                    Acepto los{" "}
+                    <a
+                      href="/legal/terms-of-service"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-link hover:text-link/80"
+                    >
+                      Términos de Servicio
+                    </a>{" "}
+                    y la{" "}
+                    <a
+                      href="/legal/privacy-policy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-link hover:text-link/80"
+                    >
+                      Política de Privacidad
+                    </a>
+                    .
+                  </span>
+                </label>
+              </div>
+            ) : null}
 
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <Checkbox
-                  checked={termsAccepted}
-                  onCheckedChange={(value) => setTermsAccepted(value === true)}
-                  className="mt-0.5"
-                />
-                <span className="text-xs leading-5 text-muted-foreground">
-                  Acepto los{" "}
-                  <a
-                    href="/legal/terms-of-service"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-link hover:text-link/80"
-                  >
-                    Términos de Servicio
-                  </a>{" "}
-                  y la{" "}
-                  <a
-                    href="/legal/privacy-policy"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-link hover:text-link/80"
-                  >
-                    Política de Privacidad
-                  </a>
-                  .
-                </span>
-              </label>
-            </div>
-          ) : null}
+            {error ? (
+              <p
+                role="alert"
+                className="rounded-xl border border-destructive/25 bg-destructive/[0.07] p-3 text-sm text-destructive"
+              >
+                {error}
+              </p>
+            ) : null}
 
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
-
-          <AmberButton
-            type="submit"
-            disabled={busy || (mode === "sign-up" && !(ageConfirmed && termsAccepted))}
-            className="mt-1 w-full"
-          >
-            {busy ? "Un momento…" : mode === "sign-in" ? "Ingresar" : "Crear cuenta y continuar"}
-          </AmberButton>
-        </form>
-        <p className="mt-6 text-xs text-muted-foreground">
-          Una cuenta sirve para comprar, administrar un negocio o repartir. El acceso se
-          habilita según los permisos de tu perfil después de iniciar sesión.
+            <AmberButton
+              type="submit"
+              disabled={
+                busy || (mode === "sign-up" && !(ageConfirmed && termsAccepted))
+              }
+              className="mt-1 w-full"
+            >
+              {busy
+                ? "Un momento…"
+                : mode === "sign-in"
+                  ? "Ingresar"
+                  : "Crear cuenta y continuar"}
+            </AmberButton>
+          </form>
+        </div>
+        <p className="mt-6 px-2 text-center text-xs leading-relaxed text-muted-foreground">
+          Una cuenta sirve para comprar, administrar un negocio o repartir. El
+          acceso se habilita según los permisos de tu perfil después de iniciar
+          sesión.
         </p>
       </div>
     </MarketplaceShell>

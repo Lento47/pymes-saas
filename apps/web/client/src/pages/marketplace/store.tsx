@@ -6,13 +6,17 @@ import {
   EmptyState,
   ErrorState,
   imageSrc,
+  MarketplaceImage,
   LoadingGrid,
   LoadMore,
   money,
   ProductCardView,
   ProductGrid,
 } from "@/components/marketplace/cards";
-import { MarketplaceShell } from "@/components/marketplace/public-shell";
+import {
+  BackLink,
+  MarketplaceShell,
+} from "@/components/marketplace/public-shell";
 import { useToast } from "@/hooks/use-toast";
 import {
   cartErrorMessage,
@@ -22,6 +26,7 @@ import {
   useStorefront,
 } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "@/components/marketplace/favorite-button";
 
 export default function MarketplaceStorePage({ slug }: { slug: string }) {
   const { data, isLoading, isError, refetch } = useStorefront(slug);
@@ -59,7 +64,12 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
   } = useProductListInfinite(
     // 24 rather than the 50 the API caps at: the cap was only ever doing duty as a page
     // size, and a first page that paints sooner is worth more than a longer one.
-    { businessId, categoryId: activeCategory ?? undefined, limit: 24, status: ["ACTIVE"] },
+    {
+      businessId,
+      categoryId: activeCategory ?? undefined,
+      limit: 24,
+      status: ["ACTIVE"],
+    },
     { enabled: Boolean(businessId) },
   );
   const { data: session } = useMarketplaceSession();
@@ -83,15 +93,37 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
   if (isError) {
     return (
       <MarketplaceShell>
-        <ErrorState message="No pudimos cargar esta tienda." onRetry={() => void refetch()} />
+        <ErrorState
+          message="No pudimos cargar esta tienda."
+          onRetry={() => void refetch()}
+        />
       </MarketplaceShell>
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <MarketplaceShell>
         <LoadingGrid count={6} />
+      </MarketplaceShell>
+    );
+  }
+
+  if (!data) {
+    return (
+      <MarketplaceShell>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">
+          Tienda no disponible
+        </h1>
+        <EmptyState
+          title="No encontramos esta tienda."
+          description="Puede que ya no esté disponible. Conocé otros negocios del marketplace."
+          action={
+            <Link href="/categories" className="market-section-link">
+              Explorar categorías
+            </Link>
+          }
+        />
       </MarketplaceShell>
     );
   }
@@ -106,36 +138,55 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
 
   return (
     <MarketplaceShell>
-      <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="mb-4">
+        <BackLink href="/">Volver al inicio</BackLink>
+      </div>
+      <section className="overflow-hidden rounded-3xl border border-border bg-card">
         <div className="relative h-40 w-full bg-elevated sm:h-56">
-          {cover ? (
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Store aria-hidden="true" className="h-10 w-10 text-muted-foreground" />
-            </div>
-          )}
+          <MarketplaceImage
+            src={cover}
+            width={1200}
+            height={400}
+            className="h-full w-full object-cover"
+            fallback={<Store className="h-10 w-10" strokeWidth={1.25} />}
+          />
+          <FavoriteButton
+            businessId={card.id}
+            name={card.name}
+            className="absolute right-4 top-4"
+          />
         </div>
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-6">
-          <div className="flex items-end gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             {logo ? (
-              <img
+              <MarketplaceImage
                 src={logo}
-                alt=""
-                className="h-16 w-16 rounded-md border border-border bg-background object-cover sm:h-20 sm:w-20"
+                width={80}
+                height={80}
+                className="h-16 w-16 shrink-0 rounded-2xl border border-border bg-background object-cover sm:h-20 sm:w-20"
+                fallback={<Store className="h-6 w-6" />}
               />
             ) : null}
-            <div>
-              <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">{card.name}</h1>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
+                {card.name}
+              </h1>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {card.categoryName ? <span>{card.categoryName}</span> : null}
                 {card.ratingCount > 0 ? (
                   <span className="inline-flex items-center gap-1 tabular-nums">
-                    <Star aria-hidden="true" className="h-3.5 w-3.5 fill-primary text-primary" />
+                    <Star
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 fill-primary text-primary"
+                    />
                     {card.ratingAvg.toFixed(1)} ({card.ratingCount})
                   </span>
                 ) : null}
-                <span className={cn(card.isOpen ? "text-success" : "text-destructive")}>
+                <span
+                  className={cn(
+                    card.isOpen ? "text-success" : "text-destructive",
+                  )}
+                >
                   {card.isOpen ? "Abierto" : "Cerrado"}
                 </span>
               </div>
@@ -149,7 +200,7 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
                   ? "El comercio cubre el envío"
                   : card.deliveryPriceAtCheckout
                     ? "Envío calculado al pagar"
-                  : `Envío ${money(card.deliveryFeeMinor, card.currency)}`
+                    : `Envío ${money(card.deliveryFeeMinor, card.currency)}`
                 : "Sin entrega"}
             </span>
             <span className="inline-flex items-center gap-1">
@@ -163,7 +214,9 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
           </div>
         </div>
         {card.description ? (
-          <p className="border-t border-border px-4 py-3 text-sm text-muted-foreground sm:px-6">{card.description}</p>
+          <p className="border-t border-border px-4 py-3 text-sm text-muted-foreground sm:px-6">
+            {card.description}
+          </p>
         ) : null}
       </section>
 
@@ -171,14 +224,14 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
         <div
           role="group"
           aria-label="Filtrar por categoría"
-          className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+          className="market-rail -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-3 pt-1 sm:mx-0 sm:px-0"
         >
           <button
             type="button"
             aria-pressed={activeCategory === null}
             onClick={() => setActiveCategory(null)}
             className={cn(
-              "min-h-10 shrink-0 rounded-md border px-4 text-sm transition",
+              "min-h-12 shrink-0 rounded-xl border px-4 text-sm transition-colors",
               activeCategory === null
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground",
@@ -193,7 +246,7 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
               aria-pressed={activeCategory === category.id}
               onClick={() => setActiveCategory(category.id)}
               className={cn(
-                "min-h-10 shrink-0 rounded-md border px-4 text-sm transition",
+                "min-h-12 shrink-0 rounded-xl border px-4 text-sm transition-colors",
                 activeCategory === category.id
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground",
@@ -218,7 +271,10 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
         ) : visible.length > 0 ? (
           <div
             aria-busy={productsFetching}
-            className={cn("transition-opacity", productsFetching && "opacity-60")}
+            className={cn(
+              "transition-opacity",
+              productsFetching && "opacity-60",
+            )}
           >
             <ProductGrid>
               {visible.map((product) => (
@@ -232,7 +288,10 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
                         { productId: item.id, onBusinessConflict: "replace" },
                         {
                           onError: (error) =>
-                            toast({ title: cartErrorMessage(error), variant: "destructive" }),
+                            toast({
+                              title: cartErrorMessage(error),
+                              variant: "destructive",
+                            }),
                         },
                       );
                     })
@@ -263,7 +322,10 @@ export default function MarketplaceStorePage({ slug }: { slug: string }) {
             title="Este negocio todavía no publicó productos."
             description="Volvé más tarde o explorá otras tiendas."
             action={
-              <Link href="/categories" className="text-sm font-semibold text-link hover:text-link/80">
+              <Link
+                href="/categories"
+                className="text-sm font-semibold text-link hover:text-link/80"
+              >
                 Explorar categorías
               </Link>
             }

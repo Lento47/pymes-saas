@@ -1,121 +1,227 @@
-import { useMemo } from "react";
-import { useLocation } from "wouter";
+import type { ProductCard } from "@pymeshub/shared";
+import { ArrowRight, MapPin } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
-import { ErrorState, LoadingGrid } from "@/components/marketplace/cards";
+import {
+  BusinessCardView,
+  EmptyState,
+  ErrorState,
+  LoadingGrid,
+  ProductCardView,
+  ProductGrid,
+  PromotionCardView,
+  Rail,
+  Section,
+} from "@/components/marketplace/cards";
 import { MarketplaceShell } from "@/components/marketplace/public-shell";
-import { HeroBlock } from "@/components/storefront/blocks/hero-block";
-import { DeliveryZoneBlock } from "@/components/storefront/blocks/delivery-zone-block";
-import { OrderJourneyBlock } from "@/components/storefront/blocks/order-journey-block";
-import { OffersBlock } from "@/components/storefront/blocks/offers-block";
-import { CommerceBlock } from "@/components/storefront/blocks/commerce-block";
-import { SignoffBlock } from "@/components/storefront/blocks/signoff-block";
 import { useBrowserLocation } from "@/hooks/use-browser-location";
-import { cartErrorMessage, useAddToCart, useCart, useFeed, useMarketplaceSession } from "@/lib/marketplace";
+import {
+  cartErrorMessage,
+  useAddToCart,
+  useFeed,
+  useMarketplaceSession,
+} from "@/lib/marketplace";
 import { useToast } from "@/hooks/use-toast";
 
-/**
- * The storefront home.
- *
- * Five blocks in the art direction: the hero on the light ground, the delivery zone and
- * the order journey on near-black, then the offers back on light and the sign-off. The
- * commerce itself — categories, offers, products, shops near you — is still the API's
- * and still in the same order it was, but now carries the same art direction instead of
- * dropping back to the app's plainer card styling.
- *
- * ## Where the line is between display and data
- *
- * The blocks *display*: the delivery zone plots the `distanceKm` the API returned, the
- * offers list the promotion codes it returned, the hero counts what came back. None of
- * them invent a value, and each one distinguishes empty from unavailable — a denied
- * location says so, and no offers says so, rather than either rendering as a blank
- * panel that reads as a bug.
- */
+/** Shopping content and its states use the same cards as search and category pages. */
 export default function MarketplaceHomePage() {
   const { coords, status, request } = useBrowserLocation();
   const { data, isLoading, isError, refetch } = useFeed(coords);
   const { data: session } = useMarketplaceSession();
-  const { data: cart } = useCart();
   const addToCart = useAddToCart();
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  const requireSession = (action: () => void) => {
-    if (session) action();
-    else navigate("/sign-in");
+  const onAdd = (product: ProductCard) => {
+    if (!session) {
+      navigate("/sign-in");
+      return;
+    }
+    addToCart.mutate(
+      { productId: product.id },
+      {
+        onSuccess: () =>
+          toast({ title: `${product.title} agregado al carrito` }),
+        onError: (error) =>
+          toast({ title: cartErrorMessage(error), variant: "destructive" }),
+      },
+    );
   };
-
-  /**
-   * The hero's shop count and cart total.
-   *
-   * Both are summed from what actually came back rather than from a query total, and
-   * both are `null` — not zero — when the feed has not resolved, so the panels can be
-   * withheld instead of claiming a business has none. `useMemo` keeps the sum off the
-   * render path when the feed has not changed.
-   */
-  const shopCount = useMemo(
-    () => (data ? data.nearby.length : null),
-    [data],
-  );
-
-  // The cart's own `totals`, which the API computed. Not a client-side sum of the
-  // line items: the total carries discounts, delivery, tax and tip, and re-deriving it
-  // here would disagree with checkout the moment a promotion applied.
-  const cartTotalMinor = cart?.totals.totalMinor ?? null;
-  const cartCurrency = cart?.totals.currency ?? cart?.currency ?? "CRC";
 
   return (
     <MarketplaceShell>
-      <HeroBlock
-        locationStatus={status}
-        onRequestLocation={request}
-        shopCount={shopCount}
-        currency={cartCurrency}
-        cartTotalMinor={cartTotalMinor}
-        onBrowse={() => navigate("/categories")}
-      />
-
-      <DeliveryZoneBlock
-        businesses={data?.nearby ?? []}
-        hasLocation={status === "granted"}
-        onRequestLocation={request}
-      />
-
-      <OrderJourneyBlock />
-
-      <OffersBlock promotions={data?.promotions ?? []} />
+      <section className="market-intro mb-8 grid gap-6 rounded-3xl border border-border bg-card p-6 sm:mb-10 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end lg:p-10">
+        <div>
+          <p className="mb-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground">
+            TU MARKETPLACE LOCAL
+          </p>
+          <h1 className="max-w-[18ch] text-balance text-[clamp(2rem,4.5vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.045em]">
+            Lo que te gusta.
+            <br />
+            Más cerca de vos.
+          </h1>
+          <p className="mt-4 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground">
+            Descubrí productos y negocios locales. Elegí tu próximo pedido y
+            recibilo donde estés.
+          </p>
+          <Link href="/categories" className="market-section-link mt-4">
+            Explorar categorías{" "}
+            <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="max-w-sm border-t border-border pt-5 lg:w-64 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <p className="hidden text-sm font-semibold lg:block">
+            Comprá cerca de vos
+          </p>
+          <p className="mt-2 hidden text-sm leading-relaxed text-muted-foreground lg:block">
+            Activá tu ubicación para encontrar los negocios más cercanos.
+          </p>
+          <button
+            type="button"
+            onClick={request}
+            disabled={status === "pending" || status === "granted"}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:border-primary/50 disabled:cursor-default disabled:opacity-70 lg:mt-4"
+          >
+            <MapPin aria-hidden="true" className="h-4 w-4" />
+            {status === "pending"
+              ? "Buscando ubicación…"
+              : status === "granted"
+                ? "Ubicación activada"
+                : "Usar mi ubicación"}
+          </button>
+          <p
+            role="status"
+            className="mt-2 text-xs leading-relaxed text-muted-foreground"
+          >
+            {status === "denied"
+              ? "No pudimos acceder a tu ubicación. Podés habilitarla en tu navegador o seguir explorando."
+              : status === "unavailable"
+                ? "Tu navegador no ofrece ubicación. Podés seguir explorando por categorías."
+                : null}
+          </p>
+        </div>
+      </section>
 
       {isError ? (
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <ErrorState message="No pudimos cargar el inicio." onRetry={() => void refetch()} />
+        <div>
+          <ErrorState
+            message="No pudimos cargar el inicio."
+            onRetry={() => void refetch()}
+          />
         </div>
       ) : isLoading || !data ? (
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div>
           <LoadingGrid />
         </div>
       ) : (
-        <CommerceBlock
-          categories={data.categories}
-          offers={data.offers}
-          featured={data.featured}
-          nearby={data.nearby}
-          hasLocation={status === "granted"}
-          onRequestLocation={request}
-          adding={addToCart.isPending}
-          onAdd={(item) =>
-            requireSession(() => {
-              addToCart.mutate(
-                { productId: item.id },
-                {
-                  onError: (error) =>
-                    toast({ title: cartErrorMessage(error), variant: "destructive" }),
-                },
-              );
-            })
-          }
-        />
+        <>
+          {data.categories.length > 0 ? (
+            <Section
+              title="¿Qué estás buscando?"
+              action={
+                <Link href="/categories" className="market-section-link">
+                  Ver todas{" "}
+                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                </Link>
+              }
+            >
+              <Rail>
+                {data.categories.slice(0, 14).map((category) => (
+                  <Link
+                    key={category.id}
+                    href={`/category/${category.slug}`}
+                    className="inline-flex min-h-12 shrink-0 items-center rounded-2xl border border-border bg-card px-5 text-sm font-medium transition-colors hover:border-primary/50 hover:bg-bg-hover"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+              </Rail>
+            </Section>
+          ) : null}
+          {data.promotions.length > 0 ? (
+            <Section title="Un buen motivo para pedir">
+              <Rail>
+                {data.promotions.map((promotion) => (
+                  <PromotionCardView key={promotion.id} promotion={promotion} />
+                ))}
+              </Rail>
+            </Section>
+          ) : null}
+          {data.offers.length > 0 ? (
+            <Section title="Ofertas para aprovechar">
+              <Rail>
+                {data.offers.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex w-[min(72vw,16rem)] shrink-0 [&>article]:w-full"
+                  >
+                    <ProductCardView
+                      product={product}
+                      onAdd={onAdd}
+                      adding={addToCart.isPending}
+                    />
+                  </div>
+                ))}
+              </Rail>
+            </Section>
+          ) : null}
+          {data.featured.length > 0 ||
+          (data.nearby.length === 0 && data.offers.length === 0) ? (
+            <Section
+              title="Descubrí tu próximo favorito"
+              action={
+                <Link href="/search" className="market-section-link">
+                  Explorar <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                </Link>
+              }
+            >
+              {data.featured.length > 0 ? (
+                <ProductGrid>
+                  {data.featured.map((product) => (
+                    <ProductCardView
+                      key={product.id}
+                      product={product}
+                      onAdd={onAdd}
+                      adding={addToCart.isPending}
+                    />
+                  ))}
+                </ProductGrid>
+              ) : (
+                <EmptyState
+                  title="Pronto vas a encontrar más productos acá."
+                  description="Mientras tanto, explorá los negocios y las categorías disponibles."
+                  action={
+                    <Link href="/categories" className="market-section-link">
+                      Ver categorías{" "}
+                      <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </Link>
+                  }
+                />
+              )}
+            </Section>
+          ) : null}
+          <Section
+            title={
+              status === "granted"
+                ? "Negocios cerca de vos"
+                : "Conocé los negocios"
+            }
+          >
+            {data.nearby.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {data.nearby.map((business) => (
+                  <BusinessCardView key={business.id} card={business} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="Todavía no hay negocios disponibles en esta búsqueda."
+                description="Explorá otras categorías o probá de nuevo más tarde."
+              />
+            )}
+          </Section>
+        </>
       )}
-
-      <SignoffBlock />
     </MarketplaceShell>
   );
 }

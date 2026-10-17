@@ -15,12 +15,28 @@
  */
 const STOREFRONT_ROUTES = [
   "/",
-  "/categories", "/category", "/search", "/store", "/cart", "/checkout", "/orders", "/order",
-  "/favorites", "/sign-in",
+  "/categories",
+  "/category",
+  "/search",
+  "/store",
+  "/cart",
+  "/checkout",
+  "/orders",
+  "/order",
+  "/favorites",
+  "/sign-in",
+  "/login",
+  "/register",
 ];
 
 /** Whether a pathname is served by the storefront shell. */
 export function isStorefrontRoute(pathname: string): boolean {
   const clean = pathname.split("?")[0];
-  return STOREFRONT_ROUTES.some((route) => clean === route || clean.startsWith(route + "/"));
+  // `/product` is marketing; `/product/:id` is customer commerce.
+  return (
+    clean.startsWith("/product/") ||
+    STOREFRONT_ROUTES.some(
+      (route) => clean === route || clean.startsWith(route + "/"),
+    )
+  );
 }

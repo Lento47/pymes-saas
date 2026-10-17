@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 import { isStorefrontRoute } from "./storefront-routes";
 import { ThemeProvider, useTheme } from "@/components/providers/theme-provider";
+import documentHtml from "../../index.html?raw";
 
 /**
  * Theme resolution for the storefront.
@@ -17,17 +18,19 @@ import { ThemeProvider, useTheme } from "@/components/providers/theme-provider";
  * never be written back; only a chosen one is.
  */
 
-/** Mirrors the inline pre-paint script in `client/index.html`. */
+/** Execute the shipped pre-paint script, so this checks the real duplicated contract. */
 function readPrePaintTheme(pathname: string): string {
-  const STOREFRONT_ROUTES = [
-    "/", "/categories", "/category", "/search", "/store", "/cart",
-    "/checkout", "/orders", "/order", "/favorites", "/sign-in",
-  ];
-  const isStorefront = STOREFRONT_ROUTES.some(
-    (route) => pathname === route || pathname.indexOf(route + "/") === 0,
+  window.history.replaceState(null, "", pathname);
+  const script = documentHtml.match(/<script>\s*([\s\S]*?)<\/script>/)?.[1];
+  if (!script) throw new Error("Missing pre-paint theme script");
+  new Function("window", "document", "localStorage", script)(
+    window,
+    document,
+    localStorage,
   );
-  const stored = localStorage.getItem("PymesHub-theme");
-  return (stored === "light" || stored === "dark" ? stored : null) || (isStorefront ? "light" : "dark");
+  return document.documentElement.classList.contains("light")
+    ? "light"
+    : "dark";
 }
 
 beforeEach(() => {
@@ -66,10 +69,21 @@ describe("isStorefrontRoute", () => {
     expect(isStorefrontRoute("/categories")).toBe(true);
     expect(isStorefrontRoute("/category/soda-dona-elba")).toBe(true);
     expect(isStorefrontRoute("/orders")).toBe(true);
+    expect(isStorefrontRoute("/product/product_123")).toBe(true);
+    expect(isStorefrontRoute("/login")).toBe(true);
+    expect(isStorefrontRoute("/register")).toBe(true);
+    expect(isStorefrontRoute("/product")).toBe(false);
   });
 
   it("does not match the app's routes", () => {
-    for (const path of ["/inbox", "/settings", "/crm", "/admin/users", "/solutions/retail", "/pricing"]) {
+    for (const path of [
+      "/inbox",
+      "/settings",
+      "/crm",
+      "/admin/users",
+      "/solutions/retail",
+      "/pricing",
+    ]) {
       expect(isStorefrontRoute(path)).toBe(false);
     }
   });
@@ -85,7 +99,17 @@ describe("isStorefrontRoute", () => {
 describe("the pre-paint script", () => {
   it("agrees with the module on every storefront route", () => {
     // The duplication in index.html is only safe if the two cannot drift.
-    for (const path of ["/", "/categories", "/cart", "/sign-in", "/order/9"]) {
+    for (const path of [
+      "/",
+      "/categories",
+      "/cart",
+      "/sign-in",
+      "/order/9",
+      "/product/product_123",
+      "/login",
+      "/register",
+      "/product",
+    ]) {
       window.history.replaceState(null, "", path);
       const expected = isStorefrontRoute(path) ? "light" : "dark";
       expect(readPrePaintTheme(path)).toBe(expected);

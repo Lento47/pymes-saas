@@ -1,12 +1,29 @@
-import { type BusinessCard, formatMoney, type ProductCard, type PromotionCard } from "@pymeshub/shared";
-import { AlertCircle, Bike, Clock, MapPin, Plus, Star, Store, Tag } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import {
+  type BusinessCard,
+  formatMoney,
+  type ProductCard,
+  type PromotionCard,
+} from "@pymeshub/shared";
+import {
+  AlertCircle,
+  Bike,
+  Clock,
+  Loader2,
+  MapPin,
+  Package,
+  Plus,
+  Star,
+  Store,
+  Tag,
+} from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MARKETPLACE_API_URL } from "@/lib/marketplace";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "./favorite-button";
 
 /**
  * The storefront's shared cards and states.
@@ -40,12 +57,46 @@ export function money(minor: number, currency: string): string {
   return formatMoney(minor, currency as Parameters<typeof formatMoney>[1]);
 }
 
+/** Failed uploads get the same calm fallback as missing images. */
+export function MarketplaceImage({
+  src,
+  alt = "",
+  className,
+  fallback,
+  width = 640,
+  height = 480,
+}: {
+  src: string | null | undefined;
+  alt?: string;
+  className?: string;
+  fallback?: ReactNode;
+  width?: number;
+  height?: number;
+}) {
+  const url = imageSrc(src);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  return url && failedUrl !== url ? (
+    <img
+      src={url}
+      alt={alt}
+      width={width}
+      height={height}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailedUrl(url)}
+      className={className}
+    />
+  ) : (
+    <div aria-hidden="true" className={cn("market-image-fallback", className)}>
+      {fallback ?? <Package className="h-8 w-8" strokeWidth={1.25} />}
+    </div>
+  );
+}
+
 /**
  * A titled band of the page.
  *
- * `text-xl` is 17px in this app's scale rather than the 20px Tailwind's default would
- * give, which is the size that keeps a section heading clearly above a card title
- * (`text-sm`) without competing with the page's own `h1`.
+ * Marketplace typography is scoped in marketplace.css, independently of the console.
  */
 export function Section({
   title,
@@ -57,9 +108,11 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mt-8 first:mt-0">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <h2 className="text-xl font-semibold tracking-[-0.01em] text-foreground">{title}</h2>
+    <section className="market-section mt-10 first:mt-0 sm:mt-12">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h2 className="text-balance text-xl font-semibold tracking-[-0.025em] text-foreground">
+          {title}
+        </h2>
         {action}
       </div>
       {children}
@@ -71,9 +124,14 @@ export function Rating({ value, count }: { value: number; count?: number }) {
   if (value <= 0) return null;
   return (
     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-      <Star aria-hidden="true" className="h-3.5 w-3.5 fill-primary text-primary" />
+      <Star
+        aria-hidden="true"
+        className="h-3.5 w-3.5 fill-primary text-primary"
+      />
       <span className="tabular-nums">{value.toFixed(1)}</span>
-      {count !== undefined && count > 0 ? <span className="opacity-70 tabular-nums">({count})</span> : null}
+      {count !== undefined && count > 0 ? (
+        <span className="tabular-nums">({count})</span>
+      ) : null}
     </span>
   );
 }
@@ -89,67 +147,80 @@ export function Rating({ value, count }: { value: number; count?: number }) {
 export function BusinessCardView({ card }: { card: BusinessCard }) {
   const logo = imageSrc(card.logoUrl);
   return (
-    <Link
-      href={`/store/${card.slug}`}
-      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/50"
-    >
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-elevated">
-        {card.coverUrl ? (
-          <img
-            src={imageSrc(card.coverUrl) ?? ""}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+    <article className="market-card relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card">
+      <Link
+        href={`/store/${card.slug}`}
+        className="group flex min-w-0 flex-1 flex-col"
+      >
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-elevated">
+          <MarketplaceImage
+            src={card.coverUrl}
+            width={640}
+            height={360}
+            className="market-card-image h-full w-full object-cover"
+            fallback={<Store className="h-8 w-8" strokeWidth={1.25} />}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Store aria-hidden="true" className="h-7 w-7 text-muted-foreground" />
-          </div>
-        )}
-        {!card.isOpen ? (
-          <span className="absolute right-2 top-2 rounded-md border border-border bg-background/85 px-2 py-0.5 text-[11px] font-medium text-foreground backdrop-blur">
-            Cerrado
-          </span>
-        ) : null}
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5 p-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {logo ? (
-            <img src={logo} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-md border border-border object-cover" />
-          ) : null}
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-foreground">{card.name}</h3>
-            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-              {card.categoryName ? <span className="truncate">{card.categoryName}</span> : null}
-              <Rating value={card.ratingAvg} count={card.ratingCount} />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Bike aria-hidden="true" className="h-3.5 w-3.5" />
-            {!card.deliveryEnabled
-              ? "Sin entrega"
-              : card.merchantCoversDelivery
-                ? "El comercio cubre el envío"
-                : `Envío ${money(card.deliveryFeeMinor, card.currency)}`}
-          </span>
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <Clock aria-hidden="true" className="h-3.5 w-3.5" />
-            {card.prepTimeMinutes} min
-          </span>
-          {card.distanceKm !== null ? (
-            <span className="inline-flex items-center gap-1 tabular-nums">
-              <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
-              {card.distanceKm.toFixed(1)} km
+          {!card.isOpen ? (
+            <span className="absolute right-2 top-2 rounded-md border border-border bg-background/85 px-2 py-0.5 text-[11px] font-medium text-foreground backdrop-blur">
+              Cerrado
             </span>
           ) : null}
         </div>
-      </div>
-    </Link>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            {logo ? (
+              <MarketplaceImage
+                src={logo}
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded-xl border border-border object-cover"
+                fallback={<Store className="h-4 w-4" />}
+              />
+            ) : null}
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-foreground">
+                {card.name}
+              </h3>
+              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                {card.categoryName ? (
+                  <span className="truncate">{card.categoryName}</span>
+                ) : null}
+                <Rating value={card.ratingAvg} count={card.ratingCount} />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Bike aria-hidden="true" className="h-3.5 w-3.5" />
+              {!card.deliveryEnabled
+                ? "Sin entrega"
+                : card.merchantCoversDelivery
+                  ? "El comercio cubre el envío"
+                  : card.deliveryPriceAtCheckout
+                    ? "Envío calculado al pagar"
+                    : `Envío ${money(card.deliveryFeeMinor, card.currency)}`}
+            </span>
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+              {card.prepTimeMinutes} min
+            </span>
+            {card.distanceKm !== null ? (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+                {card.distanceKm.toFixed(1)} km
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </Link>
+      <FavoriteButton
+        businessId={card.id}
+        name={card.name}
+        className="absolute left-3 top-3 z-10"
+      />
+    </article>
   );
 }
 
@@ -167,31 +238,30 @@ export function ProductCardView({
 }) {
   const soldOut = !product.availability.inStock;
   return (
-    <div className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/50">
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-elevated">
-        <Link href={`/product/${product.id}`} className="absolute inset-0 z-0">
+    <article className="market-card group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="relative aspect-[4/3] min-h-32 w-full overflow-hidden bg-elevated">
+        <Link
+          href={`/product/${product.id}`}
+          className="market-image-link absolute inset-0 z-[1] rounded-t-2xl"
+        >
           <span className="sr-only">{product.title}</span>
         </Link>
-        {product.imageUrl ? (
-          <img
-            src={imageSrc(product.imageUrl) ?? ""}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-muted-foreground/50">
-            {product.title.slice(0, 1).toUpperCase()}
-          </div>
-        )}
+        <MarketplaceImage
+          src={product.imageUrl}
+          className="market-card-image h-full w-full object-cover"
+        />
+        <FavoriteButton
+          productId={product.id}
+          name={product.title}
+          className="absolute right-2 top-2 z-10"
+        />
         {product.discountPercent ? (
-          <span className="absolute left-2 top-2 rounded-md bg-primary px-2 py-0.5 text-[11px] font-bold tabular-nums text-primary-foreground">
+          <span className="pointer-events-none absolute left-3 top-3 rounded-lg bg-primary px-2 py-1 text-[11px] font-bold tabular-nums text-primary-foreground">
             -{product.discountPercent}%
           </span>
         ) : null}
         {soldOut ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/70">
             <span className="rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground">
               Agotado
             </span>
@@ -202,27 +272,37 @@ export function ProductCardView({
             type="button"
             size="icon"
             disabled={soldOut || adding}
+            aria-busy={adding || undefined}
             aria-label={`Agregar ${product.title}`}
             onClick={(event) => {
               event.preventDefault();
               if (onProtectedAction) onProtectedAction();
               else onAdd?.(product);
             }}
-            className="absolute bottom-2 right-2 z-10 h-9 w-9 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            className="market-add absolute bottom-2 right-2 z-10 h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
           >
-            <Plus aria-hidden="true" className="h-5 w-5" />
+            {adding ? (
+              <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
+            ) : (
+              <Plus aria-hidden="true" className="h-5 w-5" />
+            )}
           </Button>
         ) : null}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3">
-        <Link href={`/product/${product.id}`} className="line-clamp-2 text-sm font-medium text-foreground">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4">
+        <Link
+          href={`/product/${product.id}`}
+          className="line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground hover:underline underline-offset-4"
+        >
           {product.title}
         </Link>
-        <p className="line-clamp-1 text-xs text-muted-foreground">{product.seller.name}</p>
-        <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-sm font-semibold tabular-nums text-foreground">
+        <p className="line-clamp-1 text-xs text-muted-foreground">
+          {product.seller.name}
+        </p>
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-1 pt-2">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="break-words text-base font-semibold tabular-nums text-foreground">
               {money(product.priceMinor, product.currency)}
             </span>
             {product.compareAtPriceMinor ? (
@@ -234,7 +314,7 @@ export function ProductCardView({
           <Rating value={product.rating ?? 0} count={product.reviewCount} />
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -248,22 +328,31 @@ export function PromotionCardView({ promotion }: { promotion: PromotionCard }) {
   return (
     <Link
       href={`/store/${promotion.business.slug}`}
-      className="flex min-w-[15rem] flex-col gap-2 rounded-xl border border-primary/30 bg-primary/[0.07] p-4 transition hover:border-primary/60"
+      className="market-card flex w-[min(80vw,22rem)] shrink-0 flex-col gap-3 rounded-2xl border border-border bg-card p-5"
     >
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-link">
+      <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Tag aria-hidden="true" className="h-3.5 w-3.5" />
         {promotion.business.name}
       </span>
-      <span className="text-xl font-semibold tracking-[-0.01em] text-foreground">{label}</span>
-      <span className="text-xs text-muted-foreground">
-        Código <span className="font-mono font-semibold text-foreground">{promotion.code}</span>
+      <span className="text-xl font-semibold tracking-[-0.01em] text-foreground">
+        {label}
+      </span>
+      <span className="mt-auto border-t border-dashed border-border pt-3 text-xs text-muted-foreground">
+        Código{" "}
+        <span className="font-mono font-semibold text-foreground">
+          {promotion.code}
+        </span>
       </span>
     </Link>
   );
 }
 
 export function ProductGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>;
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -275,18 +364,31 @@ export function ProductGrid({ children }: { children: ReactNode }) {
  * edge on a phone; above `sm` the page padding is already the gutter and both go away.
  */
 export function Rail({ children }: { children: ReactNode }) {
-  return <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">{children}</div>;
+  return (
+    <div className="market-rail -mx-4 flex gap-3 overflow-x-auto px-4 pb-3 pt-1 sm:mx-0 sm:gap-4 sm:px-0">
+      {children}
+    </div>
+  );
 }
 
 export function LoadingGrid({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div
+      role="status"
+      aria-label="Cargando productos…"
+      className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4"
+    >
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="overflow-hidden rounded-xl border border-border bg-card">
-          <Skeleton className="aspect-[4/3] w-full rounded-none bg-foreground/[0.07]" />
-          <div className="flex flex-col gap-2 p-3">
+        <div
+          key={index}
+          aria-hidden="true"
+          className="overflow-hidden rounded-2xl border border-border bg-card"
+        >
+          <Skeleton className="aspect-[4/3] min-h-32 w-full rounded-none bg-foreground/[0.07]" />
+          <div className="flex flex-col gap-3 p-4">
             <Skeleton className="h-4 w-3/4 bg-foreground/[0.07]" />
             <Skeleton className="h-3 w-1/2 bg-foreground/[0.07]" />
+            <Skeleton className="mt-2 h-5 w-1/3 bg-foreground/[0.07]" />
           </div>
         </div>
       ))}
@@ -386,20 +488,47 @@ export function LoadMore({
   );
 }
 
-export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-14 text-center">
-      <Store aria-hidden="true" className="h-7 w-7 text-muted-foreground" />
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-14 text-center sm:py-20">
+      <span className="mb-2 grid h-14 w-14 place-items-center rounded-2xl bg-elevated">
+        <Store
+          aria-hidden="true"
+          className="h-6 w-6 text-muted-foreground"
+          strokeWidth={1.5}
+        />
+      </span>
       <p className="text-sm font-semibold text-foreground">{title}</p>
-      {description ? <p className="max-w-md text-xs text-muted-foreground">{description}</p> : null}
+      {description ? (
+        <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+          {description}
+        </p>
+      ) : null}
       {action}
     </div>
   );
 }
 
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/[0.07] px-6 py-10 text-center">
+    <div
+      role="alert"
+      className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/[0.07] px-6 py-10 text-center"
+    >
       <AlertCircle aria-hidden="true" className="h-6 w-6 text-destructive" />
       <p className="text-sm text-foreground">{message}</p>
       {onRetry ? (
@@ -407,7 +536,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
           type="button"
           variant="secondary"
           onClick={onRetry}
-          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+          className="min-h-11 rounded-xl border-destructive/40 text-destructive hover:bg-destructive/10"
         >
           Reintentar
         </Button>
